@@ -1,0 +1,36 @@
+id: ABR
+name: Abstraction Rules
+rules:
+- id: ABR-01
+  severity: MINOR
+  condition: abstraction.introduced
+  require:
+  - concrete_duplication_count >= 3
+  fix: wait for three concrete call sites before abstracting
+- id: ABR-02
+  severity: MINOR
+  condition: interface_or_base_class
+  require:
+  - methods_consumed_by_current_implementation
+  - fields_consumed_by_current_implementation
+  - extension_points_consumed_by_current_implementation
+  fix: remove unused interface members
+- id: ABR-03
+  severity: MINOR
+  condition: agent.abstraction_hierarchy
+  require:
+  - depth <= 3
+  - each_layer_adds_distinct_tested_behavior
+  fix: collapse layers or prove each layer adds behavior
+- id: ABR-04
+  severity: MINOR
+  condition: wrapper.no_behavior_change
+  action: wrapper.removed
+  fix: connect caller directly to underlying component
+- id: ABR-05
+  severity: MINOR
+  condition: generic_domain_agnostic_agent
+  require:
+  - ARB_approval
+  - proof_no_domain_specific_design_satisfies
+  fix: seek ARB approval or use domain-specific design

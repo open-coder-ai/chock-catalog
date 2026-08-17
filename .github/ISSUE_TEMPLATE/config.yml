@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Question or idea
+    url: https://github.com/open-coder-ai/chock-catalog/discussions
+    about: Ask questions and share ideas in Discussions — issues are for policy defects and proposals.
+  - name: 🔒 Security vulnerability
+    url: https://github.com/open-coder-ai/chock-catalog/security/advisories/new
+    about: Guard scripts run on every commit in adopter repos — report vulnerabilities privately, never as a public issue.
+  - name: 🛠️ Framework bug (chock CLI)
+    url: https://github.com/open-coder-ai/chock/issues/new/choose
+    about: Problems with the chock tool itself belong in the framework repo.

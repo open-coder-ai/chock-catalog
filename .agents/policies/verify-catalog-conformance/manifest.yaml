@@ -1,0 +1,44 @@
+id: verify-catalog-conformance
+name: "Verify Catalog Conformance"
+version: "0.0.1"
+description: >
+  Repo-local policy (this repo only, never published): run the fast deterministic
+  catalog checks at commit time -- registry labels, README counts, quoted console
+  output, workflow-trigger safety -- so a mismatch fails in seconds under the
+  committer's hands instead of minutes later in CI. Each of these caught a real error
+  from CI on 2026-08-16. CI remains the authority: it re-runs the same tools on the
+  pinned engine plus everything too slow for a hook (evals, transcripts, the staged
+  adopter). Skips with a warning when python is absent, because the backstop is what
+  makes that honest.
+artifact: rule
+enforcement: advise
+rule:
+  text: |
+    before(commit): pass(check_registry, check_readme, check_console, check_workflows)  # enforced by the installed pre-commit implementation
+    if(check_fails): fix_the_source; never(edit_the_check_to_pass)
+effects:
+- read_only
+approval:
+  required: false
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-08-16T00:00:00Z"
+  updated_at: "2026-08-16T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-16'
+  changes:
+  - "Initial repo-local policy: commit-time mirror of the cheap CI conformance tools; check_registry.py extracted from the inline CI step so both surfaces run one implementation."

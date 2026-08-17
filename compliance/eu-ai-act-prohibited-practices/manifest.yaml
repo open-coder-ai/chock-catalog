@@ -1,0 +1,60 @@
+id: eu-ai-act-prohibited-practices
+name: "EU AI Act — Prohibited Practices"
+version: "0.0.2"
+description: >
+  Refuse to implement AI practices banned outright by EU AI Act Article 5: social
+  scoring, untargeted facial-image scraping, emotion inference at work or school,
+  biometric categorisation by sensitive traits, profiling-only predictive policing,
+  subliminal or vulnerability-based manipulation, real-time remote biometric ID in
+  public spaces, and NCII/CSAM generators. Use when a feature request names any of
+  these. Do NOT use for lawful biometric verification, fraud detection, or
+  safety/medical emotion detection.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    never(implement|assist): social_scoring | untargeted_face_scraping | emotion_inference(workplace|education) | biometric_categorisation(sensitive_traits) | predictive_policing(profiling_only) | subliminal_manipulation | vulnerability_exploitation(age|disability|socioeconomic) | realtime_remote_biometric_id(public_space) | NCII | CSAM
+    on_request: refuse + cite(EU AI Act Art 5) + offer(compliant_alternative); see .agents/policies/eu-ai-act-prohibited-practices/references/article-5.md
+
+compliance:
+  eu_ai_act:
+  - control: Art5
+    coverage: partial
+    note: "advisory triage naming the prohibited practices before they are built competently"
+  eu_ai_act:
+  - control: "Article 5"
+    coverage: partial
+    note: "advisory refusal at authoring time; not a runtime or market-surveillance control"
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft. Article 5 (a)-(h) plus the Digital Omnibus NCII/CSAM additions."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (eu_ai_act); no mechanism change."

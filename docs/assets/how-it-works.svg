@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="900" height="420" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="A policy folder compiles into git-hook, pre-tool-use and ambient-rule surfaces, which reach different enforcement levels">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7d8590"/>
+    </marker>
+    <style>
+      .box  { rx: 8; }
+      .lbl  { font-size: 13px; font-weight: 600; fill: #0d1117; }
+      .sub  { font-size: 11px; fill: #3d444d; }
+      .hdr  { font-size: 11px; font-weight: 700; letter-spacing: .08em; fill: #7d8590; }
+      .mono { font-size: 11.5px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fill: #0d1117; }
+      .edge { stroke: #7d8590; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+    </style>
+  </defs>
+
+  <text x="20" y="26" class="hdr">1 · YOU WRITE</text>
+  <text x="330" y="26" class="hdr">2 · CHOCK COMPILES</text>
+  <text x="655" y="26" class="hdr">3 · WHAT IT REACHES</text>
+
+  <!-- source -->
+  <rect x="20" y="42" width="230" height="150" class="box" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="36" y="66" class="lbl">base/scan-secrets/</text>
+  <text x="36" y="90"  class="mono">manifest.yaml</text>
+  <text x="36" y="110" class="sub">identity · gate · rule text</text>
+  <text x="36" y="134" class="mono">evals/suite.yaml</text>
+  <text x="36" y="154" class="sub">cases proving the claim</text>
+  <text x="36" y="178" class="mono">implementations/*.sh</text>
+
+  <rect x="20" y="212" width="230" height="72" class="box" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="36" y="236" class="lbl">One folder. Yours.</text>
+  <text x="36" y="256" class="sub">Copy it in, edit the regex,</text>
+  <text x="36" y="272" class="sub">nothing upstream overwrites it.</text>
+
+  <path d="M258 118 H322" class="edge"/>
+
+  <!-- surfaces -->
+  <rect x="330" y="42" width="250" height="62" class="box" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="346" y="66" class="lbl">git-hook</text>
+  <text x="346" y="88" class="sub">compiled gate.json → pre-commit.d/</text>
+
+  <rect x="330" y="118" width="250" height="62" class="box" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="346" y="142" class="lbl">pre-tool-use</text>
+  <text x="346" y="164" class="sub">guard merged into agent settings</text>
+
+  <rect x="330" y="194" width="250" height="62" class="box" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="346" y="218" class="lbl">ambient-rule</text>
+  <text x="346" y="240" class="sub">rule text folded into context</text>
+
+  <rect x="330" y="272" width="250" height="76" class="box" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="346" y="296" class="lbl">13 agent adapters</text>
+  <text x="346" y="316" class="sub">claude · copilot · cursor · gemini</text>
+  <text x="346" y="332" class="sub">codex · aider · windsurf · +6 more</text>
+
+  <path d="M588 73  H648" class="edge"/>
+  <path d="M588 149 H648" class="edge"/>
+  <path d="M588 225 H648" class="edge"/>
+
+  <!-- levels -->
+  <rect x="656" y="42" width="224" height="62" class="box" fill="#bbf7d0" stroke="#22c55e"/>
+  <text x="672" y="66" class="lbl">enforced-at-commit</text>
+  <text x="672" y="88" class="sub">exits non-zero · commit blocked</text>
+
+  <rect x="656" y="118" width="224" height="62" class="box" fill="#bbf7d0" stroke="#22c55e"/>
+  <text x="672" y="142" class="lbl">enforced</text>
+  <text x="672" y="164" class="sub">tool call refused before it runs</text>
+
+  <rect x="656" y="194" width="224" height="62" class="box" fill="#fde68a" stroke="#f59e0b"/>
+  <text x="672" y="218" class="lbl">advisory</text>
+  <text x="672" y="240" class="sub">read · may or may not be followed</text>
+
+  <rect x="656" y="272" width="224" height="76" class="box" fill="#e5e7eb" stroke="#9ca3af"/>
+  <text x="672" y="296" class="lbl">unsupported</text>
+  <text x="672" y="316" class="sub">no surface on that agent.</text>
+  <text x="672" y="332" class="sub">Reported, not hidden.</text>
+
+  <rect x="20" y="366" width="860" height="38" class="box" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="36" y="390" class="sub">coverage.json records the level for every policy on every agent — derived from the repo, checked in CI, never asserted by hand.</text>
+</svg>

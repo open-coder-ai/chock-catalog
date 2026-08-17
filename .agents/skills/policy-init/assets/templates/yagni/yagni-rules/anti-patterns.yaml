@@ -1,0 +1,41 @@
+anti_patterns:
+- id: AP-01
+  severity: MAJOR
+  pattern: tool_registry >= 20 tools && >30% zero_calls
+  fix: audit, remove zero-call tools, decompose into specialized agents
+- id: AP-02
+  severity: MAJOR
+  pattern: orchestrator single_destination pass-through
+  fix: eliminate orchestrator; backlog multi-agent routing
+- id: AP-03
+  severity: MINOR
+  pattern: context near limit static preload
+  fix: task-specific injection + retrieval + budget enforcement
+- id: AP-04
+  severity: MAJOR
+  pattern: sub-agent zero_traces hypothetical
+  fix: remove, archive design, re-implement on confirmed requirement
+- id: AP-05
+  severity: MINOR
+  pattern: schema >= 40 fields && <25% populated
+  fix: remove high-null fields, version, quarterly review
+- id: AP-06
+  severity: CRITICAL
+  pattern: reflection loop no termination
+  fix: cap <= 3 iterations + measurable_difference_per_iter + human_escalation
+- id: AP-07
+  severity: MINOR
+  pattern: inheritance > 3 layers with empty upper layers
+  fix: collapse <= 3 + use composition
+- id: AP-08
+  severity: MAJOR
+  pattern: tool_calls/task >= 15 with <= 3 useful
+  fix: audit unreferenced calls, cache, require reasoning_step
+- id: AP-09
+  severity: MINOR
+  pattern: workflow branch zero_executions
+  fix: remove branch; backlog scenario
+- id: AP-10
+  severity: MINOR
+  pattern: memory unbounded writes
+  fix: write_policy + TTL + eviction + budget alert

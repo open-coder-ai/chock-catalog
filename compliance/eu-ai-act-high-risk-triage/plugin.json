@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "eu-ai-act-high-risk-triage",
+  "version": "0.0.2",
+  "description": "Flag when code puts an AI system into an EU AI Act Annex III high-risk domain \u2014 biometrics, critical infrastructure, education, employment, essential services and credit, law enforcement, migration, justice and elections \u2014 and require the Article 9-15 obligations be owned before the capability ships. Use when adding scoring, ranking, eligibility, or screening over people. Do NOT use for banned practices (see eu-ai-act-prohibited-practices) or for systems with no natural-person impact.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

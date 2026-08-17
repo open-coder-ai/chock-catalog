@@ -1,0 +1,71 @@
+suite:
+  id: block-unsafe-code-execution-tests-v1
+  policy_id: block-unsafe-code-execution
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # Every executable case states its expectation independently of the pattern; the
+  # negative_trigger cases pin the lookbehind/lookahead behaviour that keeps the gate
+  # from blocking method calls that merely share a name with a builtin.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A staged file passes model output to the Python eval builtin.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        handler.py: "result = eval(llm_response)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A staged file spawns a subprocess with the shell flag enabled.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        runner.py: "subprocess.run(cmd, shell=True)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A staged JS file builds code from a string with new Function.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        plugin.js: "const fn = new Function(body);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-004
+    category: negative_trigger
+    prompt: A staged file calls model.eval() to switch a torch module to inference mode.
+    expect: The hook allows the commit; a dotted method call is not the eval builtin.
+    execute:
+      files:
+        train.py: "model.eval()\nwith torch.no_grad():\n    pass\n"
+      expect: allow
+  - id: tc-005
+    category: negative_trigger
+    prompt: A staged file parses YAML with yaml.safe_load and runs a regex with pattern.exec.
+    expect: The hook allows the commit.
+    execute:
+      files:
+        config.py: "data = yaml.safe_load(fh)\n"
+        match.js: "const m = pattern.exec(line);\n"
+      expect: allow
+  - id: tc-006
+    category: behavior
+    prompt: "A reviewed, deliberate exec carries 'pragma: allowlist exec' on the same line."
+    expect: The hook allows the commit; the escape is per-line and visible in review.
+    execute:
+      files:
+        sandbox.py: "exec(compile(src, '<gen>', 'exec'))  # pragma: allowlist exec\n"
+      expect: allow
+  - id: tc-007
+    category: edge
+    prompt: A staged file calls yaml.load but names SafeLoader in the same call.
+    expect: The hook allows the commit; only loader-less yaml.load blocks.
+    execute:
+      files:
+        settings.py: "cfg = yaml.load(fh, Loader=yaml.SafeLoader)\n"
+      expect: allow

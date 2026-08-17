@@ -1,0 +1,225 @@
+name: CI
+
+# FRAMEWORK_REF pins the engine this catalog is built and checked against. Bumping it
+# is an explicit, reviewable adoption: run `python tools/adopt_framework.py <ref>` to
+# rewrite the pin AND regenerate every derived artifact in one step. The nightly
+# transcript workflow deliberately stays on main as an unpinned canary.
+env:
+  FRAMEWORK_REF: v0.1.0
+
+
+# Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
+# framework needs (bash resolution, line endings, path handling) buys nothing here -- and
+# Windows bills 2x, macOS 10x, on a private repo.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Every PR commit must carry a Signed-off-by trailer (Developer Certificate of
+  # Origin -- see CONTRIBUTING.md). Same in-workflow check as the framework repo:
+  # works while private; the DCO App can replace it after launch.
+  dco:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Check Signed-off-by on every PR commit
+        run: |
+          git fetch --quiet origin "${{ github.base_ref }}"
+          missing=0
+          while read -r sha; do
+            if ! git log -1 --format=%B "$sha" | grep -qi '^Signed-off-by: .\+<.\+@.\+>'; then
+              echo "::error::commit $sha lacks a Signed-off-by trailer (git commit -s)"
+              missing=1
+            fi
+          done < <(git rev-list --no-merges "origin/${{ github.base_ref }}..HEAD")
+          exit "$missing"
+
+  policies:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
+      # and a shallow clone has no merge base to find.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # Check out the framework at the pinned ref this catalog is validated against.
+      - name: Check out the framework
+        uses: actions/checkout@v7
+        with:
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: Install Chock
+        run: pip install ./.framework
+
+      # This repo is itself an adopter: `.agents/policies/` holds the subset it is governed
+      # by, committed as a pinned copy. Checking it here proves the adoption flow on a real
+      # repo rather than only in the framework's tests.
+      - name: This repo is a valid adopter
+        run: |
+          chock check
+          chock sync --repo . --check
+          chock check --only evals
+
+      # Docs state what each policy enforces, so a stale one is an overclaim published where
+      # adopters read first. The factual half of every page is derived from base/<id>/.
+      - name: Policy docs match their policies
+        run: |
+          python tools/gen_policy_docs.py --check
+          python tools/check_readme.py
+          # The matrix image used to be a PNG with no generator: it drifted the day the
+          # thirteenth policy landed and nothing noticed. Derived from registry.yaml now.
+          python tools/gen_coverage_matrix.py --check
+
+      # The numbers were guarded; the quoted terminal output was not, and that is the half
+      # that broke twice -- a block message reading "(main/master)" against a gate blocking
+      # `main|master`, and a transcript labelled "captured by running these commands" that
+      # had gone stale. Quoted output is the most persuasive thing in a README exactly
+      # because a reader cannot check it.
+      - name: Console transcripts match what the tools print
+        run: python tools/check_console.py
+
+      # A contributor's "the policy works" claim is committed as docs/<id>/adoption.md --
+      # the output of adopting that one policy into an empty repository -- and this step
+      # re-derives it. Pasted output can be edited and goes stale; a transcript that fails
+      # to reproduce fails the build. Scoped to policies -- or transcripts -- the PR
+      # touches, the same trade the
+      # reviewer-evidence step makes: an untouched policy's transcript can drift when
+      # framework output changes, and is caught at its next edit rather than on every push.
+      # A NEW policy with no committed transcript fails here with the command to run.
+      - name: Adoption transcripts reproduce from an empty repo
+        if: github.event_name == 'pull_request'
+        run: python tools/gen_adoption_transcript.py --check --base "origin/${{ github.base_ref }}"
+
+      # This repo distributes executable content, so a compromised workflow does not merely
+      # leak a token -- it can publish a malicious guard script to everyone who runs
+      # `chock add`. `pull_request_target` is the usual way that happens, and the
+      # temptation arrives the first time someone wants a bot to comment on a fork PR.
+      - name: Workflow triggers cannot hand fork code our secrets
+        run: python tools/check_workflows.py
+
+      # First of the review criteria (docs/review-criteria/effects-honesty.md). A manifest
+      # declaring `read_only` and a guard that writes is a wrong claim running on someone
+      # else's machine, and nothing checked it. Behavioural, not a lint: the guard is run in a
+      # throwaway workspace seeded with canaries and the filesystem is hashed either side.
+      - name: Declared effects match what the guards actually do
+        run: python tools/check_effects.py
+
+      # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
+      # gate: nothing is rejected for lacking evidence, because requiring a ritual before
+      # anyone has used it voluntarily is how the ritual becomes the point. What it does
+      # guarantee is that evidence present in a PR is evidence that survived re-derivation --
+      # a claim nobody re-runs is worth nothing, and worse than nothing if it looks checked.
+      # Evidence is a claim about one diff, and `main` always carries the file from the
+      # last merged PR -- so verifying every file in the directory failed every new branch
+      # on evidence it merely inherited, and two concurrent PRs could never both be green.
+      # Evidence for a different diff is not wrong, it is someone else's: skip it and say
+      # so. Only evidence claiming THIS diff is verified, and it must hold.
+      - name: Reviewer evidence, if the PR carries any
+        if: github.event_name == 'pull_request'
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+          from chock.review.evidence import diff_sha
+
+          base = "origin/${{ github.base_ref }}"
+          current = diff_sha(Path(".").resolve(), base)
+          files = sorted(Path(".chock/evidence").glob("*.json"))
+          if not files:
+              print("No reviewer evidence in this PR. Optional today; see docs/review-criteria/.")
+              sys.exit(0)
+
+          failed = False
+          verified_any = False
+          for f in files:
+              claimed = json.loads(f.read_text(encoding="utf-8")).get("diff_sha", "")
+              if claimed != current:
+                  print(f"-- {f}: describes diff {claimed[:12]}, not this one ({current[:12]}); skipped.")
+                  continue
+              verified_any = True
+              print(f"== {f}")
+              proc = subprocess.run(
+                  [sys.executable, "-m", "chock", "review", "verify",
+                   "--repo", ".", "--base", base, str(f)],
+              )
+              failed = failed or proc.returncode != 0
+
+          if not verified_any:
+              print("No evidence describes this diff. Optional today; see docs/review-criteria/.")
+          sys.exit(1 if failed else 0)
+          PY
+
+      # Every base/<id>/ is also an Agent Plugins 1.0.0 package, and `plugin.json` plus
+      # `skills/<id>/SKILL.md` are generated from manifest.yaml. They are committed so the
+      # repo is browsable as a plugin marketplace without a build step -- which means a
+      # manifest edit that skips `plugin build` publishes a package describing the old
+      # policy, to clients we do not control and cannot correct.
+      - name: Published policies are current Agent Plugins packages
+        run: |
+          # Every tree in tools/trees.py, not an enumerated list: this check once passed
+          # while a newly added tree shipped no packages at all -- silent under-coverage
+          # that read as "checked everything".
+          for tree in $(python tools/trees.py); do
+            chock plugin build --repo . --policies-dir "$tree" --check
+          done
+
+      # Everything PUBLISHED is checked separately, in a throwaway repo. Staging into
+      # `.agents/policies/` would overwrite the pinned copies above with `base/`, conflating
+      # what this repo runs with what it ships -- the exact separation that makes editing a
+      # published policy safe.
+      - name: Stage every published policy and skill as an adopter would
+        run: |
+          rm -rf /tmp/catalog-check
+          mkdir -p /tmp/catalog-check
+          cd /tmp/catalog-check
+          git init --quiet .
+          git config user.email ci@chock.invalid
+          git config user.name ci
+          chock init . --skip-hooks
+          # The tree list comes from tools/trees.py, the same source every tool reads.
+          # Enumerating trees here is how the plugin check missed `compliance/` entirely.
+          for tree in $(python "$GITHUB_WORKSPACE"/tools/trees.py); do
+            [ -d "$GITHUB_WORKSPACE/$tree" ] && cp -r "$GITHUB_WORKSPACE/$tree"/* .agents/policies/ || true
+          done
+          [ -d "$GITHUB_WORKSPACE/skills" ] && cp -r "$GITHUB_WORKSPACE"/skills/* .agents/skills/ || true
+          chock sync --repo . --skip-hooks
+          ls .agents/policies .agents/skills
+
+      - name: Validate every published policy
+        run: chock check --repo /tmp/catalog-check
+
+      # Tier 2: replays each policy's own gate or guard against a throwaway repo. A policy
+      # whose declared gate does not do what its eval suite claims fails here.
+      - name: Policy evals (deterministic)
+        run: chock check --only evals --repo /tmp/catalog-check
+
+      # The README's coverage claim, re-derived: the staged adopter (which installs every
+      # published policy) must score all ten OWASP ASI controls covered. This repo itself
+      # stays minimal on purpose -- contributors should not wade through sixteen ambient
+      # policies -- so the claim is verified where the full pack is actually installed.
+      - name: OWASP ASI coverage claim holds in the staged adopter
+        run: |
+          cd /tmp/catalog-check
+          report="$(chock compliance report --framework owasp_asi)"
+          echo "$report"
+          if echo "$report" | grep -q "uncovered"; then
+            echo "::error::README claims 10/10 ASI coverage but the staged adopter has uncovered controls"
+            exit 1
+          fi
+
+      - name: Registry matches the policies on disk
+        run: python tools/check_registry.py

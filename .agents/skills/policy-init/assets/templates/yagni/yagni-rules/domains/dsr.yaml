@@ -1,0 +1,53 @@
+id: DSR
+name: Data and Schema Rules
+rules:
+- id: DSR-01
+  severity: MAJOR
+  condition: input_output_memory_tool_schemas
+  require:
+  - defined_before_implementation
+  - reviewed_approved
+  forbid:
+  - code_first_inference
+  fix: define and review schemas before code
+- id: DSR-02
+  severity: MINOR
+  condition: schema.fields
+  require:
+  - consumed_by_current_implementation
+  forbid:
+  - reserved_fields
+  - optional_expansion
+  - future_use
+  fix: remove reserved/future fields
+- id: DSR-03
+  severity: MINOR
+  condition: memory.store
+  require:
+  - only_current_confirmed_task_scope_info
+  - field_review_per_release
+  - retention_policy(TTL, total_budget)
+  fix: scope memory and add retention policy
+- id: DSR-04
+  severity: MINOR
+  condition: schema.version
+  require:
+  - semver
+  action: breaking_change => migration_plan + one_release_deprecation_notice
+  fix: add migration plan and deprecation notice
+- id: DSR-05
+  severity: MAJOR
+  condition: schemas_memory_context_store_transmit
+  forbid:
+  - unnecessary_PII
+  - credentials
+  - raw_user_content
+  - audit_exempt_data
+  fix: redact or remove sensitive data
+- id: DSR-06
+  severity: MINOR
+  condition: context_payload.tokens
+  require:
+  - <= class_budget(Appendix_B)
+  exception: exceed => arch_review || ARB_reclassification
+  fix: reduce payload or seek architectural review

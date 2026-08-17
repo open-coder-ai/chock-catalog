@@ -1,0 +1,59 @@
+id: owasp-asi01-agent-goal-hijack
+name: "OWASP ASI01 — Agent Goal Hijack"
+version: "0.0.2"
+description: >
+  Keep an agent's objective under the operator's control when the agent ingests
+  untrusted content. Separate retrieved data from instructions, refuse tool-scope
+  expansion requested by that data, and confirm sensitive actions against the raw
+  action rather than a summary. Use when building RAG pipelines, email/ticket/doc
+  readers, browser agents, or any planner whose context includes fetched content.
+  Do NOT use for the coding agent's own session hygiene — that is
+  `injection-defense`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    build(agent): partition(context){trusted: operator_instructions, untrusted: retrieved_content}; never(let untrusted) expand(tool_scope|goal|recipient)
+    before(sensitive_action): confirm(human, raw_action); see .agents/policies/owasp-asi01-agent-goal-hijack/references/goal-hijack.md
+
+compliance:
+  mitre_atlas:
+  - control: AML.T0051
+    coverage: partial
+    note: "advisory goal-integrity discipline for untrusted content"
+  owasp_asi:
+  - ASI01
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+  prompt_injection_defense: strict
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI01."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (mitre_atlas); no mechanism change."

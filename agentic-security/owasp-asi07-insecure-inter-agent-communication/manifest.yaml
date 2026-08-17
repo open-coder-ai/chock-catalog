@@ -1,0 +1,49 @@
+id: owasp-asi07-insecure-inter-agent-communication
+name: "OWASP ASI07 — Insecure Inter-Agent Communication"
+version: "0.0.1"
+description: >
+  Authenticate and integrity-protect the channels agents use to talk to each
+  other, so a peer cannot be impersonated, a message tampered with, or a fake
+  agent registered in discovery. Use when building multi-agent orchestration,
+  agent-to-agent protocols, delegation between agents, message buses, or agent
+  discovery services. Do NOT use for a single agent calling ordinary tools —
+  that is `owasp-asi02-tool-misuse`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    between(agents): mutual_auth + signed_messages + integrity + replay_protection; allowlist(delegation_edges) explicitly
+    never(accept): peer from(unverified_discovery) | instruction from(unauthenticated_sender); log(inter_agent_traffic) as_sensitive; see .agents/policies/owasp-asi07-insecure-inter-agent-communication/references/inter-agent-comms.md
+
+compliance:
+  owasp_asi:
+  - ASI07
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI07."

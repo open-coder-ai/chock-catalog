@@ -1,0 +1,41 @@
+id: RDR
+name: Requirement Discipline Rules
+rules:
+- id: RDR-01
+  severity: MAJOR
+  condition: capability.design_or_impl
+  require:
+  - requirement.exists_in_formal_artifact
+  - requirement.accepted_by_owner
+  - requirement.in_current_iteration
+  fix: formalize and accept the requirement before implementing the capability
+- id: RDR-02
+  severity: MINOR
+  condition: capability.traces_to_requirement
+  require:
+  - exactly_one_confirmed_requirement
+  exception: many_to_one_requires_written_justification
+  fix: split capability or document justification
+- id: RDR-03
+  severity: MINOR
+  condition: capability.idle >= 30d
+  action: deprecation_review within 5d
+  outcomes:
+  - retain
+  - remove
+  - exception
+  fix: schedule review and decide retain|remove|exception
+- id: RDR-04
+  severity: MINOR
+  condition: mid_sprint_capability_addition
+  require:
+  - scope_change_review
+  - impact_assessment(tools, complexity, tokens, latency)
+  - PO_approval
+  - TAO_approval
+  fix: run scope review with PO and TAO before adding
+- id: RDR-05
+  severity: MINOR
+  condition: capability.user_story
+  format: As [named_actor], I need [X], so that [measurable_outcome]
+  fix: rewrite user story to name actor, need, and measurable outcome

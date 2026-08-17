@@ -1,0 +1,69 @@
+id: ABV
+name: Agent Behavior Rules
+rules:
+- id: ABV-01
+  severity: MINOR
+  condition: agent.behavior
+  require:
+  - deterministic(given inputs, context, tool_outputs)
+  exception: non_determinism => documented + justified + compensated
+  fix: document and justify non-determinism
+- id: ABV-02
+  severity: MINOR
+  condition: context_injection
+  require:
+  - required_for_current_turn
+  - per_task_type_policy
+  forbid:
+  - speculative_background
+  fix: inject only required context per task type
+- id: ABV-03
+  severity: MINOR
+  condition: tool_calls
+  require:
+  - minimum_required_for_task
+  - each_call_traces_to_reasoning_step
+  forbid:
+  - speculative_gathering
+  fix: remove speculative tool calls
+- id: ABV-04
+  severity: CRITICAL
+  condition: tool_call
+  require:
+  - tool in active_registry_for_context
+  - framework_enforced
+  forbid:
+  - unregistered_tool
+  - hypothetical_tool
+  - foreign_registry
+  fix: register tool or remove call
+- id: ABV-05
+  severity: MAJOR
+  condition: agent.failure_policy
+  require:
+  - explicit_for_tool_failure
+  - explicit_for_sub_agent_timeout
+  - explicit_for_context_overflow
+  - explicit_for_invalid_output_schema
+  forbid:
+  - silent_fallback
+  - swallowed_exceptions
+  fix: define explicit failure policy with alternatives
+- id: ABV-06
+  severity: MINOR
+  condition: agent.output
+  require:
+  - conforms_to_schema
+  - extra_fields_stripped_before_handoff
+  forbid:
+  - richer_verbose_or_different_output
+  fix: strip extra fields and match schema
+- id: ABV-07
+  severity: MINOR
+  condition: production_agent
+  require:
+  - tested_escalation_path_for_low_confidence
+  - tested_escalation_path_for_scope_exceeded
+  - tested_escalation_path_for_safety_sensitive
+  - concrete_mechanism_with_recipient_format_sla
+  fix: define and test escalation path

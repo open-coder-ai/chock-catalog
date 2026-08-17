@@ -1,0 +1,59 @@
+id: ORC
+name: Orchestration Rules
+rules:
+- id: ORC-01
+  severity: MAJOR
+  condition: orchestration_topology.selected
+  require:
+  - chosen_from_simplest_first_hierarchy
+  - higher_complexity_has_documented_justification
+  fix: justify why simpler topologies are insufficient
+- id: ORC-02
+  severity: MAJOR
+  condition: delegation_chain
+  require:
+  - hops <= 4
+  - every_hop_logs_trace_id
+  exception: hops > 4 => ARB_exception
+  fix: reduce hops or file ARB exception
+- id: ORC-03
+  severity: MINOR
+  condition: orchestration.branches
+  require:
+  - reachable_by_current_requirement_inputs
+  action: dead_branches_removed within sprint
+  fix: remove unreachable branches
+- id: ORC-04
+  severity: MINOR
+  condition: parallel_fan-out
+  require:
+  - confirmed_latency_or_throughput_requirement
+  - quantified_latency_gain
+  - cost_increase_accepted
+  fix: justify parallelization with quantified benefit and cost
+- id: ORC-05
+  severity: CRITICAL
+  condition: loop
+  require:
+  - static_termination_condition
+  - max_iterations_defined_at_design_time
+  - max_iterations_enforced_at_runtime
+  action: near_max => human_escalation
+  fix: add static termination, max iterations, and escalation
+- id: ORC-06
+  severity: MAJOR
+  condition: agent_to_agent.handoff
+  require:
+  - input_schema
+  - output_schema
+  - failure_behavior
+  - timeout
+  - '!implicit_shared_mutable_state'
+  fix: define schemas, failure behavior, and timeout
+- id: ORC-07
+  severity: CRITICAL
+  condition: orchestration_decision
+  action: emit_structured_telemetry
+  forbid:
+  - silent_orchestration
+  fix: add structured telemetry to every orchestration decision

@@ -1,0 +1,49 @@
+id: owasp-asi10-rogue-agents
+name: "OWASP ASI10 — Rogue Agents"
+version: "0.0.1"
+description: >
+  Make an agent that has drifted, been compromised, or was never inventoried
+  detectable and stoppable. Require an owner, expiry, and inventory entry for
+  every agent, sandbox by default, baseline behaviour and alert on deviation,
+  and keep a tested kill switch. Use when deploying a long-running or autonomous
+  agent, allowing sub-agent spawning, or reviewing agent lifecycle and
+  monitoring. Do NOT use for a single hijacked request within a supervised
+  session — that is `owasp-asi01-agent-goal-hijack`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    every(agent): owner + purpose + expiry + inventory_entry + kill_switch(tested); default(runtime): sandboxed; never(allow): uninventoried_subagent_spawn
+    baseline(behavior) + alert(deviation) continuously; on(deviation): halt + escalate(human); see .agents/policies/owasp-asi10-rogue-agents/references/rogue-agents.md
+
+compliance:
+  owasp_asi:
+  - ASI10
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI10."

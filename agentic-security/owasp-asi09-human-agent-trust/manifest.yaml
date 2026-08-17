@@ -1,0 +1,50 @@
+id: owasp-asi09-human-agent-trust
+name: "OWASP ASI09 — Human-Agent Trust Exploitation"
+version: "0.0.1"
+description: >
+  Stop an agent from controlling the information a human approves against. Show
+  the raw action rather than a model-authored summary at every confirmation
+  step, forbid persuasive framing in sensitive workflows, and keep an immutable
+  record of what was presented versus what executed. Use when designing approval
+  prompts, human-in-the-loop checkpoints, agent-written PR descriptions, or
+  consent and disclosure flows. Do NOT use for what the agent is permitted to do
+  once approved — that is `owasp-asi02-tool-misuse`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    at(approval_step): render(raw_action + real_target + real_scope); never(substitute): agent_summary for(the_thing_approved)
+    forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
+
+compliance:
+  owasp_asi:
+  - ASI09
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI09."

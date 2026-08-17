@@ -1,0 +1,48 @@
+name: CodeQL
+
+# Scans `tools/*.py` -- the scripts CI depends on to catch overclaims. They are small, but they
+# are the mechanism behind every honesty check this repo makes, so "too small to scan" is the
+# wrong instinct.
+#
+# CodeQL does not analyse shell, so `implementations/*.sh` -- the executable content this repo
+# actually distributes -- is NOT covered here. Human review routed by CODEOWNERS remains the
+# only control on those, exactly as SECURITY.md says. Worth stating rather than letting a green
+# CodeQL badge imply otherwise.
+#
+# Guarded on `private == false` rather than left to fail: CodeQL needs a public repo or
+# Advanced Security, and a workflow that is red on every push teaches everyone to ignore red
+# workflows. It starts working by itself the day the repo flips.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze Python
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:python"

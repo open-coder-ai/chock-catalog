@@ -1,0 +1,49 @@
+id: owasp-asi05-unexpected-code-execution
+name: "OWASP ASI05 — Unexpected Code Execution"
+version: "0.0.1"
+description: >
+  Contain code an agent generates or is induced to run. Execute in a sandboxed
+  container with least privilege and deny-by-default egress, prefer
+  parameterised APIs over raw shell, and treat any string reaching a subprocess
+  or interpreter as attacker-controlled. Use when adding a code interpreter,
+  shell tool, subprocess call, or eval-style API to an agent. Do NOT use for
+  eval/exec appearing in ordinary application code — that is `code-safety`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    run(agent_generated_code): container(least_privilege) + egress(deny_by_default) + filesystem(scoped) + timeout; never(host_execution)
+    never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
+
+compliance:
+  owasp_asi:
+  - ASI05
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI05."

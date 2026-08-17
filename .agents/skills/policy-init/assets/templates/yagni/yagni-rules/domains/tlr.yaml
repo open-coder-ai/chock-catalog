@@ -1,0 +1,62 @@
+id: TLR
+name: Tooling Rules
+rules:
+- id: TLR-01
+  severity: MAJOR
+  condition: tool.registered
+  require:
+  - confirmed_requirement
+  - test_in_context
+  - security_review
+  - side_effect_review
+  fix: satisfy all registration gates before adding tool
+- id: TLR-02
+  severity: MINOR
+  condition: tool.parameters
+  require:
+  - current_use_case_required
+  forbid:
+  - future_flexibility_params
+  fix: remove future-use parameters
+- id: TLR-03
+  severity: MINOR
+  condition: side_effect_tool
+  require:
+  - documents_effects_in_standard_metadata
+  - idempotent_tools_tagged
+  action: missing_declaration => violation
+  fix: document effects and tag idempotency
+- id: TLR-04
+  severity: MAJOR
+  condition: destructive_tool
+  require:
+  - confirmation(HITL || crypto_token)
+  forbid:
+  - bypass_via_prompt_override
+  fix: add human or token confirmation
+- id: TLR-05
+  severity: MINOR
+  condition: tool.unused
+  timeline:
+    '>=30d': retirement_review
+    '>=60d': remove unless ARB_exception
+  action: archive_to_tool_cemetery
+  fix: review and retire unused tools
+- id: TLR-06
+  severity: MINOR
+  condition: tool.failure
+  require:
+  - isolated_error_payload
+  - timeout_handled
+  - rollback_handled
+  forbid:
+  - unintended_cascade
+  fix: isolate failures with error payload, timeout, rollback
+- id: TLR-07
+  severity: MINOR
+  condition: tool_registry
+  require:
+  - no_overlap
+  - agent_uses_most_specific_tool
+  action: overlapping => consolidation_review
+  fix: consolidate overlapping tools

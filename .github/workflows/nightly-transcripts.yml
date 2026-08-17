@@ -1,0 +1,47 @@
+name: Nightly transcript sweep
+
+# The PR gate for adoption transcripts is diff-scoped: it re-derives only the policies (or
+# transcripts) a PR touches, which keeps contributor feedback at seconds. The price of that
+# scoping is a gap: when the FRAMEWORK changes what a command prints, every transcript goes
+# stale at once and no PR touches them -- silent drift in the artifact whose whole value is
+# that it cannot drift. This sweep re-adopts every policy from an empty repository once a
+# day, so framework-output drift is caught within 24 hours instead of at each policy's next
+# edit. Cost at 28 policies: ~45 seconds of ubuntu time, off the PR path entirely.
+#
+# `schedule` runs on the default branch with no fork code checked out, so the fork-secrets
+# rule check_workflows.py enforces is not in play; workflow_dispatch is here for re-running
+# the sweep by hand after a framework bump.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same auth pattern as ci.yml: the framework is a private repo, and checkout handles
+      # the token rather than a pip URL where it could surface in logs or the pip cache.
+      - name: Check out the framework
+        uses: actions/checkout@v7
+        with:
+          repository: open-coder-ai/chock
+          # Deliberately unpinned: the nightly is the canary that warns when framework
+          # main will break the NEXT adoption, without ever blocking a PR (CI is pinned).
+          ref: main
+          path: .framework
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install Chock
+        run: pip install ./.framework
+
+      # No --base: every policy, from an empty repository. A failure here means the
+      # committed transcripts no longer describe what the tools print -- regenerate with
+      # `python tools/gen_adoption_transcript.py` and commit the result via PR.
+      - name: Every adoption transcript reproduces
+        run: python tools/gen_adoption_transcript.py --check

@@ -1,0 +1,42 @@
+# CodeRabbit configuration. Inert until the CodeRabbit GitHub App is installed
+# (launch-day step: free Pro tier on public repos). A catalog PR is executable
+# content headed for other people's repositories -- review accordingly.
+language: en-US
+
+reviews:
+  profile: chill
+  high_level_summary: true
+  poem: false
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    # Generated output: reviewed via its sources (manifests, tools/), not its bytes.
+    - "!.chock/compiled/**"
+    - "!.chock/registry.json"
+    - "!.chock/coverage.json"
+    - "!chock.lock"
+    - "!docs/assets/**"
+    - "!docs/*/adoption.md"
+    - "!**/plugin.json"
+    - "!**/skills/**/SKILL.md"
+  path_instructions:
+    - path: "**/implementations/**"
+      instructions: >
+        This script becomes a git hook in adopter repositories. Review it in full, not
+        by hunk. Bash and PowerShell versions must behave identically. Flag anything
+        that could execute repository content as instructions, and any block pattern
+        that under-matches what the policy's description claims to block.
+    - path: "**/manifest.yaml"
+      instructions: >
+        The manifest's enforcement/effects/description are CLAIMS adopters rely on.
+        Check them against the implementation and the eval suite -- a claim without a
+        matching eval case is the defect class this catalog's CI exists to prevent.
+    - path: "tools/**"
+      instructions: >
+        These generate the committed docs, transcripts, and matrix. Output changes must
+        come with the regenerated files in the same PR (CI enforces freshness).
+
+chat:
+  auto_reply: true

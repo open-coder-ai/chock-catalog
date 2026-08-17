@@ -1,0 +1,67 @@
+id: owasp-asi04-agentic-supply-chain
+name: "OWASP ASI04 — Agentic Supply Chain Vulnerabilities"
+version: "0.0.2"
+description: >
+  Verify agent components before loading them, and keep verifying, because
+  runtime tool discovery changes the supply chain after deployment. Use when
+  adding an MCP server, agent framework, plugin, tool registry, or model
+  artifact, and when reviewing what an agent may pull at runtime. Do NOT use for
+  ordinary application dependencies already covered by
+  `verify-dependency-exists`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    before(load: tool|mcp_server|framework|model): verify(signature + provenance) + pin(version) + record(AIBOM); apply(SCA) pre_pull
+    re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
+
+compliance:
+  mitre_atlas:
+  - control: AML.T0010
+    coverage: partial
+    note: "advisory provenance discipline for models, tools and agents"
+  - control: AML.T0109
+    coverage: partial
+    note: "advisory: pinning and review guidance covers the rug-pull class"
+  - control: AML.T0110
+    coverage: partial
+    note: "advisory review discipline for tool and MCP acquisition"
+  nist_ai_rmf:
+  - control: GOVERN-6.1
+    coverage: partial
+    note: "advisory third-party risk discipline for agentic components"
+  owasp_asi:
+  - ASI04
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI04."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (mitre_atlas/nist_ai_rmf); no mechanism change."

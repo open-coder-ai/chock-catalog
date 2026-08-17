@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "owasp-asi03-identity-privilege-abuse",
+  "version": "0.0.1",
+  "description": "Give each agent its own scoped, short-lived identity so a compromise does not inherit a human's or a shared account's full permissions. Use when an agent needs credentials, a service account, a cloud role, an API token, or when reviewing delegation and impersonation between an agent and its user. Do NOT use for keeping secrets out of the repository \u2014 that is `code-safety` and `scan-secrets`.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi03"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+# Review routing for the catalog.
+#
+# This repository distributes executable content. SECURITY.md tells reviewers to "treat any
+# PR touching `implementations/` as a code-execution change" and to read the whole script
+# rather than the diff hunk -- and until this file existed there was nothing routing such a
+# PR to a reviewer at all. Human review is named as the only control between a malicious
+# pack and a git hook on someone else's machine, so the routing for it has to be mechanical.
+#
+# CODEOWNERS alone requests reviews; it does not require them. That takes "Require review
+# from Code Owners" in branch protection on `main`.
+#
+# GitHub applies only the LAST matching pattern, so order is significant and the specific
+# entries below must stay after the default. They name the same owner today, which makes
+# them documentation of what is sensitive rather than a different routing decision. That is
+# the point: when a second maintainer joins, `*` moves to the wider group and these lines
+# keep executable content and the trust documentation where they are, without anyone having
+# to work out which paths mattered.
+
+# Everything, unless a more specific rule below overrides it.
+* @open-coder-ai
+
+# Executable content. Installed by `chock add`, these become a git hook that runs on
+# every commit in an adopter's repository and a guard consulted before their coding agent
+# runs a command. Two policies ship one today (block-destructive-commands, block-no-verify);
+# the pattern covers any policy that grows one later.
+/base/*/implementations/ @open-coder-ai
+
+# The gate scripts CI depends on. `gen_policy_docs.py` and `check_readme.py` are what stop a
+# policy page claiming a control the policy does not have, so a change here can disable the
+# check that catches an overclaim without touching the overclaiming file.
+/tools/ @open-coder-ai
+
+# CI, issue and PR templates. A workflow change can remove every check above it.
+/.github/ @open-coder-ai
+
+# The trust model an adopter reads before deciding to install anything from here.
+/SECURITY.md @open-coder-ai

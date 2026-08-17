@@ -1,0 +1,23 @@
+chock:
+  version: 0.0.1
+  supported_agents: [aider, claude, codex, copilot, cursor, devin, gemini, grok, kimi-code,
+    replit, tabnine, vscode, windsurf]
+  agent_agnostic: false
+  onboarded_at: 2026-08-07 00:09:17.216225+00:00
+  defaults:
+    protected_branches: [main, master]
+  review:
+    checks:
+      effects-honesty: [python, tools/check_effects.py]
+      console-transcripts: [python, tools/check_console.py]
+      workflow-safety: [python, tools/check_workflows.py]
+    unattestable_paths: [tools/, .github/workflows/, base/*/implementations/]
+policies:
+  # verify-dependency-exists blocks any dependency absent from
+  # .chock/dependency-allowlist.txt. This repo has no dependency manifests the gate
+  # watches, so enabled it would be inert today -- but the moment anyone added a
+  # requirements.txt it would block every entry against an unpopulated allowlist.
+  # Disabled with reasons, the same call the framework repo makes: we run what we
+  # ship, and we say exactly which part we don't.
+  disabled: [verify-dependency-exists]
+  overrides: {}

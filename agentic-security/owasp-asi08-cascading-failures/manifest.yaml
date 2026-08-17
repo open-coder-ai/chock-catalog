@@ -1,0 +1,49 @@
+id: owasp-asi08-cascading-failures
+name: "OWASP ASI08 — Cascading Failures"
+version: "0.0.1"
+description: >
+  Keep one agent's bad output from propagating through everything downstream.
+  Isolate blast radius per agent and per environment, separate development from
+  production access, validate agent-to-agent handoffs, and add circuit breakers
+  that halt automation on behavioural deviation. Use when chaining agents,
+  designing orchestration, granting production access, or wiring agent output
+  into downstream automation. Do NOT use for the transport security of those
+  handoffs — that is `owasp-asi07-insecure-inter-agent-communication`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    isolate(blast_radius): per_agent + per_environment; separate(dev, prod) hard; never(chain): agent_output -> agent_input | downstream_automation without(validation)
+    circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
+
+compliance:
+  owasp_asi:
+  - ASI08
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI08."

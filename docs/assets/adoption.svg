@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" width="900" height="250" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif" role="img" aria-label="Four commands take a repository from no enforcement to a blocked commit">
+  <defs>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7d8590"/>
+    </marker>
+    <style>
+      .step { rx: 8; }
+      .num  { font-size: 11px; font-weight: 700; fill: #7d8590; }
+      .cmd  { font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; fill: #0d1117; }
+      .sub  { font-size: 11px; fill: #3d444d; }
+      .lbl  { font-size: 13px; font-weight: 600; fill: #0d1117; }
+      .edge { stroke: #7d8590; stroke-width: 1.6; fill: none; marker-end: url(#b); }
+    </style>
+  </defs>
+
+  <rect x="14" y="40" width="196" height="96" class="step" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="28" y="62" class="num">01</text>
+  <text x="28" y="84" class="cmd">chock init .</text>
+  <text x="28" y="106" class="sub">writes AGENTS.md and the</text>
+  <text x="28" y="122" class="sub">adapters. Enforces nothing yet.</text>
+
+  <path d="M216 88 H244" class="edge"/>
+
+  <rect x="250" y="40" width="196" height="96" class="step" fill="#dbeafe" stroke="#60a5fa"/>
+  <text x="264" y="62" class="num">02</text>
+  <text x="264" y="84" class="cmd">chock add</text>
+  <text x="264" y="100" class="cmd">  scan-secrets</text>
+  <text x="264" y="122" class="sub">copies the folder, compiles it</text>
+
+  <path d="M452 88 H480" class="edge"/>
+
+  <rect x="486" y="40" width="196" height="96" class="step" fill="#dcfce7" stroke="#4ade80"/>
+  <text x="500" y="62" class="num">03</text>
+  <text x="500" y="84" class="cmd">chock</text>
+  <text x="500" y="100" class="cmd">  install-hooks .</text>
+  <text x="500" y="122" class="sub">the gate is now live</text>
+
+  <path d="M688 88 H716" class="edge"/>
+
+  <rect x="722" y="40" width="164" height="96" class="step" fill="#fee2e2" stroke="#f87171"/>
+  <text x="736" y="62" class="num">04</text>
+  <text x="736" y="84" class="cmd">git commit</text>
+  <text x="736" y="106" class="lbl">blocked</text>
+  <text x="736" y="124" class="sub">exit 1 · nothing lands</text>
+
+  <rect x="14" y="158" width="872" height="76" class="step" fill="#fef3c7" stroke="#fbbf24"/>
+  <text x="30" y="182" class="lbl">The commit does not happen.</text>
+  <text x="30" y="204" class="sub">Not a warning in a log, not a review comment, not a rule the agent agreed to follow. The process exits non-zero</text>
+  <text x="30" y="222" class="sub">and the change is not in your history. Policies that cannot do this are labelled advisory — everywhere, on purpose.</text>
+</svg>

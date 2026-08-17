@@ -1,0 +1,83 @@
+id: block-unpinned-agent-components
+name: "Block Unpinned Agent Components"
+version: "0.0.3"
+description: >
+  Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at
+  an unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP
+  server idiom — quoted "@latest" arguments in agent config, and :latest container
+  images. Language-manifest dependencies are verify-dependency-exists; signature
+  and provenance stay with the advisory owasp-asi04 policy. Escape:
+  'pragma: allowlist unpinned' on the same line.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: content_regex
+    "on": [commit]
+    action: block
+    message: >
+      Unpinned agent component detected. Pin the version (name@1.2.3, image:tag)
+      so what runs tomorrow is what was reviewed today, or add
+      'pragma: allowlist unpinned' on the same line for a deliberate exception.
+    params:
+      scan: added_lines
+      allowlist_pragma: 'pragma:\s*allowlist\s+unpinned'
+      # The single-character classes ([s]) keep this pattern from matching its own
+      # source text in this manifest and in the compiled gate.json, while matching
+      # identical real content. Without them, committing this policy folder tripped
+      # the policy's own gate (#32).
+      content_pattern: |-
+        (npx|uvx|bunx)\s+(-y\s+|--yes\s+)?\S*@late[s]t\b|"\S+@late[s]t"|FROM\s+\S+:late[s]t\b|image:\s*['"]?\S+:late[s]t\b
+
+compliance:
+  mitre_atlas:
+  - control: AML.T0109
+    coverage: partial
+    note: "pinning gate removes the floating-version carrier of rug pulls"
+  - control: AML.T0110
+    coverage: partial
+    note: "blocks the unpinned acquisition path a poisoned tool rides in on"
+  nist_ai_rmf:
+  - control: MANAGE-3.1
+    coverage: partial
+    note: "commit-time control on third-party agentic components"
+  owasp_asi:
+  - control: ASI04
+    coverage: partial
+    note: "blocks unpinned launches a diff can show; signature verification, provenance, and AIBOM remain advisory (owasp-asi04-agentic-supply-chain). Language manifests are verify-dependency-exists."
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-13T00:00:00Z"
+  updated_at: "2026-08-13T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-13'
+  changes:
+  - "Initial draft: content_regex gate over @latest launchers and :latest images."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Self-safe authoring (#32): pattern rewritten with single-character classes so it cannot match its own source; eval payload lines and reference examples carry the allowlist pragma. Committing this policy folder no longer trips its own gate. Matching behaviour on real content is unchanged."
+- version: 0.0.3
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (mitre_atlas/nist_ai_rmf); no mechanism change."

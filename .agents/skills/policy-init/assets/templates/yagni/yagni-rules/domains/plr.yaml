@@ -1,0 +1,58 @@
+id: PLR
+name: Planning Rules
+rules:
+- id: PLR-01
+  severity: MAJOR
+  condition: multi_step_task
+  require:
+  - traceable_plan(steps, expected_outputs, dependencies)
+  - plan_before_action
+  exception: single_turn_exempt
+  fix: create traceable plan before acting
+- id: PLR-02
+  severity: MINOR
+  condition: plan.steps
+  require:
+  - minimum_for_confirmed_requirement
+  forbid:
+  - speculative_gathering
+  - redundant_verification
+  - no_output_steps
+  fix: remove speculative/redundant/no-output steps
+- id: PLR-03
+  severity: MINOR
+  condition: plan_step
+  require:
+  - produces_single_verifiable_artifact
+  action: multi_output => decompose; no_output => remove
+  fix: decompose or remove the step
+- id: PLR-04
+  severity: MINOR
+  condition: replan
+  require:
+  - concrete_precondition_invalidated
+  forbid:
+  - reflexive_replanning
+  action: log_cause
+  fix: log the invalidated precondition before replanning
+- id: PLR-05
+  severity: CRITICAL
+  condition: plan_step.transition
+  action: emit_structured_event(start | complete | fail | skip)
+  fix: add structured transition events
+- id: PLR-06
+  severity: MINOR
+  condition: plan_reflect_replan_loop
+  require:
+  - <= 3 iterations
+  action: exceed => human_escalation
+  require_enforcement: in_code
+  fix: cap loop and escalate
+- id: PLR-07
+  severity: MINOR
+  condition: agent.execution
+  require:
+  - executes_current_plan_steps
+  action: ad_hoc_actions_logged_as_deviations with type and reason
+  exception: repeated_deviation => root_cause_analysis
+  fix: log deviations and analyze repeated ones

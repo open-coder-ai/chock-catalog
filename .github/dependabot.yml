@@ -1,0 +1,19 @@
+version: 2
+
+# No pip ecosystem here on purpose: this repo declares no Python dependencies. `tools/*.py`
+# runs against the framework and PyYAML, both of which arrive with `pip install chock`
+# and are versioned there. Pointing dependabot at a directory with no manifest produces
+# nothing except a config that looks like coverage.
+#
+# Actions are the real surface. CI checks out the framework and installs it, so a stale or
+# compromised action in this workflow reaches the point where policies are validated before
+# publication -- and what this repo publishes becomes a git hook in other people's
+# repositories.
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, ci]

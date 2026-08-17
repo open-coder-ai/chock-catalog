@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "owasp-asi10-rogue-agents",
+  "version": "0.0.1",
+  "description": "Make an agent that has drifted, been compromised, or was never inventoried detectable and stoppable. Require an owner, expiry, and inventory entry for every agent, sandbox by default, baseline behaviour and alert on deviation, and keep a tested kill switch. Use when deploying a long-running or autonomous agent, allowing sub-agent spawning, or reviewing agent lifecycle and monitoring. Do NOT use for a single hijacked request within a supervised session \u2014 that is `owasp-asi01-agent-goal-hijack`.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi10"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

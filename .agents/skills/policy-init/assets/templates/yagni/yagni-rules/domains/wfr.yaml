@@ -1,0 +1,52 @@
+id: WFR
+name: Workflow Rules
+rules:
+- id: WFR-01
+  severity: MINOR
+  condition: workflow
+  default: linear
+  action: branch => named confirmed_business_rule
+  forbid:
+  - speculative_branch
+  fix: remove speculative branches
+- id: WFR-02
+  severity: MINOR
+  condition: state_machine.states_transitions
+  require:
+  - current_workflow_required
+  forbid:
+  - dead_states
+  - unreachable_transitions
+  - placeholder_states
+  fix: remove dead/unreachable/placeholder states
+- id: WFR-03
+  severity: MAJOR
+  condition: external_step
+  require:
+  - idempotent OR deduplication_guard(idempotency_key | conditional_write | distributed_lock)
+  fix: make external step idempotent or add deduplication guard
+- id: WFR-04
+  severity: MINOR
+  condition: checkpoints
+  require:
+  - granular_enough_for_step_recovery
+  - '!per_micro_step'
+  - documented_RTO_validation
+  fix: adjust checkpoint granularity and document RTO
+- id: WFR-05
+  severity: CRITICAL
+  condition: workflow
+  require:
+  - step_timeout
+  - workflow_timeout
+  - escalation_action(cancel | retry | human)
+  action: missing => critical_violation
+  fix: add timeouts and escalation action
+- id: WFR-06
+  severity: MINOR
+  condition: workflow.nodes
+  require:
+  - <= 12 without review
+  exception: '>20 => ARB_exception'
+  action: decompose_first
+  fix: decompose workflow or file ARB exception

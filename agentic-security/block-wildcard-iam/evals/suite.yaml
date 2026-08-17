@@ -1,0 +1,59 @@
+suite:
+  id: block-wildcard-iam-tests-v1
+  policy_id: block-wildcard-iam
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A staged IAM policy document grants Action star.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": \"*\", \"Resource\": \"arn:aws:s3:::reports\"}\n"
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A staged Terraform file grants the wildcard action list to the agent role.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        iam.tf: "statement {\n  actions = [\"*\"]\n}\n"
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A staged deploy script binds the agent service account to roles/owner.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        deploy.sh: "gcloud projects add-iam-policy-binding $P --member=$SA --role='roles/owner'\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-004
+    category: negative_trigger
+    prompt: A staged IAM document grants a scoped action on a named resource.
+    expect: The hook allows the commit.
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": \"s3:GetObject\", \"Resource\": \"arn:aws:s3:::reports/*\"}\n"
+      expect: allow
+  - id: tc-005
+    category: negative_trigger
+    prompt: A staged Terraform file names a role "owner" without granting a basic role.
+    expect: The hook allows the commit; a resource label is not a grant.
+    execute:
+      files:
+        roles.tf: "resource \"aws_iam_role\" \"owner\" {\n  name = \"report-owner\"\n}\n"
+      expect: allow
+  - id: tc-006
+    category: behavior
+    prompt: "A break-glass role carries 'pragma: allowlist broad-privilege' on the grant line."
+    expect: The hook allows the commit; the exception is visible in the diff.
+    execute:
+      files:
+        breakglass.tf: "actions = [\"*\"]  # pragma: allowlist broad-privilege\n"
+      expect: allow

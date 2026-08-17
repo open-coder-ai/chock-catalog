@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "block-unpinned-agent-components",
+  "version": "0.0.3",
+  "description": "Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned version. Blocks npx/uvx/bunx launches at @latest \u2014 the standard MCP server idiom \u2014 quoted \"@latest\" arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists; signature and provenance stay with the advisory owasp-asi04 policy. Escape: 'pragma: allowlist unpinned' on the same line.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block",
+    "{'control': 'asi04', 'coverage': 'partial', 'note': 'blocks unpinned launches a diff can show; signature verification, provenance, and aibom remain advisory (owasp-asi04-agentic-supply-chain). language manifests are verify-dependency-exists.'}"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

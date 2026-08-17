@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "owasp-asi09-human-agent-trust",
+  "version": "0.0.1",
+  "description": "Stop an agent from controlling the information a human approves against. Show the raw action rather than a model-authored summary at every confirmation step, forbid persuasive framing in sensitive workflows, and keep an immutable record of what was presented versus what executed. Use when designing approval prompts, human-in-the-loop checkpoints, agent-written PR descriptions, or consent and disclosure flows. Do NOT use for what the agent is permitted to do once approved \u2014 that is `owasp-asi02-tool-misuse`.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi09"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

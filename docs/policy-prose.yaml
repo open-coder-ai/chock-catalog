@@ -1,0 +1,346 @@
+# The parts of a policy doc that cannot be derived from its manifest.
+#
+# Everything factual -- mechanism, enforcement ceiling, gate parameters, eval counts, the
+# surfaces a policy compiles to -- is read from base/<id>/ by tools/gen_policy_docs.py and
+# checked in CI. Only judgement lives here: why the policy exists, and what is safe to
+# change. Keeping the two apart is what stops a doc from claiming a control that is not
+# there, which is the failure mode these docs would otherwise introduce.
+
+agent-discipline:
+  solves: >
+    Agents that edit a file they never read, declare work finished without running it, and
+    "fix" a failing test by deleting the assertion that caught the bug. Each is individually
+    small and each destroys the evidence that would have revealed it.
+  customise: >
+    The verification bar is the part worth tuning. If your project has no lint step, drop
+    `lint_clean` rather than leaving a rule that cannot be satisfied -- a rule an agent
+    routinely cannot meet teaches it that rules are advisory in general.
+
+block-destructive-commands:
+  solves: >
+    The command that cannot be undone: `rm -rf` against an absolute or home path, a force
+    push over someone else's work, `git reset --hard` across uncommitted changes,
+    `terraform destroy`. The cost is not the mistake, it is that there is nothing to
+    recover from.
+  customise: >
+    The command list in the guard script is the whole policy; add the destructive commands
+    your stack actually has (`helm uninstall`, `aws s3 rm --recursive`, `dropdb`). Read the
+    manifest description first: it names the bypass classes this cannot see, and adding
+    entries does not narrow them.
+
+block-invisible-unicode:
+  solves: >
+    The one slice of prompt injection a diff can literally show. Bidi override
+    characters make code read differently to a human than it parses (Trojan Source,
+    CVE-2021-42574), and Unicode tag-block characters carry instructions a reviewer
+    cannot see but the agent reading the file will happily obey. Both arrive through
+    the most ordinary channel there is: a commit.
+  customise: >
+    The deliberate exclusions are the tuning surface. ZWJ/ZWNJ and the LRM/RLM marks
+    are not matched because emoji sequences and Persian, Arabic and Indic text use
+    them honestly; if your repo contains no internationalised content and you want
+    the stricter net, add them to the character class. Keep the pattern as escapes,
+    never literal characters -- the gate must not carry the bytes it blocks.
+
+protect-agent-config:
+  solves: >
+    Self-modification: the agent editing its own authority. Instruction files,
+    permission files and vendored enforcement define what the agent may do, and a
+    one-line sed against .claude/settings.json rewrites those boundaries silently
+    (MITRE ATLAS calls this Modify Agent Configuration, AML.T0081). Chock's drift
+    checks detect tampering after the fact; this refuses the shell edit up front.
+  customise: >
+    The protected-path list mirrors the adapter set -- add your organisation's own
+    agent config files. The escape marker ('chock: approved-config-change') is the
+    point, not a loophole: it forces the approval to be visible in the command a
+    human sees. Deliberately coarse on compound commands; split a blocked
+    read-then-write into two steps rather than widening the guard.
+
+block-wildcard-agent-permissions:
+  solves: >
+    Excessive agency as a committed artifact. A bare-wildcard allow-list or shell
+    grant hands every future session unlimited tool authority, in a JSON file
+    reviewers rarely read as code -- and unlike a risky command, a permission grant
+    fires long after the commit that introduced it. The agent-world twin of
+    block-wildcard-iam.
+  customise: >
+    Add the grant syntaxes of the agents you actually run -- the pattern ships with
+    Claude-style permissions and MCP always-allow lists. Scoped wildcards like
+    Bash(git status:*) pass by design; the gate blocks only the everything-grant,
+    because a guard that argues with every scoped grant gets disabled within a week.
+
+protect-commit-privacy:
+  solves: >
+    A threat that did not exist before agents wrote commits: process leakage through
+    authorship. A human curates what goes into a commit message; an agent narrates by
+    default -- who asked, what the plan was, which discussion decided it -- and on a
+    public repo that narration is published forever, in a place nobody reviews for
+    privacy. This policy was authored from a live incident: the catalog's own maintainer
+    found agent-written messages carrying private decisions toward a public launch.
+  customise: >
+    The MARKERS list in the guard is the whole policy, and it is deliberately narrow --
+    phrases that describe the conversation, never single words like "user" that appear in
+    honest messages about user-facing behaviour. Add your organisation's own tells
+    (ticket-system phrases, internal codenames, private doc paths). If a marker keeps
+    blocking legitimate messages, remove it: a guard that cannot be satisfied gets
+    disabled within a week, and the rule half of this policy still does its work.
+
+block-no-verify:
+  solves: >
+    Every other gate in this catalog, bypassed with six characters. `--no-verify` is
+    reached for when a hook is failing and the failure is inconvenient, which is exactly
+    when the hook is doing its job.
+  customise: >
+    There is little to tune, and that is the point. If you find yourself widening this one,
+    the hook it keeps bypassing is the thing to fix.
+
+block-unpinned-agent-components:
+  solves: >
+    The MCP server added as `npx -y something@latest`, which re-resolves on every start.
+    What was reviewed on Tuesday is not what runs on Thursday, and nothing in the repo
+    records the switch. The ASI04 supply-chain policy can advise about provenance all it
+    likes; the floating version is the part a diff literally states.
+  customise: >
+    The launcher list (`npx|uvx|bunx`) is the part to extend when your stack grows a new
+    runner. Resist adding bare-launcher matching (no version suffix at all) -- it needs a
+    parser, not a regex, and would flag every `npx` line. Dev-only compose files keep
+    `:latest` honestly via the pragma, in the diff where review can see it.
+
+block-unsafe-code-execution:
+  solves: >
+    The one-line distance between "agent output" and "arbitrary code": a bare `eval(`, a
+    `shell=True`, a `pickle.loads` on bytes the agent fetched. Each is a single token in a
+    diff, which makes them the rare ASI05 slice a commit-time gate can actually see.
+  customise: >
+    Add your stack's own sinks -- template engines with code execution, `Function`
+    constructors in other guises. The lookbehind excluding dotted calls (`model.eval()`,
+    `pattern.exec()`) is what keeps this gate satisfiable; if you find yourself deleting it
+    to catch more, you are about to teach every adopter to disable the policy instead.
+
+block-wildcard-iam:
+  solves: >
+    The agent role granted `"Action": "*"` on Friday afternoon to make the demo work,
+    still attached in production a year later. A compromise of that agent is a compromise
+    of everything the account reaches -- and the grant was one greppable line.
+  customise: >
+    Scoped wildcards (`s3:*`) pass deliberately; whether service-level breadth is too broad
+    for your agent is the advisory policy's judgement, not a regex's. Note the JSON
+    limitation: strict JSON carries no comments, so the pragma escape only exists in
+    Terraform/YAML -- for raw JSON documents the options are narrowing the grant or moving
+    the document.
+
+code-safety:
+  solves: >
+    The four ways generated code becomes a liability: committed credentials, `eval`/`exec`
+    on untrusted input, string-built SQL, and dependencies that do not exist. An agent
+    proposes all four fluently and none of them look wrong in a diff.
+  customise: >
+    Add the patterns your language actually presents -- deserialization sinks, template
+    injection, shell interpolation. This is advisory text, so being generous costs an
+    agent's attention rather than a blocked commit.
+
+context-hygiene:
+  solves: >
+    Long sessions that get worse rather than better. Resolved content stays inlined, stale
+    observations accumulate, and the instruction that mattered ends up in the middle of a
+    window where models attend to it least.
+  customise: >
+    The `> 3_turns` pruning threshold is a guess, not a measurement. Raise it for work that
+    revisits the same files and lower it for broad exploration.
+
+eu-ai-act-high-risk-triage:
+  solves: >
+    A ranking or eligibility model that lands in an Annex III domain -- hiring, credit,
+    education, benefits -- without anyone deciding it had. Article 12 logging and Article 14
+    human oversight are cheap to design in and expensive to retrofit, and the Digital AI
+    Omnibus deferral to December 2027 reads as permission to skip them rather than as more
+    time to do them properly.
+  customise: >
+    The domain list is the trigger surface and it is deliberately broad; narrow it to the
+    domains your product can actually reach so the flag stays meaningful. What should not be
+    softened is the escalation: the Article 6(3) derogation requires a documented assessment,
+    and an agent that asserts it on its own has made the compliance decision for you.
+
+eu-ai-act-prohibited-practices:
+  solves: >
+    Feature requests for things the AI Act bans outright -- a trust score reused across
+    contexts, emotion inference over employees, a face-image scraper -- arriving as ordinary
+    tickets. They are in force now, and the failure mode is an agent building the thing
+    competently because nobody framed it as a legal question.
+  customise: >
+    The ban list tracks Article 5 and should be edited only to follow the law, not to fit a
+    roadmap. The carve-outs are the part worth reading before you narrow anything: biometric
+    verification, fraud detection, and safety or medical emotion detection are lawful, and a
+    rule that refuses them teaches the agent to route around it.
+
+eu-ai-act-transparency:
+  solves: >
+    Article 50 applies from August 2026 regardless of risk tier, and it is the one obligation
+    that lives in code an agent touches routinely: the disclosure on a chat surface, the C2PA
+    manifest on a generation endpoint, the provenance field a size optimisation quietly
+    deletes.
+  customise: >
+    The marking mechanism is what varies -- C2PA for media, response metadata for text -- so
+    name the one your stack uses rather than leaving the choice open. Leave the exemptions
+    intact: assistive editing and non-substantial alteration are what stop this from firing
+    on every autocomplete and being ignored as a result.
+
+git-safety:
+  solves: >
+    Git operations that lose work rather than record it: force pushes over shared history,
+    hard resets across uncommitted changes, branch deletions, commits landing straight on
+    the default branch.
+  customise: >
+    The `diff > 500_lines` threshold and the protected branch names are the two knobs that
+    matter. Both are conventions, not findings, so set them to your team's.
+
+injection-defense:
+  solves: >
+    An agent that reads a web page, a ticket, or a file, finds text addressed to it, and
+    does what the text says. The content is data; treating it as instructions hands control
+    of the session to whoever wrote it.
+  customise: >
+    Extend the egress rule to name the destinations you actually care about. The
+    instructions-are-data principle itself should not be weakened -- narrow it and the
+    policy stops being a boundary and becomes a suggestion.
+
+memory-discipline:
+  solves: >
+    Memory that fills with things the repo already records -- file contents, git history,
+    task scratch -- until the genuinely non-derivable facts are buried in it.
+  customise: >
+    The `0.85` consolidation similarity and the decay policy are the tunable parts. What
+    should not move is `verify(memory) before_recommend`: a memory that names a file or
+    flag is a claim about a repo that has changed since.
+
+owasp-asi01-agent-goal-hijack:
+  solves: >
+    An agent that reads a document, an email, or a ticket and quietly adopts whatever that
+    content asks of it, while still reporting that it is doing the user's work. The hijack
+    leaves no bad code behind, so code review never sees it.
+  customise: >
+    The context partition is the part that survives paraphrase; the tool bound is the part
+    that survives everything. Tune the list of what counts as a sensitive action, not the
+    requirement to show the raw action before one. Overlaps `injection-defense` by design:
+    that one governs your coding agent's session, this one governs the product it builds.
+
+owasp-asi02-tool-misuse:
+  solves: >
+    Tools that each behave exactly as specified and together do something nobody intended
+    -- read_file plus http_post is an exfiltration path, and neither tool is at fault.
+  customise: >
+    The per-task tool sets are yours to define and are where nearly all the value is. Resist
+    widening a set because one task occasionally needs one more tool; add the task instead.
+    Keep `authorize(every_invocation)`: the standing grant is the defect this exists to stop.
+
+owasp-asi03-identity-privilege-abuse:
+  solves: >
+    The personal access token lent to an agent "just to get it working", and the shared
+    service account four agents authenticate with, which makes every action unattributable.
+  customise: >
+    TTLs should match your job durations rather than a round number. The clause not to
+    weaken is scope intersection on delegation: an agent acting for a user must not exceed
+    that user's own permissions, however broad the agent's own grant is.
+
+owasp-asi04-agentic-supply-chain:
+  solves: >
+    A dependency tree that is never final. An agent that discovers tools at runtime can load
+    something tonight that no lockfile, review, or SCA run has ever seen.
+  customise: >
+    The publisher allowlist is the practical control; expand it deliberately and by key, not
+    by name. If you cannot remove runtime discovery, keep the load-time gate and log what
+    actually loaded -- an AIBOM built from intent rather than observation is fiction.
+
+owasp-asi05-unexpected-code-execution:
+  solves: >
+    Model output reaching an interpreter. Usually not through a dramatic sandbox escape but
+    through an f-string, a subprocess with `shell=True`, or a sandbox that inherited the
+    orchestrator's environment variables and therefore all its credentials.
+  customise: >
+    Egress allowlists are the expected local edit. The two lines to leave alone are secrets
+    never mounted into the execution sandbox, and no untrusted string reaching a shell.
+    If you have no sandbox, the honest change is to remove the interpreter, not to relax this.
+
+owasp-asi06-memory-context-poisoning:
+  solves: >
+    A poisoned memory written in one session and paid out weeks later, in a conversation the
+    attacker is not present for. Deleting the conversation does not delete the memory, and
+    the logs of the exploited session look entirely normal.
+  customise: >
+    What is worth persisting is genuinely product-specific -- define it field by field. Keep
+    ephemeral as the default and keep operator inspect and flush: without them, you cannot
+    answer "why has it been telling this one customer the wrong thing for two weeks".
+
+owasp-asi07-insecure-inter-agent-communication:
+  solves: >
+    A message bus where being on the bus is treated as permission to task anyone else on it,
+    so a spoofed or replayed message is indistinguishable from a real delegation.
+  customise: >
+    The delegation allowlist is the edit that matters and should stay small enough to read.
+    Do not drop replay protection because messages are "internal": internal is exactly where
+    the approved-action replay lands.
+
+owasp-asi08-cascading-failures:
+  solves: >
+    A hallucination at stage one arriving at stage four as an established premise, and a
+    change freeze enforced by telling the agent about it rather than by revoking its access.
+  customise: >
+    Breaker thresholds must come from your own baseline; borrowed numbers either never fire
+    or fire constantly. Keep the rule that an agent's self-report is not verification of its
+    own action -- that is the clause the Replit incident turned on.
+
+owasp-asi09-human-agent-trust:
+  solves: >
+    The reason "human in the loop" is not a mitigation for the other nine. If the human
+    approves an agent-authored summary, the agent has approved itself through a proxy.
+  customise: >
+    Which actions count as sensitive is yours to set. What should not move is showing the
+    resolved action rather than the templated one: `rm -rf $WORKDIR` is not a disclosure.
+    If an action cannot be displayed legibly, shrink the action rather than the display.
+
+owasp-asi10-rogue-agents:
+  solves: >
+    The agent nobody can point to an owner for, still running, still credentialed, doing
+    something competently wrong across sessions while every dashboard reads green.
+  customise: >
+    Expiry length is the main dial, and it is also the compensating control if you cannot
+    afford continuous monitoring. Baseline on breadth as well as volume: an agent touching
+    entirely new resources at an ordinary request rate passes a rate-only baseline.
+
+protect-main-branch:
+  solves: >
+    Work landing on the default branch without review. Not because the commit is wrong, but
+    because nobody saw it -- and once it is pushed, the fix costs more than the review would
+    have.
+  customise: >
+    `params.refs` is the branch list and takes fnmatch patterns, so `release/*` works
+    alongside `main`. `params.config_key` names the git config key an adopter can set to
+    override the list per clone.
+
+scan-secrets:
+  solves: >
+    Credentials reaching history, where deleting them does not remove them. Every key that
+    lands has to be rotated, and rotation is the expensive part.
+  customise: >
+    `params.content_pattern` is one regex and adding your own token formats is the main
+    thing to do here -- internal key prefixes are exactly what a generic scanner misses.
+    `params.forbidden_path_regex` covers file types; `params.allowlist_pragma` sets the
+    inline escape for documented fixtures.
+
+token-efficiency:
+  solves: >
+    Context spent on output nobody reads: full command dumps, broad searches, re-reading
+    files that have not changed, reference material loaded before it is needed.
+  customise: >
+    Every number here is a budget, not a finding. Raise the output cap for work with large
+    legitimate output; lower it when context pressure is the binding constraint.
+
+verify-dependency-exists:
+  solves: >
+    Package hallucination, and the supply-chain attack built on it. Agents confidently
+    suggest packages that do not exist; an attacker who registers that name gets code
+    execution in every repo that installs it.
+  customise: >
+    The allowlist is the policy. `params.manifests` sets which files are watched, and
+    `params.allowlist_file` where the approved names live. This one ships disabled because
+    an empty allowlist blocks every dependency -- populate it first, then enable.

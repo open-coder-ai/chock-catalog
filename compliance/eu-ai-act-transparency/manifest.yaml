@@ -1,0 +1,59 @@
+id: eu-ai-act-transparency
+name: "EU AI Act — Transparency"
+version: "0.0.2"
+description: >
+  Keep EU AI Act Article 50 duties in the code: disclose to a person that they are
+  interacting with an AI system, mark generated audio, image, video, and text in a
+  machine-readable format, and label deepfakes. Use when adding a chatbot or
+  assistant surface, a generation endpoint, or an export path for model output. Do
+  NOT use for assistive editing that does not substantially alter the input, or for
+  internal batch jobs with no human recipient.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    when(code emits AI interaction | synthetic text|image|audio|video to a person): disclose(it is AI) + mark(machine_readable: C2PA|watermark|metadata) + label(deepfake) at the emitting boundary
+    never(remove|weaken): existing provenance marking; exempt: assistive_editing | no_substantial_alteration; see .agents/policies/eu-ai-act-transparency/references/article-50.md
+
+compliance:
+  eu_ai_act:
+  - control: Art50
+    coverage: partial
+    note: "advisory triage raising the disclosure, marking and labelling obligations; implementation is judgement"
+  eu_ai_act:
+  - control: "Article 50"
+    coverage: partial
+    note: "advisory at authoring time; does not verify marking survives downstream re-encoding"
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft. Article 50 applies from 2026-08-02; not deferred by the Digital AI Omnibus."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (eu_ai_act); no mechanism change."

@@ -1,0 +1,69 @@
+id: block-wildcard-iam
+name: "Block Wildcard IAM"
+version: "0.0.2"
+description: >
+  Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or
+  Resource in IAM policy documents, AdministratorAccess attachment, GCP
+  roles/owner or roles/editor, and Terraform wildcard action/resource lists.
+  An agent's identity design stays with the advisory owasp-asi03 policy; this
+  blocks the grants whose blast radius is everything. Escape:
+  'pragma: allowlist broad-privilege' on the same line.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: content_regex
+    "on": [commit]
+    action: block
+    message: >
+      Broad privilege grant detected. Scope Action and Resource to what the task
+      needs, or add 'pragma: allowlist broad-privilege' on the same line for a
+      reviewed exception. Strict JSON cannot carry the pragma; narrow the grant
+      or manage that document in Terraform/YAML.
+    params:
+      scan: added_lines
+      allowlist_pragma: 'pragma:\s*allowlist\s+broad-privilege'
+      # The single-character class ([A]) keeps the fully-literal ARN alternative from
+      # matching its own source text in this manifest and in the compiled gate.json,
+      # while matching identical real content. Without it, committing this policy
+      # folder tripped the policy's own gate (#32).
+      content_pattern: |-
+        "(Action|Resource)"\s*:\s*"\*"|(Action|Resource):\s*'\*'|arn:aws:iam::aws:policy/Administrator[A]ccess|["']roles/(owner|editor)["']|(actions|resources)\s*=\s*\[\s*"\*"\s*\]
+
+compliance:
+  owasp_asi:
+  - control: ASI03
+    coverage: partial
+    note: "blocks wildcard grants a diff can show; identity-per-agent, TTLs, and delegation scope remain advisory (owasp-asi03-identity-privilege-abuse)"
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-13T00:00:00Z"
+  updated_at: "2026-08-13T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-13'
+  changes:
+  - "Initial draft: content_regex gate over wildcard IAM grants in JSON, YAML, and Terraform."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Self-safe authoring (#32): the literal ARN alternative rewritten with a single-character class so the pattern cannot match its own source; description and eval prompt describe the Terraform wildcard form instead of showing it; eval payload lines and reference examples carry the allowlist pragma. Matching behaviour on real content is unchanged."

@@ -1,0 +1,30 @@
+schema: chock:yagni-rules:v1
+version: 1.0.0
+source: YAGNI-AGT-2026-001 Enterprise Edition
+principles:
+- id: P-01
+  name: Solve the Problem at Hand
+  constraint: agent.design_goal == explicitly_specified_problem => no speculative
+    feature/tool/sub-agent/abstraction
+- id: P-02
+  name: Observable Simplicity
+  constraint: agent.behavior(inputs, context, tool_outputs) == deterministic && auditable_without_execution
+- id: P-03
+  name: Deferred Capability
+  constraint: capability.not_needed_now => backlog_item; !dormant_code && !disabled_tool
+    && !future_param
+- id: P-04
+  name: Minimum Viable Orchestration
+  constraint: topology == simplest_satisfying_requirement; higher_complexity => documented_insufficiency_of_simpler_topologies
+- id: P-05
+  name: Tool Registry Discipline
+  constraint: tool.registered => tool.actively_used_in_production; !dormant_tools;
+    audit_quarterly
+- id: P-06
+  name: Schema Minimalism
+  constraint: schema.fields == fields_required_by_current_implementation; !reserved
+    && !future && !null_rate>95%
+- id: P-07
+  name: Reversible Defaults
+  constraint: equivalent_designs => choose easier_to_extend_later; pre_extension only
+    when earned

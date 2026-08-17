@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "owasp-asi01-agent-goal-hijack",
+  "version": "0.0.2",
+  "description": "Keep an agent's objective under the operator's control when the agent ingests untrusted content. Separate retrieved data from instructions, refuse tool-scope expansion requested by that data, and confirm sensitive actions against the raw action rather than a summary. Use when building RAG pipelines, email/ticket/doc readers, browser agents, or any planner whose context includes fetched content. Do NOT use for the coding agent's own session hygiene \u2014 that is `injection-defense`.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi01"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

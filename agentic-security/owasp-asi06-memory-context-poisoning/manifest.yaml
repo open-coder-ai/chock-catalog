@@ -1,0 +1,59 @@
+id: owasp-asi06-memory-context-poisoning
+name: "OWASP ASI06 — Memory & Context Poisoning"
+version: "0.0.2"
+description: >
+  Stop untrusted content from being written into an agent's durable memory or
+  retrieval index, where it silently steers behaviour in later sessions. Keep
+  context ephemeral by default, validate and attribute every memory write, scope
+  memory per user and per task, and let operators inspect and flush it. Use when
+  adding long-term memory, a vector index, session summarisation, or user
+  preference storage. Do NOT use for the coding agent's own memory files — that
+  is `memory-discipline`.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    default(context): ephemeral; before(write: memory|index): validate + attribute(source) + reject(instruction_shaped_content)
+    scope(memory): per_user + per_task; provide(operator): inspect + flush + expire; see .agents/policies/owasp-asi06-memory-context-poisoning/references/memory-poisoning.md
+
+compliance:
+  mitre_atlas:
+  - control: AML.T0080
+    coverage: partial
+    note: "advisory defenses for durable memory and context integrity"
+  owasp_asi:
+  - ASI06
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+  prompt_injection_defense: strict
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI06."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (mitre_atlas); no mechanism change."

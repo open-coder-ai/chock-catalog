@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "owasp-asi08-cascading-failures",
+  "version": "0.0.1",
+  "description": "Keep one agent's bad output from propagating through everything downstream. Isolate blast radius per agent and per environment, separate development from production access, validate agent-to-agent handoffs, and add circuit breakers that halt automation on behavioural deviation. Use when chaining agents, designing orchestration, granting production access, or wiring agent output into downstream automation. Do NOT use for the transport security of those handoffs \u2014 that is `owasp-asi07-insecure-inter-agent-communication`.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi08"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

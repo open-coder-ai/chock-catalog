@@ -1,0 +1,80 @@
+id: eu-ai-act-high-risk-triage
+name: "EU AI Act — High-Risk Triage"
+version: "0.0.2"
+description: >
+  Flag when code puts an AI system into an EU AI Act Annex III high-risk domain —
+  biometrics, critical infrastructure, education, employment, essential services and
+  credit, law enforcement, migration, justice and elections — and require the Article
+  9-15 obligations be owned before the capability ships. Use when adding scoring,
+  ranking, eligibility, or screening over people. Do NOT use for banned practices
+  (see eu-ai-act-prohibited-practices) or for systems with no natural-person impact.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    on_touch(Annex III domain: biometrics|critical_infra|education|employment|essential_services|credit|insurance|law_enforcement|migration|justice|elections): flag + name(domain) + require owner for Art 9-15 (risk_mgmt, data_governance, tech_doc, logging, human_oversight, accuracy_robustness_cybersecurity)
+    never(silently add): high_risk capability; decision belongs to the repo owner; see .agents/policies/eu-ai-act-high-risk-triage/references/annex-iii.md
+
+compliance:
+  eu_ai_act:
+  - control: Art9
+    coverage: partial
+    note: "advisory triage raising the Annex III / Articles 9-15 obligations; it identifies the duty, it does not implement it"
+  - control: Art10
+    coverage: partial
+    note: "advisory triage raising the Annex III / Articles 9-15 obligations; it identifies the duty, it does not implement it"
+  - control: Art11
+    coverage: partial
+    note: "advisory triage raising the Annex III / Articles 9-15 obligations; it identifies the duty, it does not implement it"
+  - control: Art12
+    coverage: partial
+    note: "advisory triage raising the Annex III / Articles 9-15 obligations; it identifies the duty, it does not implement it"
+  - control: Art13
+    coverage: partial
+    note: "advisory triage raising the Annex III / Articles 9-15 obligations; it identifies the duty, it does not implement it"
+  - control: Art14
+    coverage: partial
+    note: "advisory triage raising the Annex III / Articles 9-15 obligations; it identifies the duty, it does not implement it"
+  - control: Art15
+    coverage: partial
+    note: "advisory triage raising the Annex III / Articles 9-15 obligations; it identifies the duty, it does not implement it"
+  eu_ai_act:
+  - control: "Annex III"
+    coverage: partial
+    note: "authoring-time triage only; does not perform the Article 6(3) derogation assessment"
+  - control: "Articles 9-15"
+    coverage: partial
+    note: "raises the obligations and asks for an owner; does not produce or verify the conformity artefacts"
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-08-12T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+  processes_external_content: true
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-12'
+  changes:
+  - "Initial draft. Annex III deadlines reflect the Digital AI Omnibus deferral (in force 2026-07-27)."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (eu_ai_act); no mechanism change."

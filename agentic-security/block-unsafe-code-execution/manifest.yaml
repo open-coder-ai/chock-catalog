@@ -1,0 +1,72 @@
+id: block-unsafe-code-execution
+name: "Block Unsafe Code Execution"
+version: "0.0.3"
+description: >
+  Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec,
+  shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load
+  without SafeLoader, execSync, new Function. Best-effort line scan; sandbox
+  design, egress, and inherited credentials stay with the advisory owasp-asi05
+  policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same
+  line.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: content_regex
+    "on": [commit]
+    action: block
+    message: >
+      Dynamic execution primitive detected. Replace it with a parameterized API
+      (subprocess argument vector, safe_load, a real parser), or add
+      'pragma: allowlist exec' on the same line for a reviewed, deliberate use.
+    params:
+      scan: added_lines
+      allowlist_pragma: 'pragma:\s*allowlist\s+exec'
+      content_pattern: |-
+        (?<![\w.])(eval|exec)\s*\(|shell\s*=\s*True|os\.(system|popen)\s*\(|subprocess\.getoutput\s*\(|pickle\.loads?\s*\(|marshal\.loads?\s*\(|yaml\.load\s*\((?![^)]*SafeLoader)|execSync\s*\(|new\s+Function\s*\(
+
+compliance:
+  mitre_atlas:
+  - control: AML.T0050
+    coverage: partial
+    note: "blocks bare interpreter sinks a diff can show; runtime sandboxing is out of scope"
+  owasp_asi:
+  - control: ASI05
+    coverage: partial
+    note: "blocks the greppable primitives; sandbox containment and egress policy remain advisory (owasp-asi05-unexpected-code-execution)"
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-08-13T00:00:00Z"
+  updated_at: "2026-08-13T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-13'
+  changes:
+  - "Initial draft: content_regex gate over the ASI05 primitives a diff can actually show."
+- version: 0.0.2
+  date: '2026-08-16'
+  changes:
+  - "Self-safe authoring (#32): description names the shell-mode form instead of showing the literal that matched the policy's own gate; eval prompts describe rather than show, and eval payload lines plus reference examples carry the allowlist pragma. The pattern itself was already self-safe and is unchanged."
+- version: 0.0.3
+  date: '2026-08-16'
+  changes:
+  - "Add compliance claims (mitre_atlas); no mechanism change."

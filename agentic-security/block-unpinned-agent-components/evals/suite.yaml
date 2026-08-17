@@ -1,0 +1,59 @@
+suite:
+  id: block-unpinned-agent-components-tests-v1
+  policy_id: block-unpinned-agent-components
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A staged MCP config launches a server via npx at @latest.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        .mcp.json: "{\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-github@latest\"]}\n"
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A staged Dockerfile bases the agent runtime on a :latest image.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        Dockerfile: "FROM python:latest\nCOPY agent /app\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A staged setup script launches a tool with uvx at @latest.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "uvx some-mcp-server@latest --port 8080\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-004
+    category: negative_trigger
+    prompt: A staged MCP config pins the server to an exact version.
+    expect: The hook allows the commit.
+    execute:
+      files:
+        .mcp.json: "{\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-github@2025.4.1\"]}\n"
+      expect: allow
+  - id: tc-005
+    category: negative_trigger
+    prompt: A staged deployment pins the container image to a version tag.
+    expect: The hook allows the commit.
+    execute:
+      files:
+        deploy.yaml: "spec:\n  containers:\n  - image: nginx:1.27.1\n"
+      expect: allow
+  - id: tc-006
+    category: behavior
+    prompt: "A local dev-only compose file keeps :latest with 'pragma: allowlist unpinned' on the line."
+    expect: The hook allows the commit; the exception is visible in the diff.
+    execute:
+      files:
+        compose.dev.yaml: "  image: localstack/localstack:latest  # pragma: allowlist unpinned\n"
+      expect: allow
