@@ -21,7 +21,7 @@ on:
 permissions:
   contents: read
 
-
+jobs:
   # Every PR commit must carry a Signed-off-by trailer (Developer Certificate of
   # Origin -- see CONTRIBUTING.md). Same in-workflow check as the framework repo:
   # works while private; the DCO App can replace it after launch.
