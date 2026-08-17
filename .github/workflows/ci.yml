@@ -18,7 +18,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
-jobs:
+permissions:
+  contents: read
+
+
   # Every PR commit must carry a Signed-off-by trailer (Developer Certificate of
   # Origin -- see CONTRIBUTING.md). Same in-workflow check as the framework repo:
   # works while private; the DCO App can replace it after launch.
@@ -26,7 +29,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           fetch-depth: 0
       - name: Check Signed-off-by on every PR commit
@@ -46,17 +49,17 @@ jobs:
     steps:
       # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
       # and a shallow clone has no merge base to find.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: "3.12"
 
       # Check out the framework at the pinned ref this catalog is validated against.
       - name: Check out the framework
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           repository: open-coder-ai/chock
           ref: ${{ env.FRAMEWORK_REF }}
