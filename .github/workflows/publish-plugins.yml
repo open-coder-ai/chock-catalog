@@ -1,0 +1,107 @@
+name: Publish plugins
+
+# Turns a catalog release into installable plugins. Everything downstream of the tag is
+# deterministic: the same catalog ref and the same framework ref always produce the same
+# tree, which is what lets the distribution repo promise that its contents are exactly what
+# this catalog published.
+#
+# Runs on a release tag, or by hand for a fast-tracked security fix. Never on push to main:
+# publishing is a decision, and the release cadence is deliberately paced rather than
+# per-merge.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and diff without pushing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  FRAMEWORK_REF: v0.1.1
+  DIST_REPO: open-coder-ai/chock-claude-plugins
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the catalog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          path: catalog
+
+      - name: Check out the framework at the pinned ref
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: framework
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install Chock
+        run: pip install ./framework
+
+      # A policy that cannot prove its claims does not get distributed. This is the same bar
+      # every catalog pull request already clears; running it again here means a broken
+      # policy cannot reach users through a tag that skipped review.
+      - name: Gate on the catalog's own checks
+        working-directory: catalog
+        run: |
+          chock check
+          chock check --only evals
+
+      - name: Check out the distribution repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          repository: ${{ env.DIST_REPO }}
+          token: ${{ secrets.DIST_PUBLISH_TOKEN }}
+          path: dist
+
+      # Stale directories must disappear rather than linger: a policy removed or renamed in
+      # the catalog would otherwise stay installable forever, which is the yank procedure
+      # failing silently.
+      - name: Clear the generated trees
+        run: rm -rf dist/claude dist/agent-plugins
+
+      - name: Build every package and the index
+        run: |
+          chock plugin build --repo catalog --policies-dir base --format all --out-dir dist
+          chock marketplace build --dist dist
+
+      - name: Validate every package
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          failed=0
+          for d in dist/claude/*/; do
+            claude plugin validate "$d" || failed=1
+          done
+          claude plugin validate dist || failed=1
+          exit $failed
+
+      - name: Show what would change
+        working-directory: dist
+        run: git --no-pager diff --stat
+
+      - name: Publish
+        if: github.event_name == 'push' || inputs.dry_run == false
+        working-directory: dist
+        env:
+          SOURCE_TAG: ${{ github.ref_name }}
+        run: |
+          git config user.name "chock-publish[bot]"
+          git config user.email "chock-publish@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "No change to publish."
+            exit 0
+          fi
+          git add -A
+          git commit -m "generated: catalog ${SOURCE_TAG:-manual} (framework ${FRAMEWORK_REF})"
+          git push
