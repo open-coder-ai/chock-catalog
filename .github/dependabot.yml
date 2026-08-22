@@ -15,5 +15,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # A one-week cooldown before adopting a fresh release is the xz-class
+    # counter; security advisories bypass it via alerts.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels: [dependencies, ci]
