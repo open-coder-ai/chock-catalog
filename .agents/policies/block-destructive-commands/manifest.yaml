@@ -1,6 +1,6 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Best-effort guard against destructive commands: rm -rf targeting absolute, home, or
   root-adjacent paths; git push --force (not --force-with-lease); git reset --hard;
@@ -54,3 +54,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas); no mechanism change."
+- version: 0.0.4
+  date: '2026-08-22'
+  changes:
+  - "Block rm -rf against ~/... and $HOME/... forms: the unquoted tilde in the guard's pattern underwent tilde expansion, so home-directory deletions were allowed while the bare ~ was caught."
