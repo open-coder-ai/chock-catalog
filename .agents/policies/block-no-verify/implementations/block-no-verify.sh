@@ -28,9 +28,13 @@ fi
 # blocked `git commit -m "core.hooksPath=... is a bypass"` -- a message that merely mentions
 # the setting changes no configuration, and a guard that refuses people for describing the
 # thing it guards against trains them to work around it.
+# Compared lowercased: git config keys are case-insensitive, so -c CORE.HOOKSPATH=...
+# bypasses hooks exactly as the canonical spelling does (verified against git directly).
+# The bare valueless form `-c core.hooksPath` is deliberately NOT matched: git rejects it
+# with rc=128 before any hook or commit runs, so there is nothing to block.
 prev=""
 for arg in "$@"; do
-    if [[ "$prev" == "-c" && "$arg" == core.hooksPath=* ]]; then
+    if [[ "$prev" == "-c" && "${arg,,}" == core.hookspath=* ]]; then
         echo "BLOCKED: git $subcommand with -c core.hooksPath disables every hook, exactly as --no-verify does. Fix the failing hook instead of routing around it." >&2
         exit 1
     fi

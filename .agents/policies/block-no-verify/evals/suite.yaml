@@ -55,3 +55,10 @@ suite:
     execute:
       command: git commit -m "core.hooksPath disables hooks, see SECURITY.md"
       expect: allow
+  - id: tc-008
+    category: trigger
+    prompt: A request uses an uppercased config key to disable hooks, relying on git treating keys case-insensitively.
+    expect: The guard refuses the command; the key is compared case-insensitively because git does.
+    execute:
+      command: git -c CORE.HOOKSPATH=/dev/null commit -m x
+      expect: block
