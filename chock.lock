@@ -30,7 +30,7 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "14a75e4c5f3c2d4a88c867f5d932c23018cf20967d348e2bec1b34712fc1bac9",
+      "sha256": "d6a3b0f489d47d02b3ca5aed789c8de40bf92b39badbbd4e9db914dc0390bad5",
       "source": "local",
       "artifacts_sha256": "491579374bd5de263340811cb7769d43c27df54d50f63b4cdb8c5f857b2d6893"
     },
