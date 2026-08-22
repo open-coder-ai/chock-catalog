@@ -97,9 +97,13 @@ block-destructive-commands  [deterministic]
   PASS  tc-014                             authored  BLOCKED: docker system prune is not allowed without approval.
   PASS  tc-015                             authored  BLOCKED: gcloud delete is not allowed without approval.
   PASS  tc-016                             authored  guard exit 0
+  PASS  tc-017                             authored  BLOCKED: destructive rm command targeting '~/scratch' is not allowe…
+  PASS  tc-018                             authored  BLOCKED: destructive rm command targeting '$HOME/scratch' is not al…
+  PASS  tc-019                             authored  BLOCKED: destructive rm command targeting '$HOME/scratch' is not al…
+  PASS  tc-020                             authored  guard exit 0
   score 1.00
 
-5 policies: 16 pass, 41 skipped
+5 policies: 20 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
