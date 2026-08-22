@@ -1,6 +1,6 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Keep the development conversation out of git history. Agent-authored commits narrate by
   default -- who asked for what, which discussion decided it, what the plan was -- and on a
@@ -42,3 +42,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Initial release, authored from a live incident: this catalog's own maintainer found agent-written commit messages narrating private decisions that were headed for a public repo."
+- version: 0.0.2
+  date: '2026-08-22'
+  changes:
+  - "Delivery bump for the framework hook-command change: the emitted PreToolUse command is now a single python3 invocation (the interpreter-fallback chain was removed after review proved it could erase deny verdicts), and the plugin description now states the per-client fail posture. Guard logic is unchanged."

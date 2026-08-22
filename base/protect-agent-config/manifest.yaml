@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Guard against an agent hand-editing its own guardrails. Agent instruction files
   (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json,
@@ -62,3 +62,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas); no mechanism change."
+- version: 0.0.3
+  date: '2026-08-22'
+  changes:
+  - "Delivery bump for the framework hook-command change: the emitted PreToolUse command is now a single python3 invocation (the interpreter-fallback chain was removed after review proved it could erase deny verdicts), and the plugin description now states the per-client fail posture. Guard logic is unchanged."

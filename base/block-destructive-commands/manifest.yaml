@@ -1,6 +1,6 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   Best-effort guard against destructive commands: rm -rf targeting absolute, home, or
   root-adjacent paths; git push --force (not --force-with-lease); git reset --hard;
@@ -58,3 +58,7 @@ changelog:
   date: '2026-08-22'
   changes:
   - "Block rm -rf against ~/... and $HOME/... forms: the unquoted tilde in the guard's pattern underwent tilde expansion, so home-directory deletions were allowed while the bare ~ was caught."
+- version: 0.0.5
+  date: '2026-08-22'
+  changes:
+  - "Delivery bump for the framework hook-command change: the emitted PreToolUse command is now a single python3 invocation (the interpreter-fallback chain was removed after review proved it could erase deny verdicts), and the plugin description now states the per-client fail posture. Guard logic is unchanged."
