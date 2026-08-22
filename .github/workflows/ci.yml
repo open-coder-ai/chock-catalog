@@ -208,6 +208,12 @@ jobs:
           for tree in $(python "$GITHUB_WORKSPACE"/tools/trees.py); do
             if [ -d "$GITHUB_WORKSPACE/$tree" ]; then
               cp -r "$GITHUB_WORKSPACE/$tree"/* .agents/policies/
+            else
+              # trees.py is the source of truth for what this catalog publishes; a
+              # listed tree with no directory means the staging step would validate
+              # an incomplete published set and report it whole.
+              echo "::error::tree listed by tools/trees.py is missing: $tree"
+              exit 1
             fi
           done
           if [ -d "$GITHUB_WORKSPACE/skills" ]; then
