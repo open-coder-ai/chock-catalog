@@ -5,7 +5,16 @@ set -eu
 
 is_dangerous_target() {
     local t="$1"
-    [[ "$t" == "/" || "$t" == "~" || "$t" == "." || "$t" == ".." || "$t" == /* || "$t" == ~/* ]]
+    # The tilde MUST be quoted on the pattern side. Unquoted `~/*` inside [[ ]] undergoes
+    # tilde expansion, so the pattern became the caller's own home path and could never
+    # match the literal "~/..." an agent actually types -- `rm -rf ~/anything` was allowed
+    # for as long as this guard has existed, while `rm -rf ~` was caught.
+    #
+    # `$HOME/...` is checked literally for a different reason: the guard inspects the
+    # command BEFORE a shell expands it, so it sees the variable, not the path it becomes.
+    # At execution time it expands to an absolute path and deletes exactly what `/*` was
+    # meant to stop.
+    [[ "$t" == "/" || "$t" == "~" || "$t" == "." || "$t" == ".."         || "$t" == /* || "$t" == "~"/*         || "$t" == '$HOME' || "$t" == '${HOME}'         || "$t" == '$HOME'/* || "$t" == '${HOME}'/* ]]
 }
 
 # Flatten arguments for membership checks.

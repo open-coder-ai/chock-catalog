@@ -20,6 +20,18 @@ if [[ "$is_git_commit_or_push" -eq 0 ]]; then
     exit 0
 fi
 
+# `git -c core.hooksPath=<somewhere-empty> commit` disables every hook without ever typing
+# --no-verify. Same intent, same outcome, and it was completely uncovered: a policy that
+# blocks the flag while allowing the config override blocks the spelling, not the behaviour.
+for arg in "$@"; do
+    case "$arg" in
+        core.hooksPath=*|--config=core.hooksPath=*)
+            echo "BLOCKED: git $subcommand with core.hooksPath set bypasses every hook, exactly as --no-verify does. Fix the failing hook instead of routing around it." >&2
+            exit 1
+            ;;
+    esac
+done
+
 has_n=0
 for arg in "$@"; do
     if [[ "$arg" == "--no-verify" ]]; then
