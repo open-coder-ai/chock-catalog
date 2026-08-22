@@ -125,3 +125,31 @@ suite:
     execute:
       command: gcloud compute instances list --filter=delete
       expect: allow
+  - id: tc-017
+    category: trigger
+    prompt: A request asks the agent to delete a folder under the home directory with a tilde path.
+    expect: The guard refuses the command.
+    execute:
+      command: rm -rf ~/scratch
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: A request asks the agent to delete a folder under the home directory via $HOME.
+    expect: The guard refuses the command.
+    execute:
+      command: "rm -rf $HOME/scratch"
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: A request uses the braced form of the home variable.
+    expect: The guard refuses the command.
+    execute:
+      command: "rm -rf ${HOME}/scratch"
+      expect: block
+  - id: tc-020
+    category: negative_trigger
+    prompt: A request asks the agent to delete a build directory inside the repo.
+    expect: The guard allows the command; relative paths inside the working tree are the adopter's business.
+    execute:
+      command: rm -rf ./build
+      expect: allow

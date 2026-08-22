@@ -84,9 +84,13 @@ block-no-verify  [deterministic]
   PASS  tc-001                             authored  BLOCKED: git commit --no-verify is not allowed. Fix the hook failur…
   PASS  tc-002                             authored  guard exit 0
   PASS  tc-003                             authored  BLOCKED: git commit --no-verify is not allowed. Fix the hook failur…
+  PASS  tc-004                             authored  BLOCKED: git commit with -c core.hooksPath disables every hook, exa…
+  PASS  tc-005                             authored  guard exit 0
+  PASS  tc-007                             authored  guard exit 0
+  PASS  tc-008                             authored  BLOCKED: git commit with -c core.hooksPath disables every hook, exa…
   score 1.00
 
-5 policies: 3 pass, 41 skipped
+5 policies: 7 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
