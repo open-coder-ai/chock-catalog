@@ -206,9 +206,13 @@ jobs:
           # The tree list comes from tools/trees.py, the same source every tool reads.
           # Enumerating trees here is how the plugin check missed `compliance/` entirely.
           for tree in $(python "$GITHUB_WORKSPACE"/tools/trees.py); do
-            [ -d "$GITHUB_WORKSPACE/$tree" ] && cp -r "$GITHUB_WORKSPACE/$tree"/* .agents/policies/ || true
+            if [ -d "$GITHUB_WORKSPACE/$tree" ]; then
+              cp -r "$GITHUB_WORKSPACE/$tree"/* .agents/policies/
+            fi
           done
-          [ -d "$GITHUB_WORKSPACE/skills" ] && cp -r "$GITHUB_WORKSPACE"/skills/* .agents/skills/ || true
+          if [ -d "$GITHUB_WORKSPACE/skills" ]; then
+            cp -r "$GITHUB_WORKSPACE"/skills/* .agents/skills/
+          fi
           chock sync --repo . --skip-hooks
           ls .agents/policies .agents/skills
 
