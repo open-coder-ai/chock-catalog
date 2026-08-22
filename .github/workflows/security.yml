@@ -68,5 +68,5 @@ jobs:
         # tilde rule targets exactly the guard-bypass class that shipped from this
         # catalog). Version pinned: the scanner is part of the verification surface.
         run: |
-          pip install semgrep==1.174.0
+          pip install --require-hashes -r requirements/semgrep.txt
           semgrep scan --config .semgrep/ --error --strict
