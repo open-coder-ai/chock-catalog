@@ -3,6 +3,8 @@ name: Security checks
 # zizmor audits the workflows (its adoption-day run found four template injections and
 # six credential-persisting checkouts here); actionlint checks workflow correctness;
 # ShellCheck lints every guard script -- the guards ARE what this catalog publishes, and
+# it runs on every pull request and on pushes to main (feature-branch pushes are covered
+# by their PRs; running both would check every commit twice), and
 # they were linted by nothing. ShellCheck does not read intent (it passes the 2026-08
 # tilde-pattern bug), so the eval suites and probe matrices remain the primary defense.
 
@@ -48,7 +50,9 @@ jobs:
       - name: ShellCheck every guard script
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q shellcheck
-          find . -name "*.sh" -not -path "./.git/*" -print0 | xargs -0 shellcheck --severity=warning
+          # Discovery by shebang, not extension, so an extensionless script can never
+          # slip the net (the framework's dispatcher did exactly that).
+          git grep -zlE '^#!/(usr/)?bin/(env )?(ba)?sh' -- . | xargs -0 shellcheck --severity=warning
 
   semgrep:
     runs-on: ubuntu-latest
