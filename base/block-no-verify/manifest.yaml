@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Best-effort guard against bypassing git hooks via git commit/push --no-verify or -n.
   Known bypass classes include aliases, wrapper scripts, and non-standard clients.
@@ -41,3 +41,7 @@ changelog:
   date: '2026-08-22'
   changes:
   - "Block git -c core.hooksPath=... (case-insensitive, matched only as the -c value): disabling hooks by config is the same act as --no-verify. Bare valueless form deliberately unmatched; git rejects it with rc=128 before any hook runs."
+- version: 0.0.3
+  date: '2026-08-22'
+  changes:
+  - "Delivery bump for the Claude-format plugin packages built from this policy: on republish, their PreToolUse command is a single python3 invocation (the proposed interpreter-fallback chain was rejected after review proved it could erase deny verdicts) and their descriptions state the per-client fail posture. Guard logic and this repo's own artifacts are unchanged."
