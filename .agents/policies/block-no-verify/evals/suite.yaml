@@ -48,3 +48,10 @@ suite:
     execute:
       command: git -c user.name=x commit -m y
       expect: allow
+  - id: tc-007
+    category: negative_trigger
+    prompt: A commit message mentions core.hooksPath while documenting the bypass it names.
+    expect: The guard allows the command; describing a setting is not setting it.
+    execute:
+      command: git commit -m "core.hooksPath disables hooks, see SECURITY.md"
+      expect: allow

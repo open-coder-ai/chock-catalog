@@ -10,7 +10,7 @@
 | **Mechanism** | guard script `block-no-verify.sh` |
 | **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 3 total, 3 executable |
+| **Eval cases** | 6 total, 6 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
