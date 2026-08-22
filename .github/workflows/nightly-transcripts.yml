@@ -24,12 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
 
       # Same auth pattern as ci.yml: the framework is a private repo, and checkout handles
       # the token rather than a pip URL where it could surface in logs or the pip cache.
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
+          persist-credentials: false
           repository: open-coder-ai/chock
           # Deliberately unpinned: the nightly is the canary that warns when framework
           # main will break the NEXT adoption, without ever blocking a PR (CI is pinned).

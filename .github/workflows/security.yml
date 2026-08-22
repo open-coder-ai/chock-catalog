@@ -1,0 +1,72 @@
+name: Security checks
+
+# zizmor audits the workflows (its adoption-day run found four template injections and
+# six credential-persisting checkouts here); actionlint checks workflow correctness;
+# ShellCheck lints every guard script -- the guards ARE what this catalog publishes, and
+# it runs on every pull request and on pushes to main (feature-branch pushes are covered
+# by their PRs; running both would check every commit twice), and
+# they were linted by nothing. ShellCheck does not read intent (it passes the 2026-08
+# tilde-pattern bug), so the eval suites and probe matrices remain the primary defense.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054  # v0.6.2
+        with:
+          min-severity: low
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: Run actionlint
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          "$(go env GOPATH)/bin/actionlint" -color
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - name: ShellCheck every guard script
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q shellcheck
+          # Discovery by shebang, not extension, so an extensionless script can never
+          # slip the net (the framework's dispatcher did exactly that).
+          git grep -zlE '^#!/(usr/)?bin/(env )?(ba)?sh' -- . | xargs -0 shellcheck --severity=warning
+
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+      - name: Semgrep with the project rules
+        # Same incident-encoded rules as the framework (.semgrep/chock.yml is a copy; the
+        # tilde rule targets exactly the guard-bypass class that shipped from this
+        # catalog). Version pinned: the scanner is part of the verification surface.
+        run: |
+          pip install semgrep==1.174.0
+          semgrep scan --config .semgrep/ --error --strict
