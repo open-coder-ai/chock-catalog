@@ -31,17 +31,22 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Check Signed-off-by on every PR commit
+        env:
+          # A branch name expanded by the runner into shell text is code injection waiting
+          # for a branch with metacharacters; through the environment it stays data.
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          git fetch --quiet origin "${{ github.base_ref }}"
+          git fetch --quiet origin "$BASE_REF"
           missing=0
           while read -r sha; do
             if ! git log -1 --format=%B "$sha" | grep -qi '^Signed-off-by: .\+<.\+@.\+>'; then
               echo "::error::commit $sha lacks a Signed-off-by trailer (git commit -s)"
               missing=1
             fi
-          done < <(git rev-list --no-merges "origin/${{ github.base_ref }}..HEAD")
+          done < <(git rev-list --no-merges "origin/$BASE_REF..HEAD")
           exit "$missing"
 
   policies:
@@ -51,6 +56,7 @@ jobs:
       # and a shallow clone has no merge base to find.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
@@ -61,6 +67,7 @@ jobs:
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
+          persist-credentials: false
           repository: open-coder-ai/chock
           ref: ${{ env.FRAMEWORK_REF }}
           path: .framework
@@ -105,7 +112,9 @@ jobs:
       # A NEW policy with no committed transcript fails here with the command to run.
       - name: Adoption transcripts reproduce from an empty repo
         if: github.event_name == 'pull_request'
-        run: python tools/gen_adoption_transcript.py --check --base "origin/${{ github.base_ref }}"
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: python tools/gen_adoption_transcript.py --check --base "origin/$BASE_REF"
 
       # This repo distributes executable content, so a compromised workflow does not merely
       # leak a token -- it can publish a malicious guard script to everyone who runs
@@ -133,13 +142,15 @@ jobs:
       # so. Only evidence claiming THIS diff is verified, and it must hold.
       - name: Reviewer evidence, if the PR carries any
         if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           python - <<'PY'
-          import json, subprocess, sys
+          import json, os, subprocess, sys
           from pathlib import Path
           from chock.review.evidence import diff_sha
 
-          base = "origin/${{ github.base_ref }}"
+          base = "origin/" + os.environ["BASE_REF"]
           current = diff_sha(Path(".").resolve(), base)
           files = sorted(Path(".chock/evidence").glob("*.json"))
           if not files:
