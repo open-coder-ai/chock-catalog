@@ -61,4 +61,4 @@ changelog:
 - version: 0.0.5
   date: '2026-08-22'
   changes:
-  - "Delivery bump for the framework hook-command change: the emitted PreToolUse command is now a single python3 invocation (the interpreter-fallback chain was removed after review proved it could erase deny verdicts), and the plugin description now states the per-client fail posture. Guard logic is unchanged."
+  - "Delivery bump for the Claude-format plugin packages built from this policy: on republish, their PreToolUse command is a single python3 invocation (the proposed interpreter-fallback chain was rejected after review proved it could erase deny verdicts) and their descriptions state the per-client fail posture. Guard logic and this repo's own artifacts are unchanged."
