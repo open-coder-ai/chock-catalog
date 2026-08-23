@@ -2,10 +2,9 @@
 name: eu-ai-act-prohibited-practices
 description: "Refuse to implement AI practices banned outright by EU AI Act Article 5: social scoring, untargeted facial-image scraping, emotion inference at work or school, biometric categorisation by sensitive traits, profiling-only predictive policing, subliminal or vulnerability-based manipulation, real-time remote biometric ID in public spaces, and NCII/CSAM generators. Use when a feature request names any of these. Do NOT use for lawful biometric verification, fraud detection, or safety/medical emotion detection."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # EU AI Act — Prohibited Practices

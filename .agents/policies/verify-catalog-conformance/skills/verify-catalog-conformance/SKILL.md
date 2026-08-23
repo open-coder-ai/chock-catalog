@@ -2,10 +2,9 @@
 name: verify-catalog-conformance
 description: "Repo-local policy (this repo only, never published): run the fast deterministic catalog checks at commit time -- registry labels, README counts, quoted console output, workflow-trigger safety -- so a mismatch fails in seconds under the committer's hands instead of minutes later in CI. Each of these caught a real error from CI on 2026-08-16. CI remains the authority: it re-runs the same tools on the pinned engine plus everything too slow for a hook (evals, transcripts, the staged adopter). Skips with a warning when python is absent, because the backstop is what makes that honest."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # Verify Catalog Conformance

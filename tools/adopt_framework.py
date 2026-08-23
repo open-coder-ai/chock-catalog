@@ -55,6 +55,16 @@ def main(argv: list[str] | None = None) -> int:
     rc = 0
     rc = max(rc, _run("sync (recompile + hooks + index + lockfile)", ["chock", "sync", "--repo", "."]))
     rc = max(rc, _run("plugin packages", ["chock", "plugin", "build", "--repo", "."]))
+    # The PUBLISHED trees too, exactly as CI checks them per-tree. The plain build above
+    # covers only .agents/policies (what this repo runs); an engine whose emitter output
+    # changed leaves every base/<id> package stale, which then fails the transcript step:
+    # a fresh adoption copies the stale package and `chock check` reports plugin_drift.
+    # Found by the first emitter-changing adoption (framework copilot-format bump).
+    from trees import TREES
+
+    for tree in TREES:
+        if (ROOT / tree).is_dir():
+            rc = max(rc, _run(f"plugin packages ({tree})", ["chock", "plugin", "build", "--repo", ".", "--policies-dir", tree]))
     rc = max(rc, _run("policy docs", [sys.executable, "tools/gen_policy_docs.py"]))
     rc = max(rc, _run("coverage matrix", [sys.executable, "tools/gen_coverage_matrix.py"]))
     if not args.skip_transcripts:

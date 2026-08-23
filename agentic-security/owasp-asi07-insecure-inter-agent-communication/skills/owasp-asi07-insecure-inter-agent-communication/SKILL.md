@@ -2,10 +2,9 @@
 name: owasp-asi07-insecure-inter-agent-communication
 description: "Authenticate and integrity-protect the channels agents use to talk to each other, so a peer cannot be impersonated, a message tampered with, or a fake agent registered in discovery. Use when building multi-agent orchestration, agent-to-agent protocols, delegation between agents, message buses, or agent discovery services. Do NOT use for a single agent calling ordinary tools \u2014 that is `owasp-asi02-tool-misuse`."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # OWASP ASI07 — Insecure Inter-Agent Communication

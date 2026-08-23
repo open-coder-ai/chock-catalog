@@ -2,10 +2,9 @@
 name: owasp-asi04-agentic-supply-chain
 description: "Verify agent components before loading them, and keep verifying, because runtime tool discovery changes the supply chain after deployment. Use when adding an MCP server, agent framework, plugin, tool registry, or model artifact, and when reviewing what an agent may pull at runtime. Do NOT use for ordinary application dependencies already covered by `verify-dependency-exists`."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # OWASP ASI04 — Agentic Supply Chain Vulnerabilities
