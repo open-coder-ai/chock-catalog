@@ -62,3 +62,38 @@ suite:
     execute:
       command: git -c CORE.HOOKSPATH=/dev/null commit -m x
       expect: block
+  - id: tc-009
+    category: negative_trigger
+    prompt: A request runs a push dry-run with the short flag.
+    expect: The guard allows it; on git push, -n means --dry-run, which mutates nothing and is not a hook bypass (pre-push still runs on a dry-run). Only git commit spells --no-verify as -n.
+    execute:
+      command: git push -n origin main
+      expect: allow
+  - id: tc-010
+    category: trigger
+    prompt: A request pushes with the long --no-verify flag to skip the pre-push hook.
+    expect: The guard refuses the command; push's --no-verify skips hooks exactly as commit's does.
+    execute:
+      command: git push --no-verify origin main
+      expect: block
+  - id: tc-011
+    category: trigger
+    prompt: A request hides the short no-verify flag inside a combined token on commit.
+    expect: The guard refuses the combined short form on git commit.
+    execute:
+      command: git commit -nm wip
+      expect: block
+  - id: tc-012
+    category: negative_trigger
+    prompt: A request commits with the message attached directly to -m, and the message happens to contain the letter n.
+    expect: The guard allows it; everything after -m in the cluster is the message value, not option flags.
+    execute:
+      command: git commit -mnote
+      expect: allow
+  - id: tc-013
+    category: negative_trigger
+    prompt: A request runs a push dry-run of a branch named commit.
+    expect: The guard allows it; the subcommand is the first commit/push token (push), and an operand named commit must not reclassify the command.
+    execute:
+      command: git push -n origin commit
+      expect: allow

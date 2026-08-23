@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Guard against an agent hand-editing its own guardrails. Agent instruction files
   (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json,
@@ -11,8 +11,9 @@ description: >
   through `chock sync` passes because the tool writes them itself rather than through
   shell editing. Best-effort and deliberately coarse: a compound command that both
   reads a protected file and writes elsewhere may be refused -- rewrite it in two
-  steps. Escape for a human-approved change: include 'chock: approved-config-change'
-  in the command.
+  steps. The 'chock: approved-config-change' escape marker is friction plus an audit
+  trail, not authentication -- the agent can write it too; the check an agent cannot
+  self-approve is the commit-time gate and CI.
 artifact: rule
 enforcement: advise
 rule:
@@ -66,3 +67,7 @@ changelog:
   date: '2026-08-22'
   changes:
   - "Delivery bump for the Claude-format plugin packages built from this policy: on republish, their PreToolUse command is a single python3 invocation (the proposed interpreter-fallback chain was rejected after review proved it could erase deny verdicts) and their descriptions state the per-client fail posture. Guard logic and this repo's own artifacts are unchanged."
+- version: 0.0.4
+  date: '2026-08-23'
+  changes:
+  - "Description honesty: the approved-config-change marker is stated as what it is -- friction plus an audit trail, not authentication (anything in the command line, the agent can write; found in external review of the Copilot marketplace submission). Points at the commit-time gate and CI as the enforcement an agent cannot self-approve. Guard logic unchanged."

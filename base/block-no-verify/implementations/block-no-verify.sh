@@ -4,14 +4,23 @@
 set -eu
 
 is_git_commit_or_push=0
+has_commit=0
 subcommand=""
 
+# Only the FIRST commit|push token is the subcommand: everything after it is that
+# command's own arguments, where the same words are operands (a ref or path named
+# "commit" must not reclassify `git push origin commit -n` as a commit).
 for arg in "$@"; do
     case "$arg" in
         git) ;;
         commit|push)
-            is_git_commit_or_push=1
-            subcommand="$arg"
+            if [[ "$is_git_commit_or_push" -eq 0 ]]; then
+                is_git_commit_or_push=1
+                subcommand="$arg"
+                if [[ "$arg" == "commit" ]]; then
+                    has_commit=1
+                fi
+            fi
             ;;
     esac
 done
@@ -41,15 +50,23 @@ for arg in "$@"; do
     prev="$arg"
 done
 
+# Short `-n` means --no-verify only on `git commit`. On `git push`, -n is --dry-run --
+# non-mutating and NOT a hook bypass (pre-push still runs on a dry-run) -- so blocking
+# it there refused a harmless command while teaching nothing (found in external
+# review). --no-verify is blocked on both: push has the long flag with the same
+# hook-skipping meaning.
 has_n=0
 for arg in "$@"; do
     if [[ "$arg" == "--no-verify" ]]; then
         has_n=1
-    elif [[ "$arg" == "-n" ]]; then
+    elif [[ "$has_commit" -eq 1 && "$arg" == "-n" ]]; then
         has_n=1
-    elif [[ "$arg" =~ ^-[^-] ]]; then
-        # Combined short flags: block if the token contains 'n' (e.g. -nm).
-        if [[ "$arg" == *n* ]]; then
+    elif [[ "$has_commit" -eq 1 && "$arg" =~ ^-[^-] ]]; then
+        # Combined short flags: block if the token contains 'n' (e.g. -nm) -- unless
+        # the cluster starts with a value-taking option (-m/-F), where the rest of
+        # the token is that option's VALUE: `-mnote` is a message, not flags, and
+        # nothing after the value can be an option.
+        if [[ "$arg" != -m* && "$arg" != -F* && "$arg" == *n* ]]; then
             has_n=1
         fi
     fi

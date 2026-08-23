@@ -11,7 +11,7 @@
   block(destructive_command): rm_-rf(/|~|.), git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy
   require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
 - **block-no-verify**:
-  never(commit|push): --no-verify|-n
+  never(commit): --no-verify|-n; never(push): --no-verify
   if(hook_fails): fix_issue; never(skip_hook)
 - **code-safety**:
   never(commit): secrets|keys|tokens|passwords|.env; never(add): eval|exec|unsanitized_sql

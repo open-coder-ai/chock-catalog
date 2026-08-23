@@ -1,15 +1,16 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.0.3"
+version: "0.0.4"
 description: >
-  Best-effort guard against bypassing git hooks via git commit/push --no-verify or -n.
-  Known bypass classes include aliases, wrapper scripts, and non-standard clients.
+  Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's
+  short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays
+  allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients.
   Fix the underlying hook failure instead of skipping validation.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    never(commit|push): --no-verify|-n
+    never(commit): --no-verify|-n; never(push): --no-verify
     if(hook_fails): fix_issue; never(skip_hook)
 effects:
 - read_only
@@ -45,3 +46,7 @@ changelog:
   date: '2026-08-22'
   changes:
   - "Delivery bump for the Claude-format plugin packages built from this policy: on republish, their PreToolUse command is a single python3 invocation (the proposed interpreter-fallback chain was rejected after review proved it could erase deny verdicts) and their descriptions state the per-client fail posture. Guard logic and this repo's own artifacts are unchanged."
+- version: 0.0.4
+  date: '2026-08-23'
+  changes:
+  - "Short -n now reads as --no-verify only on git commit. On git push, -n is --dry-run -- non-mutating and not a hook bypass (pre-push still runs) -- and the guard wrongly refused it (found in external review of the Copilot marketplace submission). --no-verify stays blocked on both commit and push. Also: only the first commit/push token is the subcommand (a ref named 'commit' no longer reclassifies a push), and a cluster starting with a value-taking option (-m/-F) is that option's value, so -mnote is not a bypass. Five eval cases added."

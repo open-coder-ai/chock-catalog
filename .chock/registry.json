@@ -50,9 +50,9 @@
       {
         "id": "block-no-verify",
         "artifact": "rule",
-        "version": "0.0.2",
+        "version": "0.0.4",
         "name": "Block No-Verify",
-        "description": "Best-effort guard against bypassing git hooks via git commit/push --no-verify or -n. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.",
+        "description": "Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.",
         "path": ".agents/policies/block-no-verify",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -200,9 +200,9 @@
       {
         "id": "protect-agent-config",
         "artifact": "rule",
-        "version": "0.0.2",
+        "version": "0.0.4",
         "name": "Protect Agent Config",
-        "description": "Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081; the AIVSS self-modification factor). The guard refuses shell write-commands targeting those paths; reads pass, and regeneration through `chock sync` passes because the tool writes them itself rather than through shell editing. Best-effort and deliberately coarse: a compound command that both reads a protected file and writes elsewhere may be refused -- rewrite it in two steps. Escape for a human-approved change: include 'chock: approved-config-change' in the command.",
+        "description": "Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081; the AIVSS self-modification factor). The guard refuses shell write-commands targeting those paths; reads pass, and regeneration through `chock sync` passes because the tool writes them itself rather than through shell editing. Best-effort and deliberately coarse: a compound command that both reads a protected file and writes elsewhere may be refused -- rewrite it in two steps. The 'chock: approved-config-change' escape marker is friction plus an audit trail, not authentication -- the agent can write it too; the check an agent cannot self-approve is the commit-time gate and CI.",
         "path": ".agents/policies/protect-agent-config",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
