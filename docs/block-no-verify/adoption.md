@@ -48,11 +48,12 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~290 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-no-verify:
   claude: enforced
-  copilot: advisory
+  copilot: enforced
   gemini: advisory
 ```
 
@@ -68,6 +69,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~290 tokens (chars/4, max 2000)
 ```
 
@@ -97,6 +99,7 @@ block-no-verify  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/block-no-verify/agent-hooks/agent-hooks.json
 .chock/compiled/block-no-verify/ambient-rule/ambient.md
 .chock/compiled/block-no-verify/managed-setting/managed-settings.json
 .chock/compiled/block-no-verify/pre-tool-use/cursor-hooks.json

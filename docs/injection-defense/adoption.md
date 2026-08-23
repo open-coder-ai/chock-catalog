@@ -70,6 +70,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 
 ```text
 [PASS] All checks passed.
+  [INFO]  …/.agents/policies/injection-defense/evals/suite.yaml :: security: Prompt-injection-like pattern matched in suite.yaml in an eval case: 'ignore (previous|all|prior) instructions?' (SEC-4).
 ```
 
 ## `$ chock eval --repo .`
