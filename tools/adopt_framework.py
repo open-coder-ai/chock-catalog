@@ -63,8 +63,14 @@ def main(argv: list[str] | None = None) -> int:
     from trees import TREES
 
     for tree in TREES:
-        if (ROOT / tree).is_dir():
-            rc = max(rc, _run(f"plugin packages ({tree})", ["chock", "plugin", "build", "--repo", ".", "--policies-dir", tree]))
+        # A listed tree with no directory is a failure, not a skip: CI's staging step
+        # errors on exactly this ("tree listed by tools/trees.py is missing"), and an
+        # adoption that silently skipped one would report CLEAN on an incomplete set.
+        if not (ROOT / tree).is_dir():
+            print(f"tree listed by tools/trees.py is missing: {tree}", file=sys.stderr)
+            rc = max(rc, 1)
+            continue
+        rc = max(rc, _run(f"plugin packages ({tree})", ["chock", "plugin", "build", "--repo", ".", "--policies-dir", tree]))
     rc = max(rc, _run("policy docs", [sys.executable, "tools/gen_policy_docs.py"]))
     rc = max(rc, _run("coverage matrix", [sys.executable, "tools/gen_coverage_matrix.py"]))
     if not args.skip_transcripts:
