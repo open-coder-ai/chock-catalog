@@ -49,7 +49,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~290 tokens (chars/4, max 2000)
+INDEX.md: ~295 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-no-verify:
   claude: enforced
@@ -70,7 +70,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~290 tokens (chars/4, max 2000)
+INDEX.md: ~295 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -90,9 +90,14 @@ block-no-verify  [deterministic]
   PASS  tc-005                             authored  guard exit 0
   PASS  tc-007                             authored  guard exit 0
   PASS  tc-008                             authored  BLOCKED: git commit with -c core.hooksPath disables every hook, exa…
+  PASS  tc-009                             authored  guard exit 0
+  PASS  tc-010                             authored  BLOCKED: git push --no-verify is not allowed. Fix the hook failure …
+  PASS  tc-011                             authored  BLOCKED: git commit --no-verify is not allowed. Fix the hook failur…
+  PASS  tc-012                             authored  guard exit 0
+  PASS  tc-013                             authored  guard exit 0
   score 1.00
 
-5 policies: 7 pass, 41 skipped
+5 policies: 12 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -110,6 +115,6 @@ block-no-verify  [deterministic]
 
 ```text
 - **block-no-verify**:
-  never(commit|push): --no-verify|-n
+  never(commit): --no-verify|-n; never(push): --no-verify
   if(hook_fails): fix_issue; never(skip_hook)
 ```

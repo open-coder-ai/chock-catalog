@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `block-no-verify.sh` |
 | **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 7 total, 7 executable |
+| **Eval cases** | 12 total, 12 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Best-effort guard against bypassing git hooks via git commit/push --no-verify or -n. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.
+Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.
 
 ## What it solves
 
@@ -30,7 +30,7 @@ A guard script, `implementations/block-no-verify.sh`, run before the agent execu
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```
-never(commit|push): --no-verify|-n
+never(commit): --no-verify|-n; never(push): --no-verify
 if(hook_fails): fix_issue; never(skip_hook)
 ```
 

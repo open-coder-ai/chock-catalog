@@ -30,9 +30,9 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "63e3a2ab73ec7d687fbcf9a7a2d7f483b7cc3142dc2e9be278c553fe0879119c",
+      "sha256": "e31078a47505f09075eec7d494c6ea882891da468b10a0e68bbb7c01353cd6bf",
       "source": "local",
-      "artifacts_sha256": "0578183c1d506f90a816a2b85c883ac180454f210d9c1f68e1ae854dfed816a2"
+      "artifacts_sha256": "7e286e68e1b7b791ccde02895cf555b5af16bc5c0fcc92c5e1aca2982c510343"
     },
     {
       "id": "block-wildcard-agent-permissions",
@@ -86,7 +86,7 @@
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "36e15bed43335bdda4150009cbab14b7b1b91726b9d039801b9f252bc78355e3",
+      "sha256": "e1ba3cbeab24634a87e655af6d4c1de38d149ce4d2770a3de43dde0dd037a08d",
       "source": "local",
       "artifacts_sha256": "88a50994c1577b892616f9e8aba9a7507dd02e097117f77fbabc4435b6be67ae"
     },
