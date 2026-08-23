@@ -48,11 +48,12 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~334 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-commit-privacy:
   claude: enforced
-  copilot: advisory
+  copilot: enforced
   gemini: advisory
 ```
 
@@ -68,6 +69,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~334 tokens (chars/4, max 2000)
 ```
 
@@ -97,6 +99,7 @@ protect-commit-privacy  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/protect-commit-privacy/agent-hooks/agent-hooks.json
 .chock/compiled/protect-commit-privacy/ambient-rule/ambient.md
 .chock/compiled/protect-commit-privacy/managed-setting/managed-settings.json
 .chock/compiled/protect-commit-privacy/pre-tool-use/cursor-hooks.json
