@@ -2,10 +2,9 @@
 name: block-destructive-commands
 description: "Best-effort guard against destructive commands: rm -rf targeting absolute, home, or root-adjacent paths; git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy. Known bypass classes include aliases, quoted arguments, non-standard clients, and scripts that invoke these commands indirectly. This is friction, not a security boundary."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # Block Destructive Commands

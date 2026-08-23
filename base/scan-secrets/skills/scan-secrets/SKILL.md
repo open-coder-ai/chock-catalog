@@ -2,10 +2,9 @@
 name: scan-secrets
 description: "Pre-commit hook that blocks commits of credential files and high-entropy secret values. Best-effort guard; not a replacement for a dedicated secret scanner."
 metadata:
-  chock:
-    artifact: hook
-    enforcement: block
-    coverage_without_chock: advisory
+  chock.artifact: hook
+  chock.enforcement: block
+  chock.coverage_without_chock: advisory
 ---
 
 # Scan Secrets

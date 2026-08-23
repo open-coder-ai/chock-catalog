@@ -2,10 +2,9 @@
 name: owasp-asi09-human-agent-trust
 description: "Stop an agent from controlling the information a human approves against. Show the raw action rather than a model-authored summary at every confirmation step, forbid persuasive framing in sensitive workflows, and keep an immutable record of what was presented versus what executed. Use when designing approval prompts, human-in-the-loop checkpoints, agent-written PR descriptions, or consent and disclosure flows. Do NOT use for what the agent is permitted to do once approved \u2014 that is `owasp-asi02-tool-misuse`."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # OWASP ASI09 — Human-Agent Trust Exploitation

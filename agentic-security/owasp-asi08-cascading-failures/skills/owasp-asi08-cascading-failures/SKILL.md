@@ -2,10 +2,9 @@
 name: owasp-asi08-cascading-failures
 description: "Keep one agent's bad output from propagating through everything downstream. Isolate blast radius per agent and per environment, separate development from production access, validate agent-to-agent handoffs, and add circuit breakers that halt automation on behavioural deviation. Use when chaining agents, designing orchestration, granting production access, or wiring agent output into downstream automation. Do NOT use for the transport security of those handoffs \u2014 that is `owasp-asi07-insecure-inter-agent-communication`."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # OWASP ASI08 — Cascading Failures

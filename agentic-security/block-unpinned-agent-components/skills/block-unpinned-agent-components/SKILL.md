@@ -2,10 +2,9 @@
 name: block-unpinned-agent-components
 description: "Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned version. Blocks npx/uvx/bunx launches at @latest \u2014 the standard MCP server idiom \u2014 quoted \"@latest\" arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists; signature and provenance stay with the advisory owasp-asi04 policy. Escape: 'pragma: allowlist unpinned' on the same line."
 metadata:
-  chock:
-    artifact: hook
-    enforcement: block
-    coverage_without_chock: advisory
+  chock.artifact: hook
+  chock.enforcement: block
+  chock.coverage_without_chock: advisory
 ---
 
 # Block Unpinned Agent Components

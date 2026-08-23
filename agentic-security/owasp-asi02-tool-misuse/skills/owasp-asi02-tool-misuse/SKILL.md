@@ -2,10 +2,9 @@
 name: owasp-asi02-tool-misuse
 description: "Constrain what an agent's legitimate tools can be made to do. Grant least agency per task, validate tool parameters at the runtime boundary, authorise every invocation rather than only the first, and distrust tool metadata from unverified registries. Use when defining tool schemas, wiring an MCP server, granting shell or cloud-CLI access, or reviewing a tool-calling loop. Do NOT use for the credentials the tool authenticates with \u2014 that is `owasp-asi03-identity-privilege-abuse`."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # OWASP ASI02 — Tool Misuse & Exploitation

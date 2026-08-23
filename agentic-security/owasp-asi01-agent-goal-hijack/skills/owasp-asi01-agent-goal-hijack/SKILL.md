@@ -2,10 +2,9 @@
 name: owasp-asi01-agent-goal-hijack
 description: "Keep an agent's objective under the operator's control when the agent ingests untrusted content. Separate retrieved data from instructions, refuse tool-scope expansion requested by that data, and confirm sensitive actions against the raw action rather than a summary. Use when building RAG pipelines, email/ticket/doc readers, browser agents, or any planner whose context includes fetched content. Do NOT use for the coding agent's own session hygiene \u2014 that is `injection-defense`."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # OWASP ASI01 — Agent Goal Hijack

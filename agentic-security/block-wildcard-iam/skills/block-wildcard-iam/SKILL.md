@@ -2,10 +2,9 @@
 name: block-wildcard-iam
 description: "Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or Resource in IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform wildcard action/resource lists. An agent's identity design stays with the advisory owasp-asi03 policy; this blocks the grants whose blast radius is everything. Escape: 'pragma: allowlist broad-privilege' on the same line."
 metadata:
-  chock:
-    artifact: hook
-    enforcement: block
-    coverage_without_chock: advisory
+  chock.artifact: hook
+  chock.enforcement: block
+  chock.coverage_without_chock: advisory
 ---
 
 # Block Wildcard IAM

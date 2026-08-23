@@ -2,10 +2,9 @@
 name: protect-main-branch
 description: "Block direct commits and pushes to main or master. Enforced at commit time by reading the current branch, and at push time by parsing the refs the agent is pushing."
 metadata:
-  chock:
-    artifact: hook
-    enforcement: block
-    coverage_without_chock: advisory
+  chock.artifact: hook
+  chock.enforcement: block
+  chock.coverage_without_chock: advisory
 ---
 
 # Protect Main Branch

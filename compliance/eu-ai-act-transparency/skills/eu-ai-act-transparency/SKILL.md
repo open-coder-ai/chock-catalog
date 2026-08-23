@@ -2,10 +2,9 @@
 name: eu-ai-act-transparency
 description: "Keep EU AI Act Article 50 duties in the code: disclose to a person that they are interacting with an AI system, mark generated audio, image, video, and text in a machine-readable format, and label deepfakes. Use when adding a chatbot or assistant surface, a generation endpoint, or an export path for model output. Do NOT use for assistive editing that does not substantially alter the input, or for internal batch jobs with no human recipient."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # EU AI Act — Transparency

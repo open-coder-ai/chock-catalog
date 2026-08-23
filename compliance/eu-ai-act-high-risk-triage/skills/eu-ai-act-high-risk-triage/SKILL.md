@@ -2,10 +2,9 @@
 name: eu-ai-act-high-risk-triage
 description: "Flag when code puts an AI system into an EU AI Act Annex III high-risk domain \u2014 biometrics, critical infrastructure, education, employment, essential services and credit, law enforcement, migration, justice and elections \u2014 and require the Article 9-15 obligations be owned before the capability ships. Use when adding scoring, ranking, eligibility, or screening over people. Do NOT use for banned practices (see eu-ai-act-prohibited-practices) or for systems with no natural-person impact."
 metadata:
-  chock:
-    artifact: rule
-    enforcement: advise
-    coverage_without_chock: advisory
+  chock.artifact: rule
+  chock.enforcement: advise
+  chock.coverage_without_chock: advisory
 ---
 
 # EU AI Act — High-Risk Triage
