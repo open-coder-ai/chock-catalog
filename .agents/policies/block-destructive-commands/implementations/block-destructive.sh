@@ -157,4 +157,25 @@ if has_command "gcloud" && has_command "delete"; then
     exit 1
 fi
 
+# PowerShell / cmd destructive removals. POSIX shlex (the adapter's tokenizer) mangles
+# Windows paths (C:\x -> C:x) and PowerShell long flags (-Recurse -> -R -e -c ...), so this
+# matches the RAW command text (CHOCK_RAW_COMMAND, set by the adapter and the eval harness)
+# rather than argv. Only a recursive+force removal targeting a drive root, filesystem root,
+# or home path is blocked -- a relative target (./build, node_modules) stays allowed, exactly
+# as `rm -rf ./build` does. Without the raw command (an older vendored adapter) this branch
+# is skipped and the bash `rm` path above still applies.
+raw="${CHOCK_RAW_COMMAND-}"
+if [ -n "$raw" ]; then
+    shopt -s nocasematch 2>/dev/null || true
+    verb_re='(^|[|;&[:space:]])(remove-item|ri|rd|rmdir|del|erase)([[:space:]]|$)'
+    recurse_re='(-recurse|-r([[:space:]]|$)|/s([[:space:]]|$))'
+    force_re='(-force|-fo([[:space:]]|$)|/q([[:space:]]|$)|/f([[:space:]]|$))'
+    target_re='([a-z]:[\\/]|[a-z]:([[:space:]]|$)|(^|[[:space:]])[\\/]([[:space:]]|$)|~|\$home|\$env:userprofile|\$env:home)'
+    if [[ "$raw" =~ $verb_re ]] && [[ "$raw" =~ $recurse_re ]] && [[ "$raw" =~ $force_re ]] && [[ "$raw" =~ $target_re ]]; then
+        echo "BLOCKED: destructive PowerShell/cmd removal targeting a drive root or home path is not allowed without approval." >&2
+        exit 1
+    fi
+    shopt -u nocasematch 2>/dev/null || true
+fi
+
 exit 0

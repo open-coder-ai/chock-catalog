@@ -14,7 +14,7 @@
       "id": "block-destructive-commands",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "2e5d3e12a7c034589d49e6d2623e331cd03f74ed65e1a5b92d78cbe8ee8fd78d",
+      "sha256": "bb30b2a8b4ce4f23db202dc020dcfdb040b86ef342736ab24c511180adc85f26",
       "source": "local",
       "artifacts_sha256": "07d54a6e496481cb0dbf109e460c2c7c40dbdd007f6f78794e953ed0bc1c00ff"
     },

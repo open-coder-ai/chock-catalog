@@ -20,7 +20,7 @@
       {
         "id": "block-destructive-commands",
         "artifact": "rule",
-        "version": "0.0.4",
+        "version": "0.0.6",
         "name": "Block Destructive Commands",
         "description": "Best-effort guard against destructive commands: rm -rf targeting absolute, home, or root-adjacent paths; git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy. Known bypass classes include aliases, quoted arguments, non-standard clients, and scripts that invoke these commands indirectly. This is friction, not a security boundary.",
         "path": ".agents/policies/block-destructive-commands",
