@@ -63,8 +63,10 @@ cover, is in the framework's
 - **`git commit --no-verify` skips every git hook**, and therefore every enforced policy
   here. `block-no-verify` refuses the flag before the command runs on the agents
   `chock sync` wires natively — Claude Code, Cursor, Copilot CLI, VS Code — and the
-  codex plugin format extends this to Codex (after its per-hook trust review; fails
-  open). On agents without hooks, and for a human at a terminal, nothing stops it.
+  codex plugin format extends this to Codex — with its conditions: Codex hooks are
+  untrusted until a human approves them, and an unavailable, untrusted or failing hook
+  permits the command (repo-level coverage records Codex as advisory for exactly this
+  reason). On agents without hooks, and for a human at a terminal, nothing stops it.
 - **Git hooks live in `.git/hooks`, which is not cloned.** A fresh clone of an adopting repo
   enforces nothing until someone runs `chock sync`.
 - **Most policies are advisory** (twenty of the thirty-two at this writing — the README
