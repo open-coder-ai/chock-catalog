@@ -5,7 +5,7 @@ name: CI
 # rewrite the pin AND regenerate every derived artifact in one step. The nightly
 # transcript workflow deliberately stays on main as an unpinned canary.
 env:
-  FRAMEWORK_REF: 18ee24b54e8a92e814c2f939eff769e43a91612a
+  FRAMEWORK_REF: v0.4.0
 
 
 # Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
