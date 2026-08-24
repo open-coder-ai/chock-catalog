@@ -68,7 +68,8 @@ throwaway repo on every push.
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 7/7 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
-command, natively wired in Claude Code and Cursor.
+command, natively wired in Claude Code, Cursor, Copilot CLI and VS Code (and, via the
+codex plugin format, Codex after its per-hook trust review).
 
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
@@ -349,8 +350,15 @@ without Chock installed at all.
 **That is a portability claim, not an enforcement one.** The standard covers skills and MCP
 servers; it defines no enforcement mechanism, and hooks are explicitly deferred until their formats
 converge. A policy read as a plugin is `advisory` — the same tier as the twenty advisory rows above
-— and every generated `SKILL.md` says so in its own body. The three `enforced-at-commit` policies
-get their teeth from `chock sync`, not from the package.
+— and every generated `SKILL.md` says so in its own body. The `enforced-at-commit` policies
+get their teeth from `chock sync`, not from the package. Enforcement *does* travel in the
+four hook-carrying vendor formats (`chock plugin build --format claude|copilot|cursor|codex`),
+published in the per-vendor repos:
+[claude](https://github.com/open-coder-ai/chock-claude-plugins),
+[copilot](https://github.com/open-coder-ai/chock-copilot-plugins),
+[cursor](https://github.com/open-coder-ai/chock-cursor-plugins),
+[codex](https://github.com/open-coder-ai/chock-codex-plugins) — each witnessed denying
+a destructive command on a real install.
 
 Both files are generated from `manifest.yaml`, which stays the source of truth, and CI fails if
 they drift from it.
