@@ -61,9 +61,12 @@ cover, is in the framework's
 ## Known limits, stated rather than implied
 
 - **`git commit --no-verify` skips every git hook**, and therefore every enforced policy
-  here. `block-no-verify` refuses the flag on Claude Code, before the command runs; on other
-  agents, and for a human at a terminal, nothing stops it.
+  here. `block-no-verify` refuses the flag before the command runs on the agents
+  `chock sync` wires natively — Claude Code, Cursor, Copilot CLI, VS Code — and the
+  codex plugin format extends this to Codex (after its per-hook trust review; fails
+  open). On agents without hooks, and for a human at a terminal, nothing stops it.
 - **Git hooks live in `.git/hooks`, which is not cloned.** A fresh clone of an adopting repo
   enforces nothing until someone runs `chock sync`.
-- **Seven of the twelve policies are advisory.** They compile to text an agent reads and may
-  or may not follow. Their eval cases report as `skipped`, never as passing.
+- **Most policies are advisory** (twenty of the thirty-two at this writing — the README
+  badges carry the current counts). They compile to text an agent reads and may or may
+  not follow. Their eval cases report as `skipped`, never as passing.

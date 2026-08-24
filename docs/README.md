@@ -16,19 +16,42 @@ effect rather than the intent.
 | Policy | Blocks | Evals |
 | :--- | :--- | ---: |
 | [protect-main-branch](protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
-| [scan-secrets](scan-secrets/) | credentials in staged changes | 5/5 |
+| [scan-secrets](scan-secrets/) | credentials in staged changes | 11/11 |
 | [verify-dependency-exists](verify-dependency-exists/) | dependencies absent from your allowlist | 5/5 |
+| [block-invisible-unicode](block-invisible-unicode/) | bidi/tag-block Unicode in staged changes (Trojan Source) | 8/8 |
+| [block-wildcard-agent-permissions](block-wildcard-agent-permissions/) | committed allow-everything agent grants | 7/7 |
+| [block-unpinned-agent-components](block-unpinned-agent-components/) | unpinned agent actions/images/models | 6/6 |
+| [block-unsafe-code-execution](block-unsafe-code-execution/) | `eval`/`exec`-style dynamic execution in staged changes | 7/7 |
+| [block-wildcard-iam](block-wildcard-iam/) | wildcard IAM grants in staged IaC | 6/6 |
 
 ## Enforced before the tool runs
 
-Guard scripts wired into PreToolUse. They reach `enforced` only after
-`chock sync`; before that they are compiled fragments that enforce nothing,
-and coverage says so.
+Guard scripts consulted before the agent runs a command — via pre-tool-use (Claude Code,
+Cursor), agent-hooks (Copilot CLI, VS Code) or the vendor plugin formats. They reach
+`enforced` only with an install witness; before that they are compiled fragments that
+enforce nothing, and coverage says so.
 
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
-| [block-destructive-commands](block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy` | 6/6 |
-| [block-no-verify](block-no-verify/) | `--no-verify`, which bypasses every gate above | 3/3 |
+| [block-destructive-commands](block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, PowerShell/cmd removals | 26/26 |
+| [block-no-verify](block-no-verify/) | `--no-verify`, which bypasses every gate above | 12/12 |
+| [protect-agent-config](protect-agent-config/) | shell rewrites of the agent's own guardrails | 8/8 |
+| [protect-commit-privacy](protect-commit-privacy/) | commit messages that leak the development conversation | 7/7 |
+
+## Compliance (adopted deliberately, jurisdiction-specific)
+
+| Policy | Addresses |
+| :--- | :--- |
+| [eu-ai-act-prohibited-practices](eu-ai-act-prohibited-practices/) | EU AI Act Art. 5 prohibited-practice checks |
+| [eu-ai-act-high-risk-triage](eu-ai-act-high-risk-triage/) | Annex III high-risk triage |
+| [eu-ai-act-transparency](eu-ai-act-transparency/) | Art. 50 transparency obligations |
+
+## Agentic security (OWASP ASI, for repos that build agents)
+
+Ten advisory policies mapping OWASP's Agentic Security Initiative threats
+(ASI01–ASI10), alongside the three hard gates listed above
+(`block-unpinned-agent-components`, `block-unsafe-code-execution`,
+`block-wildcard-iam`).
 
 ## Advisory
 
@@ -74,6 +97,6 @@ python tools/gen_policy_docs.py           # regenerate
 python tools/gen_policy_docs.py --check   # what CI runs
 ```
 
-This split is the point. Twelve hand-written policy docs drift the first time a policy
+This split is the point. Hand-written policy docs drift the first time a policy
 changes, and a doc claiming `enforced` about advisory text is the exact overclaim this
 project exists to prevent — published where adopters read first.

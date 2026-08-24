@@ -67,7 +67,7 @@ Deliberate gaps, so a green check is not read as more than it is:
   in the sense `read_only` is about, and failing it would be an over-block.
 - **Gate policies are excluded.** Their behaviour is the framework's vendored runner, not
   catalog content.
-- **Two policies ship guards today.** The other ten have nothing to run.
+- **Four policies ship guards today.** The rest have nothing to run.
 
 ## What a reviewer still has to judge
 
