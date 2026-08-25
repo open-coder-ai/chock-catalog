@@ -1,9 +1,11 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.0.4"
+version: "0.0.5"
 description: >
-  Pre-commit hook that blocks commits of credential files and high-entropy secret values.
-  Best-effort guard; not a replacement for a dedicated secret scanner.
+  Pre-commit hook that blocks commits of credential files and known credential patterns
+  -- vendor key prefixes, private-key blocks, and key/token/password assignments. Matched
+  by pattern, not by entropy analysis. Best-effort guard; not a replacement for a
+  dedicated secret scanner.
 artifact: hook
 enforcement: block
 mandatory: true
@@ -39,7 +41,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-08-24T00:00:00Z"
+  updated_at: "2026-08-25T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -69,3 +71,7 @@ changelog:
   date: '2026-08-24'
   changes:
   - "Broaden coverage (hardening review): the forbidden-path regex now catches environment-specific dotenv files (.env.production, .env.local, .env.staging) while still sparing committed templates (.env.example/.sample/.template/.dist/.defaults, which hold placeholders). Content patterns gain UNQUOTED credential assignments -- api/secret/auth key|token = or : value (>=20 chars) and password = or : value (>=12 chars) -- which the previous quote-anchored patterns missed; ${VAR} env references are excluded from the password value class to avoid false positives. Self-hosting preserved. Five eval cases added (.env.production block, .env.example allow, unquoted api_key, unquoted password, below-floor negative)."
+- version: 0.0.5
+  date: '2026-08-25'
+  changes:
+  - "Honesty (do-not-claim): drop 'high-entropy secret values' from the description -- the guard matches known patterns (vendor prefixes, private-key blocks, key/token/password assignments) and computes no entropy. Wording only; guard unchanged."

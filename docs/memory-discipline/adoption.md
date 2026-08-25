@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~323 tokens (chars/4, max 2000)
+INDEX.md: ~325 tokens (chars/4, max 2000)
 Recompiled 1 policies
 memory-discipline:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **memory-discipline**:
   persist: decisions|preferences|non_derivable_facts; never_persist: file_contents|git_history|task_intermediates
-  extract(atomic_facts); consolidate(similar > 0.85); decay(stale); verify(memory) before_recommend
+  extract(atomic_facts); consolidate(near_duplicate_facts); decay(stale); verify(memory) before_recommend
 ```

@@ -70,7 +70,7 @@
       "id": "injection-defense",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "7aac31436a9bae31b249d0a212bc2d442a4412d164ec73c0eaf8e8cfd56d2447",
+      "sha256": "142a9a0e61527930f37b96a9206cc21231fc6b56d14bcc1c442498be5087b96b",
       "source": "local",
       "artifacts_sha256": "c76a9bd12792ccecc411093054f16aac210953f3324b054586f3c8af3f7a0034"
     },
@@ -78,9 +78,9 @@
       "id": "memory-discipline",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "60252ebb85190d63bf4ab980d98f227b5cf9a45ff171e6cb86b315d310e14422",
+      "sha256": "52375ea85f3339745cc82feb12f7cfe31b6a9287c58fb3b6dcafd84b045e8311",
       "source": "local",
-      "artifacts_sha256": "2b08e1876e9536a5ffdda1c671fc9908fc967f5c790a6b03f96d4e580483b533"
+      "artifacts_sha256": "defa07673326d53370dcfda5bcd84ebd6305646318a735887bbe6c61acbaf393"
     },
     {
       "id": "protect-agent-config",
@@ -110,7 +110,7 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "fab195940dd7cdf58c5d9cb3c05fc967d48998f80a62d77bbe446f9c0273d75d",
+      "sha256": "b7f197e4be7607522f9223a4d7800500f7cacc4c17e91af443020e97f96fe74a",
       "source": "local",
       "artifacts_sha256": "856f4253f0be33ada4a68ae1470e4f868fcd5a6a3a2fb8e639ea48504be0e510"
     },
@@ -134,7 +134,7 @@
       "id": "verify-dependency-exists",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "325624540d4759dd72246a8b46b2a8ea63793a107243bb9afe5e3702dc37b92b",
+      "sha256": "0667de68d009b8b2d3b54139877b8ce70d349474085bedb00172a51f8b53c009",
       "source": "local"
     }
   ]

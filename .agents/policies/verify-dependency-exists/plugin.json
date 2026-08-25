@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "verify-dependency-exists",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt, pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in the allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt.",
   "author": {
     "name": "chock-core"
@@ -13,7 +13,7 @@
     "policy-as-code",
     "hook",
     "block",
-    "{'control': 'asi04', 'coverage': 'full', 'note': 'blocks unlisted deps added to requirements.txt, pyproject.toml, package.json, go.mod'}"
+    "{'control': 'asi04', 'coverage': 'partial', 'note': 'allowlist gate over newly-added dependencies in requirements.txt, pyproject.toml, package.json, go.mod at commit entry; it checks membership in a curated allowlist, not existence in the upstream registry'}"
   ],
   "extensions": {
     "io.github.open-coder-ai": {
