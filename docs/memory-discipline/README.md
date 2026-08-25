@@ -54,7 +54,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The `0.85` consolidation similarity and the decay policy are the tunable parts. What should not move is `verify(memory) before_recommend`: a memory that names a file or flag is a claim about a repo that has changed since.
+Consolidation of near-duplicate facts and the decay policy are the tunable parts. What should not move is `verify(memory) before_recommend`: a memory that names a file or flag is a claim about a repo that has changed since.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 
