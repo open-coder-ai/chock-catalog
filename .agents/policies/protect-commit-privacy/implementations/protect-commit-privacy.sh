@@ -15,8 +15,23 @@ set -eu
 # for a bare 'commit' token; for gh, match the `pr create|edit` prefix. A stray 'commit'
 # operand (`git log commit`) is harmless: with no -m/-b the collected text is empty and the
 # guard exits allow.
+# Skip transparent command prefixes (sudo, command, env VAR=val, nice, ...) so a wrapped
+# `command git commit` / `sudo git commit` / `env X=y git commit` is still detected, while
+# a non-command like `echo git commit` -- whose first token is not a wrapper -- is correctly
+# ignored. Value-taking wrapper flags (sudo -u X) remain best-effort, like the rest of this
+# guard; the commit-time gate and CI are the backstop.
+i=1
+while [[ $i -le $# ]]; do
+    case "${!i}" in
+        sudo|doas|command|env|nice|nohup|time|stdbuf|setsid|ionice) i=$((i+1)) ;;
+        *=*) i=$((i+1)) ;;
+        *) break ;;
+    esac
+done
+cmd="${!i:-}"
+
 is_target=0
-case "${1:-}" in
+case "$cmd" in
     git)
         for arg in "$@"; do
             [[ "$arg" == "commit" ]] && { is_target=1; break; }

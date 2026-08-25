@@ -102,9 +102,10 @@ protect-commit-privacy  [deterministic]
   PASS  tc-017                             authored  BLOCKED: commit message or PR body narrates the development process…
   PASS  tc-018                             authored  guard exit 0
   PASS  tc-019                             authored  guard exit 0
+  PASS  tc-020                             authored  BLOCKED: commit message or PR body narrates the development process…
   score 1.00
 
-5 policies: 19 pass, 41 skipped
+5 policies: 20 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -145,3 +145,10 @@ suite:
     execute:
       command: git commit -F -no-such-body-file
       expect: allow
+  - id: tc-020
+    category: adversarial
+    prompt: An agent wraps the commit in a transparent prefix to dodge argv[0] detection.
+    expect: The guard skips wrappers (command/sudo/env ...) and still scans the message.
+    execute:
+      command: command git commit -m "revert because the user asked"
+      expect: block
