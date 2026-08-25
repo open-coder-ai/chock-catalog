@@ -6,35 +6,81 @@
 # or a human-approved run carrying 'chock: approved-config-change'.
 set -eu
 
-full="$*"
+# Include the raw command string: Windows path forms and `bash -c "..."` payloads
+# arrive here as one argument, and CHOCK_RAW_COMMAND carries the pre-split original.
+full="$* ${CHOCK_RAW_COMMAND:-}"
+# Normalize backslashes to forward slashes so a Windows `.claude\settings.json` matches
+# the same protected patterns as its POSIX form.
+norm="${full//\\//}"
 
 # A human-approved change says so in the command itself, visibly.
 case "$full" in
     *"chock: approved-config-change"*) exit 0 ;;
 esac
 
-# Write-indicators: in-place editors, movers, deleters, and shell redirection.
-# Matched against the whole command line as well as individual tokens, because a
-# `bash -c "..."` payload arrives as one argument.
+# Whole-token raw writers (deleters/movers/editors). Word-split with globbing disabled so
+# a `bash -c "dd of=..."` payload is reached, and basename-normalized so /usr/bin/dd and a
+# bare dd both match.
+_has_writer_token() {
+    local tok
+    set -f
+    for tok in $1; do
+        case "${tok##*/}" in
+            tee|rm|mv|cp|chmod|truncate|patch|dd|ed|ex) set +f; return 0 ;;
+        esac
+    done
+    set +f
+    return 1
+}
+# Interpreters invoked in a *writing* form: a code/in-place flag that appears AFTER an
+# interpreter token WITHIN THE SAME command string, so option order does not matter
+# (python -O -c, perl -0777 -i, node --eval) and a path-qualified interpreter
+# (/usr/bin/python3 -c) still matches, yet a `bash -c` wrapper's own -c -- which precedes
+# any interpreter -- is not misattributed. A bare `python script.py path` read has no
+# write flag and still passes.
+_interp_write() {
+    local seen=0 tok
+    set -f
+    for tok in $1; do
+        case "${tok##*/}" in
+            python|python3|perl|ruby|node) seen=1 ;;
+        esac
+        case "$tok" in
+            -c|-e|--eval|-i|--in-place|-i.*|-pi|-pi.*|-ni|-ne)
+                if [ "$seen" -eq 1 ]; then set +f; return 0; fi ;;
+        esac
+    done
+    set +f
+    return 1
+}
+
 has_writer=0
+# In-place editors and shell redirection (substring: reaches bash -c payloads).
 case "$full" in
-    *"sed -i"*|*">"*) has_writer=1 ;;
+    *"sed -i"*|*"--in-place"*|*">"*) has_writer=1 ;;
 esac
-for arg in "$@"; do
-    case "$arg" in
-        tee|rm|mv|cp|chmod|truncate|patch) has_writer=1 ;;
-    esac
-done
+# argv and raw command are each word-split and scanned separately (never concatenated),
+# so one string's interpreter cannot pair with another string's flag.
+if _has_writer_token "$*" || _has_writer_token "${CHOCK_RAW_COMMAND:-}"; then
+    has_writer=1
+fi
+if _interp_write "$*" || _interp_write "${CHOCK_RAW_COMMAND:-}"; then
+    has_writer=1
+fi
 if [[ "$has_writer" -eq 0 ]]; then
     exit 0
 fi
 
+# Protected paths, matched against the backslash-normalized command line. Includes the
+# policy guard sources themselves (.agents/policies/<id>/implementations/) -- an agent
+# must not rewrite the very guard the compiled hook executes.
 protected=""
-case "$full" in
+case "$norm" in
     *AGENTS.md*|*CLAUDE.md*|*GEMINI.md*|*copilot-instructions.md*| \
     *.cursorrules*|*.windsurfrules*|*.aider.conf.yml*| \
     *.claude/settings*|*.mcp.json*| \
-    *.chock/bin/*|*.chock/compiled/*|*.git/hooks/*)
+    *.chock/bin/*|*.chock/compiled/*|*.git/hooks/*| \
+    *.agents/policies/*implementations*)
         protected=yes
         ;;
 esac

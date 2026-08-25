@@ -10,7 +10,7 @@
 | **Mechanism** | guard script `protect-agent-config.sh` |
 | **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 8 total, 8 executable |
+| **Eval cases** | 24 total, 24 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -30,7 +30,7 @@ A guard script, `implementations/protect-agent-config.sh`, run before the agent 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```
-agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled): never(hand_edit|delete); regenerate_via(chock sync)
+agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
 if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
 ```
 
