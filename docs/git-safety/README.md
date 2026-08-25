@@ -17,7 +17,7 @@
 
 ## What it is about
 
-trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks.
+trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Install block-destructive-commands, block-no-verify and protect-main-branch to enforce the hard controls deterministically; this rule is the advisory layer over them plus atomic-commit and diff-size guidance no gate can decide.
 
 ## What it solves
 
@@ -28,8 +28,8 @@ Git operations that lose work rather than record it: force pushes over shared hi
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```
-never(without_approval): force_push|reset_hard|branch_-D|rm_-rf; never: --no-verify|skip_hooks
-before(commit): feature_branch(not main|master); prefer: atomic_commits; ask_if(diff > 500_lines)
+enforced_when_installed(block-destructive-commands): force_push|reset_hard|rm_-rf; enforced_when_installed(block-no-verify): --no-verify|skip_hooks; enforced_when_installed(protect-main-branch): direct_commit|push(main|master)
+advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); ask_if(diff > 500_lines)
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

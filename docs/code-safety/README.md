@@ -17,7 +17,7 @@
 
 ## What it is about
 
-trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code.
+trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets and verify-dependency-exists to enforce the secret and dependency slices deterministically; the eval/exec and unsanitized-SQL guidance stays advisory (no diff-time gate can decide whether dynamic execution or a query string is unsafe).
 
 ## What it solves
 
@@ -28,8 +28,8 @@ The four ways generated code becomes a liability: committed credentials, `eval`/
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```
-never(commit): secrets|keys|tokens|passwords|.env; never(add): eval|exec|unsanitized_sql
-before(dependency): verify(exists_in_registry); on_find(secret|hallucinated_pkg): block + remove
+enforced_when_installed(scan-secrets): commit(secrets|keys|tokens|passwords|.env); enforced_when_installed(verify-dependency-exists): add(unlisted_dependency)
+advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

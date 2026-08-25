@@ -80,9 +80,9 @@
       {
         "id": "code-safety",
         "artifact": "rule",
-        "version": "0.0.1",
+        "version": "0.0.2",
         "name": "Code Safety Rule",
-        "description": "trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code.",
+        "description": "trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets and verify-dependency-exists to enforce the secret and dependency slices deterministically; the eval/exec and unsanitized-SQL guidance stays advisory (no diff-time gate can decide whether dynamic execution or a query string is unsafe).",
         "path": ".agents/policies/code-safety",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -125,9 +125,9 @@
       {
         "id": "git-safety",
         "artifact": "rule",
-        "version": "0.0.1",
+        "version": "0.0.2",
         "name": "Git Safety Rule",
-        "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks.",
+        "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Install block-destructive-commands, block-no-verify and protect-main-branch to enforce the hard controls deterministically; this rule is the advisory layer over them plus atomic-commit and diff-size guidance no gate can decide.",
         "path": ".agents/policies/git-safety",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
