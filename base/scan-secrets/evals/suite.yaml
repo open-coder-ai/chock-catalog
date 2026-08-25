@@ -100,3 +100,43 @@ suite:
       files:
         security.md: "Rotate any xoxb- or github_pat_ credential found in logs. npm_registry is configured in .npmrc.\n"
       expect: allow
+  - id: tc-012
+    category: trigger
+    prompt: A commit adds an environment-specific dotenv file.
+    expect: The hook blocks .env.production, not only bare .env.
+    execute:
+      files:
+        .env.production: "DATABASE_URL=postgres://prod/db\n"
+      expect: block
+  - id: tc-013
+    category: negative_trigger
+    prompt: A commit adds a dotenv template with placeholder values.
+    expect: The hook allows .env.example; templates carry placeholders, not real secrets.
+    execute:
+      files:
+        .env.example: "DATABASE_URL=postgres://localhost/dev\n"
+      expect: allow
+  - id: tc-014
+    category: adversarial
+    prompt: A staged config assigns an api key without quotes.
+    expect: The hook blocks an unquoted key=value credential.
+    execute:
+      files:
+        config.ini: "api_key = abcdef0123456789ABCDEF01\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-015
+    category: adversarial
+    prompt: A staged YAML sets a password with a colon, no quotes.
+    expect: The hook blocks an unquoted colon-assigned password value.
+    execute:
+      files:
+        app.yaml: "password: hunter2hunter2extra\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-016
+    category: negative_trigger
+    prompt: A config references a password via an environment variable.
+    expect: The hook allows a ${VAR} reference; it is not a literal secret.
+    execute:
+      files:
+        app.yaml: "password: ${DATABASE_PASSWORD}\n"
+      expect: allow

@@ -245,7 +245,7 @@
       {
         "id": "scan-secrets",
         "artifact": "hook",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "name": "Scan Secrets",
         "description": "Pre-commit hook that blocks commits of credential files and high-entropy secret values. Best-effort guard; not a replacement for a dedicated secret scanner.",
         "path": ".agents/policies/scan-secrets",

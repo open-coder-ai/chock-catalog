@@ -12,7 +12,7 @@ metadata:
 Pre-commit hook that blocks commits of credential files and high-entropy secret values. Best-effort guard; not a replacement for a dedicated secret scanner.
 
 ```
-on(commit): block(content_regex) scan=added_lines forbidden_path_regex=\.(env|pem|key|p12|pfx|jks|keystore)$ ...
+on(commit): block(content_regex) scan=added_lines forbidden_path_regex=(\.env(\.(?!(sample|example|template|dist|def... ...
 Potential secret detected in staged changes. Remove credentials and rotate any exposed keys. Add '# pragma: allowlist secret' on the same line only for documented test fixtures.
 ```
 

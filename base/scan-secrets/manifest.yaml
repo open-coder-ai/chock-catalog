@@ -1,6 +1,6 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Pre-commit hook that blocks commits of credential files and high-entropy secret values.
   Best-effort guard; not a replacement for a dedicated secret scanner.
@@ -22,10 +22,13 @@ hook:
       Add '# pragma: allowlist secret' on the same line only for documented test fixtures.
     params:
       scan: added_lines
-      forbidden_path_regex: '\.(env|pem|key|p12|pfx|jks|keystore)$'
+      # .env plus environment-specific variants (.env.production, .env.local, .env.staging)
+      # but NOT the committed templates (.env.example/.sample/.template/.dist/.defaults),
+      # which carry placeholders, not real secrets.
+      forbidden_path_regex: '(\.env(\.(?!(sample|example|template|dist|defaults)$)[^/]+)?|\.(pem|key|p12|pfx|jks|keystore))$'
       allowlist_pragma: '#\s*pragma:\s*allowlist\s+secret'
       content_pattern: |-
-        (?i)(AKIA[0-9A-Z]{16}|ghp_[0-9A-Za-z]{36}|ghs_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{22,}|xox[bpas]-[0-9A-Za-z-]{10,}|(sk|rk)_live_[0-9A-Za-z]{16,}|sk-proj-[0-9A-Za-z_-]{20,}|sk-ant-[0-9A-Za-z_-]{20,}|AIza[0-9A-Za-z_-]{35}|npm_[0-9A-Za-z]{36}|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|password\s*=\s*["'][^"'\s]{12,}["'])
+        (?i)(AKIA[0-9A-Z]{16}|ghp_[0-9A-Za-z]{36}|ghs_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{22,}|xox[bpas]-[0-9A-Za-z-]{10,}|(sk|rk)_live_[0-9A-Za-z]{16,}|sk-proj-[0-9A-Za-z_-]{20,}|sk-ant-[0-9A-Za-z_-]{20,}|AIza[0-9A-Za-z_-]{35}|npm_[0-9A-Za-z]{36}|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|password\s*=\s*["'][^"'\s]{12,}["']|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}|password\s*[=:]\s*[^\s"'${}]{12,})
 
 compliance:
   mitre_atlas:
@@ -36,7 +39,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-07-12T00:00:00Z"
+  updated_at: "2026-08-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -62,3 +65,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas); no mechanism change."
+- version: 0.0.4
+  date: '2026-08-24'
+  changes:
+  - "Broaden coverage (hardening review): the forbidden-path regex now catches environment-specific dotenv files (.env.production, .env.local, .env.staging) while still sparing committed templates (.env.example/.sample/.template/.dist/.defaults, which hold placeholders). Content patterns gain UNQUOTED credential assignments -- api/secret/auth key|token = or : value (>=20 chars) and password = or : value (>=12 chars) -- which the previous quote-anchored patterns missed; ${VAR} env references are excluded from the password value class to avoid false positives. Self-hosting preserved. Five eval cases added (.env.production block, .env.example allow, unquoted api_key, unquoted password, below-floor negative)."
