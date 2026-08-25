@@ -4,9 +4,10 @@ version: "0.0.2"
 description: >
   trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies.
   avoid: committing credentials, adding unverified packages, executing dynamic code.
-  Install scan-secrets and verify-dependency-exists to enforce the secret and dependency
-  slices deterministically; the eval/exec and unsanitized-SQL guidance stays advisory (no
-  diff-time gate can decide whether dynamic execution or a query string is unsafe).
+  Install scan-secrets for the enforced counterpart of the secret slice (a commit-time gate),
+  and verify-dependency-exists for the dependency slice (opt-in: disabled by default, needs a
+  curated allowlist); the eval/exec and unsanitized-SQL guidance stays advisory (no diff-time
+  gate can decide whether dynamic execution or a query string is unsafe).
 artifact: rule
 enforcement: advise
 compliance:
@@ -14,7 +15,7 @@ compliance:
   - ASI05
 rule:
   text: |
-    enforced_when_installed(scan-secrets): commit(secrets|keys|tokens|passwords|.env); enforced_when_installed(verify-dependency-exists): add(unlisted_dependency)
+    see(scan-secrets): commit(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
     advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
 provenance:
   author: "chock-core"
@@ -40,4 +41,4 @@ changelog:
 - version: 0.0.2
   date: '2026-08-25'
   changes:
-  - "Meta-composition + honesty (hardening review): recast the advise-tier rule so the secret and dependency slices point to their enforced siblings (scan-secrets, verify-dependency-exists) rather than asserting 'never' and 'block' from an advisory policy; eval/exec and unsanitized-SQL stay advisory (no diff-time gate can decide them), and on_find now says propose_removal_to_human, not 'block + remove'. Wording/framing only."
+  - "Meta-composition + honesty (hardening review): recast the advise-tier rule so the secret and dependency slices point via see() to their sibling policies -- scan-secrets (a commit-time gate) and verify-dependency-exists (marked opt_in, since it is disabled by default and needs a curated allowlist) -- rather than asserting 'never'/'block' or 'enforced when installed' from an advisory policy. eval/exec and unsanitized-SQL stay advisory (no diff-time gate can decide them), and on_find now says propose_removal_to_human, not 'block + remove'. Wording/framing only."

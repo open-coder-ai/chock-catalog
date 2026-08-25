@@ -11,13 +11,13 @@
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
 | **Eval cases** | 4 total, 0 executable |
-| **Enabled by default** | yes |
+| **Enabled by default** | no — opt in |
 
 <!-- generated:end -->
 
 ## What it is about
 
-trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets and verify-dependency-exists to enforce the secret and dependency slices deterministically; the eval/exec and unsanitized-SQL guidance stays advisory (no diff-time gate can decide whether dynamic execution or a query string is unsafe).
+trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the enforced counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for the dependency slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and unsanitized-SQL guidance stays advisory (no diff-time gate can decide whether dynamic execution or a query string is unsafe).
 
 ## What it solves
 
@@ -28,7 +28,7 @@ The four ways generated code becomes a liability: committed credentials, `eval`/
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```
-enforced_when_installed(scan-secrets): commit(secrets|keys|tokens|passwords|.env); enforced_when_installed(verify-dependency-exists): add(unlisted_dependency)
+see(scan-secrets): commit(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
 advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
 ```
 
@@ -51,6 +51,8 @@ Or copy the folder — it does the same thing, byte for byte:
 cp -r base/code-safety  <your-repo>/.agents/policies/code-safety
 cd <your-repo> && chock sync --repo .
 ```
+
+This one ships disabled. Enable it with `chock enable code-safety` once its prerequisites are in place.
 
 ## Customising it
 

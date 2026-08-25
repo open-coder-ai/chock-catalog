@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "git-safety",
   "version": "0.0.2",
-  "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Install block-destructive-commands, block-no-verify and protect-main-branch to enforce the hard controls deterministically; this rule is the advisory layer over them plus atomic-commit and diff-size guidance no gate can decide.",
+  "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced counterparts of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution guards on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them plus atomic-commit and diff-size guidance no gate can decide.",
   "author": {
     "name": "chock-core"
   },
