@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~317 tokens (chars/4, max 2000)
+INDEX.md: ~338 tokens (chars/4, max 2000)
 Recompiled 1 policies
 git-safety:
   claude: advisory
@@ -90,6 +90,6 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 
 ```text
 - **git-safety**:
-  never(without_approval): force_push|reset_hard|branch_-D|rm_-rf; never: --no-verify|skip_hooks
-  before(commit): feature_branch(not main|master); prefer: atomic_commits; ask_if(diff > 500_lines)
+  see(block-destructive-commands): force_push|reset_hard|rm_-rf; see(block-no-verify): --no-verify|skip_hooks; see(protect-main-branch): direct_commit|push(main|master)
+  advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); ask_if(diff > 500_lines)
 ```

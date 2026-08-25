@@ -46,9 +46,9 @@
       "id": "code-safety",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "e5c5d244e907efa1aff64bc965dcf1f8e603f6b1c4543c5c34d831a51aad1e55",
+      "sha256": "9c86fd6e6d5ddfd5a5ae66e2ba1b5c8db5c8cf35bb06548b9caddaeae805bf6f",
       "source": "local",
-      "artifacts_sha256": "ee9959b8e6478f2c6ea47a8143211dce7fb6894674fbc37fea92ee04db5f91e8"
+      "artifacts_sha256": "bf0dc813438a989b2a193940d0b0a32cba3c651fbff20aead734d16d1a58491e"
     },
     {
       "id": "context-hygiene",
@@ -62,9 +62,9 @@
       "id": "git-safety",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "51777d1a669925a283be1ee31f4e8b52303ab8a602126d0707e083cdab3c36a1",
+      "sha256": "6a93229ff7093c73eda0e02227b3266822baeff4eeff409c1252feeb39a1c3b1",
       "source": "local",
-      "artifacts_sha256": "e1660f2d351f13203fa59f6d1a40d6eb8f2b6af0f93af5cb090512bedfa975e3"
+      "artifacts_sha256": "bab895ad43ce808a0b64298f7e943954901e05de825e17fcce035cbdb9b2ec2a"
     },
     {
       "id": "injection-defense",

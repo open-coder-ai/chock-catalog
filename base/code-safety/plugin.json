@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "code-safety",
-  "version": "0.0.1",
-  "description": "trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code.",
+  "version": "0.0.2",
+  "description": "trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the enforced counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for the dependency slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and unsanitized-SQL guidance stays advisory (no diff-time gate can decide whether dynamic execution or a query string is unsafe).",
   "author": {
     "name": "chock-core"
   },

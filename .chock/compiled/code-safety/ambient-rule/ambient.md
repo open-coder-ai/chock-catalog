@@ -1,6 +1,6 @@
 <!-- chock:hooks:start (compiled by chock -- edit .agents/policies/code-safety/) -->
 ```
-never(commit): secrets|keys|tokens|passwords|.env; never(add): eval|exec|unsanitized_sql
-before(dependency): verify(exists_in_registry); on_find(secret|hallucinated_pkg): block + remove
+see(scan-secrets): commit(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
+advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
 ```
 <!-- chock:hooks:end -->

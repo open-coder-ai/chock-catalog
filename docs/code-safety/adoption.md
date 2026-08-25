@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~316 tokens (chars/4, max 2000)
+INDEX.md: ~327 tokens (chars/4, max 2000)
 Recompiled 1 policies
 code-safety:
   claude: advisory
@@ -90,6 +90,6 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 
 ```text
 - **code-safety**:
-  never(commit): secrets|keys|tokens|passwords|.env; never(add): eval|exec|unsanitized_sql
-  before(dependency): verify(exists_in_registry); on_find(secret|hallucinated_pkg): block + remove
+  see(scan-secrets): commit(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
+  advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
 ```
