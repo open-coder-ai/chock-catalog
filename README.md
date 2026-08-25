@@ -75,7 +75,7 @@ codex plugin format, Codex after its per-hook trust review).
 | :--- | :--- | ---: |
 | [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `docker volume rm`, `aws s3 rm --recursive`, `gcloud … delete` | 26/26 |
 | [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, which bypasses every gate above | 12/12 |
-| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 21/21 |
+| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 24/24 |
 | [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages that narrate the development conversation instead of describing the change — a leak class that only exists once an agent authors the commit | 7/7 |
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.

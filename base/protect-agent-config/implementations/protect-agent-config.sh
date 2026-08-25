@@ -18,19 +18,34 @@ case "$full" in
     *"chock: approved-config-change"*) exit 0 ;;
 esac
 
+# Whole-token raw writers (deleters/movers/editors). Word-split with globbing disabled so
+# a `bash -c "dd of=..."` payload is reached, and basename-normalized so /usr/bin/dd and a
+# bare dd both match.
+_has_writer_token() {
+    local tok
+    set -f
+    for tok in $1; do
+        case "${tok##*/}" in
+            tee|rm|mv|cp|chmod|truncate|patch|dd|ed|ex) set +f; return 0 ;;
+        esac
+    done
+    set +f
+    return 1
+}
 # Interpreters invoked in a *writing* form: a code/in-place flag that appears AFTER an
 # interpreter token WITHIN THE SAME command string, so option order does not matter
-# (python -O -c, perl -0777 -i, node --eval) yet a `bash -c` wrapper's own -c -- which
-# precedes any interpreter -- is not misattributed. The argv and the raw command are
-# scanned SEPARATELY (never concatenated) so one string's interpreter cannot pair with
-# another string's flag. Globbing is disabled during the split so a literal * is not
-# expanded against the filesystem. A bare `python script.py path` read has no write flag.
+# (python -O -c, perl -0777 -i, node --eval) and a path-qualified interpreter
+# (/usr/bin/python3 -c) still matches, yet a `bash -c` wrapper's own -c -- which precedes
+# any interpreter -- is not misattributed. A bare `python script.py path` read has no
+# write flag and still passes.
 _interp_write() {
     local seen=0 tok
     set -f
     for tok in $1; do
-        case "$tok" in
+        case "${tok##*/}" in
             python|python3|perl|ruby|node) seen=1 ;;
+        esac
+        case "$tok" in
             -c|-e|--eval|-i|--in-place|-i.*|-pi|-pi.*|-ni|-ne)
                 if [ "$seen" -eq 1 ]; then set +f; return 0; fi ;;
         esac
@@ -44,13 +59,11 @@ has_writer=0
 case "$full" in
     *"sed -i"*|*"--in-place"*|*">"*) has_writer=1 ;;
 esac
-# Deleters, movers, and raw writers as whole tokens.
-for arg in "$@"; do
-    case "$arg" in
-        tee|rm|mv|cp|chmod|truncate|patch|dd|ed|ex) has_writer=1 ;;
-    esac
-done
-# Interpreter write-forms (argv and raw command scanned independently).
+# argv and raw command are each word-split and scanned separately (never concatenated),
+# so one string's interpreter cannot pair with another string's flag.
+if _has_writer_token "$*" || _has_writer_token "${CHOCK_RAW_COMMAND:-}"; then
+    has_writer=1
+fi
 if _interp_write "$*" || _interp_write "${CHOCK_RAW_COMMAND:-}"; then
     has_writer=1
 fi

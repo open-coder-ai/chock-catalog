@@ -158,3 +158,24 @@ suite:
     execute:
       command: 'bash -c "python foo.py .claude/settings.json"'
       expect: allow
+  - id: tc-022
+    category: trigger
+    prompt: An agent invokes a path-qualified interpreter to write a protected file.
+    expect: The interpreter is matched by basename, not only as a bare name.
+    execute:
+      command: '/usr/bin/python3 -c "open(''AGENTS.md'',''w'').write(''x'')"'
+      expect: block
+  - id: tc-023
+    category: trigger
+    prompt: An agent hides a raw writer inside a bash -c payload.
+    expect: Whole-token writers are scanned inside the wrapped command, not just argv.
+    execute:
+      command: 'bash -c "dd of=.mcp.json"'
+      expect: block
+  - id: tc-024
+    category: trigger
+    prompt: An agent opens a protected file in ed from inside a bash -c payload.
+    expect: Editor tokens in the wrapped command are detected too.
+    execute:
+      command: 'bash -c "ed AGENTS.md"'
+      expect: block
