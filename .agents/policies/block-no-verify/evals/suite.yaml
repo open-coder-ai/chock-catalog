@@ -97,3 +97,24 @@ suite:
     execute:
       command: git push -n origin commit
       expect: allow
+  - id: tc-014
+    category: adversarial
+    prompt: A request abbreviates --no-verify to --no-veri, which git accepts as an unambiguous prefix.
+    expect: The guard refuses git commit --no-veri.
+    execute:
+      command: git commit --no-veri -m wip
+      expect: block
+  - id: tc-015
+    category: negative_trigger
+    prompt: A request types --no-ver, which git rejects as ambiguous with --no-verbose.
+    expect: The guard allows git commit --no-ver; git never runs it, so there is nothing to block, and blocking it would refuse a legitimate (if failing) command.
+    execute:
+      command: git commit --no-ver -m wip
+      expect: allow
+  - id: tc-016
+    category: adversarial
+    prompt: A request abbreviates the push --no-verify flag.
+    expect: The guard refuses git push --no-verif; the prefix skips the pre-push hook exactly as the full flag does.
+    execute:
+      command: git push --no-verif origin main
+      expect: block

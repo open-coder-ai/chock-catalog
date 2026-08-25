@@ -14,7 +14,7 @@
       "id": "block-destructive-commands",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "64a1796e371ccdfda22cda79eafa593f2cd46d356d034382137085d670e8fc31",
+      "sha256": "8538b4ce867e7a3c09d6bd91dcf3b035fe5756295b29871e8f0c88ace2d677ed",
       "source": "local",
       "artifacts_sha256": "07d54a6e496481cb0dbf109e460c2c7c40dbdd007f6f78794e953ed0bc1c00ff"
     },
@@ -30,7 +30,7 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "e31078a47505f09075eec7d494c6ea882891da468b10a0e68bbb7c01353cd6bf",
+      "sha256": "45be3cc072064cf94fc238d90bbc5b31969582904dcb4f6e3b6d65b77cbd2bda",
       "source": "local",
       "artifacts_sha256": "7e286e68e1b7b791ccde02895cf555b5af16bc5c0fcc92c5e1aca2982c510343"
     },

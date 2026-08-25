@@ -109,9 +109,17 @@ block-destructive-commands  [deterministic]
   PASS  tc-024                             authored  BLOCKED: destructive PowerShell/cmd removal targeting a drive root …
   PASS  tc-025                             authored  guard exit 0
   PASS  tc-026                             authored  guard exit 0
+  PASS  tc-027                             authored  BLOCKED: git reset --hard is not allowed without approval.
+  PASS  tc-028                             authored  BLOCKED: git reset --hard is not allowed without approval.
+  PASS  tc-029                             authored  guard exit 0
+  PASS  tc-030                             authored  BLOCKED: git push with a '+' force-refspec ('+main') overwrites the…
+  PASS  tc-031                             authored  guard exit 0
+  PASS  tc-032                             authored  BLOCKED: git clean -f is not allowed without approval.
+  PASS  tc-033                             authored  BLOCKED: git clean -f is not allowed without approval.
+  PASS  tc-034                             authored  BLOCKED: destructive PowerShell/cmd removal targeting a drive root …
   score 1.00
 
-5 policies: 26 pass, 41 skipped
+5 policies: 34 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -57,7 +57,11 @@ done
 # hook-skipping meaning.
 has_n=0
 for arg in "$@"; do
-    if [[ "$arg" == "--no-verify" ]]; then
+    # git accepts any unambiguous prefix, so `--no-veri`, `--no-verif` and `--no-verify`
+    # all skip hooks. The floor is `--no-veri` (9 chars): `--no-ver` and shorter collide
+    # with `--no-verbose`, which git rejects as ambiguous, so there is nothing to block
+    # there. Matched as "arg is a prefix of --no-verify, at least 9 chars long".
+    if [[ ${#arg} -ge 9 && "--no-verify" == "$arg"* ]]; then
         has_n=1
     elif [[ "$has_commit" -eq 1 && "$arg" == "-n" ]]; then
         has_n=1

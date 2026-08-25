@@ -10,7 +10,7 @@
 | **Mechanism** | guard script `block-destructive.sh` |
 | **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 26 total, 26 executable |
+| **Eval cases** | 34 total, 34 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
