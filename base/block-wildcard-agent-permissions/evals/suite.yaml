@@ -86,17 +86,17 @@ suite:
       expect: block
   - id: tc-010
     category: adversarial
-    prompt: A pretty-printed settings file puts the wildcard on its own line.
-    expect: The hook blocks; a lone "*" array element is caught line-by-line.
+    prompt: A staged MCP config lists the wildcard among a server's tools array.
+    expect: The hook blocks a wildcard in a tools array.
     execute:
       files:
-        .claude/settings.json: "{\n  \"permissions\": {\n    \"allow\": [\n      \"*\"\n    ]\n  }\n}\n"  # pragma: allowlist broad-agency
+        mcp.json: "{\"mcpServers\": {\"s\": {\"tools\": [\"read\", \"*\"]}}}\n"  # pragma: allowlist broad-agency
       expect: block
   - id: tc-011
-    category: negative_trigger
-    prompt: A pretty-printed settings file scopes each grant across lines, no wildcard.
-    expect: The hook allows; no line is a lone wildcard.
+    category: adversarial
+    prompt: A staged MCP config always-allows a later wildcard element.
+    expect: The hook blocks a wildcard that is not the first alwaysAllow element.
     execute:
       files:
-        .claude/settings.json: "{\n  \"permissions\": {\n    \"allow\": [\n      \"Read\",\n      \"Grep\"\n    ]\n  }\n}\n"
-      expect: allow
+        mcp.json: "{\"mcpServers\": {\"s\": {\"alwaysAllow\": [\"list\", \"*\"]}}}\n"  # pragma: allowlist broad-agency
+      expect: block

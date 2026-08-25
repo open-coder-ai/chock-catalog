@@ -30,12 +30,15 @@ hook:
       allowlist_pragma: 'pragma:\s*allowlist\s+broad-agency'
       # Written so the pattern never matches its own source text in this manifest or
       # the compiled gate.json (#32 class): [*] and \s stand between the literal
-      # tokens real content carries. [^\]]* lets the wildcard be ANY array element
-      # (not only the first), the lone-line alternative catches pretty-printed JSON
-      # where "*" sits on its own line, and defaultMode:bypassPermissions is the
-      # whole-session escape hatch.
+      # tokens real content carries. [^\]]* lets the wildcard be ANY array element on
+      # the line (not only the first), and defaultMode:bypassPermissions is the
+      # whole-session escape hatch. LIMITATION: this gate matches per line (the engine
+      # splits even staged_blob into lines), so a pretty-printed grant with the wildcard
+      # alone on its own line is NOT caught here -- a line-scan cannot tell that "*" sits
+      # inside an allow array without unacceptable false positives on unrelated arrays.
+      # Catching that form needs a structure-aware gate kind (future work).
       content_pattern: |-
-        Bash\([*]\)|"allow"\s*:\s*\[[^\]]*"\*"|"alwaysAllow"\s*:\s*\[[^\]]*"\*"|"tools"\s*:\s*\[[^\]]*"\*"|"defaultMode"\s*:\s*"bypassPermissions"|^\s*"\*"\s*,?\s*$
+        Bash\([*]\)|"allow"\s*:\s*\[[^\]]*"\*"|"alwaysAllow"\s*:\s*\[[^\]]*"\*"|"tools"\s*:\s*\[[^\]]*"\*"|"defaultMode"\s*:\s*"bypassPermissions"
 
 compliance:
   mitre_atlas:
@@ -75,4 +78,4 @@ changelog:
 - version: 0.0.3
   date: '2026-08-24'
   changes:
-  - "Close the regex under-match found in the hardening review: the wildcard is now matched as ANY array element ([^\\]]*), not only the first; a lone \"*\" on its own line is caught (pretty-printed multi-line settings.json, the common real form); and defaultMode:bypassPermissions -- the whole-session escape hatch -- is blocked. Self-hosting is preserved (the pattern still never matches its own escaped source in the manifest or gate.json). Four eval cases added (any-element, bypassPermissions, multi-line lone wildcard, and a multi-line scoped negative)."
+  - "Close the single-line regex under-match found in the hardening review: the wildcard is now matched as ANY array element on the line ([^\\]]*) across allow/alwaysAllow/tools, not only the first; and defaultMode:bypassPermissions -- the whole-session escape hatch -- is blocked. Self-hosting is preserved (the pattern still never matches its own escaped source in the manifest or gate.json). Four eval cases added (allow any-element, bypassPermissions, tools any-element, alwaysAllow later element). A pretty-printed grant with the wildcard alone on its own line is deliberately NOT matched: this gate is line-by-line (the engine splits even staged_blob into lines), and a line-scan cannot tell that a lone \"*\" sits inside a permission array without false-positiving on unrelated arrays -- catching that form needs a structure-aware gate kind (future work), stated here rather than shipped as broad friction."
