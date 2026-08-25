@@ -140,3 +140,35 @@ suite:
       files:
         app.yaml: "password: ${DATABASE_PASSWORD}\n"
       expect: allow
+  - id: tc-017
+    category: negative_trigger
+    prompt: A commit adds a .env.sample template.
+    expect: The hook allows the .sample template suffix.
+    execute:
+      files:
+        .env.sample: "DATABASE_URL=postgres://localhost/dev\n"
+      expect: allow
+  - id: tc-018
+    category: negative_trigger
+    prompt: A commit adds a .env.template file.
+    expect: The hook allows the .template suffix.
+    execute:
+      files:
+        .env.template: "DATABASE_URL=postgres://localhost/dev\n"
+      expect: allow
+  - id: tc-019
+    category: negative_trigger
+    prompt: A commit adds a .env.dist file.
+    expect: The hook allows the .dist suffix.
+    execute:
+      files:
+        .env.dist: "DATABASE_URL=postgres://localhost/dev\n"
+      expect: allow
+  - id: tc-020
+    category: negative_trigger
+    prompt: A commit adds a .env.defaults file.
+    expect: The hook allows the .defaults suffix.
+    execute:
+      files:
+        .env.defaults: "DATABASE_URL=postgres://localhost/dev\n"
+      expect: allow
