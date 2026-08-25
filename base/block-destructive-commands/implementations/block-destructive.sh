@@ -52,6 +52,19 @@ has_flag() {
     return 1
 }
 
+# git accepts any unambiguous prefix of a long option, so `git reset --h` == `--hard`.
+# Matches a flag token that is a prefix of $1 and at least $2 characters long (the
+# unambiguous floor). Deliberately NOT used for `push --force`: there `--force` is itself
+# a prefix of the SAFE `--force-with-lease`, and git rejects shorter abbreviations as
+# ambiguous, so exact matching is correct and prefix-matching would block the safe form.
+has_flag_prefix() {
+    local full="$1" min="$2" f
+    for f in "${flags[@]}"; do
+        [[ ${#f} -ge $min && "$full" == "$f"* ]] && return 0
+    done
+    return 1
+}
+
 has_command() {
     local cmd="$1"
     for a in "${all_args[@]}"; do
@@ -81,13 +94,21 @@ if has_command "git"; then
             echo "BLOCKED: git push --force is not allowed; use --force-with-lease on a feature branch." >&2
             exit 1
         fi
+        # A leading '+' on a refspec force-updates the remote ref with no --force flag:
+        # `git push origin +main` and `git push origin +refs/heads/main` both overwrite.
+        for t in "${targets[@]}"; do
+            if [[ "$t" == +* || "$t" == *:+* ]]; then
+                echo "BLOCKED: git push with a '+' force-refspec ('$t') overwrites the remote ref; use --force-with-lease on a feature branch." >&2
+                exit 1
+            fi
+        done
     elif [[ "$subcommand" == "reset" ]]; then
-        if has_flag "--hard"; then
+        if has_flag_prefix "--hard" 3; then
             echo "BLOCKED: git reset --hard is not allowed without approval." >&2
             exit 1
         fi
     elif [[ "$subcommand" == "clean" ]]; then
-        if has_flag "-f" || has_flag "--force"; then
+        if has_flag "-f" || has_flag_prefix "--force" 3; then
             echo "BLOCKED: git clean -f is not allowed without approval." >&2
             exit 1
         fi
@@ -160,18 +181,19 @@ fi
 # PowerShell / cmd destructive removals. POSIX shlex (the adapter's tokenizer) mangles
 # Windows paths (C:\x -> C:x) and PowerShell long flags (-Recurse -> -R -e -c ...), so this
 # matches the RAW command text (CHOCK_RAW_COMMAND, set by the adapter and the eval harness)
-# rather than argv. Only a recursive+force removal targeting a drive root, filesystem root,
-# or home path is blocked -- a relative target (./build, node_modules) stays allowed, exactly
-# as `rm -rf ./build` does. Without the raw command (an older vendored adapter) this branch
-# is skipped and the bash `rm` path above still applies.
+# rather than argv. A recursive removal targeting a drive root, filesystem root, or home
+# path is blocked whether or not -Force is present -- -Recurse alone deletes the tree
+# (PowerShell only prompts for read-only children, which an agent's session auto-answers),
+# so requiring -Force was a bypass. A relative target (./build, node_modules) stays allowed,
+# exactly as `rm -rf ./build` does. Without the raw command (an older vendored adapter) this
+# branch is skipped and the bash `rm` path above still applies.
 raw="${CHOCK_RAW_COMMAND-}"
 if [ -n "$raw" ]; then
     shopt -s nocasematch 2>/dev/null || true
     verb_re='(^|[|;&[:space:]])(remove-item|ri|rd|rmdir|del|erase)([[:space:]]|$)'
     recurse_re='(-recurse|-r([[:space:]]|$)|/s([[:space:]]|$))'
-    force_re='(-force|-fo([[:space:]]|$)|/q([[:space:]]|$)|/f([[:space:]]|$))'
     target_re='([a-z]:[\\/]|[a-z]:([[:space:]]|$)|(^|[[:space:]])[\\/]([[:space:]]|$)|~|\$home|\$env:userprofile|\$env:home)'
-    if [[ "$raw" =~ $verb_re ]] && [[ "$raw" =~ $recurse_re ]] && [[ "$raw" =~ $force_re ]] && [[ "$raw" =~ $target_re ]]; then
+    if [[ "$raw" =~ $verb_re ]] && [[ "$raw" =~ $recurse_re ]] && [[ "$raw" =~ $target_re ]]; then
         echo "BLOCKED: destructive PowerShell/cmd removal targeting a drive root or home path is not allowed without approval." >&2
         exit 1
     fi

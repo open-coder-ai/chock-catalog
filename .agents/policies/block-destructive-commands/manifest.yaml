@@ -1,6 +1,6 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.0.6"
+version: "0.0.7"
 description: >
   Best-effort guard against destructive commands: rm -rf targeting absolute, home, or
   root-adjacent paths; git push --force (not --force-with-lease); git reset --hard;
@@ -28,7 +28,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-07-12T00:00:00Z"
+  updated_at: "2026-08-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -69,3 +69,7 @@ changelog:
   date: '2026-08-22'
   changes:
   - "Delivery bump for the Claude-format plugin packages built from this policy: on republish, their PreToolUse command is a single python3 invocation (the proposed interpreter-fallback chain was rejected after review proved it could erase deny verdicts) and their descriptions state the per-client fail posture. Guard logic and this repo's own artifacts are unchanged."
+- version: 0.0.7
+  date: '2026-08-24'
+  changes:
+  - "Git flag-parsing hardening (hardening review): git accepts unambiguous option prefixes, so `git reset --h` and `git clean --f` now match --hard/--force via prefix (floor 3 chars). `push --force` stays an EXACT match on purpose -- it is itself a prefix of the safe --force-with-lease, which must not be blocked, and git rejects shorter push abbreviations as ambiguous. Also block a '+' force-refspec on push (`git push origin +main`, `+refs/heads/main`), which overwrites the remote ref with no --force flag. The PowerShell/cmd branch no longer requires -Force -- -Recurse alone deletes the tree. Eight eval cases added (reset/clean prefixes and negatives, +refspec, PowerShell recurse-without-force)."

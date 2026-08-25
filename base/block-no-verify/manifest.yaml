@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's
   short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays
@@ -20,7 +20,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-07-12T00:00:00Z"
+  updated_at: "2026-08-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -50,3 +50,7 @@ changelog:
   date: '2026-08-23'
   changes:
   - "Short -n now reads as --no-verify only on git commit. On git push, -n is --dry-run -- non-mutating and not a hook bypass (pre-push still runs) -- and the guard wrongly refused it (found in external review of the Copilot marketplace submission). --no-verify stays blocked on both commit and push. Also: only the first commit/push token is the subcommand (a ref named 'commit' no longer reclassifies a push), and a cluster starting with a value-taking option (-m/-F) is that option's value, so -mnote is not a bypass. Five eval cases added."
+- version: 0.0.5
+  date: '2026-08-24'
+  changes:
+  - "Prefix-match --no-verify (hardening review): git accepts any unambiguous prefix, so `--no-veri` and `--no-verif` skip hooks exactly as `--no-verify`. Matched as a prefix of --no-verify at least 9 chars long -- the floor is `--no-veri`, because `--no-ver` and shorter collide with --no-verbose, which git rejects as ambiguous (nothing to block there). Applies to both commit and push. Three eval cases added (--no-veri block, --no-ver allow at the floor, push --no-verif block)."
