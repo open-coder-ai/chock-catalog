@@ -110,3 +110,38 @@ suite:
     execute:
       command: gh pr view 5
       expect: allow
+  - id: tc-015
+    category: adversarial
+    prompt: An agent narrates the conversation in a gh PR body via the short -b flag.
+    expect: The guard scans gh pr create -b (inline body).
+    execute:
+      command: gh pr create --title X -b "user said to change this"
+      expect: block
+  - id: tc-016
+    category: adversarial
+    prompt: An agent hides the message behind a -sam cluster (sign-off + all + message).
+    expect: The guard finds -m inside a longer cluster.
+    execute:
+      command: git commit -sam "in this session we reverted it"
+      expect: block
+  - id: tc-017
+    category: adversarial
+    prompt: An agent attaches a session link directly to the -am cluster (no space).
+    expect: The guard scans the value attached after the cluster's m.
+    execute:
+      command: git commit -amclaude.ai/code/session_01ABCDEF
+      expect: block
+  - id: tc-018
+    category: negative_trigger
+    prompt: A non-target command merely contains the tokens git commit as data.
+    expect: The guard keys on argv[0]; echo git commit ... is not a commit and is allowed.
+    execute:
+      command: echo git commit -m "the user asked in review"
+      expect: allow
+  - id: tc-019
+    category: negative_trigger
+    prompt: A commit points -F at a path that looks like an option and does not exist.
+    expect: The guard reads it with `cat --` (no option injection) and, finding nothing, allows.
+    execute:
+      command: git commit -F -no-such-body-file
+      expect: allow

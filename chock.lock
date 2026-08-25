@@ -94,7 +94,7 @@
       "id": "protect-commit-privacy",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "069ce73299dac2f912dd7e4935f37a60975c1b8614ea44a74e22d2b62f8f05fb",
+      "sha256": "aaf2db1be062a4d12b63bf97f04c8e84ee32a8fd883f3ff32c125abc58c56bac",
       "source": "local",
       "artifacts_sha256": "219cfc850dce1cbba0e9ceab6a910dcab7be6345ae3a642b6dabf661dbe5d08b"
     },

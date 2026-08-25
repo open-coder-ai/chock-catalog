@@ -9,20 +9,29 @@
 # that is what the CI backstop (scanning the PR body on the pull_request event) is for.
 set -eu
 
-# Applies to `git commit` and to `gh pr create|edit` (the CLI paths that carry a body).
+# Applies to `git commit` and `gh pr create|edit`. The invoked command is argv[0]; a later
+# 'git'/'gh' appearing as an argument value (e.g. `echo git commit -m "..."`) must not
+# trigger. For git the subcommand may follow global options (`git -c x=y commit`), so scan
+# for a bare 'commit' token; for gh, match the `pr create|edit` prefix. A stray 'commit'
+# operand (`git log commit`) is harmless: with no -m/-b the collected text is empty and the
+# guard exits allow.
 is_target=0
-saw_git=0
-saw_gh=0
-saw_pr=0
-for arg in "$@"; do
-    case "$arg" in
-        git) saw_git=1 ;;
-        gh)  saw_gh=1 ;;
-        commit) [[ "$saw_git" -eq 1 ]] && is_target=1 ;;
-        pr)  [[ "$saw_gh" -eq 1 ]] && saw_pr=1 ;;
-        create|edit) [[ "$saw_pr" -eq 1 ]] && is_target=1 ;;
-    esac
-done
+case "${1:-}" in
+    git)
+        for arg in "$@"; do
+            [[ "$arg" == "commit" ]] && { is_target=1; break; }
+        done
+        ;;
+    gh)
+        saw_pr=0
+        for arg in "$@"; do
+            case "$arg" in
+                pr) saw_pr=1 ;;
+                create|edit) [[ "$saw_pr" -eq 1 ]] && { is_target=1; break; } ;;
+            esac
+        done
+        ;;
+esac
 if [[ "$is_target" -eq 0 ]]; then
     exit 0
 fi
@@ -61,7 +70,7 @@ for arg in "$@"; do
         continue
     fi
     if [[ "$expect_file" -eq 1 ]]; then
-        [[ -r "$arg" ]] && collect="$collect $(cat "$arg" 2>/dev/null || true)"
+        [[ -r "$arg" ]] && collect="$collect $(cat -- "$arg" 2>/dev/null || true)"
         expect_file=0
         continue
     fi
@@ -72,9 +81,9 @@ for arg in "$@"; do
         -m?*) collect="$collect ${arg#-m}" ;;
         -b?*) collect="$collect ${arg#-b}" ;;
         -F|--file|--body-file) expect_file=1 ;;
-        --file=*) f="${arg#--file=}"; [[ -r "$f" ]] && collect="$collect $(cat "$f" 2>/dev/null || true)" ;;
-        --body-file=*) f="${arg#--body-file=}"; [[ -r "$f" ]] && collect="$collect $(cat "$f" 2>/dev/null || true)" ;;
-        -F?*) f="${arg#-F}"; [[ -r "$f" ]] && collect="$collect $(cat "$f" 2>/dev/null || true)" ;;
+        --file=*) f="${arg#--file=}"; [[ -r "$f" ]] && collect="$collect $(cat -- "$f" 2>/dev/null || true)" ;;
+        --body-file=*) f="${arg#--body-file=}"; [[ -r "$f" ]] && collect="$collect $(cat -- "$f" 2>/dev/null || true)" ;;
+        -F?*) f="${arg#-F}"; [[ -r "$f" ]] && collect="$collect $(cat -- "$f" 2>/dev/null || true)" ;;
         -[a-z]*)
             # Combined short cluster carrying -m (git) or -b (gh), e.g. `git commit -am "msg"`
             # or `-amMSG`. The value is the text after the FIRST m/b in the cluster, or the
