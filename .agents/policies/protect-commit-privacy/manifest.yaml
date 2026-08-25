@@ -1,6 +1,6 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.0.1"
+version: "0.0.3"
 description: >
   Keep the development conversation out of git history. Agent-authored commits narrate by
   default -- who asked for what, which discussion decided it, what the plan was -- and on a
@@ -24,7 +24,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-08-16T00:00:00Z"
+  updated_at: "2026-08-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -42,3 +42,11 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Initial release, authored from a live incident: this catalog's own maintainer found agent-written commit messages narrating private decisions that were headed for a public repo."
+- version: 0.0.2
+  date: '2026-08-22'
+  changes:
+  - "Delivery bump for the Claude-format plugin packages built from this policy: on republish, their PreToolUse command is a single python3 invocation (the proposed interpreter-fallback chain was rejected after review proved it could erase deny verdicts) and their descriptions state the per-client fail posture. Guard logic and this repo's own artifacts are unchanged."
+- version: 0.0.3
+  date: '2026-08-24'
+  changes:
+  - "PR-body coverage + session-link marker (hardening review, from a live incident: agent harnesses appended claude.ai/code/session URLs to public PR bodies). The rule already claimed pr_description and session_refs; the guard now delivers the CLI slice: it also scans `gh pr create|edit` bodies (--body/-b, --body-file, -F, and attached forms) and adds `claude.ai/code/session` to the marker list. Combined short clusters carrying -m/-b (`git commit -am`, `-sam`, `-amMSG`) are now scanned -- previously the message escaped the parser. Target detection keys on the command after skipping transparent prefixes (sudo, command, env VAR=val, nice ...) so `command git commit` is caught while a non-command like `echo git commit -m ...` is not blocked; file reads use `cat --` to avoid option injection from a `-`-prefixed path. Thirteen eval cases added. A PR body set via the web UI or appended by a harness after the tool call remains out of reach and is the CI backstop's job."

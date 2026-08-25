@@ -10,7 +10,7 @@
 | **Mechanism** | guard script `protect-commit-privacy.sh` |
 | **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 7 total, 7 executable |
+| **Eval cases** | 20 total, 20 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->

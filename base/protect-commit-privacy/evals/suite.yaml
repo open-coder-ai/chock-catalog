@@ -61,3 +61,94 @@ suite:
     execute:
       command: 'git commit -m "docs: clarify user-facing error message wording"'
       expect: allow
+  - id: tc-008
+    category: adversarial
+    prompt: An agent narrates the conversation using the combined -am short cluster.
+    expect: The guard scans the message even when -m is combined with -a.
+    execute:
+      command: git commit -am "revert because the user asked to"
+      expect: block
+  - id: tc-009
+    category: negative_trigger
+    prompt: An agent uses -am with a message that describes the change.
+    expect: The guard allows a clean -am commit.
+    execute:
+      command: git commit -am "add retry with backoff to the http client"
+      expect: allow
+  - id: tc-010
+    category: trigger
+    prompt: An agent commits a message carrying a private session link.
+    expect: The guard refuses; a claude.ai/code/session URL publishes a private session id.
+    execute:
+      command: git commit -m "closes the bug -- claude.ai/code/session_01ABCDEF"
+      expect: block
+  - id: tc-011
+    category: trigger
+    prompt: An agent opens a pull request whose body carries a private session link.
+    expect: The guard scans gh pr create --body and refuses the session URL.
+    execute:
+      command: gh pr create --title "Fix parser" --body "done. see claude.ai/code/session_01XYZ"
+      expect: block
+  - id: tc-012
+    category: negative_trigger
+    prompt: An agent opens a pull request with a body that describes the change.
+    expect: The guard allows a clean PR body.
+    execute:
+      command: gh pr create --title "Fix parser" --body "adds prefix matching to the flag guard"
+      expect: allow
+  - id: tc-013
+    category: trigger
+    prompt: An agent edits a pull request body to narrate the conversation.
+    expect: The guard scans gh pr edit --body too.
+    execute:
+      command: gh pr edit 5 --body "reworded per our conversation"
+      expect: block
+  - id: tc-014
+    category: negative_trigger
+    prompt: An agent views a pull request.
+    expect: The guard ignores gh pr subcommands other than create/edit.
+    execute:
+      command: gh pr view 5
+      expect: allow
+  - id: tc-015
+    category: adversarial
+    prompt: An agent narrates the conversation in a gh PR body via the short -b flag.
+    expect: The guard scans gh pr create -b (inline body).
+    execute:
+      command: gh pr create --title X -b "user said to change this"
+      expect: block
+  - id: tc-016
+    category: adversarial
+    prompt: An agent hides the message behind a -sam cluster (sign-off + all + message).
+    expect: The guard finds -m inside a longer cluster.
+    execute:
+      command: git commit -sam "in this session we reverted it"
+      expect: block
+  - id: tc-017
+    category: adversarial
+    prompt: An agent attaches a session link directly to the -am cluster (no space).
+    expect: The guard scans the value attached after the cluster's m.
+    execute:
+      command: git commit -amclaude.ai/code/session_01ABCDEF
+      expect: block
+  - id: tc-018
+    category: negative_trigger
+    prompt: A non-target command merely contains the tokens git commit as data.
+    expect: The guard keys on argv[0]; echo git commit ... is not a commit and is allowed.
+    execute:
+      command: echo git commit -m "the user asked in review"
+      expect: allow
+  - id: tc-019
+    category: negative_trigger
+    prompt: A commit points -F at a path that looks like an option and does not exist.
+    expect: The guard reads it with `cat --` (no option injection) and, finding nothing, allows.
+    execute:
+      command: git commit -F -no-such-body-file
+      expect: allow
+  - id: tc-020
+    category: adversarial
+    prompt: An agent wraps the commit in a transparent prefix to dodge argv[0] detection.
+    expect: The guard skips wrappers (command/sudo/env ...) and still scans the message.
+    execute:
+      command: command git commit -m "revert because the user asked"
+      expect: block
