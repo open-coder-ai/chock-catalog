@@ -29,7 +29,7 @@
   persist: decisions|preferences|non_derivable_facts; never_persist: file_contents|git_history|task_intermediates
   extract(atomic_facts); consolidate(similar > 0.85); decay(stale); verify(memory) before_recommend
 - **protect-agent-config**:
-  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled): never(hand_edit|delete); regenerate_via(chock sync)
+  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
   if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
 - **protect-commit-privacy**:
   commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)

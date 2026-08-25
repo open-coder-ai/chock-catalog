@@ -6,35 +6,47 @@
 # or a human-approved run carrying 'chock: approved-config-change'.
 set -eu
 
-full="$*"
+# Include the raw command string: Windows path forms and `bash -c "..."` payloads
+# arrive here as one argument, and CHOCK_RAW_COMMAND carries the pre-split original.
+full="$* ${CHOCK_RAW_COMMAND:-}"
+# Normalize backslashes to forward slashes so a Windows `.claude\settings.json` matches
+# the same protected patterns as its POSIX form.
+norm="${full//\\//}"
 
 # A human-approved change says so in the command itself, visibly.
 case "$full" in
     *"chock: approved-config-change"*) exit 0 ;;
 esac
 
-# Write-indicators: in-place editors, movers, deleters, and shell redirection.
-# Matched against the whole command line as well as individual tokens, because a
-# `bash -c "..."` payload arrives as one argument.
+# Write-indicators: in-place editors, shell redirection, deleters/movers, and
+# interpreters invoked in a *writing* form (`python -c`, `perl -i`, `node -e`, ...).
+# A bare `python script.py path` is not treated as a write, so ordinary reads pass.
+# Interpreter and rename escapes remain best-effort (a renamed interpreter gets through).
 has_writer=0
 case "$full" in
-    *"sed -i"*|*">"*) has_writer=1 ;;
+    *"sed -i"*|*"--in-place"*|*">"*| \
+    *"python -c"*|*"python3 -c"*|*"perl -i"*|*"perl -pi"*|*"ruby -i"*|*"node -e"*)
+        has_writer=1 ;;
 esac
 for arg in "$@"; do
     case "$arg" in
-        tee|rm|mv|cp|chmod|truncate|patch) has_writer=1 ;;
+        tee|rm|mv|cp|chmod|truncate|patch|dd|ed|ex) has_writer=1 ;;
     esac
 done
 if [[ "$has_writer" -eq 0 ]]; then
     exit 0
 fi
 
+# Protected paths, matched against the backslash-normalized command line. Includes the
+# policy guard sources themselves (.agents/policies/<id>/implementations/) -- an agent
+# must not rewrite the very guard the compiled hook executes.
 protected=""
-case "$full" in
+case "$norm" in
     *AGENTS.md*|*CLAUDE.md*|*GEMINI.md*|*copilot-instructions.md*| \
     *.cursorrules*|*.windsurfrules*|*.aider.conf.yml*| \
     *.claude/settings*|*.mcp.json*| \
-    *.chock/bin/*|*.chock/compiled/*|*.git/hooks/*)
+    *.chock/bin/*|*.chock/compiled/*|*.git/hooks/*| \
+    *.agents/policies/*implementations*)
         protected=yes
         ;;
 esac

@@ -49,7 +49,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~336 tokens (chars/4, max 2000)
+INDEX.md: ~344 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-agent-config:
   claude: enforced
@@ -70,7 +70,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~336 tokens (chars/4, max 2000)
+INDEX.md: ~344 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -91,9 +91,15 @@ protect-agent-config  [deterministic]
   PASS  tc-006                             authored  guard exit 0
   PASS  tc-007                             authored  guard exit 0
   PASS  tc-008                             authored  guard exit 0
+  PASS  tc-009                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-010                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-011                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-012                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-013                             authored  guard exit 0
+  PASS  tc-014                             authored  guard exit 0
   score 1.00
 
-5 policies: 8 pass, 41 skipped
+5 policies: 14 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -111,6 +117,6 @@ protect-agent-config  [deterministic]
 
 ```text
 - **protect-agent-config**:
-  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled): never(hand_edit|delete); regenerate_via(chock sync)
+  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
   if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
 ```
