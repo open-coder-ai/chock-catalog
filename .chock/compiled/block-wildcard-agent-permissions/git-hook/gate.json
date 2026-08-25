@@ -8,6 +8,6 @@
   "params": {
     "scan": "added_lines",
     "allowlist_pragma": "pragma:\\s*allowlist\\s+broad-agency",
-    "content_pattern": "Bash\\([*]\\)|\"allow\"\\s*:\\s*\\[\\s*\"\\*\"|\"alwaysAllow\"\\s*:\\s*\\[\\s*\"\\*\"|\"tools\"\\s*:\\s*\\[\\s*\"\\*\""
+    "content_pattern": "Bash\\([*]\\)|\"allow\"\\s*:\\s*\\[[^\\]]*\"\\*\"|\"alwaysAllow\"\\s*:\\s*\\[[^\\]]*\"\\*\"|\"tools\"\\s*:\\s*\\[[^\\]]*\"\\*\"|\"defaultMode\"\\s*:\\s*\"bypassPermissions\""
   }
 }

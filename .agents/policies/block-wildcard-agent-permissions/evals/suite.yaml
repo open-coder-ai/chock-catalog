@@ -68,3 +68,35 @@ suite:
       files:
         .claude/settings.json: "{\"permissions\": {\"allow\": [\"Bash(*)\"]}}  // pragma: allowlist broad-agency\n"  # pragma: allowlist broad-agency
       expect: allow
+  - id: tc-008
+    category: adversarial
+    prompt: A staged settings file lists the wildcard as a later array element, not the first.
+    expect: The hook blocks; the wildcard need not be the first element.
+    execute:
+      files:
+        .claude/settings.json: "{\"permissions\": {\"allow\": [\"Read\", \"*\"]}}\n"  # pragma: allowlist broad-agency
+      expect: block
+  - id: tc-009
+    category: adversarial
+    prompt: A staged settings file turns on the whole-session bypass mode.
+    expect: The hook blocks defaultMode bypassPermissions.
+    execute:
+      files:
+        .claude/settings.json: "{\"permissions\": {\"defaultMode\": \"bypassPermissions\"}}\n"  # pragma: allowlist broad-agency
+      expect: block
+  - id: tc-010
+    category: adversarial
+    prompt: A staged MCP config lists the wildcard among a server's tools array.
+    expect: The hook blocks a wildcard in a tools array.
+    execute:
+      files:
+        mcp.json: "{\"mcpServers\": {\"s\": {\"tools\": [\"read\", \"*\"]}}}\n"  # pragma: allowlist broad-agency
+      expect: block
+  - id: tc-011
+    category: adversarial
+    prompt: A staged MCP config always-allows a later wildcard element.
+    expect: The hook blocks a wildcard that is not the first alwaysAllow element.
+    execute:
+      files:
+        mcp.json: "{\"mcpServers\": {\"s\": {\"alwaysAllow\": [\"list\", \"*\"]}}}\n"  # pragma: allowlist broad-agency
+      expect: block

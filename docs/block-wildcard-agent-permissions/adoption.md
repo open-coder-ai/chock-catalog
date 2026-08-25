@@ -83,9 +83,13 @@ block-wildcard-agent-permissions  [deterministic]
   PASS  tc-005                             authored  gate exit 0
   PASS  tc-006                             authored  gate exit 0
   PASS  tc-007                             authored  gate exit 0
+  PASS  tc-008                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
+  PASS  tc-009                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
+  PASS  tc-010                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
+  PASS  tc-011                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
   score 1.00
 
-5 policies: 7 pass, 41 skipped
+5 policies: 11 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
