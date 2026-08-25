@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "scan-secrets",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Pre-commit hook that blocks commits of credential files and high-entropy secret values. Best-effort guard; not a replacement for a dedicated secret scanner.",
   "author": {
     "name": "chock-core"

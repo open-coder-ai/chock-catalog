@@ -110,9 +110,9 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "cc0dce2a7a49efa61a5e5c84f1fa406923c612718cbcfe62e912823cc841d8e9",
+      "sha256": "fab195940dd7cdf58c5d9cb3c05fc967d48998f80a62d77bbe446f9c0273d75d",
       "source": "local",
-      "artifacts_sha256": "12492a097c910f9f03a79d1798ed5baf7cca029ab6055a305be830174d08a833"
+      "artifacts_sha256": "856f4253f0be33ada4a68ae1470e4f868fcd5a6a3a2fb8e639ea48504be0e510"
     },
     {
       "id": "token-efficiency",
