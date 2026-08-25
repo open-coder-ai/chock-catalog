@@ -13,7 +13,7 @@ trigger: repeated mistakes, rediscovered patterns, preferences, non-derivable fa
 
 ```
 persist: decisions|preferences|non_derivable_facts; never_persist: file_contents|git_history|task_intermediates
-extract(atomic_facts); consolidate(similar > 0.85); decay(stale); verify(memory) before_recommend
+extract(atomic_facts); consolidate(near_duplicate_facts); decay(stale); verify(memory) before_recommend
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock

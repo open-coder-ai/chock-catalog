@@ -1,6 +1,6 @@
 id: verify-dependency-exists
 name: "Verify Dependency Exists"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Block hallucinated or unknown dependencies before they enter the repo. Watches
   requirements.txt, pyproject.toml, package.json, and go.mod, and blocks any newly
@@ -51,13 +51,13 @@ compliance:
     note: "new third-party components are checked against a curated control at commit time"
   owasp_asi:
   - control: ASI04
-    coverage: full
-    note: "blocks unlisted deps added to requirements.txt, pyproject.toml, package.json, go.mod"
+    coverage: partial
+    note: "allowlist gate over newly-added dependencies in requirements.txt, pyproject.toml, package.json, go.mod at commit entry; it checks membership in a curated allowlist, NOT existence in the upstream registry"
 
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-08-04T00:00:00Z"
+  updated_at: "2026-08-25T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -83,3 +83,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas/nist_ai_rmf); no mechanism change."
+- version: 0.0.3
+  date: '2026-08-25'
+  changes:
+  - "Honesty (do-not-claim): owasp_asi ASI04 coverage full -> partial; the note now states it is an allowlist-membership gate at commit entry, not upstream-registry existence verification. Wording only."

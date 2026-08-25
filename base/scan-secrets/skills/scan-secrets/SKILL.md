@@ -1,6 +1,6 @@
 ---
 name: scan-secrets
-description: "Pre-commit hook that blocks commits of credential files and high-entropy secret values. Best-effort guard; not a replacement for a dedicated secret scanner."
+description: "Pre-commit hook that blocks commits of credential files and known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Scan Secrets
 
-Pre-commit hook that blocks commits of credential files and high-entropy secret values. Best-effort guard; not a replacement for a dedicated secret scanner.
+Pre-commit hook that blocks commits of credential files and known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.
 
 ```
 on(commit): block(content_regex) scan=added_lines forbidden_path_regex=(\.env(\.(?!(sample|example|template|dist|def... ...

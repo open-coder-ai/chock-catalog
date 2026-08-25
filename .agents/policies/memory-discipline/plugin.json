@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "memory-discipline",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "trigger: repeated mistakes, rediscovered patterns, preferences, non-derivable facts. avoid: persisting file contents, git history, or task intermediates as memory.",
   "author": {
     "name": "chock-core"

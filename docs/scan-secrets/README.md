@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Pre-commit hook that blocks commits of credential files and high-entropy secret values. Best-effort guard; not a replacement for a dedicated secret scanner.
+Pre-commit hook that blocks commits of credential files and known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.
 
 ## What it solves
 

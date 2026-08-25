@@ -209,7 +209,7 @@ memory-discipline:
     Memory that fills with things the repo already records -- file contents, git history,
     task scratch -- until the genuinely non-derivable facts are buried in it.
   customise: >
-    The `0.85` consolidation similarity and the decay policy are the tunable parts. What
+    Consolidation of near-duplicate facts and the decay policy are the tunable parts. What
     should not move is `verify(memory) before_recommend`: a memory that names a file or
     flag is a claim about a repo that has changed since.
 
