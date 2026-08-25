@@ -10,7 +10,7 @@
 | **Mechanism** | guard script `protect-agent-config.sh` |
 | **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 14 total, 14 executable |
+| **Eval cases** | 21 total, 21 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->

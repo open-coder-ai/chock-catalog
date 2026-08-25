@@ -18,21 +18,42 @@ case "$full" in
     *"chock: approved-config-change"*) exit 0 ;;
 esac
 
-# Write-indicators: in-place editors, shell redirection, deleters/movers, and
-# interpreters invoked in a *writing* form (`python -c`, `perl -i`, `node -e`, ...).
-# A bare `python script.py path` is not treated as a write, so ordinary reads pass.
-# Interpreter and rename escapes remain best-effort (a renamed interpreter gets through).
+# Interpreters invoked in a *writing* form: a code/in-place flag that appears AFTER an
+# interpreter token WITHIN THE SAME command string, so option order does not matter
+# (python -O -c, perl -0777 -i, node --eval) yet a `bash -c` wrapper's own -c -- which
+# precedes any interpreter -- is not misattributed. The argv and the raw command are
+# scanned SEPARATELY (never concatenated) so one string's interpreter cannot pair with
+# another string's flag. Globbing is disabled during the split so a literal * is not
+# expanded against the filesystem. A bare `python script.py path` read has no write flag.
+_interp_write() {
+    local seen=0 tok
+    set -f
+    for tok in $1; do
+        case "$tok" in
+            python|python3|perl|ruby|node) seen=1 ;;
+            -c|-e|--eval|-i|--in-place|-i.*|-pi|-pi.*|-ni|-ne)
+                if [ "$seen" -eq 1 ]; then set +f; return 0; fi ;;
+        esac
+    done
+    set +f
+    return 1
+}
+
 has_writer=0
+# In-place editors and shell redirection (substring: reaches bash -c payloads).
 case "$full" in
-    *"sed -i"*|*"--in-place"*|*">"*| \
-    *"python -c"*|*"python3 -c"*|*"perl -i"*|*"perl -pi"*|*"ruby -i"*|*"node -e"*)
-        has_writer=1 ;;
+    *"sed -i"*|*"--in-place"*|*">"*) has_writer=1 ;;
 esac
+# Deleters, movers, and raw writers as whole tokens.
 for arg in "$@"; do
     case "$arg" in
         tee|rm|mv|cp|chmod|truncate|patch|dd|ed|ex) has_writer=1 ;;
     esac
 done
+# Interpreter write-forms (argv and raw command scanned independently).
+if _interp_write "$*" || _interp_write "${CHOCK_RAW_COMMAND:-}"; then
+    has_writer=1
+fi
 if [[ "$has_writer" -eq 0 ]]; then
     exit 0
 fi

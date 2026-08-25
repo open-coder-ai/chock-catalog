@@ -109,3 +109,52 @@ suite:
     execute:
       command: grep -i deny .claude/settings.json
       expect: allow
+  - id: tc-015
+    category: trigger
+    prompt: An agent edits its permission file in place with ruby.
+    expect: The guard treats `ruby -i` as an in-place writer.
+    execute:
+      command: ruby -i -pe gsub .claude/settings.json
+      expect: block
+  - id: tc-016
+    category: trigger
+    prompt: An agent writes its instruction file from a node eval.
+    expect: The guard treats `node -e` as a code-executing writer.
+    execute:
+      command: 'node -e "require(''fs'').writeFileSync(''AGENTS.md'',''x'')"'
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: An agent overwrites the MCP config with dd.
+    expect: The guard treats dd as a raw writer.
+    execute:
+      command: dd of=.mcp.json
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: An agent opens the shared rules file in the ed line editor.
+    expect: The guard treats ed as a writer.
+    execute:
+      command: ed AGENTS.md
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: An agent opens its permission file in ex (vi line mode).
+    expect: The guard treats ex as a writer.
+    execute:
+      command: ex .claude/settings.json
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: An agent hides the write flag behind another interpreter option.
+    expect: A write flag after any interpreter option still matches (order-independent).
+    execute:
+      command: 'python -O -c "open(''AGENTS.md'',''w'').write(''x'')"'
+      expect: block
+  - id: tc-021
+    category: negative_trigger
+    prompt: A bash -c wrapper runs a script that reads the permission file.
+    expect: The wrapper's own -c is not misread as an interpreter write flag.
+    execute:
+      command: 'bash -c "python foo.py .claude/settings.json"'
+      expect: allow

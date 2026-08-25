@@ -86,7 +86,7 @@
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "f83ede91630047fa9a4b83f455efaef2b436cc47c1f8773048fbbc7cd57d9618",
+      "sha256": "0500be54266d9aa74e7207c412a0481e44c996d0dd386f829f49597054d5eee5",
       "source": "local",
       "artifacts_sha256": "43b03c246f31cbef06a773a2abeef422fe5352537a5cb4c1961dd5ac6d0491d5"
     },
