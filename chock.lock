@@ -38,9 +38,9 @@
       "id": "block-wildcard-agent-permissions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "bc31f24d0a1ab70f768f598407508c1a6d16691920c7d643dcebebfcc150573e",
+      "sha256": "0397af76e672ef51a2c27aef6e79aae88110fa3854e6ea40690342f33d06c150",
       "source": "local",
-      "artifacts_sha256": "ddd945c816d02f55c9666fbbb1aece36491c92168f58ff4f4c2aed01a5f9ad72"
+      "artifacts_sha256": "f91cb90906b7e55e6e99e163302cb3074ebcc30bfa3c24adbe3e5d4f48a7b158"
     },
     {
       "id": "code-safety",

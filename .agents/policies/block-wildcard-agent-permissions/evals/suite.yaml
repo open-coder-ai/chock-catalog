@@ -68,3 +68,35 @@ suite:
       files:
         .claude/settings.json: "{\"permissions\": {\"allow\": [\"Bash(*)\"]}}  // pragma: allowlist broad-agency\n"  # pragma: allowlist broad-agency
       expect: allow
+  - id: tc-008
+    category: adversarial
+    prompt: A staged settings file lists the wildcard as a later array element, not the first.
+    expect: The hook blocks; the wildcard need not be the first element.
+    execute:
+      files:
+        .claude/settings.json: "{\"permissions\": {\"allow\": [\"Read\", \"*\"]}}\n"  # pragma: allowlist broad-agency
+      expect: block
+  - id: tc-009
+    category: adversarial
+    prompt: A staged settings file turns on the whole-session bypass mode.
+    expect: The hook blocks defaultMode bypassPermissions.
+    execute:
+      files:
+        .claude/settings.json: "{\"permissions\": {\"defaultMode\": \"bypassPermissions\"}}\n"  # pragma: allowlist broad-agency
+      expect: block
+  - id: tc-010
+    category: adversarial
+    prompt: A pretty-printed settings file puts the wildcard on its own line.
+    expect: The hook blocks; a lone "*" array element is caught line-by-line.
+    execute:
+      files:
+        .claude/settings.json: "{\n  \"permissions\": {\n    \"allow\": [\n      \"*\"\n    ]\n  }\n}\n"  # pragma: allowlist broad-agency
+      expect: block
+  - id: tc-011
+    category: negative_trigger
+    prompt: A pretty-printed settings file scopes each grant across lines, no wildcard.
+    expect: The hook allows; no line is a lone wildcard.
+    execute:
+      files:
+        .claude/settings.json: "{\n  \"permissions\": {\n    \"allow\": [\n      \"Read\",\n      \"Grep\"\n    ]\n  }\n}\n"
+      expect: allow

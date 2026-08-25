@@ -65,7 +65,7 @@ throwaway repo on every push.
 | [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes | 11/11 |
 | [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 5/5 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 8/8 |
-| [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 7/7 |
+| [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 11/11 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command, natively wired in Claude Code, Cursor, Copilot CLI and VS Code (and, via the

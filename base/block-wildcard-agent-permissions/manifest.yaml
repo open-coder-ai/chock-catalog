@@ -1,6 +1,6 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Pre-commit gate for the mechanizable slice of excessive agency: committed agent
   permission grants that allow everything. A settings file whose shell grant or
@@ -30,9 +30,12 @@ hook:
       allowlist_pragma: 'pragma:\s*allowlist\s+broad-agency'
       # Written so the pattern never matches its own source text in this manifest or
       # the compiled gate.json (#32 class): [*] and \s stand between the literal
-      # tokens real content carries.
+      # tokens real content carries. [^\]]* lets the wildcard be ANY array element
+      # (not only the first), the lone-line alternative catches pretty-printed JSON
+      # where "*" sits on its own line, and defaultMode:bypassPermissions is the
+      # whole-session escape hatch.
       content_pattern: |-
-        Bash\([*]\)|"allow"\s*:\s*\[\s*"\*"|"alwaysAllow"\s*:\s*\[\s*"\*"|"tools"\s*:\s*\[\s*"\*"
+        Bash\([*]\)|"allow"\s*:\s*\[[^\]]*"\*"|"alwaysAllow"\s*:\s*\[[^\]]*"\*"|"tools"\s*:\s*\[[^\]]*"\*"|"defaultMode"\s*:\s*"bypassPermissions"|^\s*"\*"\s*,?\s*$
 
 compliance:
   mitre_atlas:
@@ -47,7 +50,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-08-16T00:00:00Z"
+  updated_at: "2026-08-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -69,3 +72,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas); no mechanism change."
+- version: 0.0.3
+  date: '2026-08-24'
+  changes:
+  - "Close the regex under-match found in the hardening review: the wildcard is now matched as ANY array element ([^\\]]*), not only the first; a lone \"*\" on its own line is caught (pretty-printed multi-line settings.json, the common real form); and defaultMode:bypassPermissions -- the whole-session escape hatch -- is blocked. Self-hosting is preserved (the pattern still never matches its own escaped source in the manifest or gate.json). Four eval cases added (any-element, bypassPermissions, multi-line lone wildcard, and a multi-line scoped negative)."
