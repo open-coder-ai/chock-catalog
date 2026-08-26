@@ -27,7 +27,7 @@ Feature requests for things the AI Act bans outright -- a trust score reused acr
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 never(implement|assist): social_scoring | untargeted_face_scraping | emotion_inference(workplace|education) | biometric_categorisation(sensitive_traits) | predictive_policing(profiling_only) | subliminal_manipulation | vulnerability_exploitation(age|disability|socioeconomic) | realtime_remote_biometric_id(public_space) | NCII | CSAM
 on_request: refuse + cite(EU AI Act Art 5) + offer(compliant_alternative); see .agents/policies/eu-ai-act-prohibited-practices/references/article-5.md
 ```

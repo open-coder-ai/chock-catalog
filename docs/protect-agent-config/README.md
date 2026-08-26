@@ -25,11 +25,11 @@ Self-modification: the agent editing its own authority. Instruction files, permi
 
 ## How it works
 
-A guard script, `implementations/protect-agent-config.sh`, run before the agent executes a Bash command. It tokenizes the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/protect-agent-config.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
-```
+```text
 agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
 if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
 ```

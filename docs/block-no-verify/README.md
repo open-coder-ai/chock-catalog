@@ -25,11 +25,11 @@ Every other gate in this catalog, bypassed with six characters. `--no-verify` is
 
 ## How it works
 
-A guard script, `implementations/block-no-verify.sh`, run before the agent executes a Bash command. It tokenizes the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/block-no-verify.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
-```
+```text
 never(commit): --no-verify|-n; never(push): --no-verify
 if(hook_fails): fix_issue; never(skip_hook)
 ```

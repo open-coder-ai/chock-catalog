@@ -27,7 +27,7 @@ Long sessions that get worse rather than better. Resolved content stays inlined,
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 replace(resolved_content): path_ref_only; delegate(noisy_exploration): subagent; prune(stale > 3_turns)
 on_context_growth: summarize(old_observations); keep(decisions+outcomes); discard(superseded_content)
 ```

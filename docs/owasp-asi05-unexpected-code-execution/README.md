@@ -27,7 +27,7 @@ Model output reaching an interpreter. Usually not through a dramatic sandbox esc
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 run(agent_generated_code): container(least_privilege) + egress(deny_by_default) + filesystem(scoped) + timeout; never(host_execution)
 never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
 ```

@@ -25,11 +25,11 @@ A threat that did not exist before agents wrote commits: process leakage through
 
 ## How it works
 
-A guard script, `implementations/protect-commit-privacy.sh`, run before the agent executes a Bash command. It tokenizes the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/protect-commit-privacy.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
-```
+```text
 commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
 if(sensitive_context): propose_message_to_human; await(approval) before(commit)  # history is published forever
 ```

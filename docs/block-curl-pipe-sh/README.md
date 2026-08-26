@@ -25,11 +25,11 @@ The install instruction that runs code nobody read: `curl https://get.example.co
 
 ## How it works
 
-A guard script, `implementations/block-curl-pipe-sh.sh`, run before the agent executes a Bash command. It tokenizes the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/block-curl-pipe-sh.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
-```
+```text
 block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(sh|bash|python|perl|node|iex)
 allow: download_to_file, fetch|non_interpreter(jq|tar); prefer: curl -o file; read; run
 ```

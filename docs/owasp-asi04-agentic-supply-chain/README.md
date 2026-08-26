@@ -27,7 +27,7 @@ A dependency tree that is never final. An agent that discovers tools at runtime 
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 before(load: tool|mcp_server|framework|model): verify(signature + provenance) + pin(version) + record(AIBOM); apply(SCA) pre_pull
 re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
 ```
