@@ -10,7 +10,7 @@
 | **Mechanism** | guard script `block-unapproved-egress.sh` |
 | **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 18 total, 18 executable |
+| **Eval cases** | 21 total, 21 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->

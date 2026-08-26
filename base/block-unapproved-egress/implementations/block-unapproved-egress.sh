@@ -31,7 +31,7 @@ fi
 # a later segment, so if a separator is present we do NOT trust the first word and inspect.
 first="$(printf '%s' "$raw" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]].*//')"
 case "$raw" in
-    *[\;\&\|]* | *"$(printf '\n')"*) : ;;  # compound -> inspect, do not skip on first word
+    *[\;\&\|]* | *$'\n'*) : ;;  # compound (separator or newline) -> inspect, do not skip
     *)
         case "$first" in
             echo | printf | print | : | \#*) exit 0 ;;
@@ -55,13 +55,15 @@ fetch_re='(^|[[:space:];|&(<])(curl|wget|iwr|invoke-webrequest|invoke-restmethod
 
 # Upload intent -- the thing that turns a fetch into an exfiltration. Fetch-only (a bare GET)
 # is left alone: the target is upload/POST to an unapproved host, not normal dependency traffic.
-#   curl:  -d/--data*/-F/--form/-T/--upload-file, -X|--request POST|PUT|PATCH -- incl. attached
-#          values (-d@file, -Tbackup.tar). curl short flags are CASE-SENSITIVE (-d != -D dump-
-#          header, -F != -f fail, -T != -t), so this half is matched with nocasematch OFF.
+#   curl:  -d/--data*/-F/--form*/-T/--upload-file, -X|--request POST|PUT|PATCH -- incl. attached
+#          values (-d@file, -Tbackup.tar) and stdin uploads (-T-). curl short flags are
+#          CASE-SENSITIVE (-d != -D dump-header, -F != -f fail, -T != -t), so this half is
+#          matched with nocasematch OFF. (A short flag can still be captured from a different
+#          command in a pipeline; the host allowlist is what ultimately decides.)
 #   wget:  --post-data/--post-file/--body-data/--body-file/--method= POST|PUT
 #   PS:    -Method POST|PUT|PATCH, -Body, -InFile, -Form -- PowerShell is case-insensitive, so
 #          that half keeps nocasematch ON.
-posix_upload_re='(^|[[:space:]])-[dFT]([[:space:]@]|[^[:space:]-])|--data([[:space:]]|-)|--form[[:space:]]|--upload-file|--post-data|--post-file|--body-data|--body-file|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH)'
+posix_upload_re='(^|[[:space:]])-[dFT][[:space:]@=~./A-Za-z0-9-]|--data([[:space:]]|-)|--form([[:space:]]|-)|--upload-file|--post-data|--post-file|--body-data|--body-file|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH)'
 ps_upload_re='(-Method[[:space:]]+(POST|PUT|PATCH)|-Body([[:space:]]|$)|-InFile([[:space:]]|$)|-Form([[:space:]]|$))'
 
 # curl/wget half: nocasematch OFF so -d != -D, -F != -f, -T != -t (a fetch flag is not an upload).
