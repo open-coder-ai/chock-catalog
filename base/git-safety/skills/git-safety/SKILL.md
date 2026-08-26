@@ -16,4 +16,4 @@ see(block-destructive-commands): force_push|reset_hard|rm_-rf; see(block-no-veri
 advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); ask_if(diff > 500_lines)
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

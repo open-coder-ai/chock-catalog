@@ -16,4 +16,4 @@ block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(
 allow: download_to_file, fetch|non_interpreter(jq|tar); prefer: curl -o file; read; run
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

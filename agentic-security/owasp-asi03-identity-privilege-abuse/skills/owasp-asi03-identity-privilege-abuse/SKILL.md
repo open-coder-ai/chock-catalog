@@ -16,4 +16,4 @@ identity(per_agent): unique + short_lived + task_scoped; never: reuse(human_cred
 review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

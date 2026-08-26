@@ -16,4 +16,4 @@ never(commit): --no-verify|-n; never(push): --no-verify
 if(hook_fails): fix_issue; never(skip_hook)
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock
