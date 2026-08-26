@@ -59,6 +59,21 @@ block-invisible-unicode:
     the stricter net, add them to the character class. Keep the pattern as escapes,
     never literal characters -- the gate must not carry the bytes it blocks.
 
+pin-github-actions:
+  solves: >
+    The one line of a workflow that trusts code it never froze. `owner/action` at a tag or
+    branch resolves to whatever that ref points at when the job runs -- and the owner of the
+    action, or anyone who compromises them, can move the tag to new code after the pull request
+    that added it was reviewed and merged. The CI runner has repository secrets; the audited
+    line and the executed line are simply not the same thing until the ref is a commit SHA.
+  customise: >
+    The gate blocks any action referenced by a non-SHA ref and passes a full 40-char SHA or a
+    local (ref-less) action; the pattern lives in the manifest's `content_pattern`. It is strict
+    on purpose -- even a specific version tag is re-pointable -- so a repo that has decided a
+    trusted tag is acceptable marks the line with `pragma: allowlist unpinned-action`, which
+    keeps the exception visible in the diff. Pair it with Dependabot to bump the pinned SHAs;
+    signature and provenance verification are a separate, heavier control this does not attempt.
+
 protect-agent-config:
   solves: >
     Self-modification: the agent editing its own authority. Instruction files,

@@ -91,6 +91,14 @@
       "artifacts_sha256": "defa07673326d53370dcfda5bcd84ebd6305646318a735887bbe6c61acbaf393"
     },
     {
+      "id": "pin-github-actions",
+      "version": "0.0.1",
+      "managed": false,
+      "sha256": "cd73e9b40962de868f5915199f5fb2266d48c0d8ca9e29766591f1368cf5f45c",
+      "source": "local",
+      "artifacts_sha256": "8c5beb88afd02622f3c068fdd379d4bcf3abcf0682624b679901a56aff9370a6"
+    },
+    {
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,

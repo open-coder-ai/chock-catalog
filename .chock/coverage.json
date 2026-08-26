@@ -164,6 +164,21 @@
     "vscode": "advisory",
     "windsurf": "advisory"
   },
+  "pin-github-actions": {
+    "aider": "enforced-at-commit",
+    "claude": "enforced-at-commit",
+    "codex": "enforced-at-commit",
+    "copilot": "enforced-at-commit",
+    "cursor": "enforced-at-commit",
+    "devin": "enforced-at-commit",
+    "gemini": "enforced-at-commit",
+    "grok": "enforced-at-commit",
+    "kimi-code": "enforced-at-commit",
+    "replit": "enforced-at-commit",
+    "tabnine": "enforced-at-commit",
+    "vscode": "enforced-at-commit",
+    "windsurf": "enforced-at-commit"
+  },
   "protect-agent-config": {
     "aider": "advisory",
     "claude": "enforced",

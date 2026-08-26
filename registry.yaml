@@ -327,6 +327,20 @@ policies:
   mechanism: content_regex
   enforces: enforced-at-commit
   eval_cases: 7
+- id: pin-github-actions
+  path: base/pin-github-actions
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: content_regex
+  enforces: enforced-at-commit
+  eval_cases: 9
+  eval_executed: 9
+  description: 'Pre-commit gate for CI supply-chain hardening: blocks a workflow that references a
+    third-party GitHub Action by a movable ref (a tag or branch) instead of a full 40-character commit
+    SHA. SHA pins and local (ref-less) actions pass; ''pragma: allowlist unpinned-action'' escapes.
+    The OpenSSF Scorecard Pinned-Dependencies control for the slice a diff can show.'
 - id: protect-agent-config
   path: base/protect-agent-config
   version: 0.0.2
