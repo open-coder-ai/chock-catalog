@@ -35,9 +35,9 @@
       {
         "id": "block-destructive-commands",
         "artifact": "rule",
-        "version": "0.0.7",
+        "version": "0.0.8",
         "name": "Block Destructive Commands",
-        "description": "Best-effort guard against destructive commands: rm -rf targeting absolute, home, or root-adjacent paths; git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy. Known bypass classes include aliases, quoted arguments, non-standard clients, and scripts that invoke these commands indirectly. This is friction, not a security boundary.",
+        "description": "Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~) or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete. Destructive verbs are matched position-aware, so a bucket, path or object NAMED like a verb (aws s3 cp ... rm, docker volume inspect rm, helm list delete) is allowed. Known bypass classes include aliases, quoted arguments, non-standard clients, and scripts that invoke these commands indirectly. This is friction, not a security boundary.",
         "path": ".agents/policies/block-destructive-commands",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -65,7 +65,7 @@
       {
         "id": "block-no-verify",
         "artifact": "rule",
-        "version": "0.0.5",
+        "version": "0.0.6",
         "name": "Block No-Verify",
         "description": "Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.",
         "path": ".agents/policies/block-no-verify",

@@ -1,12 +1,16 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.0.7"
+version: "0.0.8"
 description: >
-  Best-effort guard against destructive commands: rm -rf targeting absolute, home, or
-  root-adjacent paths; git push --force (not --force-with-lease); git reset --hard;
-  git clean -f; kubectl delete; terraform destroy. Known bypass classes include aliases,
-  quoted arguments, non-standard clients, and scripts that invoke these commands indirectly.
-  This is friction, not a security boundary.
+  Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~)
+  or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push
+  --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform
+  destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume
+  rm/prune and system prune; gcloud ... delete. Destructive verbs are matched position-aware,
+  so a bucket, path or object NAMED like a verb (aws s3 cp ... rm, docker volume inspect rm,
+  helm list delete) is allowed. Known bypass classes include aliases, quoted arguments,
+  non-standard clients, and scripts that invoke these commands indirectly. This is friction,
+  not a security boundary.
 artifact: rule
 enforcement: advise
 compliance:
@@ -18,7 +22,7 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(destructive_command): rm_-rf(/|~|.), git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy
+    block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete
     require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
 effects:
 - read_only
@@ -73,3 +77,7 @@ changelog:
   date: '2026-08-24'
   changes:
   - "Git flag-parsing hardening (hardening review): git accepts unambiguous option prefixes, so `git reset --h` and `git clean --f` now match --hard/--force via prefix (floor 3 chars). `push --force` stays an EXACT match on purpose -- it is itself a prefix of the safe --force-with-lease, which must not be blocked, and git rejects shorter push abbreviations as ambiguous. Also block a '+' force-refspec on push (`git push origin +main`, `+refs/heads/main`), which overwrites the remote ref with no --force flag. The PowerShell/cmd branch no longer requires -Force -- -Recurse alone deletes the tree. Eight eval cases added (reset/clean prefixes and negatives, +refspec, PowerShell recurse-without-force)."
+- version: 0.0.8
+  date: '2026-08-26'
+  changes:
+  - "Position-aware family matching (catalog #11): the aws/docker/helm/dropdb families read their destructive verb from the slot the tool parses it in, instead of matching the word anywhere in argv. `aws s3 cp --recursive <src> rm` (a destination dir named rm), `docker volume inspect rm`, `docker volume ls prune`, `helm list delete`, and a path/name that merely contains `dropdb` are no longer refused; the real `aws s3 rm --recursive`, `docker volume rm`, `docker system prune`, `helm uninstall|delete`, and `dropdb <db>` still block. Value-flag operands are consumed before positions are resolved (a curated set: --namespace, --kube-context, --region, --profile, -u, -n, -c, ...), so `helm --kube-context prod uninstall api` and `sudo -u postgres dropdb production` still block rather than reading the flag value as the action/program; an unusual value-flag outside that set can still shift a slot (named bypass class). rule.text and the description were stale -- they listed only the original rm/git/kubectl/terraform set and now name every family the guard covers (aws, dropdb, helm, docker, gcloud, PowerShell) plus the $HOME target forms. Eight negative/adversarial eval cases added."

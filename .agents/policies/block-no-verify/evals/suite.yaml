@@ -118,3 +118,17 @@ suite:
     execute:
       command: git push --no-verif origin main
       expect: block
+  - id: tc-017
+    category: negative_trigger
+    prompt: A request runs git status with a pathspec named "commit" and a hooksPath after it.
+    expect: The guard allows it; the real subcommand is status, so a pathspec named commit is not a commit.
+    execute:
+      command: git status -- commit -c core.hooksPath=/tmp
+      expect: allow
+  - id: tc-018
+    category: negative_trigger
+    prompt: A request runs git status in a directory named "commit" via -C, with --no-verify.
+    expect: The guard allows it; -C consumes "commit" as its value, so the subcommand is status, not commit.
+    execute:
+      command: git -C commit status --no-verify
+      expect: allow

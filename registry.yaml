@@ -36,8 +36,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: enforced (pre-tool-use, once hooks are installed)
-  eval_cases: 16
-  eval_executed: 16
+  eval_cases: 42
+  eval_executed: 42
   description: 'Best-effort guard against destructive commands: rm -rf targeting absolute, home, or root-adjacent
     paths; git push --force (not --force-with-lease); git reset --hard; kubectl delete; terraform destroy;
     aws s3 rm --recursive; dropdb; helm uninstall; docker volume rm and system prune; gcloud delete.'
@@ -58,8 +58,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: enforced (pre-tool-use, once hooks are installed)
-  eval_cases: 3
-  eval_executed: 3
+  eval_cases: 17
+  eval_executed: 17
   description: Best-effort guard against bypassing git hooks via git commit/push --no-verify or -n. Known
     bypass classes include aliases, wrapper scripts, and non-standard cli
 - id: block-unpinned-agent-components
