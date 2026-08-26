@@ -1,0 +1,53 @@
+id: protect-ci-workflows
+name: "Protect CI Workflows"
+version: "0.0.1"
+description: >
+  Guard against an agent weakening the automated checks that review its own work. CI/CD
+  workflow files (.github/workflows/), the composite actions they call (.github/actions/)
+  and the dependency-update automation (.github/dependabot.yml) define what must pass
+  before a change lands -- so a shell command that rewrites or deletes them is the agent
+  removing the gate that would catch it. The guard refuses shell write-commands targeting
+  those paths; reads pass, and tool-driven regeneration (chock sync) passes because it
+  writes through the tool, not shell editing. Best-effort and deliberately coarse: a
+  compound command that both reads a protected file and writes elsewhere may be refused --
+  rewrite it in two steps. The 'chock: approved-config-change' escape marker is friction
+  plus an audit trail, not authentication -- the agent can write it too; the check an agent
+  cannot self-approve is branch protection and required-status-checks enforced server-side.
+artifact: rule
+enforcement: advise
+rule:
+  text: |
+    ci_config(.github/workflows|.github/actions|.github/dependabot.yml): never(shell_edit|delete); propose_to_human
+    if(ci_change_needed): open PR; await(review)  # an agent must not disarm the checks on its own work
+effects:
+- read_only
+approval:
+  required: false
+
+compliance:
+  owasp_asi:
+  - control: ASI02
+    coverage: partial
+    note: "blocks shell self-modification of CI workflow, action and dependency-automation files; server-side branch protection and required-status-checks remain the backstop an agent cannot self-approve"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-08-26T00:00:00Z"
+  updated_at: "2026-08-26T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-26'
+  changes:
+  - "Initial public baseline: refuse shell writes (>, sed -i, rm/mv/cp/tee, interpreter -c/-i forms) to .github/workflows/, .github/actions/ and .github/dependabot.yml; reads and tool-driven chock sync pass; 'chock: approved-config-change' marker escapes. Sibling of protect-agent-config, reusing its write-detection engine."

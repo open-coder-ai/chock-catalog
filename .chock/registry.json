@@ -226,6 +226,21 @@
         "script_hashes": {}
       }
     ],
+    "protect-ci-workflows": [
+      {
+        "id": "protect-ci-workflows",
+        "artifact": "rule",
+        "version": "0.0.1",
+        "name": "Protect CI Workflows",
+        "description": "Guard against an agent weakening the automated checks that review its own work. CI/CD workflow files (.github/workflows/), the composite actions they call (.github/actions/) and the dependency-update automation (.github/dependabot.yml) define what must pass before a change lands -- so a shell command that rewrites or deletes them is the agent removing the gate that would catch it. The guard refuses shell write-commands targeting those paths; reads pass, and tool-driven regeneration (chock sync) passes because it writes through the tool, not shell editing. Best-effort and deliberately coarse: a compound command that both reads a protected file and writes elsewhere may be refused -- rewrite it in two steps. The 'chock: approved-config-change' escape marker is friction plus an audit trail, not authentication -- the agent can write it too; the check an agent cannot self-approve is branch protection and required-status-checks enforced server-side.",
+        "path": ".agents/policies/protect-ci-workflows",
+        "manifest": "manifest.yaml",
+        "trust_tier": "community",
+        "lifecycle_status": "draft",
+        "dependencies": [],
+        "script_hashes": {}
+      }
+    ],
     "protect-commit-privacy": [
       {
         "id": "protect-commit-privacy",
