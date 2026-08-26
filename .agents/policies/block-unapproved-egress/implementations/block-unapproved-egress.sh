@@ -63,7 +63,11 @@ fetch_re='(^|[[:space:];|&(<])(curl|wget|iwr|invoke-webrequest|invoke-restmethod
 #   wget:  --post-data/--post-file/--body-data/--body-file/--method= POST|PUT
 #   PS:    -Method POST|PUT|PATCH, -Body, -InFile, -Form -- PowerShell is case-insensitive, so
 #          that half keeps nocasematch ON.
-posix_upload_re='(^|[[:space:]])-[dFT][[:space:]@=~./A-Za-z0-9-]|--data([[:space:]]|-)|--form([[:space:]]|-)|--upload-file|--post-data|--post-file|--body-data|--body-file|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH)'
+# Every alternative is anchored to a token boundary (start or whitespace) and ends on a valid
+# boundary (space, =, - for the -raw/-binary/-string/-file variants, or end of line) so an option
+# name cannot match as a substring of a larger token. Both spaced (--data x) and attached
+# (--data=x, -d@x) forms are covered.
+posix_upload_re='(^|[[:space:]])(-[dFT][[:space:]@=~./A-Za-z0-9-]|--data([[:space:]=]|-)|--form([[:space:]=]|-)|--upload-file([[:space:]=]|$)|--post-data([[:space:]=]|$)|--post-file([[:space:]=]|$)|--body-data([[:space:]=]|$)|--body-file([[:space:]=]|$)|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH))'
 ps_upload_re='(-Method[[:space:]]+(POST|PUT|PATCH)|-Body([[:space:]]|$)|-InFile([[:space:]]|$)|-Form([[:space:]]|$))'
 
 # curl/wget half: nocasematch OFF so -d != -D, -F != -f, -T != -t (a fetch flag is not an upload).
