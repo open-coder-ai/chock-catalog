@@ -43,6 +43,14 @@
       "artifacts_sha256": "7e286e68e1b7b791ccde02895cf555b5af16bc5c0fcc92c5e1aca2982c510343"
     },
     {
+      "id": "block-unapproved-egress",
+      "version": "0.0.1",
+      "managed": false,
+      "sha256": "75c100ff6d88c22f0e651a42ec247731863a2f47ff94d439484dd239776a3a8f",
+      "source": "local",
+      "artifacts_sha256": "f27640290daaee5fd4172f29d742b963c4894e9032646c533f8f4501b3e02786"
+    },
+    {
       "id": "block-wildcard-agent-permissions",
       "version": "0.0.1",
       "managed": false,

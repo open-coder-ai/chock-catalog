@@ -16,6 +16,9 @@
 - **block-no-verify**:
   never(commit): --no-verify|-n; never(push): --no-verify
   if(hook_fails): fix_issue; never(skip_hook)
+- **block-unapproved-egress**:
+  block(egress): fetch(curl|wget|iwr) + upload(-d|--data|-F|--upload-file|-X POST|PUT) to host NOT in allowlist
+  allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; escape: 'pragma: allowlist egress'
 - **code-safety**:
   see(scan-secrets): commit(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
   advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human

