@@ -10,7 +10,8 @@ command instead of a red-CI scavenger hunt:
     # 2. run:
     python tools/adopt_framework.py rc/0.1.0-rc.2
 
-It rewrites FRAMEWORK_REF in ci.yml, regenerates everything, and runs every check.
+It rewrites the pin in the `.framework-ref` data file (ci.yml reads it at run time, so an
+adoption PR never modifies `.github/workflows/`), regenerates everything, and runs every check.
 Commit the whole diff as the adoption PR. If the engine's emitters changed (a MINOR
 framework release), the diff shows exactly what changed about enforcement.
 """
@@ -18,14 +19,16 @@ framework release), the diff shows exactly what changed about enforcement.
 from __future__ import annotations
 
 import argparse
-import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CI_YML = ROOT / ".github" / "workflows" / "ci.yml"
+# The engine pin lives in a data file, NOT in ci.yml, so an adoption PR does not modify
+# .github/workflows/ (which would make GitHub refuse to run the PR's CI and deadlock the
+# no-bypass protect-main ruleset). ci.yml reads this file at run time.
+FRAMEWORK_REF_FILE = ROOT / ".framework-ref"
 
 
 def _run(label: str, cmd: list[str]) -> int:
@@ -43,14 +46,12 @@ def main(argv: list[str] | None = None) -> int:
         print("chock is not on PATH; install the target engine first (see module docstring).", file=sys.stderr)
         return 1
 
-    text = CI_YML.read_text(encoding="utf-8")
-    new_text, n = re.subn(r"(FRAMEWORK_REF: ).*", rf"\g<1>{args.ref}", text, count=1)
-    if n != 1:
-        print("FRAMEWORK_REF not found in ci.yml; is the pin still wired?", file=sys.stderr)
+    if not FRAMEWORK_REF_FILE.exists():
+        print(f"{FRAMEWORK_REF_FILE.name} not found; is the pin still wired? (ci.yml reads it)", file=sys.stderr)
         return 1
-    if new_text != text:
-        CI_YML.write_text(new_text, encoding="utf-8", newline="\n")
-        print(f"pinned FRAMEWORK_REF: {args.ref}")
+    if FRAMEWORK_REF_FILE.read_text(encoding="utf-8").strip() != args.ref:
+        FRAMEWORK_REF_FILE.write_text(args.ref + "\n", encoding="utf-8", newline="\n")
+        print(f"pinned framework ref: {args.ref}  (.framework-ref)")
 
     rc = 0
     rc = max(rc, _run("sync (recompile + hooks + index + lockfile)", ["chock", "sync", "--repo", "."]))

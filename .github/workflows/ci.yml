@@ -1,11 +1,14 @@
 name: CI
 
-# FRAMEWORK_REF pins the engine this catalog is built and checked against. Bumping it
-# is an explicit, reviewable adoption: run `python tools/adopt_framework.py <ref>` to
-# rewrite the pin AND regenerate every derived artifact in one step. The nightly
-# transcript workflow deliberately stays on main as an unpinned canary.
-env:
-  FRAMEWORK_REF: v0.5.0
+# The engine this catalog is built and checked against is pinned in the `.framework-ref`
+# DATA FILE, not here. That is deliberate: an adoption PR that edits a data file does not
+# modify `.github/workflows/`, so GitHub still runs this CI on the PR. When the pin lived in
+# this file, every adoption PR was a workflow-modifying PR -- GitHub refused to run the
+# `pull_request` CI on it, the required `dco`/`policies` checks never reported, and the
+# protect-main ruleset (no bypass) deadlocked the merge. Bumping the pin is still an explicit,
+# reviewable adoption: run `python tools/adopt_framework.py <ref>` to rewrite `.framework-ref`
+# AND regenerate every derived artifact in one step. The nightly transcript workflow
+# deliberately stays on main as an unpinned canary.
 
 
 # Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
@@ -61,6 +64,11 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: "3.12"
+
+      # The framework pin lives in the .framework-ref data file (see the header comment) so
+      # adoption PRs never touch this workflow. Read it into the job env for the checkout below.
+      - name: Read the framework pin
+        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
 
       # Check out the framework at the pinned ref this catalog is validated against.
       - name: Check out the framework
