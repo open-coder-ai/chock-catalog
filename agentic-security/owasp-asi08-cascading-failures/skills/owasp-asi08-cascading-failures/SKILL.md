@@ -16,4 +16,4 @@ isolate(blast_radius): per_agent + per_environment; separate(dev, prod) hard; ne
 circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock
