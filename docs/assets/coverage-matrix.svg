@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1290" width="1600" height="1290" role="img" aria-label="32 policies: 8 enforced-at-commit, 4 enforced, 20 advisory">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1290" width="1600" height="1290" role="img" aria-label="33 policies: 8 enforced-at-commit, 5 enforced, 20 advisory">
 <rect width="1600" height="1290" fill="#0f1420"/>
 <line x1="0" y1="0" x2="1600" y2="0" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="96" x2="1600" y2="96" stroke="#1a2130" stroke-width="1"/>
@@ -15,7 +15,7 @@
 <line x1="0" y1="1152" x2="1600" y2="1152" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="1248" x2="1600" y2="1248" stroke="#1a2130" stroke-width="1"/>
 <text x="80" y="78" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="4" fill="#e0b34c">CHOCK CATALOG &#183; ENFORCEMENT YOU CAN VERIFY</text>
-<text x="80" y="140" font-family="Georgia, 'Times New Roman', serif" font-size="46" font-weight="bold" fill="#f2ead8">32 policies. Only what&#8217;s actually true.</text>
+<text x="80" y="140" font-family="Georgia, 'Times New Roman', serif" font-size="46" font-weight="bold" fill="#f2ead8">33 policies. Only what&#8217;s actually true.</text>
 <line x1="80" y1="180" x2="1520" y2="180" stroke="#5c6577" stroke-width="1"/>
 <text x="80" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">8</text>
 <text x="138" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">ENFORCED-AT-COMMIT</text>
@@ -39,18 +39,20 @@
 <rect x="80" y="599" width="6" height="6" fill="#3fd0b6"/>
 <text x="98" y="610" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">verify-dependency-exists</text>
 <line x1="548" y1="220" x2="548" y2="1000" stroke="#5c6577" stroke-width="1"/>
-<text x="576" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">4</text>
+<text x="576" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">5</text>
 <text x="634" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">ENFORCED</text>
 <text x="576" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">the tool call is refused before it runs</text>
 <line x1="576" y1="378" x2="992" y2="378" stroke="#5c6577" stroke-width="1"/>
 <rect x="576" y="389" width="6" height="6" fill="#3fd0b6"/>
-<text x="594" y="400" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-destructive-commands</text>
+<text x="594" y="400" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-curl-pipe-sh</text>
 <rect x="576" y="419" width="6" height="6" fill="#3fd0b6"/>
-<text x="594" y="430" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-no-verify</text>
+<text x="594" y="430" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-destructive-commands</text>
 <rect x="576" y="449" width="6" height="6" fill="#3fd0b6"/>
-<text x="594" y="460" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">protect-agent-config</text>
+<text x="594" y="460" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-no-verify</text>
 <rect x="576" y="479" width="6" height="6" fill="#3fd0b6"/>
-<text x="594" y="490" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">protect-commit-privacy</text>
+<text x="594" y="490" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">protect-agent-config</text>
+<rect x="576" y="509" width="6" height="6" fill="#3fd0b6"/>
+<text x="594" y="520" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">protect-commit-privacy</text>
 <line x1="1044" y1="220" x2="1044" y2="1000" stroke="#5c6577" stroke-width="1"/>
 <text x="1072" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#e0b34c">20</text>
 <text x="1130" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">ADVISORY</text>

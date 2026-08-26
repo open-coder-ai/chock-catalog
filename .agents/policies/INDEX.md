@@ -7,6 +7,9 @@
 - **agent-discipline**:
   before(edit): read(file); before(done): verify(flow) + tests_pass + lint_clean
   never(fix_test_by): delete_assertion|weaken_check|skip; on_find(dead_code|unused): delete
+- **block-curl-pipe-sh**:
+  block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(sh|bash|python|perl|node|iex)
+  allow: download_to_file, fetch|non_interpreter(jq|tar); prefer: curl -o file; read; run
 - **block-destructive-commands**:
   block(destructive_command): rm_-rf(/|~|.), git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy
   require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
