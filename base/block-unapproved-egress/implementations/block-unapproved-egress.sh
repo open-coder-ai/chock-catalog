@@ -46,36 +46,43 @@ esac
 
 shopt -s nocasematch 2>/dev/null || true
 
-# A network client capable of sending a body. No client -> nothing to guard.
-fetch_re='(^|[[:space:];|&(<])(curl|wget|iwr|invoke-webrequest|invoke-restmethod|irm)([[:space:]]|$)'
-[[ "$raw" =~ $fetch_re ]] || {
+# Which network client is present? No client -> nothing to guard. We distinguish the curl/wget
+# family from the PowerShell family because their upload flags are matched differently: curl
+# short flags are case-sensitive single letters, while PowerShell parameters are case-insensitive
+# words. Scoping each flag set to its own client is what stops a PowerShell `-TimeoutSec`/`-Title`
+# from reading as a curl `-T` upload (and vice versa).
+curl_re='(^|[[:space:];|&(<])(curl|wget)([[:space:]]|$)'
+ps_re='(^|[[:space:];|&(<])(iwr|invoke-webrequest|invoke-restmethod|irm)([[:space:]]|$)'
+have_curl=0; [[ "$raw" =~ $curl_re ]] && have_curl=1
+have_ps=0;   [[ "$raw" =~ $ps_re ]]   && have_ps=1
+if [ "$have_curl" -eq 0 ] && [ "$have_ps" -eq 0 ]; then
     shopt -u nocasematch 2>/dev/null || true
     exit 0
-}
+fi
 
 # Upload intent -- the thing that turns a fetch into an exfiltration. Fetch-only (a bare GET)
 # is left alone: the target is upload/POST to an unapproved host, not normal dependency traffic.
 #   curl:  -d/--data*/-F/--form*/-T/--upload-file, -X|--request POST|PUT|PATCH -- incl. attached
-#          values (-d@file, -Tbackup.tar) and stdin uploads (-T-). curl short flags are
-#          CASE-SENSITIVE (-d != -D dump-header, -F != -f fail, -T != -t), so this half is
-#          matched with nocasematch OFF. (A short flag can still be captured from a different
-#          command in a pipeline; the host allowlist is what ultimately decides.)
+#          values, whether bare (-d@file), quoted (-d"$x", -d'@f'), or a spaced operand (-d @f),
+#          and stdin uploads (-T-). curl short flags are CASE-SENSITIVE (-d != -D dump-header,
+#          -F != -f fail, -T != -t), so this half is matched with nocasematch OFF. A short flag
+#          followed by any character is treated as carrying a value; the host allowlist decides.
 #   wget:  --post-data/--post-file/--body-data/--body-file/--method= POST|PUT
-#   PS:    -Method POST|PUT|PATCH, -Body, -InFile, -Form -- PowerShell is case-insensitive, so
-#          that half keeps nocasematch ON.
-# Every alternative is anchored to a token boundary (start or whitespace) and ends on a valid
-# boundary (space, =, - for the -raw/-binary/-string/-file variants, or end of line) so an option
-# name cannot match as a substring of a larger token. Both spaced (--data x) and attached
-# (--data=x, -d@x) forms are covered.
-posix_upload_re='(^|[[:space:]])(-[dFT][[:space:]@=~./A-Za-z0-9-]|--data([[:space:]=]|-)|--form([[:space:]=]|-)|--upload-file([[:space:]=]|$)|--post-data([[:space:]=]|$)|--post-file([[:space:]=]|$)|--body-data([[:space:]=]|$)|--body-file([[:space:]=]|$)|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH))'
+#   PS:    -Method POST|PUT|PATCH, -Body, -InFile, -Form -- PowerShell is case-insensitive.
+# Long options are anchored to a token boundary (start or whitespace) and end on a valid boundary
+# (space, =, - for the -raw/-binary/-string/-file variants, or end of line) so an option name
+# cannot match inside a larger token. Both spaced (--data x) and attached (--data=x) forms count.
+posix_upload_re='(^|[[:space:]])(-[dFT]([[:space:]]|[!-~])|--data([[:space:]=]|-)|--form([[:space:]=]|-)|--upload-file([[:space:]=]|$)|--post-data([[:space:]=]|$)|--post-file([[:space:]=]|$)|--body-data([[:space:]=]|$)|--body-file([[:space:]=]|$)|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH))'
 ps_upload_re='(-Method[[:space:]]+(POST|PUT|PATCH)|-Body([[:space:]]|$)|-InFile([[:space:]]|$)|-Form([[:space:]]|$))'
 
+uploads=0
 # curl/wget half: nocasematch OFF so -d != -D, -F != -f, -T != -t (a fetch flag is not an upload).
-shopt -u nocasematch 2>/dev/null || true
-uploads=1
-[[ "$raw" =~ $posix_upload_re ]] || uploads=0
+if [ "$have_curl" -eq 1 ]; then
+    shopt -u nocasematch 2>/dev/null || true
+    [[ "$raw" =~ $posix_upload_re ]] && uploads=1
+fi
 # PowerShell half: nocasematch ON (the shell and its parameters are case-insensitive).
-if [ "$uploads" -eq 0 ]; then
+if [ "$uploads" -eq 0 ] && [ "$have_ps" -eq 1 ]; then
     shopt -s nocasematch 2>/dev/null || true
     [[ "$raw" =~ $ps_upload_re ]] && uploads=1
 fi
