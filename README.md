@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="33 policies" src="https://img.shields.io/badge/policies-33-blue">
-<img alt="13 enforced" src="https://img.shields.io/badge/enforced-13-brightgreen">
+<img alt="34 policies" src="https://img.shields.io/badge/policies-34-blue">
+<img alt="14 enforced" src="https://img.shields.io/badge/enforced-14-brightgreen">
 <img alt="20 advisory" src="https://img.shields.io/badge/advisory-20-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -43,15 +43,15 @@ That is the whole install. The next commit containing a credential exits non-zer
 a repo, and the difference has to be visible, because the failure mode of governance tooling
 is that everyone believes it is doing more than it is. So every policy here is labelled with
 what it actually reaches — stated up front rather than in the appendix, because twenty of
-thirty-three are advisory, and that is the number most catalogs would round up:
+thirty-four are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 8 |
-| `enforced` | the tool call is refused before it runs | 5 |
+| `enforced` | the tool call is refused before it runs | 6 |
 | `advisory` | text an agent reads and may or may not follow | 20 |
 
-<img alt="Thirty-three policies split eight enforced-at-commit, five enforced, twenty advisory, each named" src="docs/assets/coverage-matrix.svg">
+<img alt="Thirty-four policies split eight enforced-at-commit, six enforced, twenty advisory, each named" src="docs/assets/coverage-matrix.svg">
 
 Advisory eval cases report as `skipped`, never as passing, because there is no mechanism to
 replay.
@@ -78,6 +78,7 @@ codex plugin format, Codex after its per-hook trust review).
 | [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 24/24 |
 | [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and `gh pr create`/`edit` bodies that narrate the development conversation (or leak a session link) instead of describing the change — a leak class that only exists once an agent authors the commit | 20/20 |
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 27/27 |
+| [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 19/19 |
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 

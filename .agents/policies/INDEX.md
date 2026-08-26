@@ -34,6 +34,9 @@
 - **protect-agent-config**:
   agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
   if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
+- **protect-ci-workflows**:
+  ci_config(.github/workflows|.github/actions|.github/dependabot.yml): never(shell_edit|delete); propose_to_human
+  if(ci_change_needed): open PR; await(review)  # an agent must not disarm the checks on its own work
 - **protect-commit-privacy**:
   commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
   if(sensitive_context): propose_message_to_human; await(approval) before(commit)  # history is published forever

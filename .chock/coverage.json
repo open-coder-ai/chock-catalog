@@ -179,6 +179,21 @@
     "vscode": "enforced",
     "windsurf": "advisory"
   },
+  "protect-ci-workflows": {
+    "aider": "advisory",
+    "claude": "enforced",
+    "codex": "advisory",
+    "copilot": "enforced",
+    "cursor": "enforced",
+    "devin": "advisory",
+    "gemini": "advisory",
+    "grok": "advisory",
+    "kimi-code": "advisory",
+    "replit": "advisory",
+    "tabnine": "advisory",
+    "vscode": "enforced",
+    "windsurf": "advisory"
+  },
   "protect-commit-privacy": {
     "aider": "advisory",
     "claude": "enforced",

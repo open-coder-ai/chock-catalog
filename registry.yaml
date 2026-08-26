@@ -336,6 +336,20 @@ policies:
   mechanism: guard script
   enforces: enforced (pre-tool-use, once hooks are installed)
   eval_cases: 8
+- id: protect-ci-workflows
+  path: base/protect-ci-workflows
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: enforced (pre-tool-use, once hooks are installed)
+  eval_cases: 19
+  eval_executed: 19
+  description: 'Guard against an agent weakening the automated checks that review its own work:
+    refuses shell writes (>, sed -i, rm/mv/cp, python -c) to .github/workflows/, .github/actions/
+    and .github/dependabot.yml. Reads and tool-driven chock sync pass; ''chock: approved-config-change''
+    escapes. Branch protection and required-status-checks remain the server-side backstop.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
   version: 0.0.1
