@@ -11,6 +11,14 @@
       "artifacts_sha256": "36d131cd7df7edbcd57a0e117de79fa144a2bd1fb10b95edcc3c0404ba9533d4"
     },
     {
+      "id": "block-curl-pipe-sh",
+      "version": "0.0.1",
+      "managed": false,
+      "sha256": "36aa94cf3608e36cade84881156bc8dd64b00ca8494d8479c7fa3923cf9f081d",
+      "source": "local",
+      "artifacts_sha256": "71123cc20c9766a57624c2bda79478991a61c093d1d073d716fc4a8acc66c1da"
+    },
+    {
       "id": "block-destructive-commands",
       "version": "0.0.1",
       "managed": false,

@@ -14,6 +14,21 @@
     "vscode": "advisory",
     "windsurf": "advisory"
   },
+  "block-curl-pipe-sh": {
+    "aider": "advisory",
+    "claude": "enforced",
+    "codex": "advisory",
+    "copilot": "enforced",
+    "cursor": "enforced",
+    "devin": "advisory",
+    "gemini": "advisory",
+    "grok": "advisory",
+    "kimi-code": "advisory",
+    "replit": "advisory",
+    "tabnine": "advisory",
+    "vscode": "enforced",
+    "windsurf": "advisory"
+  },
   "block-destructive-commands": {
     "aider": "advisory",
     "claude": "enforced",

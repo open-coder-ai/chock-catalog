@@ -6,6 +6,16 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.chock/bin/pretooluse.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/.chock/bin/pretooluse.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/block-destructive-commands/implementations/block-destructive.sh\"",
             "timeout": 30
           }

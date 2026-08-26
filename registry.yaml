@@ -13,6 +13,21 @@ policies:
   eval_executed: 0
   description: 'trigger: edits without reading, unverified completion claims, weakened tests, dead code.
     avoid: skipping verification, deleting assertions, leaving unused code.'
+- id: block-curl-pipe-sh
+  path: base/block-curl-pipe-sh
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: enforced (pre-tool-use, once hooks are installed)
+  eval_cases: 27
+  eval_executed: 27
+  description: 'Best-effort guard against piping a network download straight into a shell or
+    script interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare or
+    path-qualified, incl. subshell groups and sudo/exec/command/env wrappers), bash -c "$(curl
+    ...)", bash <(curl ...), and the PowerShell iwr ... | iex form. Download-to-file and pipes
+    into non-interpreter tools (jq, tar, grep) stay allowed.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
   version: 0.0.3

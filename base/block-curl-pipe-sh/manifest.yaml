@@ -1,0 +1,46 @@
+id: block-curl-pipe-sh
+name: "Block Curl-Pipe-Shell"
+version: "0.0.1"
+description: >
+  Best-effort guard against piping a network download straight into a shell or script
+  interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare or path-qualified,
+  including subshell groups and sudo/exec/command/env wrappers), bash -c "$(curl ...)",
+  bash <(curl ...), and the PowerShell iwr ... | iex form. Downloading to a file, or piping a
+  fetch into a non-interpreter tool (jq, tar, grep), stays allowed. Known bypass classes
+  include aliases, variable indirection, base64/obfuscated payloads, env-var-prefixed
+  interpreters, and non-standard fetch clients. This is friction, not a security boundary.
+artifact: rule
+enforcement: advise
+compliance:
+  owasp_asi:
+  - ASI02
+rule:
+  text: |
+    block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(sh|bash|python|perl|node|iex)
+    allow: download_to_file, fetch|non_interpreter(jq|tar); prefer: curl -o file; read; run
+effects:
+- read_only
+approval:
+  required: false
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-08-26T00:00:00Z"
+  updated_at: "2026-08-26T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-26'
+  changes:
+  - "Initial public baseline: block a network fetch wired directly into a shell or script interpreter -- curl|sh, wget|bash, curl|python, path-qualified (curl|/bin/sh), subshell groups (curl|(sh)), sudo/exec/command/env wrappers, bash -c \"$(curl ...)\", bash <(curl ...), iwr|iex; allow download-to-file and pipes into non-interpreter tools (jq, tar, grep)."

@@ -16,6 +16,23 @@ agent-discipline:
     `lint_clean` rather than leaving a rule that cannot be satisfied -- a rule an agent
     routinely cannot meet teaches it that rules are advisory in general.
 
+block-curl-pipe-sh:
+  solves: >
+    The install instruction that runs code nobody read: `curl https://get.example.com | sh`.
+    The bytes the server returns are executed the instant they arrive -- a compromised host,
+    a redirected URL, or a payload that varies by user-agent all land as root-capable shell
+    with no diff, no pin, and no chance to look first. It is the plainest supply-chain vector
+    an agent will reach for, because every project's README suggests it.
+  customise: >
+    The guard blocks only a fetch wired DIRECTLY into a shell or script interpreter (a pipe,
+    `bash -c "$(...)"`, or `bash <(...)`) -- `sh`/`bash`/`zsh` and `python`/`perl`/`ruby`/`node`
+    alike, since piping a download into any of them runs the fetched code. Download-to-file and
+    pipes into a non-interpreter tool (`jq`, `tar`, `grep`) stay allowed, because the safe form
+    it points you toward -- fetch, read, then run -- must not itself be blocked. It matches the
+    raw command text with regexes (it does not tokenize), so add your own fetch clients or
+    interpreters there; read the manifest description first for the bypass classes (aliases,
+    variable indirection, obfuscation) it cannot see.
+
 block-destructive-commands:
   solves: >
     The command that cannot be undone: `rm -rf` against an absolute or home path, a force
