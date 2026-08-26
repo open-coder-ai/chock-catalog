@@ -27,7 +27,7 @@ A hallucination at stage one arriving at stage four as an established premise, a
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 isolate(blast_radius): per_agent + per_environment; separate(dev, prod) hard; never(chain): agent_output -> agent_input | downstream_automation without(validation)
 circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
 ```

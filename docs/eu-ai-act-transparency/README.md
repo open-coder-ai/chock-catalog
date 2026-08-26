@@ -27,7 +27,7 @@ Article 50 applies from August 2026 regardless of risk tier, and it is the one o
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 when(code emits AI interaction | synthetic text|image|audio|video to a person): disclose(it is AI) + mark(machine_readable: C2PA|watermark|metadata) + label(deepfake) at the emitting boundary
 never(remove|weaken): existing provenance marking; exempt: assistive_editing | no_substantial_alteration; see .agents/policies/eu-ai-act-transparency/references/article-50.md
 ```

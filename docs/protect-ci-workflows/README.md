@@ -25,11 +25,11 @@ The gate an agent can quietly widen: its own CI. When the checks that must pass 
 
 ## How it works
 
-A guard script, `implementations/protect-ci-workflows.sh`, run before the agent executes a Bash command. It tokenizes the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/protect-ci-workflows.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
-```
+```text
 ci_config(.github/workflows|.github/actions|.github/dependabot.yml): never(shell_edit|delete); propose_to_human
 if(ci_change_needed): open PR; await(review)  # an agent must not disarm the checks on its own work
 ```

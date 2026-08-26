@@ -27,7 +27,7 @@ A ranking or eligibility model that lands in an Annex III domain -- hiring, cred
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 on_touch(Annex III domain: biometrics|critical_infra|education|employment|essential_services|credit|insurance|law_enforcement|migration|justice|elections): flag + name(domain) + require owner for Art 9-15 (risk_mgmt, data_governance, tech_doc, logging, human_oversight, accuracy_robustness_cybersecurity)
 never(silently add): high_risk capability; decision belongs to the repo owner; see .agents/policies/eu-ai-act-high-risk-triage/references/annex-iii.md
 ```

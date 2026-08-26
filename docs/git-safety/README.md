@@ -27,7 +27,7 @@ Git operations that lose work rather than record it: force pushes over shared hi
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 see(block-destructive-commands): force_push|reset_hard|rm_-rf; see(block-no-verify): --no-verify|skip_hooks; see(protect-main-branch): direct_commit|push(main|master)
 advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); ask_if(diff > 500_lines)
 ```

@@ -27,7 +27,7 @@ Agents that edit a file they never read, declare work finished without running i
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 before(edit): read(file); before(done): verify(flow) + tests_pass + lint_clean
 never(fix_test_by): delete_assertion|weaken_check|skip; on_find(dead_code|unused): delete
 ```

@@ -27,7 +27,7 @@ The reason "human in the loop" is not a mitigation for the other nine. If the hu
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 at(approval_step): render(raw_action + real_target + real_scope); never(substitute): agent_summary for(the_thing_approved)
 forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
 ```

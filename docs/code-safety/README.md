@@ -27,7 +27,7 @@ The four ways generated code becomes a liability: committed credentials, `eval`/
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 see(scan-secrets): commit(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
 advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
 ```

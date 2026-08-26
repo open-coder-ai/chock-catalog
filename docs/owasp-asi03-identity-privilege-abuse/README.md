@@ -27,7 +27,7 @@ The personal access token lent to an agent "just to get it working", and the sha
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 identity(per_agent): unique + short_lived + task_scoped; never: reuse(human_credential) | share(service_account) | issue(long_lived_broad_token)
 review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
 ```

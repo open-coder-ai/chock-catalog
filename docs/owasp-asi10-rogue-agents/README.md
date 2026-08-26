@@ -27,7 +27,7 @@ The agent nobody can point to an owner for, still running, still credentialed, d
 
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
-```
+```text
 every(agent): owner + purpose + expiry + inventory_entry + kill_switch(tested); default(runtime): sandboxed; never(allow): uninventoried_subagent_spawn
 baseline(behavior) + alert(deviation) continuously; on(deviation): halt + escalate(human); see .agents/policies/owasp-asi10-rogue-agents/references/rogue-agents.md
 ```

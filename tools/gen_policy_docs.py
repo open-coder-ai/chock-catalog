@@ -143,11 +143,11 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
     elif kind == "guard":
         lines += [
             f"A guard script, `implementations/{scripts[0]}`, run before the agent executes a Bash "
-            "command. It tokenizes the proposed command and exits non-zero to refuse it.",
+            "command. It inspects the proposed command and exits non-zero to refuse it.",
             "",
             "The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:",
             "",
-            "```",
+            "```text",
             ((manifest.get("rule") or {}).get("text") or "").strip(),
             "```",
             "",
@@ -156,7 +156,7 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
         lines += [
             "There is no mechanism. The rule text is compiled into the agent's ambient context:",
             "",
-            "```",
+            "```text",
             ((manifest.get("rule") or {}).get("text") or "").strip(),
             "```",
             "",
