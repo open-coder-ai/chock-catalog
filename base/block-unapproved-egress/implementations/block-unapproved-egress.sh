@@ -72,9 +72,20 @@ fi
 # Long options are anchored to a token boundary (start or whitespace) and end on a valid boundary
 # (space, =, - for the -raw/-binary/-string/-file variants, or end of line) so an option name
 # cannot match inside a larger token. Both spaced (--data x) and attached (--data=x) forms count.
-posix_upload_re='(^|[[:space:]])(-[dFT]([[:space:]]|[!-~])|--data([[:space:]=]|-)|--form([[:space:]=]|-)|--upload-file([[:space:]=]|$)|--post-data([[:space:]=]|$)|--post-file([[:space:]=]|$)|--body-data([[:space:]=]|$)|--body-file([[:space:]=]|$)|(-X[[:space:]]*|--request[[:space:]=]+)(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH))'
+posix_upload_re='(^|[[:space:]])(-[dFT]([[:space:]]|[!-~])|--data([[:space:]=]|-)|--form([[:space:]=]|-)|--upload-file([[:space:]=]|$)|--post-data([[:space:]=]|$)|--post-file([[:space:]=]|$)|--body-data([[:space:]=]|$)|--body-file([[:space:]=]|$)|--json([[:space:]=]|$)|(-X[[:space:]]*|--request[[:space:]=]+)(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH))'
 # PowerShell binds a parameter value with either whitespace or a colon (-Method:POST, -Body:$x).
 ps_upload_re='(-Method[[:space:]:]+(POST|PUT|PATCH)|-Body([[:space:]:]|$)|-InFile([[:space:]:]|$)|-Form([[:space:]:]|$))'
+
+# curl reads its URL and data from a -K/--config file this guard cannot see, so the request's
+# destination is hidden from the diff -- exactly the visibility this policy exists to preserve.
+# Treat it as opaque egress: block up front (case-sensitive; -K is config, -k is --insecure).
+if [ "$have_curl" -eq 1 ]; then
+    shopt -u nocasematch 2>/dev/null || true
+    if [[ "$raw" =~ (^|[[:space:]])(-K[[:space:]]*[^[:space:]]|--config([[:space:]=])) ]]; then
+        echo "BLOCKED: 'curl -K/--config' reads the request URL and data from a file this guard cannot inspect, so the upload destination is not visible on the line. Inline the request, or mark a reviewed exception with 'pragma: allowlist egress' on the line." >&2
+        exit 1
+    fi
+fi
 
 uploads=0
 # curl/wget half: nocasematch OFF so -d != -D, -F != -f, -T != -t (a fetch flag is not an upload).
