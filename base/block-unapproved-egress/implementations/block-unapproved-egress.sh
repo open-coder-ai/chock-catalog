@@ -51,7 +51,7 @@ shopt -s nocasematch 2>/dev/null || true
 # short flags are case-sensitive single letters, while PowerShell parameters are case-insensitive
 # words. Scoping each flag set to its own client is what stops a PowerShell `-TimeoutSec`/`-Title`
 # from reading as a curl `-T` upload (and vice versa).
-curl_re='(^|[[:space:];|&(<])(curl|wget)([[:space:]]|$)'
+curl_re='(^|[[:space:];|&(<])([^[:space:];|&(<]*[/\])?(curl|wget)(\.exe)?([[:space:]]|$)'
 ps_re='(^|[[:space:];|&(<])(iwr|invoke-webrequest|invoke-restmethod|irm)([[:space:]]|$)'
 have_curl=0; [[ "$raw" =~ $curl_re ]] && have_curl=1
 have_ps=0;   [[ "$raw" =~ $ps_re ]]   && have_ps=1
@@ -72,8 +72,9 @@ fi
 # Long options are anchored to a token boundary (start or whitespace) and end on a valid boundary
 # (space, =, - for the -raw/-binary/-string/-file variants, or end of line) so an option name
 # cannot match inside a larger token. Both spaced (--data x) and attached (--data=x) forms count.
-posix_upload_re='(^|[[:space:]])(-[dFT]([[:space:]]|[!-~])|--data([[:space:]=]|-)|--form([[:space:]=]|-)|--upload-file([[:space:]=]|$)|--post-data([[:space:]=]|$)|--post-file([[:space:]=]|$)|--body-data([[:space:]=]|$)|--body-file([[:space:]=]|$)|(-X|--request)[[:space:]]+(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH))'
-ps_upload_re='(-Method[[:space:]]+(POST|PUT|PATCH)|-Body([[:space:]]|$)|-InFile([[:space:]]|$)|-Form([[:space:]]|$))'
+posix_upload_re='(^|[[:space:]])(-[dFT]([[:space:]]|[!-~])|--data([[:space:]=]|-)|--form([[:space:]=]|-)|--upload-file([[:space:]=]|$)|--post-data([[:space:]=]|$)|--post-file([[:space:]=]|$)|--body-data([[:space:]=]|$)|--body-file([[:space:]=]|$)|(-X[[:space:]]*|--request[[:space:]=]+)(POST|PUT|PATCH)|--method[[:space:]=]+(POST|PUT|PATCH))'
+# PowerShell binds a parameter value with either whitespace or a colon (-Method:POST, -Body:$x).
+ps_upload_re='(-Method[[:space:]:]+(POST|PUT|PATCH)|-Body([[:space:]:]|$)|-InFile([[:space:]:]|$)|-Form([[:space:]:]|$))'
 
 uploads=0
 # curl/wget half: nocasematch OFF so -d != -D, -F != -f, -T != -t (a fetch flag is not an upload).
