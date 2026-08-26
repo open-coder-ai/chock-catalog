@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.0.5"
+version: "0.0.6"
 description: >
   Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's
   short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays
@@ -54,3 +54,7 @@ changelog:
   date: '2026-08-24'
   changes:
   - "Prefix-match --no-verify (hardening review): git accepts any unambiguous prefix, so `--no-veri` and `--no-verif` skip hooks exactly as `--no-verify`. Matched as a prefix of --no-verify at least 9 chars long -- the floor is `--no-veri`, because `--no-ver` and shorter collide with --no-verbose, which git rejects as ambiguous (nothing to block there). Applies to both commit and push. Three eval cases added (--no-veri block, --no-ver allow at the floor, push --no-verif block)."
+- version: 0.0.6
+  date: '2026-08-26'
+  changes:
+  - "Detect the REAL git subcommand (catalog #11): the subcommand is now the first non-option token after git's global options (-c/-C/--git-dir/--work-tree/... consume their value), not merely the first `commit`/`push` token anywhere. `git status -- commit -c core.hooksPath=/tmp` is `status` -- a pathspec named `commit` no longer reclassifies it as a commit and trips the hooksPath/--no-verify checks. Real `git commit`/`git push` (incl. `git -c core.hooksPath=... commit` and `git -C <dir> commit --no-verify`) still block. One negative eval case added."

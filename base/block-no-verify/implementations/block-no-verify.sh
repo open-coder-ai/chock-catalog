@@ -3,31 +3,43 @@
 # Best-effort guard; bypasses are possible via aliases, subshells, or non-standard clients.
 set -eu
 
-is_git_commit_or_push=0
-has_commit=0
-subcommand=""
+# The real git subcommand is the first NON-OPTION token after git's global options --
+# not merely the first `commit`/`push` token anywhere. A `commit` or `push` that appears
+# after the real subcommand is an operand (a ref, a pathspec after `--`), so
+# `git status -- commit` is `status`, not `commit`, and must not be treated as one.
+# Global options either consume the next token as a value (-c, -C, --git-dir, --work-tree,
+# --namespace, --exec-path, --super-prefix, --config-env in their spaced form) or stand
+# alone; the `=`-attached spellings carry their own value.
+_git_subcommand() {
+    local expect_value=0 tok
+    for tok in "$@"; do
+        if [[ "$expect_value" -eq 1 ]]; then
+            expect_value=0
+            continue
+        fi
+        case "$tok" in
+            git | */git) continue ;;
+            -c | -C | --git-dir | --work-tree | --namespace | --exec-path | --super-prefix | --config-env)
+                expect_value=1
+                continue
+                ;;
+            --*=*) continue ;;
+            -*) continue ;;
+            *)
+                printf '%s' "$tok"
+                return 0
+                ;;
+        esac
+    done
+    return 0
+}
 
-# Only the FIRST commit|push token is the subcommand: everything after it is that
-# command's own arguments, where the same words are operands (a ref or path named
-# "commit" must not reclassify `git push origin commit -n` as a commit).
-for arg in "$@"; do
-    case "$arg" in
-        git) ;;
-        commit|push)
-            if [[ "$is_git_commit_or_push" -eq 0 ]]; then
-                is_git_commit_or_push=1
-                subcommand="$arg"
-                if [[ "$arg" == "commit" ]]; then
-                    has_commit=1
-                fi
-            fi
-            ;;
-    esac
-done
-
-if [[ "$is_git_commit_or_push" -eq 0 ]]; then
-    exit 0
-fi
+subcommand="$(_git_subcommand "$@")"
+case "$subcommand" in
+    commit) has_commit=1 ;;
+    push) has_commit=0 ;;
+    *) exit 0 ;;
+esac
 
 # `git -c core.hooksPath=<somewhere-empty> commit` disables every hook without ever typing
 # --no-verify. Same intent, same outcome, and it was completely uncovered: a policy that

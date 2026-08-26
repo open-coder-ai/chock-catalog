@@ -22,9 +22,9 @@
       "id": "block-destructive-commands",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "9ef51c69bd4eb978dce3c434ea404fbfcabbda578b55078796329f47de1f0439",
+      "sha256": "f4f090712989985856a7272c16395e36bb34f95ce1186a6577d9379d716d3ca2",
       "source": "local",
-      "artifacts_sha256": "07d54a6e496481cb0dbf109e460c2c7c40dbdd007f6f78794e953ed0bc1c00ff"
+      "artifacts_sha256": "cec03075c85ef69fee7ba735a58424b9a0ff205eb2c0011117561432df0cb876"
     },
     {
       "id": "block-invisible-unicode",
@@ -38,7 +38,7 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "3bd5613d2f6874f48232000288a4f6608d6db1639ad03c22ab4d59a5b0085eab",
+      "sha256": "7c70fc5f855eacccc90689b118a3f9cc992ddce8ed5cba8a4d78e059f9067d36",
       "source": "local",
       "artifacts_sha256": "7e286e68e1b7b791ccde02895cf555b5af16bc5c0fcc92c5e1aca2982c510343"
     },

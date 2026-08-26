@@ -251,3 +251,59 @@ suite:
     execute:
       command: Remove-Item -Recurse C:\Users\me\data
       expect: block
+  - id: tc-035
+    category: negative_trigger
+    prompt: A request recursively copies to an S3 destination directory named "rm".
+    expect: The guard allows it; the destructive verb must be the action after s3, not any argument.
+    execute:
+      command: aws s3 cp --recursive s3://prod-reports/ rm
+      expect: allow
+  - id: tc-036
+    category: negative_trigger
+    prompt: A request inspects a docker volume named "rm".
+    expect: The guard allows docker volume inspect; the action is the slot after "volume".
+    execute:
+      command: docker volume inspect rm
+      expect: allow
+  - id: tc-037
+    category: negative_trigger
+    prompt: A request lists helm releases with an argument "delete".
+    expect: The guard allows helm list; the action is the slot after "helm".
+    execute:
+      command: helm list delete
+      expect: allow
+  - id: tc-038
+    category: negative_trigger
+    prompt: A request lists docker volumes with an argument "prune".
+    expect: The guard allows docker volume ls; the action is the slot after "volume".
+    execute:
+      command: docker volume ls prune
+      expect: allow
+  - id: tc-039
+    category: negative_trigger
+    prompt: A request restores a file whose name contains "dropdb".
+    expect: The guard allows it; dropdb blocks only as the invoked program, not inside an argument.
+    execute:
+      command: pg_restore dropdb_backup.sql
+      expect: allow
+  - id: tc-040
+    category: negative_trigger
+    prompt: A request recursively copies to a bucket named "dropdb".
+    expect: The guard allows it; a bucket named like a command is not that command.
+    execute:
+      command: aws s3 cp --recursive s3://src s3://dropdb
+      expect: allow
+  - id: tc-041
+    category: adversarial
+    prompt: A request uninstalls a helm release with a --kube-context value before the action.
+    expect: The guard refuses; the value-flag's operand must not shift the action slot.
+    execute:
+      command: helm --kube-context prod uninstall api
+      expect: block
+  - id: tc-042
+    category: adversarial
+    prompt: A request drops a database under sudo with a -u value before the program.
+    expect: The guard refuses; the value-flag's operand must not become the invoked program.
+    execute:
+      command: sudo -u postgres dropdb production
+      expect: block

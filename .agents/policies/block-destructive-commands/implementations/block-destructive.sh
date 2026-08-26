@@ -17,14 +17,42 @@ is_dangerous_target() {
     [[ "$t" == "/" || "$t" == "~" || "$t" == "." || "$t" == ".."         || "$t" == /* || "$t" == "~"/*         || "$t" == '$HOME' || "$t" == '${HOME}'         || "$t" == '$HOME'/* || "$t" == '${HOME}'/* ]]
 }
 
+# Options that consume the NEXT token as their VALUE, for the wrappers and CLIs this guard
+# parses. Their values must be dropped before positions are resolved, or a value that looks
+# like a program or a verb -- `sudo -u postgres dropdb`, `helm --kube-context prod uninstall`
+# -- shifts cmd_word and the action slot and slips past. Best-effort: an unusual value-flag
+# not listed here can still shift a slot; that residual is named in the manifest bypasses.
+_is_value_flag() {
+    case "$1" in
+        --namespace | --kube-context | --kubeconfig | --context | --region | --profile | --project | --account | --output | --format | --host | --config | --endpoint-url | --cluster | --user | --server | --kube-apiserver | --log-level | --configuration | --chdir)
+            return 0
+            ;;
+        -u | -g | -p | -H | -o | -n | -c | -C)
+            return 0
+            ;;
+        *) return 1 ;;
+    esac
+}
+
 # Flatten arguments for membership checks.
 all_args=("$@")
 flags=()
 targets=()
+positionals=()
 subcommand=""
+skip_next=0
 
 for arg in "$@"; do
+    if [[ "$skip_next" -eq 1 ]]; then
+        # This token is the value of the preceding value-flag; it is neither a flag nor a
+        # positional operand, so it must not land in `positionals`/`targets`.
+        skip_next=0
+        continue
+    fi
     if [[ "$arg" =~ ^- ]]; then
+        if _is_value_flag "$arg"; then
+            skip_next=1
+        fi
         if [[ "$arg" =~ ^-- ]]; then
             flags+=("$arg")
         else
@@ -34,14 +62,43 @@ for arg in "$@"; do
             done
         fi
     else
+        # Every non-flag token, in order. Family checks below read the destructive verb
+        # from the SLOT the tool parses it in, so a bucket/path/object NAMED like a verb
+        # ("aws s3 cp ... rm", "docker volume inspect rm", "helm list delete") is not
+        # mistaken for the verb.
+        positionals+=("$arg")
         case "$arg" in
-            git|rm|kubectl|terraform|aws|helm|docker|gcloud|dropdb) ;;
-            push|reset|clean|delete|destroy|checkout)
+            git | rm | kubectl | terraform | aws | helm | docker | gcloud | dropdb) ;;
+            push | reset | clean | delete | destroy | checkout)
                 if [[ -z "$subcommand" ]]; then subcommand="$arg"; fi
                 ;;
             *) targets+=("$arg") ;;
         esac
     fi
+done
+
+# The positional token N slots after the first occurrence of $1 (empty if absent).
+pos_after() {
+    local want="$1" off="$2" i
+    for i in "${!positionals[@]}"; do
+        if [[ "${positionals[i]}" == "$want" ]]; then
+            printf '%s' "${positionals[i + off]:-}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# The program actually invoked: the first positional that is not a transparent wrapper.
+cmd_word=""
+for _p in "${positionals[@]}"; do
+    case "$_p" in
+        sudo | env | command | exec | nice | nohup | time | doas) continue ;;
+        *)
+            cmd_word="$_p"
+            break
+            ;;
+    esac
 done
 
 has_flag() {
@@ -134,38 +191,52 @@ if has_command "terraform" && [[ "$subcommand" == "destroy" ]]; then
     exit 1
 fi
 
-# aws s3 rm --recursive; aws s3 rb --force. A single-object `aws s3 rm` stays allowed --
-# blocking it would make the guard unsatisfiable for routine cleanup.
+# aws s3 rm --recursive; aws s3 rb --force. The action is read from the slot AFTER `s3`,
+# so `aws s3 cp --recursive <src> rm` (a destination dir named rm) stays allowed. A
+# single-object `aws s3 rm` stays allowed too -- blocking it would make routine cleanup
+# unsatisfiable.
 if has_command "aws" && has_command "s3"; then
-    if has_command "rm" && has_flag "--recursive"; then
+    aws_action="$(pos_after s3 1)"
+    if [[ "$aws_action" == "rm" ]] && has_flag "--recursive"; then
         echo "BLOCKED: aws s3 rm --recursive is not allowed without approval." >&2
         exit 1
     fi
-    if has_command "rb" && has_flag "--force"; then
+    if [[ "$aws_action" == "rb" ]] && has_flag "--force"; then
         echo "BLOCKED: aws s3 rb --force is not allowed without approval." >&2
         exit 1
     fi
 fi
 
-# dropdb: the command's only job is deleting a database.
-if has_command "dropdb"; then
+# dropdb: the command's only job is deleting a database. Blocked only when it is the
+# PROGRAM invoked, not when a path or db name merely contains "dropdb".
+if [[ "$cmd_word" == "dropdb" ]]; then
     echo "BLOCKED: dropdb is not allowed without approval." >&2
     exit 1
 fi
 
 # helm uninstall (and its v2 alias `helm delete`) removes every resource in the release.
-if has_command "helm" && { has_command "uninstall" || has_command "delete"; }; then
-    echo "BLOCKED: helm uninstall/delete is not allowed without approval." >&2
-    exit 1
-fi
-
-# docker: volume rm / volume prune destroy data; system prune sweeps broadly.
-if has_command "docker"; then
-    if has_command "volume" && { has_command "rm" || has_command "prune"; }; then
-        echo "BLOCKED: docker volume rm/prune is not allowed without approval." >&2
+# The action is the slot after `helm`, so `helm list delete` (a release named delete) stays
+# allowed.
+if has_command "helm"; then
+    helm_action="$(pos_after helm 1)"
+    if [[ "$helm_action" == "uninstall" || "$helm_action" == "delete" ]]; then
+        echo "BLOCKED: helm uninstall/delete is not allowed without approval." >&2
         exit 1
     fi
-    if has_command "system" && has_command "prune"; then
+fi
+
+# docker: volume rm / volume prune destroy data; system prune sweeps broadly. The action is
+# the slot after the object, so `docker volume inspect rm` and `docker volume ls prune`
+# (a volume named rm/prune) stay allowed.
+if has_command "docker"; then
+    if has_command "volume"; then
+        docker_vol_action="$(pos_after volume 1)"
+        if [[ "$docker_vol_action" == "rm" || "$docker_vol_action" == "prune" ]]; then
+            echo "BLOCKED: docker volume rm/prune is not allowed without approval." >&2
+            exit 1
+        fi
+    fi
+    if has_command "system" && [[ "$(pos_after system 1)" == "prune" ]]; then
         echo "BLOCKED: docker system prune is not allowed without approval." >&2
         exit 1
     fi

@@ -49,7 +49,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~333 tokens (chars/4, max 2000)
+INDEX.md: ~374 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-destructive-commands:
   claude: enforced
@@ -70,7 +70,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~333 tokens (chars/4, max 2000)
+INDEX.md: ~374 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -101,7 +101,7 @@ block-destructive-commands  [deterministic]
   PASS  tc-016                             authored  guard exit 0
   PASS  tc-017                             authored  BLOCKED: destructive rm command targeting '~/scratch' is not allowe…
   PASS  tc-018                             authored  BLOCKED: destructive rm command targeting '$HOME/scratch' is not al…
-  PASS  tc-019                             authored  BLOCKED: destructive rm command targeting '$HOME/scratch' is not al…
+  PASS  tc-019                             authored  BLOCKED: destructive rm command targeting '${HOME}/scratch' is not …
   PASS  tc-020                             authored  guard exit 0
   PASS  tc-021                             authored  BLOCKED: destructive PowerShell/cmd removal targeting a drive root …
   PASS  tc-022                             authored  BLOCKED: destructive PowerShell/cmd removal targeting a drive root …
@@ -117,9 +117,17 @@ block-destructive-commands  [deterministic]
   PASS  tc-032                             authored  BLOCKED: git clean -f is not allowed without approval.
   PASS  tc-033                             authored  BLOCKED: git clean -f is not allowed without approval.
   PASS  tc-034                             authored  BLOCKED: destructive PowerShell/cmd removal targeting a drive root …
+  PASS  tc-035                             authored  guard exit 0
+  PASS  tc-036                             authored  guard exit 0
+  PASS  tc-037                             authored  guard exit 0
+  PASS  tc-038                             authored  guard exit 0
+  PASS  tc-039                             authored  guard exit 0
+  PASS  tc-040                             authored  guard exit 0
+  PASS  tc-041                             authored  BLOCKED: helm uninstall/delete is not allowed without approval.
+  PASS  tc-042                             authored  BLOCKED: dropdb is not allowed without approval.
   score 1.00
 
-5 policies: 34 pass, 41 skipped
+5 policies: 42 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -137,6 +145,6 @@ block-destructive-commands  [deterministic]
 
 ```text
 - **block-destructive-commands**:
-  block(destructive_command): rm_-rf(/|~|.), git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy
+  block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete
   require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
 ```
