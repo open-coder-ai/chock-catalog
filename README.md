@@ -7,9 +7,9 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="36 policies" src="https://img.shields.io/badge/policies-36-blue">
+<img alt="37 policies" src="https://img.shields.io/badge/policies-37-blue">
 <img alt="16 enforced" src="https://img.shields.io/badge/enforced-16-brightgreen">
-<img alt="20 advisory" src="https://img.shields.io/badge/advisory-20-orange">
+<img alt="21 advisory" src="https://img.shields.io/badge/advisory-21-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
 </p>
@@ -85,7 +85,8 @@ codex plugin format, Codex after its per-hook trust review).
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
 [`agent-discipline`](docs/agent-discipline/) · [`code-safety`](docs/code-safety/) ·
-[`context-hygiene`](docs/context-hygiene/) · [`git-safety`](docs/git-safety/) ·
+[`context-hygiene`](docs/context-hygiene/) · [`dev-twin`](docs/dev-twin/) ·
+[`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
 [`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
 
