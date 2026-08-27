@@ -62,6 +62,19 @@ policies:
   eval_executed: 17
   description: Best-effort guard against bypassing git hooks via git commit/push --no-verify or -n. Known
     bypass classes include aliases, wrapper scripts, and non-standard cli
+- id: block-unapproved-egress
+  path: base/block-unapproved-egress
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: enforced (pre-tool-use, once hooks are installed)
+  eval_cases: 32
+  eval_executed: 32
+  description: 'Best-effort guard against tool-channel data exfiltration: a network client (curl/wget/Invoke-WebRequest)
+    that uploads data -- POST/PUT, --data/--form/--upload-file/--post-file -- to a host outside the egress allowlist.
+    Fetch-only traffic and pip install pass. A tool-time floor, not a network sandbox.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
   version: 0.0.3

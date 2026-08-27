@@ -74,6 +74,21 @@
     "vscode": "enforced",
     "windsurf": "advisory"
   },
+  "block-unapproved-egress": {
+    "aider": "advisory",
+    "claude": "enforced",
+    "codex": "advisory",
+    "copilot": "enforced",
+    "cursor": "enforced",
+    "devin": "advisory",
+    "gemini": "advisory",
+    "grok": "advisory",
+    "kimi-code": "advisory",
+    "replit": "advisory",
+    "tabnine": "advisory",
+    "vscode": "enforced",
+    "windsurf": "advisory"
+  },
   "block-wildcard-agent-permissions": {
     "aider": "enforced-at-commit",
     "claude": "enforced-at-commit",
