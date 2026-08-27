@@ -221,7 +221,10 @@ dev-twin:
     and demeanor live in a generated DevTwin profile that this rule points at; edit that profile,
     not this text. The one line worth understanding before adopting is precedence: an explicit
     in-session instruction wins, then the project's committed standards, then the personal profile
-    -- so the twin never overrides a rule the team has agreed on, it only fills the silence.
+    -- so the twin never overrides a rule the team has agreed on, it only fills the silence. The
+    boundary is consent-first: the profile holds only what the owner has explicitly taught, and the
+    agent never infers or stores personal identity, employer-confidential content, or secrets --
+    so an untaught profile is applied to nothing and sensitive data is never absorbed.
 
 eu-ai-act-high-risk-triage:
   solves: >

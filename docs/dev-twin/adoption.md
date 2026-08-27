@@ -75,8 +75,8 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 45 skipped
-45 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 48 skipped
+48 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces

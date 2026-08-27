@@ -10,7 +10,7 @@
 | **Mechanism** | rule text |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
-| **Eval cases** | 4 total, 0 executable |
+| **Eval cases** | 7 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -54,7 +54,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The rule is deliberately a contract, not a profile. The owner's actual craft, taste, habits and demeanor live in a generated DevTwin profile that this rule points at; edit that profile, not this text. The one line worth understanding before adopting is precedence: an explicit in-session instruction wins, then the project's committed standards, then the personal profile -- so the twin never overrides a rule the team has agreed on, it only fills the silence.
+The rule is deliberately a contract, not a profile. The owner's actual craft, taste, habits and demeanor live in a generated DevTwin profile that this rule points at; edit that profile, not this text. The one line worth understanding before adopting is precedence: an explicit in-session instruction wins, then the project's committed standards, then the personal profile -- so the twin never overrides a rule the team has agreed on, it only fills the silence. The boundary is consent-first: the profile holds only what the owner has explicitly taught, and the agent never infers or stores personal identity, employer-confidential content, or secrets -- so an untaught profile is applied to nothing and sensitive data is never absorbed.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

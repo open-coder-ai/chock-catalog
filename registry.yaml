@@ -143,7 +143,7 @@ policies:
   mandatory: false
   mechanism: rule text only
   enforces: advisory
-  eval_cases: 4
+  eval_cases: 7
   eval_executed: 0
   description: 'trigger: personalize the coding agent to its owner -- adopt the owner''s dialect,
     taste, habits and demeanor so it works like a trained twin of that developer. apply: the
