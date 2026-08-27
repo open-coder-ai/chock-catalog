@@ -135,6 +135,21 @@ policies:
   eval_executed: 0
   description: 'trigger: context bloat, stale observations, resolved content inlined, noisy exploration.
     avoid: context rot and lost-in-the-middle failures.'
+- id: dev-twin
+  path: base/dev-twin
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: rule text only
+  enforces: advisory
+  eval_cases: 7
+  eval_executed: 0
+  description: 'trigger: personalize the coding agent to its owner -- adopt the owner''s dialect,
+    taste, habits and demeanor so it works like a trained twin of that developer. apply: the
+    owner''s DevTwin profile where present; defer to committed project standards where it is silent
+    or conflicts. avoid: inferring personal identity or employer-confidential data, and overriding
+    the project''s own committed rules.'
 - id: eu-ai-act-high-risk-triage
   path: compliance/eu-ai-act-high-risk-triage
   version: 0.0.2
