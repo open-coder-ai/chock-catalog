@@ -114,9 +114,10 @@ block-unapproved-egress  [deterministic]
   PASS  tc-029                             authored  BLOCKED: uploading data to 'evil.example.com' is outside the egress…
   PASS  tc-030                             authored  BLOCKED: uploading data to 'evil.example.com' is outside the egress…
   PASS  tc-031                             authored  BLOCKED: 'curl -K/--config' reads the request URL and data from a f…
+  PASS  tc-032                             authored  guard exit 0
   score 1.00
 
-5 policies: 31 pass, 41 skipped
+5 policies: 32 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

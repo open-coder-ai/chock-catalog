@@ -228,3 +228,10 @@ suite:
     execute:
       command: curl --config ./egress.conf
       expect: block
+  - id: tc-032
+    category: behavior
+    prompt: A request mirrors a page with wget, which uses -K for --backup-converted.
+    expect: The guard allows it; the config-file block is curl-only, and wget -K is a fetch.
+    execute:
+      command: wget -K https://example.com/page.html
+      expect: allow

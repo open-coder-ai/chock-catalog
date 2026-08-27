@@ -52,9 +52,11 @@ shopt -s nocasematch 2>/dev/null || true
 # words. Scoping each flag set to its own client is what stops a PowerShell `-TimeoutSec`/`-Title`
 # from reading as a curl `-T` upload (and vice versa).
 curl_re='(^|[[:space:];|&(<])([^[:space:];|&(<]*[/\])?(curl|wget)(\.exe)?([[:space:]]|$)'
+curl_only_re='(^|[[:space:];|&(<])([^[:space:];|&(<]*[/\])?curl(\.exe)?([[:space:]]|$)'
 ps_re='(^|[[:space:];|&(<])(iwr|invoke-webrequest|invoke-restmethod|irm)([[:space:]]|$)'
-have_curl=0; [[ "$raw" =~ $curl_re ]] && have_curl=1
-have_ps=0;   [[ "$raw" =~ $ps_re ]]   && have_ps=1
+have_curl=0;     [[ "$raw" =~ $curl_re ]]      && have_curl=1
+have_curl_bin=0; [[ "$raw" =~ $curl_only_re ]] && have_curl_bin=1
+have_ps=0;       [[ "$raw" =~ $ps_re ]]        && have_ps=1
 if [ "$have_curl" -eq 0 ] && [ "$have_ps" -eq 0 ]; then
     shopt -u nocasematch 2>/dev/null || true
     exit 0
@@ -78,8 +80,9 @@ ps_upload_re='(-Method[[:space:]:]+(POST|PUT|PATCH)|-Body([[:space:]:]|$)|-InFil
 
 # curl reads its URL and data from a -K/--config file this guard cannot see, so the request's
 # destination is hidden from the diff -- exactly the visibility this policy exists to preserve.
-# Treat it as opaque egress: block up front (case-sensitive; -K is config, -k is --insecure).
-if [ "$have_curl" -eq 1 ]; then
+# Treat it as opaque egress: block up front (case-sensitive; -K is config, -k is --insecure). Scoped
+# to curl only -- wget's -K is --backup-converted, a fetch, and wget has no --config in this sense.
+if [ "$have_curl_bin" -eq 1 ]; then
     shopt -u nocasematch 2>/dev/null || true
     if [[ "$raw" =~ (^|[[:space:]])(-K[[:space:]]*[^[:space:]]|--config([[:space:]=])) ]]; then
         echo "BLOCKED: 'curl -K/--config' reads the request URL and data from a file this guard cannot inspect, so the upload destination is not visible on the line. Inline the request, or mark a reviewed exception with 'pragma: allowlist egress' on the line." >&2
