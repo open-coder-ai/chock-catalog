@@ -56,7 +56,7 @@
 - **block-wildcard-agent-permissions**: Wildcard agent permission grant detected. Scope the grant to specific tools or commands (e.g. Bash(git status:*), a named tool list), or add 'pragma: allowlist broad-agency' on the same line for a reviewed exception.
 - **pin-github-actions**: Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA. Pin it to the SHA -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. For a deliberate exception, add 'pragma: allowlist unpinned-action' on the same line.
 - **protect-main-branch**: Direct commits/pushes to a protected branch (main|master) are blocked. Create a feature branch and open a pull request.
-- **scan-secrets**: Potential secret detected in staged changes. Remove credentials and rotate any exposed keys. Add '# pragma: allowlist secret' on the same line only for documented test fixtures.
+- **scan-secrets**: Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
 
 ## Skills — invoke when the task matches
 

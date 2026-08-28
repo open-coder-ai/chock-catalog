@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Pre-commit hook that blocks commits of credential files and known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.
+Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at agent tool-use (the mcp-gateway / agent write guard, over a tool call's arguments), so a secret is caught as the agent writes it, before it ever reaches a commit. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.
 
 ## What it solves
 
@@ -25,7 +25,7 @@ Credentials reaching history, where deleting them does not remove them. Every ke
 
 ## How it works
 
-A declarative `content_regex` gate, evaluated on `commit`, action `block`.
+A declarative `content_regex` gate, evaluated on `commit` and `tool_use`, action `block`.
 
 Parameters, from `manifest.yaml`:
 
@@ -36,7 +36,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Potential secret detected in staged changes. Remove credentials and rotate any exposed keys. Add '# pragma: allowlist secret' on the same line only for documented test fixtures.
+> Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
 
 ## Which primitive it becomes
 
