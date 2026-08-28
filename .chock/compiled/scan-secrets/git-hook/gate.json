@@ -1,10 +1,11 @@
 {
   "kind": "content_regex",
   "on": [
-    "commit"
+    "commit",
+    "tool_use"
   ],
   "action": "block",
-  "message": "Potential secret detected in staged changes. Remove credentials and rotate any exposed keys. Add '# pragma: allowlist secret' on the same line only for documented test fixtures.",
+  "message": "Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.",
   "params": {
     "scan": "added_lines",
     "forbidden_path_regex": "(\\.env(\\.(?!(sample|example|template|dist|defaults)$)[^/]+)?|\\.(pem|key|p12|pfx|jks|keystore))$",
