@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~373 tokens (chars/4, max 2000)
+INDEX.md: ~405 tokens (chars/4, max 2000)
 Recompiled 1 policies
 pin-github-actions:
   claude: enforced-at-commit
@@ -101,10 +101,11 @@ pin-github-actions  [deterministic]
 .chock/compiled/pin-github-actions/git-hook/gate.json
 .chock/compiled/pin-github-actions/git-hook/git-pre-commit.sh
 .chock/compiled/pin-github-actions/managed-setting/managed-settings.json
+.chock/compiled/pin-github-actions/mcp-gateway/gateway-gate.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **pin-github-actions**: Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA. Pin it to the SHA -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. For a deliberate exception, add 'pragma: allowlist unpinned-action' on the same line.
+- **pin-github-actions**: Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA. Pin it to the SHA -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. At commit, 'pragma: allowlist unpinned-action' on the same line marks a deliberate exception; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
 ```

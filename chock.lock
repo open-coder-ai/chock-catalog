@@ -30,9 +30,9 @@
       "id": "block-invisible-unicode",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "a171479a705f27ef8dc082bdec945867abf6c8f01676ec9eb850e3874dfe1fb7",
+      "sha256": "3bc00c998d3691f7288fa6c540f6a4ab8fd20aac7b32630d501fb4f28ed507c2",
       "source": "local",
-      "artifacts_sha256": "70cf827a82e1bac2b5498638c7ba1023885ced312bf0e723f7273f333c684efe"
+      "artifacts_sha256": "55029605c05c2320fbf5c9e1b2ccb2fc612269ac2b32e5ea04fec228c99d11fc"
     },
     {
       "id": "block-no-verify",
@@ -54,9 +54,9 @@
       "id": "block-wildcard-agent-permissions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "a910077db0da02956b8c9b170ea83de4a32e833320abe01d4779f866cd33daa7",
+      "sha256": "e12230f761737de3c304f99322e45a5fde8221387e5d4299d43a601ba6f87e0d",
       "source": "local",
-      "artifacts_sha256": "83d0830b5530126d09b03a018eeebba8d92c4c0e553e4e54ced612246e59bd99"
+      "artifacts_sha256": "662e08e9775b0766aa3ff318091a2e34a5cbfdb17f5fd2da343aec7cb99d1d28"
     },
     {
       "id": "code-safety",
@@ -102,9 +102,9 @@
       "id": "pin-github-actions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "cd73e9b40962de868f5915199f5fb2266d48c0d8ca9e29766591f1368cf5f45c",
+      "sha256": "241a90e41349ab8f6c48e0f8c2445c3866876d5aa858c096dc9511448dfb8f58",
       "source": "local",
-      "artifacts_sha256": "8c5beb88afd02622f3c068fdd379d4bcf3abcf0682624b679901a56aff9370a6"
+      "artifacts_sha256": "8cfa8bf1186480b72b4cbf1b874ef988c1dad83fd75e796da2a1d07fb8b9ab39"
     },
     {
       "id": "protect-agent-config",

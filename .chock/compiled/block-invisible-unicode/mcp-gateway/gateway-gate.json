@@ -1,9 +1,6 @@
 {
   "kind": "content_regex",
-  "on": [
-    "commit",
-    "tool_use"
-  ],
+  "binds": "string-arguments",
   "action": "block",
   "message": "Invisible or direction-override Unicode detected in this change. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them. At commit, 'pragma: allowlist invisible-unicode' on the same line marks a documented exception (e.g. a test fixture); the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.",
   "params": {
