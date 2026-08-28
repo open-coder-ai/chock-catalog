@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~350 tokens (chars/4, max 2000)
+INDEX.md: ~381 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-invisible-unicode:
   claude: enforced-at-commit
@@ -76,13 +76,13 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 
 ```text
 block-invisible-unicode  [deterministic]
-  PASS  tc-001                             authored  Invisible or direction-override Unicode detected in staged changes.…
-  PASS  tc-002                             authored  Invisible or direction-override Unicode detected in staged changes.…
-  PASS  tc-003                             authored  Invisible or direction-override Unicode detected in staged changes.…
+  PASS  tc-001                             authored  Invisible or direction-override Unicode detected in this change. Th…
+  PASS  tc-002                             authored  Invisible or direction-override Unicode detected in this change. Th…
+  PASS  tc-003                             authored  Invisible or direction-override Unicode detected in this change. Th…
   PASS  tc-004                             authored  gate exit 0
   PASS  tc-005                             authored  gate exit 0
   PASS  tc-006                             authored  gate exit 0
-  PASS  tc-007                             authored  Invisible or direction-override Unicode detected in staged changes.…
+  PASS  tc-007                             authored  Invisible or direction-override Unicode detected in this change. Th…
   PASS  tc-008                             authored  gate exit 0
   score 1.00
 
@@ -99,10 +99,11 @@ block-invisible-unicode  [deterministic]
 .chock/compiled/block-invisible-unicode/git-hook/gate.json
 .chock/compiled/block-invisible-unicode/git-hook/git-pre-commit.sh
 .chock/compiled/block-invisible-unicode/managed-setting/managed-settings.json
+.chock/compiled/block-invisible-unicode/mcp-gateway/gateway-gate.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **block-invisible-unicode**: Invisible or direction-override Unicode detected in staged changes. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them, or add 'pragma: allowlist invisible-unicode' on the same line for a documented exception (e.g. a test fixture).
+- **block-invisible-unicode**: Invisible or direction-override Unicode detected in this change. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them. At commit, 'pragma: allowlist invisible-unicode' on the same line marks a documented exception (e.g. a test fixture); the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
 ```

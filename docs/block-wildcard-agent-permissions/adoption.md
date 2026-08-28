@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~334 tokens (chars/4, max 2000)
+INDEX.md: ~366 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-agent-permissions:
   claude: enforced-at-commit
@@ -102,10 +102,11 @@ block-wildcard-agent-permissions  [deterministic]
 .chock/compiled/block-wildcard-agent-permissions/git-hook/gate.json
 .chock/compiled/block-wildcard-agent-permissions/git-hook/git-pre-commit.sh
 .chock/compiled/block-wildcard-agent-permissions/managed-setting/managed-settings.json
+.chock/compiled/block-wildcard-agent-permissions/mcp-gateway/gateway-gate.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **block-wildcard-agent-permissions**: Wildcard agent permission grant detected. Scope the grant to specific tools or commands (e.g. Bash(git status:*), a named tool list), or add 'pragma: allowlist broad-agency' on the same line for a reviewed exception.
+- **block-wildcard-agent-permissions**: Wildcard agent permission grant detected. Scope the grant to specific tools or commands (e.g. Bash(git status:*), a named tool list). At commit, 'pragma: allowlist broad-agency' on the same line marks a reviewed exception; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
 ```
