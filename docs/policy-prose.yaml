@@ -209,19 +209,19 @@ context-hygiene:
     The `> 3_turns` pruning threshold is a guess, not a measurement. Raise it for work that
     revisits the same files and lower it for broad exploration.
 
-dev-twin:
+chock-mise:
   solves: >
     Every coding session starts from a blank agent. The developer re-explains how they work --
     their stack dialect, the patterns they reach for, the way they like to be spoken to -- and
     none of it survives to the next session or the next tool. This rule is the operating contract
-    for that developer's DevTwin: the agent runs as a trained twin of its owner, applying the
+    for that developer's chock-mise: the agent runs as a trained twin of its owner, applying the
     owner's profile where it exists and deferring to the project everywhere else.
   customise: >
     The rule is deliberately a contract, not a profile. The owner's actual craft, taste, habits
-    and demeanor live in a generated DevTwin profile that this rule points at; edit that profile,
+    and demeanor live in a generated chock-mise profile that this rule points at; edit that profile,
     not this text. The one line worth understanding before adopting is precedence: an explicit
     in-session instruction wins, then the project's committed standards, then the personal profile
-    -- so the DevTwin profile never overrides a rule the team has agreed on; it only fills the
+    -- so the chock-mise profile never overrides a rule the team has agreed on; it only fills the
     silence, while an explicit in-session instruction still takes highest precedence. The
     boundary is consent-first: the profile holds only what the owner has explicitly taught, and the
     agent never infers or stores personal identity, employer-confidential content, or secrets --

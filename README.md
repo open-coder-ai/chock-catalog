@@ -85,7 +85,7 @@ codex plugin format, Codex after its per-hook trust review).
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
 [`agent-discipline`](docs/agent-discipline/) · [`code-safety`](docs/code-safety/) ·
-[`context-hygiene`](docs/context-hygiene/) · [`dev-twin`](docs/dev-twin/) ·
+[`context-hygiene`](docs/context-hygiene/) · [`chock-mise`](docs/chock-mise/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
 [`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
