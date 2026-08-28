@@ -1,9 +1,9 @@
-id: dev-twin
-name: "DevTwin Rule"
+id: chock-mise
+name: "chock-mise Rule"
 version: "0.0.1"
 description: >
   trigger: personalize the coding agent to its owner -- adopt the owner's dialect, taste, habits
-  and demeanor so it works like a trained twin of that developer. apply: the owner's DevTwin
+  and demeanor so it works like a trained twin of that developer. apply: the owner's chock-mise
   profile where present; defer to committed project standards where it is silent or conflicts.
   avoid: inferring personal identity or employer-confidential data, and overriding the project's
   own committed rules.
@@ -33,4 +33,4 @@ changelog:
 - version: 0.0.1
   date: '2026-08-27'
   changes:
-  - "Initial draft: DevTwin operating-contract rule -- the coding agent runs as its owner's trained developer twin, applying the owner's profile (craft, taste, habits, demeanor) where present, deferring to committed project standards where silent or in conflict, and staying consent-first (never infer or store personal identity, employer-confidential content, or secrets). Advisory layer; see() points to the enforcing fence siblings (git-safety, block-destructive-commands, scan-secrets, protect-agent-config)."
+  - "Initial draft: chock-mise operating-contract rule -- the coding agent runs as its owner's trained developer twin, applying the owner's profile (craft, taste, habits, demeanor) where present, deferring to committed project standards where silent or in conflict, and staying consent-first (never infer or store personal identity, employer-confidential content, or secrets). Advisory layer; see() points to the enforcing fence siblings (git-safety, block-destructive-commands, scan-secrets, protect-agent-config)."

@@ -67,11 +67,11 @@
 <rect x="1072" y="389" width="6" height="6" fill="#e0b34c"/>
 <text x="1090" y="400" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">agent-discipline</text>
 <rect x="1072" y="419" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="430" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">code-safety</text>
+<text x="1090" y="430" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">chock-mise</text>
 <rect x="1072" y="449" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="460" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">context-hygiene</text>
+<text x="1090" y="460" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">code-safety</text>
 <rect x="1072" y="479" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="490" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">dev-twin</text>
+<text x="1090" y="490" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">context-hygiene</text>
 <rect x="1072" y="509" width="6" height="6" fill="#e0b34c"/>
 <text x="1090" y="520" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">eu-ai-act-high-risk-triage</text>
 <rect x="1072" y="539" width="6" height="6" fill="#e0b34c"/>
