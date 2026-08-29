@@ -69,8 +69,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ## `$ chock validate .`
 
 ```text
-[PASS] Passed with warnings.
-  [WARN]  …/.agents/policies/pin-github-actions :: interface: Artifact ID 'pin-github-actions' does not start with a verb (INT-3). Suggest rename to a verb-first id, e.g. 'create-...', 'validate-...', 'check-...'
+[PASS] All checks passed.
 ```
 
 ## `$ chock eval --repo .`
