@@ -41,9 +41,19 @@ WORDS = {
 
 COLUMNS = [
     ("ENFORCED-AT-COMMIT", TEAL, "the command exits non-zero — the commit does not happen"),
-    ("ENFORCED", TEAL, "the tool call is refused before it runs"),
+    ("IN-AGENT", TEAL, "the tool call is refused before it runs, if the hook itself runs"),
     ("ADVISORY", GOLD, "text an agent reads and may or may not follow"),
 ]
+
+#: The first word of an honest `enforces` string, once split off its parenthetical detail.
+#: `enforced`/`enforceable`/`best-effort` are agentseam's own per-agent vocabulary
+#: (`agentseam.matrix.enforcement_level`, chock owner decision #9): all three are a real,
+#: installed, in-agent pre-execution control, and none of them is the SAME promise --
+#: `best-effort` fails open on a crashed hook, `enforced` does not -- so the per-policy
+#: `enforces` string keeps saying which one, even though this graphic buckets all three
+#: together for a coarse, three-column read. `enforced-at-commit` is its own column, not
+#: folded in here: it is chock's own commit-time mechanism, a different kind of control.
+IN_AGENT_WORDS = {"enforced", "enforceable", "best-effort"}
 
 
 def classify() -> list[list[str]]:
@@ -51,9 +61,10 @@ def classify() -> list[list[str]]:
     cols: list[list[str]] = [[], [], []]
     for p in reg["policies"]:
         enforces = p.get("enforces", "")
-        if enforces == "enforced-at-commit":
+        word = enforces.split(" ", 1)[0]
+        if enforces == "enforced-at-commit" or word == "enforced-at-commit":
             cols[0].append(p["id"])
-        elif enforces.startswith("enforced"):
+        elif word in IN_AGENT_WORDS:
             cols[1].append(p["id"])
         else:
             cols[2].append(p["id"])
@@ -83,7 +94,7 @@ def render() -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
         f'width="{width}" height="{height}" role="img" '
         f'aria-label="{word} policies: {len(cols[0])} enforced-at-commit, '
-        f'{len(cols[1])} enforced, {len(cols[2])} advisory">'
+        f'{len(cols[1])} in-agent, {len(cols[2])} advisory">'
     )
     s.append(f'<rect width="{width}" height="{height}" fill="{BG}"/>')
     for y in range(0, height + 1, 96):

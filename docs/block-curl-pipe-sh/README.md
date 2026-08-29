@@ -8,7 +8,7 @@
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
 | **Mechanism** | guard script `block-curl-pipe-sh.sh` |
-| **Reaches** | `enforced` once `chock sync` has run — the tool call is refused before it runs |
+| **Reaches** | `best-effort`/`enforceable` once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
 | **Eval cases** | 27 total, 27 executable |
 | **Enabled by default** | yes |
