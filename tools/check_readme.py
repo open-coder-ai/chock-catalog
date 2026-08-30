@@ -78,10 +78,22 @@ def tier_table_problems(text: str, kinds: dict) -> list[str]:
     problems = []
     for heading, kind in _TIER_SECTIONS:
         section = re.search(
-            rf"\*\*{re.escape(heading)}\*\*.*?(?=\n\*\*[A-Z]|\n## )", text, re.S
+            # `\Z` matters: without it a section that is the last thing in the file matches
+            # nothing and gets reported as missing, which is a false alarm wearing the wrong
+            # error message.
+            rf"\*\*{re.escape(heading)}\*\*.*?(?=\n\*\*[A-Z]|\n## |\Z)",
+            text,
+            re.S,
         )
         if not section:
             problems.append(f"the '{heading}' section is missing from the README")
+            continue
+        if kind not in kinds:
+            # A mistake in _TIER_SECTIONS, not repository drift -- but reported rather than
+            # raised, so one bad entry cannot take down every other check in this file.
+            problems.append(
+                f"'{heading}' is configured against unknown policy kind {kind!r}"
+            )
             continue
         listed = re.findall(r"^\| \[`([^`]+)`\]", section.group(0), re.M)
         for policy_id in sorted(kinds[kind]):
@@ -120,6 +132,11 @@ def spelled_out_count_problems(text: str) -> list[str]:
     return problems
 
 
+def _alt_value(match: re.Match) -> str:
+    """The alt text, from whichever quote style the tag used. Empty is a value, not a miss."""
+    return match.group("dq") if match.group("dq") is not None else match.group("sq")
+
+
 def alt_text_problems(text: str) -> list[str]:
     """Every figure's README `alt` must be the figure's own `aria-label`.
 
@@ -140,7 +157,11 @@ def alt_text_problems(text: str) -> list[str]:
     authority per figure, and the figure's own label is already derived from the repository.
     """
     problems: list[str] = []
-    for tag in re.findall(r"<img[^>]*>", text):
+    # Not `<img[^>]*>`: that stops at the first `>`, so an alt containing one truncates the
+    # tag, the `src=` falls outside the match, and the image escapes checking altogether --
+    # silently, which is the worst way for a check to fail. Attribute values are skipped over
+    # as quoted units instead.
+    for tag in re.findall(r"""<img(?:[^>"']|"[^"]*"|'[^']*')*>""", text):
         src = re.search(r'src="(docs/[^"]+\.svg)"', tag)
         if not src:
             continue  # badges and remote images have no local label to check against
@@ -153,13 +174,13 @@ def alt_text_problems(text: str) -> list[str]:
                 f"{src.group(1)} has no aria-label to check the README against"
             )
             continue
-        have = re.search(r'alt="([^"]*)"', tag)
+        have = re.search(r"""alt=(?:"(?P<dq>[^"]*)"|'(?P<sq>[^']*)')""", tag)
         if not have:
             problems.append(f"{src.group(1)} is embedded with no alt text")
-        elif have.group(1) != want.group(1):
+        elif _alt_value(have) != want.group(1):
             problems.append(
                 f"{src.group(1)}: README alt has drifted from the figure's own label\n"
-                f"      README: {have.group(1)}\n"
+                f"      README: {_alt_value(have)}\n"
                 f"      figure: {want.group(1)}"
             )
     return problems
