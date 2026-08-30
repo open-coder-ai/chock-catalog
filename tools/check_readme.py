@@ -106,6 +106,15 @@ def tier_table_problems(text: str, kinds: dict) -> list[str]:
             )
             continue
         listed = re.findall(r"^\| \[`([^`]+)`\]", section.group(0), re.M)
+        # Membership alone is not enough: a policy listed twice satisfies "every assigned
+        # policy appears" AND "everything here is assigned", while the table shows one more
+        # row than the summary claims -- the same count-disagreement this whole check exists
+        # to catch, hiding inside the check meant to catch it.
+        for policy_id in sorted(set(listed)):
+            if listed.count(policy_id) > 1:
+                problems.append(
+                    f"{policy_id} is listed {listed.count(policy_id)} times under '{heading}'"
+                )
         for policy_id in sorted(kinds[kind]):
             if policy_id not in listed:
                 problems.append(
