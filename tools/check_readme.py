@@ -235,9 +235,19 @@ def main() -> int:
         ("`in-agent`", len(kinds["guard"])),
         ("`advisory`", len(kinds["text"])),
     ):
-        found = re.search(
+        # findall, not search: `search` stops at the first row, so a second row for the same
+        # tier -- with a different count, contradicting the first three lines below it -- was
+        # accepted as valid. Two rows disagreeing is worse than one row wrong, because a
+        # reader cannot tell which is meant.
+        rows = re.findall(
             rf"\| `?{re.escape(row.strip('`'))}`? \|[^|]*\|\s*(\d+) \|", text
         )
+        if len(rows) > 1:
+            problems.append(
+                f"ladder row {row}: appears {len(rows)} times, saying {', '.join(rows)}"
+            )
+            continue
+        found = re.match(r"(\d+)", rows[0]) if rows else None
         if not found:
             # Previously `if found and ...`, so deleting a row entirely silenced its check --
             # the one edit most likely to be made when a count becomes inconvenient.
