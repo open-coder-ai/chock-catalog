@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="Chock logo" width="90">
+<img src="docs/assets/logo.svg" alt="chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what they actually enforce. The mark is a stack of policy cards, the top one carrying the node that marks an enforcing policy." width="90">
 
 <h1>chock-catalog</h1>
 
@@ -12,6 +12,12 @@
 <img alt="21 advisory" src="https://img.shields.io/badge/advisory-21-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
+</p>
+
+<p>
+<a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
+<a href="https://scorecard.dev/viewer/?uri=github.com/open-coder-ai/chock-catalog"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/open-coder-ai/chock-catalog/badge"></a>
+<a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 </p>
 
 <p>
@@ -42,16 +48,16 @@ That is the whole install. The next commit containing a credential exits non-zer
 **A rule an agent reads is advice. A hook that exits non-zero is a control.** Both belong in
 a repo, and the difference has to be visible, because the failure mode of governance tooling
 is that everyone believes it is doing more than it is. So every policy here is labelled with
-what it actually reaches — stated up front rather than in the appendix, because twenty of
-thirty-six are advisory, and that is the number most catalogs would round up:
+what it actually reaches — stated up front rather than in the appendix, because 21 of the 37
+are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 9 |
-| `enforced` | the tool call is refused before it runs | 7 |
-| `advisory` | text an agent reads and may or may not follow | 20 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 7 |
+| `advisory` | text an agent reads and may or may not follow | 21 |
 
-<img alt="Thirty-six policies split nine enforced-at-commit, seven enforced, twenty advisory, each named" src="docs/assets/coverage-matrix.svg">
+<img alt="37 policies: 9 enforced-at-commit, 7 in-agent, 21 advisory" src="docs/assets/coverage-matrix.svg">
 
 Advisory eval cases report as `skipped`, never as passing, because there is no mechanism to
 replay.
@@ -67,6 +73,9 @@ throwaway repo on every push.
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 8/8 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 11/11 |
 | [`pin-github-actions`](docs/pin-github-actions/) | a workflow that references a third-party GitHub Action by a movable tag or branch instead of a full commit SHA -- so a re-tagged or compromised release can't change what CI runs; SHA pins and local actions pass | 9/9 |
+| [`block-wildcard-iam`](docs/block-wildcard-iam/) | wildcard Action or Resource in an IAM policy document, `AdministratorAccess` attachment, GCP `roles/owner` or `roles/editor`, and Terraform wildcard action or resource lists -- the mechanizable slice of ASI03 | 6/6 |
+| [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | agent components pulled at an unpinned version -- `npx`/`uvx`/`bunx` launches at `@latest` (the standard MCP server idiom), quoted `"@latest"` in agent config, and `:latest` image tags -- the mechanizable slice of ASI04 | 6/6 |
+| [`block-unsafe-code-execution`](docs/block-unsafe-code-execution/) | bare `eval`/`exec`, shell-mode subprocess calls, `os.system`, `pickle`/`marshal` loads, `yaml.load` without `SafeLoader`, `execSync` and `new Function` -- a best-effort line scan over the mechanizable slice of ASI05 | 7/7 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command, natively wired in Claude Code, Cursor, Copilot CLI and VS Code (and, via the
@@ -255,7 +264,7 @@ overstated one.
 One folder per policy. `manifest.yaml` declares identity and either a gate or rule text;
 `chock sync` turns that into artifacts for whichever agents you use.
 
-<img alt="A policy folder compiles into git-hook, pre-tool-use and ambient-rule surfaces, which reach different enforcement levels" src="docs/assets/how-it-works.svg">
+<img alt="A policy folder compiles into git-hook, native pre-execution hook and ambient-rule surfaces, which reach different enforcement levels" src="docs/assets/how-it-works.svg">
 
 The same policy reaches different levels on different agents, and `coverage.json` records
 every pair.
@@ -336,7 +345,7 @@ saying exactly what the mechanism reaches.
 
 — and the build fails if any control reads `uncovered`. Every row reads `partial`, because
 most of the pack is advisory (rules and skills the agent reads) rather than deterministic
-gates, and this tool refuses to label advisory coverage as more than it is. Three hard guards
+gates, and this tool refuses to label advisory coverage as more than it is. 3 hard guards
 (`block-unsafe-code-execution`, `block-wildcard-iam`, `block-unpinned-agent-components`)
 upgrade specific attack classes to commit-time enforcement. `full` means runtime enforcement,
 and rows will only say it when that mechanism exists — the report prints every gap precisely
@@ -354,7 +363,7 @@ without Chock installed at all.
 
 **That is a portability claim, not an enforcement one.** The standard covers skills and MCP
 servers; it defines no enforcement mechanism, and hooks are explicitly deferred until their formats
-converge. A policy read as a plugin is `advisory` — the same tier as the twenty advisory rows above
+converge. A policy read as a plugin is `advisory` — the same tier as the 21 advisory rows above
 — and every generated `SKILL.md` says so in its own body. The `enforced-at-commit` policies
 get their teeth from `chock sync`, not from the package. Enforcement *does* travel in the
 four hook-carrying vendor formats (`chock plugin build --format claude|copilot|cursor|codex`),
@@ -374,7 +383,7 @@ they drift from it.
 
 Good first contributions, roughly in order of usefulness:
 
-1. **Turn an advisory policy into an enforced one.** Twenty policies are text today. Any one
+1. **Turn an advisory policy into an enforced one.** 21 policies are text today. Any one
    of them that can be expressed as a `content_regex`, `forbidden_ref` or
    `dependency_allowlist` gate is a strict upgrade — and the eval suite already describes the
    behaviour you would need to satisfy.
