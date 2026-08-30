@@ -20,7 +20,7 @@ policies:
   enforcement: advise
   mandatory: false
   mechanism: guard script
-  enforces: enforced (pre-tool-use, once hooks are installed)
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 27
   eval_executed: 27
   description: 'Best-effort guard against piping a network download straight into a shell or
@@ -35,7 +35,7 @@ policies:
   enforcement: advise
   mandatory: false
   mechanism: guard script
-  enforces: enforced (pre-tool-use, once hooks are installed)
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 42
   eval_executed: 42
   description: 'Best-effort guard against destructive commands: rm -rf targeting absolute, home, or root-adjacent
@@ -57,7 +57,7 @@ policies:
   enforcement: advise
   mandatory: false
   mechanism: guard script
-  enforces: enforced (pre-tool-use, once hooks are installed)
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 17
   eval_executed: 17
   description: Best-effort guard against bypassing git hooks via git commit/push --no-verify or -n. Known
@@ -69,7 +69,7 @@ policies:
   enforcement: advise
   mandatory: false
   mechanism: guard script
-  enforces: enforced (pre-tool-use, once hooks are installed)
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 32
   eval_executed: 32
   description: 'Best-effort guard against tool-channel data exfiltration: a network client (curl/wget/Invoke-WebRequest)
@@ -376,7 +376,7 @@ policies:
   enforcement: advise
   mandatory: false
   mechanism: guard script
-  enforces: enforced (pre-tool-use, once hooks are installed)
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 8
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
@@ -385,7 +385,7 @@ policies:
   enforcement: advise
   mandatory: false
   mechanism: guard script
-  enforces: enforced (pre-tool-use, once hooks are installed)
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 19
   eval_executed: 19
   description: 'Guard against an agent weakening the automated checks that review its own work:
@@ -399,7 +399,7 @@ policies:
   enforcement: advise
   mandatory: false
   mechanism: guard script
-  enforces: enforced (pre-tool-use, once hooks are installed)
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 7
 - id: protect-main-branch
   path: base/protect-main-branch
