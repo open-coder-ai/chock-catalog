@@ -51,6 +51,28 @@ jobs:
           done < <(git rev-list --no-merges "origin/$BASE_REF..HEAD")
           exit "$missing"
 
+  brand-assets:
+    # docs/assets/social-preview.svg is derived from registry.yaml -- so adding or re-grading a policy silently
+    # invalidates the committed card. Nothing on it is hand-typed (every count is len() of
+    # a list read at render time), but a stale image is wrong all the same, and the image
+    # is what a link preview shows to someone who has not read the repo yet.
+    #
+    # The check compares the SVG, not the PNG: the SVG is text derived only from
+    # repository data and is identical on any machine, while a PNG depends on the font
+    # installed on the renderer. Facts reach the SVG first.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install "cairosvg==2.9.0" pyyaml
+      - name: Check the social preview matches the repository
+        run: cd docs/assets && python gen_brand_assets.py --check
+
   policies:
     runs-on: ubuntu-latest
     steps:

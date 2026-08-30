@@ -1,23 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Chock logo: a wheel held by a chock wedge">
-  <!-- Brand: navy #0D1626, gold #D9B45C — matches docs/assets/social-preview.png -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img"
+     aria-label="chock-catalog logo: a stack of policy cards, the top one carrying the node that marks an enforcing policy.">
   <rect width="512" height="512" rx="104" fill="#0D1626"/>
-  <g stroke="#D9B45C" fill="none" stroke-width="14">
-    <!-- wheel -->
-    <circle cx="225" cy="258" r="92"/>
-    <!-- spokes -->
-    <g stroke-width="11">
-      <line x1="225" y1="258" x2="225" y2="178"/>
-      <line x1="225" y1="258" x2="294" y2="218"/>
-      <line x1="225" y1="258" x2="294" y2="298"/>
-      <line x1="225" y1="258" x2="225" y2="338"/>
-      <line x1="225" y1="258" x2="156" y2="298"/>
-      <line x1="225" y1="258" x2="156" y2="218"/>
-    </g>
-  </g>
-  <!-- hub -->
-  <circle cx="225" cy="258" r="24" fill="#D9B45C"/>
-  <!-- the chock, set against the wheel -->
-  <path d="M 318 352 L 416 352 L 416 262 Z" fill="#D9B45C"/>
-  <!-- ground -->
-  <line x1="96" y1="352" x2="416" y2="352" stroke="#D9B45C" stroke-width="12" stroke-linecap="round"/>
+  <rect x="176.1" y="320.9" width="159.7" height="30.0" rx="10.2" fill="none" stroke="#D9B45C" stroke-width="13.58" stroke-opacity="0.34"/>
+  <rect x="160.2" y="261.0" width="191.7" height="30.0" rx="10.2" fill="none" stroke="#D9B45C" stroke-width="13.58" stroke-opacity="0.55"/>
+  <rect x="144.2" y="152.2" width="223.6" height="79.9" rx="18.0" fill="none" stroke="#D9B45C" stroke-width="20.37" stroke-opacity="0.95"/>
+  <rect x="158.96" y="172.93" width="38.34" height="38.34" transform="rotate(45 178.12 192.10)" fill="#D9B45C"/>
+  <line x1="210.1" y1="178.1" x2="345.9" y2="178.1" stroke="#D9B45C" stroke-width="13.58" stroke-opacity="0.55" stroke-linecap="round"/>
+  <line x1="210.1" y1="206.1" x2="305.9" y2="206.1" stroke="#D9B45C" stroke-width="13.58" stroke-opacity="0.55" stroke-linecap="round"/>
 </svg>
