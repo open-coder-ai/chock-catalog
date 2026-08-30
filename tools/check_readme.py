@@ -61,6 +61,42 @@ _NUMBER_WORDS = (
 _COUNT_CONTEXT = ("polic", "advisory", "enforced", "gate", "guard", "eval")
 
 
+#: Each per-tier table and the registry field whose policies it must list in full.
+_TIER_SECTIONS = (("Enforced at commit", "gate"),)
+
+
+def tier_table_problems(text: str, kinds: dict) -> list[str]:
+    """A per-tier table must list every policy of that tier, not merely some of them.
+
+    The existing "published but not mentioned in the README" check below is satisfied by a
+    mention anywhere -- a policy named in a prose paragraph passes it while being absent from
+    the table that enumerates its tier. That is how the `Enforced at commit` table came to
+    show six rows under a summary saying nine: `block-wildcard-iam`,
+    `block-unpinned-agent-components` and `block-unsafe-code-execution` were each mentioned
+    elsewhere on the page and listed nowhere a reader counting the tier would look.
+    """
+    problems = []
+    for heading, kind in _TIER_SECTIONS:
+        section = re.search(
+            rf"\*\*{re.escape(heading)}\*\*.*?(?=\n\*\*[A-Z]|\n## )", text, re.S
+        )
+        if not section:
+            problems.append(f"the '{heading}' section is missing from the README")
+            continue
+        listed = re.findall(r"^\| \[`([^`]+)`\]", section.group(0), re.M)
+        for policy_id in sorted(kinds[kind]):
+            if policy_id not in listed:
+                problems.append(
+                    f"{policy_id} is a `{kind}` policy but is not a row under '{heading}'"
+                )
+        for policy_id in listed:
+            if policy_id not in kinds[kind]:
+                problems.append(
+                    f"{policy_id} is listed under '{heading}' but is not a `{kind}` policy"
+                )
+    return problems
+
+
 def spelled_out_count_problems(text: str) -> list[str]:
     """Reject counts written as words, because no other check in this file can see them.
 
@@ -183,6 +219,7 @@ def main() -> int:
 
     problems += alt_text_problems(text)
     problems += spelled_out_count_problems(text)
+    problems += tier_table_problems(text, kinds)
 
     # Every policy directory must be reachable from the README.
     for policy_id in sorted(sum(kinds.values(), [])):
