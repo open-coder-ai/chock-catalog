@@ -166,6 +166,14 @@ def alt_text_problems(text: str) -> list[str]:
 
 
 def main() -> int:
+    """Check every claim the README makes about this repository against the repository.
+
+    Collects problems rather than failing at the first, so one run tells you everything that
+    has drifted. The checks accumulate as defects are found: badge counts, ladder rows and
+    per-policy eval counts came first; alt text against each figure's own label, counts
+    written as words, and per-tier table completeness were each added after a real defect
+    walked past everything already here.
+    """
     text = README.read_text(encoding="utf-8")
     kinds, evals = classify()
     total = sum(len(v) for v in kinds.values())
