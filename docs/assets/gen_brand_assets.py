@@ -105,9 +105,13 @@ ALT = (
     f"The {len(BLOCKING)} blocking policies: " + ", ".join(sorted(BLOCKING)) + ". "
     "Full OWASP Agentic Security Initiative top ten coverage, ASI01 through ASI10. Apache-2.0."
 )
+#: The hero image sits in the most prominent slot on the page, and its alt text is what a
+#: crawler or an LLM retriever reads there -- so it states what the project IS before it
+#: describes what the mark depicts. A purely decorative label spends that slot on nothing.
 LOGO_ALT = (
-    "chock-catalog logo: a stack of policy cards, the top one carrying the node that marks "
-    "an enforcing policy."
+    "chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what "
+    "they actually enforce. The mark is a stack of policy cards, the top one carrying the "
+    "node that marks an enforcing policy."
 )
 
 CARD = card(

@@ -46,6 +46,51 @@ def classify() -> tuple[dict[str, list[str]], dict[str, tuple[int, int]]]:
     return kinds, evals
 
 
+def alt_text_problems(text: str) -> list[str]:
+    """Every figure's README `alt` must be the figure's own `aria-label`.
+
+    Alt text is not decoration here: it is what a crawler, an LLM retriever and a screen
+    reader are told the figure shows, and it is the only part of an image any of them read.
+    The SVGs carry a generated `aria-label`; the README carried a hand-typed copy, and the
+    copies drifted exactly as hand-typed copies do. Three of the four were wrong when this
+    check was written:
+
+      * the hero logo said "Chock logo" -- the wrong project, in the most prominent slot on
+        the page;
+      * the coverage figure said "Thirty-six policies ... nine enforced-at-commit, seven
+        enforced, twenty advisory" against a repository holding 37 / 9 / 7 / 21, and the
+        badge checks above could not see it because the numbers were spelled as words;
+      * the how-it-works figure named a surface the figure had since renamed.
+
+    Comparing against the SVG rather than against the registry is deliberate: it keeps one
+    authority per figure, and the figure's own label is already derived from the repository.
+    """
+    problems: list[str] = []
+    for tag in re.findall(r"<img[^>]*>", text):
+        src = re.search(r'src="(docs/[^"]+\.svg)"', tag)
+        if not src:
+            continue  # badges and remote images have no local label to check against
+        path = ROOT / src.group(1)
+        if not path.exists():
+            continue  # already reported as a missing image above
+        want = re.search(r'aria-label="([^"]*)"', path.read_text(encoding="utf-8"))
+        if not want:
+            problems.append(
+                f"{src.group(1)} has no aria-label to check the README against"
+            )
+            continue
+        have = re.search(r'alt="([^"]*)"', tag)
+        if not have:
+            problems.append(f"{src.group(1)} is embedded with no alt text")
+        elif have.group(1) != want.group(1):
+            problems.append(
+                f"{src.group(1)}: README alt has drifted from the figure's own label\n"
+                f"      README: {have.group(1)}\n"
+                f"      figure: {want.group(1)}"
+            )
+    return problems
+
+
 def main() -> int:
     text = README.read_text(encoding="utf-8")
     kinds, evals = classify()
@@ -64,13 +109,23 @@ def main() -> int:
         elif int(found.group(1)) != actual:
             problems.append(f"{label}: README says {found.group(1)}, repo has {actual}")
 
-    for row, want in (("enforced-at-commit", len(kinds["gate"])), ("`enforced`", len(kinds["guard"]))):
-        found = re.search(rf"\| `?{re.escape(row.strip('`'))}`? \|[^|]*\|\s*(\d+) \|", text)
+    for row, want in (
+        ("enforced-at-commit", len(kinds["gate"])),
+        ("`enforced`", len(kinds["guard"])),
+    ):
+        found = re.search(
+            rf"\| `?{re.escape(row.strip('`'))}`? \|[^|]*\|\s*(\d+) \|", text
+        )
         if found and int(found.group(1)) != want:
-            problems.append(f"ladder row {row}: README says {found.group(1)}, repo has {want}")
+            problems.append(
+                f"ladder row {row}: README says {found.group(1)}, repo has {want}"
+            )
 
     for policy_id, (executed, count) in evals.items():
-        found = re.search(rf"`{re.escape(policy_id)}`\]\([^)]*\)[^|]*\|[^|]*\|\s*(\d+)/(\d+)\s*\|", text)
+        found = re.search(
+            rf"`{re.escape(policy_id)}`\]\([^)]*\)[^|]*\|[^|]*\|\s*(\d+)/(\d+)\s*\|",
+            text,
+        )
         if found and (int(found.group(1)), int(found.group(2))) != (executed, count):
             problems.append(
                 f"{policy_id}: README says {found.group(1)}/{found.group(2)}, suite has {executed}/{count}"
@@ -84,6 +139,8 @@ def main() -> int:
         if not (ROOT / src).exists():
             problems.append(f"missing image: {src}")
 
+    problems += alt_text_problems(text)
+
     # Every policy directory must be reachable from the README.
     for policy_id in sorted(sum(kinds.values(), [])):
         if f"`{policy_id}`" not in text:
@@ -94,7 +151,9 @@ def main() -> int:
         for p in problems:
             print(f"  {p}")
         return 1
-    print(f"README matches: {total} policies, {enforced} enforced, {len(kinds['text'])} advisory.")
+    print(
+        f"README matches: {total} policies, {enforced} enforced, {len(kinds['text'])} advisory."
+    )
     return 0
 
 

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="Chock logo" width="90">
+<img src="docs/assets/logo.svg" alt="chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what they actually enforce. The mark is a stack of policy cards, the top one carrying the node that marks an enforcing policy." width="90">
 
 <h1>chock-catalog</h1>
 
@@ -51,7 +51,7 @@ thirty-six are advisory, and that is the number most catalogs would round up:
 | `enforced` | the tool call is refused before it runs | 7 |
 | `advisory` | text an agent reads and may or may not follow | 20 |
 
-<img alt="Thirty-six policies split nine enforced-at-commit, seven enforced, twenty advisory, each named" src="docs/assets/coverage-matrix.svg">
+<img alt="37 policies: 9 enforced-at-commit, 7 enforced, 21 advisory" src="docs/assets/coverage-matrix.svg">
 
 Advisory eval cases report as `skipped`, never as passing, because there is no mechanism to
 replay.
@@ -255,7 +255,7 @@ overstated one.
 One folder per policy. `manifest.yaml` declares identity and either a gate or rule text;
 `chock sync` turns that into artifacts for whichever agents you use.
 
-<img alt="A policy folder compiles into git-hook, pre-tool-use and ambient-rule surfaces, which reach different enforcement levels" src="docs/assets/how-it-works.svg">
+<img alt="A policy folder compiles into git-hook, native pre-execution hook and ambient-rule surfaces, which reach different enforcement levels" src="docs/assets/how-it-works.svg">
 
 The same policy reaches different levels on different agents, and `coverage.json` records
 every pair.
