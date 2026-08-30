@@ -57,7 +57,7 @@ thirty-six are advisory, and that is the number most catalogs would round up:
 | `enforced` | the tool call is refused before it runs | 7 |
 | `advisory` | text an agent reads and may or may not follow | 20 |
 
-<img alt="37 policies: 9 enforced-at-commit, 7 enforced, 21 advisory" src="docs/assets/coverage-matrix.svg">
+<img alt="37 policies: 9 enforced-at-commit, 7 in-agent, 21 advisory" src="docs/assets/coverage-matrix.svg">
 
 Advisory eval cases report as `skipped`, never as passing, because there is no mechanism to
 replay.
