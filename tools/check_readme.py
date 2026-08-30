@@ -249,7 +249,12 @@ def main() -> int:
         # accepted as valid. Two rows disagreeing is worse than one row wrong, because a
         # reader cannot tell which is meant.
         rows = re.findall(
-            rf"\| `?{re.escape(row.strip('`'))}`? \|[^|]*\|\s*(\d+) \|", text
+            # `[^|\n]`, not `[^|]`: a negated class matches newlines, so an unterminated cell
+            # let the match run onto the NEXT line and read a number from a different row.
+            # A malformed table whose stray number happened to equal the true count passed
+            # as valid -- a silent wrong-pass on broken markup. Rows stay on their row now.
+            rf"\| `?{re.escape(row.strip('`'))}`? \|[^|\n]*\|\s*(\d+) \|",
+            text,
         )
         if len(rows) > 1:
             problems.append(
@@ -268,7 +273,8 @@ def main() -> int:
 
     for policy_id, (executed, count) in evals.items():
         found = re.search(
-            rf"`{re.escape(policy_id)}`\]\([^)]*\)[^|]*\|[^|]*\|\s*(\d+)/(\d+)\s*\|",
+            # Same row-scoping as the ladder pattern above, for the same reason.
+            rf"`{re.escape(policy_id)}`\]\([^)]*\)[^|\n]*\|[^|\n]*\|\s*(\d+)/(\d+)\s*\|",
             text,
         )
         if found and (int(found.group(1)), int(found.group(2))) != (executed, count):
