@@ -78,10 +78,19 @@ for policy in POLICIES:
     PACKS.setdefault(policy["path"].split("/")[0], []).append(policy)
 BLOCKING = [p["id"] for p in POLICIES if p.get("enforcement") == "block"]
 AT_COMMIT = [p for p in POLICIES if p.get("enforces") == "enforced-at-commit"]
+#: The same three-word set `tools/gen_coverage_matrix.py` buckets together, for the same
+#: reason: `enforced`/`enforceable`/`best-effort` are agentseam's per-agent vocabulary and all
+#: three are a real, installed, in-agent pre-execution control. Matched on the FIRST WORD of
+#: the `enforces` string rather than a `startswith("enforced (pre-tool-use")` prefix -- that
+#: prefix silently stopped matching the moment a policy was regraded to `best-effort
+#: (pre-tool-use, ...)`, dropping seven policies out of both this list and ADVISORY, which is
+#: what the assertion below then caught. Two files classify the same field; they now agree.
+IN_AGENT_WORDS = {"enforced", "enforceable", "best-effort"}
 PRE_TOOL = [
     p
     for p in POLICIES
-    if str(p.get("enforces", "")).startswith("enforced (pre-tool-use")
+    if str(p.get("enforces", "")).split(" ", 1)[0] in IN_AGENT_WORDS
+    and "pre-tool-use" in str(p.get("enforces", ""))
 ]
 ADVISORY = [p for p in POLICIES if p.get("enforces") == "advisory"]
 N_ENFORCED = len(AT_COMMIT) + len(PRE_TOOL)
