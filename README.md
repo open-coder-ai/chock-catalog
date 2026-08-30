@@ -345,7 +345,7 @@ saying exactly what the mechanism reaches.
 
 — and the build fails if any control reads `uncovered`. Every row reads `partial`, because
 most of the pack is advisory (rules and skills the agent reads) rather than deterministic
-gates, and this tool refuses to label advisory coverage as more than it is. Three hard guards
+gates, and this tool refuses to label advisory coverage as more than it is. 3 hard guards
 (`block-unsafe-code-execution`, `block-wildcard-iam`, `block-unpinned-agent-components`)
 upgrade specific attack classes to commit-time enforcement. `full` means runtime enforcement,
 and rows will only say it when that mechanism exists — the report prints every gap precisely

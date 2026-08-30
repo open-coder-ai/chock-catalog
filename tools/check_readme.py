@@ -52,13 +52,15 @@ def classify() -> tuple[dict[str, list[str]], dict[str, tuple[int, int]]]:
 #: matches digits. Rather than teach each check to read English, the README states counts in
 #: digits and this rejects the word form outright.
 _NUMBER_WORDS = (
+    "two three four five six seven eight nine ten "
     "eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty "
     "thirty forty fifty sixty seventy eighty ninety hundred"
 ).split()
 
-#: Only where a number word would BE a count. "one policy" or "a dozen reasons" in ordinary
-#: prose is not what this is for.
-_COUNT_CONTEXT = ("polic", "advisory", "enforced", "gate", "guard", "eval")
+#: The nouns a count here would be counting. "one" is deliberately absent from the words
+#: above: it is overwhelmingly ordinary prose ("one policy at a time"), and a catalog will
+#: never legitimately report a total of one.
+_COUNT_NOUNS = r"polic\w*|advisor\w*|enforced[\w-]*|in-agent|gate\w*|guard\w*|eval\w*"
 
 
 #: Each per-tier table and the registry field whose policies it must list in full.
@@ -121,12 +123,17 @@ def spelled_out_count_problems(text: str) -> list[str]:
     for number, line in enumerate(text.splitlines(), 1):
         lowered = line.lower()
         for word in _NUMBER_WORDS:
-            if not re.search(rf"\b{word}\b", lowered):
-                continue
-            if any(context in lowered for context in _COUNT_CONTEXT):
+            # Adjacency, not "anywhere on the line": a number word three words from a count
+            # noun is a count ("twenty of thirty-six are advisory"), one paragraph away is
+            # not. Line-wide matching flagged prose that merely shared a line with the word
+            # "policy", which is how a lint earns itself a suppression comment.
+            if re.search(
+                rf"\b{word}\b(?:[ -]\w+){{0,3}}[ -](?:{_COUNT_NOUNS})\b", lowered
+            ):
                 problems.append(
-                    f"line {number}: count written as a word (%r) -- use digits, so the count "
-                    f"checks in this file can see it:\n      {line.strip()[:96]}" % word
+                    f"line {number}: count written as a word ({word!r}) -- use digits, so "
+                    f"the count checks in this file can see it:"
+                    f"\n      {line.strip()[:96]}"
                 )
                 break
     return problems
@@ -223,7 +230,11 @@ def main() -> int:
         found = re.search(
             rf"\| `?{re.escape(row.strip('`'))}`? \|[^|]*\|\s*(\d+) \|", text
         )
-        if found and int(found.group(1)) != want:
+        if not found:
+            # Previously `if found and ...`, so deleting a row entirely silenced its check --
+            # the one edit most likely to be made when a count becomes inconvenient.
+            problems.append(f"ladder row {row}: missing from the README")
+        elif int(found.group(1)) != want:
             problems.append(
                 f"ladder row {row}: README says {found.group(1)}, repo has {want}"
             )
