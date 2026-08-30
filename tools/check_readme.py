@@ -64,7 +64,15 @@ _COUNT_NOUNS = r"polic\w*|advisor\w*|enforced[\w-]*|in-agent|gate\w*|guard\w*|ev
 
 
 #: Each per-tier table and the registry field whose policies it must list in full.
-_TIER_SECTIONS = (("Enforced at commit", "gate"),)
+#:
+#: Both enforcing tiers are here. `text` (advisory) deliberately is not: its 21 policies are
+#: not one table -- they are split across the Compliance and Agentic security sections by
+#: subject, so "every advisory policy is a row under Advisory" is simply not true of this
+#: README's structure, and asserting it would be a permanent false alarm rather than a check.
+_TIER_SECTIONS = (
+    ("Enforced at commit", "gate"),
+    ("Enforced before the tool runs", "guard"),
+)
 
 
 def tier_table_problems(text: str, kinds: dict) -> list[str]:
