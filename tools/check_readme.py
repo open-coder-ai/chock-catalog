@@ -249,11 +249,13 @@ def main() -> int:
         # accepted as valid. Two rows disagreeing is worse than one row wrong, because a
         # reader cannot tell which is meant.
         rows = re.findall(
-            # `[^|\n]`, not `[^|]`: a negated class matches newlines, so an unterminated cell
-            # let the match run onto the NEXT line and read a number from a different row.
-            # A malformed table whose stray number happened to equal the true count passed
-            # as valid -- a silent wrong-pass on broken markup. Rows stay on their row now.
-            rf"\| `?{re.escape(row.strip('`'))}`? \|[^|\n]*\|\s*(\d+) \|",
+            # EVERY newline-permitting construct on this line has to be closed, not just the
+            # obvious one. `[^|]` is a negated class so it matches newlines -- but so does
+            # `\s`, and closing only the first still let `| row | text |` followed by a line
+            # starting `21 |` read 21 as this row's count. A malformed table whose stray
+            # number happens to equal the true count then passes as valid: a silent
+            # wrong-pass on broken markup. `[^\r\n|]` for cells, `[ \t]` for padding.
+            rf"\| `?{re.escape(row.strip('`'))}`? \|[^\r\n|]*\|[ \t]*(\d+)[ \t]*\|",
             text,
         )
         if len(rows) > 1:
@@ -274,7 +276,7 @@ def main() -> int:
     for policy_id, (executed, count) in evals.items():
         found = re.search(
             # Same row-scoping as the ladder pattern above, for the same reason.
-            rf"`{re.escape(policy_id)}`\]\([^)]*\)[^|\n]*\|[^|\n]*\|\s*(\d+)/(\d+)\s*\|",
+            rf"`{re.escape(policy_id)}`\]\([^)]*\)[^\r\n|]*\|[^\r\n|]*\|[ \t]*(\d+)/(\d+)[ \t]*\|",
             text,
         )
         if found and (int(found.group(1)), int(found.group(2))) != (executed, count):
