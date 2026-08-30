@@ -34,7 +34,21 @@ PROSE = DOCS / "policy-prose.yaml"
 #: entry, it is an honest ceiling.
 CEILING = {
     "gate": "`enforced-at-commit` — the command exits non-zero and the commit does not happen",
-    "guard": "`enforced` once `chock sync` has run — the tool call is refused before it runs",
+    # Not a flat `enforced`: agentseam's own per-agent vocabulary applies once installed
+    # (chock owner decision #9) -- `best-effort` on Claude Code (its PreToolUse fails
+    # OPEN, so a crashed hook silently allows), `enforceable` on Cursor (can be told to
+    # fail closed, but does not by default). Neither is the weaker claim `advisory` is;
+    # both are a real, installed, in-agent block that only a crashed hook gets past.
+    # The mapping belongs in the OUTPUT, not only in this comment: a reader who sees
+    # "best-effort/enforceable" and cannot tell which one their agent gets has been handed a
+    # slash-pair instead of a claim. Naming the agent and the failure mode is the whole
+    # difference between an honest ceiling and a hedge.
+    "guard": (
+        "`best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — "
+        "the tool call is refused before it runs, on a hook that is actually wired up. "
+        "Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; "
+        "Cursor's can be told to fail closed, but does not by default"
+    ),
     "text": "`advisory` — an agent reads it and may or may not follow it",
 }
 

@@ -42,7 +42,11 @@ def main() -> int:
 
     ceiling = {
         "gate": "enforced-at-commit",
-        "guard": "enforced (pre-tool-use, once hooks are installed)",
+        # Not a flat `enforced` (chock owner decision #9): agentseam's per-agent vocabulary
+        # applies once installed -- best-effort on Claude Code (fails open if the hook
+        # crashes), enforceable on Cursor. See gen_policy_docs.py's CEILING for the same
+        # wording used in the generated per-policy docs.
+        "guard": "best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)",
         "none": "advisory",
     }
     wrong = []

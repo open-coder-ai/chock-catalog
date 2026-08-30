@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320" role="img" aria-label="37 policies: 9 enforced-at-commit, 7 enforced, 21 advisory">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320" role="img" aria-label="37 policies: 9 enforced-at-commit, 7 in-agent, 21 advisory">
 <rect width="1600" height="1320" fill="#0f1420"/>
 <line x1="0" y1="0" x2="1600" y2="0" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="96" x2="1600" y2="96" stroke="#1a2130" stroke-width="1"/>
@@ -42,8 +42,9 @@
 <text x="98" y="640" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">verify-dependency-exists</text>
 <line x1="548" y1="220" x2="548" y2="1030" stroke="#5c6577" stroke-width="1"/>
 <text x="576" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">7</text>
-<text x="634" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">ENFORCED</text>
-<text x="576" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">the tool call is refused before it runs</text>
+<text x="634" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">IN-AGENT</text>
+<text x="576" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">the tool call is refused before it runs, if</text>
+<text x="576" y="354" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">the hook itself runs</text>
 <line x1="576" y1="378" x2="992" y2="378" stroke="#5c6577" stroke-width="1"/>
 <rect x="576" y="389" width="6" height="6" fill="#3fd0b6"/>
 <text x="594" y="400" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-curl-pipe-sh</text>
