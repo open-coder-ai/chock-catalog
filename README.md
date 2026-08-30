@@ -48,14 +48,14 @@ That is the whole install. The next commit containing a credential exits non-zer
 **A rule an agent reads is advice. A hook that exits non-zero is a control.** Both belong in
 a repo, and the difference has to be visible, because the failure mode of governance tooling
 is that everyone believes it is doing more than it is. So every policy here is labelled with
-what it actually reaches — stated up front rather than in the appendix, because twenty of
-thirty-six are advisory, and that is the number most catalogs would round up:
+what it actually reaches — stated up front rather than in the appendix, because 21 of the 37
+are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 9 |
-| `enforced` | the tool call is refused before it runs | 7 |
-| `advisory` | text an agent reads and may or may not follow | 20 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 7 |
+| `advisory` | text an agent reads and may or may not follow | 21 |
 
 <img alt="37 policies: 9 enforced-at-commit, 7 in-agent, 21 advisory" src="docs/assets/coverage-matrix.svg">
 
@@ -360,7 +360,7 @@ without Chock installed at all.
 
 **That is a portability claim, not an enforcement one.** The standard covers skills and MCP
 servers; it defines no enforcement mechanism, and hooks are explicitly deferred until their formats
-converge. A policy read as a plugin is `advisory` — the same tier as the twenty advisory rows above
+converge. A policy read as a plugin is `advisory` — the same tier as the 21 advisory rows above
 — and every generated `SKILL.md` says so in its own body. The `enforced-at-commit` policies
 get their teeth from `chock sync`, not from the package. Enforcement *does* travel in the
 four hook-carrying vendor formats (`chock plugin build --format claude|copilot|cursor|codex`),
@@ -380,7 +380,7 @@ they drift from it.
 
 Good first contributions, roughly in order of usefulness:
 
-1. **Turn an advisory policy into an enforced one.** Twenty policies are text today. Any one
+1. **Turn an advisory policy into an enforced one.** 21 policies are text today. Any one
    of them that can be expressed as a `content_regex`, `forbidden_ref` or
    `dependency_allowlist` gate is a strict upgrade — and the eval suite already describes the
    behaviour you would need to satisfy.

@@ -46,6 +46,44 @@ def classify() -> tuple[dict[str, list[str]], dict[str, tuple[int, int]]]:
     return kinds, evals
 
 
+#: Number words big enough to be a policy count. Spelled-out counts are the hole every check
+#: here fell through: `alt="Thirty-six policies ... twenty advisory"` and the prose "twenty of
+#: thirty-six are advisory" both survived a file full of count checks, because every one of them
+#: matches digits. Rather than teach each check to read English, the README states counts in
+#: digits and this rejects the word form outright.
+_NUMBER_WORDS = (
+    "eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty "
+    "thirty forty fifty sixty seventy eighty ninety hundred"
+).split()
+
+#: Only where a number word would BE a count. "one policy" or "a dozen reasons" in ordinary
+#: prose is not what this is for.
+_COUNT_CONTEXT = ("polic", "advisory", "enforced", "gate", "guard", "eval")
+
+
+def spelled_out_count_problems(text: str) -> list[str]:
+    """Reject counts written as words, because no other check in this file can see them.
+
+    Every count check here matches digits, so a word-form number is invisible to all of them --
+    which is exactly how the README came to say "twenty of thirty-six are advisory" against a
+    repository with 21 of 37, three lines above a table that says otherwise. Digits are not a
+    style preference here; they are the only form the rest of this file can verify.
+    """
+    problems = []
+    for number, line in enumerate(text.splitlines(), 1):
+        lowered = line.lower()
+        for word in _NUMBER_WORDS:
+            if not re.search(rf"\b{word}\b", lowered):
+                continue
+            if any(context in lowered for context in _COUNT_CONTEXT):
+                problems.append(
+                    f"line {number}: count written as a word (%r) -- use digits, so the count "
+                    f"checks in this file can see it:\n      {line.strip()[:96]}" % word
+                )
+                break
+    return problems
+
+
 def alt_text_problems(text: str) -> list[str]:
     """Every figure's README `alt` must be the figure's own `aria-label`.
 
@@ -109,9 +147,13 @@ def main() -> int:
         elif int(found.group(1)) != actual:
             problems.append(f"{label}: README says {found.group(1)}, repo has {actual}")
 
+    # The advisory row was absent here until 2026-08-30, so the README carried `20` against a
+    # repository holding 21 and nothing noticed. A ladder that checks two of its three rows is
+    # not checking the ladder.
     for row, want in (
         ("enforced-at-commit", len(kinds["gate"])),
-        ("`enforced`", len(kinds["guard"])),
+        ("`in-agent`", len(kinds["guard"])),
+        ("`advisory`", len(kinds["text"])),
     ):
         found = re.search(
             rf"\| `?{re.escape(row.strip('`'))}`? \|[^|]*\|\s*(\d+) \|", text
@@ -140,6 +182,7 @@ def main() -> int:
             problems.append(f"missing image: {src}")
 
     problems += alt_text_problems(text)
+    problems += spelled_out_count_problems(text)
 
     # Every policy directory must be reachable from the README.
     for policy_id in sorted(sum(kinds.values(), [])):
