@@ -1,0 +1,232 @@
+name: Adopt framework
+
+# Bumps the engine this catalog is built and checked against, and opens the adoption PR.
+#
+# The work itself is `tools/adopt_framework.py` -- it rewrites the `.framework-ref` pin,
+# regenerates every derived artifact (compiled policies, plugin packages, policy docs,
+# coverage matrix, adoption transcripts) and re-runs every check. None of that is
+# reimplemented here: this workflow is a button, not a second implementation that drifts
+# from the first the day someone adds a generator and updates only one of them.
+#
+# Dispatch-only, like the plugin repos' publish.yml. Adopting an engine version is a
+# decision -- a MINOR release can change what the emitters enforce for every adopter of
+# this catalog -- so it runs when a human starts it and names the ref. It is never a side
+# effect of a merge or a schedule. (The nightly transcript sweep is already the canary
+# that warns when framework main will break the NEXT adoption; this is the act, not the
+# warning.)
+#
+# It opens a pull request and never pushes to `main`. The diff IS the review artifact: when
+# the emitters change, the regenerated tree shows exactly what changed about enforcement,
+# and that PR is the only moment anyone looks. A workflow that pushed straight to main
+# would produce the diff and destroy the review in the same step.
+#
+# The engine is installed from a checkout at the target ref rather than `pip install
+# chock==X.Y.Z`. `adopt_framework.py`'s docstring documents both forms, and the pre-launch
+# one is the one that works today: `chock` is not on PyPI, which is why ci.yml and
+# nightly-transcripts.yml also check the private repo out and `pip install ./.framework`
+# instead of naming a version. Checkout also handles the token, rather than a pip URL where
+# it could surface in logs or the pip cache, and it accepts a tag, a branch or a bare SHA
+# without the input having to declare which it is -- `.framework-ref` has held both a raw
+# commit SHA and a release tag within one release cycle. Post-launch, replace the framework
+# checkout and `pip install ./.framework` with `pip install "chock==$FRAMEWORK_REF"`;
+# nothing about the input has to change.
+#
+# CAVEAT -- the PR this opens arrives with no CI. GitHub does not start workflow runs for
+# events raised with the built-in `GITHUB_TOKEN`, so the `pull_request` triggers in ci.yml
+# and security.yml do not fire on a PR created here and the required `dco`/`policies`
+# checks never report -- the same deadlock against the no-bypass protect-main ruleset that
+# moving the pin into `.framework-ref` was meant to end, arriving by a different door. The
+# verification is not lost: `adopt_framework.py` runs those same checks in THIS run, which
+# the PR body links. But the required checks a reviewer merges against are missing until a
+# human closes and reopens the PR, which re-raises the events under their own account. The
+# PR body says so, so nobody has to rediscover it. The alternative is a personal access
+# token with `repo` and `workflow` scope sitting in this repository's secrets -- a
+# long-lived credential that can push anywhere its owner can, to save one click.
+#
+# Linux only, consistent with the rest of this repo (see ci.yml's header).
+
+on:
+  workflow_dispatch:
+    inputs:
+      framework_ref:
+        description: Engine ref to adopt (git tag, branch or SHA pre-launch; version post-launch)
+        type: string
+        required: true
+      dry_run:
+        description: Regenerate and show the diff without opening a PR
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One adoption at a time. Two dispatches racing would each regenerate the whole tree from
+# the same base, and the second would open a pull request whose diff was computed against
+# a `main` the first is already changing. Queued rather than cancelled: a cancel landing
+# between `git push` and `gh pr create` leaves a branch behind with no pull request on it.
+concurrency:
+  group: adopt-framework
+  cancel-in-progress: false
+
+jobs:
+  adopt:
+    runs-on: ubuntu-latest
+    # Only what the two side effects need. Everything else here is reads and local
+    # regeneration, and the workflow-level default above stays read.
+    permissions:
+      contents: write  # commit the regenerated tree and push the adoption branch
+      pull-requests: write  # open the pull request that branch exists for
+    steps:
+      - name: Check out the catalog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          # The one checkout that keeps credentials: this job pushes the adoption branch.
+          # Documented as the artipacked exception in .github/zizmor.yml.
+          persist-credentials: true
+          # Full history: the adoption commit is made here, and a shallow clone gives the
+          # regenerated diff nothing to sit on top of.
+          fetch-depth: 0
+
+      # A dispatch input becomes a git branch name and a git ref. Validated as data before
+      # anything consumes it, and rejected loudly rather than sanitized into something the
+      # operator did not ask for -- a silently rewritten ref adopts the wrong engine.
+      - name: Validate the ref
+        env:
+          FRAMEWORK_REF: ${{ inputs.framework_ref }}
+        run: |
+          case "$FRAMEWORK_REF" in
+            "" | -* | /* | */ | *..* | *" "*)
+              echo "::error::not a usable ref: '$FRAMEWORK_REF'"
+              exit 1 ;;
+          esac
+          case "$FRAMEWORK_REF" in
+            *[!A-Za-z0-9._/-]*)
+              echo "::error::ref may contain only A-Z a-z 0-9 . _ / and -: '$FRAMEWORK_REF'"
+              exit 1 ;;
+          esac
+          # `/` is legal in a ref (rc/0.1.0-rc.2) but nests branches, so flatten it here.
+          echo "ADOPT_BRANCH=adopt/framework-$(printf '%s' "$FRAMEWORK_REF" | tr '/' '-')" >> "$GITHUB_ENV"
+
+      # Check out the engine at the ref being adopted. Same pattern as ci.yml: the
+      # framework is a private repo, and checkout handles the token.
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ inputs.framework_ref }}
+          path: .framework
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install the engine at the ref being adopted
+        run: pip install ./.framework
+
+      # The whole adoption: rewrite the pin, regenerate every derived artifact, run every
+      # check. Non-zero here means the diff is not adoptable, and no PR is opened.
+      - name: Adopt
+        env:
+          # A dispatch input expanded by the runner into shell text is code injection
+          # waiting for a ref with metacharacters; through the environment it stays data.
+          FRAMEWORK_REF: ${{ inputs.framework_ref }}
+        run: python tools/adopt_framework.py "$FRAMEWORK_REF"
+
+      # Regeneration adds files as well as changing them, and `git diff` alone would show
+      # a clean tree while a new plugin package sat untracked beside it.
+      - name: Summarise the diff
+        env:
+          FRAMEWORK_REF: ${{ inputs.framework_ref }}
+        run: |
+          git add -A -N
+          if git diff --quiet; then
+            echo "ADOPT_CHANGED=false" >> "$GITHUB_ENV"
+          else
+            echo "ADOPT_CHANGED=true" >> "$GITHUB_ENV"
+          fi
+          {
+            echo "## Adoption: \`$FRAMEWORK_REF\`"
+            echo
+            echo '```'
+            git --no-pager diff --stat
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Nothing to adopt
+        if: env.ADOPT_CHANGED == 'false'
+        run: |
+          echo "Already pinned to this ref and every derived artifact is current."
+          echo "_Already adopted -- no change._" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dry run -- stopping before the pull request
+        if: ${{ inputs.dry_run != false && env.ADOPT_CHANGED == 'true' }}
+        run: |
+          echo "Dry run: the diff above is what a real run would open as a PR."
+          echo "_Dry run -- no branch pushed, no pull request opened._" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open the adoption pull request
+        if: ${{ inputs.dry_run == false && env.ADOPT_CHANGED == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FRAMEWORK_REF: ${{ inputs.framework_ref }}
+          # The human who pressed the button signs the commit off: ci.yml's `dco` job
+          # requires a Signed-off-by trailer on every PR commit, and a bot cannot make
+          # the Developer Certificate of Origin assertion on anybody's behalf.
+          ACTOR: ${{ github.triggering_actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # Never clobber an existing branch. Adoptions are also run by hand on
+          # `adopt/...` branches, and a force-push here would discard someone's work in
+          # progress to save them deleting a stale branch.
+          if git ls-remote --exit-code --heads origin "$ADOPT_BRANCH" >/dev/null 2>&1; then
+            echo "::error::branch $ADOPT_BRANCH already exists -- merge or delete its PR, then re-run"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$ADOPT_BRANCH"
+          git add -A
+          git commit -m "chore(framework): adopt chock $FRAMEWORK_REF" \
+                     -m "Regenerated with tools/adopt_framework.py. Every check it runs passed." \
+                     -m "Signed-off-by: $ACTOR <$ACTOR_ID+$ACTOR@users.noreply.github.com>"
+          git push -u origin "$ADOPT_BRANCH"
+
+          cat <<EOF > /tmp/pr-body.md
+          Pins the engine to \`$FRAMEWORK_REF\` and regenerates every derived artifact, by
+          running \`python tools/adopt_framework.py $FRAMEWORK_REF\` in [this workflow run]($RUN_URL).
+
+          **Read the diff, not this description.** If the engine's emitters changed, the
+          regenerated tree is exactly what changed about enforcement for everyone who
+          adopts this catalog. That is the whole reason this is a PR.
+
+          ### Checks
+
+          \`adopt_framework.py\` ran \`chock check\`, \`chock plugin build --check\`,
+          \`tools/check_readme.py\`, \`tools/check_console.py\`, \`tools/check_workflows.py\`
+          and the transcript reproducibility check, and all of them passed in the run linked
+          above.
+
+          ### This PR has no CI, and that is expected
+
+          GitHub does not start workflow runs for events raised with the built-in
+          \`GITHUB_TOKEN\`, so opening this PR did not trigger \`ci.yml\` or \`security.yml\`
+          and the required \`dco\` / \`policies\` checks will not report on their own.
+
+          **To get them:** close this PR and reopen it. Reopening is your action, not the
+          token's, so the \`pull_request\` events fire normally and the required checks run.
+
+          The commit carries a \`Signed-off-by\` trailer for @$ACTOR, who dispatched the run.
+          EOF
+
+          gh pr create \
+            --base main \
+            --head "$ADOPT_BRANCH" \
+            --title "chore(framework): adopt chock $FRAMEWORK_REF" \
+            --body-file /tmp/pr-body.md
+
+          echo "_Pull request opened from \`$ADOPT_BRANCH\`._" >> "$GITHUB_STEP_SUMMARY"

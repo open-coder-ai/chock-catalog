@@ -1,0 +1,15 @@
+# zizmor configuration: deliberate, documented exceptions only.
+#
+# Empty of everything else on purpose. zizmor's adoption-day run on this repo found four
+# template injections and six credential-persisting checkouts, and all ten were fixed
+# rather than ignored -- an entry here is a claim that the finding is the mechanism, not
+# a claim that it is inconvenient.
+rules:
+  artipacked:
+    # adopt-framework.yml's catalog checkout is the one writer in this repository: the
+    # job commits the regenerated tree and pushes it as an adoption branch, using the
+    # workflow's own token scoped to this repository. Credential persistence there is
+    # what the workflow is for. Every other checkout in every other workflow -- including
+    # this one's framework checkout -- sets persist-credentials: false.
+    ignore:
+      - adopt-framework.yml
