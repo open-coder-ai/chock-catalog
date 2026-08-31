@@ -264,6 +264,18 @@ eu-ai-act-transparency:
     intact: assistive editing and non-substantial alteration are what stop this from firing
     on every autocomplete and being ignored as a result.
 
+firecrawl-fallback-only:
+  solves: >
+    A metered web connector quietly becoming the default fetch path. Firecrawl exists for
+    the research pages a direct fetch cannot read -- blocked, JS-rendered, rate-limited --
+    but once connected it is one tool call away from serving every URL, spending credits
+    and an external dependency on pages a plain fetch would have returned identically.
+  customise: >
+    The fallback conditions are the policy. Add conditions your sources actually hit
+    (paywalls, geo-blocks) or drop ones they never do, and swap the connector name if your
+    fallback scraper is a different service -- the native-first ordering is the part to
+    keep.
+
 git-safety:
   solves: >
     Git operations that lose work rather than record it: force pushes over shared history,
