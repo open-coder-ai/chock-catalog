@@ -21,12 +21,15 @@ name: Adopt framework
 # would produce the diff and destroy the review in the same step.
 #
 # The engine is installed from a checkout at the target ref rather than `pip install
-# chock==X.Y.Z`. `adopt_framework.py`'s docstring documents both forms; the pre-launch one
-# applies while `chock` is unpublished, and `.framework-ref` today holds a raw commit SHA,
-# so there is no version to derive from the ref at all. It is also the same auth pattern as
-# ci.yml and nightly-transcripts.yml -- checkout handles the token rather than a pip URL
-# where it could surface in logs or the pip cache. Post-launch, replace the framework
-# checkout and `pip install ./.framework` with `pip install "chock==$FRAMEWORK_REF"`.
+# chock==X.Y.Z`. `adopt_framework.py`'s docstring documents both forms, and the pre-launch
+# one is the one that works today: `chock` is not on PyPI, which is why ci.yml and
+# nightly-transcripts.yml also check the private repo out and `pip install ./.framework`
+# instead of naming a version. Checkout also handles the token, rather than a pip URL where
+# it could surface in logs or the pip cache, and it accepts a tag, a branch or a bare SHA
+# without the input having to declare which it is -- `.framework-ref` has held both a raw
+# commit SHA and a release tag within one release cycle. Post-launch, replace the framework
+# checkout and `pip install ./.framework` with `pip install "chock==$FRAMEWORK_REF"`;
+# nothing about the input has to change.
 #
 # CAVEAT -- the PR this opens arrives with no CI. GitHub does not start workflow runs for
 # events raised with the built-in `GITHUB_TOKEN`, so the `pull_request` triggers in ci.yml
