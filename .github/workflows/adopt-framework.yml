@@ -86,6 +86,14 @@ jobs:
           # Full history: the adoption commit is made here, and a shallow clone gives the
           # regenerated diff nothing to sit on top of.
           fetch-depth: 0
+          # Always adopt onto `main`, whatever branch the run was dispatched from. Without
+          # this, checkout takes the dispatch ref: dispatching from a topic branch would
+          # cut the adoption branch from that branch and carry its unrelated commits into
+          # a pull request opened `--base main`, so the adoption diff would no longer be
+          # only the adoption. Pinning it here also keeps a dry run honest -- someone
+          # testing a change to THIS file from a branch gets their new workflow logic run
+          # against main's content, which is the thing they actually want to know about.
+          ref: main
 
       # A dispatch input becomes a git branch name and a git ref. Validated as data before
       # anything consumes it, and rejected loudly rather than sanitized into something the
