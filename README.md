@@ -7,9 +7,9 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="37 policies" src="https://img.shields.io/badge/policies-37-blue">
+<img alt="38 policies" src="https://img.shields.io/badge/policies-38-blue">
 <img alt="16 enforced" src="https://img.shields.io/badge/enforced-16-brightgreen">
-<img alt="21 advisory" src="https://img.shields.io/badge/advisory-21-orange">
+<img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
 </p>
@@ -48,16 +48,16 @@ That is the whole install. The next commit containing a credential exits non-zer
 **A rule an agent reads is advice. A hook that exits non-zero is a control.** Both belong in
 a repo, and the difference has to be visible, because the failure mode of governance tooling
 is that everyone believes it is doing more than it is. So every policy here is labelled with
-what it actually reaches — stated up front rather than in the appendix, because 21 of the 37
+what it actually reaches — stated up front rather than in the appendix, because 22 of the 38
 are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 9 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 7 |
-| `advisory` | text an agent reads and may or may not follow | 21 |
+| `advisory` | text an agent reads and may or may not follow | 22 |
 
-<img alt="37 policies: 9 enforced-at-commit, 7 in-agent, 21 advisory" src="docs/assets/coverage-matrix.svg">
+<img alt="38 policies: 9 enforced-at-commit, 7 in-agent, 22 advisory" src="docs/assets/coverage-matrix.svg">
 
 Advisory eval cases report as `skipped`, never as passing, because there is no mechanism to
 replay.
@@ -95,6 +95,7 @@ codex plugin format, Codex after its per-hook trust review).
 
 [`agent-discipline`](docs/agent-discipline/) · [`code-safety`](docs/code-safety/) ·
 [`context-hygiene`](docs/context-hygiene/) · [`chock-mise`](docs/chock-mise/) ·
+[`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
 [`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
@@ -363,7 +364,7 @@ without Chock installed at all.
 
 **That is a portability claim, not an enforcement one.** The standard covers skills and MCP
 servers; it defines no enforcement mechanism, and hooks are explicitly deferred until their formats
-converge. A policy read as a plugin is `advisory` — the same tier as the 21 advisory rows above
+converge. A policy read as a plugin is `advisory` — the same tier as the 22 advisory rows above
 — and every generated `SKILL.md` says so in its own body. The `enforced-at-commit` policies
 get their teeth from `chock sync`, not from the package. Enforcement *does* travel in the
 four hook-carrying vendor formats (`chock plugin build --format claude|copilot|cursor|codex`),

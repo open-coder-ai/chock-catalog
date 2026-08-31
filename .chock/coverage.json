@@ -134,6 +134,21 @@
     "vscode": "advisory",
     "windsurf": "advisory"
   },
+  "firecrawl-fallback-only": {
+    "aider": "advisory",
+    "claude": "advisory",
+    "codex": "advisory",
+    "copilot": "advisory",
+    "cursor": "advisory",
+    "devin": "advisory",
+    "gemini": "advisory",
+    "grok": "advisory",
+    "kimi-code": "advisory",
+    "replit": "advisory",
+    "tabnine": "advisory",
+    "vscode": "advisory",
+    "windsurf": "advisory"
+  },
   "git-safety": {
     "aider": "advisory",
     "claude": "advisory",

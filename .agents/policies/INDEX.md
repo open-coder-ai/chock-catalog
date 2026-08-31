@@ -25,6 +25,9 @@
 - **context-hygiene**:
   replace(resolved_content): path_ref_only; delegate(noisy_exploration): subagent; prune(stale > 3_turns)
   on_context_growth: summarize(old_observations); keep(decisions+outcomes); discard(superseded_content)
+- **firecrawl-fallback-only**:
+  web_access: prefer(native: WebFetch|WebSearch|curl); firecrawl_connector: fallback_only
+  use_firecrawl_if: research_task & direct_fetch(failed|blocked|js_only|rate_limited); never(default): firecrawl; on_use: note_fallback_reason
 - **git-safety**:
   see(block-destructive-commands): force_push|reset_hard|rm_-rf; see(block-no-verify): --no-verify|skip_hooks; see(protect-main-branch): direct_commit|push(main|master)
   advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); ask_if(diff > 500_lines)

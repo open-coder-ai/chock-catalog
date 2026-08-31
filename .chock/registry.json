@@ -151,6 +151,21 @@
         "script_hashes": {}
       }
     ],
+    "firecrawl-fallback-only": [
+      {
+        "id": "firecrawl-fallback-only",
+        "artifact": "rule",
+        "version": "0.0.1",
+        "name": "Firecrawl Fallback Only",
+        "description": "trigger: web research where a direct fetch fails, is blocked, or needs JS rendering. avoid: reaching for the Firecrawl connector as the default fetch path.",
+        "path": ".agents/policies/firecrawl-fallback-only",
+        "manifest": "manifest.yaml",
+        "trust_tier": "community",
+        "lifecycle_status": "draft",
+        "dependencies": [],
+        "script_hashes": {}
+      }
+    ],
     "git-safety": [
       {
         "id": "git-safety",
