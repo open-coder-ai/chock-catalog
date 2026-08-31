@@ -190,6 +190,18 @@ policies:
   description: 'trigger: a chat or assistant surface, a generation endpoint, or an export path for model
     output. EU AI Act Article 50 -- disclose the AI interaction, mark synthetic output machine-readably,
     label deepfakes. exempt: assistive editing and non-substantial alteration.'
+- id: firecrawl-fallback-only
+  path: base/firecrawl-fallback-only
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: rule text only
+  enforces: advisory
+  eval_cases: 5
+  eval_executed: 0
+  description: 'trigger: web research where a direct fetch fails, is blocked, or needs JS rendering.
+    avoid: reaching for the Firecrawl connector as the default fetch path.'
 - id: git-safety
   path: base/git-safety
   version: 0.0.1
