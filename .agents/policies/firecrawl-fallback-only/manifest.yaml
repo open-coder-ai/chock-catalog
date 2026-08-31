@@ -1,0 +1,33 @@
+id: firecrawl-fallback-only
+name: "Firecrawl Fallback Only"
+version: "0.0.1"
+description: >
+  trigger: web research where a direct fetch fails, is blocked, or needs JS rendering.
+  avoid: reaching for the Firecrawl connector as the default fetch path.
+artifact: rule
+enforcement: advise
+rule:
+  text: |
+    web_access: prefer(native: WebFetch|WebSearch|curl); firecrawl_connector: fallback_only
+    use_firecrawl_if: research_task & direct_fetch(failed|blocked|js_only|rate_limited); never(default): firecrawl; on_use: note_fallback_reason
+provenance:
+  author: "chock-core"
+  created_at: "2026-08-31T18:16:54Z"
+  updated_at: "2026-08-31T18:16:54Z"
+  source_repo: "https://github.com/open-coder-ai/chock"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-08-31'
+  changes:
+  - "Initial draft."
