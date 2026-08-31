@@ -21,3 +21,13 @@ updates:
       default-days: 7
     open-pull-requests-limit: 5
     labels: [dependencies, ci]
+    groups:
+      # All action bumps in one weekly PR. Not only to cut noise -- ungrouped bumps are
+      # WRONG here, and were. codeql-action 4.37.8 arrived as three separate PRs (#49 init,
+      # #50 analyze, #51 upload-sarif), and each fails on its own with "Loaded a
+      # configuration file for version '4.37.8', but running version '4.37.7'": those three
+      # steps must run the same version, so splitting one atomic upgrade across three
+      # branches makes every branch individually red and green only after all three land.
+      # Grouping keeps a multi-step action's steps in step. Matches chock's own config.
+      actions:
+        patterns: ["*"]
