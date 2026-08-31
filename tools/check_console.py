@@ -1,24 +1,5 @@
 #!/usr/bin/env python3
-"""Fail if a quoted terminal transcript has drifted from what the tools actually print.
-
-`check_readme.py` guards the README's *numbers*; `gen_policy_docs.py` guards the docs pages.
-Nothing guarded the ```console blocks -- and that is the class that broke twice. Once when the
-`protect-main-branch` block message read "(main/master)" while the gate it described blocked
-`main|master`, and once when a transcript labelled "captured by running these commands" had
-gone stale.
-
-Both were quoted output, and quoted output is the most persuasive thing in a README precisely
-because a reader cannot verify it. A wrong number invites a correction; a wrong transcript
-teaches an adopter that the tool says something it does not, and they find out at the moment
-it blocks their commit.
-
-Replaying the transcript in full would need a scratch repo, the network and a catalog clone.
-This instead checks the part that actually drifts, offline: every line of quoted output that
-claims to be a gate's block message must equal the message that gate really resolves to, and
-every `$ chock ...` command must be one the CLI has.
-
-Usage:  python tools/check_console.py
-"""
+"""Fail if a quoted terminal transcript has drifted from what the tools actually print."""
 
 from __future__ import annotations
 
@@ -33,14 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 BASE = ROOT / "base"
 
-#: A `$ ` prompt line, and the `# exit N` convention the transcripts use to record status.
 PROMPT = re.compile(r"^\$ (.+)$")
 EXIT_MARKER = re.compile(r"^# exit (\d+)$")
 
-#: How much of a resolved message must appear verbatim before a line is treated as a quotation
-#: of it. Long enough that ordinary prose cannot collide; short enough to survive the tail of
-#: the message changing, which is exactly where the substituted params live and where the
-#: "(main/master)" defect was.
 PREFIX_WORDS = 6
 
 
@@ -50,11 +26,7 @@ def console_blocks(text: str) -> list[list[str]]:
 
 
 def resolved_messages() -> dict[str, str]:
-    """Each policy's block message, resolved the way the gate resolves it.
-
-    `build_gate_json` applies config defaults, so this is the message an adopter is actually
-    shown -- not the manifest's literal, which may still contain `{refs}`.
-    """
+    """Each policy's block message, resolved the way the gate resolves it."""
     messages: dict[str, str] = {}
     for policy_dir in sorted(p for p in BASE.iterdir() if p.is_dir()):
         spec = build_gate_json(policy_dir, ROOT)
@@ -94,18 +66,13 @@ def check_quoted_messages(blocks: list[list[str]], messages: dict[str, str]) -> 
 
 
 def check_commands(blocks: list[list[str]], known: set[str]) -> list[str]:
-    """Every `$ chock <sub>` in a transcript must name a real subcommand.
-
-    A transcript is a promise that these commands were run. One that does not exist could not
-    have been, so the transcript is fabricated whether or not anyone meant it to be.
-    """
+    """Every `$ chock <sub>` in a transcript must name a real subcommand."""
     failures: list[str] = []
     for block in blocks:
         for line in block:
             match = PROMPT.match(line.strip())
             if not match:
                 continue
-            # Transcripts chain with `&&`; check each invocation, not just the first.
             for part in match.group(1).split("&&"):
                 words = part.split()
                 if len(words) >= 2 and words[0] == "chock" and words[1] not in known:
@@ -114,11 +81,7 @@ def check_commands(blocks: list[list[str]], known: set[str]) -> list[str]:
 
 
 def check_exit_markers(blocks: list[list[str]], messages: dict[str, str]) -> list[str]:
-    """A block that quotes a refusal must not also claim it succeeded.
-
-    Cheap, but it catches the copy-paste error that turns a demonstration of enforcement into
-    a demonstration of the opposite -- the single most damaging thing this README could say.
-    """
+    """A block that quotes a refusal must not also claim it succeeded."""
     failures: list[str] = []
     for block in blocks:
         text = "\n".join(block)
@@ -136,8 +99,6 @@ def main() -> int:
 
     blocks = console_blocks(README.read_text(encoding="utf-8"))
     if not blocks:
-        # Not an error, but worth saying: this checker silently passing because it found
-        # nothing to check is indistinguishable from it working.
         print("No ```console blocks found in README.md; nothing to verify.")
         return 0
 

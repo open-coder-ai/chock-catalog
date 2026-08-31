@@ -1,24 +1,4 @@
-"""Render chock-catalog's logo and GitHub social preview card.
-
-Run from this directory:
-
-    pip install cairosvg pyyaml      # asset tooling only
-    python gen_brand_assets.py
-
-Writes logo.svg/logo-512.png (512x512) and social-preview.svg/.png (1280x640, GitHub's
-social-preview size) beside this file.
-
-Every policy id, pack name and count on the card is READ FROM registry.yaml at render
-time -- the same file chock resolves against. A social preview is a claim surface, and
-this catalog's whole proposition is that a policy is labelled by what it actually
-enforces, so the card must not carry a second, hand-typed copy of that. Counts printed
-beside each list are len() of that list, and an over-long row raises rather than running
-silently out of its panel.
-
-The mark is a policy card carrying its enforcing node, stacked on the ones behind it.
-Until now this repo shipped chock's wheel-and-wedge logo byte for byte, alt text
-included, so it had no identity of its own.
-"""
+"""Render chock-catalog's logo and GitHub social preview card."""
 
 import pathlib
 import sys
@@ -40,11 +20,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 
 def catalog_mark(cx, cy, s):
-    """A stack of policy cards, the top one carrying its enforcing node.
-
-    Widths taper downward so it reads as depth rather than three equal bars, which read
-    as a menu icon.
-    """
+    """A stack of policy cards, the top one carrying its enforcing node."""
     sw = s * 0.034
     parts = []
     for dy, wf, op in ((0.20, 0.40, 0.34), (0.05, 0.48, 0.55)):
@@ -78,13 +54,6 @@ for policy in POLICIES:
     PACKS.setdefault(policy["path"].split("/")[0], []).append(policy)
 BLOCKING = [p["id"] for p in POLICIES if p.get("enforcement") == "block"]
 AT_COMMIT = [p for p in POLICIES if p.get("enforces") == "enforced-at-commit"]
-#: The same three-word set `tools/gen_coverage_matrix.py` buckets together, for the same
-#: reason: `enforced`/`enforceable`/`best-effort` are agentseam's per-agent vocabulary and all
-#: three are a real, installed, in-agent pre-execution control. Matched on the FIRST WORD of
-#: the `enforces` string rather than a `startswith("enforced (pre-tool-use")` prefix -- that
-#: prefix silently stopped matching the moment a policy was regraded to `best-effort
-#: (pre-tool-use, ...)`, dropping seven policies out of both this list and ADVISORY, which is
-#: what the assertion below then caught. Two files classify the same field; they now agree.
 IN_AGENT_WORDS = {"enforced", "enforceable", "best-effort"}
 PRE_TOOL = [
     p
@@ -99,8 +68,6 @@ assert len(ADVISORY) + N_ENFORCED == len(POLICIES), (
     "a policy is graded with a word this card does not know"
 )
 
-# The OWASP rows drop the shared "owasp-" prefix the column header already states, and
-# nothing else: these stay the ids you can pass to chock add.
 OWASP = [p["id"] for p in POLICIES if p["id"].startswith("owasp-asi")]
 OWASP_ROWS = [i[len("owasp-") :] for i in sorted(OWASP)]
 OWASP_ROWS = [r.replace("-communication", "-comms") for r in OWASP_ROWS]
@@ -114,9 +81,6 @@ ALT = (
     f"The {len(BLOCKING)} blocking policies: " + ", ".join(sorted(BLOCKING)) + ". "
     "Full OWASP Agentic Security Initiative top ten coverage, ASI01 through ASI10. Apache-2.0."
 )
-#: The hero image sits in the most prominent slot on the page, and its alt text is what a
-#: crawler or an LLM retriever reads there -- so it states what the project IS before it
-#: describes what the mark depicts. A purely decorative label spends that slot on nothing.
 LOGO_ALT = (
     "chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what "
     "they actually enforce. The mark is a stack of policy cards, the top one carrying the "

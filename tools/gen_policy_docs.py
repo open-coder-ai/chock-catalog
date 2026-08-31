@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""Generate docs/<policy-id>/README.md for every published policy.
-
-Hand-written policy docs drift the first time a policy changes, and a doc that says
-`enforced` about advisory text is worse than no doc -- it is the overclaim this project
-exists to prevent, published in the place adopters read first.
-
-So the facts are derived from base/<id>/ and compliance/<id>/, and the judgement lives in
-docs/policy-prose.yaml.
-`--check` regenerates into memory and diffs, the same shape as `chock sync
---check`, so CI fails when the two disagree.
-
-Usage:
-  python tools/gen_policy_docs.py
-  python tools/gen_policy_docs.py --check
-"""
+"""Generate docs/<policy-id>/README.md for every published policy."""
 
 from __future__ import annotations
 
@@ -30,19 +16,8 @@ DOCS = ROOT / "docs"
 PROSE = DOCS / "policy-prose.yaml"
 
 
-#: What a policy reaches at its best, given what it ships. `advisory` is not a lesser
-#: entry, it is an honest ceiling.
 CEILING = {
     "gate": "`enforced-at-commit` — the command exits non-zero and the commit does not happen",
-    # Not a flat `enforced`: agentseam's own per-agent vocabulary applies once installed
-    # (chock owner decision #9) -- `best-effort` on Claude Code (its PreToolUse fails
-    # OPEN, so a crashed hook silently allows), `enforceable` on Cursor (can be told to
-    # fail closed, but does not by default). Neither is the weaker claim `advisory` is;
-    # both are a real, installed, in-agent block that only a crashed hook gets past.
-    # The mapping belongs in the OUTPUT, not only in this comment: a reader who sees
-    # "best-effort/enforceable" and cannot tell which one their agent gets has been handed a
-    # slash-pair instead of a claim. Naming the agent and the failure mode is the whole
-    # difference between an honest ceiling and a hedge.
     "guard": (
         "`best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — "
         "the tool call is refused before it runs, on a hook that is actually wired up. "

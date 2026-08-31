@@ -1,32 +1,5 @@
 #!/usr/bin/env python3
-"""Fail if a policy declaring `read_only` ships a guard script that writes.
-
-`spec/methodology.md` defines `read_only` as "reads repo/state but does not write". Every
-guard in this catalog declares it, and nothing checked it. The manifest said one thing and the
-shell said whatever it said.
-
-This observes the effect rather than reading the source. A lint over shell would have to decide
-whether `rm` in `git|rm|kubectl|terraform)` is a command or a `case` pattern, and whether
-`echo ... >&2` is a file write -- both appear in `block-destructive.sh`, and both are the kind
-of false positive that gets a check deleted within a week. Running the guard and looking at the
-filesystem afterwards asks the question the manifest actually answers.
-
-That is the witness principle again, the same one behind coverage refusing to credit `ci-gate`
-without an installer and `verify` judging the vendored runner: a claim is worth what an
-independent re-derivation says it is worth.
-
-The eval suite supplies the inputs. Each case's `execute.command` is the argv the guard is
-invoked with in `chock check --only evals`, so coverage here grows automatically as the suite grows,
-and a contributor extending a guard extends its effects check in the same PR.
-
-Scope, stated because a green check must not imply more than it did:
-  - Only policies that BOTH declare `read_only` AND ship `implementations/*.sh`. Two today.
-  - Only the argv the eval suite exercises. A write on an untested path is not detected.
-  - Gate policies are excluded: their behaviour is the framework's vendored runner, not
-    catalog content, and is covered by the framework's own tests.
-
-Usage:  python tools/check_effects.py
-"""
+"""Fail if a policy declaring `read_only` ships a guard script that writes."""
 
 from __future__ import annotations
 
@@ -44,15 +17,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "base"
 
-#: Declaring any of these is a claim that the artifact does not write. `writes_workspace` and
-#: `writes_external` are the honest declarations for a guard that does, so a policy carrying
-#: one of those is skipped rather than failed -- the check is for contradictions, not for
-#: discouraging writes.
 NON_WRITING = {"read_only", "none", "reads_private", "network"}
 WRITING = {"writes_workspace", "writes_external", "irreversible"}
 
-#: Files planted in the throwaway workspace. Content is irrelevant; their hashes are the
-#: evidence. A guard that truncates one, or drops a new file beside them, is caught either way.
 CANARIES = {
     "README.md": "# canary\n",
     "src/app.py": "print('canary')\n",
@@ -101,15 +68,7 @@ def plant(workspace: Path) -> None:
 
 
 def run_guard(bash: str, guard: Path, command: str, workspace: Path, home: Path, scratch: Path) -> None:
-    """Invoke the guard exactly as the runtime adapter does, inside the throwaway workspace.
-
-    Output is discarded and the exit code ignored: a guard blocking a command is the normal
-    case and says nothing about whether it wrote. Only the filesystem is evidence.
-
-    TMPDIR is redirected outside the observed tree on purpose. `read_only` is about the
-    adopter's repo and environment; a guard using `mktemp` is not writing in the sense the
-    declaration is about, and failing it would be the over-block that gets a check disabled.
-    """
+    """Invoke the guard exactly as the runtime adapter does, inside the throwaway workspace."""
     env = dict(os.environ, HOME=str(home), TMPDIR=str(scratch), GIT_CONFIG_GLOBAL=str(home / ".gitconfig"))
     try:
         subprocess.run(
@@ -121,8 +80,6 @@ def run_guard(bash: str, guard: Path, command: str, workspace: Path, home: Path,
             check=False,
         )
     except (OSError, subprocess.SubprocessError, ValueError) as exc:
-        # A guard that will not run cannot be shown to be read-only, so this is reported as a
-        # failure by the caller rather than passed over.
         raise RuntimeError(f"could not run guard: {exc}") from exc
 
 
@@ -169,7 +126,6 @@ def check_policy(policy_dir: Path, bash: str) -> list[str]:
 def main() -> int:
     bash = shutil.which("bash")
     if not bash:
-        # Skipping silently would make this a check that cannot fail.
         print("No bash on PATH; cannot observe guard behaviour.", file=sys.stderr)
         return 2
 
