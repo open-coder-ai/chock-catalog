@@ -52,8 +52,8 @@ Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~334 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-commit-privacy:
-  claude: enforced
-  copilot: enforced
+  claude: best-effort
+  copilot: best-effort
   gemini: advisory
 ```
 
