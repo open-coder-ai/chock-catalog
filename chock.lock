@@ -75,6 +75,14 @@
       "artifacts_sha256": "f85d4575557544366e98ca4d2a468511ae370064048a8fecb1a89d44b7ba4117"
     },
     {
+      "id": "firecrawl-fallback-only",
+      "version": "0.0.1",
+      "managed": false,
+      "sha256": "6ed6405b395d4e7ab36eb5f9ab5c65fb30fbc6a868d9b02839bc54da77ab604d",
+      "source": "local",
+      "artifacts_sha256": "4ee5f9c34e16cbcfe76d8e0cc7016171ed6c28c91d7a59be7238cc9dddd75d7c"
+    },
+    {
       "id": "git-safety",
       "version": "0.0.1",
       "managed": false,
