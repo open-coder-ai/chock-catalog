@@ -1,10 +1,4 @@
-"""registry.yaml matches the policies on disk -- ids, paths, and honesty labels.
-
-Extracted verbatim from the inline CI step so the commit-time conformance hook and CI
-run one implementation instead of a drifting copy. The `mechanism` / `enforces` labels
-are what an adopter chooses on; a label that drifts from the policy is worse than no
-label, because it would state a control exists where only text does.
-"""
+"""registry.yaml matches the policies on disk -- ids, paths, and honesty labels."""
 
 from __future__ import annotations
 
@@ -27,8 +21,6 @@ def main() -> int:
     for d in policy_dirs(ROOT):
         m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
         on_disk[m["id"]] = d.relative_to(ROOT).as_posix()
-    # The catalog publishes no skills today, so `skills/` does not exist. Iterating a
-    # missing directory must not be an error; it comes back when a skill earns its place.
     skills = ROOT / "skills"
     if skills.is_dir():
         for d in sorted(p for p in skills.iterdir() if p.is_dir()):
@@ -42,10 +34,6 @@ def main() -> int:
 
     ceiling = {
         "gate": "enforced-at-commit",
-        # Not a flat `enforced` (chock owner decision #9): agentseam's per-agent vocabulary
-        # applies once installed -- best-effort on Claude Code (fails open if the hook
-        # crashes), enforceable on Cursor. See gen_policy_docs.py's CEILING for the same
-        # wording used in the generated per-policy docs.
         "guard": "best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)",
         "none": "advisory",
     }

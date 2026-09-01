@@ -1,24 +1,10 @@
-"""Shared drawing primitives for this repository's brand assets.
-
-Split out of gen_brand_assets.py to stay inside the review budget the repo standards
-enforce: this file is the drawing language (palette, text, panels, the card layout), and
-gen_brand_assets.py is what this particular repository has to say. Two activities, two
-files.
-
-Nothing here knows anything about the catalog: it takes lists and labels and returns SVG.
-The assertions are the point -- a row too long for its panel, or a left column that would
-run into the footer rule, raises rather than rendering something subtly broken.
-"""
+"""Shared drawing primitives for this repository's brand assets."""
 
 import pathlib
 import re
 
 import cairosvg
 
-#: Assets are read and written beside this file, never relative to the working directory.
-#: The check job runs from docs/assets/ while the regenerate instruction printed on failure
-#: says to run from the repository root; with bare filenames those two disagree, and the
-#: root invocation quietly writes a second copy of the card somewhere nothing reads it.
 ASSETS = pathlib.Path(__file__).resolve().parent
 
 NAVY = "#0D1626"
@@ -112,8 +98,6 @@ def column(x, y, w, h, groups):
         )
         cy += 21
         for i, row in enumerate(shown):
-            # Nothing clips an over-long row: it runs silently out of the panel and into
-            # the next column. Two real identifier lists did exactly that. Assert instead.
             assert len(row) <= limit, (
                 f"row {row!r} ({len(row)}) overflows a {w}px column (max {limit})"
             )
@@ -225,18 +209,7 @@ def write(svg, stem, w, h, png_stem=None):
 
 
 def check(svg, stem):
-    """Compare a freshly derived card against the committed one; report what drifted.
-
-    The committed image is a snapshot of facts that live in the repository, so adding a
-    policy, an agent or an event silently invalidates it. Nothing here is hand-typed --
-    every count is len() of a list read at render time -- but a stale PNG is wrong all the
-    same. CI runs this so the artifact cannot drift unnoticed, the same discipline the
-    compiled artifacts are already held to.
-
-    The comparison is on the SVG, never the PNG: the SVG is plain text derived only from
-    repository data, so it is byte-identical on any machine, while a PNG depends on the
-    font being installed on the renderer. Any drift in the facts reaches the SVG first.
-    """
+    """Compare a freshly derived card against the committed one; report what drifted."""
     path = ASSETS / f"{stem}.svg"
     if not path.exists():
         return [f"{path.name} is missing"]

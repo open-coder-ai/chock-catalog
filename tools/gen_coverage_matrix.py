@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-"""Generate docs/assets/coverage-matrix.svg from registry.yaml.
-
-The old matrix was a PNG with no generator in the repo. It rendered the 12-policy split
-until the day a thirteenth landed, and then it silently rendered a claim that was no longer
-true -- the exact drift `check_readme.py` exists to prevent, one file over. Derived and
-`--check`ed, it cannot drift; and as SVG it diffs like text.
-
-Usage:
-  python tools/gen_coverage_matrix.py
-  python tools/gen_coverage_matrix.py --check
-"""
+"""Generate docs/assets/coverage-matrix.svg from registry.yaml."""
 
 from __future__ import annotations
 
@@ -22,7 +12,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / "docs" / "assets" / "coverage-matrix.svg"
 
-# Palette lifted from the original card.
 BG = "#0f1420"
 GRID = "#1a2130"
 CREAM = "#f2ead8"
@@ -45,14 +34,6 @@ COLUMNS = [
     ("ADVISORY", GOLD, "text an agent reads and may or may not follow"),
 ]
 
-#: The first word of an honest `enforces` string, once split off its parenthetical detail.
-#: `enforced`/`enforceable`/`best-effort` are agentseam's own per-agent vocabulary
-#: (`agentseam.matrix.enforcement_level`, chock owner decision #9): all three are a real,
-#: installed, in-agent pre-execution control, and none of them is the SAME promise --
-#: `best-effort` fails open on a crashed hook, `enforced` does not -- so the per-policy
-#: `enforces` string keeps saying which one, even though this graphic buckets all three
-#: together for a coarse, three-column read. `enforced-at-commit` is its own column, not
-#: folded in here: it is chock's own commit-time mechanism, a different kind of control.
 IN_AGENT_WORDS = {"enforced", "enforceable", "best-effort"}
 
 
@@ -125,7 +106,6 @@ def render() -> str:
             f'<text x="{x + 58}" y="258" font-family="{MONO}" font-size="17" letter-spacing="3" '
             f'fill="{CREAM}">{label}</text>'
         )
-        # blurb, wrapped by hand at ~46 chars
         words, lines, line = blurb.split(), [], ""
         for w in words:
             if len(line) + len(w) + 1 > 46:

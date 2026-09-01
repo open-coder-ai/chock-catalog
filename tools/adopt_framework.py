@@ -1,20 +1,4 @@
-"""Adopt a new framework (engine) version: rewrite the pin, regenerate, verify.
-
-A version bump in this repo is never just a version number -- the catalog commits
-derived output (compiled artifacts, plugin packages, docs, adoption transcripts),
-and CI verifies all of it against the pinned engine. This tool makes adoption one
-command instead of a red-CI scavenger hunt:
-
-    # 1. install the target engine locally (pre-launch: editable from the framework
-    #    checkout at the target tag; post-launch: pip install chock==X.Y.Z)
-    # 2. run:
-    python tools/adopt_framework.py rc/0.1.0-rc.2
-
-It rewrites the pin in the `.framework-ref` data file (ci.yml reads it at run time, so an
-adoption PR never modifies `.github/workflows/`), regenerates everything, and runs every check.
-Commit the whole diff as the adoption PR. If the engine's emitters changed (a MINOR
-framework release), the diff shows exactly what changed about enforcement.
-"""
+"""Adopt a new framework (engine) version: rewrite the pin, regenerate, verify."""
 
 from __future__ import annotations
 
@@ -25,9 +9,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-# The engine pin lives in a data file, NOT in ci.yml, so an adoption PR does not modify
-# .github/workflows/ (which would make GitHub refuse to run the PR's CI and deadlock the
-# no-bypass protect-main ruleset). ci.yml reads this file at run time.
 FRAMEWORK_REF_FILE = ROOT / ".framework-ref"
 
 
@@ -56,17 +37,9 @@ def main(argv: list[str] | None = None) -> int:
     rc = 0
     rc = max(rc, _run("sync (recompile + hooks + index + lockfile)", ["chock", "sync", "--repo", "."]))
     rc = max(rc, _run("plugin packages", ["chock", "plugin", "build", "--repo", "."]))
-    # The PUBLISHED trees too, exactly as CI checks them per-tree. The plain build above
-    # covers only .agents/policies (what this repo runs); an engine whose emitter output
-    # changed leaves every base/<id> package stale, which then fails the transcript step:
-    # a fresh adoption copies the stale package and `chock check` reports plugin_drift.
-    # Found by the first emitter-changing adoption (framework copilot-format bump).
     from trees import TREES
 
     for tree in TREES:
-        # A listed tree with no directory is a failure, not a skip: CI's staging step
-        # errors on exactly this ("tree listed by tools/trees.py is missing"), and an
-        # adoption that silently skipped one would report CLEAN on an incomplete set.
         if not (ROOT / tree).is_dir():
             print(f"tree listed by tools/trees.py is missing: {tree}", file=sys.stderr)
             rc = max(rc, 1)

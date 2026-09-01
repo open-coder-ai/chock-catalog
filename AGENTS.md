@@ -9,6 +9,9 @@ repo: {root_readme: README.md, human_docs: docs/, agent_rules: AGENTS.md}
 policy: {folder: 1, duplicates: false, temp_files: delete}
 wiring: {source: derived, hand_edit: false, trigger: deliverable_change}
 agents: {core: agent_agnostic, adapters: thin_wrappers}
+code_comments: {docstring: one_line, inline: nonobvious_only, why: [pr_body, docs/],
+                keep: [noqa, pragma, runtime_printed_docstrings, test_pinned_markers, generated, adopter_templates],
+                target: prose_to_code <=0.15, enforcement: advisory}
 ```
 
 ## Adapters
