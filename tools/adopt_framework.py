@@ -35,7 +35,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"pinned framework ref: {args.ref}  (.framework-ref)")
 
     rc = 0
-    rc = max(rc, _run("sync (recompile + hooks + index + lockfile)", ["chock", "sync", "--repo", "."]))
+    # Plugin packaging first: it writes plugin.json + skills/<id>/SKILL.md into each pack
+    # directory it targets, including .agents/policies/<id> for a pack that has never had
+    # those files generated there before. `sync` below regenerates chock.lock from whatever
+    # is on disk at that point -- run after packaging, its lockfile hash covers the packaged
+    # files too; run before (the old order), a first-time-packaged pack's lock entry is
+    # written pre-packaging and `chock check` then reports a hash mismatch against files
+    # sync never saw.
     rc = max(rc, _run("plugin packages", ["chock", "plugin", "build", "--repo", "."]))
     from trees import TREES
 
@@ -45,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
             rc = max(rc, 1)
             continue
         rc = max(rc, _run(f"plugin packages ({tree})", ["chock", "plugin", "build", "--repo", ".", "--policies-dir", tree]))
+    rc = max(rc, _run("sync (recompile + hooks + index + lockfile)", ["chock", "sync", "--repo", "."]))
     rc = max(rc, _run("policy docs", [sys.executable, "tools/gen_policy_docs.py"]))
     rc = max(rc, _run("coverage matrix", [sys.executable, "tools/gen_coverage_matrix.py"]))
     if not args.skip_transcripts:
