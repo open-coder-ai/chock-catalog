@@ -48,13 +48,20 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~329 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unapproved-egress:
-  claude: best-effort
-  copilot: best-effort
-  gemini: advisory
+  claude: best-effort (live-run)
+  copilot: best-effort (live-run-partial)
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -69,6 +76,13 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~329 tokens (chars/4, max 2000)
 ```
@@ -127,8 +141,15 @@ block-unapproved-egress  [deterministic]
 .chock/compiled/block-unapproved-egress/agent-hooks/agent-hooks.json
 .chock/compiled/block-unapproved-egress/ambient-rule/ambient.md
 .chock/compiled/block-unapproved-egress/managed-setting/managed-settings.json
+.chock/compiled/block-unapproved-egress/pre-tool-use/antigravity-hooks.json
+.chock/compiled/block-unapproved-egress/pre-tool-use/codex_cli-hooks.json
 .chock/compiled/block-unapproved-egress/pre-tool-use/cursor-hooks.json
+.chock/compiled/block-unapproved-egress/pre-tool-use/devin-hooks.json
+.chock/compiled/block-unapproved-egress/pre-tool-use/gemini_cli-hooks.json
+.chock/compiled/block-unapproved-egress/pre-tool-use/grok-hooks.json
 .chock/compiled/block-unapproved-egress/pre-tool-use/pretooluse.json
+.chock/compiled/block-unapproved-egress/pre-tool-use/tabnine-hooks.json
+.chock/compiled/block-unapproved-egress/pre-tool-use/windsurf-hooks.json
 ```
 
 ## INDEX.md entry

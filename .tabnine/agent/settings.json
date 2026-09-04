@@ -1,0 +1,69 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/tabnine.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+            "name": "agentseam"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/tabnine.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\"",
+            "name": "agentseam"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/tabnine.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\"",
+            "name": "agentseam"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/tabnine.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
+            "name": "agentseam"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/tabnine.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\"",
+            "name": "agentseam"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/tabnine.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\"",
+            "name": "agentseam"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/tabnine.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\"",
+            "name": "agentseam"
+          }
+        ]
+      }
+    ]
+  }
+}

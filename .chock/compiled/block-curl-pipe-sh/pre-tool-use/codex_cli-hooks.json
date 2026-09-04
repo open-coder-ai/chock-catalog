@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+            "commandWindows": "& @CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ]
+  }
+}
