@@ -16,7 +16,7 @@
       "managed": false,
       "sha256": "1a6bcc98cac00261da6e588625599e5e45ccc9430430581733a12747dcd52c0a",
       "source": "local",
-      "artifacts_sha256": "f12496cba85a7f9caa4cb660a330b490a5b356aff9fe1b40e3b3f4baf8a9d2f0"
+      "artifacts_sha256": "a6217f28715ba14d30102abd5f504c63856ab91a7377d798eb9eeffe34e63555"
     },
     {
       "id": "block-destructive-commands",
@@ -24,7 +24,7 @@
       "managed": false,
       "sha256": "f4f090712989985856a7272c16395e36bb34f95ce1186a6577d9379d716d3ca2",
       "source": "local",
-      "artifacts_sha256": "9535dad8af8bd334821ff03f5786e512dd4c72d1660f3c281d31d7221ef735b4"
+      "artifacts_sha256": "52b9a7c266e61a5fd0a97c42dd6d9cceefd5fd1dc742d676564ea72cb1a698d0"
     },
     {
       "id": "block-invisible-unicode",
@@ -40,7 +40,7 @@
       "managed": false,
       "sha256": "7c70fc5f855eacccc90689b118a3f9cc992ddce8ed5cba8a4d78e059f9067d36",
       "source": "local",
-      "artifacts_sha256": "cf980c6e0ed32fa870efb879e308646d54e735823ddbed5f91dd3583f6177f90"
+      "artifacts_sha256": "51965dd75e1a5821b8b0946c3756a122a14e454b6d6c122e1fa9f28b2850f107"
     },
     {
       "id": "block-unapproved-egress",
@@ -48,7 +48,7 @@
       "managed": false,
       "sha256": "0491fb23961cccf92704d358e76704d7521c3bfea11506e7163aac9967317e24",
       "source": "local",
-      "artifacts_sha256": "15b463b878b6d2f5a422911735b9074d6d052bd54db31d928e5964c75df32fb6"
+      "artifacts_sha256": "26a9b76c284d50ac8cb41eb8224ce4d7d6755219cd95254006d32ac97862ab03"
     },
     {
       "id": "block-wildcard-agent-permissions",
@@ -78,7 +78,7 @@
       "id": "firecrawl-fallback-only",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "6ed6405b395d4e7ab36eb5f9ab5c65fb30fbc6a868d9b02839bc54da77ab604d",
+      "sha256": "a3f3fec1f661a6a195f2b4267721d300bc23d8e7847fc846a84372f3bf4cc61a",
       "source": "local",
       "artifacts_sha256": "4ee5f9c34e16cbcfe76d8e0cc7016171ed6c28c91d7a59be7238cc9dddd75d7c"
     },
@@ -120,7 +120,7 @@
       "managed": false,
       "sha256": "1b6417c5e643c1c05e18396bbef07585a4249a0ed687c6cc61373ae6f93678fd",
       "source": "local",
-      "artifacts_sha256": "328a45f8c9a75fbf9fe4bc49306b5b664db13e8b98ca588cab58ced39998b070"
+      "artifacts_sha256": "1cc2918921e5d6d8f4cb2031381c51d7ec22af71ef5ea3187b73e5c58e651fdd"
     },
     {
       "id": "protect-ci-workflows",
@@ -128,7 +128,7 @@
       "managed": false,
       "sha256": "5a6726762106b96d357b50c46091e54c823dbcb830335f9d9191b5b57ca542e6",
       "source": "local",
-      "artifacts_sha256": "0850ac7a475c1cab3ba32c134c144d5277c36270d978871294e73347d353be59"
+      "artifacts_sha256": "796e13d87a8b8d3c240ac6a32eb4d7cb955b4f764d7ce1d1c30f3e0f2fbd21e3"
     },
     {
       "id": "protect-commit-privacy",
@@ -136,7 +136,7 @@
       "managed": false,
       "sha256": "21839f1af785444e08f1e3dc3270d57f41b01dc4b8af53348b0308aef0d8d822",
       "source": "local",
-      "artifacts_sha256": "2d7dc910b77cc7703daefc25711036be9045244bc575ff6bee531ccf7441ba7d"
+      "artifacts_sha256": "e27d75a558ff05e9c5a3858d68ecbbfa4ec7a9d3243b85fa8ce76aa0da7c72ba"
     },
     {
       "id": "protect-main-branch",

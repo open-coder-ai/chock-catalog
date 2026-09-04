@@ -1,0 +1,14 @@
+{
+  "agentseam": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@CHOCK_PYTHON@ \".chock/bin/antigravity.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

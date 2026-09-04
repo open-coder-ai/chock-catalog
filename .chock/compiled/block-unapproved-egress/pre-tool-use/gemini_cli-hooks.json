@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "BeforeTool": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@CHOCK_PYTHON@ \".chock/bin/gemini_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+          }
+        ],
+        "matcher": "run_shell_command"
+      }
+    ]
+  }
+}
