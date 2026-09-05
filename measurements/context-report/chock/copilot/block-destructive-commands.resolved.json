@@ -1,0 +1,249 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "block-destructive-commands",
+      "digest": {
+        "sha256": "8afaf608158764f2eb59ed57837e56f412ed7fda8c2f5e630eb66606bc88875c"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "copilot"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:68d4561ebf24f27b5ec4fe9b30c750b1387d77d0d5e6dc5e0f9f8f256abc4f38",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:00ac5b9a1161c4de7a6864e20521fa137f8576c555139fc9be37bd6dcc1bd543",
+        "environment": {
+          "env": {
+            "PLUGIN_ROOT": "/home/user/chock-bundles/copilot/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "cwds": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/block-destructive.sh\"",
+          "nested_dir_source": "existing",
+          "payload": {
+            "shape": "copilot/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "reachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "unreachable_from": [],
+          "stderr_first_line": {
+            "root": "",
+            "nested": "",
+            "parent": "",
+            "outside": ""
+          },
+          "relative_script_path": false
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:d999a21ecb8255a747da523df95a64f6caa823585a4b88f2e8dc319b10cd11c9",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:ba38459141633a509ef33a3b742f396b9f79f06cace791513cc86f64e70796af",
+        "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:fc0b89cf49837885582a009a9ffd98f3a0b9a06a7ebe8f1841970c92a1a811dd",
+        "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:c2044e6771290be58827fd4cba577f1bdc4424f54d2fe7b1bb0bef186618090a",
+        "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:3bad02487ac6c39fc3b5d4fb22a0d673d307a5145582be035a53f5ae1e3c6647",
+        "environment": {
+          "env": {
+            "PLUGIN_ROOT": "/home/user/chock-bundles/copilot/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "cwd": "root",
+          "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/block-destructive.sh\"",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "copilot",
+          "payload": {
+            "shape": "copilot/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "on_malformed_json": {
+            "exit": 0,
+            "stdout_decision": null,
+            "would_allow": true,
+            "stderr_first_line": "",
+            "stdout_first_line": ""
+          },
+          "on_empty_stdin": {
+            "exit": 0,
+            "stdout_decision": null,
+            "would_allow": true,
+            "stderr_first_line": "",
+            "stdout_first_line": ""
+          },
+          "on_null_tool_input": {
+            "exit": 0,
+            "stdout_decision": null,
+            "would_allow": true,
+            "stderr_first_line": "",
+            "stdout_first_line": ""
+          },
+          "control_benign": {
+            "exit": 0,
+            "stdout_decision": null,
+            "would_allow": true,
+            "stderr_first_line": "",
+            "stdout_first_line": ""
+          }
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:be4264581585e5e70589128f8dd2b2029d303084442e7875b02cd9cd44ebd295",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4,
+          "env": {
+            "PLUGIN_ROOT": "/home/user/chock-bundles/copilot/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "n": 20,
+          "warmup_excluded": false,
+          "shell": true,
+          "payload": {
+            "shape": "copilot/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "exit_codes": [
+            0
+          ]
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 43.48302800002557,
+            "95": 46.11352599999918,
+            "99": 51.46320399998672
+          },
+          "min": 41.46854199998984,
+          "max": 51.46320399998672,
+          "mean": 43.90235105000073,
+          "stddev": 2.090917944587785
+        }
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:83d9d6fcabe377efba6e86dd337a29fd6149285561a62ea24f7b3d93480e784d",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 1
+        },
+        "values": {
+          "per_file": {
+            "/home/user/chock-bundles/copilot/block-destructive-commands/skills/block-destructive-commands/SKILL.md": 402
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 402,
+          "max": 402,
+          "mean": 402
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:93e79315c78f50ddefcda6ea33c0756f7bb6bf4a1ec0a8e7ba08a18b60bbe505",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-05T19:39:17Z",
+      "finishedOn": "2026-09-05T19:39:18Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "88f6ffe975f64bbc5cf0fd9de6f1851f95c4ee13ba1cb3372165a2f0b66a1e20"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

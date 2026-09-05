@@ -1,0 +1,130 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "yagni",
+      "digest": {
+        "sha256": "5c86cf86c1bf1c1e206523cffc8b82954612df50d9e018587766cc6a7f0a9cd0"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "copilot"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:68d4561ebf24f27b5ec4fe9b30c750b1387d77d0d5e6dc5e0f9f8f256abc4f38",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:8e72012e272d0fa483eedde49d1d39ece8fdec34efc08f618e5881511141f7eb",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:d999a21ecb8255a747da523df95a64f6caa823585a4b88f2e8dc319b10cd11c9",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:32edd64fe0ce0dc360ebac96118cbfd26f399a4ff1ecb28510b72936fd1214a8",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:e1ca80605f00dca02545e832710e146eb9cb417e11738df5836243368159f3dd",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:fb48b8e1db8764a8fe53f35e523de47a66b63b16cd75e362a0c5d61c15bc304b",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:6d17daf5c00d56a13ef449656341326bf951079c52eb885fc4cd47cf7fa94ede",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:f8b762576b6c74c71440735b45ef39819beacaf4fdf57ef8bc0fe61020fe55a2",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:173f91ac529aaac379839f10a656995602546b1325666c20d5b0250f5a6eee8f",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 1
+        },
+        "values": {
+          "per_file": {
+            "/home/user/chock-bundles/copilot/yagni/skills/yagni/SKILL.md": 173
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 173,
+          "max": 173,
+          "mean": 173
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:93e79315c78f50ddefcda6ea33c0756f7bb6bf4a1ec0a8e7ba08a18b60bbe505",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-05T19:39:21Z",
+      "finishedOn": "2026-09-05T19:39:21Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "c5e09d28fff65a95f668b6607831c4d46d69082cefda49ad03e89fc2a97d7be0"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}
