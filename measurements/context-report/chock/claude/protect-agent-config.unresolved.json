@@ -1,0 +1,238 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "protect-agent-config",
+      "digest": {
+        "sha256": "1fc0686ac225a206962b267ae6f54c4b1dbe98a93d97e3f98b54e1b78c3cdfbd"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "claude_code"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:52d32db032c7fc13d670465d33e2c47599e9884e334ff08f28f17ba400eff43e",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "FAILED",
+        "inputHash": "sha256:269ea4e8a178587ba5b2fb1fb9e87df898cf65aa09f0ef13cd49bc39de2a05c3",
+        "conditions": {
+          "cwds": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-agent-config.sh\"",
+          "nested_dir_source": "existing",
+          "payload": {
+            "shape": "claude_code/PreToolUse/v0.1",
+            "basis": "live-run"
+          }
+        },
+        "values": {
+          "reachable_from": [],
+          "unreachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "stderr_first_line": {
+            "root": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory",
+            "nested": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory",
+            "parent": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory",
+            "outside": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory"
+          },
+          "relative_script_path": false
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:eae5fb02a3a50dc3669e1e0a8f1c1f6535cd63cc79ed4ef265b9c43f55404bde",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:ba38459141633a509ef33a3b742f396b9f79f06cace791513cc86f64e70796af",
+        "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:fc0b89cf49837885582a009a9ffd98f3a0b9a06a7ebe8f1841970c92a1a811dd",
+        "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:c2044e6771290be58827fd4cba577f1bdc4424f54d2fe7b1bb0bef186618090a",
+        "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:60658729ed6404c11e84a1715a80261cc6b597c1e6d8c6a7aeac503e4a58330d",
+        "conditions": {
+          "cwd": "root",
+          "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-agent-config.sh\"",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "claude_code",
+          "payload": {
+            "shape": "claude_code/PreToolUse/v0.1",
+            "basis": "live-run"
+          }
+        },
+        "values": {
+          "on_malformed_json": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          },
+          "on_empty_stdin": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          },
+          "on_null_tool_input": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          },
+          "control_benign": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/claude_code.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          }
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "Error",
+        "inputHash": "sha256:eb9e5cfd12409734b60fbbe04187c6fa024c9efc985b0afcdb6e271e58cf18ca",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4
+        },
+        "conditions": {
+          "n": 20,
+          "warmup_excluded": false,
+          "shell": true,
+          "payload": {
+            "shape": "claude_code/PreToolUse/v0.1",
+            "basis": "live-run"
+          }
+        },
+        "values": {
+          "exit_codes": [
+            2
+          ]
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 13.063248999998223,
+            "95": 13.808467000018254,
+            "99": 13.889245000001438
+          },
+          "min": 12.196327999987489,
+          "max": 13.889245000001438,
+          "mean": 13.053895549998629,
+          "stddev": 0.4749082026416076
+        },
+        "reasoning": "no run exited 0 with a benign payload (exit codes [2]); the timing is of the failure path, not the hook, and is kept only for inspection"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:41205d0a48fec92518e7c94f1a9140c5304c279f381e16c63143e97e9a032014",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "/home/user/chock-bundles/claude/protect-agent-config/hooks/hooks.json": 88,
+            "/home/user/chock-bundles/claude/protect-agent-config/skills/protect-agent-config/SKILL.md": 531
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 619,
+          "max": 619,
+          "mean": 619
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:c096a70f19ea1da7523a3a8992145f2cab620e9830e75698192b24b8d03e5950",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-05T19:39:08Z",
+      "finishedOn": "2026-09-05T19:39:08Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "81a2e4d78c5f02bcad096cb0b9e34be427b136c60bdd8f070158677342c3f6fe"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

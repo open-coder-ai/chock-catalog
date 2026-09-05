@@ -1,0 +1,130 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "injection-defense",
+      "digest": {
+        "sha256": "be92e1b0c6a128983bc46fe35cbae1b008506190955632247f5e4625812c8d77"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "codex_cli"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:e32a6c9fd5fd4b745c9e1fda23829204f803f43cca491597a2572a0ec47114a0",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:9cac15e2083e2decf7a360ea9f7f1cede7d73e186d867e7834f48d979f799371",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:d6c6c8e540e00090fb2f2f339864af126e2cb74a1cad8df4918b1582dadfd399",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:3a1d0712635f5117005fbc10b88c446d78a464f3a61f3ebedba67d49c8df94ac",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:07cc1817631ecbd6bdb1a99227d51607296f85ab84b200dda24eece435ca326e",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:63a59492fd7b4ddf4c9f476cea147e75fdfda035e305d7f5bb579ae50fe77a19",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:e8b2e659a9021acd8f323c910f8257215b32977430c5c864f2dbbdcfc5e1f1f9",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:18bd42f46f22ce29955590786e254a831142695fcfecf738fa1a62c157de8e43",
+        "reasoning": "no hook command was declared for this artifact"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:2dc1d468fcb972612982ea4e01d79cdeb156b9965fe210e283886b78671a9411",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 1
+        },
+        "values": {
+          "per_file": {
+            "/home/user/chock-bundles/codex/injection-defense/skills/injection-defense/SKILL.md": 192
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 192,
+          "max": 192,
+          "mean": 192
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:8dce209333446fa66b10a88d52e4c213d4858a2e97e202f36b10d35737b12733",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-05T19:39:13Z",
+      "finishedOn": "2026-09-05T19:39:13Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "b1695919c92090d4415e21da8764229e62b7fe232cf509883b45aae055d706ad"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

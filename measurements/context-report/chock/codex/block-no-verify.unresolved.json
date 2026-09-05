@@ -1,0 +1,238 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "block-no-verify",
+      "digest": {
+        "sha256": "b0b5a524afbe8f3a7dc79df3cb5c1fa403677ff52bebdd795348c4a5560be9d8"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "codex_cli"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:e32a6c9fd5fd4b745c9e1fda23829204f803f43cca491597a2572a0ec47114a0",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "FAILED",
+        "inputHash": "sha256:fac912a3814e29a83893927adc2a4da49d4638dab76df12f0447b82c87dba688",
+        "conditions": {
+          "cwds": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\"",
+          "nested_dir_source": "existing",
+          "payload": {
+            "shape": "codex_cli/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "reachable_from": [],
+          "unreachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "stderr_first_line": {
+            "root": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory",
+            "nested": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory",
+            "parent": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory",
+            "outside": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory"
+          },
+          "relative_script_path": false
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:d6c6c8e540e00090fb2f2f339864af126e2cb74a1cad8df4918b1582dadfd399",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:ba38459141633a509ef33a3b742f396b9f79f06cace791513cc86f64e70796af",
+        "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:fc0b89cf49837885582a009a9ffd98f3a0b9a06a7ebe8f1841970c92a1a811dd",
+        "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:c2044e6771290be58827fd4cba577f1bdc4424f54d2fe7b1bb0bef186618090a",
+        "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:5ee58ce9dcd50b6db477af4f552120fc187289a1d978fc1baebef69bc2948349",
+        "conditions": {
+          "cwd": "root",
+          "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\"",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "codex_cli",
+          "payload": {
+            "shape": "codex_cli/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "on_malformed_json": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          },
+          "on_empty_stdin": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          },
+          "on_null_tool_input": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          },
+          "control_benign": {
+            "exit": 2,
+            "stdout_decision": null,
+            "would_allow": false,
+            "stderr_first_line": "python3: can't open file '/scripts/codex_cli.py': [Errno 2] No such file or directory",
+            "stdout_first_line": ""
+          }
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "Error",
+        "inputHash": "sha256:ea6f07ef089eaabc15aa7f96c4321eb2f801768f5655e5cf770ae318f614cb0c",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4
+        },
+        "conditions": {
+          "n": 20,
+          "warmup_excluded": false,
+          "shell": true,
+          "payload": {
+            "shape": "codex_cli/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "exit_codes": [
+            2
+          ]
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 12.605054000005111,
+            "95": 12.990344000002096,
+            "99": 12.994068000011794
+          },
+          "min": 12.03233100000034,
+          "max": 12.994068000011794,
+          "mean": 12.580136549999565,
+          "stddev": 0.3119249228659739
+        },
+        "reasoning": "no run exited 0 with a benign payload (exit codes [2]); the timing is of the failure path, not the hook, and is kept only for inspection"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:22768cc29158d89518437f11308c7c7edd5745464a01c25695331650d1bdbdf2",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "/home/user/chock-bundles/codex/block-no-verify/hooks/hooks.json": 88,
+            "/home/user/chock-bundles/codex/block-no-verify/skills/block-no-verify/SKILL.md": 256
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 344,
+          "max": 344,
+          "mean": 344
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:8dce209333446fa66b10a88d52e4c213d4858a2e97e202f36b10d35737b12733",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-05T19:39:13Z",
+      "finishedOn": "2026-09-05T19:39:13Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "4b7f828a0f7b98dd3aa9bf785ec42e5b2bcf29ef1c3d05ce738b10778f393a5c"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}
