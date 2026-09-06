@@ -25,91 +25,107 @@
         "attribute": "conformance",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:52d32db032c7fc13d670465d33e2c47599e9884e334ff08f28f17ba400eff43e",
+        "inputHash": "sha256:7d61cea115d917d963859c9afa64b4bbd97ce1738a563388ff240e8db911f9fa",
         "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
       },
       {
         "attribute": "reachability",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:db52e0ad5dbecc02579d28ed707ba2c819cf53de5a5e3b29ea2ebb5611dbe10c",
+        "inputHash": "sha256:4c00bda8bd043a6a6d14a3fb3a2c3544a05ef53191071de9e9c49e09014043e7",
         "environment": {
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "CLAUDE_PLUGIN_ROOT": "/home/user/chock-bundles/claude/protect-commit-privacy"
           }
         },
         "conditions": {
-          "cwds": [
+          "cwdTested": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\"",
-          "nested_dir_source": "existing",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+            }
+          ],
           "payload": {
             "shape": "claude_code/PreToolUse/v0.1",
             "basis": "live-run"
           }
         },
         "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
           "reachable_from": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "unreachable_from": [],
-          "stderr_first_line": {
-            "root": "",
-            "nested": "",
-            "parent": "",
-            "outside": ""
-          },
-          "relative_script_path": false
+          "unreachable_from": []
         }
       },
       {
         "attribute": "decision",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:eae5fb02a3a50dc3669e1e0a8f1c1f6535cd63cc79ed4ef265b9c43f55404bde",
+        "inputHash": "sha256:7c7191343fd5d90d5cc3b5bd82bf2aa766a0f75fb962c13850346aa8fbc2b5d3",
         "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
       },
       {
         "attribute": "fault.scriptMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:ba38459141633a509ef33a3b742f396b9f79f06cace791513cc86f64e70796af",
+        "inputHash": "sha256:d8dc0f6f6038f76bcdc60f11eda1a0813ec10f5dc59d03c2d125de7b4ea48c71",
         "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
       },
       {
         "attribute": "fault.interpreterMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:fc0b89cf49837885582a009a9ffd98f3a0b9a06a7ebe8f1841970c92a1a811dd",
+        "inputHash": "sha256:bfdb8428ee7d734ac0ae39e828daf4f0d43e9a6f8e464354063ab36e0876014b",
         "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
       },
       {
         "attribute": "fault.timeout",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:c2044e6771290be58827fd4cba577f1bdc4424f54d2fe7b1bb0bef186618090a",
+        "inputHash": "sha256:8926cefaa6feccb81e0b5d4bbc930055f3cfe34c103bf6141b61b260a76099ed",
         "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
       },
       {
         "attribute": "fault.malformedOutput",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:b6d3d8823f79308080edfee868d510cc5cdcb3636d9ac531cd2a8563ca4842d1",
+        "inputHash": "sha256:e7a35b89240a1c07fbf73240e8389349d21172f8759cac914af1fedc2b67c4b4",
         "environment": {
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "CLAUDE_PLUGIN_ROOT": "/home/user/chock-bundles/claude/protect-commit-privacy"
           }
         },
         "conditions": {
           "cwd": "root",
-          "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\"",
           "cases": [
             "on_malformed_json",
             "on_empty_stdin",
@@ -117,40 +133,51 @@
             "control_benign"
           ],
           "target": "claude_code",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+            }
+          ],
           "payload": {
             "shape": "claude_code/PreToolUse/v0.1",
             "basis": "live-run"
           }
         },
         "values": {
-          "on_malformed_json": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
+          "perHook": {
+            "PreToolUse:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              }
+            }
           },
-          "on_empty_stdin": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          },
-          "on_null_tool_input": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          },
-          "control_benign": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          }
+          "wouldAllowAny": true
         },
         "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
       },
@@ -158,57 +185,74 @@
         "attribute": "cost.latency_ms",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:e70fe439f27e597d5a634178b1e1ac786945b36257a9336a6f711669d943b220",
+        "inputHash": "sha256:6af8efa01e6dc6a019d788f335bd84f08b25ff26099a8059b531e96d1bba6778",
         "environmentSensitive": true,
         "environment": {
           "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
           "python": "3.11.15",
           "cpu_count": 4,
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "CLAUDE_PLUGIN_ROOT": "/home/user/chock-bundles/claude/protect-commit-privacy"
           }
         },
         "conditions": {
           "n": 20,
-          "warmup_excluded": false,
-          "shell": true,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+            }
+          ],
           "payload": {
             "shape": "claude_code/PreToolUse/v0.1",
             "basis": "live-run"
           }
         },
         "values": {
-          "exit_codes": [
-            0
-          ]
+          "perHook": {
+            "PreToolUse:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 43.99406800007455,
+                "95": 46.720102000108454,
+                "99": 48.71462899996004
+              },
+              "min": 39.95491899991066,
+              "max": 48.71462899996004,
+              "mean": 43.770374150005864,
+              "stddev": 2.1043482078191937
+            }
+          }
         },
         "measurement": {
           "unit": "ms",
           "n": 20,
           "percentiles": {
-            "50": 47.254989999999,
-            "95": 48.50651999998945,
-            "99": 49.00639199999546
+            "50": 43.99406800007455,
+            "95": 46.720102000108454,
+            "99": 48.71462899996004
           },
-          "min": 45.622589000004155,
-          "max": 49.00639199999546,
-          "mean": 47.364482550000275,
-          "stddev": 0.9820551228639154
+          "min": 39.95491899991066,
+          "max": 48.71462899996004,
+          "mean": 43.770374150005864
         }
       },
       {
         "attribute": "cost.context_tokens",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:a696f9b9585eb072f5a38e118a821639a7cb0bcb2b71963545d56202fa2082f7",
+        "inputHash": "sha256:968f5681f21f04194ea3ab0b36dde511307115ff30218e7374315a600f394d87",
         "conditions": {
           "tokenizer": "approx-regex-v1",
           "files": 2
         },
         "values": {
           "per_file": {
-            "/home/user/chock-bundles/claude/protect-commit-privacy/hooks/hooks.json": 88,
-            "/home/user/chock-bundles/claude/protect-commit-privacy/skills/protect-commit-privacy/SKILL.md": 433
+            "hooks/hooks.json": 88,
+            "skills/protect-commit-privacy/SKILL.md": 433
           }
         },
         "measurement": {
@@ -223,25 +267,25 @@
         "attribute": "interference",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:c096a70f19ea1da7523a3a8992145f2cab620e9830e75698192b24b8d03e5950",
+        "inputHash": "sha256:e22a163b63d67a4849c07831a28b683c7447d64ec6c9aa146d53232434f114d0",
         "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
       },
       {
         "attribute": "efficacy",
         "basis": "claimed",
         "result": "NotAvailable",
-        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
       }
     ],
     "metadata": {
-      "startedOn": "2026-09-05T19:39:08Z",
-      "finishedOn": "2026-09-05T19:39:10Z"
+      "startedOn": "2026-09-06T13:28:57Z",
+      "finishedOn": "2026-09-06T13:28:58Z"
     },
     "configuration": [
       {
         "name": "produce-args",
         "digest": {
-          "sha256": "95f81c82a4adefcf2cfca096089a026e6154deec05dbb4dcd1aceaf2fe2e0e94"
+          "sha256": "62f4df2c19fd145b6f289fc34bcc173a7cb7a66ad894bd2a03ec2aab777ec0f0"
         },
         "mediaType": "application/json"
       }

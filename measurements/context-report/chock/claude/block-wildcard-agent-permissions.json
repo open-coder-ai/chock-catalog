@@ -25,70 +25,70 @@
         "attribute": "conformance",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:52d32db032c7fc13d670465d33e2c47599e9884e334ff08f28f17ba400eff43e",
+        "inputHash": "sha256:43d6ffe16b97cb6e397e807c717fc98dcb8e0b91e6a5408cb606d03d8a4d8c3d",
         "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
       },
       {
         "attribute": "reachability",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:e593e3cf901e483036673206e58e49a9630283d0f4522b2978a725c4c635cec6",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:01db861a1b0b84cdc11782fa3dd5cad1ab454513d222b07c361aa45e94f10fff",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "decision",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:eae5fb02a3a50dc3669e1e0a8f1c1f6535cd63cc79ed4ef265b9c43f55404bde",
+        "inputHash": "sha256:cc076e28ee0d66a6e6778576856a4e2c30a191232485affb64c3b8d928614f77",
         "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
       },
       {
         "attribute": "fault.scriptMissing",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:217b55644262f0871f305a1402ec5b55dc0568a94050a0b8bc92657ff62329dd",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:291c79c29b054d6e38c22e87128af291dc79fee4726927a05b5bdb8ff1cd3877",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "fault.interpreterMissing",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:02a912e5f42660d0b66bf248dd239ead544a91df321c1efecfcd8588c02e0ccb",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:dc8fc854fc0b122e479c8501d9e457474b521da019eda13204f915febe7417db",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "fault.timeout",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:167704d3808eb6c4a7439a15a3312d9f79a69aa74425504e0253864a6ff48464",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:b4b39a1032269644ff7d4451b8aac9099394022644166028bbc6fb28381af312",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "fault.malformedOutput",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:19aac42938e5c8e4234dc30b31ea66c183e46a6de492b45f691e53525c34fbb8",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:e63b71b235ec3cdeaebb0fd7c3d3dc3d7cda46ba226a2f06e0026f013a034def",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "cost.latency_ms",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:56c521ee42f9e459170135fdbbc4249d8831604b3cec6c050356f783abbaff8d",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:b803ca60dd1a582c0a8d03ebeb22d5d7e089f5f600f297991ad2e5dc15475be6",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "cost.context_tokens",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:1acce1beddfca7c56bbc79b732a1bfe13448315ec2365e615924a15a2318d5ec",
+        "inputHash": "sha256:ae910be53359524420ec6bfaaa864d8bb7176592feac5ada1b3088baab3cb62e",
         "conditions": {
           "tokenizer": "approx-regex-v1",
           "files": 1
         },
         "values": {
           "per_file": {
-            "/home/user/chock-bundles/claude/block-wildcard-agent-permissions/skills/block-wildcard-agent-permissions/SKILL.md": 382
+            "skills/block-wildcard-agent-permissions/SKILL.md": 382
           }
         },
         "measurement": {
@@ -103,19 +103,19 @@
         "attribute": "interference",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:c096a70f19ea1da7523a3a8992145f2cab620e9830e75698192b24b8d03e5950",
+        "inputHash": "sha256:f349dde2017606d824a4f79e3ce3220a1a7a95e10dfc223544b6a6d136a2481c",
         "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
       },
       {
         "attribute": "efficacy",
         "basis": "claimed",
         "result": "NotAvailable",
-        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
       }
     ],
     "metadata": {
-      "startedOn": "2026-09-05T19:39:07Z",
-      "finishedOn": "2026-09-05T19:39:07Z"
+      "startedOn": "2026-09-06T13:28:55Z",
+      "finishedOn": "2026-09-06T13:28:55Z"
     },
     "configuration": [
       {

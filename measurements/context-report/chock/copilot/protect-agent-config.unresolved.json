@@ -25,81 +25,107 @@
         "attribute": "conformance",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:68d4561ebf24f27b5ec4fe9b30c750b1387d77d0d5e6dc5e0f9f8f256abc4f38",
+        "inputHash": "sha256:34afa5600fa6573788e82501a7178adbceb569555416c1a6416db7e15628553f",
         "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
       },
       {
         "attribute": "reachability",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:19b7c470d978e7d43073cb650a9f1af190650d3af0f86dd210f5a3027b466c14",
+        "inputHash": "sha256:b1e22ba2f4d67966c103b2be2815958227cc9a8909e6efa5d9442f5ee05cc5c6",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": ""
+          }
+        },
         "conditions": {
-          "cwds": [
+          "cwdTested": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/protect-agent-config.sh\"",
-          "nested_dir_source": "existing",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/protect-agent-config.sh\""
+            }
+          ],
           "payload": {
             "shape": "copilot/PreToolUse/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
           "reachable_from": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "unreachable_from": [],
-          "stderr_first_line": {
-            "root": "",
-            "nested": "",
-            "parent": "",
-            "outside": ""
-          },
-          "relative_script_path": false
+          "unreachable_from": []
         }
       },
       {
         "attribute": "decision",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:d999a21ecb8255a747da523df95a64f6caa823585a4b88f2e8dc319b10cd11c9",
+        "inputHash": "sha256:b7cf1e49881058f82345cd588f5f314cbbf13e8c3990063da2805353f103e842",
         "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
       },
       {
         "attribute": "fault.scriptMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:ba38459141633a509ef33a3b742f396b9f79f06cace791513cc86f64e70796af",
+        "inputHash": "sha256:ded9b191cc41c37b98204218fbe5aa095c03b0563415076bf3ff303cdd281559",
         "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
       },
       {
         "attribute": "fault.interpreterMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:fc0b89cf49837885582a009a9ffd98f3a0b9a06a7ebe8f1841970c92a1a811dd",
+        "inputHash": "sha256:b657a48d728cbbd7b0c02a43af4d9b6cb88080673f8bac65281c14e12fb7cba3",
         "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
       },
       {
         "attribute": "fault.timeout",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:c2044e6771290be58827fd4cba577f1bdc4424f54d2fe7b1bb0bef186618090a",
+        "inputHash": "sha256:769dc7436a1b10bcb9c0bdf7afacca98621ea7e6647c6c67df790c2492c000b3",
         "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
       },
       {
         "attribute": "fault.malformedOutput",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:301f4fb5cc309216f67eda7b22c96dc2ee4f584f43836fb23f4019bde1787432",
+        "inputHash": "sha256:a8bb7ccf077f434b7d422f6b2ea01f1c22b5dc6445a8df89183547e8d3e66195",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": ""
+          }
+        },
         "conditions": {
           "cwd": "root",
-          "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/protect-agent-config.sh\"",
           "cases": [
             "on_malformed_json",
             "on_empty_stdin",
@@ -107,40 +133,51 @@
             "control_benign"
           ],
           "target": "copilot",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/protect-agent-config.sh\""
+            }
+          ],
           "payload": {
             "shape": "copilot/PreToolUse/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
-          "on_malformed_json": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
+          "perHook": {
+            "PreToolUse:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              }
+            }
           },
-          "on_empty_stdin": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          },
-          "on_null_tool_input": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          },
-          "control_benign": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          }
+          "wouldAllowAny": true
         },
         "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
       },
@@ -148,86 +185,107 @@
         "attribute": "cost.latency_ms",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:b16ed48a6496da2c482b672655188196cf0bdbf7cce25d9b6608bd893fbd69d9",
+        "inputHash": "sha256:54d06fee7344d1a8b8f3f428f9dda986530a66f14ae8931f52f0b87333b5e07e",
         "environmentSensitive": true,
         "environment": {
           "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
           "python": "3.11.15",
-          "cpu_count": 4
+          "cpu_count": 4,
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": ""
+          }
         },
         "conditions": {
           "n": 20,
-          "warmup_excluded": false,
-          "shell": true,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/protect-agent-config.sh\""
+            }
+          ],
           "payload": {
             "shape": "copilot/PreToolUse/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
-          "exit_codes": [
-            0
-          ]
+          "perHook": {
+            "PreToolUse:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 1.1679849999381986,
+                "95": 1.4115839999249147,
+                "99": 1.4192430001003231
+              },
+              "min": 1.0228430001006927,
+              "max": 1.4192430001003231,
+              "mean": 1.1896515499984162,
+              "stddev": 0.1250142382918374
+            }
+          }
         },
         "measurement": {
           "unit": "ms",
           "n": 20,
           "percentiles": {
-            "50": 1.3808900000071844,
-            "95": 1.4774910000028285,
-            "99": 1.4869949999933851
+            "50": 1.1679849999381986,
+            "95": 1.4115839999249147,
+            "99": 1.4192430001003231
           },
-          "min": 1.3156040000126268,
-          "max": 1.4869949999933851,
-          "mean": 1.3860883000020863,
-          "stddev": 0.05304537984148556
+          "min": 1.0228430001006927,
+          "max": 1.4192430001003231,
+          "mean": 1.1896515499984162
         }
       },
       {
         "attribute": "cost.context_tokens",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:e18d81a1306e80fc2cc66f6ffac0cfd5b3dd2c21477fe031fad0c5a7961a1f51",
+        "inputHash": "sha256:eebf7b61e5a259e4d730366466b8b3f51bd2584029984ce47a28fd54bb23562a",
         "conditions": {
           "tokenizer": "approx-regex-v1",
-          "files": 1
+          "files": 2
         },
         "values": {
           "per_file": {
-            "/home/user/chock-bundles/copilot/protect-agent-config/skills/protect-agent-config/SKILL.md": 590
+            "com.github.copilot/hooks/hooks.json": 135,
+            "skills/protect-agent-config/SKILL.md": 590
           }
         },
         "measurement": {
           "unit": "tokens",
           "n": 1,
-          "min": 590,
-          "max": 590,
-          "mean": 590
+          "min": 725,
+          "max": 725,
+          "mean": 725
         }
       },
       {
         "attribute": "interference",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:93e79315c78f50ddefcda6ea33c0756f7bb6bf4a1ec0a8e7ba08a18b60bbe505",
+        "inputHash": "sha256:50053f99f059276f69c48d115a48fd426eecc10ffe0510bee34d5d441b5ffbaa",
         "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
       },
       {
         "attribute": "efficacy",
         "basis": "claimed",
         "result": "NotAvailable",
-        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
       }
     ],
     "metadata": {
-      "startedOn": "2026-09-05T19:39:20Z",
-      "finishedOn": "2026-09-05T19:39:20Z"
+      "startedOn": "2026-09-06T13:29:07Z",
+      "finishedOn": "2026-09-06T13:29:07Z"
     },
     "configuration": [
       {
         "name": "produce-args",
         "digest": {
-          "sha256": "30a44730d58838a02fc543f865e0ecf209b0a79e41dd98ef259bd11694a0bf5e"
+          "sha256": "d3b911e5394a17713f6df1491bc069867bfb1cc3ced8d67c21d7dfa6e856d6f3"
         },
         "mediaType": "application/json"
       }

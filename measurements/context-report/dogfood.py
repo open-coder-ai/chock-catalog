@@ -19,12 +19,15 @@ def _rows(stmt: dict) -> dict[str, dict]:
 
 
 def _run(target: dict, env: dict[str, str], out: Path, suffix: str, n: int) -> dict:
-    hook = target["hook_commands"][0] if target["hook_commands"] else None
+    # The producer discovers a plugin's own hooks (context_report.produce.discover) and rejects
+    # a caller-supplied hook command for subjectKind plugin, so `env` is the only lever left: the
+    # plugin-root variable it would otherwise resolve to the bundle's own path (`resolved`), or
+    # blanked to "" (`unresolved`) -- `${VAR}` expands the same whether VAR is unset or empty, so
+    # this reproduces the no-variable-at-all condition without a way to delete an env key.
     stmt = produce_statement(
         subject=target["abs_path"],
         subject_kind=target["subject_kind"],
         target=target["target"],
-        hook_command=hook,
         env=env,
         producer_id=PRODUCER_ID,
         n=n,
@@ -81,16 +84,18 @@ def main(argv: list[str] | None = None) -> int:
         resolved = _run(
             t, {t["plugin_root_var"]: str(t["abs_path"])}, out, ".resolved", args.n
         )
-        unresolved = _run(t, {}, out, ".unresolved", args.n)
+        unresolved = _run(t, {t["plugin_root_var"]: ""}, out, ".unresolved", args.n)
         r_res, r_un = _rows(resolved), _rows(unresolved)
         agg["reach_pass_resolved"] += r_res["reachability"]["result"] == "PASSED"
         agg["reach_pass_unresolved"] += r_un["reachability"]["result"] == "PASSED"
         for key, rows in (("resolved", r_res), ("unresolved", r_un)):
             mo = rows["fault.malformedOutput"]
             if mo["result"] == "PASSED":
-                agg[f"allow_on_malformed_{key}"] += mo["values"]["on_malformed_json"][
-                    "would_allow"
-                ]
+                # One hook per chock bundle today; OR over perHook mirrors the old single-hook read.
+                agg[f"allow_on_malformed_{key}"] += any(
+                    h["on_malformed_json"]["would_allow"]
+                    for h in mo["values"]["perHook"].values()
+                )
         lat = r_res["cost.latency_ms"]
         if lat["result"] == "PASSED":
             agg["latency_p50_resolved"].append(lat["measurement"]["percentiles"]["50"])
@@ -113,8 +118,8 @@ def main(argv: list[str] | None = None) -> int:
         "",
         (
             "`allow on malformed JSON` counts bundles whose hook exited 0 with no deny in stdout when "
-            "fed unparseable stdin. `unresolved` runs with no plugin-root variable at all, which is "
-            "how a hook runs when the client does not set one."
+            "fed unparseable stdin. `unresolved` sets the plugin-root variable to empty, which "
+            "expands like unset -- how a hook runs when the client sets nothing."
         ),
         "",
         (

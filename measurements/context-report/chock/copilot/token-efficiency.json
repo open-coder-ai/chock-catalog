@@ -25,70 +25,70 @@
         "attribute": "conformance",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:68d4561ebf24f27b5ec4fe9b30c750b1387d77d0d5e6dc5e0f9f8f256abc4f38",
+        "inputHash": "sha256:d20540d37ad9e07d6d95e9cb0873a6469919a6337c4d2ce88b51d64e5ba0fcfb",
         "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
       },
       {
         "attribute": "reachability",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:8e72012e272d0fa483eedde49d1d39ece8fdec34efc08f618e5881511141f7eb",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:be5c2c66d9a13237e3bd90ad4f644e52ef106a4fddb915e8e720a063fac0ae17",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "decision",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:d999a21ecb8255a747da523df95a64f6caa823585a4b88f2e8dc319b10cd11c9",
+        "inputHash": "sha256:f4dcb8528cd9713626cc0cbdc57ac759eda29476e90114c9b600f03dcc88964b",
         "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
       },
       {
         "attribute": "fault.scriptMissing",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:32edd64fe0ce0dc360ebac96118cbfd26f399a4ff1ecb28510b72936fd1214a8",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:744eef0640dace8021e3f33a36d15bd6803498379f765a3ca9c8242a3fe363f0",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "fault.interpreterMissing",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:e1ca80605f00dca02545e832710e146eb9cb417e11738df5836243368159f3dd",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:5c9ff02fdeea047c57786f8061c37c7548b28f1a030aa6fd0bce82825689cefd",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "fault.timeout",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:fb48b8e1db8764a8fe53f35e523de47a66b63b16cd75e362a0c5d61c15bc304b",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:fb9a874e81d0b060fab12219528ce45b2c1e2d7b78eda440db3ec85950f02028",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "fault.malformedOutput",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:6d17daf5c00d56a13ef449656341326bf951079c52eb885fc4cd47cf7fa94ede",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:32f14f6ef35940bd9666709ddcf8347c0eb8f625ced6d5d76f167d8658f98775",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "cost.latency_ms",
         "basis": "re-derivable",
         "result": "NotApplicable",
-        "inputHash": "sha256:f8b762576b6c74c71440735b45ef39819beacaf4fdf57ef8bc0fe61020fe55a2",
-        "reasoning": "no hook command was declared for this artifact"
+        "inputHash": "sha256:2205c8f8049f9eceff77017bfac60de5b502b7f7b8cdecdf4de55f50d2a9f5f5",
+        "reasoning": "the plugin declares no hooks"
       },
       {
         "attribute": "cost.context_tokens",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:d7108727e904d764baa8ed4b00ff9ec9e9de40685d3e63f2a543d55451ab94f9",
+        "inputHash": "sha256:3d69938b8f75bf49aac297cf0de42c8f76d1ad954137d1fdcbbbb350629dc413",
         "conditions": {
           "tokenizer": "approx-regex-v1",
           "files": 1
         },
         "values": {
           "per_file": {
-            "/home/user/chock-bundles/copilot/token-efficiency/skills/token-efficiency/SKILL.md": 198
+            "skills/token-efficiency/SKILL.md": 198
           }
         },
         "measurement": {
@@ -103,19 +103,19 @@
         "attribute": "interference",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:93e79315c78f50ddefcda6ea33c0756f7bb6bf4a1ec0a8e7ba08a18b60bbe505",
+        "inputHash": "sha256:098387d712e01bab3da7c4d4d8aa2e00b77f5cdb2ceea1d86c5f5ab71c2a84da",
         "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
       },
       {
         "attribute": "efficacy",
         "basis": "claimed",
         "result": "NotAvailable",
-        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
       }
     ],
     "metadata": {
-      "startedOn": "2026-09-05T19:39:21Z",
-      "finishedOn": "2026-09-05T19:39:21Z"
+      "startedOn": "2026-09-06T13:29:08Z",
+      "finishedOn": "2026-09-06T13:29:08Z"
     },
     "configuration": [
       {

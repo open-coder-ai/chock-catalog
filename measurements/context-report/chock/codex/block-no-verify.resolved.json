@@ -25,91 +25,107 @@
         "attribute": "conformance",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:e32a6c9fd5fd4b745c9e1fda23829204f803f43cca491597a2572a0ec47114a0",
+        "inputHash": "sha256:92bc89fb215acb55a399cb8f4da142d372015645778a2df2ce37b7d02792d572",
         "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
       },
       {
         "attribute": "reachability",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:fac912a3814e29a83893927adc2a4da49d4638dab76df12f0447b82c87dba688",
+        "inputHash": "sha256:98ca0888bdc20bbab8dd699ee110d31ce7af75e7ecf0abcda5096a847db1d1a0",
         "environment": {
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "PLUGIN_ROOT": "/home/user/chock-bundles/codex/block-no-verify"
           }
         },
         "conditions": {
-          "cwds": [
+          "cwdTested": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\"",
-          "nested_dir_source": "existing",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
           "payload": {
             "shape": "codex_cli/PreToolUse/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
           "reachable_from": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "unreachable_from": [],
-          "stderr_first_line": {
-            "root": "",
-            "nested": "",
-            "parent": "",
-            "outside": ""
-          },
-          "relative_script_path": false
+          "unreachable_from": []
         }
       },
       {
         "attribute": "decision",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:d6c6c8e540e00090fb2f2f339864af126e2cb74a1cad8df4918b1582dadfd399",
+        "inputHash": "sha256:088c634ca8bf513ef82318bbc7ad77d3ae69c92f3c4441152c94ac41564d3f35",
         "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
       },
       {
         "attribute": "fault.scriptMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:ba38459141633a509ef33a3b742f396b9f79f06cace791513cc86f64e70796af",
+        "inputHash": "sha256:2b64f6a53ebf32caeff84eb99c4272fdc0919be6fca9d0152efb3a2a0b54fbd2",
         "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
       },
       {
         "attribute": "fault.interpreterMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:fc0b89cf49837885582a009a9ffd98f3a0b9a06a7ebe8f1841970c92a1a811dd",
+        "inputHash": "sha256:6713b4dbea7acffba891b8e26a1a0d60fe5ad2a645d8eae253997eff56d6e08a",
         "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
       },
       {
         "attribute": "fault.timeout",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:c2044e6771290be58827fd4cba577f1bdc4424f54d2fe7b1bb0bef186618090a",
+        "inputHash": "sha256:e9688baab20fa9fbcb710f96230bda29317596bd1463d7e27b6eafb1444b1b23",
         "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
       },
       {
         "attribute": "fault.malformedOutput",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:5ee58ce9dcd50b6db477af4f552120fc187289a1d978fc1baebef69bc2948349",
+        "inputHash": "sha256:fcfb07de65ad96b280a4279c64f359329d70f4455d75a3127bf030850cf9800e",
         "environment": {
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "PLUGIN_ROOT": "/home/user/chock-bundles/codex/block-no-verify"
           }
         },
         "conditions": {
           "cwd": "root",
-          "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\"",
           "cases": [
             "on_malformed_json",
             "on_empty_stdin",
@@ -117,40 +133,51 @@
             "control_benign"
           ],
           "target": "codex_cli",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
           "payload": {
             "shape": "codex_cli/PreToolUse/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
-          "on_malformed_json": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
+          "perHook": {
+            "PreToolUse:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              }
+            }
           },
-          "on_empty_stdin": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          },
-          "on_null_tool_input": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          },
-          "control_benign": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          }
+          "wouldAllowAny": true
         },
         "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
       },
@@ -158,57 +185,74 @@
         "attribute": "cost.latency_ms",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:ea6f07ef089eaabc15aa7f96c4321eb2f801768f5655e5cf770ae318f614cb0c",
+        "inputHash": "sha256:9a3df144656cc335a459108084827d6680a215bcc17742fbb2a78cb36c256a26",
         "environmentSensitive": true,
         "environment": {
           "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
           "python": "3.11.15",
           "cpu_count": 4,
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "PLUGIN_ROOT": "/home/user/chock-bundles/codex/block-no-verify"
           }
         },
         "conditions": {
           "n": 20,
-          "warmup_excluded": false,
-          "shell": true,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
           "payload": {
             "shape": "codex_cli/PreToolUse/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
-          "exit_codes": [
-            0
-          ]
+          "perHook": {
+            "PreToolUse:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 38.503217999959816,
+                "95": 43.758725000088816,
+                "99": 57.18166899987409
+              },
+              "min": 34.85740300016005,
+              "max": 57.18166899987409,
+              "mean": 39.70111309999993,
+              "stddev": 4.560897750805806
+            }
+          }
         },
         "measurement": {
           "unit": "ms",
           "n": 20,
           "percentiles": {
-            "50": 44.258892999977206,
-            "95": 46.73333400000956,
-            "99": 48.14691199999288
+            "50": 38.503217999959816,
+            "95": 43.758725000088816,
+            "99": 57.18166899987409
           },
-          "min": 42.04074199998331,
-          "max": 48.14691199999288,
-          "mean": 44.591974500001186,
-          "stddev": 1.4621345035493643
+          "min": 34.85740300016005,
+          "max": 57.18166899987409,
+          "mean": 39.70111309999993
         }
       },
       {
         "attribute": "cost.context_tokens",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:22768cc29158d89518437f11308c7c7edd5745464a01c25695331650d1bdbdf2",
+        "inputHash": "sha256:5bea0b04fe83296ee87f433e64d4aadb4bf1376d69a0a0d4aaceb9351b584869",
         "conditions": {
           "tokenizer": "approx-regex-v1",
           "files": 2
         },
         "values": {
           "per_file": {
-            "/home/user/chock-bundles/codex/block-no-verify/hooks/hooks.json": 88,
-            "/home/user/chock-bundles/codex/block-no-verify/skills/block-no-verify/SKILL.md": 256
+            "hooks/hooks.json": 88,
+            "skills/block-no-verify/SKILL.md": 256
           }
         },
         "measurement": {
@@ -223,25 +267,25 @@
         "attribute": "interference",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:8dce209333446fa66b10a88d52e4c213d4858a2e97e202f36b10d35737b12733",
+        "inputHash": "sha256:9635c02dc8a6e0a60bb9c4b1f89de36763c23d3e08473c57d3ef44fbb79133b3",
         "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
       },
       {
         "attribute": "efficacy",
         "basis": "claimed",
         "result": "NotAvailable",
-        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
       }
     ],
     "metadata": {
-      "startedOn": "2026-09-05T19:39:12Z",
-      "finishedOn": "2026-09-05T19:39:13Z"
+      "startedOn": "2026-09-06T13:29:00Z",
+      "finishedOn": "2026-09-06T13:29:01Z"
     },
     "configuration": [
       {
         "name": "produce-args",
         "digest": {
-          "sha256": "0b093c6c8407058131215e13a3af283e694f8434fbed2c13ff0fb20f6303bec9"
+          "sha256": "97a2b64a4e23d3d5cf57349f0bf5eddfd72cd7dd92c7c7c9a562cdcf0dca8cef"
         },
         "mediaType": "application/json"
       }

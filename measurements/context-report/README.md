@@ -2,8 +2,8 @@
 
 Measured facts about the plugin bundles this catalog's `base/` policies build into, one
 [context-report](https://github.com/open-coder-ai/context-report) statement per bundle and
-condition. The statements live here, next to the artifacts they describe, because that is what
-the format asks of every author: the report travels with the plugin, not with the format.
+condition, kept next to the artifacts they describe: the report travels with the plugin, not
+with the format.
 
 ## What was measured
 
@@ -13,13 +13,13 @@ the format asks of every author: the report travels with the plugin, not with th
   `protect-agent-config`, `protect-commit-privacy`), so 16 bundles have something to execute.
 - **Conditions**: every hook bundle was measured twice. `resolved` sets the plugin-root variable
   the client would set (`CLAUDE_PLUGIN_ROOT`, `PLUGIN_ROOT`, `CURSOR_PLUGIN_ROOT`); `unresolved`
-  sets nothing, which is how the hook runs when a client does not provide the variable.
-- **Producer**: context-report at `32755f6` (`orchestrator/produce-cli`), `n = 20` latency samples,
-  on a four-CPU Linux machine on 2026-09-05. Every statement validates against the v0.1 schema and
-  binds to the sha256 of the bundle tree it measured.
+  blanks it to empty (the shell expands that the same as unset).
+- **Producer**: context-report at `41088e5` (`main`), `n = 20` latency samples, on a four-CPU
+  Linux machine on 2026-09-06. Every statement validates against the v0.1 schema and binds to its
+  bundle tree's sha256.
 
-`SUMMARY.md` is the per-format roll-up the script writes; `chock/<format>/<policy>[.condition].json`
-are the statements.
+`SUMMARY.md` is the per-format roll-up; `chock/<format>/<policy>[.condition].json` are the
+statements.
 
 ## What the rows say
 
@@ -37,21 +37,26 @@ comments the branch "malformed input is not the agent's fault to pay for: allow,
 row states the fact; whether to fail closed there is a chock decision.
 
 **Latency is a distribution with a floor.** With a realistic pre-tool payload, the median hook
-bundle's p50 is 42.0 to 46.6 ms depending on the target adapter, and the median p95 per target is
-within 5 ms of its p50; single bundles reach 58 and 61 ms at p95. The `Error` rows from the
-unresolved condition, which time the interpreter starting and failing to open a file, sit at 13 ms:
-that is what a Python hook costs before any policy code runs. These rows are `environmentSensitive`;
-read the shape, not the number.
+bundle's p50 is 38.1 to 42.8 ms depending on the target adapter, and the median p95 per target is
+within 5 ms of its p50; individual bundles range from 39.7 to 48.4 ms at p95. The unresolved
+condition's `cost.latency_ms` row is now `Error` with no kept measurement -- the interpreter floor
+is still ~12 ms, run directly. These rows are `environmentSensitive`; read the shape, not the number.
 
 **Context weight.** Under `approx-regex-v1`, the median bundle adds an estimated 222 tokens; the 72
-bundles without a hook range from 173 to 611, the 16 with a hook from 288 to 646.
+bundles without a hook range from 173 to 611, the 16 with a hook from 298 to 725 (Copilot's hooks
+file is now counted too).
 
 | Target | Bundles | With hook | Reachable, resolved | Reachable, unresolved | Exit 0 and no deny on malformed stdin | Latency p50 / p95 ms, median over hook bundles |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Claude Code | 22 | 4 | 4 of 4 | 0 of 4 | 4 of 4 | 46.6 / 51.7 |
-| Codex CLI | 22 | 4 | 4 of 4 | 0 of 4 | 4 of 4 | 44.5 / 46.6 |
-| GitHub Copilot | 22 | 4 | 4 of 4 | 4 of 4 | 4 of 4 | 42.0 / 43.4 |
-| Cursor | 22 | 4 | 4 of 4 | 0 of 4 | 4 of 4 | 43.7 / 45.9 |
+| Claude Code | 22 | 4 | 4 of 4 | 0 of 4 | 4 of 4 | 42.8 / 46.0 |
+| Codex CLI | 22 | 4 | 4 of 4 | 0 of 4 | 4 of 4 | 39.8 / 44.2 |
+| GitHub Copilot | 22 | 4 | 4 of 4 | 4 of 4 | 4 of 4 | 38.1 / 41.2 |
+| Cursor | 22 | 4 | 4 of 4 | 0 of 4 | 4 of 4 | 38.3 / 40.8 |
+
+**What changed since the first pass.** Context-token names are now subject-relative, and hooks are
+discovered from the plugin itself, not guessed by `dogfood.py` -- meant to leave the numbers
+alone, and did, except Copilot's context weight above. `reachability` and `fault.malformedOutput`
+are unchanged.
 
 ## Reproduce
 
@@ -63,7 +68,6 @@ python3 measurements/context-report/dogfood.py --bundles /tmp/chock-bundles \
   --targets measurements/context-report/inventory.json --out measurements/context-report/chock --n 20
 ```
 
-Re-derivable rows (reachability, malformed-output behaviour, context tokens) should come back
-identical for identical bundle digests; latency comes back as a comparable distribution, not the
-same numbers. A bundle whose digest differs from the one in its statement was rebuilt from
-different bytes, and its statement no longer describes it.
+Re-derivable rows (reachability, malformed-output, context tokens) come back identical for
+identical bundle digests; latency comes back comparable, not identical. A digest mismatch means
+the bundle was rebuilt and the statement no longer matches it.

@@ -25,91 +25,107 @@
         "attribute": "conformance",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:ff5b0426f947c06520852a7ab7602b417cacb953157445f52c6a8f819a23df18",
+        "inputHash": "sha256:b3790411ec61f4ca1b045d8d303848f33d9df79150fc360551c6b17a7497690e",
         "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
       },
       {
         "attribute": "reachability",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:4cdea06731b74008295b0483eb51e3e3458d516feefec1e046f6e046186667c5",
+        "inputHash": "sha256:0346780e8869472a8a43e863d0ff5ede038c4f22fa4a65b1b41b96877ac6d039",
         "environment": {
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/block-no-verify"
           }
         },
         "conditions": {
-          "cwds": [
+          "cwdTested": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\"",
-          "nested_dir_source": "existing",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
           "payload": {
             "shape": "cursor/beforeShellExecution/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
           "reachable_from": [
             "root",
             "nested",
             "parent",
             "outside"
           ],
-          "unreachable_from": [],
-          "stderr_first_line": {
-            "root": "",
-            "nested": "",
-            "parent": "",
-            "outside": ""
-          },
-          "relative_script_path": false
+          "unreachable_from": []
         }
       },
       {
         "attribute": "decision",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:39d337f3fd51f2f853441ed93faceb278c827ea0ce31222c902db5b3f35ad90b",
+        "inputHash": "sha256:bd175739e467e91108b6ca87055bdb4f317b42480ed89a34740d05e56ed0883f",
         "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
       },
       {
         "attribute": "fault.scriptMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:ba38459141633a509ef33a3b742f396b9f79f06cace791513cc86f64e70796af",
+        "inputHash": "sha256:7e531267d2f32930571c80ead002deeaad3bef42122d1d0d98ff9c4315c82489",
         "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
       },
       {
         "attribute": "fault.interpreterMissing",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:fc0b89cf49837885582a009a9ffd98f3a0b9a06a7ebe8f1841970c92a1a811dd",
+        "inputHash": "sha256:d21d66cd81349b286fd1bebeb311a059deeb05243fefbee8de7efb517e92c996",
         "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
       },
       {
         "attribute": "fault.timeout",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:c2044e6771290be58827fd4cba577f1bdc4424f54d2fe7b1bb0bef186618090a",
+        "inputHash": "sha256:e3de8f3b1b0d43882ceb15db27379ced8a4a7d153aa6b4c6f818ac09ec82c197",
         "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
       },
       {
         "attribute": "fault.malformedOutput",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:3ee7338a4c3664a178e6beb45cdfcb8122af61a1ed40be64fe069594abac16df",
+        "inputHash": "sha256:2e26f1c82a8b8bd9a0b7ea75bef384124344413d699be850af8bf7b1c8c915c3",
         "environment": {
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/block-no-verify"
           }
         },
         "conditions": {
           "cwd": "root",
-          "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\"",
           "cases": [
             "on_malformed_json",
             "on_empty_stdin",
@@ -117,40 +133,51 @@
             "control_benign"
           ],
           "target": "cursor",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
           "payload": {
             "shape": "cursor/beforeShellExecution/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
-          "on_malformed_json": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
+          "perHook": {
+            "beforeShellExecution:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": "allow",
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": "{\"permission\": \"allow\"}"
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": "allow",
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": "{\"permission\": \"allow\"}"
+              }
+            }
           },
-          "on_empty_stdin": {
-            "exit": 0,
-            "stdout_decision": null,
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": ""
-          },
-          "on_null_tool_input": {
-            "exit": 0,
-            "stdout_decision": "allow",
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": "{\"permission\": \"allow\"}"
-          },
-          "control_benign": {
-            "exit": 0,
-            "stdout_decision": "allow",
-            "would_allow": true,
-            "stderr_first_line": "",
-            "stdout_first_line": "{\"permission\": \"allow\"}"
-          }
+          "wouldAllowAny": true
         },
         "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
       },
@@ -158,57 +185,74 @@
         "attribute": "cost.latency_ms",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:96a55456ab64970df5bf7e23d1a3d4e7c0235a1f37673bb8be204fc370dd3efc",
+        "inputHash": "sha256:ec48800f660b116d73b5b7c6672b8cd905c209dd2c10d8a3ed5109e1bb6dca74",
         "environmentSensitive": true,
         "environment": {
           "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
           "python": "3.11.15",
           "cpu_count": 4,
           "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
             "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/block-no-verify"
           }
         },
         "conditions": {
           "n": 20,
-          "warmup_excluded": false,
-          "shell": true,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
           "payload": {
             "shape": "cursor/beforeShellExecution/v0.1",
             "basis": "live-run-partial"
           }
         },
         "values": {
-          "exit_codes": [
-            0
-          ]
+          "perHook": {
+            "beforeShellExecution:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 38.437047000115854,
+                "95": 41.1704099999497,
+                "99": 42.517748000136635
+              },
+              "min": 36.59411299986459,
+              "max": 42.517748000136635,
+              "mean": 38.70125819997838,
+              "stddev": 1.4364728461544132
+            }
+          }
         },
         "measurement": {
           "unit": "ms",
           "n": 20,
           "percentiles": {
-            "50": 43.28953899999988,
-            "95": 45.37698100000398,
-            "99": 47.28208099999165
+            "50": 38.437047000115854,
+            "95": 41.1704099999497,
+            "99": 42.517748000136635
           },
-          "min": 41.50204500001564,
-          "max": 47.28208099999165,
-          "mean": 43.298939099997824,
-          "stddev": 1.4611641784373266
+          "min": 36.59411299986459,
+          "max": 42.517748000136635,
+          "mean": 38.70125819997838
         }
       },
       {
         "attribute": "cost.context_tokens",
         "basis": "re-derivable",
         "result": "PASSED",
-        "inputHash": "sha256:07b052ad2531fd383258e4da18ccfa952c34d577eb29af19e23a1b5deaa56e4f",
+        "inputHash": "sha256:83866e4641c8473a3a28095b254cee1f042c5eddf7f7d380ce418281ba86384c",
         "conditions": {
           "tokenizer": "approx-regex-v1",
           "files": 2
         },
         "values": {
           "per_file": {
-            "/home/user/chock-bundles/cursor/block-no-verify/hooks/hooks.json": 70,
-            "/home/user/chock-bundles/cursor/block-no-verify/skills/block-no-verify/SKILL.md": 228
+            "hooks/hooks.json": 70,
+            "skills/block-no-verify/SKILL.md": 228
           }
         },
         "measurement": {
@@ -223,25 +267,25 @@
         "attribute": "interference",
         "basis": "re-derivable",
         "result": "NotAvailable",
-        "inputHash": "sha256:47fa6cfcdac0f7359177c91c9d9af91ccc7fa1133c7299083bb2f92c94c8f0a7",
+        "inputHash": "sha256:e37ef2b9a71199d65fe7c67dbfed62c9aec924e53abef33ef75c4f7e347c8878",
         "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
       },
       {
         "attribute": "efficacy",
         "basis": "claimed",
         "result": "NotAvailable",
-        "reasoning": "efficacy is measured by adherence (paired ablation) and was not run"
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
       }
     ],
     "metadata": {
-      "startedOn": "2026-09-05T19:39:23Z",
-      "finishedOn": "2026-09-05T19:39:24Z"
+      "startedOn": "2026-09-06T13:29:10Z",
+      "finishedOn": "2026-09-06T13:29:11Z"
     },
     "configuration": [
       {
         "name": "produce-args",
         "digest": {
-          "sha256": "1b9b0ad20bf86d4b185924b9918fb993ec5f5cc3bfb3a66824f5b698086b921c"
+          "sha256": "413ceb3bd30fb1a3113ad6a6233c270dd2b2c21ad8dc81cf533e77f57cb42f22"
         },
         "mediaType": "application/json"
       }
