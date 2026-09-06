@@ -1,0 +1,130 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "pre-generated-scripts",
+      "digest": {
+        "sha256": "758951163e53abdd0b9e5ffa78415fd3ed92b470ac18c303666ba5de0c83b99e"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "cursor"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:2a21bc3da9ec9cd5013156cb8ddac8977653dab0ac69846ef1f6c4a3253cd11d",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:b0ca431901d69a83ff269c0c95c57005efa32a606c65354328927ff878b13792",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:00691c4e898acacfc895a7cd3989a4d6709ae0f2be4fccb3d7aff3db5845965c",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:4d7f118c9ac60987611ce3b6a8304190140fd5b9fcf18a13b8dc5c59853d01ef",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:2591210e9007d7a436dcc0d376afe05e836b403b956d08e401a19f59be378c32",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:811d1567d754cab04cff08b459357b9a32559cda8fe63ee73a93631098cd2365",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:f1f5aa85e5fa5e08aeb5176f83b9b9c19b6291e12203ed5d3ce4cce2cc945c55",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:1908817806256529bc7da2cfd98213b899c08af65a1ae7280316afc83ca67d66",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:a71ca806919083c8b536f1117219901303ef319cd97c816b54e17b2a903a9160",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 1
+        },
+        "values": {
+          "per_file": {
+            "skills/pre-generated-scripts/SKILL.md": 223
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 223,
+          "max": 223,
+          "mean": 223
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:e8bb38cd6313907359970a9c1c7e85d5fc9c89f20da94826b33a36f40b7fa8bb",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:29:11Z",
+      "finishedOn": "2026-09-06T13:29:11Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "55ffefdeab6f4afe6c81425a46124b64a0eab85f888b585de7ffa75891aa3061"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

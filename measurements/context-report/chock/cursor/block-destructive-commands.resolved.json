@@ -1,0 +1,294 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "block-destructive-commands",
+      "digest": {
+        "sha256": "120e5ec60cb6f4c5c6fa98cb9967412bb1b1d465deb7a170c299d86cbd6437ec"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "cursor"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:80115230edcfb86ffecaea09be950740cfa78ddcdcc94562bf8f6b75b92c0096",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:ef29245ccec6556b23c72744ad702e22da347239d9297df95e6a7b7914f66ec1",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "cwdTested": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-destructive.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
+          "reachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "unreachable_from": []
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:ce537f53f6725c90faf7d091e9cc7c537b8616696dfe2648e4ee4a843f7a81b3",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:df033c12a2e73c661279c5033f3b626ef68588c71208f72d89cb95b0f6c02e07",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:bc03407eba3b4ddc430912c0ecff06a16eeba8a2a372d79d56616e0370a3f1ca",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:5181ec8aa72f98d50a1b5dee9219b4404de7fc7d5cff874403f92d2d827bc20a",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:4e752fd2f8b47deea6367be5f39550a282efe41af63d56179fe29e014dafe8b0",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "cwd": "root",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "cursor",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-destructive.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": "allow",
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": "{\"permission\": \"allow\"}"
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": "allow",
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": "{\"permission\": \"allow\"}"
+              }
+            }
+          },
+          "wouldAllowAny": true
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:ff808f294f5f2db28066cc978593f4b2b4b6f637a60b187879ee04f4c1c0bc72",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4,
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "n": 20,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-destructive.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 38.174637000111034,
+                "95": 40.67700199993851,
+                "99": 42.5800249997792
+              },
+              "min": 34.98460400010117,
+              "max": 42.5800249997792,
+              "mean": 38.065171049993296,
+              "stddev": 1.9380561460213892
+            }
+          }
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 38.174637000111034,
+            "95": 40.67700199993851,
+            "99": 42.5800249997792
+          },
+          "min": 34.98460400010117,
+          "max": 42.5800249997792,
+          "mean": 38.065171049993296
+        }
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:5ebe1011bc8ed057d74e0c1875b9e000d8a1f981806b6e0f5fddd4f840e3a681",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "hooks/hooks.json": 68,
+            "skills/block-destructive-commands/SKILL.md": 342
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 410,
+          "max": 410,
+          "mean": 410
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:4b8e009cb258f6afd28e0ff1f17e9a6c5be28e41f43b492ef3ca0c1025f968a2",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:29:09Z",
+      "finishedOn": "2026-09-06T13:29:10Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "fe76a0eddee36b5255a72182c1c4bcec017477390487cf01b5daeae224ac6975"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

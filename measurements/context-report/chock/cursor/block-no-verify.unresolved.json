@@ -1,0 +1,248 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "block-no-verify",
+      "digest": {
+        "sha256": "07475042c05dcea511550930335f8c379077eeacb6924b9a43ecf778f8fd97a4"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "cursor"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:b3790411ec61f4ca1b045d8d303848f33d9df79150fc360551c6b17a7497690e",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "FAILED",
+        "inputHash": "sha256:0346780e8869472a8a43e863d0ff5ede038c4f22fa4a65b1b41b96877ac6d039",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": ""
+          }
+        },
+        "conditions": {
+          "cwdTested": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "reachable_from": [],
+              "unreachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "stderr_first_line": {
+                "root": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory",
+                "nested": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory",
+                "parent": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory",
+                "outside": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory"
+              },
+              "relative_script_path": false
+            }
+          },
+          "reachable_from": [],
+          "unreachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ]
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:bd175739e467e91108b6ca87055bdb4f317b42480ed89a34740d05e56ed0883f",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:7e531267d2f32930571c80ead002deeaad3bef42122d1d0d98ff9c4315c82489",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:d21d66cd81349b286fd1bebeb311a059deeb05243fefbee8de7efb517e92c996",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:e3de8f3b1b0d43882ceb15db27379ced8a4a7d153aa6b4c6f818ac09ec82c197",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:2e26f1c82a8b8bd9a0b7ea75bef384124344413d699be850af8bf7b1c8c915c3",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": ""
+          }
+        },
+        "conditions": {
+          "cwd": "root",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "cursor",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "on_malformed_json": {
+                "exit": 2,
+                "stdout_decision": null,
+                "would_allow": false,
+                "stderr_first_line": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 2,
+                "stdout_decision": null,
+                "would_allow": false,
+                "stderr_first_line": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 2,
+                "stdout_decision": null,
+                "would_allow": false,
+                "stderr_first_line": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory",
+                "stdout_first_line": ""
+              },
+              "control_benign": {
+                "exit": 2,
+                "stdout_decision": null,
+                "would_allow": false,
+                "stderr_first_line": "python3: can't open file '/scripts/cursor.py': [Errno 2] No such file or directory",
+                "stdout_first_line": ""
+              }
+            }
+          },
+          "wouldAllowAny": false
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "Error",
+        "inputHash": "sha256:ec48800f660b116d73b5b7c6672b8cd905c209dd2c10d8a3ed5109e1bb6dca74",
+        "conditions": {
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "reasoning": "latency could not be measured for hook(s): beforeShellExecution:0 (no run exited 0 with a benign payload (exit codes [2]); the timing is of the failure path, not the hook, and is kept only for inspection)"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:83866e4641c8473a3a28095b254cee1f042c5eddf7f7d380ce418281ba86384c",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "hooks/hooks.json": 70,
+            "skills/block-no-verify/SKILL.md": 228
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 298,
+          "max": 298,
+          "mean": 298
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:e37ef2b9a71199d65fe7c67dbfed62c9aec924e53abef33ef75c4f7e347c8878",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:29:11Z",
+      "finishedOn": "2026-09-06T13:29:11Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "f8b7f61b78d1d76509d1fe1a0fc62f7e7766ed4c4590c3d35b7eb9d6532dbbb7"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

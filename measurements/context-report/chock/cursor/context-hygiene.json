@@ -1,0 +1,130 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "context-hygiene",
+      "digest": {
+        "sha256": "6ab1c167f8f0fb2d305a675161b9e7dd0ac98d35dafd0142ee886e720ef231d4"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "cursor"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:c143f59196a00d1e6ea365b52726f3ef8301696dda3a7a324f20a8f09aff7441",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:5c2db1107f3f2b4f1338265cc64c0bdddb2cd6ebc4075fa97e372f04350b29c1",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:63b7191a3fec8edf3bc17584328050e2c47e525db354a7685063dd120aeb5e77",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:7a18f40ca03901b5658d17afd4863c481948ee19ebe90a3beedddf73efbc2b4a",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:9c0e2fb10f4ad8c5c6962226c5d6108ba41dda7e98df0891095019079b84f42c",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:1578b789f8e5c0a71cd8d585ea188f21c06a9e7e6a37658be809129e124dbda6",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:2fb97e00cccb311206e6c51393e9653ff13826b5dab127bbe8de40a85b7419ea",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:46a4a77a0e61f7ca26688447dd198e3daf7f03fd999138ca73cf26edeff9a8ee",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:397db4265f0257cc931d8b1d6080d7b1984af8cde06c6f0fe3b6ba9f59ec7060",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 1
+        },
+        "values": {
+          "per_file": {
+            "skills/context-hygiene/SKILL.md": 194
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 194,
+          "max": 194,
+          "mean": 194
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:963957c9dc34241a6e02d537204cdac1d8ec2de88a153c12a3f971014bd627e3",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:29:11Z",
+      "finishedOn": "2026-09-06T13:29:11Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "55ffefdeab6f4afe6c81425a46124b64a0eab85f888b585de7ffa75891aa3061"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

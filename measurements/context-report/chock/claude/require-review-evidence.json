@@ -1,0 +1,130 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "require-review-evidence",
+      "digest": {
+        "sha256": "2d207a16656b59cfc86f8ac9c28003dd2fecf6fef06b0a28dc8210aeac90caea"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "claude_code"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:0da9ae19527adb8629fb5040ae75c76f7a920b16d1ac14d4300e026a697b6764",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:0fddd1e4d8e01a3291705c4d9ed6f4b53ba02efb64ddd8008c3186eedd7c4486",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:907c56bd8ef0db3d521999d7d7661897c2e09b44993396931263dadbab5c9ee1",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:1139e99c70a067c62e4f94ecbf89f1d2ac34e828c68f5a0f70c0cfc3d4edfde9",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:84eb11258bac2db19def0c2b50ef06296d4e16495831296b39c9bba73666f75a",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:317375adfe588def6e8ed8fdd2aeb59f60a783dfa81130e6a6388042a2982084",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:0c2099b34e46bba6dee58ad62dd19d150a99b56154e73b6702ef87a3b3273b27",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "NotApplicable",
+        "inputHash": "sha256:03860f21ba1444e4fc2a83ee48ab59a99e70835a8d0d4680f3e858afdf426f74",
+        "reasoning": "the plugin declares no hooks"
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:4659232e465d5580c22e0a7da05adc6626090e211b33c3d093db9e88ff44e863",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 1
+        },
+        "values": {
+          "per_file": {
+            "skills/require-review-evidence/SKILL.md": 611
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 611,
+          "max": 611,
+          "mean": 611
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:59013fbd67996cb7489e2c1ab90681f8f24b3c011412331283e97d7aa9ab8980",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:28:58Z",
+      "finishedOn": "2026-09-06T13:28:58Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "6b09d6c4f590d88b0e39cb8da2d88e721722985412e3d9bf26440c7e13bca323"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

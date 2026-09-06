@@ -1,0 +1,294 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "protect-commit-privacy",
+      "digest": {
+        "sha256": "0f852b972dd8dd7083e4815f2e8a19e4cf5efd051d966deee4642f83fe501128"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "cursor"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:6151656381c75569f1f9fa5dec8740338de13fc22dad9de15ab623e35a5784bd",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:e815eb05e7ada31d048359a0d903dfc71483792b6c43c92d30ed23cf3087aa65",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/protect-commit-privacy"
+          }
+        },
+        "conditions": {
+          "cwdTested": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
+          "reachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "unreachable_from": []
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:4621db629450e8957e05c7c631fe1e5adef33014a22f82be1f2d36810fb53759",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:634cfb35c10af769d1cc064c33b3ce0337cb9a31e861c624f2be6bdc90409e39",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:c0a7da80398319aa1aea6edb0c7de87822fe4a67a0e694ded70de519204fca84",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:63b5080a88eb745927ae1c41d5767f70ffdacae40937a4479b8ea2792e3e7939",
+        "reasoning": "observing what the cursor client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): failClosed is a per-script option defaulting to false."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:2771b92778f1b909c084a733ae991cf28d91998da08482badbebd6abafbf1399",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/protect-commit-privacy"
+          }
+        },
+        "conditions": {
+          "cwd": "root",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "cursor",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": "allow",
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": "{\"permission\": \"allow\"}"
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": "allow",
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": "{\"permission\": \"allow\"}"
+              }
+            }
+          },
+          "wouldAllowAny": true
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:3c601aa188a3f101671f14124628b09eb1091264eff5e1b86a6e5b72cce4e553",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4,
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CURSOR_PLUGIN_ROOT": "/home/user/chock-bundles/cursor/protect-commit-privacy"
+          }
+        },
+        "conditions": {
+          "n": 20,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "beforeShellExecution:0",
+              "command": "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "cursor/beforeShellExecution/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "beforeShellExecution:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 38.50215200009188,
+                "95": 40.99394499985465,
+                "99": 41.077699000197754
+              },
+              "min": 35.67627200004608,
+              "max": 41.077699000197754,
+              "mean": 38.53618815004438,
+              "stddev": 1.5198757258495832
+            }
+          }
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 38.50215200009188,
+            "95": 40.99394499985465,
+            "99": 41.077699000197754
+          },
+          "min": 35.67627200004608,
+          "max": 41.077699000197754,
+          "mean": 38.53618815004438
+        }
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:90ffa28cce3e6da80947396254963cc666915f06ca0fccc70dd05b90c6448e22",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "hooks/hooks.json": 70,
+            "skills/protect-commit-privacy/SKILL.md": 432
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 502,
+          "max": 502,
+          "mean": 502
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:88c588445748f9f9dcf0de09f64ee09bcabfaef7eefb245bd4565784644a5bb0",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:29:13Z",
+      "finishedOn": "2026-09-06T13:29:14Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "e93f8de13f86575d5f7b47fc3c7cd302bdb9b054af75514935f190e010a90b12"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

@@ -1,0 +1,914 @@
+[
+  {
+    "subject_name": "chock/agent-discipline",
+    "subject_kind": "plugin",
+    "path": "claude/agent-discipline",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-destructive-commands",
+    "subject_kind": "plugin",
+    "path": "claude/block-destructive-commands",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/block-destructive.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-invisible-unicode",
+    "subject_kind": "plugin",
+    "path": "claude/block-invisible-unicode",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-no-verify",
+    "subject_kind": "plugin",
+    "path": "claude/block-no-verify",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-wildcard-agent-permissions",
+    "subject_kind": "plugin",
+    "path": "claude/block-wildcard-agent-permissions",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/code-safety",
+    "subject_kind": "plugin",
+    "path": "claude/code-safety",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/context-hygiene",
+    "subject_kind": "plugin",
+    "path": "claude/context-hygiene",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/git-safety",
+    "subject_kind": "plugin",
+    "path": "claude/git-safety",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/injection-defense",
+    "subject_kind": "plugin",
+    "path": "claude/injection-defense",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/memory-discipline",
+    "subject_kind": "plugin",
+    "path": "claude/memory-discipline",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/minimal-content",
+    "subject_kind": "plugin",
+    "path": "claude/minimal-content",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/pre-generated-scripts",
+    "subject_kind": "plugin",
+    "path": "claude/pre-generated-scripts",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/protect-agent-config",
+    "subject_kind": "plugin",
+    "path": "claude/protect-agent-config",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-agent-config.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-commit-privacy",
+    "subject_kind": "plugin",
+    "path": "claude/protect-commit-privacy",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-main-branch",
+    "subject_kind": "plugin",
+    "path": "claude/protect-main-branch",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/require-review-evidence",
+    "subject_kind": "plugin",
+    "path": "claude/require-review-evidence",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/scan-secrets",
+    "subject_kind": "plugin",
+    "path": "claude/scan-secrets",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/test-integrity",
+    "subject_kind": "plugin",
+    "path": "claude/test-integrity",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/token-efficiency",
+    "subject_kind": "plugin",
+    "path": "claude/token-efficiency",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-dependency-exists",
+    "subject_kind": "plugin",
+    "path": "claude/verify-dependency-exists",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-framework-conformance",
+    "subject_kind": "plugin",
+    "path": "claude/verify-framework-conformance",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/yagni",
+    "subject_kind": "plugin",
+    "path": "claude/yagni",
+    "target": "claude_code",
+    "format": "claude",
+    "plugin_root_var": "CLAUDE_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/agent-discipline",
+    "subject_kind": "plugin",
+    "path": "codex/agent-discipline",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-destructive-commands",
+    "subject_kind": "plugin",
+    "path": "codex/block-destructive-commands",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-destructive.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-invisible-unicode",
+    "subject_kind": "plugin",
+    "path": "codex/block-invisible-unicode",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-no-verify",
+    "subject_kind": "plugin",
+    "path": "codex/block-no-verify",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-wildcard-agent-permissions",
+    "subject_kind": "plugin",
+    "path": "codex/block-wildcard-agent-permissions",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/code-safety",
+    "subject_kind": "plugin",
+    "path": "codex/code-safety",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/context-hygiene",
+    "subject_kind": "plugin",
+    "path": "codex/context-hygiene",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/git-safety",
+    "subject_kind": "plugin",
+    "path": "codex/git-safety",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/injection-defense",
+    "subject_kind": "plugin",
+    "path": "codex/injection-defense",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/memory-discipline",
+    "subject_kind": "plugin",
+    "path": "codex/memory-discipline",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/minimal-content",
+    "subject_kind": "plugin",
+    "path": "codex/minimal-content",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/pre-generated-scripts",
+    "subject_kind": "plugin",
+    "path": "codex/pre-generated-scripts",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/protect-agent-config",
+    "subject_kind": "plugin",
+    "path": "codex/protect-agent-config",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/protect-agent-config.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-commit-privacy",
+    "subject_kind": "plugin",
+    "path": "codex/protect-commit-privacy",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-main-branch",
+    "subject_kind": "plugin",
+    "path": "codex/protect-main-branch",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/require-review-evidence",
+    "subject_kind": "plugin",
+    "path": "codex/require-review-evidence",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/scan-secrets",
+    "subject_kind": "plugin",
+    "path": "codex/scan-secrets",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/test-integrity",
+    "subject_kind": "plugin",
+    "path": "codex/test-integrity",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/token-efficiency",
+    "subject_kind": "plugin",
+    "path": "codex/token-efficiency",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-dependency-exists",
+    "subject_kind": "plugin",
+    "path": "codex/verify-dependency-exists",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-framework-conformance",
+    "subject_kind": "plugin",
+    "path": "codex/verify-framework-conformance",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/yagni",
+    "subject_kind": "plugin",
+    "path": "codex/yagni",
+    "target": "codex_cli",
+    "format": "codex",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/agent-discipline",
+    "subject_kind": "plugin",
+    "path": "copilot/agent-discipline",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-destructive-commands",
+    "subject_kind": "plugin",
+    "path": "copilot/block-destructive-commands",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/block-destructive.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-invisible-unicode",
+    "subject_kind": "plugin",
+    "path": "copilot/block-invisible-unicode",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-no-verify",
+    "subject_kind": "plugin",
+    "path": "copilot/block-no-verify",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/block-no-verify.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-wildcard-agent-permissions",
+    "subject_kind": "plugin",
+    "path": "copilot/block-wildcard-agent-permissions",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/code-safety",
+    "subject_kind": "plugin",
+    "path": "copilot/code-safety",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/context-hygiene",
+    "subject_kind": "plugin",
+    "path": "copilot/context-hygiene",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/git-safety",
+    "subject_kind": "plugin",
+    "path": "copilot/git-safety",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/injection-defense",
+    "subject_kind": "plugin",
+    "path": "copilot/injection-defense",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/memory-discipline",
+    "subject_kind": "plugin",
+    "path": "copilot/memory-discipline",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/minimal-content",
+    "subject_kind": "plugin",
+    "path": "copilot/minimal-content",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/pre-generated-scripts",
+    "subject_kind": "plugin",
+    "path": "copilot/pre-generated-scripts",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/protect-agent-config",
+    "subject_kind": "plugin",
+    "path": "copilot/protect-agent-config",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/protect-agent-config.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-commit-privacy",
+    "subject_kind": "plugin",
+    "path": "copilot/protect-commit-privacy",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [
+      "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/protect-commit-privacy.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-main-branch",
+    "subject_kind": "plugin",
+    "path": "copilot/protect-main-branch",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/require-review-evidence",
+    "subject_kind": "plugin",
+    "path": "copilot/require-review-evidence",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/scan-secrets",
+    "subject_kind": "plugin",
+    "path": "copilot/scan-secrets",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/test-integrity",
+    "subject_kind": "plugin",
+    "path": "copilot/test-integrity",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/token-efficiency",
+    "subject_kind": "plugin",
+    "path": "copilot/token-efficiency",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-dependency-exists",
+    "subject_kind": "plugin",
+    "path": "copilot/verify-dependency-exists",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-framework-conformance",
+    "subject_kind": "plugin",
+    "path": "copilot/verify-framework-conformance",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/yagni",
+    "subject_kind": "plugin",
+    "path": "copilot/yagni",
+    "target": "copilot",
+    "format": "copilot",
+    "plugin_root_var": "PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/agent-discipline",
+    "subject_kind": "plugin",
+    "path": "cursor/agent-discipline",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-destructive-commands",
+    "subject_kind": "plugin",
+    "path": "cursor/block-destructive-commands",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-destructive.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-invisible-unicode",
+    "subject_kind": "plugin",
+    "path": "cursor/block-invisible-unicode",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/block-no-verify",
+    "subject_kind": "plugin",
+    "path": "cursor/block-no-verify",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/block-wildcard-agent-permissions",
+    "subject_kind": "plugin",
+    "path": "cursor/block-wildcard-agent-permissions",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/code-safety",
+    "subject_kind": "plugin",
+    "path": "cursor/code-safety",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/context-hygiene",
+    "subject_kind": "plugin",
+    "path": "cursor/context-hygiene",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/git-safety",
+    "subject_kind": "plugin",
+    "path": "cursor/git-safety",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/injection-defense",
+    "subject_kind": "plugin",
+    "path": "cursor/injection-defense",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/memory-discipline",
+    "subject_kind": "plugin",
+    "path": "cursor/memory-discipline",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/minimal-content",
+    "subject_kind": "plugin",
+    "path": "cursor/minimal-content",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/pre-generated-scripts",
+    "subject_kind": "plugin",
+    "path": "cursor/pre-generated-scripts",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/protect-agent-config",
+    "subject_kind": "plugin",
+    "path": "cursor/protect-agent-config",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/protect-agent-config.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-commit-privacy",
+    "subject_kind": "plugin",
+    "path": "cursor/protect-commit-privacy",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [
+      "python3 \"${CURSOR_PLUGIN_ROOT}/scripts/cursor.py\" --guard \"${CURSOR_PLUGIN_ROOT}/scripts/protect-commit-privacy.sh\""
+    ],
+    "has_hook": true
+  },
+  {
+    "subject_name": "chock/protect-main-branch",
+    "subject_kind": "plugin",
+    "path": "cursor/protect-main-branch",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/require-review-evidence",
+    "subject_kind": "plugin",
+    "path": "cursor/require-review-evidence",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/scan-secrets",
+    "subject_kind": "plugin",
+    "path": "cursor/scan-secrets",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/test-integrity",
+    "subject_kind": "plugin",
+    "path": "cursor/test-integrity",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/token-efficiency",
+    "subject_kind": "plugin",
+    "path": "cursor/token-efficiency",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-dependency-exists",
+    "subject_kind": "plugin",
+    "path": "cursor/verify-dependency-exists",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/verify-framework-conformance",
+    "subject_kind": "plugin",
+    "path": "cursor/verify-framework-conformance",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  },
+  {
+    "subject_name": "chock/yagni",
+    "subject_kind": "plugin",
+    "path": "cursor/yagni",
+    "target": "cursor",
+    "format": "cursor",
+    "plugin_root_var": "CURSOR_PLUGIN_ROOT",
+    "hook_commands": [],
+    "has_hook": false
+  }
+]

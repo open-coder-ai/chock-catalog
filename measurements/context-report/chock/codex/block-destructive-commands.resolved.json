@@ -1,0 +1,294 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "block-destructive-commands",
+      "digest": {
+        "sha256": "455cbd9f4299180af6305aaf8022766651fc12eada2881f12b7b356f82cecef3"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "codex_cli"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:8d6776af0795842461963d1fd1779b8d00ab6e964f0221cc339bcdf4172126c1",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:d3b29d9ec386f2ed007b4d71c6d2eb853e234d6c8e4f4586f432660abac68a04",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": "/home/user/chock-bundles/codex/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "cwdTested": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-destructive.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "codex_cli/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
+          "reachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "unreachable_from": []
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:92cda34c77a554f216a749221ad121ad2433a9a59ee6b5a7cfc7ef44b0616a76",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:5058562693657344ac0a8632b19df96be27562bc54a9f61dc92821f76b3c0cb0",
+        "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:a9ab0ed882cb63883a8a5fd1da48686ea41f58452877cbf1ce41283c6af69d98",
+        "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:191ca10ab2ae4dff87485fdc3ce0c8d74e386f393d4f277abe0a553eca100eeb",
+        "reasoning": "observing what the codex_cli client does when the hook fails requires driving that client; the v0.1 producer does not. No documented oracle on file for 'codex_cli'."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:30fac3af7868f307d81827836a40c396702e68babc22b6b467a2177b36393528",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": "/home/user/chock-bundles/codex/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "cwd": "root",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "codex_cli",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-destructive.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "codex_cli/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              }
+            }
+          },
+          "wouldAllowAny": true
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:245e3fea90b263925c9e3b4fb16c448933d66a2151aaaa64c831846600137117",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4,
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": "/home/user/chock-bundles/codex/block-destructive-commands"
+          }
+        },
+        "conditions": {
+          "n": 20,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${PLUGIN_ROOT}/scripts/codex_cli.py\" --guard \"${PLUGIN_ROOT}/scripts/block-destructive.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "codex_cli/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 39.47411999979522,
+                "95": 44.608825000068464,
+                "99": 45.011982000005446
+              },
+              "min": 36.78756899989821,
+              "max": 45.011982000005446,
+              "mean": 40.1552598999956,
+              "stddev": 2.2288170745705567
+            }
+          }
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 39.47411999979522,
+            "95": 44.608825000068464,
+            "99": 45.011982000005446
+          },
+          "min": 36.78756899989821,
+          "max": 45.011982000005446,
+          "mean": 40.1552598999956
+        }
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:053a65c28558e420ac83bba247bdbc589fdce98ded46ad59bb79917bdddbd180",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "hooks/hooks.json": 86,
+            "skills/block-destructive-commands/SKILL.md": 370
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 456,
+          "max": 456,
+          "mean": 456
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:47ce7a98323c22b6a1bc986a4aa9265dbb0f0b6d9003cb3f5879ebdb77686d02",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:28:58Z",
+      "finishedOn": "2026-09-06T13:28:59Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "c4e9f2ef78625acb86813d1dfad9c81ce7797a38a42f8423e5af987876eeb4cc"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

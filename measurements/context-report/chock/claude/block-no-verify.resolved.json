@@ -1,0 +1,294 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "block-no-verify",
+      "digest": {
+        "sha256": "eb8038581b1c762621b71ad70b7942bbd4b7ca45dad286d6906f4822efc98cbc"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "claude_code"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:486b8365c3659268b3432a19a8cee9f6dba9603dfcb7b73a619b6c2e43b43c17",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:32183de59e3136d649d2d9bb5f09d3c52c49923ccddda2a05479ff39f96a8fce",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CLAUDE_PLUGIN_ROOT": "/home/user/chock-bundles/claude/block-no-verify"
+          }
+        },
+        "conditions": {
+          "cwdTested": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "claude_code/PreToolUse/v0.1",
+            "basis": "live-run"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
+          "reachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "unreachable_from": []
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:2bda336bee01e75aa8904e9869831bb5bb4e6193a25a8e5700597e8321d7598c",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:bc5eb8d5c48dd15c7b69424cd7a6780ed8e9ed814b66a0a458c5f911214c61ae",
+        "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:684ff29e46ec35e2bc973074ae2f142f61364a3a320cc8ebb932f2487a7e9e42",
+        "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:d11c85c1e00b46f8f172a02c072781d592dcaefecf5f66194833a921ceb5a058",
+        "reasoning": "observing what the claude_code client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): exit 2 blocks; exit 1 or any other non-zero proceeds with a notice; JSON failing schema is non-blocking; timeout discards the hook's output and the tool call proceeds. Hooks run in the current cwd with a fallback chain."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:62d30ad5dc7f6463d7fffbbc47c034e81de9ef3ed939c3e706c9767b49b85e8c",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CLAUDE_PLUGIN_ROOT": "/home/user/chock-bundles/claude/block-no-verify"
+          }
+        },
+        "conditions": {
+          "cwd": "root",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "claude_code",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "claude_code/PreToolUse/v0.1",
+            "basis": "live-run"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              }
+            }
+          },
+          "wouldAllowAny": true
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:0d024209fd7d36ae71b72c1704da5b7aba4ab08be0af4e075aa9bac97b649156",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4,
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "CLAUDE_PLUGIN_ROOT": "/home/user/chock-bundles/claude/block-no-verify"
+          }
+        },
+        "conditions": {
+          "n": 20,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/claude_code.py\" --guard \"${CLAUDE_PLUGIN_ROOT}/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "claude_code/PreToolUse/v0.1",
+            "basis": "live-run"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 41.18161900009909,
+                "95": 45.019308000064484,
+                "99": 48.26665499990668
+              },
+              "min": 37.399367000034545,
+              "max": 48.26665499990668,
+              "mean": 41.2847052499842,
+              "stddev": 2.809670231043098
+            }
+          }
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 41.18161900009909,
+            "95": 45.019308000064484,
+            "99": 48.26665499990668
+          },
+          "min": 37.399367000034545,
+          "max": 48.26665499990668,
+          "mean": 41.2847052499842
+        }
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:41b28343795e028c3c1148cdd31258f6b6f13cb5accf0a6de1f71d135612dd07",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "hooks/hooks.json": 88,
+            "skills/block-no-verify/SKILL.md": 229
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 317,
+          "max": 317,
+          "mean": 317
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:4901a2bd15c427394cfb5781c93f979800e582fe8bc491360124afdc295f42ab",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:28:54Z",
+      "finishedOn": "2026-09-06T13:28:55Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "508db4624e6b621028d34a16a6d59989b7e7cb8442f37d5048c27bdd4ce3fa38"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}

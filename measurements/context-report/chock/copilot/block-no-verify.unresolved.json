@@ -1,0 +1,294 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "block-no-verify",
+      "digest": {
+        "sha256": "be396127a0391a0d528eadcd5b6cea1e20d6cd0183ace5691de6488f4acde10c"
+      }
+    }
+  ],
+  "predicateType": "https://open-coder-ai.github.io/context-report/attestation/v0.1",
+  "predicate": {
+    "subjectKind": "plugin",
+    "target": {
+      "name": "copilot"
+    },
+    "producer": {
+      "id": "https://github.com/open-coder-ai/context-report#local-dogfood",
+      "version": {
+        "context-report": "0.1.0"
+      }
+    },
+    "attributes": [
+      {
+        "attribute": "conformance",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:58cd029e3164e7d0e6cd72d202322a964d620880561affcfae5ce530dac39d8a",
+        "reasoning": "v0.1 producer does not validate the bundle against the target agent's plugin schema"
+      },
+      {
+        "attribute": "reachability",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:fcef1af4f081f40fca42d4c4fd907ee1263827e5d346a7569069de14cac982a9",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": ""
+          }
+        },
+        "conditions": {
+          "cwdTested": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "copilot/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "reachable_from": [
+                "root",
+                "nested",
+                "parent",
+                "outside"
+              ],
+              "unreachable_from": [],
+              "stderr_first_line": {
+                "root": "",
+                "nested": "",
+                "parent": "",
+                "outside": ""
+              },
+              "relative_script_path": false
+            }
+          },
+          "reachable_from": [
+            "root",
+            "nested",
+            "parent",
+            "outside"
+          ],
+          "unreachable_from": []
+        }
+      },
+      {
+        "attribute": "decision",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:cfe12853c6f222eb46ee32093d7d45c5edb5acac1201699d640551fc7ededf2f",
+        "reasoning": "no declared positive/negative cases were supplied; v0.1 has no decision replay"
+      },
+      {
+        "attribute": "fault.scriptMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:d5d1be029bc9c1243cf65dd3796199916d98a601d988eedb74c6b81678958c3b",
+        "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
+      },
+      {
+        "attribute": "fault.interpreterMissing",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:5b29810b58ea9abf3e725132cb16dc114b35c1c8fd045f703be9bd0996f3f787",
+        "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
+      },
+      {
+        "attribute": "fault.timeout",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:2ce534291446ef07e6a1e3de2dfb36227162519ea37a2f930462a42455078e3f",
+        "reasoning": "observing what the copilot client does when the hook fails requires driving that client; the v0.1 producer does not. Documented behaviour (basis vendor-docs, NOT measured): preToolUse command hooks are fail-closed on crash (\"Denied by preToolUse hook (hook errored)\") but \"Timeouts are always fail-open, including for preToolUse and admin-deployed policy hooks\"; HTTP hooks fail open on any network error."
+      },
+      {
+        "attribute": "fault.malformedOutput",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:3001fc9d588cd346b4c6af9a4cf91328c93b9c044b219b3d378ed8270ecba92d",
+        "environment": {
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": ""
+          }
+        },
+        "conditions": {
+          "cwd": "root",
+          "cases": [
+            "on_malformed_json",
+            "on_empty_stdin",
+            "on_null_tool_input",
+            "control_benign"
+          ],
+          "target": "copilot",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "copilot/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "on_malformed_json": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_empty_stdin": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "on_null_tool_input": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              },
+              "control_benign": {
+                "exit": 0,
+                "stdout_decision": null,
+                "would_allow": true,
+                "stderr_first_line": "",
+                "stdout_first_line": ""
+              }
+            }
+          },
+          "wouldAllowAny": true
+        },
+        "reasoning": "exit 0 on malformed input is how a Claude Code hook fails open; whether that is acceptable is the consumer's threshold."
+      },
+      {
+        "attribute": "cost.latency_ms",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:f79bd26308a08269862256988106561146ef1b8be7a49802371077a70717ff47",
+        "environmentSensitive": true,
+        "environment": {
+          "platform": "Linux-6.18.44-fc-v24-x86_64-with-glibc2.39",
+          "python": "3.11.15",
+          "cpu_count": 4,
+          "env": {
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PLUGIN_ROOT": ""
+          }
+        },
+        "conditions": {
+          "n": 20,
+          "aggregation": "sum-across-hooks",
+          "hooks": [
+            {
+              "hook_id": "PreToolUse:0",
+              "command": "r=\"${PLUGIN_ROOT:-}\"; [ -n \"$r\" ] && [ -f \"$r/scripts/vscode_copilot.py\" ] || exit 0; exec python3 \"$r/scripts/vscode_copilot.py\" --guard \"$r/scripts/block-no-verify.sh\""
+            }
+          ],
+          "payload": {
+            "shape": "copilot/PreToolUse/v0.1",
+            "basis": "live-run-partial"
+          }
+        },
+        "values": {
+          "perHook": {
+            "PreToolUse:0": {
+              "unit": "ms",
+              "n": 20,
+              "percentiles": {
+                "50": 1.1237569999593688,
+                "95": 1.311265000140338,
+                "99": 1.339527000027374
+              },
+              "min": 1.032976000033159,
+              "max": 1.339527000027374,
+              "mean": 1.1435669000206872,
+              "stddev": 0.08963556272448626
+            }
+          }
+        },
+        "measurement": {
+          "unit": "ms",
+          "n": 20,
+          "percentiles": {
+            "50": 1.1237569999593688,
+            "95": 1.311265000140338,
+            "99": 1.339527000027374
+          },
+          "min": 1.032976000033159,
+          "max": 1.339527000027374,
+          "mean": 1.1435669000206872
+        }
+      },
+      {
+        "attribute": "cost.context_tokens",
+        "basis": "re-derivable",
+        "result": "PASSED",
+        "inputHash": "sha256:4ded2583a285be83f0911567c8b384f5122516d69fac9ad198478c85ecc478a9",
+        "conditions": {
+          "tokenizer": "approx-regex-v1",
+          "files": 2
+        },
+        "values": {
+          "per_file": {
+            "com.github.copilot/hooks/hooks.json": 135,
+            "skills/block-no-verify/SKILL.md": 288
+          }
+        },
+        "measurement": {
+          "unit": "tokens",
+          "n": 1,
+          "min": 423,
+          "max": 423,
+          "mean": 423
+        }
+      },
+      {
+        "attribute": "interference",
+        "basis": "re-derivable",
+        "result": "NotAvailable",
+        "inputHash": "sha256:bae5718e7a405b02cbc6a6df182ea3080b224ec41dd416b3710d41bccbb55988",
+        "reasoning": "no co-installed artifacts were declared; v0.1 producer does not measure interference"
+      },
+      {
+        "attribute": "efficacy",
+        "basis": "claimed",
+        "result": "NotAvailable",
+        "reasoning": "efficacy (paired ablation) was not run; use `context-report run` with models"
+      }
+    ],
+    "metadata": {
+      "startedOn": "2026-09-06T13:29:06Z",
+      "finishedOn": "2026-09-06T13:29:06Z"
+    },
+    "configuration": [
+      {
+        "name": "produce-args",
+        "digest": {
+          "sha256": "d3b911e5394a17713f6df1491bc069867bfb1cc3ced8d67c21d7dfa6e856d6f3"
+        },
+        "mediaType": "application/json"
+      }
+    ]
+  }
+}
