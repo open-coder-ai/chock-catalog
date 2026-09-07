@@ -52,6 +52,9 @@
 - **verify-catalog-conformance**:
   before(commit): pass(check_registry, check_readme, check_console, check_workflows)  # enforced by the installed pre-commit implementation
   if(check_fails): fix_the_source; never(edit_the_check_to_pass)
+- **verify-mcp-allowlist**:
+  mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
+  allowlist: lives in implementations/verify-mcp-allowlist.sh; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
 
 ## Gates — enforced automatically at commit/push
 

@@ -176,6 +176,14 @@
       "managed": false,
       "sha256": "0667de68d009b8b2d3b54139877b8ce70d349474085bedb00172a51f8b53c009",
       "source": "local"
+    },
+    {
+      "id": "verify-mcp-allowlist",
+      "version": "0.0.1",
+      "managed": false,
+      "sha256": "38647da7c2594af33f7f03c3ede48f8c994aea369254d27abeb2d6207386d20e",
+      "source": "local",
+      "artifacts_sha256": "adfdf14006023dce5212c5e3b0cdf1142ec907ca81caaab0b63ec11074b87290"
     }
   ]
 }

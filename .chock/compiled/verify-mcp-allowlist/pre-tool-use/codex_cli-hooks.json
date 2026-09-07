@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\"",
+            "commandWindows": "& @CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ]
+  }
+}

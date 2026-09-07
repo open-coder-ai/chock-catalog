@@ -462,3 +462,16 @@ policies:
   eval_executed: 5
   description: 'Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt,
     pyproject.toml, package.json, and go.mod, and blocks any newly '
+- id: verify-mcp-allowlist
+  path: base/verify-mcp-allowlist
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 15
+  eval_executed: 15
+  description: 'Gate MCP server configuration as protected content: a shell write to .mcp.json
+    is refused unless every mcpServers entry matches a name+source pair on the allowlist that
+    ships inside this guard script. Covers Claude Code .mcp.json only.'

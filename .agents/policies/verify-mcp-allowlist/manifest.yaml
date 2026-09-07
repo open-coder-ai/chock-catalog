@@ -1,0 +1,58 @@
+id: verify-mcp-allowlist
+name: "Verify MCP Allowlist"
+version: "0.0.1"
+description: >
+  Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
+  unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an
+  unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches
+  a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this
+  guard's own script, protected like every policy's implementations/ source -- edit only with
+  'chock: approved-config-change'. Claude Code's .mcp.json only: agentseam 0.2.1 records no
+  per-vendor MCP config path, so other agents are left out, not guessed at. Tool-time (Bash)
+  only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard, a
+  write with no visible content fails closed. No commit-time gate -- chock 0.8.0 has no gate
+  kind pairing name+source against an external allowlist. Matching and path checks are
+  exact-string and substring-coarse. No pragma for .mcp.json -- matching the allowlist is the
+  only way through.
+artifact: rule
+enforcement: advise
+rule:
+  text: |
+    mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
+    allowlist: lives in implementations/verify-mcp-allowlist.sh; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
+effects:
+- read_only
+approval:
+  required: false
+
+compliance:
+  owasp_asi:
+  - control: ASI04
+    coverage: partial
+    note: "blocks an unverified MCP server entering .mcp.json from the shell -- the mechanizable slice of ASI04's 'unverified MCP servers' framing; provenance and signature verification beyond allowlist membership stay with the advisory owasp-asi04-agentic-supply-chain policy"
+  mitre_atlas:
+  - control: AML.T0010
+    coverage: partial
+    note: "an MCP server is an ML supply-chain component; this blocks one entering the agent's tool surface outside a maintainer-curated allowlist, at tool time only"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-07T00:00:00Z"
+  updated_at: "2026-09-07T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-09-07'
+  changes:
+  - "Initial release (issue #1): tool-time guard over .mcp.json server entries against a name+source allowlist that ships inside implementations/verify-mcp-allowlist.sh. Unlisted name blocks; an allowed name with a changed command/args/url blocks (catches both an edited server and one renamed to an allowed name while pointing elsewhere); an exact name+source match passes without needing a human approval each time. The allowlist is protected the same way protect-agent-config protects every policy's guard sources -- a shell write to it is refused without the 'chock: approved-config-change' marker; it ships inside the script rather than a separate file because guard-mode evals run against an empty sandbox repo, so a separate allowlist file could never be exercised by this suite. Scoped to Claude Code's .mcp.json: agentseam 0.2.1 has no per-vendor MCP-config-path field to read for the other agents it lists (its config_path is hook-wiring, not MCP servers), and this policy does not guess at undocumented paths. Commit-time blocking from the issue is not shipped: chock 0.8.0's three gate kinds cannot express name+source pairing against an external allowlist file, so this stays a PreToolUse guard, best-effort on Claude Code (PreToolUse fails open on a crashed hook) like its named prior art protect-agent-config."
