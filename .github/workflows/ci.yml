@@ -73,6 +73,49 @@ jobs:
       - name: Check the social preview matches the repository
         run: cd docs/assets && python gen_brand_assets.py --check
 
+  # The README's Quick start block is read, not run, by everything else in this file.
+  # `tools/quickstart_block.py` extracts the first ```bash fence under `## Quick start`
+  # and this job actually executes it, in a repo that starts from nothing -- the same
+  # gap `check_console.py` closed for quoted output closed here for a runnable snippet.
+  quickstart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      # Install the engine first, from the pinned checkout every other job uses, so the
+      # block's own `pip install chock` is a same-version no-op rather than a second,
+      # divergent install path -- and so it works at all pre-launch, before `chock` is
+      # a name PyPI recognises.
+      - name: Read the framework pin
+        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: Install chock
+        run: pip install ./.framework
+
+      # A fresh directory, not this checkout: the block's own `git init -q demo` has to
+      # be the first git command that runs, the way a reader copy-pasting it would.
+      - name: Run the README's Quick start block
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          python tools/quickstart_block.py > "$workdir/quickstart.sh"
+          cd "$workdir"
+          bash -euo pipefail quickstart.sh
+
   policies:
     runs-on: ubuntu-latest
     steps:
