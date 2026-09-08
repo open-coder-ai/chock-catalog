@@ -45,6 +45,10 @@ Roughly in order of usefulness:
 4. **Write a policy for your domain.** `chock init` installs a `policy-init` skill;
    ask your agent to run it and it scaffolds a conformant folder.
 
+The [threat ledger](https://github.com/open-coder-ai/chock-threat-intel/blob/main/reference/agentic-threat-ledger.md) in chock-threat-intel is the open work list for new
+gates: each `policy wanted` entry names a published threat nothing here covers yet and links
+the issue to claim. Questions go to [Discussions](https://github.com/open-coder-ai/chock-catalog/discussions).
+
 ## Local loop
 
 ```bash

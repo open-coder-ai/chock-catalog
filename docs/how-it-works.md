@@ -52,3 +52,26 @@ framework: a bundled policy is one the framework owns and replaces on upgrade, w
 customisation impossible.
 
 Add your own token formats. Loosen a threshold. Delete the rules you disagree with.
+
+## This repo runs what it publishes, in full
+
+The README's [_This repo runs what it publishes_](../README.md#this-repo-runs-what-it-publishes)
+condenses the three paragraphs below into one. Verbatim, uncut:
+
+The catalog is a Chock adopter. `.agents/policies/` holds every `base/` policy — the
+catalog protects itself the same way it asks any open-source repo to — and the first
+commit after adoption was rejected by `protect-main-branch`. One is installed but
+disabled with its reasons written in `.chock/config.yaml`: `verify-dependency-exists`
+watches dependency manifests this repo does not have.
+
+That is not a flourish. A worked example that is a repository cannot drift from the
+instructions the way a README snippet does — and running it has already found four framework
+bugs that no test caught, including a freshness check whose verdict depended on the caller's
+working directory and an `add` that could not see this catalog's newest tree.
+
+CI keeps two things apart on purpose: **what this repo runs** (the `base/` tier — the
+compliance and agentic-security packs stay uninstalled because, by their own doctrine,
+they only earn their place where they apply, and this repo ships no agentic system and
+falls under no covered regulation) and **what this repo ships** (every published policy,
+staged into a throwaway repo the way an adopter installs them). A catalog should still
+publish more than it is bound by, and [the reasoning is written down](README.md).

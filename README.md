@@ -154,6 +154,9 @@ The pattern is the same one `base/` uses: `code-safety` advises broadly while
 `scan-secrets` blocks narrowly. The gate is not the rule promoted — it is the greppable
 fraction, enforced honestly, with the judgement half still labelled advisory.
 
+How the 10/10 claim above is re-derived on every build, and what `partial` versus `full`
+actually means, is in [docs/coverage.md](docs/coverage.md).
+
 </details>
 
 Every policy has [its own page](docs/) — what it solves, how it works, which primitive it
@@ -270,7 +273,10 @@ running it has already found four framework bugs no test caught. CI still keeps 
 apart: **what this repo runs** (the `base/` tier only — the compliance and agentic-security
 packs stay uninstalled because, by their own doctrine, they only earn their place where they
 apply) and **what this repo ships** (every published policy, staged into a throwaway repo the
-way an adopter installs them). A catalog should publish more than it is bound by.
+way an adopter installs them). A catalog should publish more than it is bound by — the
+full three-paragraph version, including which policy is installed-but-disabled here and
+why, and the specific framework bugs this adoption already caught, is in
+[docs/how-it-works.md](docs/how-it-works.md).
 
 ## Every policy is an Agent Plugin
 
@@ -318,6 +324,9 @@ or read the full guide — transcripts, DCO, review criteria — in
 ```bash
 chock check && chock check --only evals
 ```
+
+Looking for something specific to work on, or a place to ask a question first? The threat
+ledger and Discussions link are in [CONTRIBUTING.md](CONTRIBUTING.md#good-first-contributions).
 
 ---
 
