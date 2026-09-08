@@ -2,48 +2,54 @@
   "hooks": {
     "pre_run_command": [
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+      },
+      {
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
       }
     ],
     "pre_mcp_tool_use": [
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
       },
       {
-        "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+      },
+      {
+        "command": "\"/usr/bin/python3\" \".chock/bin/windsurf.py\" --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
       }
     ]
   }

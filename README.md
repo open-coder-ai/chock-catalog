@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="38 policies" src="https://img.shields.io/badge/policies-38-blue">
-<img alt="16 enforced" src="https://img.shields.io/badge/enforced-16-brightgreen">
+<img alt="39 policies" src="https://img.shields.io/badge/policies-39-blue">
+<img alt="17 enforced" src="https://img.shields.io/badge/enforced-17-brightgreen">
 <img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -48,16 +48,16 @@ That is the whole install. The next commit containing a credential exits non-zer
 **A rule an agent reads is advice. A hook that exits non-zero is a control.** Both belong in
 a repo, and the difference has to be visible, because the failure mode of governance tooling
 is that everyone believes it is doing more than it is. So every policy here is labelled with
-what it actually reaches — stated up front rather than in the appendix, because 22 of the 38
+what it actually reaches — stated up front rather than in the appendix, because 22 of the 39
 are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 9 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 7 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 8 |
 | `advisory` | text an agent reads and may or may not follow | 22 |
 
-<img alt="38 policies: 9 enforced-at-commit, 7 in-agent, 22 advisory" src="docs/assets/coverage-matrix.svg">
+<img alt="39 policies: 9 enforced-at-commit, 8 in-agent, 22 advisory" src="docs/assets/coverage-matrix.svg">
 
 Advisory eval cases report as `skipped`, never as passing, because there is no mechanism to
 replay.
@@ -90,6 +90,7 @@ codex plugin format, Codex after its per-hook trust review).
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 27/27 |
 | [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 19/19 |
 | [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 32/32 |
+| [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | a shell write to `.mcp.json` adding an MCP server not on the allowlist, or changing an allowed server's command/args/url to point elsewhere (including one renamed to an allowed name) — the allowlist ships inside the guard script itself, protected the same way as any other policy's guard source; a matching entry passes without a human approval each time | 15/15 |
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 

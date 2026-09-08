@@ -390,6 +390,21 @@
         "dependencies": [],
         "script_hashes": {}
       }
+    ],
+    "verify-mcp-allowlist": [
+      {
+        "id": "verify-mcp-allowlist",
+        "artifact": "rule",
+        "version": "0.0.1",
+        "name": "Verify MCP Allowlist",
+        "description": "Gate MCP server configuration as protected content. A shell write to .mcp.json is refused unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this guard's own script, protected like every policy's implementations/ source -- edit only with 'chock: approved-config-change'. Claude Code's .mcp.json only: agentseam 0.2.1 records no per-vendor MCP config path, so other agents are left out, not guessed at. Tool-time (Bash) only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard, a write with no visible content fails closed. No commit-time gate -- chock 0.8.0 has no gate kind pairing name+source against an external allowlist. Matching and path checks are exact-string and substring-coarse. No pragma for .mcp.json -- matching the allowlist is the only way through.",
+        "path": ".agents/policies/verify-mcp-allowlist",
+        "manifest": "manifest.yaml",
+        "trust_tier": "community",
+        "lifecycle_status": "draft",
+        "dependencies": [],
+        "script_hashes": {}
+      }
     ]
   }
 }

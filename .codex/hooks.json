@@ -5,8 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
-            "commandWindows": "& \"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
           }
         ],
         "matcher": "Bash"
@@ -15,8 +15,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\"",
-            "commandWindows": "& \"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
           }
         ],
         "matcher": "Bash"
@@ -25,8 +25,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\"",
-            "commandWindows": "& \"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
           }
         ],
         "matcher": "Bash"
@@ -35,8 +35,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
-            "commandWindows": "& \"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
           }
         ],
         "matcher": "Bash"
@@ -45,8 +45,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\"",
-            "commandWindows": "& \"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
           }
         ],
         "matcher": "Bash"
@@ -55,8 +55,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\"",
-            "commandWindows": "& \"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
           }
         ],
         "matcher": "Bash"
@@ -65,8 +65,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\"",
-            "commandWindows": "& \"/opt/hostedtoolcache/Python/3.12.14/x64/bin/python\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\"",
+            "commandWindows": "& \"/usr/bin/python3\" \".chock/bin/codex_cli.py\" --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
           }
         ],
         "matcher": "Bash"

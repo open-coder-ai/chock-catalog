@@ -435,3 +435,20 @@ verify-dependency-exists:
     The allowlist is the policy. `params.manifests` sets which files are watched, and
     `params.allowlist_file` where the approved names live. This one ships disabled because
     an empty allowlist blocks every dependency -- populate it first, then enable.
+
+verify-mcp-allowlist:
+  solves: >
+    Config-as-attack-surface: agents auto-load MCP servers from repo-committed config, so a PR
+    -- or an agent acting on injected instructions -- that adds a server entry to .mcp.json
+    hands every future session a new tool surface, and nothing in the catalog watched it before
+    this. A name match alone would not be enough; an attacker who reuses an approved server's
+    name while pointing its command or args elsewhere needs the source checked too.
+  customise: >
+    The allowlist is the policy, and it ships inside the guard script itself rather than a
+    separate file: guard-mode evals run against an empty sandbox repo, so an allowlist that
+    lived anywhere else could never be exercised by this suite. Add your own approved servers
+    as `name<TAB>source` lines; protect-agent-config's own protected-path coverage of every
+    policy's `implementations/` already keeps a shell edit to this list honest, gated behind
+    the same `chock: approved-config-change` marker. Covers Claude Code's `.mcp.json` only --
+    agentseam has no recorded MCP-config-path for the other agents it lists, and this policy
+    does not guess at one.
