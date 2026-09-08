@@ -16,14 +16,14 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 40ms
 Set Padding 24
 
-# --- hidden setup: a throwaway repo, off main, so the branch-protection payoff at the
-# end is the first time that gate fires --------------------------------------------
+# --- hidden setup: a throwaway repo at a neutral, non-mktemp path so nothing the tools
+# print during Show -- the hook installer echoes the absolute paths it writes to --
+# leaks this machine's /tmp, /home or /root layout. /work is created for exactly this
+# by the render recipe (mkdir -p /work && chown vhsuser /work) before `vhs` runs. -----
 Hide
-Type "cd $(mktemp -d)"
+Type "export HOME=/work"
 Enter
-Type "export HOME=$(mktemp -d)"
-Enter
-Type "git -c init.defaultBranch=main init -q demo && cd demo"
+Type "rm -rf /work/demo && git -c init.defaultBranch=main init -q /work/demo && cd /work/demo"
 Enter
 Type "git config user.email demo@example.com && git config user.name Demo"
 Enter
