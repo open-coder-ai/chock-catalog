@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what they actually enforce. The mark is a stack of policy cards, the top one carrying the node that marks an enforcing policy." width="90">
+<img src="docs/assets/logo.svg" alt="chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what they actually enforce. The mark is a stack of policy cards, the top one carrying the node that marks an enforcing policy." width="110">
 
 <h1>chock-catalog</h1>
 
@@ -11,11 +11,8 @@
 <img alt="17 enforced" src="https://img.shields.io/badge/enforced-17-brightgreen">
 <img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
-<img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
-</p>
-
-<p>
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
+<img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
 <a href="https://scorecard.dev/viewer/?uri=github.com/open-coder-ai/chock-catalog"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/open-coder-ai/chock-catalog/badge"></a>
 <a href="CONTRIBUTING.md"><img alt="PRs welcome" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
 </p>
@@ -23,23 +20,18 @@
 <p>
 <a href="#the-policies">The policies</a> ·
 <a href="#it-actually-blocks-the-commit">See it block</a> ·
-<a href="#the-content-is-yours">Customising</a> ·
+<a href="#how-it-works">How it works</a> ·
 <a href="#contributing">Contributing</a> ·
 <a href="https://github.com/open-coder-ai/chock">the framework →</a>
 </p>
+
+<img src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/demo.gif" width="760" alt="Terminal session: chock add scan-secrets and protect-main-branch are installed, a commit containing an AWS key is blocked, the same commit passes once the key is read from the environment instead, and a commit straight to main is blocked next.">
 
 </div>
 
 Your agent is fast, tireless, and occasionally commits an AWS key. Prompting it not to works
 until the context fills up. This is the part that does not depend on the model paying
 attention.
-
-```bash
-chock add scan-secrets
-chock sync .
-```
-
-That is the whole install. The next commit containing a credential exits non-zero.
 
 ---
 
@@ -59,8 +51,7 @@ are advisory, and that is the number most catalogs would round up:
 
 <img alt="39 policies: 9 enforced-at-commit, 8 in-agent, 22 advisory" src="docs/assets/coverage-matrix.svg">
 
-Advisory eval cases report as `skipped`, never as passing, because there is no mechanism to
-replay.
+Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay.
 
 **Enforced at commit** — declarative gates, verified by replaying their own gate against a
 throwaway repo on every push.
@@ -92,6 +83,9 @@ codex plugin format, Codex after its per-hook trust review).
 | [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 32/32 |
 | [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | a shell write to `.mcp.json` adding an MCP server not on the allowlist, or changing an allowed server's command/args/url to point elsewhere (including one renamed to an allowed name) — the allowlist ships inside the guard script itself, protected the same way as any other policy's guard source; a matching entry passes without a human approval each time | 15/15 |
 
+<details>
+<summary>22 advisory policies — expand</summary>
+
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
 [`agent-discipline`](docs/agent-discipline/) · [`code-safety`](docs/code-safety/) ·
@@ -100,6 +94,11 @@ codex plugin format, Codex after its per-hook trust review).
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
 [`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
+
+</details>
+
+<details>
+<summary>3 compliance policies — expand</summary>
 
 **Compliance** — jurisdiction-specific, in `compliance/` rather than `base/`. Everything
 above applies to any repo; these only earn their place if the regulation reaches you.
@@ -112,6 +111,11 @@ above applies to any repo; these only earn their place if the regulation reaches
 
 Advisory, like everything else with no mechanism. Regulatory scoping is judgement, and a
 keyword gate here would block on `emotion_recognition` in a comment.
+
+</details>
+
+<details>
+<summary>OWASP ASI01–10 coverage — expand</summary>
 
 **Agentic security** — the OWASP Top 10 for Agentic Applications (2026), in
 `agentic-security/`. One policy per ASI category. These govern the agentic system you are
@@ -150,308 +154,193 @@ The pattern is the same one `base/` uses: `code-safety` advises broadly while
 `scan-secrets` blocks narrowly. The gate is not the rule promoted — it is the greppable
 fraction, enforced honestly, with the judgement half still labelled advisory.
 
+How the 10/10 claim above is re-derived on every build, and what `partial` versus `full`
+actually means, is in [docs/coverage.md](docs/coverage.md).
+
+</details>
+
 Every policy has [its own page](docs/) — what it solves, how it works, which primitive it
 becomes, and what is safe to change.
 
 ---
 
-## It actually blocks the commit
+## Quick start
 
-Output from a real repository, captured by running these commands in `/tmp/demo-repo` — not
-written to look like it was. Two things are elided and marked `…`: absolute paths, and the
-resolved catalog commit `add` prints, which changes with every commit to this repo.
-Everything else is exactly what the tool wrote.
+The whole install is three commands, in a repo of your own:
 
-```console
-$ chock init .
-Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
-Installed pre-push dispatcher to …/.git/hooks/pre-push
-No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~267 tokens (chars/4, max 2000)
-Implementation registered at …/.git/hooks/pre-commit.d/99-chock-validate
-[PASS] All checks passed.
-Initialized Chock in /tmp/demo-repo
-Agents: AGENTS.md + claude, copilot, gemini
-Skills: eval, optimize, policy-init, validate (refresh with `chock install-skills .`)
-Policies: none. This repo enforces nothing yet.
-  1. copy a policy folder from https://github.com/open-coder-ai/chock-catalog (base/<id>/) into .agents/policies/<id>/
-  2. chock sync --repo .
-Verify anytime with:  chock check --only verify
+```bash
+pip install chock
 
-$ chock add scan-secrets
-Added scan-secrets to .agents/policies/scan-secrets
-  from https://github.com/open-coder-ai/chock-catalog at …
-  sha256 bc9379cc268a62ead90356de6a560d76136c8b5403ae5767d7e6815792a9b4a8
-  (unpinned: this was the default branch. Pin with --ref, or --verify-sha bc9379cc…)
-INDEX.md: ~329 tokens (chars/4, max 2000)
-Compiled. Run `chock sync .` to activate commit-time enforcement.
-
-$ chock add protect-main-branch
-Added protect-main-branch to .agents/policies/protect-main-branch
-  from https://github.com/open-coder-ai/chock-catalog at …
-  sha256 89f29f76bdca8d652f8cb6ef53b6aa7b8e98189399c5218ff19e7ee00e7bb28f
-  (unpinned: this was the default branch. Pin with --ref, or --verify-sha 89f29f76…)
-INDEX.md: ~366 tokens (chars/4, max 2000)
-Compiled. Run `chock sync .` to activate commit-time enforcement.
-
-$ chock sync .
-Relocated existing pre-commit to pre-commit.d/00-preexisting
-Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-Registered 2 pre-commit policy implementation(s)
-Relocated existing pre-push to pre-push.d/00-preexisting
-Installed pre-push dispatcher to …/.git/hooks/pre-push
-Registered 1 pre-push policy implementation(s)
+git init -q demo && cd demo
+chock init .
+chock add scan-secrets
+chock sync --repo .
 ```
 
-Those `sha256` lines are the point of `add` printing them: pass one back as `--verify-sha`
-and the next install refuses anything that does not hash to it.
-
-Now try to commit a secret, on a feature branch:
+The next commit containing a credential exits non-zero instead of landing:
 
 ```console
-$ git commit -m "add config"
-Potential secret detected in staged changes. Remove credentials and rotate any exposed keys. Add '# pragma: allowlist secret' on the same line only for documented test fixtures.
+$ echo 'AWS_KEY=AKIAIOSFODNN7EXAMPLE' > config.py && git add config.py && git commit -m "add config"
+Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
   - config.py: content pattern
 # exit 1
 ```
 
-Remove the key, change nothing else:
+---
+
+## It actually blocks the commit
+
+This is the session the GIF above records — real output from a real repository, not written
+to look like it was. The full seven-step transcript, including the passing commit once the
+key is removed, is in [docs/demo-session.md](docs/demo-session.md); here is the shape of it.
+
+Onboard a repo and adopt scan-secrets and protect-main-branch, on a feature branch:
 
 ```console
-$ git commit -m "read key from env"
-[PASS] All checks passed.
-[feat/config b41f46e] read key from env
- 1 file changed, 2 insertions(+)
- create mode 100644 config.py
-# exit 0
+$ chock init .
+Initialized Chock in …
+Policies: none. This repo enforces nothing yet.
+
+$ chock add scan-secrets
+Added scan-secrets to .agents/policies/scan-secrets
+  from https://github.com/open-coder-ai/chock-catalog at …
+Compiled. Run `chock sync --repo .` to activate commit-time enforcement.
+
+$ chock add protect-main-branch
+Added protect-main-branch to .agents/policies/protect-main-branch
+  from https://github.com/open-coder-ai/chock-catalog at …
+Compiled. Run `chock sync --repo .` to activate commit-time enforcement.
+
+$ chock sync --repo .
+Recompiled 2 policies
+
+$ echo 'AWS_KEY=AKIAIOSFODNN7EXAMPLE' > config.py && git add config.py && git commit -m "add config"
+Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
+  - config.py: content pattern
+# exit 1
 ```
 
-And on `main`:
+Remove the key and the same commit passes. Then, on `main`:
 
 ```console
-$ git checkout main && git commit -m notes
+$ git commit --allow-empty -m notes
 Direct commits/pushes to a protected branch (main|master) are blocked. Create a feature branch and open a pull request.
   - main
 # exit 1
 ```
 
 The protected branches in that message are not hard-coded — they are the ones the gate is
-actually enforcing. Set `chock.defaults.protected_branches` to
-`[main, master, release/*]` and the same commit on `release/1.0` reports
-`(main|master|release/*)`. A block message that names a different set from the gate is how
-an adopter learns to distrust the tool.
-
-Note the third block. The gate is not "block everything scary" — it passed the moment the
-secret was gone. A guard that cannot be satisfied gets disabled within a week.
+actually enforcing, read from `chock.defaults.protected_branches`. A block message that names
+a different set from the gate is how an adopter learns to distrust the tool.
 
 <img alt="Four commands take a repository from no enforcement to a blocked commit" src="docs/assets/adoption.svg">
-
----
-
-## Why this instead of a prompt
-
-You have already told your agent not to commit secrets. It agreed. Then the session got
-long, the instruction moved to the middle of the context window, and it did it anyway.
-
-Gates run in **git**, so they hold no matter which agent — or which human — is at the
-keyboard. And where a policy cannot reach an agent, `coverage.json` says `unsupported`
-rather than quietly omitting the row — an understated number is the same failure as an
-overstated one.
 
 ---
 
 ## How it works
 
 One folder per policy. `manifest.yaml` declares identity and either a gate or rule text;
-`chock sync` turns that into artifacts for whichever agents you use.
+`chock sync` compiles that into git hooks, native pre-tool hooks, or ambient rule text,
+whichever surfaces the agent you use actually supports:
 
 <img alt="A policy folder compiles into git-hook, native pre-execution hook and ambient-rule surfaces, which reach different enforcement levels" src="docs/assets/how-it-works.svg">
 
 The same policy reaches different levels on different agents, and `coverage.json` records
-every pair.
+every pair — `unsupported` where a surface can't carry it, rather than a silently missing row.
 
----
+Gates run in **git** itself, so they hold no matter which agent, or human, is at the
+keyboard — the whole argument for a hook over a prompt an agent can forget once the
+instruction scrolls out of context. Thirteen adapters (`claude`, `copilot`, `cursor`,
+`gemini`, `codex`, `aider`, `windsurf`, `devin`, `grok`, `kimi-code`, `replit`, `tabnine`,
+`vscode`) are generated from one `AGENTS.md`, because the rules live in one place and the
+adapters exist only to match filenames each agent looks for.
 
-## Works with the agent you already use
-
-Thirteen adapters, generated from one `AGENTS.md`. The rules live in one place; the adapters
-exist because agents look for different filenames.
-
-`claude` · `copilot` · `cursor` · `gemini` · `codex` · `aider` · `windsurf` · `devin` ·
-`grok` · `kimi-code` · `replit` · `tabnine` · `vscode`
-
-```bash
-chock init . --agent-agnostic   # generate all of them
-chock init . --agents cursor    # or just yours
-```
-
----
-
-## The content is yours
-
-```bash
-cp -r base/scan-secrets  <your-repo>/.agents/policies/scan-secrets
-cd <your-repo> && chock sync --repo .
-```
-
-Copying the folder produces **byte-identical** compiled output to `chock add` — there
-is no registration step and nothing `add` does that a copy misses. Then edit it. `recompile`
-reads your copy as the source, so a changed regex reaches the compiled gate and changes what
-gets blocked.
-
-Nothing upstream overwrites your version. That is the entire reason these live outside the
-framework: a bundled policy is one the framework owns and replaces on upgrade, which makes
-customisation impossible.
-
-Add your own token formats. Loosen a threshold. Delete the rules you disagree with.
+Every policy folder is yours: `cp -r base/scan-secrets <your-repo>/.agents/policies/` plus
+`chock sync --repo .` produces output byte-identical to `chock add`, and nothing upstream
+ever overwrites your copy. The full argument for gates over prompts, the complete adapter
+list, and what editing your copy looks like are in
+[docs/how-it-works.md](docs/how-it-works.md).
 
 ---
 
 ## This repo runs what it publishes
 
-The catalog is a Chock adopter. `.agents/policies/` holds every `base/` policy — the
-catalog protects itself the same way it asks any open-source repo to — and the first
-commit after adoption was rejected by `protect-main-branch`. One is installed but
-disabled with its reasons written in `.chock/config.yaml`: `verify-dependency-exists`
-watches dependency manifests this repo does not have.
+The catalog is a Chock adopter: `.agents/policies/` holds every `base/` policy, so it
+protects itself the same way it asks any open-source repo to, and the first commit after
+adoption was rejected by `protect-main-branch`. That is not a flourish — a worked example
+that is a repository cannot drift from the instructions the way a README snippet does, and
+running it has already found four framework bugs no test caught. CI still keeps two things
+apart: **what this repo runs** (the `base/` tier only — the compliance and agentic-security
+packs stay uninstalled because, by their own doctrine, they only earn their place where they
+apply) and **what this repo ships** (every published policy, staged into a throwaway repo the
+way an adopter installs them). A catalog should publish more than it is bound by — the
+full three-paragraph version, including which policy is installed-but-disabled here and
+why, and the specific framework bugs this adoption already caught, is in
+[docs/how-it-works.md](docs/how-it-works.md).
 
-That is not a flourish. A worked example that is a repository cannot drift from the
-instructions the way a README snippet does — and running it has already found four framework
-bugs that no test caught, including a freshness check whose verdict depended on the caller's
-working directory and an `add` that could not see this catalog's newest tree.
+## Every policy is an Agent Plugin
 
-CI keeps two things apart on purpose: **what this repo runs** (the `base/` tier — the
-compliance and agentic-security packs stay uninstalled because, by their own doctrine,
-they only earn their place where they apply, and this repo ships no agentic system and
-falls under no covered regulation) and **what this repo ships** (every published policy,
-staged into a throwaway repo the way an adopter installs them). A catalog should still
-publish more than it is bound by, and [the reasoning is written down](docs/).
-
-## OWASP Agentic Security coverage — scored by the tool, not the README
-
-The [`agentic-security/`](agentic-security/) tree covers **every control in the OWASP Top 10
-for Agentic Applications** (ASI01–ASI10): **10/10 controls covered · 0 fully covered.**
-
-That number is not written here by hand. CI re-derives it on every build: the staged adopter
-repo installs every published policy and runs the same command you can —
-
-```bash
-chock init . && chock add owasp-asi01-agent-goal-hijack   # ... through asi10
-chock compliance report --framework owasp_asi
-```
-
-The same report also speaks `mitre_atlas`, `nist_ai_rmf` and `eu_ai_act` — policies here
-claim technique- and article-level controls, and every claim is `partial` with a note
-saying exactly what the mechanism reaches.
-
-— and the build fails if any control reads `uncovered`. Every row reads `partial`, because
-most of the pack is advisory (rules and skills the agent reads) rather than deterministic
-gates, and this tool refuses to label advisory coverage as more than it is. 3 hard guards
-(`block-unsafe-code-execution`, `block-wildcard-iam`, `block-unpinned-agent-components`)
-upgrade specific attack classes to commit-time enforcement. `full` means runtime enforcement,
-and rows will only say it when that mechanism exists — the report prints every gap precisely
-so nobody has to take our word for anything.
-
----
-
-## Every policy here is an Agent Plugin
-
-[Agent Plugins 1.0.0](https://agent-plugins.org) is the packaging standard published in August 2026
-by OpenAI, Microsoft, Amazon, Cursor and Vercel, with Google as a core maintainer. Each
-`base/<id>/` folder is a conformant plugin directory — `plugin.json` at its root, the policy's rule
-text at `skills/<id>/SKILL.md` — so any client implementing the spec can read these policies
-without Chock installed at all.
-
-**That is a portability claim, not an enforcement one.** The standard covers skills and MCP
-servers; it defines no enforcement mechanism, and hooks are explicitly deferred until their formats
-converge. A policy read as a plugin is `advisory` — the same tier as the 22 advisory rows above
-— and every generated `SKILL.md` says so in its own body. The `enforced-at-commit` policies
-get their teeth from `chock sync`, not from the package. Enforcement *does* travel in the
-four hook-carrying vendor formats (`chock plugin build --format claude|copilot|cursor|codex`),
-published in the per-vendor repos:
-[claude](https://github.com/open-coder-ai/chock-claude-plugins),
-[copilot](https://github.com/open-coder-ai/chock-copilot-plugins),
-[cursor](https://github.com/open-coder-ai/chock-cursor-plugins),
-[codex](https://github.com/open-coder-ai/chock-codex-plugins) — each witnessed denying
-a destructive command on a real install.
-
-Both files are generated from `manifest.yaml`, which stays the source of truth, and CI fails if
-they drift from it.
-
----
-
-## Contributing
-
-Good first contributions, roughly in order of usefulness:
-
-1. **Turn an advisory policy into an enforced one.** 21 policies are text today. Any one
-   of them that can be expressed as a `content_regex`, `forbidden_ref` or
-   `dependency_allowlist` gate is a strict upgrade — and the eval suite already describes the
-   behaviour you would need to satisfy.
-2. **Add token formats to `scan-secrets`.** Every vendor has a prefix. Generic scanners miss
-   the internal ones.
-3. **Extend `block-destructive-commands`** with the commands your stack actually has —
-   `helm uninstall`, `aws s3 rm --recursive`, `dropdb`.
-4. **Write a policy for your domain.** `chock init` installs a `policy-init` skill;
-   ask your agent to run it and it scaffolds a conformant folder.
-
-Two rules, both mechanical:
-
-- **A policy claims only what it can do.** If it does not exit non-zero, it is advisory, and
-  the tooling will label it that way whatever the manifest says.
-- **Evals are the argument.** A gate whose declared behaviour does not match its suite fails
-  CI, and derived cases alone are not enough — attestation needs at least one authored case
-  that could have failed.
-
-```bash
-git clone https://github.com/open-coder-ai/chock-catalog
-cd chock-catalog
-chock check          # conformance
-chock check --only evals       # replay every gate
-```
-
-Issues and PRs welcome, including "this policy is wrong". Especially that one — an
-overstated policy is worse here than a missing one. Full guide in
-[CONTRIBUTING.md](CONTRIBUTING.md).
-
-The [threat ledger](https://github.com/open-coder-ai/chock-threat-intel/blob/main/reference/agentic-threat-ledger.md) in chock-threat-intel is the open work list for new
-gates: each `policy wanted` entry names a published threat nothing here covers yet and links
-the issue to claim. Questions go to [Discussions](https://github.com/open-coder-ai/chock-catalog/discussions).
+Every `base/<id>/` folder is also a conformant [Agent Plugins 1.0.0](https://agent-plugins.org)
+package — `plugin.json` plus `skills/<id>/SKILL.md`, both generated from `manifest.yaml` — so
+any client implementing the spec can read these policies with no Chock installed at all. That
+is a portability claim, not an enforcement one: the standard defines no hook mechanism, so a
+policy read as a plugin is `advisory` regardless of its tier here, and real enforcement still
+comes from `chock sync` or from the per-vendor plugin builds, each witnessed denying a
+destructive command on a real install —
+[claude](https://github.com/open-coder-ai/chock-claude-plugins) ·
+[copilot](https://github.com/open-coder-ai/chock-copilot-plugins) ·
+[cursor](https://github.com/open-coder-ai/chock-cursor-plugins) ·
+[codex](https://github.com/open-coder-ai/chock-codex-plugins).
 
 ---
 
 ## Installing this is running code
 
-A policy here is not inert data. Its `implementations/*.sh` becomes a git hook that runs on
+A policy here is not inert data: its `implementations/*.sh` becomes a git hook that runs on
 every commit and a guard consulted before your agent executes a command, so `chock add`
-installs executable content over `git clone`. There is no signing key. Pin and verify when the
-catalog is not one you control:
+installs executable content over `git clone`. There is no signing key — pin and verify when
+the catalog is not one you control:
 
 ```bash
 chock add scan-secrets --ref v1.0.0 --verify-sha <sha256>
 ```
 
-Two more limits worth knowing before you rely on any of this: `git commit --no-verify` skips
-every git hook, and git hooks are not cloned — a fresh clone enforces nothing until someone
-runs `chock sync`. [SECURITY.md](SECURITY.md) has the rest.
+Two limits worth knowing before you rely on any of this: `git commit --no-verify` skips every
+git hook, and git hooks are not cloned — a fresh clone enforces nothing until someone runs
+`chock sync`. [SECURITY.md](SECURITY.md) has the rest.
 
 ---
 
-## Related
+## Contributing
 
-Everything under [open-coder-ai](https://github.com/open-coder-ai) is built on one rule: a claim must match a
-mechanism. chock ships mechanism only and bundles no policies, which is why this repository
-exists. The whole family:
+Issues and PRs welcome, including "this policy is wrong" — an overstated policy is worse
+here than a missing one. Every claim here is checked by CI rather than a reviewer's memory: a
+policy claims only what it can do, and its evals are the argument for what its gate actually
+blocks. Start with [a good first
+issue](https://github.com/open-coder-ai/chock-catalog/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22),
+or read the full guide — transcripts, DCO, review criteria — in
+[CONTRIBUTING.md](CONTRIBUTING.md) and run the same loop CI does:
 
-| Repository | What it is |
-| :--- | :--- |
-| [chock](https://github.com/open-coder-ai/chock) | The framework: write a policy once, enforce it on git hooks, CI, and every agent |
-| [agentseam](https://github.com/open-coder-ai/agentseam) | The primitives layer under chock: one handler API over every agent's hooks, with a capability matrix that carries its provenance |
-| [context-report](https://github.com/open-coder-ai/context-report) | A signed report format for whether a plugin, hook, skill or `AGENTS.md` actually works |
-| [chock-threat-intel](https://github.com/open-coder-ai/chock-threat-intel) | A weekly, human-reviewed threat digest scored against the catalog |
-| [chock-claude-plugins](https://github.com/open-coder-ai/chock-claude-plugins) · [copilot](https://github.com/open-coder-ai/chock-copilot-plugins) · [cursor](https://github.com/open-coder-ai/chock-cursor-plugins) · [codex](https://github.com/open-coder-ai/chock-codex-plugins) | The catalog compiled into each client's native plugin format; generated only, rebuilt and diffed in CI |
-| [chock-quickstart](https://github.com/open-coder-ai/chock-quickstart) · [chock-example](https://github.com/open-coder-ai/chock-example) | Template repositories: exactly what `chock init` leaves behind, and a working adoption with one policy per layer |
+```bash
+chock check && chock check --only evals
+```
+
+Looking for something specific to work on, or a place to ask a question first? The threat
+ledger and Discussions link are in [CONTRIBUTING.md](CONTRIBUTING.md#good-first-contributions).
+
+---
+
+## Part of open-coder-ai
+
+| | |
+|---|---|
+| [agentseam](https://github.com/open-coder-ai/agentseam) | the primitives — one handler API and a verified capability matrix across 16 agents |
+| [chock](https://github.com/open-coder-ai/chock) | the compiler — one policy into git hooks, CI gates and native pre-tool hooks |
+| [chock-catalog](https://github.com/open-coder-ai/chock-catalog) | the policies — 39, each labelled enforced or advisory, with replayed evals |
+| [context-report](https://github.com/open-coder-ai/context-report) | the evidence — a signed report of whether an agent artifact actually works |
+| [chock-threat-intel](https://github.com/open-coder-ai/chock-threat-intel) | the threat ledger the catalog's policies answer to |
+| chock-{claude,cursor,copilot,codex}-plugins | the catalog, packaged for each agent's plugin format (generated) |
+| chock-quickstart · chock-example | template repos: what `chock init` leaves behind, and a full adoption |
 
 Apache-2.0 — see [LICENSE](LICENSE). Contributor Covenant
 [Code of Conduct](CODE_OF_CONDUCT.md).
