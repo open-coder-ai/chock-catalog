@@ -51,6 +51,14 @@ are advisory, and that is the number most catalogs would round up:
 
 <img alt="39 policies: 9 enforced-at-commit, 8 in-agent, 22 advisory" src="docs/assets/coverage-matrix.svg">
 
+The same distribution, in the shared open-coder-ai figure language and readable in either
+theme:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-dark.svg">
+  <img alt="Of 39 chock-catalog policies, 9 are enforced at commit and 8 more are enforced in-agent, for 17 enforced overall -- 22, more than half, are advisory only, read by the agent but backed by no mechanism." src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-light.svg" width="760">
+</picture>
+
 Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay.
 
 **Enforced at commit** — declarative gates, verified by replaying their own gate against a
@@ -331,6 +339,11 @@ ledger and Discussions link are in [CONTRIBUTING.md](CONTRIBUTING.md#good-first-
 ---
 
 ## Part of open-coder-ai
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/family-dark.svg">
+  <img alt="A layered diagram. agentseam is the foundation across the bottom; chock sits on it; chock-catalog feeds chock and generates the four plugin repositories; chock-threat-intel feeds the catalog; context-report runs as a verification arm beside all of them." src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/family-light.svg" width="800">
+</picture>
 
 | | |
 |---|---|
