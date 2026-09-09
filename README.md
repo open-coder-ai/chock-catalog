@@ -25,7 +25,7 @@
 <a href="https://github.com/open-coder-ai/chock">the framework →</a>
 </p>
 
-<img src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/demo.gif" width="760" alt="Terminal session: chock add scan-secrets and protect-main-branch are installed, a commit containing an AWS key is blocked, the same commit passes once the key is read from the environment instead, and a commit straight to main is blocked next.">
+<img src="docs/assets/demo.gif" width="760" alt="Terminal session: chock add scan-secrets and protect-main-branch are installed, a commit containing an AWS key is blocked, the same commit passes once the key is read from the environment instead, and a commit straight to main is blocked next.">
 
 </div>
 
