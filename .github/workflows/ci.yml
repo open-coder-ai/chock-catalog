@@ -73,6 +73,26 @@ jobs:
       - name: Check the social preview matches the repository
         run: cd docs/assets && python gen_brand_assets.py --check
 
+  figures:
+    # docs/figures/ carries the open-coder-ai family's shared, theme-aware figure set
+    # (see docs/figures/palette.py): the enforcement-coverage bar, the cross-repo family
+    # diagram, and the social card, each generated from real repository data rather than
+    # typed in. Generators here are stdlib-only plus `palette` on purpose -- this job
+    # installs nothing beyond Python itself -- so a generator that grew a PyPI dependency
+    # would fail here before it failed anywhere else.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+      - name: Regenerate figures
+        run: cd docs/figures && for g in make_*.py; do python "$g"; done
+      - name: Fail on drift
+        run: git diff --exit-code -- docs/figures
+
   policies:
     runs-on: ubuntu-latest
     steps:
