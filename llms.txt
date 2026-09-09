@@ -1,0 +1,51 @@
+# chock-catalog
+
+> The policy catalog for Chock — policies you can adopt, each labelled by what it actually
+> enforces, with replayed evals as the evidence rather than a claim in an appendix.
+
+39 policies, one folder per id under `base/` (plus `compliance/` and `agentic-security/` packs
+that only earn their place where they apply). Every policy states its enforcement tier —
+`enforced-at-commit`, `in-agent`, or `advisory` — and the tier is checked by CI against what the
+mechanism actually does, not asserted in prose. The catalog is itself a Chock adopter: it runs
+its own `base/` policies against itself in `.agents/policies/`.
+
+## Docs
+
+- [README](https://github.com/open-coder-ai/chock-catalog/blob/main/README.md): the full
+  policy list by tier, the quick start, and the case for gates over prompts.
+- [CONTRIBUTING](https://github.com/open-coder-ai/chock-catalog/blob/main/CONTRIBUTING.md):
+  the contribution ladder, DCO sign-off, the local check loop, and review criteria.
+- [SECURITY](https://github.com/open-coder-ai/chock-catalog/blob/main/SECURITY.md): a policy
+  here is executable content — `implementations/*.sh` runs as a git hook in every adopter's
+  repo — so this is the threat model and how to report a vulnerability privately.
+- [docs/how-it-works.md](https://github.com/open-coder-ai/chock-catalog/blob/main/docs/how-it-works.md):
+  the uncondensed argument for gates over prompts, what `chock sync` compiles a manifest into,
+  and what editing your own copy of a policy looks like.
+- [docs/coverage.md](https://github.com/open-coder-ai/chock-catalog/blob/main/docs/coverage.md):
+  how the OWASP ASI 10/10 coverage claim is re-derived on every build, and what `partial` versus
+  `full` means.
+- [docs/demo-session.md](https://github.com/open-coder-ai/chock-catalog/blob/main/docs/demo-session.md):
+  the untrimmed transcript of a real blocked-then-passing commit, captured by actually running
+  the commands rather than written to look like it was.
+- [docs/review-criteria/effects-honesty.md](https://github.com/open-coder-ai/chock-catalog/blob/main/docs/review-criteria/effects-honesty.md):
+  the first review criterion — a policy's declared `effects` must match what its mechanism
+  actually does when run — and what `check_effects.py` checks mechanically versus what is left
+  to a human reviewer.
+- [AGENTS.md](https://github.com/open-coder-ai/chock-catalog/blob/main/AGENTS.md): the
+  machine-readable rules this repo enforces on itself, compiled from the same `base/` policies
+  it publishes.
+
+## Policy layout
+
+- [base/](https://github.com/open-coder-ai/chock-catalog/tree/main/base): one folder per
+  policy — `manifest.yaml` (the claim: identity, enforcement tier, gate or rule text),
+  `evals/suite.yaml` (the evidence: cases that decide whether the claim holds), and
+  `implementations/*.sh` where the tier is enforced rather than advisory.
+- [registry.yaml](https://github.com/open-coder-ai/chock-catalog/blob/main/registry.yaml):
+  the machine-readable index every `chock add` resolves against — id, path, version,
+  enforcement, and mechanism for every published policy.
+
+## Optional
+
+- [CODE_OF_CONDUCT](https://github.com/open-coder-ai/chock-catalog/blob/main/CODE_OF_CONDUCT.md):
+  Contributor Covenant 2.1.

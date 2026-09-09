@@ -30,7 +30,13 @@ policy without its transcript fails with exactly this command.
 
 ## Good first contributions
 
-Roughly in order of usefulness:
+Seeded, open, and the fastest way to a first merged PR: [issues labelled `good first
+issue`](https://github.com/open-coder-ai/chock-catalog/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+They're scoped to one policy or one check each — an eval case to add, a token format
+`scan-secrets` is missing, a doc a generator has drifted from. Three merged PRs of any size
+earns triage rights; see [The ladder](#the-ladder) below.
+
+Or, without waiting for an issue to be filed, roughly in order of usefulness:
 
 1. **Turn an advisory policy into an enforced one.** Any of the twenty that can be expressed
    as a `content_regex`, `forbidden_ref` or `dependency_allowlist` gate is a strict upgrade —
@@ -48,6 +54,33 @@ Roughly in order of usefulness:
 The [threat ledger](https://github.com/open-coder-ai/chock-threat-intel/blob/main/reference/agentic-threat-ledger.md) in chock-threat-intel is the open work list for new
 gates: each `policy wanted` entry names a published threat nothing here covers yet and links
 the issue to claim. Questions go to [Discussions](https://github.com/open-coder-ai/chock-catalog/discussions).
+
+## The ladder
+
+Contributions here get larger in one direction, and you can stop at any rung:
+
+1. **An evidence report** — run a probe, paste what actually happened. No code, and it is the
+   most useful thing a newcomer can do, because a claim nobody re-ran is just a claim. Here
+   that means replaying a policy's `evals/suite.yaml` against the real guard and pasting the
+   real output — the **Evidence report** issue template asks for exactly that.
+2. **An eval case** — a input that should be caught, or should not be, with the expected
+   verdict. This is how a guard stops regressing.
+3. **A policy** — a rule plus the mechanism that enforces it, honestly labelled as enforced or
+   advisory.
+4. **An adapter** — support for one more agent, matched to what that agent's hooks can really
+   do (see [agentseam](https://github.com/open-coder-ai/agentseam), which this catalog compiles
+   through).
+5. **Review** — reading someone else's evidence and saying whether it holds.
+
+**Becoming a maintainer:** three merged pull requests earns triage rights — labelling, closing
+duplicates, and asking for the evidence a report is missing. Nobody is asked to commit to more
+than they want to.
+
+This project runs its own chock policies plus DCO sign-off on every pull request, and that
+pair — not a human gatekeeper — is the filter for low-effort machine-generated contributions.
+`protect-main-branch`, `scan-secrets`, and the rest run against every PR the same way they run
+against every commit to this repo; a PR that cannot say what it checked, human- or
+agent-authored, will not pass either the gates or `chock check --only evals`.
 
 ## Local loop
 
