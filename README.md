@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what they actually enforce. The mark is a stack of policy cards, the top one carrying the node that marks an enforcing policy." width="110">
+<img src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/logo.svg" alt="chock-catalog: the policy catalog for chock -- policies you can adopt, graded by what they actually enforce. The mark is a stack of policy cards, the top one carrying the node that marks an enforcing policy." width="110">
 
 <h1>chock-catalog</h1>
 
@@ -49,7 +49,7 @@ are advisory, and that is the number most catalogs would round up:
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 8 |
 | `advisory` | text an agent reads and may or may not follow | 22 |
 
-<img alt="39 policies: 9 enforced-at-commit, 8 in-agent, 22 advisory" src="docs/assets/coverage-matrix.svg">
+<img alt="39 policies: 9 enforced-at-commit, 8 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
 The same distribution, in the shared open-coder-ai figure language and readable in either
 theme:
@@ -241,7 +241,7 @@ The protected branches in that message are not hard-coded — they are the ones 
 actually enforcing, read from `chock.defaults.protected_branches`. A block message that names
 a different set from the gate is how an adopter learns to distrust the tool.
 
-<img alt="Four commands take a repository from no enforcement to a blocked commit" src="docs/assets/adoption.svg">
+<img alt="Four commands take a repository from no enforcement to a blocked commit" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/adoption.svg">
 
 ---
 
@@ -251,7 +251,7 @@ One folder per policy. `manifest.yaml` declares identity and either a gate or ru
 `chock sync` compiles that into git hooks, native pre-tool hooks, or ambient rule text,
 whichever surfaces the agent you use actually supports:
 
-<img alt="A policy folder compiles into git-hook, native pre-execution hook and ambient-rule surfaces, which reach different enforcement levels" src="docs/assets/how-it-works.svg">
+<img alt="A policy folder compiles into git-hook, native pre-execution hook and ambient-rule surfaces, which reach different enforcement levels" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/how-it-works.svg">
 
 The same policy reaches different levels on different agents, and `coverage.json` records
 every pair — `unsupported` where a surface can't carry it, rather than a silently missing row.

@@ -15,20 +15,29 @@ def render():
     enforced = counts[0][0] + counts[1][0]
 
     svg = p.open_svg(
-        W, H, t,
+        W,
+        H,
+        t,
         "chock-catalog",
         f"chock-catalog: the policy catalog for chock. {enforced} of {total} policies are "
         "enforced, not just advised.",
     )
     svg += p.text(96, 280, "chock-catalog", t["text"], 76, p.MONO, "700")
     svg += p.text(
-        96, 336, "policies for coding agents, labelled by what actually enforces them",
-        t["secondary"], 26,
+        96,
+        336,
+        "policies for coding agents, labelled by what actually enforces them",
+        t["secondary"],
+        26,
     )
     svg += p.box(96, 392, 4, 92, t["enforcement"][2], rx=0)
     svg += p.text(
-        128, 436, f"{enforced} of {total} policies enforced",
-        t["text"], 40, weight="700",
+        128,
+        436,
+        f"{enforced} of {total} policies enforced",
+        t["text"],
+        40,
+        weight="700",
     )
     svg += p.text(128, 470, "not just advised", t["secondary"], 22)
     return svg + p.close_svg()

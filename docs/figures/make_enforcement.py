@@ -29,7 +29,9 @@ TIERS = (
 def read_counts():
     """(count, label, colour_index) per tier, strongest first, from registry.yaml itself."""
     text = REGISTRY.read_text(encoding="utf-8")
-    entries = re.findall(r"^- id: \S+.*?(?=\n- id: |\Z)", text, re.MULTILINE | re.DOTALL)
+    entries = re.findall(
+        r"^- id: \S+.*?(?=\n- id: |\Z)", text, re.MULTILINE | re.DOTALL
+    )
     if not entries:
         raise SystemExit(f"no policies found in {REGISTRY}")
     counts = {label: 0 for label, _, _ in TIERS}
@@ -51,7 +53,9 @@ def render(t, name):
 
     enforced_at_commit, in_agent, advisory = (n for n, _, _ in counts)
     svg = p.open_svg(
-        W, H, t,
+        W,
+        H,
+        t,
         "Chock-catalog enforcement coverage",
         f"Of {total} chock-catalog policies, {enforced_at_commit} are enforced at commit and "
         f"{in_agent} more are enforced in-agent, for {enforced_at_commit + in_agent} enforced "
@@ -60,13 +64,19 @@ def render(t, name):
     )
 
     svg += p.text(
-        BAR_X, 40, f"{total} policies, by what actually enforces them",
-        t["text"], 18, weight="600",
+        BAR_X,
+        40,
+        f"{total} policies, by what actually enforces them",
+        t["text"],
+        18,
+        weight="600",
     )
     svg += p.text(
-        BAR_X, 64,
+        BAR_X,
+        64,
         "strongest → weakest, left to right — colour is never the only signal",
-        t["secondary"], 12,
+        t["secondary"],
+        12,
     )
 
     x = BAR_X
@@ -80,25 +90,39 @@ def render(t, name):
         # colour instead. Colour never carries the count or the tier name alone.
         on_fill = t["text"] if colour_idx == 0 else t["surface"]
         cx = x + (seg_w - p.GAP) / 2
-        svg += p.text(cx, BAR_Y + 30, str(count), on_fill, 26, weight="700", anchor="middle")
-        for i, line in enumerate(p.wrap(label.upper(), max(6, int((seg_w - 16) / 6.6)))):
+        svg += p.text(
+            cx, BAR_Y + 30, str(count), on_fill, 26, weight="700", anchor="middle"
+        )
+        for i, line in enumerate(
+            p.wrap(label.upper(), max(6, int((seg_w - 16) / 6.6)))
+        ):
             svg += p.text(
-                cx, BAR_Y + 48 + i * 13, line, on_fill, 11, weight="600", anchor="middle",
+                cx,
+                BAR_Y + 48 + i * 13,
+                line,
+                on_fill,
+                11,
+                weight="600",
+                anchor="middle",
             )
         x += seg_w
 
     legend_y = BAR_Y + BAR_H + 34
     svg += p.text(
-        BAR_X, legend_y,
+        BAR_X,
+        legend_y,
         f"{enforced_at_commit + in_agent} enforced ({enforced_at_commit} at commit + "
         f"{in_agent} in-agent) — {advisory} advisory, the largest slice",
-        t["secondary"], 13,
+        t["secondary"],
+        13,
     )
     svg += p.text(
-        BAR_X, legend_y + 22,
+        BAR_X,
+        legend_y + 22,
         "counts read from registry.yaml at generation time; the CI job below fails if this "
         "ever drifts from it",
-        t["secondary"], 11,
+        t["secondary"],
+        11,
     )
 
     return svg + p.close_svg()

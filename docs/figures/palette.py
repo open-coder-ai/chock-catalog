@@ -1,4 +1,11 @@
-"""The one visual language every open-coder-ai figure is drawn in."""
+"""The one visual language every open-coder-ai figure is drawn in.
+
+Four repositories carry this file byte-identically while configuring `ruff format` at
+three different line lengths (88, 100 and 120), so no formatted output could satisfy all
+of them. Every statement here therefore fits on a single line under 88 characters and
+nothing is split across lines: a formatter at any width finds nothing to join or wrap.
+Keep it that way when editing.
+"""
 
 # Enforcement is ordinal: advisory < in-agent < enforced. Never reorder these.
 ENFORCEMENT = {
@@ -29,6 +36,8 @@ MONO = "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"
 
 THEMES = ("light", "dark")
 
+_XML = (("&", "&amp;"), ("<", "&lt;"), (">", "&gt;"), ('"', "&quot;"))
+
 
 def theme(name):
     """Every colour of one theme, resolved."""
@@ -44,24 +53,21 @@ def theme(name):
 
 def esc(s):
     """XML-escape a label."""
-    return (
-        str(s)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
+    out = str(s)
+    for old, new in _XML:
+        out = out.replace(old, new)
+    return out
 
 
 def open_svg(width, height, t, title, desc):
     """An accessible root element: the title and description are the alt text."""
-    return (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
-        'viewBox="0 0 %d %d" role="img" aria-labelledby="t d">\n'
-        "  <title id=\"t\">%s</title>\n  <desc id=\"d\">%s</desc>\n"
-        '  <rect width="%d" height="%d" fill="%s"/>\n'
-        % (width, height, width, height, esc(title), esc(desc), width, height, t["surface"])
-    )
+    ns = 'xmlns="http://www.w3.org/2000/svg"'
+    size = f'width="{width:d}" height="{height:d}"'
+    view = f'viewBox="0 0 {width:d} {height:d}"'
+    root = f'<svg {ns} {size} {view} role="img" aria-labelledby="t d">\n'
+    alt = f'  <title id="t">{esc(title)}</title>\n'
+    alt += f'  <desc id="d">{esc(desc)}</desc>\n'
+    return root + alt + f'  <rect {size} fill="{t["surface"]}"/>\n'
 
 
 def close_svg():
@@ -69,41 +75,41 @@ def close_svg():
 
 
 def box(x, y, w, h, fill, stroke=None, rx=CORNER):
-    stroke_attr = ' stroke="%s" stroke-width="%d"' % (stroke, STROKE_WIDTH) if stroke else ""
-    return '  <rect x="%g" y="%g" width="%g" height="%g" rx="%d" fill="%s"%s/>\n' % (
-        x, y, w, h, rx, fill, stroke_attr,
-    )
+    """A rounded rectangle, filled and optionally outlined."""
+    edge = f' stroke="{stroke}" stroke-width="{STROKE_WIDTH:d}"' if stroke else ""
+    geom = f'x="{x:g}" y="{y:g}" width="{w:g}" height="{h:g}"'
+    return f'  <rect {geom} rx="{rx:d}" fill="{fill}"{edge}/>\n'
 
 
 def text(x, y, s, fill, size=13, family=SANS, weight="400", anchor="start"):
-    return (
-        '  <text x="%g" y="%g" font-family="%s" font-size="%g" font-weight="%s" '
-        'fill="%s" text-anchor="%s">%s</text>\n'
-        % (x, y, family, size, weight, fill, anchor, esc(s))
-    )
+    """One line of type, anchored at (x, y)."""
+    font = f'font-family="{family}" font-size="{size:g}" font-weight="{weight}"'
+    place = f'x="{x:g}" y="{y:g}"'
+    paint = f'fill="{fill}" text-anchor="{anchor}"'
+    return f"  <text {place} {font} {paint}>{esc(s)}</text>\n"
 
 
 def arrow(x1, y1, x2, y2, colour, head=6):
-    """A straight connector with a solid head, drawn in one path."""
-    out = '  <line x1="%g" y1="%g" x2="%g" y2="%g" stroke="%s" stroke-width="%d" stroke-linecap="round"/>\n' % (
-        x1, y1, x2, y2, colour, STROKE_WIDTH,
-    )
-    if y2 > y1 and x1 == x2:  # down
-        pts = "%g,%g %g,%g %g,%g" % (x2, y2, x2 - head, y2 - head, x2 + head, y2 - head)
-    elif y2 < y1 and x1 == x2:  # up
-        pts = "%g,%g %g,%g %g,%g" % (x2, y2, x2 - head, y2 + head, x2 + head, y2 + head)
-    elif x2 > x1:  # right
-        pts = "%g,%g %g,%g %g,%g" % (x2, y2, x2 - head, y2 - head, x2 - head, y2 + head)
-    else:  # left
-        pts = "%g,%g %g,%g %g,%g" % (x2, y2, x2 + head, y2 - head, x2 + head, y2 + head)
-    return out + '  <polygon points="%s" fill="%s"/>\n' % (pts, colour)
+    """A straight connector with a solid head, drawn direction-aware."""
+    ends = f'x1="{x1:g}" y1="{y1:g}" x2="{x2:g}" y2="{y2:g}"'
+    paint = f'stroke="{colour}" stroke-width="{STROKE_WIDTH:d}"'
+    line = f'  <line {ends} {paint} stroke-linecap="round"/>\n'
+    if x1 == x2:  # vertical: the head's base sits back along the travel
+        base = y2 - head if y2 > y1 else y2 + head
+        wings = ((x2 - head, base), (x2 + head, base))
+    else:
+        base = x2 - head if x2 > x1 else x2 + head
+        wings = ((base, y2 - head), (base, y2 + head))
+    corners = ((x2, y2), *wings)
+    pts = " ".join(f"{px:g},{py:g}" for px, py in corners)
+    return line + f'  <polygon points="{pts}" fill="{colour}"/>\n'
 
 
 def write_pair(stem, render):
-    """`render(theme_colours, theme_name) -> svg string`, written once per theme."""
+    """`render(theme_colours, theme_name) -> svg string`, once per theme."""
     written = []
     for name in THEMES:
-        path = "%s-%s.svg" % (stem, name)
+        path = f"{stem}-{name}.svg"
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(render(theme(name), name))
         written.append(path)
@@ -111,7 +117,7 @@ def write_pair(stem, render):
 
 
 def wrap(s, width):
-    """Greedy wrap to `width` characters, so a label fits its box without a font metric."""
+    """Greedy wrap to `width` characters, so a label fits without a font metric."""
     words, lines, line = s.split(), [], ""
     for w in words:
         candidate = (line + " " + w).strip()
