@@ -1,0 +1,105 @@
+# Renders docs/assets/demo.tape -> demo.gif with VHS.
+#
+# Two triggers, kept in one job each: workflow_dispatch is authoring-only -- render,
+# upload the `demo-gif` artifact, review it by hand, commit alongside the README change
+# that uses it. `contents: read` there; nothing is pushed. A push touching the tape on
+# any branch other than `main` renders too, but commits the regenerated GIF straight
+# back to that branch -- `main` is protected with no bypass, so a workflow push to it
+# would fail anyway, and a feature branch is exactly where a tape edit should carry its
+# own GIF into the pull request that reviews it. `contents: write` is scoped to that job
+# alone. Linux rendering is canonical -- the tape is authored against a Unix shell, and
+# VHS is at its flakiest on Windows.
+name: Render demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+    paths: ["docs/assets/demo.tape"]
+
+permissions:
+  contents: read
+
+jobs:
+  vhs-dispatch:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      # The tape drives the real CLI. This catalog is not the engine -- read the pin from
+      # the .framework-ref data file (see ci.yml's header) and install that checkout,
+      # the same way every other job in this repo validates against the engine.
+      - name: Read the framework pin
+        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: Install chock
+        run: pip install ./.framework
+
+      - name: Render tape
+        uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2
+        with:
+          path: docs/assets/demo.tape
+
+      - name: Upload GIF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: demo-gif
+          path: docs/assets/demo.gif
+          if-no-files-found: error
+
+  vhs-commit:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      - name: Read the framework pin
+        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: Install chock
+        run: pip install ./.framework
+
+      - name: Render tape
+        uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2
+        with:
+          path: docs/assets/demo.tape
+
+      # Full commit SHA for v7.2.0, resolved from the tag (this org's pin-github-actions
+      # policy blocks a floating ref): stefanzweifel/git-auto-commit-action@v7.2.0 ==
+      # 4a55954c782fc1ea30b9056cd3e7a2b40ca8887d.
+      - name: Commit regenerated GIF
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d  # v7.2.0
+        with:
+          commit_message: "docs: regenerate demo.gif"
+          file_pattern: docs/assets/demo.gif
