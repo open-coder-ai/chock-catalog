@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import yaml
+from mechanism import CEILING, classify
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,27 +33,15 @@ def main() -> int:
         return 1
     print(f"registry lists all {len(on_disk)} entries")
 
-    ceiling = {
-        "gate": "enforced-at-commit",
-        "guard": "best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)",
-        "none": "advisory",
-    }
     wrong = []
     for p in reg["policies"]:
         d = ROOT / p["path"]
         m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
-        gate = (m.get("hook") or {}).get("gate") or {}
-        impl = d / "implementations"
-        if gate.get("kind"):
-            kind, detail = "gate", gate["kind"]
-        elif impl.is_dir() and any(impl.glob("*.sh")):
-            kind, detail = "guard", "guard script"
-        else:
-            kind, detail = "none", "rule text only"
-        if p.get("mechanism") != detail or p.get("enforces") != ceiling[kind]:
+        kind, detail = classify(d, m)
+        if p.get("mechanism") != detail or p.get("enforces") != CEILING[kind]:
             wrong.append(
                 f"{p['id']}: labelled {p.get('mechanism')!r}/{p.get('enforces')!r}, "
-                f"is {detail!r}/{ceiling[kind]!r}"
+                f"is {detail!r}/{CEILING[kind]!r}"
             )
     if wrong:
         print("registry labels do not match the policies:")

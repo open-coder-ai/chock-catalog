@@ -41,17 +41,17 @@ Verify anytime with:  chock check --only verify
 
 ```text
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
+Registered 1 pre-commit policy implementation(s)
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
-No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
+Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 INDEX.md: ~354 tokens (chars/4, max 2000)
 Recompiled 1 policies
 no-a11y-regression:
-  claude: advisory
-  copilot: advisory
-  gemini: advisory
+  claude: enforced-at-commit
+  copilot: enforced-at-commit
+  gemini: enforced-at-commit
 ```
 
 ## `$ chock install-hooks .`
@@ -59,9 +59,9 @@ no-a11y-regression:
 ```text
 Implementation registered at …/.git/hooks/pre-commit.d/99-chock-validate
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
+Registered 1 pre-commit policy implementation(s)
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
-No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
+Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```
@@ -83,6 +83,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 
 ```text
 .chock/compiled/no-a11y-regression/ambient-rule/ambient.md
+.chock/compiled/no-a11y-regression/git-hook/git-pre-commit.sh
 .chock/compiled/no-a11y-regression/managed-setting/managed-settings.json
 ```
 

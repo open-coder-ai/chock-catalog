@@ -1,0 +1,365 @@
+{
+  "version": "0.2.0",
+  "scope": "Only what is decidable from an element and its own attributes: no browser, no CSS, no layout, no judgement. This bound is what makes the table finite and is the reason it can live in a pre-commit hook.",
+  "out_of_scope": [
+    "colour contrast -- needs computed style",
+    "focus order and keyboard operability -- needs a rendered page and interaction",
+    "whether a name is accurate -- needs a person",
+    "reading order, reflow, target size -- need layout",
+    "captions and audio description content -- need the media"
+  ],
+  "specs": {
+    "html-aam": "https://www.w3.org/TR/html-aam-1.0/ -- element to accessible-name computation",
+    "aria-1.2": "https://www.w3.org/TR/wai-aria-1.2/ -- roles, required and supported states",
+    "accname": "https://www.w3.org/TR/accname-1.2/ -- accessible name computation order",
+    "aria-in-html": "https://www.w3.org/TR/html-aria/ -- which roles an element may carry"
+  },
+  "requirements": {
+    "html": {
+      "needs": "lang",
+      "from": [
+        "lang",
+        "xml:lang"
+      ],
+      "wcag": "3.1.1",
+      "spec": "html-aam#html-element"
+    },
+    "img": {
+      "needs": "name",
+      "from": [
+        "alt",
+        "aria-label",
+        "aria-labelledby",
+        "title"
+      ],
+      "wcag": "1.1.1",
+      "spec": "html-aam#img-element"
+    },
+    "area": {
+      "needs": "name",
+      "from": [
+        "alt",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "1.1.1",
+      "spec": "html-aam#area-element"
+    },
+    "input": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "label-for",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#input-text",
+      "by_type": {
+        "hidden": {
+          "needs": "none"
+        },
+        "image": {
+          "from": [
+            "alt",
+            "aria-label",
+            "aria-labelledby",
+            "title"
+          ]
+        },
+        "submit": {
+          "from": [
+            "value",
+            "aria-label",
+            "aria-labelledby",
+            "title",
+            "implicit-default"
+          ]
+        },
+        "reset": {
+          "from": [
+            "value",
+            "aria-label",
+            "aria-labelledby",
+            "title",
+            "implicit-default"
+          ]
+        },
+        "button": {
+          "from": [
+            "value",
+            "aria-label",
+            "aria-labelledby",
+            "title"
+          ]
+        }
+      }
+    },
+    "select": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "label-for",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#select-element"
+    },
+    "textarea": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "label-for",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#textarea-element"
+    },
+    "button": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "text",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#button-element"
+    },
+    "a": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "text",
+        "title"
+      ],
+      "wcag": "2.4.4",
+      "spec": "html-aam#a-element",
+      "only_when": {
+        "attr": "href"
+      }
+    },
+    "iframe": {
+      "needs": "name",
+      "from": [
+        "title",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#iframe-element"
+    },
+    "object": {
+      "needs": "name",
+      "from": [
+        "title",
+        "aria-label",
+        "aria-labelledby",
+        "text"
+      ],
+      "wcag": "1.1.1",
+      "spec": "html-aam#object-element"
+    },
+    "embed": {
+      "needs": "name",
+      "from": [
+        "title",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "1.1.1",
+      "spec": "html-aam#embed-element"
+    },
+    "fieldset": {
+      "needs": "name",
+      "from": [
+        "legend-text",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "1.3.1",
+      "spec": "html-aam#fieldset-element"
+    },
+    "table": {
+      "needs": "name",
+      "from": [
+        "caption-text",
+        "aria-label",
+        "aria-labelledby",
+        "summary"
+      ],
+      "wcag": "1.3.1",
+      "spec": "html-aam#table-element"
+    },
+    "svg": {
+      "needs": "name",
+      "from": [
+        "title-child",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "1.1.1",
+      "spec": "html-aam#svg-element",
+      "only_when": {
+        "attr": "role",
+        "equals": "img"
+      }
+    },
+    "video": {
+      "needs": "name",
+      "from": [
+        "title",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#video-element"
+    },
+    "audio": {
+      "needs": "name",
+      "from": [
+        "title",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#audio-element"
+    },
+    "summary": {
+      "needs": "name",
+      "from": [
+        "text",
+        "aria-label",
+        "aria-labelledby",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#summary-element"
+    },
+    "th": {
+      "needs": "name",
+      "from": [
+        "text",
+        "aria-label",
+        "aria-labelledby",
+        "abbr"
+      ],
+      "wcag": "1.3.1",
+      "spec": "html-aam#th-element"
+    },
+    "optgroup": {
+      "needs": "name",
+      "from": [
+        "label",
+        "aria-label",
+        "aria-labelledby"
+      ],
+      "wcag": "1.3.1",
+      "spec": "html-aam#optgroup-element"
+    },
+    "dialog": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#dialog-element"
+    },
+    "form": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "title",
+        "name"
+      ],
+      "wcag": "1.3.1",
+      "spec": "html-aam#form-element",
+      "optional": true
+    },
+    "meter": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "label-for",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#meter-element"
+    },
+    "progress": {
+      "needs": "name",
+      "from": [
+        "aria-label",
+        "aria-labelledby",
+        "label-for",
+        "title"
+      ],
+      "wcag": "4.1.2",
+      "spec": "html-aam#progress-element"
+    }
+  },
+  "void_elements": [
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "link",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr"
+  ],
+  "void_note": "HTML elements that never have content. Written without a closing tag they look like an open element to a tokenizer, and everything after them would read as their children.",
+  "suppressible": [
+    "img",
+    "area",
+    "table",
+    "iframe",
+    "video",
+    "audio",
+    "svg",
+    "object",
+    "embed"
+  ],
+  "suppressing": {
+    "aria-hidden": "true",
+    "role": [
+      "presentation",
+      "none"
+    ],
+    "empty_alt": [
+      "img",
+      "area"
+    ]
+  },
+  "markup_suffixes": [
+    ".html",
+    ".htm",
+    ".xhtml",
+    ".vue",
+    ".svelte",
+    ".jsx",
+    ".tsx",
+    ".astro",
+    ".php",
+    ".erb",
+    ".hbs",
+    ".ejs",
+    ".leaf",
+    ".mustache",
+    ".pug"
+  ],
+  "suffix_note": "Which staged files the guard reads. A template language is listed because its markup is still HTML elements with HTML attributes; what the parser cannot resolve -- an interpolated attribute value -- reads the same in both revisions and so never moves a state."
+}

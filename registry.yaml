@@ -240,12 +240,12 @@ policies:
     persisting file contents, git history, or task intermediates as memo'
 - id: no-a11y-regression
   path: base/no-a11y-regression
-  version: 0.0.2
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
-  mechanism: rule text only
-  enforces: advisory
+  mechanism: commit-time guard script
+  enforces: enforced-at-commit
   eval_cases: 13
   eval_executed: 0
   description: 'trigger: remediating accessibility, editing markup, emptying or removing an
