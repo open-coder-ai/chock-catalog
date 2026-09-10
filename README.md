@@ -8,8 +8,8 @@
 
 <p>
 <img alt="39 policies" src="https://img.shields.io/badge/policies-40-blue">
-<img alt="17 enforced" src="https://img.shields.io/badge/enforced-17-brightgreen">
-<img alt="22 advisory" src="https://img.shields.io/badge/advisory-23-orange">
+<img alt="18 enforced" src="https://img.shields.io/badge/enforced-18-brightgreen">
+<img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -45,11 +45,11 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 9 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 10 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 8 |
-| `advisory` | text an agent reads and may or may not follow | 23 |
+| `advisory` | text an agent reads and may or may not follow | 22 |
 
-<img alt="39 policies: 9 enforced-at-commit, 8 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
+<img alt="40 policies: 10 enforced-at-commit, 8 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
 The same distribution, in the shared open-coder-ai figure language and readable in either
 theme:
@@ -75,6 +75,7 @@ throwaway repo on every push.
 | [`block-wildcard-iam`](docs/block-wildcard-iam/) | wildcard Action or Resource in an IAM policy document, `AdministratorAccess` attachment, GCP `roles/owner` or `roles/editor`, and Terraform wildcard action or resource lists -- the mechanizable slice of ASI03 | 6/6 |
 | [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | agent components pulled at an unpinned version -- `npx`/`uvx`/`bunx` launches at `@latest` (the standard MCP server idiom), quoted `"@latest"` in agent config, and `:latest` image tags -- the mechanizable slice of ASI04 | 6/6 |
 | [`block-unsafe-code-execution`](docs/block-unsafe-code-execution/) | bare `eval`/`exec`, shell-mode subprocess calls, `os.system`, `pickle`/`marshal` loads, `yaml.load` without `SafeLoader`, `execSync` and `new Function` -- a best-effort line scan over the mechanizable slice of ASI05 | 7/7 |
+| [`no-a11y-regression`](docs/no-a11y-regression/) | a change that destroys an accessibility assertion the previous revision carried -- a description replaced by `alt=""`, or a flagged element deleted rather than fixed; neither produces a violation, so both pass every violation report | 0/13 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command, natively wired in Claude Code, Cursor, Copilot CLI and VS Code (and, via the
@@ -101,8 +102,7 @@ codex plugin format, Codex after its per-hook trust review).
 [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
-[`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/) ·
-[`no-a11y-regression`](docs/no-a11y-regression/)
+[`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
 
 </details>
 

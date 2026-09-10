@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 
 import yaml
+from mechanism import SCRIPT_SUFFIXES, is_event_script
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "base"
@@ -60,19 +61,10 @@ def eval_commands(policy_dir: Path) -> list[str]:
     return [c["execute"]["command"] for c in cases if isinstance(c, dict) and (c.get("execute") or {}).get("command")]
 
 
-#: A script named for a git event is run by the installed hook at that event, with no argv.
-GIT_EVENTS = ("pre-commit", "pre-push")
-GUARD_SUFFIXES = (".sh", ".py")
-
-
 def guard_scripts(policy_dir: Path) -> list[Path]:
     """Every guard this policy ships, shell or Python. A .py one was invisible here before."""
-    return sorted(p for s in GUARD_SUFFIXES for p in policy_dir.glob(f"implementations/*{s}"))
-
-
-def is_event_script(guard: Path, policy_id: str) -> bool:
-    """True when the hook runs this script at a git event rather than on a tool call."""
-    return guard.stem in {f"{policy_id}-{event}" for event in GIT_EVENTS}
+    impl = policy_dir / "implementations"
+    return sorted(p for s in SCRIPT_SUFFIXES for p in impl.glob(f"*{s}")) if impl.is_dir() else []
 
 
 def init_repo(workspace: Path) -> None:

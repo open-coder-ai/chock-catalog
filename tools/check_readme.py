@@ -8,26 +8,30 @@ import sys
 from pathlib import Path
 
 import yaml
-
+from mechanism import CEILING, classify
 from trees import policy_dirs
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 
 
-def classify() -> tuple[dict[str, list[str]], dict[str, tuple[int, int]]]:
+#: The README's three buckets, keyed by the ceiling every classifier agrees on.
+_TIER_OF = {
+    "enforced-at-commit": "gate",
+    CEILING["guard"]: "guard",
+    "advisory": "text",
+}
+
+
+def classify_readme() -> tuple[dict[str, list[str]], dict[str, tuple[int, int]]]:
     kinds: dict[str, list[str]] = {"gate": [], "guard": [], "text": []}
     evals: dict[str, tuple[int, int]] = {}
     for d in policy_dirs():
         manifest = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
-        gate = (manifest.get("hook") or {}).get("gate") or {}
-        impl = d / "implementations"
-        if gate.get("kind"):
-            kinds["gate"].append(manifest["id"])
-        elif impl.is_dir() and any(impl.glob("*.sh")):
-            kinds["guard"].append(manifest["id"])
-        else:
-            kinds["text"].append(manifest["id"])
+        # Bucket by what the policy can promise, not by which mechanism promises it: a
+        # commit-time script and a declarative gate are both enforced at commit, and the
+        # README's tier headings name the ceiling, not the machinery.
+        kinds[_TIER_OF[CEILING[classify(d, manifest)[0]]]].append(manifest["id"])
 
         cases = []
         suite = d / "evals" / "suite.yaml"
@@ -144,7 +148,7 @@ def alt_text_problems(text: str) -> list[str]:
 def main() -> int:
     """Check every claim the README makes about this repository against the repository."""
     text = README.read_text(encoding="utf-8")
-    kinds, evals = classify()
+    kinds, evals = classify_readme()
     total = sum(len(v) for v in kinds.values())
     enforced = len(kinds["gate"]) + len(kinds["guard"])
     problems: list[str] = []
