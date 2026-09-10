@@ -452,3 +452,17 @@ verify-mcp-allowlist:
     the same `chock: approved-config-change` marker. Covers Claude Code's `.mcp.json` only --
     agentseam has no recorded MCP-config-path for the other agents it lists, and this policy
     does not guess at one.
+no-a11y-regression:
+  solves: >
+    An agent remediating accessibility can make it worse while the report says it improved.
+    Emptying an existing `alt` to `alt=""` produces no violation at all -- empty alt is the correct
+    marking for a decorative image, so every checker passes it -- and deleting a flagged element
+    scores as a resolved violation. Both transitions are invisible to any tool that diffs
+    violations rather than state, which is every tool in this space.
+  customise: >
+    The rule names the two transitions and the silence rule; it carries no element table, because
+    no conformance claim is made. Run a checker for detection, and keep the review of added names
+    in the pull request where a person already reads the diff. The mechanism that decides these
+    transitions deterministically is prototyped at open-coder-ai/org-plan,
+    `prototypes/a11y-guard` -- it is not wired as a guard here, because no adapter passes file
+    content to one.
