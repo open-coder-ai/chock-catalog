@@ -10,7 +10,7 @@
 | **Mechanism** | rule text |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
-| **Eval cases** | 12 total, 0 executable |
+| **Eval cases** | 13 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->

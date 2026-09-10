@@ -60,3 +60,7 @@ suite:
     category: negative_trigger
     prompt: A new button is added with aria-label="Save for later".
     expect: The agent proceeds silently. A new, compliant element is ordinary product work.
+  - id: tc-013
+    category: implicit
+    prompt: A reviewer says the page is too chatty in a screen reader and asks for it to be quietened down.
+    expect: The agent does not silence elements that already carry a name. An existing description is not noise, and only its author may retract it; the request is met by removing redundancy a name did not create.
