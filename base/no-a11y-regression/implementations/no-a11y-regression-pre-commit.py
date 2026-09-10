@@ -1,0 +1,290 @@
+#!/usr/bin/env python3
+"""Refuse a staged change that destroys an accessibility assertion an element already carried."""
+
+from __future__ import annotations
+
+import json
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from html.parser import HTMLParser
+from pathlib import Path
+
+_DATA = Path(__file__).resolve().parent / "data"
+# What each element must carry, and what may satisfy it. Adding a row adds a check, with no code.
+SPEC = json.loads((_DATA / "element_requirements.json").read_text(encoding="utf-8"))
+REQUIRED = SPEC["requirements"]
+MARKUP_SUFFIXES = tuple(SPEC["markup_suffixes"])
+# Names that are present but convey nothing, so their presence is not a fix.
+NOISE = json.loads((_DATA / "uninformative_names.json").read_text(encoding="utf-8"))
+
+# ── What an element asserts about its own meaning. Five values, nothing else. ─────────────────
+SATISFIED = "satisfied"  # a person supplied what this element requires
+SUPPRESSED = "suppressed"  # a person stated it means nothing: alt="", aria-hidden, role=presentation
+MISSING = "missing"  # the requirement is unmet -- this is the violating state
+EXEMPT = "exempt"  # no requirement applies to this element in this form
+GONE = "gone"  # not present in this revision
+
+# ── The only judgement in the program: authored once, reviewable as a diff. ───────────────────
+# This gate never asks a question. A patch that correctly fixes a hundred images must cost zero
+# interruptions, so a correct fix is silent and only a break refuses the commit.
+DENY, RECORD, SILENT = "deny", "record", "silent"
+
+TABLE: dict[tuple[str, str], tuple[str, str]] = {
+    (SATISFIED, SATISFIED): (SILENT, "the requirement is met in both revisions"),
+    (SATISFIED, SUPPRESSED): (DENY, "retracts a person's statement that this element carries meaning"),
+    (SATISFIED, MISSING): (DENY, "the requirement was met and is now broken"),
+    (SATISFIED, GONE): (SILENT, "the element was deleted -- ordinary product work"),
+    (SUPPRESSED, SATISFIED): (RECORD, "a decorative element gained meaning"),
+    (SUPPRESSED, SUPPRESSED): (SILENT, "unchanged"),
+    (SUPPRESSED, MISSING): (DENY, "an explicit decorative marking was destroyed, leaving a violation"),
+    (SUPPRESSED, GONE): (SILENT, "the element was deleted -- ordinary product work"),
+    (MISSING, SATISFIED): (RECORD, "fixed: the requirement is now met"),
+    (MISSING, SUPPRESSED): (RECORD, "declared decorative, which the reviewer sees in the diff"),
+    (MISSING, MISSING): (SILENT, "still unmet; the change never claimed to fix it"),
+    (MISSING, GONE): (DENY, "a violation removed by deleting the element rather than fixing it"),
+    (GONE, SATISFIED): (SILENT, "a new, compliant element -- ordinary product work"),
+    (GONE, SUPPRESSED): (SILENT, "a new decorative element -- ordinary product work"),
+    (GONE, MISSING): (DENY, "a new element that does not meet its requirement"),
+    (GONE, GONE): (SILENT, "unreachable"),
+}
+# An exempt element carries no requirement, so no transition into or out of it can break one.
+for _other in (SATISFIED, SUPPRESSED, MISSING, GONE, EXEMPT):
+    TABLE.setdefault((EXEMPT, _other), (SILENT, "no requirement applied before the change"))
+    TABLE.setdefault((_other, EXEMPT), (SILENT, "no requirement applies after the change"))
+
+_ID_ATTRS = ("data-testid", "id", "name", "src", "href")
+#: A `from` source that reads the element's own content rather than an attribute. "inner" is a
+#: name-bearing child (<legend>, <caption>, <title>); "text" is the whole subtree, which per
+#: accname includes those children too.
+_TEXT_SOURCES = {"text": "text", "legend-text": "inner", "caption-text": "inner", "title-child": "inner"}
+_NAME_BEARING_CHILDREN = ("legend", "caption", "title")
+
+
+@dataclass
+class Node:
+    """One element subject to a requirement, with the text and identity needed to match revisions."""
+
+    tag: str
+    attrs: dict[str, str]
+    ordinal: int
+    text: str = ""
+    inner: str = ""
+
+    @property
+    def ref(self) -> str:
+        for a in _ID_ATTRS:
+            if self.attrs.get(a):
+                return f"{self.tag}[{a}={self.attrs[a]}]"
+        return f"{self.tag}:{self.ordinal}"
+
+
+class Scanner(HTMLParser):
+    """Collect every element the spec has a requirement for, plus the labels that can satisfy one."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.nodes: list[Node] = []
+        self.labels: dict[str, str] = {}
+        self._counts: dict[str, int] = {}
+        self._stack: list[int] = []
+        self._label_for: str | None = None
+        self._inner_depth = 0
+
+    def _open(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool) -> None:
+        a = {k.lower(): (v or "") for k, v in attrs}
+        if tag == "label" and a.get("for"):
+            self._label_for = a["for"]
+            return
+        if tag in _NAME_BEARING_CHILDREN:
+            self._inner_depth += 1
+            return
+        if tag not in REQUIRED:
+            return
+        self._counts[tag] = self._counts.get(tag, 0) + 1
+        self.nodes.append(Node(tag=tag, attrs=a, ordinal=self._counts[tag]))
+        if not closed:
+            self._stack.append(len(self.nodes) - 1)
+
+    def handle_starttag(self, tag, attrs):
+        self._open(tag, attrs, closed=False)
+
+    def handle_startendtag(self, tag, attrs):
+        self._open(tag, attrs, closed=True)
+
+    def handle_endtag(self, tag):
+        if tag == "label":
+            self._label_for = None
+        elif tag in _NAME_BEARING_CHILDREN:
+            self._inner_depth = max(0, self._inner_depth - 1)
+        elif self._stack and self.nodes[self._stack[-1]].tag == tag:
+            self._stack.pop()
+
+    def handle_data(self, data):
+        text = data.strip()
+        if not text:
+            return
+        if self._label_for is not None:
+            self.labels[self._label_for] = f"{self.labels.get(self._label_for, '')} {text}".strip()
+            return
+        for i in self._stack:
+            if self._inner_depth:
+                self.nodes[i].inner = f"{self.nodes[i].inner} {text}".strip()
+            else:
+                self.nodes[i].text = f"{self.nodes[i].text} {text}".strip()
+
+
+# ── The state function. It consults the spec table; it decides nothing. ───────────────────────
+def _suppression(node: Node) -> str | None:
+    """Why this element was deliberately removed from assistive technology, if it was."""
+    s = SPEC["suppressing"]
+    if node.tag not in SPEC["suppressible"]:
+        return None
+    if node.attrs.get("aria-hidden") == s["aria-hidden"]:
+        return 'aria-hidden="true"'
+    if node.attrs.get("role") in s["role"]:
+        return f'role="{node.attrs["role"]}"'
+    if node.tag in s["empty_alt"] and node.attrs.get("alt") == "" and "alt" in node.attrs:
+        return 'alt=""'
+    return None
+
+
+def rule_for(node: Node) -> dict | None:
+    """The requirement that actually applies, after only_when and by_type. None means exempt."""
+    rule = REQUIRED[node.tag]
+    if rule.get("optional"):
+        return None
+    when = rule.get("only_when")
+    if when and (when["attr"] not in node.attrs or ("equals" in when and node.attrs[when["attr"]] != when["equals"])):
+        return None
+    override = rule.get("by_type", {}).get(node.attrs.get("type", "").lower())
+    if override is None:
+        return rule
+    if override.get("needs") == "none":
+        return None
+    return {**rule, **override}
+
+
+def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
+    """Return (state, evidence, resolved name), walking the accepted sources in the spec's order."""
+    rule = rule_for(node)
+    if rule is None:
+        return EXEMPT, f"<{node.tag}> carries no requirement in this form", ""
+    if (why := _suppression(node)) is not None:
+        return SUPPRESSED, why, ""
+    for src in rule["from"]:
+        if src in _TEXT_SOURCES:
+            val = node.text or node.inner if src == "text" else getattr(node, _TEXT_SOURCES[src])
+            if val:
+                return SATISFIED, f"{src} {val[:40]!r}", val
+        elif src == "label-for":
+            if node.attrs.get("id") and (lbl := labels.get(node.attrs["id"])):
+                return SATISFIED, f'<label for="{node.attrs["id"]}">{lbl}</label>', lbl
+        elif src == "implicit-default":
+            return SATISFIED, f"the platform default name for type={node.attrs.get('type')}", node.tag
+        elif node.attrs.get(src):
+            return SATISFIED, f'{src}="{node.attrs[src]}"', node.attrs[src]
+    return MISSING, f"needs {rule['needs']} from one of {rule['from']} (WCAG {rule['wcag']})", ""
+
+
+def scan(html: str) -> tuple[dict[str, tuple[str, str, str]], dict[str, Node]]:
+    """Parse one revision into {ref: (state, evidence, name)} and {ref: node}."""
+    s = Scanner()
+    s.feed(html)
+    return {n.ref: state_of(n, s.labels) for n in s.nodes}, {n.ref: n for n in s.nodes}
+
+
+def uninformative(name: str, src: str) -> str | None:
+    """Say why a supplied name conveys nothing, or None if it carries information."""
+    bare = re.sub(r"[^a-z0-9 ]+", " ", name.lower()).strip()
+    if len(bare) < NOISE["min_length"]:
+        return f"{name!r} is too short to describe anything"
+    if all(w in NOISE["words"] or w.isdigit() for w in bare.split()):
+        return f"{name!r} is placeholder wording, not a description"
+    if name.lower().rsplit(".", 1)[-1] in NOISE["file_extensions"]:
+        return f"{name!r} is a filename"
+    if src and bare.replace(" ", "") in re.sub(r"[/_\-.]", "", src.lower()):
+        return f"{name!r} merely repeats the file path"
+    return None
+
+
+# ── The decision: one table lookup per element, plus one promotion rule. ──────────────────────
+def evaluate(before_html: str, after_html: str) -> list[dict]:
+    """Compare two revisions; every row carries the lookup key that produced its action."""
+    b_states, _ = scan(before_html)
+    a_states, a_nodes = scan(after_html)
+    rows = []
+    for ref in sorted(b_states.keys() | a_states.keys()):
+        bs, bw, b_name = b_states.get(ref, (GONE, "not in this revision", ""))
+        as_, aw, a_name = a_states.get(ref, (GONE, "not in this revision", ""))
+        action, why = TABLE[(bs, as_)]
+        # Only judge a name this change actually supplied. Judging an untouched element is how a
+        # gate starts refusing commits over code nobody edited.
+        supplied = as_ == SATISFIED and a_name != b_name
+        if supplied and (bad := uninformative(a_name, a_nodes[ref].attrs.get("src", ""))) is not None:
+            action, why = DENY, f"the value supplied conveys nothing: {bad}"
+        rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
+    return rows
+
+
+# ── The commit-time front end. Both revisions come from git; nothing is passed in. ────────────
+def _git(*args: str) -> str:
+    """Read one repo fact. A path git cannot show is a path with no content, so the answer is empty."""
+    # Fixed argv, no shell: `args` is built from the spec's own suffix list and git's own output.
+    try:
+        proc = subprocess.run(
+            ["git", "-c", "core.quotePath=false", *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError, UnicodeError):
+        return ""
+    return proc.stdout or ""
+
+
+def staged_markup() -> list[str]:
+    """Staged paths this guard can read: markup, by the suffixes the spec enumerates."""
+    out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMRT")
+    return [p.strip() for p in out.splitlines() if p.strip().endswith(MARKUP_SUFFIXES)]
+
+
+def main() -> int:
+    """Refuse the commit when a staged file destroys an assertion it previously carried."""
+    alarms: list[tuple[str, dict]] = []
+    for path in staged_markup():
+        before, after = _git("show", f"HEAD:{path}"), _git("show", f":{path}")
+        try:
+            rows = evaluate(before, after)
+        except Exception as exc:  # noqa: BLE001 -- a parse failure is not evidence of a violation
+            print(f"no-a11y-regression: skipped {path}: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        alarms.extend((path, r) for r in rows if r["action"] == DENY)
+
+    if not alarms:
+        return 0
+
+    print(
+        f"BLOCKED: this change destroys an accessibility assertion in {len({p for p, _ in alarms})} file(s). "
+        "The previous revision carried it and this one does not, which no violation report will show you "
+        "-- a removed element and an emptied alt both score as fewer violations, not more.",
+        file=sys.stderr,
+    )
+    for path, row in alarms:
+        print(f"  {path}: {row['ref']}   {row['key'][0]} -> {row['key'][1]}", file=sys.stderr)
+        print(f"      {row['why']}", file=sys.stderr)
+        print(f"      was: {row['was']}", file=sys.stderr)
+        print(f"      now: {row['now']}", file=sys.stderr)
+    print(
+        "Restore what the element carried, or -- if it truly is decorative -- say so where a "
+        "reviewer sees it, in the diff.",
+        file=sys.stderr,
+    )
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

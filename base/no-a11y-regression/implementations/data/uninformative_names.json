@@ -1,0 +1,11 @@
+{
+  "note": "Names that are present but convey nothing. A screen reader announcing these is no better off than silence, so they are treated as violations rather than as fixes.",
+  "source": "eslint-plugin-jsx-a11y img-redundant-alt, and the WebAIM alt-text guidance on redundant and placeholder text.",
+  "words": [
+    "image", "images", "img", "photo", "photos", "photograph", "picture", "pic", "icon",
+    "graphic", "logo", "spacer", "blank", "placeholder", "thumbnail", "thumb", "banner",
+    "alt", "untitled", "screenshot", "figure", "chart", "graph", "diagram", "button", "link"
+  ],
+  "min_length": 3,
+  "file_extensions": ["png", "jpg", "jpeg", "gif", "svg", "webp", "avif", "bmp", "ico"]
+}
