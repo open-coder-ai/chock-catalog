@@ -15,6 +15,7 @@ _DATA = Path(__file__).resolve().parent / "data"
 # What each element must carry, and what may satisfy it. Adding a row adds a check, with no code.
 SPEC = json.loads((_DATA / "element_requirements.json").read_text(encoding="utf-8"))
 REQUIRED = SPEC["requirements"]
+VOID = frozenset(SPEC["void_elements"])
 MARKUP_SUFFIXES = tuple(SPEC["markup_suffixes"])
 # Names that are present but convey nothing, so their presence is not a fix.
 NOISE = json.loads((_DATA / "uninformative_names.json").read_text(encoding="utf-8"))
@@ -25,6 +26,7 @@ SUPPRESSED = "suppressed"  # a person stated it means nothing: alt="", aria-hidd
 MISSING = "missing"  # the requirement is unmet -- this is the violating state
 EXEMPT = "exempt"  # no requirement applies to this element in this form
 GONE = "gone"  # not present in this revision
+UNEVALUATED = "unevaluated"  # a component child or a prop spread hides the name from this parser
 
 # ── The only judgement in the program: authored once, reviewable as a diff. ───────────────────
 # This gate never asks a question. A patch that correctly fixes a hundred images must cost zero
@@ -49,10 +51,16 @@ TABLE: dict[tuple[str, str], tuple[str, str]] = {
     (GONE, MISSING): (DENY, "a new element that does not meet its requirement"),
     (GONE, GONE): (SILENT, "unreachable"),
 }
-# An exempt element carries no requirement, so no transition into or out of it can break one.
-for _other in (SATISFIED, SUPPRESSED, MISSING, GONE, EXEMPT):
-    TABLE.setdefault((EXEMPT, _other), (SILENT, "no requirement applied before the change"))
-    TABLE.setdefault((_other, EXEMPT), (SILENT, "no requirement applies after the change"))
+# An exempt element carries no requirement and an unevaluated one hides whether it meets its
+# own, so no transition into or out of either can be shown to break anything.
+_QUIET = {
+    EXEMPT: "no requirement applies to this element in this form",
+    UNEVALUATED: "the name is not decidable from this markup, so nothing here is evidence of a break",
+}
+for _state, _why in _QUIET.items():
+    for _other in (SATISFIED, SUPPRESSED, MISSING, GONE, EXEMPT, UNEVALUATED):
+        TABLE.setdefault((_state, _other), (SILENT, _why))
+        TABLE.setdefault((_other, _state), (SILENT, _why))
 
 _ID_ATTRS = ("data-testid", "id", "name", "src", "href")
 #: A `from` source that reads the element's own content rather than an attribute. "inner" is a
@@ -60,6 +68,10 @@ _ID_ATTRS = ("data-testid", "id", "name", "src", "href")
 #: accname includes those children too.
 _TEXT_SOURCES = {"text": "text", "legend-text": "inner", "caption-text": "inner", "title-child": "inner"}
 _NAME_BEARING_CHILDREN = ("legend", "caption", "title")
+#: A descendant carrying one of these names the element that contains it.
+_LENT_NAME_ATTRS = ("alt", "aria-label")
+#: JSX and template syntax this parser tokenizes but cannot evaluate.
+_EXPRESSION = "{"
 
 
 @dataclass
@@ -71,6 +83,8 @@ class Node:
     ordinal: int
     text: str = ""
     inner: str = ""
+    child_elements: int = 0  # a name may come from any of them, and a component hides it
+    spread: bool = False  # `{...props}`: the attributes are not knowable from the markup
 
     @property
     def ref(self) -> str:
@@ -94,6 +108,9 @@ class Scanner(HTMLParser):
 
     def _open(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool) -> None:
         a = {k.lower(): (v or "") for k, v in attrs}
+        for i in self._stack:
+            self.nodes[i].child_elements += 1
+        self._lend_name(a)
         if tag == "label" and a.get("for"):
             self._label_for = a["for"]
             return
@@ -103,9 +120,18 @@ class Scanner(HTMLParser):
         if tag not in REQUIRED:
             return
         self._counts[tag] = self._counts.get(tag, 0) + 1
-        self.nodes.append(Node(tag=tag, attrs=a, ordinal=self._counts[tag]))
-        if not closed:
+        spread = any(k.startswith(_EXPRESSION) for k in a)
+        self.nodes.append(Node(tag=tag, attrs=a, ordinal=self._counts[tag], spread=spread))
+        if not closed and tag not in VOID:
             self._stack.append(len(self.nodes) - 1)
+
+    def _lend_name(self, attrs: dict[str, str]) -> None:
+        """Give every enclosing element the name this one carries, as accname's 2F does."""
+        for attr in _LENT_NAME_ATTRS:
+            if value := attrs.get(attr, "").strip():
+                for i in self._stack:
+                    self.nodes[i].text = f"{self.nodes[i].text} {value}".strip()
+                return
 
     def handle_starttag(self, tag, attrs):
         self._open(tag, attrs, closed=False)
@@ -171,6 +197,8 @@ def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
     rule = rule_for(node)
     if rule is None:
         return EXEMPT, f"<{node.tag}> carries no requirement in this form", ""
+    if node.spread:
+        return UNEVALUATED, "the attributes come from a spread, so the name is not in the markup", ""
     if (why := _suppression(node)) is not None:
         return SUPPRESSED, why, ""
     for src in rule["from"]:
@@ -185,6 +213,8 @@ def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
             return SATISFIED, f"the platform default name for type={node.attrs.get('type')}", node.tag
         elif node.attrs.get(src):
             return SATISFIED, f'{src}="{node.attrs[src]}"', node.attrs[src]
+    if node.child_elements and "text" in rule["from"]:
+        return UNEVALUATED, f"<{node.tag}> is named by a child this parser cannot resolve", ""
     return MISSING, f"needs {rule['needs']} from one of {rule['from']} (WCAG {rule['wcag']})", ""
 
 
@@ -195,12 +225,15 @@ def scan(html: str) -> tuple[dict[str, tuple[str, str, str]], dict[str, Node]]:
     return {n.ref: state_of(n, s.labels) for n in s.nodes}, {n.ref: n for n in s.nodes}
 
 
-def uninformative(name: str, src: str) -> str | None:
+def uninformative(name: str, src: str, tag: str = "") -> str | None:
     """Say why a supplied name conveys nothing, or None if it carries information."""
+    if _EXPRESSION in name:
+        return None  # an expression, not a name: its spelling is a variable's, not a reader's
+    words = set(NOISE["words"]) | set((NOISE.get("by_tag") or {}).get(tag, []))
     bare = re.sub(r"[^a-z0-9 ]+", " ", name.lower()).strip()
     if len(bare) < NOISE["min_length"]:
         return f"{name!r} is too short to describe anything"
-    if all(w in NOISE["words"] or w.isdigit() for w in bare.split()):
+    if all(w in words or w.isdigit() for w in bare.split()):
         return f"{name!r} is placeholder wording, not a description"
     if name.lower().rsplit(".", 1)[-1] in NOISE["file_extensions"]:
         return f"{name!r} is a filename"
@@ -221,8 +254,10 @@ def evaluate(before_html: str, after_html: str) -> list[dict]:
         action, why = TABLE[(bs, as_)]
         # Only judge a name this change actually supplied. Judging an untouched element is how a
         # gate starts refusing commits over code nobody edited.
-        supplied = as_ == SATISFIED and a_name != b_name
-        if supplied and (bad := uninformative(a_name, a_nodes[ref].attrs.get("src", ""))) is not None:
+        supplied = as_ == SATISFIED and bs != SATISFIED and a_name != b_name
+        node = a_nodes.get(ref)
+        src, tag = (node.attrs.get("src", ""), node.tag) if node else ("", "")
+        if supplied and (bad := uninformative(a_name, src, tag)) is not None:
             action, why = DENY, f"the value supplied conveys nothing: {bad}"
         rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
     return rows
