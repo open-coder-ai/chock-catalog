@@ -8,6 +8,24 @@
     "reading order, reflow, target size -- need layout",
     "captions and audio description content -- need the media"
   ],
+  "markup_suffixes": [
+    ".html",
+    ".htm",
+    ".xhtml",
+    ".vue",
+    ".svelte",
+    ".jsx",
+    ".tsx",
+    ".astro",
+    ".php",
+    ".erb",
+    ".hbs",
+    ".ejs",
+    ".leaf",
+    ".mustache",
+    ".pug"
+  ],
+  "suffix_note": "Which staged files the guard reads. A template language is listed because its markup is still HTML elements with HTML attributes; what the parser cannot resolve -- an interpolated attribute value -- reads the same in both revisions and so never moves a state.",
   "specs": {
     "html-aam": "https://www.w3.org/TR/html-aam-1.0/ -- element to accessible-name computation",
     "aria-1.2": "https://www.w3.org/TR/wai-aria-1.2/ -- roles, required and supported states",
@@ -322,6 +340,19 @@
     "wbr"
   ],
   "void_note": "HTML elements that never have content. Written without a closing tag they look like an open element to a tokenizer, and everything after them would read as their children.",
+  "component_name_props": [
+    "alt",
+    "aria-label",
+    "aria-labelledby",
+    "title",
+    "label",
+    "caption",
+    "arialabel",
+    "accessibilitylabel",
+    "a11ylabel"
+  ],
+  "component_note": "Props that carry a human-readable name on a component this table has no requirements for. A component is never REQUIRED to have one -- whether <Thumbnail> needs a name is not decidable from markup -- so absence is silent and only removal is refused. That asymmetry is why no per-framework component registry is needed. Attribute names arrive lowercased from the parser, so ariaLabel and accessibilityLabel appear folded.",
+  "component_identity_note": "A component is compared across revisions only when it carries one of the identity attributes. Without a stable identity the two revisions cannot be matched, and ordinal position is not identity -- inserting one component would shift every later one onto a different element's state.",
   "suppressible": [
     "img",
     "area",
@@ -343,23 +374,5 @@
       "img",
       "area"
     ]
-  },
-  "markup_suffixes": [
-    ".html",
-    ".htm",
-    ".xhtml",
-    ".vue",
-    ".svelte",
-    ".jsx",
-    ".tsx",
-    ".astro",
-    ".php",
-    ".erb",
-    ".hbs",
-    ".ejs",
-    ".leaf",
-    ".mustache",
-    ".pug"
-  ],
-  "suffix_note": "Which staged files the guard reads. A template language is listed because its markup is still HTML elements with HTML attributes; what the parser cannot resolve -- an interpolated attribute value -- reads the same in both revisions and so never moves a state."
+  }
 }

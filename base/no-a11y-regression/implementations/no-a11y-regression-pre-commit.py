@@ -16,6 +16,8 @@ _DATA = Path(__file__).resolve().parent / "data"
 SPEC = json.loads((_DATA / "element_requirements.json").read_text(encoding="utf-8"))
 REQUIRED = SPEC["requirements"]
 VOID = frozenset(SPEC["void_elements"])
+# Props that carry a name on an element this table has no requirements for.
+COMPONENT_NAME_PROPS = tuple(SPEC["component_name_props"])
 MARKUP_SUFFIXES = tuple(SPEC["markup_suffixes"])
 # Names that are present but convey nothing, so their presence is not a fix.
 NOISE = json.loads((_DATA / "uninformative_names.json").read_text(encoding="utf-8"))
@@ -27,6 +29,7 @@ MISSING = "missing"  # the requirement is unmet -- this is the violating state
 EXEMPT = "exempt"  # no requirement applies to this element in this form
 GONE = "gone"  # not present in this revision
 UNEVALUATED = "unevaluated"  # a component child or a prop spread hides the name from this parser
+NAMELESS = "nameless"  # a component carrying no name prop: we cannot know whether it needs one
 
 # ── The only judgement in the program: authored once, reviewable as a diff. ───────────────────
 # This gate never asks a question. A patch that correctly fixes a hundred images must cost zero
@@ -50,15 +53,20 @@ TABLE: dict[tuple[str, str], tuple[str, str]] = {
     (GONE, SUPPRESSED): (SILENT, "a new decorative element -- ordinary product work"),
     (GONE, MISSING): (DENY, "a new element that does not meet its requirement"),
     (GONE, GONE): (SILENT, "unreachable"),
+    # A component is never required to have a name, so only losing one is a break.
+    (SATISFIED, NAMELESS): (DENY, "a name this element carried is gone from its markup"),
+    (SUPPRESSED, NAMELESS): (DENY, "an explicit decorative marking was destroyed"),
 }
 # An exempt element carries no requirement and an unevaluated one hides whether it meets its
 # own, so no transition into or out of either can be shown to break anything.
 _QUIET = {
     EXEMPT: "no requirement applies to this element in this form",
     UNEVALUATED: "the name is not decidable from this markup, so nothing here is evidence of a break",
+    NAMELESS: "absence of a name proves nothing about a component; only its removal does",
 }
+_STATES = (SATISFIED, SUPPRESSED, MISSING, GONE, EXEMPT, UNEVALUATED, NAMELESS)
 for _state, _why in _QUIET.items():
-    for _other in (SATISFIED, SUPPRESSED, MISSING, GONE, EXEMPT, UNEVALUATED):
+    for _other in _STATES:
         TABLE.setdefault((_state, _other), (SILENT, _why))
         TABLE.setdefault((_other, _state), (SILENT, _why))
 
@@ -72,6 +80,19 @@ _NAME_BEARING_CHILDREN = ("legend", "caption", "title")
 _LENT_NAME_ATTRS = ("alt", "aria-label")
 #: JSX and template syntax this parser tokenizes but cannot evaluate.
 _EXPRESSION = "{"
+#: A source tag name that is capitalised, dotted or hyphenated is not an HTML element:
+#: React requires the capital, a namespaced component carries the dot, and the HTML spec
+#: requires a hyphen in every custom element name and forbids one in its own.
+_SOURCE_TAG_RE = re.compile(r"<\s*([^\s/>]+)")
+
+
+def is_component(raw: str | None) -> bool:
+    """True when the source names a component or custom element, not an HTML element."""
+    match = _SOURCE_TAG_RE.match(raw or "")
+    if match is None:
+        return False
+    source = match.group(1)
+    return source[0].isupper() or "." in source or "-" in source
 
 
 @dataclass
@@ -85,6 +106,7 @@ class Node:
     inner: str = ""
     child_elements: int = 0  # a name may come from any of them, and a component hides it
     spread: bool = False  # `{...props}`: the attributes are not knowable from the markup
+    component: bool = False  # this table has no requirements for it; only a lost name counts
 
     @property
     def ref(self) -> str:
@@ -106,7 +128,9 @@ class Scanner(HTMLParser):
         self._label_for: str | None = None
         self._inner_depth = 0
 
-    def _open(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool) -> None:
+    def _open(
+        self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None
+    ) -> None:
         a = {k.lower(): (v or "") for k, v in attrs}
         for i in self._stack:
             self.nodes[i].child_elements += 1
@@ -117,11 +141,19 @@ class Scanner(HTMLParser):
         if tag in _NAME_BEARING_CHILDREN:
             self._inner_depth += 1
             return
-        if tag not in REQUIRED:
+        component = is_component(raw)
+        # A component is compared only when the markup gives it a stable identity. Ordinal
+        # position is not identity: inserting one would shift every later component onto a
+        # different element's state, and invent a lost name out of the reordering.
+        if component and not any(a.get(attr) for attr in _ID_ATTRS):
+            return
+        if not component and tag not in REQUIRED:
             return
         self._counts[tag] = self._counts.get(tag, 0) + 1
         spread = any(k.startswith(_EXPRESSION) for k in a)
-        self.nodes.append(Node(tag=tag, attrs=a, ordinal=self._counts[tag], spread=spread))
+        self.nodes.append(
+            Node(tag=tag, attrs=a, ordinal=self._counts[tag], spread=spread, component=component)
+        )
         if not closed and tag not in VOID:
             self._stack.append(len(self.nodes) - 1)
 
@@ -134,10 +166,10 @@ class Scanner(HTMLParser):
                 return
 
     def handle_starttag(self, tag, attrs):
-        self._open(tag, attrs, closed=False)
+        self._open(tag, attrs, closed=False, raw=self.get_starttag_text())
 
     def handle_startendtag(self, tag, attrs):
-        self._open(tag, attrs, closed=True)
+        self._open(tag, attrs, closed=True, raw=self.get_starttag_text())
 
     def handle_endtag(self, tag):
         if tag == "label":
@@ -192,8 +224,26 @@ def rule_for(node: Node) -> dict | None:
     return {**rule, **override}
 
 
+def component_state(node: Node) -> tuple[str, str, str]:
+    """A component's state. It is never MISSING: this table has no requirement to miss."""
+    if node.spread:
+        return UNEVALUATED, "the attributes come from a spread, so the name is not in the markup", ""
+    if (why := _suppression(node)) is not None:
+        return SUPPRESSED, why, ""
+    for prop in COMPONENT_NAME_PROPS:
+        if value := node.attrs.get(prop, ""):
+            return SATISFIED, f'{prop}="{value}"', value
+        if prop in node.attrs:
+            return SUPPRESSED, f'{prop}="" asserts this carries no name', ""
+    if node.child_elements:
+        return UNEVALUATED, f"<{node.tag}> may be named by a child this parser cannot resolve", ""
+    return NAMELESS, f"<{node.tag}> carries no name prop, and may not need one", ""
+
+
 def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
     """Return (state, evidence, resolved name), walking the accepted sources in the spec's order."""
+    if node.component:
+        return component_state(node)
     rule = rule_for(node)
     if rule is None:
         return EXEMPT, f"<{node.tag}> carries no requirement in this form", ""
