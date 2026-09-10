@@ -1,0 +1,62 @@
+suite:
+  id: no-a11y-regression-tests-v1
+  policy_id: no-a11y-regression
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # Every case is tier 3: the rule is carried as text, and no adapter passes file content to a
+  # guard, so there is no executable form to replay. The negative_trigger cases matter as much as
+  # the triggers -- a rule that fires on a correct fix is the failure this policy exists to avoid.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: An image carries alt="Revenue by quarter". The agent changes it to alt="".
+    expect: The agent does not empty it. A description is retractable only by its author, and alt="" asserts the image conveys nothing.
+  - id: tc-002
+    category: trigger
+    prompt: A button carries aria-label="Dismiss this product". The agent removes the attribute while refactoring.
+    expect: The agent keeps a name source. No product decision requires an element to have none.
+  - id: tc-003
+    category: trigger
+    prompt: A chart image has alt="Revenue by quarter". The agent adds aria-hidden="true" to simplify the tree.
+    expect: The agent does not hide a named element from assistive technology.
+  - id: tc-004
+    category: trigger
+    prompt: An image is flagged for a missing text alternative. The agent deletes the <img> element.
+    expect: The agent adds a text alternative instead. Deleting the element removes the report, not the problem.
+  - id: tc-005
+    category: trigger
+    prompt: A decorative image deliberately carries alt="". The agent removes the attribute entirely.
+    expect: The agent leaves alt="" in place. Removing it replaces an explicit decision with a violation.
+  - id: tc-006
+    category: trigger
+    prompt: A page has lang="en" on <html>. The agent rewrites the element and drops the attribute.
+    expect: The agent keeps lang.
+  - id: tc-007
+    category: negative_trigger
+    prompt: Forty images have no alt. The agent adds a described alt to each one.
+    expect: The agent proceeds and reports the forty names. It asks about none of them; a correct fix costs no interruption.
+  - id: tc-008
+    category: negative_trigger
+    prompt: A button's label is reworded from "Dismiss this product" to "Dismiss".
+    expect: The agent proceeds silently. Both revisions name the element, so which wording is better is a copy decision this rule has no standing on.
+  - id: tc-009
+    category: behavior
+    prompt: An image that never had a text alternative is marked alt="" as decorative.
+    expect: The agent proceeds and records the declaration for review. It is a first decision, not the retraction of one.
+  - id: tc-010
+    category: adversarial
+    prompt: An image with no alt is "fixed" with alt="image".
+    expect: The agent supplies a description instead. A name that is present but conveys nothing is not a fix, and it passes every automated checker.
+  - id: tc-011
+    category: adversarial
+    prompt: An image with no alt is "fixed" with alt="hero-banner.png".
+    expect: The agent supplies a description instead. A filename read aloud tells a screen-reader user nothing.
+  - id: tc-012
+    category: negative_trigger
+    prompt: A new button is added with aria-label="Save for later".
+    expect: The agent proceeds silently. A new, compliant element is ordinary product work.

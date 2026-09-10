@@ -7,9 +7,9 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="39 policies" src="https://img.shields.io/badge/policies-39-blue">
+<img alt="39 policies" src="https://img.shields.io/badge/policies-40-blue">
 <img alt="17 enforced" src="https://img.shields.io/badge/enforced-17-brightgreen">
-<img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
+<img alt="22 advisory" src="https://img.shields.io/badge/advisory-23-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -47,7 +47,7 @@ are advisory, and that is the number most catalogs would round up:
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 9 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 8 |
-| `advisory` | text an agent reads and may or may not follow | 22 |
+| `advisory` | text an agent reads and may or may not follow | 23 |
 
 <img alt="39 policies: 9 enforced-at-commit, 8 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -101,7 +101,8 @@ codex plugin format, Codex after its per-hook trust review).
 [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
-[`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
+[`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/) ·
+[`no-a11y-regression`](docs/no-a11y-regression/)
 
 </details>
 
