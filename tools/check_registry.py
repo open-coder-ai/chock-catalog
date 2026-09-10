@@ -10,6 +10,30 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
+#: A policy whose check cannot be expressed as a declarative gate ships its own script,
+#: which `chock compile` wires to that git event. The hook runs it, so the ceiling is the
+#: gate's, not the in-agent guard's -- the mechanism differs, the enforcement does not.
+GIT_EVENTS = ("pre-commit", "pre-push")
+SCRIPT_SUFFIXES = (".py", ".sh")
+
+
+def is_event_script(path: Path, policy_id: str) -> bool:
+    """True when `path` is named for a git event, so the hook runs it rather than a tool call."""
+    return path.stem in {f"{policy_id}-{event}" for event in GIT_EVENTS}
+
+
+def event_scripts(impl: Path, policy_id: str) -> list[Path]:
+    """The policy's git-event scripts, in a stable order."""
+    if not impl.is_dir():
+        return []
+    return sorted(
+        impl / f"{policy_id}-{event}{suffix}"
+        for event in GIT_EVENTS
+        for suffix in SCRIPT_SUFFIXES
+        if (impl / f"{policy_id}-{event}{suffix}").exists()
+    )
+
+
 def main() -> int:
     reg = yaml.safe_load((ROOT / "registry.yaml").read_text(encoding="utf-8"))
     listed = {p["id"]: p["path"] for p in reg["policies"]}
@@ -34,6 +58,7 @@ def main() -> int:
 
     ceiling = {
         "gate": "enforced-at-commit",
+        "event_script": "enforced-at-commit",
         "guard": "best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)",
         "none": "advisory",
     }
@@ -45,7 +70,9 @@ def main() -> int:
         impl = d / "implementations"
         if gate.get("kind"):
             kind, detail = "gate", gate["kind"]
-        elif impl.is_dir() and any(impl.glob("*.sh")):
+        elif event_scripts(impl, p["id"]):
+            kind, detail = "event_script", "commit-time guard script"
+        elif impl.is_dir() and any(c for c in impl.glob("*.sh") if not is_event_script(c, p["id"])):
             kind, detail = "guard", "guard script"
         else:
             kind, detail = "none", "rule text only"
