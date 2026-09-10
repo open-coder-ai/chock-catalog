@@ -240,13 +240,13 @@ policies:
     persisting file contents, git history, or task intermediates as memo'
 - id: no-a11y-regression
   path: base/no-a11y-regression
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: rule text only
   enforces: advisory
-  eval_cases: 12
+  eval_cases: 13
   eval_executed: 0
   description: 'trigger: remediating accessibility, editing markup, emptying or removing an
     alt, aria-label, label or lang that an element already had, deleting a flagged element.
