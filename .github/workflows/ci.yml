@@ -240,6 +240,15 @@ jobs:
       - name: The a11y guard agrees with every rule it ships
         run: python tools/check_a11y_rules.py
 
+      # The rules check covers the ROWS; this covers the decision table over them and the parser
+      # that fills it -- the forty-nine cells, the qualifiers, and the markup this parser cannot
+      # resolve. Every case here was a pytest in the prototype that developed this guard; the
+      # guard now lives here alone, so its tests do too, and there is no second copy to drift
+      # from. Two of them are transitions a live coding agent produced on ordinary refactoring
+      # tasks, not cases anyone thought up.
+      - name: The a11y guard's decision table holds
+        run: python tools/check_a11y_table.py
+
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before
       # anyone has used it voluntarily is how the ritual becomes the point. What it does
