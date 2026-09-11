@@ -229,6 +229,17 @@ jobs:
       - name: Declared effects match what the guards actually do
         run: python tools/check_effects.py
 
+      # check_effects proves a guard does not WRITE; nothing proved it DECIDES correctly. The
+      # a11y guard's verdicts come from 107 JSON entries, and it shipped for a day refusing
+      # `<button>Go</button>` -- a label being ADDED -- because a global minimum name length
+      # applied to a visible label as if it were alt text. A guard wired at `block` that fires
+      # on a correct change is worse than no guard: the markup is right and the commit is
+      # refused anyway. Every rule entry is exercised here, and the commit path itself is run
+      # in a throwaway repo, because `evaluate` can be right while the front end reads the
+      # wrong revision or returns the wrong exit code.
+      - name: The a11y guard agrees with every rule it ships
+        run: python tools/check_a11y_rules.py
+
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before
       # anyone has used it voluntarily is how the ritual becomes the point. What it does

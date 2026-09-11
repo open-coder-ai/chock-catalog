@@ -275,13 +275,22 @@ def scan(html: str) -> tuple[dict[str, tuple[str, str, str]], dict[str, Node]]:
     return {n.ref: state_of(n, s.labels) for n in s.nodes}, {n.ref: n for n in s.nodes}
 
 
-def uninformative(name: str, src: str, tag: str = "") -> str | None:
+def labelled_by_its_own_text(node: Node) -> bool:
+    """Whether this element's name is the label a reader sees, rather than a description of it.
+
+    "Go", "OK" and "Q1" are honest labels; two characters of alt text describe no image. A
+    component counts in: its props carry labels as often as descriptions and markup cannot say which.
+    """
+    return node.component or "text" in (REQUIRED.get(node.tag) or {}).get("from", [])
+
+
+def uninformative(name: str, src: str, tag: str = "", *, labelled: bool = False) -> str | None:
     """Say why a supplied name conveys nothing, or None if it carries information."""
     if _EXPRESSION in name:
         return None  # an expression, not a name: its spelling is a variable's, not a reader's
     words = set(NOISE["words"]) | set((NOISE.get("by_tag") or {}).get(tag, []))
     bare = re.sub(r"[^a-z0-9 ]+", " ", name.lower()).strip()
-    if len(bare) < NOISE["min_length"]:
+    if not labelled and len(bare) < NOISE["min_length"]:
         return f"{name!r} is too short to describe anything"
     if all(w in words or w.isdigit() for w in bare.split()):
         return f"{name!r} is placeholder wording, not a description"
@@ -307,7 +316,8 @@ def evaluate(before_html: str, after_html: str) -> list[dict]:
         supplied = as_ == SATISFIED and bs != SATISFIED and a_name != b_name
         node = a_nodes.get(ref)
         src, tag = (node.attrs.get("src", ""), node.tag) if node else ("", "")
-        if supplied and (bad := uninformative(a_name, src, tag)) is not None:
+        labelled = labelled_by_its_own_text(node) if node else False
+        if supplied and (bad := uninformative(a_name, src, tag, labelled=labelled)) is not None:
             action, why = DENY, f"the value supplied conveys nothing: {bad}"
         rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
     return rows
