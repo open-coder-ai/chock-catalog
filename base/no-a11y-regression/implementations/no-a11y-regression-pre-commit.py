@@ -80,6 +80,9 @@ _NAME_BEARING_CHILDREN = ("legend", "caption", "title")
 _LENT_NAME_ATTRS = ("alt", "aria-label")
 #: JSX and template syntax this parser tokenizes but cannot evaluate.
 _EXPRESSION = "{"
+#: A value the markup does not resolve: a JSX or template expression, or a __PLACEHOLDER__ a
+#: build step fills in. Both are spellings of a variable, and neither reaches a reader.
+_UNRESOLVED = re.compile(r"\{|__[A-Z0-9_]+__")
 #: A source tag name that is capitalised, dotted or hyphenated is not an HTML element:
 #: React requires the capital, a namespaced component carries the dot, and the HTML spec
 #: requires a hyphen in every custom element name and forbids one in its own.
@@ -286,8 +289,8 @@ def labelled_by_its_own_text(node: Node) -> bool:
 
 def uninformative(name: str, src: str, tag: str = "", *, labelled: bool = False) -> str | None:
     """Say why a supplied name conveys nothing, or None if it carries information."""
-    if _EXPRESSION in name:
-        return None  # an expression, not a name: its spelling is a variable's, not a reader's
+    if _UNRESOLVED.search(name):
+        return None  # not a name: its spelling is a variable's or a build step's, not a reader's
     words = set(NOISE["words"]) | set((NOISE.get("by_tag") or {}).get(tag, []))
     bare = re.sub(r"[^a-z0-9 ]+", " ", name.lower()).strip()
     if not labelled and len(bare) < NOISE["min_length"]:
