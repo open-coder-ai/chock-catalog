@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640"
-     role="img" aria-label="chock-catalog — the policy catalog for chock: policies you can adopt, graded by what they actually enforce. 40 policies across 3 packs (agentic-security 13, base 24, compliance 3); 18 enforced (10 at commit, 8 at pre-tool-use) and 22 advisory; 358 eval cases. The 9 blocking policies: block-invisible-unicode, block-unpinned-agent-components, block-unsafe-code-execution, block-wildcard-agent-permissions, block-wildcard-iam, pin-github-actions, protect-main-branch, scan-secrets, verify-dependency-exists. Full OWASP Agentic Security Initiative top ten coverage, ASI01 through ASI10. Apache-2.0.">
+     role="img" aria-label="chock-catalog — the policy catalog for chock: policies you can adopt, graded by what they actually enforce. 40 policies across 3 packs (agentic-security 13, base 24, compliance 3); 18 enforced (10 at commit, 8 at pre-tool-use) and 22 advisory; 358 eval cases. The 10 blocking policies: block-invisible-unicode, block-unpinned-agent-components, block-unsafe-code-execution, block-wildcard-agent-permissions, block-wildcard-iam, no-a11y-regression, pin-github-actions, protect-main-branch, scan-secrets, verify-dependency-exists. Full OWASP Agentic Security Initiative top ten coverage, ASI01 through ASI10. Apache-2.0.">
   <rect width="1280" height="640" fill="#0D1626"/>
   <rect x="45.0" y="39.0" width="38" height="38" rx="8.4" fill="#111E33"/>
   <rect x="56.4" y="64.2" width="15.2" height="2.9" rx="1.0" fill="none" stroke="#D9B45C" stroke-width="1.29" stroke-opacity="0.34"/>
@@ -19,7 +19,7 @@
   <text x="48" y="230" font-family="Geist Mono" font-size="33" font-weight="700" letter-spacing="-1.2" fill="#D9B45C">graded by what they do.</text>
   <text x="48" y="276" font-family="Geist Mono" font-size="13" fill="#9FB0C4">Every policy states the strongest control it can</text>
   <text x="48" y="298" font-family="Geist Mono" font-size="13" fill="#9FB0C4">actually install, and carries its own eval suite.</text>
-  <text x="48" y="320" font-family="Geist Mono" font-size="13" fill="#9FB0C4">Of these, 9 block. The rest say so.</text>
+  <text x="48" y="320" font-family="Geist Mono" font-size="13" fill="#9FB0C4">Of these, 10 block. The rest say so.</text>
   <text x="48" y="372" font-family="Geist Mono" font-size="10.5" letter-spacing="3.4" fill="#8A7340">ADOPT ONE</text>
   <rect x="48" y="386" width="410" height="74" rx="9" fill="#111E33" stroke="#D9B45C" stroke-opacity="0.16"/>
   <text x="66" y="412" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">chock add owasp-asi02-tool-misuse</text>
@@ -35,7 +35,7 @@
   <rect x="506" y="118" width="354" height="378" rx="10" fill="#111E33" stroke="#D9B45C" stroke-opacity="0.16" stroke-width="1"/>
   <circle cx="526" cy="143" r="2.6" fill="#D9B45C" fill-opacity="0.9"/>
   <text x="536" y="147" font-family="Geist Mono" font-size="11" font-weight="700" letter-spacing="2.3" fill="#D9B45C">BLOCKING</text>
-  <text x="843" y="147" font-family="Geist Mono" font-size="14" font-weight="700" text-anchor="end" fill="#D9B45C">9</text>
+  <text x="843" y="147" font-family="Geist Mono" font-size="14" font-weight="700" text-anchor="end" fill="#D9B45C">10</text>
   <line x1="523" y1="158" x2="843" y2="158" stroke="#D9B45C" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="2 3"/>
   <circle cx="526" cy="175" r="1.7" fill="#9FB0C4" fill-opacity="0.5"/>
   <text x="536" y="179" font-family="Geist Mono" font-size="12.5" fill="#E8EEF6">block-invisible-unicode</text>
@@ -48,13 +48,15 @@
   <circle cx="526" cy="279" r="1.7" fill="#9FB0C4" fill-opacity="0.5"/>
   <text x="536" y="283" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">block-wildcard-iam</text>
   <circle cx="526" cy="305" r="1.7" fill="#9FB0C4" fill-opacity="0.5"/>
-  <text x="536" y="309" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">pin-github-actions</text>
+  <text x="536" y="309" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">no-a11y-regression</text>
   <circle cx="526" cy="331" r="1.7" fill="#9FB0C4" fill-opacity="0.5"/>
-  <text x="536" y="335" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">protect-main-branch</text>
+  <text x="536" y="335" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">pin-github-actions</text>
   <circle cx="526" cy="357" r="1.7" fill="#9FB0C4" fill-opacity="0.5"/>
-  <text x="536" y="361" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">scan-secrets</text>
+  <text x="536" y="361" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">protect-main-branch</text>
   <circle cx="526" cy="383" r="1.7" fill="#9FB0C4" fill-opacity="0.5"/>
-  <text x="536" y="387" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">verify-dependency-exists</text>
+  <text x="536" y="387" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">scan-secrets</text>
+  <circle cx="526" cy="409" r="1.7" fill="#9FB0C4" fill-opacity="0.5"/>
+  <text x="536" y="413" font-family="Geist Mono" font-size="12.5" fill="#9FB0C4">verify-dependency-exists</text>
   <rect x="878" y="118" width="354" height="378" rx="10" fill="#111E33" stroke="#D9B45C" stroke-opacity="0.16" stroke-width="1"/>
   <circle cx="898" cy="143" r="2.6" fill="#D9B45C" fill-opacity="0.9"/>
   <text x="908" y="147" font-family="Geist Mono" font-size="11" font-weight="700" letter-spacing="2.3" fill="#D9B45C">OWASP ASI</text>

@@ -3,7 +3,7 @@ name: no-a11y-regression
 description: "trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label, label or lang that an element already had, deleting a flagged element. avoid: breaking a requirement the previous revision met; interrupting a correct fix."
 metadata:
   chock.artifact: rule
-  chock.enforcement: advise
+  chock.enforcement: block
   chock.coverage_without_chock: advisory
 ---
 
