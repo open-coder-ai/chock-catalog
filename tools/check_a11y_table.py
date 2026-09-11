@@ -135,6 +135,39 @@ def check_what_the_parser_cannot_resolve(c: Cases) -> None:
     )
 
 
+def check_deleting_a_block_is_not_hiding_a_violation(c: Cases) -> None:
+    """Both look like an unnamed element disappearing. What went with it tells them apart.
+
+    A live agent removing a deprecated widget was refused here, because the block held one
+    unnamed image the way legacy markup does. The gate blocks commits, so a rule that fires on
+    a correct deletion has failed -- and the evidence is in the same diff.
+    """
+    widget = (
+        '<section id="w"><h2>Spend</h2>'
+        '<img src="/grid.png">'
+        '<img src="/spend.svg" alt="Monthly spend, rising from 900 to 1240 pounds">'
+        "</section>"
+    )
+    kept = '<a href="/support" aria-label="Open a support ticket">New ticket</a>'
+
+    # The whole block goes: the named image went too, so the unnamed one went with the block.
+    c.silent("a deprecated block deleted whole", widget + kept, kept)
+    # Only the unnamed element goes, its named sibling stays: the violation was hidden.
+    c.refused(
+        "only the unnamed element deleted",
+        widget + kept,
+        '<section id="w"><h2>Spend</h2>'
+        '<img src="/spend.svg" alt="Monthly spend, rising from 900 to 1240 pounds">'
+        "</section>" + kept,
+    )
+    # An explicit decorative marking is authored too, so it is evidence of a real deletion.
+    decorative = '<section id="d"><img src="/grid.png"><img src="/spacer.gif" alt=""></section>'
+    c.silent("a block whose other image was marked decorative", decorative + kept, kept)
+    # And the residual, pinned so it stays a decision: nothing in the file was ever named, so
+    # nothing says the deletion was wholesale, and the row still refuses.
+    c.refused("an unnamed element with nothing authored beside it", '<img src="/grid.png">', "")
+
+
 def check_quality_is_judged_only_on_a_fix(c: Cases) -> None:
     """A pre-existing weak name is not this change's business; judging it fails innocent commits."""
     weak = '<html lang="en"><img src="/a.png" alt="image"></html>'
@@ -184,6 +217,7 @@ def main() -> int:
         check_the_requirement_qualifiers,
         check_a_name_the_subtree_carries,
         check_what_the_parser_cannot_resolve,
+        check_deleting_a_block_is_not_hiding_a_violation,
         check_quality_is_judged_only_on_a_fix,
         check_components,
     ):

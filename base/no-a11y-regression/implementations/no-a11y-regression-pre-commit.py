@@ -31,6 +31,10 @@ GONE = "gone"  # not present in this revision
 UNEVALUATED = "unevaluated"  # a component child or a prop spread hides the name from this parser
 NAMELESS = "nameless"  # a component carrying no name prop: we cannot know whether it needs one
 
+#: States an author deliberately put an element into. One of these disappearing alongside a
+#: deletion is what separates a block being removed from a violation being hidden.
+_AUTHORED = (SATISFIED, SUPPRESSED)
+
 # ── The only judgement in the program: authored once, reviewable as a diff. ───────────────────
 # This gate never asks a question. A patch that correctly fixes a hundred images must cost zero
 # interruptions, so a correct fix is silent and only a break refuses the commit.
@@ -323,6 +327,18 @@ def evaluate(before_html: str, after_html: str) -> list[dict]:
         if supplied and (bad := uninformative(a_name, src, tag, labelled=labelled)) is not None:
             action, why = DENY, f"the value supplied conveys nothing: {bad}"
         rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
+
+    # Deleting an unnamed element is how a violation gets resolved by deletion -- and it is also
+    # what happens to every legacy block that holds one, when the block is correctly removed. The
+    # two differ in what went with it: nobody hides a missing name by also deleting content that
+    # carried one. So when an authored state disappeared from this same file, the block went and
+    # the unnamed element went with it. `evaluate` is called per file, which is coarser than per
+    # block and so errs toward silence -- the direction a gate that blocks commits must err in.
+    if any(r["key"][1] == GONE and r["key"][0] in _AUTHORED for r in rows):
+        for row in rows:
+            if row["key"] == (MISSING, GONE):
+                row["action"] = SILENT
+                row["why"] = "deleted along with content that carried a name -- the block went, not just the violation"
     return rows
 
 
