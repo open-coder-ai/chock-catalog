@@ -1,6 +1,6 @@
 id: no-a11y-regression
 name: "No Accessibility Regression Rule"
-version: "0.3.3"
+version: "0.3.4"
 description: >
   trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label,
   label or lang that an element already had, deleting a flagged element.
@@ -18,7 +18,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-10T00:00:00Z"
-  updated_at: "2026-09-11T18:00:00Z"
+  updated_at: "2026-09-12T16:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -78,3 +78,9 @@ changelog:
   changes:
   - "Stop refusing a block that is correctly deleted. An unnamed element disappearing is how a violation gets resolved by deletion -- and it is also what happens to every legacy block holding one when the block is rightly removed. The gate could not tell those apart and refused both, so removing a deprecated widget was refused because it contained one unnamed image, the way old markup does. A live agent hit exactly that, doing what it was asked. The evidence is in the same diff: nobody hides a missing name by also deleting content that carried one, so when an element in a state an author deliberately created -- named, or explicitly marked decorative -- disappeared from the same file, the block went and the unnamed element went with it. The rule text is unchanged: resolving a violation by deleting the element is still refused, and still fires when the unnamed element goes alone while its named siblings stay."
   - "The unit is the file, because that is what the hook reads per path. Coarser than the block, which errs toward silence -- the direction a gate wired at block must err in, and the trade is stated rather than assumed: a deletion that removes an unnamed element in one part of a file and, for unrelated reasons, a named one elsewhere in it now passes. Four cases in tools/check_a11y_table.py hold both edges, including the residual this does not fix -- a file where nothing was ever named offers no evidence either way and is still refused -- so it stays a decision rather than becoming an accident. Over-broadening the rule to any deletion is caught by three of them."
+- version: 0.3.4
+  date: '2026-09-12'
+  changes:
+  - "See a name retracted by an ancestor. aria-hidden=\"true\" removes an element AND its subtree from the accessibility tree, so a wrapper carrying it silences every name inside while each alt stays in the markup, untouched -- and the guard compared attributes per element, so it saw nothing move. Six named icons were silenced with the gate silent. This was a false negative on the policy's headline transition, satisfied -> suppressed, reached by the attribute ARIA specifies for hiding a subtree rather than by anything exotic. A live agent found it: refused the narrower change, it put aria-hidden on the <nav>, reported removing all six icons from the accessibility tree, and the commit went through."
+  - "The ancestry had to be tracked separately. `_stack` holds only elements this table has requirements for, and a <nav> or <div> is in neither it nor the table, so the scanner now keeps its own stack of tags that opened a hidden subtree and every node records whether one enclosed it. The known limit is pinned rather than left to be discovered: a subtree hidden by a nested tag of the same name ends at the inner close, which errs toward silence -- the direction a gate wired at block must err in."
+  - "aria-hidden is no longer gated by `suppressible`. That list names elements where marking something decorative is a legitimate authored act, which is right for role and for an emptied alt; aria-hidden is not an element-specific assertion, and an <a> or a <button> losing its name to it loses it just the same. Eight cases in tools/check_a11y_table.py hold the edges: the wrapper, two levels up, the element itself on a tag the list omits, and -- silent, because nothing was retracted -- a subtree hidden in both revisions, the hiding removed again, a wrapper closed over an image that never had a name, and role=presentation on a container, which ARIA does not propagate to descendants."
