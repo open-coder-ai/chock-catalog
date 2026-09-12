@@ -168,6 +168,33 @@ def check_deleting_a_block_is_not_hiding_a_violation(c: Cases) -> None:
     c.refused("an unnamed element with nothing authored beside it", '<img src="/grid.png">', "")
 
 
+def check_hiding_a_subtree_retracts_the_names_inside_it(c: Cases) -> None:
+    """aria-hidden on a wrapper silences everything under it, with every alt still in the markup.
+
+    A live agent did exactly this when refused the narrower change: it put aria-hidden on the
+    <nav>, and the gate said nothing, because no element's own attributes had moved. A <nav> is
+    not in the requirement table, so the ancestry had to be tracked separately from `_stack`.
+    """
+    icons = '<img src="/i/a.svg" alt="Dashboard"><img src="/i/b.svg" alt="Notifications">'
+    shown, hidden = f"<nav>{icons}</nav>", f'<nav aria-hidden="true">{icons}</nav>'
+
+    c.refused("a wrapper hidden from assistive technology", shown, hidden)
+    c.refused("a wrapper two levels up", f"<div><nav>{icons}</nav></div>", f'<div aria-hidden="true"><nav>{icons}</nav></div>')
+    # aria-hidden removes the element and its subtree whatever the element is, so `suppressible`
+    # does not gate it -- an <a> is not on that list and its name is retracted all the same.
+    c.refused("the element itself, on a tag suppressible does not list", '<a href="/x">Pricing</a>', '<a href="/x" aria-hidden="true">Pricing</a>')
+    # Nothing was retracted in these, and a gate that blocks commits must stay silent on them.
+    c.silent("a subtree hidden in both revisions, edited inside", hidden, f'<nav aria-hidden="true">{icons}<img src="/i/c.svg" alt="Reports"></nav>')
+    c.silent("the hiding removed again", hidden, shown)
+    c.silent("a wrapper hidden over an image that never had a name", '<nav><img src="/i/a.svg"></nav>', '<nav aria-hidden="true"><img src="/i/a.svg"></nav>')
+    # ARIA does not propagate presentation to descendants, so a container's role says nothing
+    # about the images inside it. Silent here is correct, not an oversight.
+    c.silent("role=presentation on the wrapper", shown, f'<nav role="presentation">{icons}</nav>')
+    # The known limit, pinned so it stays known: a nested subtree hidden by the same tag name
+    # ends at the inner close. That errs toward silence, which is the safe direction here.
+    c.silent("hiding nested inside the same tag name", f'<nav aria-hidden="true"><nav></nav>{icons}</nav>', f'<nav aria-hidden="true"><nav></nav>{icons}</nav>')
+
+
 def check_quality_is_judged_only_on_a_fix(c: Cases) -> None:
     """A pre-existing weak name is not this change's business; judging it fails innocent commits."""
     weak = '<html lang="en"><img src="/a.png" alt="image"></html>'
@@ -218,6 +245,7 @@ def main() -> int:
         check_a_name_the_subtree_carries,
         check_what_the_parser_cannot_resolve,
         check_deleting_a_block_is_not_hiding_a_violation,
+        check_hiding_a_subtree_retracts_the_names_inside_it,
         check_quality_is_judged_only_on_a_fix,
         check_components,
     ):

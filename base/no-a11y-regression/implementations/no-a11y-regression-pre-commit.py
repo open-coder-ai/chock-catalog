@@ -111,6 +111,7 @@ class Node:
     ordinal: int
     text: str = ""
     inner: str = ""
+    hidden: bool = False  # an ancestor carries aria-hidden="true"
     child_elements: int = 0  # a name may come from any of them, and a component hides it
     spread: bool = False  # `{...props}`: the attributes are not knowable from the markup
     component: bool = False  # this table has no requirements for it; only a lost name counts
@@ -134,11 +135,21 @@ class Scanner(HTMLParser):
         self._stack: list[int] = []
         self._label_for: str | None = None
         self._inner_depth = 0
+        # Tags that opened a subtree hidden from assistive technology. Kept separately from
+        # `_stack`, which holds only elements this table has requirements for -- a <nav> or <div>
+        # carrying aria-hidden is in neither, and that is exactly what an agent reached for.
+        self._hidden: list[str] = []
 
     def _open(
         self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None
     ) -> None:
         a = {k.lower(): (v or "") for k, v in attrs}
+        inherited = bool(self._hidden)
+        if a.get("aria-hidden") == SPEC["suppressing"]["aria-hidden"] and not closed and tag not in VOID:
+            # Before the early returns below: an untracked wrapper still hides what it contains.
+            # A nested subtree hidden by the same tag name ends at the inner close, which errs
+            # toward silence -- the direction a gate that blocks commits must err in.
+            self._hidden.append(tag)
         for i in self._stack:
             self.nodes[i].child_elements += 1
         self._lend_name(a)
@@ -159,7 +170,14 @@ class Scanner(HTMLParser):
         self._counts[tag] = self._counts.get(tag, 0) + 1
         spread = any(k.startswith(_EXPRESSION) for k in a)
         self.nodes.append(
-            Node(tag=tag, attrs=a, ordinal=self._counts[tag], spread=spread, component=component)
+            Node(
+                tag=tag,
+                attrs=a,
+                ordinal=self._counts[tag],
+                spread=spread,
+                component=component,
+                hidden=inherited,
+            )
         )
         if not closed and tag not in VOID:
             self._stack.append(len(self.nodes) - 1)
@@ -179,6 +197,8 @@ class Scanner(HTMLParser):
         self._open(tag, attrs, closed=True, raw=self.get_starttag_text())
 
     def handle_endtag(self, tag):
+        if self._hidden and self._hidden[-1] == tag:
+            self._hidden.pop()
         if tag == "label":
             self._label_for = None
         elif tag in _NAME_BEARING_CHILDREN:
@@ -202,12 +222,19 @@ class Scanner(HTMLParser):
 
 # ── The state function. It consults the spec table; it decides nothing. ───────────────────────
 def _suppression(node: Node) -> str | None:
-    """Why this element was deliberately removed from assistive technology, if it was."""
+    """Why this element was deliberately removed from assistive technology, if it was.
+
+    aria-hidden removes an element AND its subtree from the accessibility tree, whatever the
+    element is, so `suppressible` does not gate it and an ancestor carrying it hides this one
+    too. role and an emptied alt are assertions about one element, which is what that list names.
+    """
     s = SPEC["suppressing"]
-    if node.tag not in SPEC["suppressible"]:
-        return None
     if node.attrs.get("aria-hidden") == s["aria-hidden"]:
         return 'aria-hidden="true"'
+    if node.hidden:
+        return 'an ancestor carries aria-hidden="true"'
+    if node.tag not in SPEC["suppressible"]:
+        return None
     if node.attrs.get("role") in s["role"]:
         return f'role="{node.attrs["role"]}"'
     if node.tag in s["empty_alt"] and node.attrs.get("alt") == "" and "alt" in node.attrs:
