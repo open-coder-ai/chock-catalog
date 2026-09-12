@@ -87,6 +87,12 @@ _EXPRESSION = "{"
 #: A value the markup does not resolve: a JSX or template expression, or a __PLACEHOLDER__ a
 #: build step fills in. Both are spellings of a variable, and neither reaches a reader.
 _UNRESOLVED = re.compile(r"\{|__[A-Z0-9_]+__")
+#: One unspaced token joined by punctuation no word uses inside itself: a segment copied out of the
+#: src rather than a phrase someone wrote. The hyphen is deliberately absent -- it is the commonest
+#: filename separator AND the commonest punctuation inside a word, so it cannot tell "hero-banner"
+#: from "Sign-in" and would refuse the second. Spaces must be absent too, because prose does carry
+#: a slash ("Speed in km/h"). Naming a file after what it shows is good practice, not a copy.
+_PATH_SEGMENT = re.compile(r"\S*[/\\_]\S*")
 #: A source tag name that is capitalised, dotted or hyphenated is not an HTML element:
 #: React requires the capital, a namespaced component carries the dot, and the HTML spec
 #: requires a hyphen in every custom element name and forbids one in its own.
@@ -330,8 +336,8 @@ def uninformative(name: str, src: str, tag: str = "", *, labelled: bool = False)
         return f"{name!r} is placeholder wording, not a description"
     if name.lower().rsplit(".", 1)[-1] in NOISE["file_extensions"]:
         return f"{name!r} is a filename"
-    if src and bare.replace(" ", "") in re.sub(r"[/_\-.]", "", src.lower()):
-        return f"{name!r} merely repeats the file path"
+    if src and _PATH_SEGMENT.fullmatch(name.strip()) and bare.replace(" ", "") in re.sub(r"[/_\-.]", "", src.lower()):
+        return f"{name!r} is a path segment, not a description"
     return None
 
 
