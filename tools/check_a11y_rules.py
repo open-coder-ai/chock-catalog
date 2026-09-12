@@ -194,6 +194,39 @@ def check_noise(p: Probe) -> None:
         p.allows(f"button label {word!r}", bare_button, f'<button data-testid="b">{word}</button>')
 
 
+def check_a_name_the_path_also_spells(p: Probe) -> None:
+    """Naming a file after what it depicts is good practice, so alt matching src is not evidence."""
+    def img(src: str, alt: str | None = None) -> str:
+        name = "" if alt is None else f' alt="{alt}"'
+        return f'<img data-testid="i" src="{src}"{name}>'
+
+    # The correct alt text for an icon IS the word the file is named after. Every one of these was
+    # refused before: an adopter whose files are well named could not add a name to one of them.
+    for alt, src in (
+        ("Home", "/home.svg"),
+        ("Search", "/icons/search.svg"),
+        ("Cart", "/img/cart.png"),
+        ("Acme logo", "/acme-logo.svg"),
+        ("Jane Doe", "/avatars/jane-doe.jpg"),
+        ("Close-up of the engine", "/img/close-up-of-the-engine.jpg"),
+        ("Sign-in", "/icons/sign-in.svg"),
+        ("e-mail", "/icons/e-mail.svg"),
+    ):
+        p.allows(f"alt={alt!r} on a file named for it", img(src), img(src, alt))
+
+    # What the rule is for: a path segment pasted where a description belongs. Punctuation no word
+    # carries inside itself, no spaces, and the src spelling it -- all three, or it is a name.
+    for alt, src in (("icons/home", "/icons/home.svg"), ("hero_banner", "/img/hero_banner.png")):
+        p.refuses(f"alt={alt!r} copied out of the src", img(src), img(src, alt))
+    p.allows("a path segment the src does not spell", img("/img/promo.png"), img("/img/promo.png", "nav/primary"))
+    p.allows("a slash inside a phrase", img("/gauge.svg"), img("/gauge.svg", "Speed in km/h"))
+    # The hyphen is excluded, so a hyphen-joined slug goes unremarked. That is the known cost, and
+    # it is the direction a gate wired at block must err in: a weak name added beats a good one
+    # refused, and this rule judges quality, not either transition the policy exists for.
+    p.allows("a hyphen-joined slug, the cost of excluding the hyphen",
+             img("/img/hero-banner.png"), img("/img/hero-banner.png", "hero-banner"))
+
+
 def check_name_length(p: Probe) -> None:
     """min_length catches two characters of alt text; it must not refuse a button saying Go."""
     limit = p.noise["min_length"]
@@ -286,6 +319,7 @@ def main() -> int:
         check_components,
         check_void_elements,
         check_noise,
+        check_a_name_the_path_also_spells,
         check_name_length,
         check_every_key_is_covered,
         check_the_commit_path,
