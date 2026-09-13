@@ -1,6 +1,6 @@
 id: no-a11y-regression
 name: "No Accessibility Regression Rule"
-version: "0.3.5"
+version: "1.0.0"
 description: >
   trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label,
   label or lang that an element already had, deleting a flagged element.
@@ -18,13 +18,13 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-10T00:00:00Z"
-  updated_at: "2026-09-12T16:00:00Z"
+  updated_at: "2026-09-13T02:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -90,3 +90,9 @@ changelog:
   - "Stop refusing the correct alt text for a well-named file. The quality rule that rejects a name merely repeating the src compared the name against the whole path with punctuation stripped, so alt=\"Home\" on /home.svg, alt=\"Search\" on /icons/search.svg, alt=\"Acme logo\" on /acme-logo.svg and alt=\"Jane Doe\" on /avatars/jane-doe.jpg were all refused. Naming a file after what it shows is good practice, and the word the file is named after is usually the right alt text, so the rule punished exactly the adopters who name their files well -- and it fired on a name being ADDED, which is a fix. Found while pinning the aria-hidden cases in 0.3.4 and reported then rather than folded into that change."
   - "What remains is the case the rule was for: a path segment pasted where a description belongs. Three conditions now, all of them evidence -- the name is one unspaced token, it is joined by punctuation no word carries inside itself, and the src spells it. alt=\"icons/home\" and alt=\"hero_banner\" are still refused; nav/primary on an unrelated src, \"Speed in km/h\", and every name above are not. The hyphen is deliberately excluded: it is the commonest filename separator and the commonest punctuation inside a word, so it cannot tell hero-banner from Sign-in or e-mail, and a hyphen-joined slug now goes unremarked. That cost is pinned by a case. This rule judges the quality of a name supplied as a fix, not either transition the policy exists for, so a weak name accepted is the cheaper error than a good one refused."
   - "Thirteen cases in tools/check_a11y_rules.py, 308 now. Nine of them failed against the shipped 0.3.4 -- eight false alarms on correct alt text plus the hyphen slug -- and each half of the new condition was removed on its own to show what it holds: dropping the src agreement refuses a path-shaped name the src does not spell; putting the hyphen back refuses Sign-in, e-mail and the slug case."
+- version: 1.0.0
+  date: '2026-09-13'
+  changes:
+  - "Graduate to production. The guards spec \u00a78 puts on the transition are met rather than waived: a schema-valid manifest, the security block present, and against the three eval cases it asks for, 13 declared cases plus 384 executable ones -- 308 in tools/check_a11y_rules.py over every row of the two rule files the guard reads, 76 in tools/check_a11y_table.py over the decision table and the parser. Production freezes this version: the next behaviour change is a new version, not an edit here."
+  - "The number rests on six releases of being wrong in public. Five false alarms -- 0.1.1, 0.3.1, 0.3.2, 0.3.3, 0.3.5 -- and one false negative on the headline transition, 0.3.4, where aria-hidden on a wrapper silenced six named icons with the gate silent. Three of the five were found by running the guard against a live coding agent rather than by reading it. The premise replicates on a second vendor: asked to quieten a chatty page, two different agents destroyed names that no violation report flags, by three mechanisms, with every violation count identical before and after -- and in one the markup only GAINED an attribute. A refusal has been witnessed in a vendor's own client, not only in a harness."
+  - "The residuals are named, because production is not a claim of completeness. A deletion is judged per file rather than per block, so removing an unnamed element while unrelated named content goes elsewhere in the same file passes (0.3.3). A subtree hidden by a nested tag of the same name ends at the inner close (0.3.4). A hyphen-joined slug pasted where a description belongs goes unremarked, the price of not refusing Sign-in (0.3.5). Each errs toward silence, the direction a gate wired at block must err in, and each is pinned by a case. One second-vendor run is void rather than green -- the partial the agent created could not be read back -- so 0.3.2's placeholder case stays witnessed on one vendor."
