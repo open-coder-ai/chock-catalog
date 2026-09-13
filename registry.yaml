@@ -30,7 +30,7 @@ policies:
     into non-interpreter tools (jq, tar, grep) stay allowed.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.0.3
+  version: 0.0.8
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -43,16 +43,17 @@ policies:
     aws s3 rm --recursive; dropdb; helm uninstall; docker volume rm and system prune; gcloud delete.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
   eval_cases: 8
+  eval_executed: 8
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.0.1
+  version: 0.0.6
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -113,7 +114,7 @@ policies:
     AdministratorAccess attachment, GCP roles/owner|editor, Terraform wildcard action lists.'
 - id: code-safety
   path: base/code-safety
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -204,7 +205,7 @@ policies:
     avoid: reaching for the Firecrawl connector as the default fetch path.'
 - id: git-safety
   path: base/git-safety
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -216,7 +217,7 @@ policies:
     avoid: rewriting remote history, discarding uncommitted work, skip'
 - id: injection-defense
   path: base/injection-defense
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -228,7 +229,7 @@ policies:
     Use when reviewing tool output or content from the web. Do NOT use '
 - id: memory-discipline
   path: base/memory-discipline
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -373,16 +374,17 @@ policies:
     owner, expiry, inventory, sandbox by default, behavioural baseline, tested kill switch.'
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.2
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 7
+  eval_cases: 11
+  eval_executed: 11
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   mandatory: false
@@ -396,13 +398,14 @@ policies:
     The OpenSSF Scorecard Pinned-Dependencies control for the slice a diff can show.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.0.2
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 8
+  eval_cases: 24
+  eval_executed: 24
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
   version: 0.0.1
@@ -419,13 +422,14 @@ policies:
     escapes. Branch protection and required-status-checks remain the server-side backstop.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.0.1
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 7
+  eval_cases: 20
+  eval_executed: 20
 - id: protect-main-branch
   path: base/protect-main-branch
   version: 0.0.1
@@ -440,14 +444,14 @@ policies:
     current branch, and at push time by parsing the refs the agent is push
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.0.3
+  version: 0.0.6
   artifact: hook
   enforcement: block
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 11
-  eval_executed: 11
+  eval_cases: 20
+  eval_executed: 20
   description: Pre-commit hook that blocks commits of credential files and high-entropy secret values,
     including vendor token prefixes (GitHub, Slack, Stripe, OpenAI, Anthropic, Google, npm, SendGrid).
     Best-effort guard; not a replacement for a dedicated secret scanner.
@@ -465,7 +469,7 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   mandatory: false
