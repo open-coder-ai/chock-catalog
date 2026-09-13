@@ -1,7 +1,8 @@
-"""registry.yaml matches the policies on disk -- ids, paths, honesty labels, versions, evals."""
+"""registry.yaml matches the policies on disk -- ids, paths, labels, versions, evals, text."""
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -9,6 +10,11 @@ import yaml
 from mechanism import CEILING, classify
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def said(text: str | None) -> str:
+    """One line of text, so a row that only rewrapped its description does not read as drift."""
+    return re.sub(r"\s+", " ", text or "").strip()
 
 
 def suite_counts(policy_dir: Path) -> tuple[int, int]:
@@ -74,6 +80,10 @@ def main() -> int:
             stale.append(
                 f"{p['id']}: eval_executed {p.get('eval_executed', 'absent')}, suite executes {executed}"
             )
+        # The description is the policy's own, verbatim: 34 rows had drifted from theirs, some
+        # truncated mid-word and some still describing a policy that had been superseded.
+        if said(p.get("description")) != said(m.get("description")):
+            stale.append(f"{p['id']}: description is not the manifest's")
     if wrong:
         print("registry labels do not match the policies:")
         for w in wrong:
@@ -84,7 +94,9 @@ def main() -> int:
             print("  " + s)
     if wrong or stale:
         return 1
-    print("mechanism, enforces, version and eval counts match every policy")
+    print(
+        "mechanism, enforces, version, eval counts and descriptions match every policy"
+    )
     return 0
 
 
