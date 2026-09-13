@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640"
-     role="img" aria-label="chock-catalog — the policy catalog for chock: policies you can adopt, graded by what they actually enforce. 40 policies across 3 packs (agentic-security 13, base 24, compliance 3); 18 enforced (10 at commit, 8 at pre-tool-use) and 22 advisory; 358 eval cases. The 10 blocking policies: block-invisible-unicode, block-unpinned-agent-components, block-unsafe-code-execution, block-wildcard-agent-permissions, block-wildcard-iam, no-a11y-regression, pin-github-actions, protect-main-branch, scan-secrets, verify-dependency-exists. Full OWASP Agentic Security Initiative top ten coverage, ASI01 through ASI10. Apache-2.0.">
+     role="img" aria-label="chock-catalog — the policy catalog for chock: policies you can adopt, graded by what they actually enforce. 40 policies across 3 packs (agentic-security 13, base 24, compliance 3); 18 enforced (10 at commit, 8 at pre-tool-use) and 22 advisory; 400 eval cases. The 10 blocking policies: block-invisible-unicode, block-unpinned-agent-components, block-unsafe-code-execution, block-wildcard-agent-permissions, block-wildcard-iam, no-a11y-regression, pin-github-actions, protect-main-branch, scan-secrets, verify-dependency-exists. Full OWASP Agentic Security Initiative top ten coverage, ASI01 through ASI10. Apache-2.0.">
   <rect width="1280" height="640" fill="#0D1626"/>
   <rect x="45.0" y="39.0" width="38" height="38" rx="8.4" fill="#111E33"/>
   <rect x="56.4" y="64.2" width="15.2" height="2.9" rx="1.0" fill="none" stroke="#D9B45C" stroke-width="1.29" stroke-opacity="0.34"/>
@@ -87,7 +87,7 @@
   <text x="76" y="590" font-family="Geist Mono" font-size="10.5" letter-spacing="1.6" fill="#5A6B80">POLICIES</text>
   <text x="166" y="590" font-family="Geist Mono" font-size="15" font-weight="700" fill="#D9B45C">18</text>
   <text x="194" y="590" font-family="Geist Mono" font-size="10.5" letter-spacing="1.6" fill="#5A6B80">ENFORCED</text>
-  <text x="285" y="590" font-family="Geist Mono" font-size="15" font-weight="700" fill="#D9B45C">358</text>
+  <text x="285" y="590" font-family="Geist Mono" font-size="15" font-weight="700" fill="#D9B45C">400</text>
   <text x="325" y="590" font-family="Geist Mono" font-size="10.5" letter-spacing="1.6" fill="#5A6B80">EVAL CASES</text>
   <text x="432" y="590" font-family="Geist Mono" font-size="15" font-weight="700" fill="#D9B45C">3</text>
   <text x="448" y="590" font-family="Geist Mono" font-size="10.5" letter-spacing="1.6" fill="#5A6B80">PACKS</text>
