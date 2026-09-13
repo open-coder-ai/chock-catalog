@@ -466,3 +466,21 @@ no-a11y-regression:
     transitions deterministically is prototyped at open-coder-ai/org-plan,
     `prototypes/a11y-guard` -- it is not wired as a guard here, because no adapter passes file
     content to one.
+
+rtk-dangerous-actions-blocker:
+  solves: >
+    A project asked for exactly this guard and could not merge it: rtk-ai/rtk#1007 wants a
+    PreToolUse hook that refuses `rm -rf /`, force pushes, credential reads and `DROP TABLE`,
+    and asks before `rm -rf` on an ordinary directory, `git reset --hard` or a docker prune --
+    while rtk's own hook contract says its hooks never block. This policy is that table,
+    carved out under rtk's name, so it exists as a policy anyone can install beside rtk's
+    rewrite hook rather than as code rtk cannot take. It is also the worked example of the
+    catalog's premise: when someone wants a specific policy for a specific agent, the
+    catalog carves it out with its own tooling, and the folder is theirs to fork.
+  customise: >
+    Two knobs carry rtk's opinions and are the ones to turn: `is_safe_dir` lists the
+    directories `rm -rf` may delete without asking, and each `ask` call in the guard is one
+    line away from a refusal (print the message and `exit 1`) or from silence (delete the
+    call). The container rule is one `if`: remove the `in_container` guard to keep the file
+    checks inside `docker exec`, which is what the base `block-destructive-commands` does.
+    Read the manifest description first: it names the bypass classes this cannot see.
