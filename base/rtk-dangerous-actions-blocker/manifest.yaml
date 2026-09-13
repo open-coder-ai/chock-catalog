@@ -1,0 +1,59 @@
+id: rtk-dangerous-actions-blocker
+name: "rtk Dangerous Actions Blocker"
+version: "0.0.1"
+description: >
+  Carved out for rtk-ai/rtk#1007: rtk's own decision table as a chock policy (rtk's own hooks
+  may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and '+' refspecs (not --force-with-lease); reads of
+  credential files (.env, *.pem, *.key, id_rsa, ~/.ssh, ~/.aws) and echoes or inline literals
+  of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE through psql, mysql, sqlite3,
+  mongosh, redis-cli, and dropdb; plus the base policy's cloud rows (kubectl delete, terraform
+  destroy, aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume rm). Asks where
+  rtk's table says ask: rm -rf on a relative path off the safe list; git reset --hard, clean -f,
+  checkout ., branch -D; docker prune and docker rm -f over a substitution. File checks are
+  skipped inside docker/kubectl exec, as rtk specifies; rtk is a transparent prefix. Bypasses:
+  aliases, quoting, indirection, sourced files, interpreters, indirect scripts. This is
+  friction, not a security boundary.
+artifact: rule
+enforcement: advise
+compliance:
+  mitre_atlas:
+  - control: AML.T0101
+    coverage: partial
+    note: "refuses or holds destructive tool commands before they run; non-shell destruction paths are out of scope"
+  owasp_asi:
+  - ASI02
+rule:
+  text: |
+    block: rm_-rf(/|~|..|abs), git_push(--force|+ref), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN), sql(DROP|TRUNCATE|DELETE_no_WHERE)|dropdb|FLUSHALL, kubectl_delete|terraform_destroy|aws_s3_rm_-r|helm_uninstall|gcloud_delete|docker_volume_rm
+    ask: rm_-rf(relative, off safe_list), git(reset_--hard|clean_-f|checkout_.|branch_-D), docker_*_prune|docker_rm_-f_$(..); skip_inside: docker|kubectl_exec; prefix: rtk; prefer: force-with-lease|stash|dry-run
+effects:
+- read_only
+approval:
+  required: false
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-13T00:00:00Z"
+  updated_at: "2026-09-13T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+tags:
+- carve-out
+- rtk
+- requested-by:rtk-ai/rtk#1007
+
+changelog:
+- version: 0.0.1
+  date: '2026-09-13'
+  changes:
+  - "Initial carve-out of the decision table in rtk-ai/rtk#1007. Forked from block-destructive-commands 0.0.8 (its position-aware argv parser, value-flag handling, $HOME/tilde targets, PowerShell branch and cloud rows), then changed only where rtk's table differs: an ask tier (exit 3) for rm -rf on unlisted relative paths, git reset --hard / clean -f / checkout . / branch -D, docker prune and docker rm -f over a substitution; new block families for credential-file reads, credential echoes and inline literals, and DROP/TRUNCATE/unscoped DELETE through the common database clients; rtk added as a transparent prefix; file checks skipped inside docker exec / kubectl exec."

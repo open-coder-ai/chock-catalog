@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="39 policies" src="https://img.shields.io/badge/policies-40-blue">
-<img alt="18 enforced" src="https://img.shields.io/badge/enforced-18-brightgreen">
+<img alt="41 policies" src="https://img.shields.io/badge/policies-41-blue">
+<img alt="19 enforced" src="https://img.shields.io/badge/enforced-19-brightgreen">
 <img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -40,23 +40,23 @@ attention.
 **A rule an agent reads is advice. A hook that exits non-zero is a control.** Both belong in
 a repo, and the difference has to be visible, because the failure mode of governance tooling
 is that everyone believes it is doing more than it is. So every policy here is labelled with
-what it actually reaches — stated up front rather than in the appendix, because 22 of the 39
+what it actually reaches — stated up front rather than in the appendix, because 22 of the 41
 are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 10 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 8 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
 | `advisory` | text an agent reads and may or may not follow | 22 |
 
-<img alt="40 policies: 10 enforced-at-commit, 8 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
+<img alt="41 policies: 10 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
 The same distribution, in the shared open-coder-ai figure language and readable in either
 theme:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-dark.svg">
-  <img alt="Of 39 chock-catalog policies, 9 are enforced at commit and 8 more are enforced in-agent, for 17 enforced overall -- 22, more than half, are advisory only, read by the agent but backed by no mechanism." src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-light.svg" width="760">
+  <img alt="Of 41 chock-catalog policies, 10 are enforced at commit and 9 more are enforced in-agent, for 19 enforced overall -- 22, more than half, are advisory only, read by the agent but backed by no mechanism." src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-light.svg" width="760">
 </picture>
 
 Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay.
@@ -90,6 +90,7 @@ codex plugin format, Codex after its per-hook trust review).
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 27/27 |
 | [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 19/19 |
 | [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 32/32 |
+| [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | **carved out for [rtk-ai/rtk#1007](https://github.com/rtk-ai/rtk/issues/1007)**: rtk's own decision table — refuses `rm -rf /`, force push, credential-file reads (`.env`, `*.pem`, `~/.ssh`), `DROP`/`TRUNCATE` through psql and mysql; **asks** (exit 3) before `rm -rf` on an unlisted relative path, `git reset --hard`, `git clean -f`, `docker system prune`; skips file checks inside `docker exec`, and reads through rtk's own `rtk` prefix. The worked example of carving a policy out for one agent | 70/70 |
 | [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | a shell write to `.mcp.json` adding an MCP server not on the allowlist, or changing an allowed server's command/args/url to point elsewhere (including one renamed to an allowed name) — the allowlist ships inside the guard script itself, protected the same way as any other policy's guard source; a matching entry passes without a human approval each time | 15/15 |
 
 <details>
@@ -350,7 +351,7 @@ ledger and Discussions link are in [CONTRIBUTING.md](CONTRIBUTING.md#good-first-
 |---|---|
 | [agentseam](https://github.com/open-coder-ai/agentseam) | the primitives — one handler API and a verified capability matrix across 16 agents |
 | [chock](https://github.com/open-coder-ai/chock) | the compiler — one policy into git hooks, CI gates and native pre-tool hooks |
-| [chock-catalog](https://github.com/open-coder-ai/chock-catalog) | the policies — 39, each labelled enforced or advisory, with replayed evals |
+| [chock-catalog](https://github.com/open-coder-ai/chock-catalog) | the policies — 41, each labelled enforced or advisory, with replayed evals |
 | [context-report](https://github.com/open-coder-ai/context-report) | the evidence — a signed report of whether an agent artifact actually works |
 | [chock-threat-intel](https://github.com/open-coder-ai/chock-threat-intel) | the threat ledger the catalog's policies answer to |
 | chock-{claude,cursor,copilot,codex}-plugins | the catalog, packaged for each agent's plugin format (generated) |

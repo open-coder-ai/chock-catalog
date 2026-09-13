@@ -556,6 +556,8 @@ def degrade(decision, event):
 # >>> agentseam handler >>>
 GUARD_VIOLATION = 1
 
+GUARD_ASK_EXIT = 3
+
 PYTHON_SUFFIX = '.py'
 
 _BASH_CANDIDATES = ('bash', 'C:\\Program Files\\Git\\usr\\bin\\bash.exe', 'C:\\Program Files\\Git\\bin\\bash.exe', 'C:\\Program Files (x86)\\Git\\usr\\bin\\bash.exe', '/bin/bash', '/usr/bin/bash')
@@ -569,6 +571,8 @@ _GUARD_TIMEOUT_SECONDS = 30
 GUARD_BLOCKED = 'blocked'
 
 GUARD_CLEAN = 'clean'
+
+GUARD_ASKED = 'asked'
 
 GUARD_UNCHECKED = 'unchecked'
 
@@ -604,40 +608,49 @@ def find_interpreter(guard: _chock_Path) -> str | None:
     return find_bash(guard)
 
 def run_guard(guard: _chock_Path, command: str) -> str:
-    """`GUARD_BLOCKED` / `GUARD_CLEAN` when the guard ran, otherwise why it did not."""
+    """`GUARD_BLOCKED` / `GUARD_ASKED` / `GUARD_CLEAN` when the guard ran, otherwise why it did not."""
+    return run_guard_detailed(guard, command)[0]
+
+def run_guard_detailed(guard: _chock_Path, command: str) -> tuple[str, str]:
+    """`run_guard`'s verdict plus the guard's own first line, which an ask carries to the user."""
     try:
         args = _chock_shlex.split(command)
     except ValueError:
         print('chock: could not parse command (unbalanced quotes), not checked', file=sys.stderr)
-        return GUARD_UNCHECKED
+        return (GUARD_UNCHECKED, '')
     if not args:
-        return GUARD_UNCHECKED
+        return (GUARD_UNCHECKED, '')
     interpreter = find_interpreter(guard)
     if interpreter is None:
         print(f'chock: no usable interpreter found, {guard.name} not checked', file=sys.stderr)
-        return GUARD_UNCHECKED
+        return (GUARD_UNCHECKED, '')
     try:
         env = {**_chock_os.environ, 'CHOCK_RAW_COMMAND': command}
         proc = _chock_subprocess.run([interpreter, str(guard), *args], capture_output=True, text=True, encoding='utf-8', errors='replace', env=env, timeout=_GUARD_TIMEOUT_SECONDS, check=False)
     except _chock_subprocess.TimeoutExpired:
         print(f'chock: guard timed out after {_GUARD_TIMEOUT_SECONDS}s, not checked', file=sys.stderr)
-        return GUARD_ERRORED
+        return (GUARD_ERRORED, '')
     except (OSError, UnicodeError) as exc:
         print(f'chock: guard could not run, not checked: {exc}', file=sys.stderr)
-        return GUARD_ERRORED
+        return (GUARD_ERRORED, '')
+    output = ((proc.stderr or '') + (proc.stdout or '')).strip()
+    first_line = output.splitlines()[0].strip() if output else ''
     if proc.returncode == GUARD_VIOLATION:
         sys.stderr.write(proc.stdout or '')
         sys.stderr.write(proc.stderr or '')
-        if not ((proc.stdout or '') + (proc.stderr or '')).strip():
+        if not output:
             print(f'chock: blocked by {_chock_Path(guard).name} (guard gave no reason)', file=sys.stderr)
-        return GUARD_BLOCKED
+        return (GUARD_BLOCKED, first_line)
+    if proc.returncode == GUARD_ASK_EXIT:
+        sys.stderr.write(proc.stdout or '')
+        sys.stderr.write(proc.stderr or '')
+        return (GUARD_ASKED, first_line)
     if proc.returncode != 0:
-        detail = (proc.stderr or proc.stdout or '').strip().splitlines()
-        print(f'chock: guard exited {proc.returncode}, not checked' + (f': {detail[0][:120]}' if detail else ''), file=sys.stderr)
-        return GUARD_ERRORED
-    return GUARD_CLEAN
+        print(f'chock: guard exited {proc.returncode}, not checked' + (f': {first_line[:120]}' if first_line else ''), file=sys.stderr)
+        return (GUARD_ERRORED, '')
+    return (GUARD_CLEAN, '')
 
-def log_outcome(guard: _chock_Path, tool: str, *, blocked: bool) -> None:
+def log_outcome(guard: _chock_Path, tool: str, *, verdict: str) -> None:
     """Append one outcome record. Best effort: never raises, never changes the verdict."""
     try:
         if _chock_os.environ.get(GATE_LOG_ENV) == '0':
@@ -657,7 +670,7 @@ def log_outcome(guard: _chock_Path, tool: str, *, blocked: bool) -> None:
         log_path = log_dir / 'gate-events.jsonl'
         if log_path.exists() and log_path.stat().st_size > _LOG_MAX_BYTES:
             log_path.replace(log_dir / 'gate-events.1.jsonl')
-        record = {'ts': _chock_datetime.now(_chock_timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'policy_id': guard.parent.parent.name, 'surface': 'pre-tool-use', 'event': 'tool_use', 'kind': guard.stem, 'tool': tool, 'verdict': 'block' if blocked else 'allow'}
+        record = {'ts': _chock_datetime.now(_chock_timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'policy_id': guard.parent.parent.name, 'surface': 'pre-tool-use', 'event': 'tool_use', 'kind': guard.stem, 'tool': tool, 'verdict': verdict}
         with log_path.open('a', encoding='utf-8') as fh:
             fh.write(json.dumps(record, ensure_ascii=False) + '\n')
     except Exception:
@@ -668,11 +681,14 @@ def evaluate(argv: list[str], command: str, tool: str='') -> tuple[str, str] | N
     guard = guard_path_from_argv(argv)
     if guard is None or not guard.exists():
         return None
-    verdict = run_guard(guard, command)
-    if verdict in (GUARD_BLOCKED, GUARD_CLEAN):
-        log_outcome(guard, tool, blocked=verdict == GUARD_BLOCKED)
+    verdict, message = run_guard_detailed(guard, command)
+    logged = {GUARD_BLOCKED: 'block', GUARD_ASKED: 'ask', GUARD_CLEAN: 'allow'}
+    if verdict in logged:
+        log_outcome(guard, tool, verdict=logged[verdict])
     if verdict == GUARD_BLOCKED:
         return (VERDICT_DENY, f'Blocked by chock policy: {guard.stem}')
+    if verdict == GUARD_ASKED:
+        return (VERDICT_ESCALATE, f'chock policy {guard.stem} asks before this runs: {message}' if message else f'chock policy {guard.stem} asks for confirmation before this runs (guard gave no reason).')
     if verdict == GUARD_ERRORED:
         return (VERDICT_ESCALATE, f"chock could not check this command: the {guard.stem} guard did not complete (see this hook's stderr). Approving runs it unchecked.")
     return None

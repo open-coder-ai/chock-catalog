@@ -37,6 +37,7 @@ enforce nothing, and coverage says so.
 | [block-no-verify](block-no-verify/) | `--no-verify`, which bypasses every gate above | 12/12 |
 | [protect-agent-config](protect-agent-config/) | shell rewrites of the agent's own guardrails | 8/8 |
 | [protect-commit-privacy](protect-commit-privacy/) | commit messages that leak the development conversation | 7/7 |
+| [rtk-dangerous-actions-blocker](rtk-dangerous-actions-blocker/) | rtk-ai/rtk#1007's table, carved out under rtk's name: `rm -rf /`, force push, credential reads and `DROP` refused; `rm -rf <dir>`, `git reset --hard`, `docker system prune` held for confirmation | 70/70 |
 
 ## Compliance (adopted deliberately, jurisdiction-specific)
 
