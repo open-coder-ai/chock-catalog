@@ -1,16 +1,20 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.0.8"
+version: "0.0.9"
 description: >
   Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~)
   or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push
   --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform
   destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume
-  rm/prune and system prune; gcloud ... delete. Destructive verbs are matched position-aware,
-  so a bucket, path or object NAMED like a verb (aws s3 cp ... rm, docker volume inspect rm,
-  helm list delete) is allowed. Known bypass classes include aliases, quoted arguments,
-  non-standard clients, and scripts that invoke these commands indirectly. This is friction,
-  not a security boundary.
+  rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate;
+  wipefs -a. Destructive verbs are matched position-aware, so a bucket, path or object NAMED
+  like a verb (helm list delete) is allowed, and find/shred/truncate apply the same target
+  test as rm, so a relative path in the working tree stays allowed. sudo, doas and pkexec are
+  transparent wrappers: the program they run is graded, escalation itself is not refused.
+  Known bypasses: aliases, quoted arguments, non-standard clients, an unusual value-flag
+  outside the curated set, and indirect invocation via a script or interpreter. This is
+  friction, not a security boundary.
+
 artifact: rule
 enforcement: advise
 compliance:
@@ -22,7 +26,7 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete
+    block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete, find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
     require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
 effects:
 - read_only
@@ -32,7 +36,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-08-24T00:00:00Z"
+  updated_at: "2026-09-17T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -46,6 +50,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.9
+  date: '2026-09-17'
+  changes:
+  - "Four destruction families the guard never saw, and one wrapper it did not look through. `find ... -delete` and `find ... -exec rm` are refused when the start path is a dangerous root -- the slot after `find`, or the implied `.` when it is omitted -- while a relative start path stays allowed, the same trade `rm -rf ./build` makes. `shred` and `truncate` apply that same target test: both destroy contents without unlinking, so no rm rule saw them, and truncate leaves the path in place so it reads as a write. `wipefs` is refused only in its erasing forms (-a/--all, -o/--offset); bare `wipefs DEV` only lists signatures and stays allowed. `pkexec` joins sudo/doas/env as a transparent wrapper, so `pkexec dropdb production` and `pkexec helm uninstall api` are now graded on the program they run -- previously only `pkexec rm -rf /home` blocked, and by accident, on the inner rm. Privilege escalation itself is still not refused: that is a different policy, and blocking `pkexec whoami` here would fire on a non-destructive command. Operands for shred/truncate are read straight from argv rather than through the shared value-flag list, which is tuned for the wrapper CLIs and swallowed shred's own target after its no-value `-u`. The declared bypass classes named none of these and now do. Thirteen eval cases added, six of them negative or adversarial."
 - version: 0.0.6
   date: '2026-08-23'
   changes:

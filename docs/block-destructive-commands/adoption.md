@@ -56,7 +56,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~374 tokens (chars/4, max 2000)
+INDEX.md: ~392 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-destructive-commands:
   claude: best-effort (live-run)
@@ -84,7 +84,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~374 tokens (chars/4, max 2000)
+INDEX.md: ~392 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -139,9 +139,22 @@ block-destructive-commands  [deterministic]
   PASS  tc-040                             authored  guard exit 0
   PASS  tc-041                             authored  BLOCKED: helm uninstall/delete is not allowed without approval.
   PASS  tc-042                             authored  BLOCKED: dropdb is not allowed without approval.
+  PASS  tc-043                             authored  BLOCKED: find with -delete/-exec rm rooted at '/' is not allowed wi…
+  PASS  tc-044                             authored  guard exit 0
+  PASS  tc-045                             authored  BLOCKED: find with -delete/-exec rm rooted at '.' is not allowed wi…
+  PASS  tc-046                             authored  guard exit 0
+  PASS  tc-047                             authored  BLOCKED: shred targeting '/etc/passwd' is not allowed without appro…
+  PASS  tc-048                             authored  BLOCKED: shred targeting '/etc/shadow' is not allowed without appro…
+  PASS  tc-049                             authored  guard exit 0
+  PASS  tc-050                             authored  BLOCKED: wipefs -a/-o erases filesystem signatures and is not allow…
+  PASS  tc-051                             authored  guard exit 0
+  PASS  tc-052                             authored  BLOCKED: truncate targeting '/var/log/syslog' is not allowed withou…
+  PASS  tc-053                             authored  guard exit 0
+  PASS  tc-054                             authored  BLOCKED: dropdb is not allowed without approval.
+  PASS  tc-055                             authored  guard exit 0
   score 1.00
 
-5 policies: 42 pass, 41 skipped
+5 policies: 55 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -166,6 +179,6 @@ block-destructive-commands  [deterministic]
 
 ```text
 - **block-destructive-commands**:
-  block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete
+  block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete, find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
   require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
 ```

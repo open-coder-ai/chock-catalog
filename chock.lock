@@ -22,9 +22,9 @@
       "id": "block-destructive-commands",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "f4f090712989985856a7272c16395e36bb34f95ce1186a6577d9379d716d3ca2",
+      "sha256": "ac46393b18ff6d4287819846fa165124990d7fd2a4e002a35702e2e88572567e",
       "source": "local",
-      "artifacts_sha256": "52b9a7c266e61a5fd0a97c42dd6d9cceefd5fd1dc742d676564ea72cb1a698d0"
+      "artifacts_sha256": "952897dab69847549f3a1adabbe58f51daeb7bc93beecfa08fa0f304b928cf8a"
     },
     {
       "id": "block-invisible-unicode",

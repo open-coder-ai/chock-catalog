@@ -35,9 +35,9 @@
       {
         "id": "block-destructive-commands",
         "artifact": "rule",
-        "version": "0.0.8",
+        "version": "0.0.9",
         "name": "Block Destructive Commands",
-        "description": "Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~) or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete. Destructive verbs are matched position-aware, so a bucket, path or object NAMED like a verb (aws s3 cp ... rm, docker volume inspect rm, helm list delete) is allowed. Known bypass classes include aliases, quoted arguments, non-standard clients, and scripts that invoke these commands indirectly. This is friction, not a security boundary.",
+        "description": "Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~) or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate; wipefs -a. Destructive verbs are matched position-aware, so a bucket, path or object NAMED like a verb (helm list delete) is allowed, and find/shred/truncate apply the same target test as rm, so a relative path in the working tree stays allowed. sudo, doas and pkexec are transparent wrappers: the program they run is graded, escalation itself is not refused. Known bypasses: aliases, quoted arguments, non-standard clients, an unusual value-flag outside the curated set, and indirect invocation via a script or interpreter. This is friction, not a security boundary.",
         "path": ".agents/policies/block-destructive-commands",
         "manifest": "manifest.yaml",
         "trust_tier": "community",

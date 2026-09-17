@@ -68,7 +68,7 @@ for arg in "$@"; do
         # mistaken for the verb.
         positionals+=("$arg")
         case "$arg" in
-            git | rm | kubectl | terraform | aws | helm | docker | gcloud | dropdb) ;;
+            git | rm | kubectl | terraform | aws | helm | docker | gcloud | dropdb | find | shred | wipefs | truncate) ;;
             push | reset | clean | delete | destroy | checkout)
                 if [[ -z "$subcommand" ]]; then subcommand="$arg"; fi
                 ;;
@@ -93,7 +93,7 @@ pos_after() {
 cmd_word=""
 for _p in "${positionals[@]}"; do
     case "$_p" in
-        sudo | env | command | exec | nice | nohup | time | doas) continue ;;
+        sudo | env | command | exec | nice | nohup | time | doas | pkexec) continue ;;
         *)
             cmd_word="$_p"
             break
@@ -126,6 +126,25 @@ has_command() {
     local cmd="$1"
     for a in "${all_args[@]}"; do
         [[ "$a" == "$cmd" ]] && return 0
+    done
+    return 1
+}
+
+# Operands of $1, read straight from argv. The shared value-flag list is tuned for the
+# wrapper CLIs and mis-reads these tools -- shred's `-u` takes no value, so `shred -u FILE`
+# lost FILE to it -- and a size or iteration count can never be a dangerous target anyway.
+dangerous_operand() {
+    local prog="$1" seen=0 a
+    for a in "${all_args[@]}"; do
+        [[ "$a" == -* ]] && continue
+        if [[ "$seen" -eq 0 ]]; then
+            [[ "$a" == "$prog" ]] && seen=1
+            continue
+        fi
+        if is_dangerous_target "$a"; then
+            printf '%s' "$a"
+            return 0
+        fi
     done
     return 1
 }
@@ -247,6 +266,50 @@ fi
 if has_command "gcloud" && has_command "delete"; then
     echo "BLOCKED: gcloud delete is not allowed without approval." >&2
     exit 1
+fi
+
+# find ... -delete / -exec rm: the start path is the slot after `find`, and the same target
+# test as `rm -rf` applies -- `find . -name '*.pyc' -delete` is routine, `find / ... -delete`
+# is not. A pattern or argument named "find" is not the program.
+if [[ "$cmd_word" == "find" ]]; then
+    if has_command "-delete" || { { has_command "-exec" || has_command "-execdir"; } && has_command "rm"; }; then
+        # No start path means find defaults to the working tree, which `.` already covers.
+        find_root="$(pos_after find 1)"
+        if [[ -z "$find_root" ]]; then find_root="."; fi
+        if is_dangerous_target "$find_root"; then
+            echo "BLOCKED: find with -delete/-exec rm rooted at '$find_root' is not allowed without approval." >&2
+            exit 1
+        fi
+    fi
+fi
+
+# shred overwrites before unlinking, so the file is unrecoverable even from a backup taken
+# after the fact. Target-aware for the same reason rm is: shredding a scratch file in the
+# working tree is the legitimate use.
+if [[ "$cmd_word" == "shred" ]]; then
+    if shred_target="$(dangerous_operand shred)"; then
+        echo "BLOCKED: shred targeting '$shred_target' is not allowed without approval; it overwrites the data, not just the link." >&2
+        exit 1
+    fi
+fi
+
+# wipefs erases the filesystem signature from a device -- the partition survives, nothing on
+# it mounts again. Bare `wipefs /dev/sda` only LISTS signatures, so only the erasing forms
+# are refused.
+if [[ "$cmd_word" == "wipefs" ]]; then
+    if has_flag "-a" || has_flag "--all" || has_flag "-o" || has_flag "--offset"; then
+        echo "BLOCKED: wipefs -a/-o erases filesystem signatures and is not allowed without approval." >&2
+        exit 1
+    fi
+fi
+
+# truncate -s 0 destroys a file's contents in place while leaving the path, so it reads as a
+# write rather than a delete and no rm rule sees it. Same target test as rm.
+if [[ "$cmd_word" == "truncate" ]]; then
+    if trunc_target="$(dangerous_operand truncate)"; then
+        echo "BLOCKED: truncate targeting '$trunc_target' is not allowed without approval; it discards the file's contents in place." >&2
+        exit 1
+    fi
 fi
 
 # PowerShell / cmd destructive removals. POSIX shlex (the adapter's tokenizer) mangles
