@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --gate \".chock/compiled/pin-github-actions/stop/gate.json\"",
+            "commandWindows": "& @CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --gate \".chock/compiled/pin-github-actions/stop/gate.json\""
+          }
+        ]
+      }
+    ]
+  }
+}

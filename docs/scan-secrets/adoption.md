@@ -46,12 +46,18 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 INDEX.md: ~352 tokens (chars/4, max 2000)
 Recompiled 1 policies
 scan-secrets:
-  claude: enforced-at-commit
+  claude: best-effort (live-run)
   copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -64,6 +70,13 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+INDEX.md: ~352 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -112,6 +125,16 @@ scan-secrets  [deterministic]
 .chock/compiled/scan-secrets/git-hook/git-pre-commit.sh
 .chock/compiled/scan-secrets/managed-setting/managed-settings.json
 .chock/compiled/scan-secrets/mcp-gateway/gateway-gate.json
+.chock/compiled/scan-secrets/pre-tool-use/gate.json
+.chock/compiled/scan-secrets/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/scan-secrets/pre-tool-use/pretooluse-write.json
+.chock/compiled/scan-secrets/stop/antigravity-hooks.json
+.chock/compiled/scan-secrets/stop/codex_cli-hooks.json
+.chock/compiled/scan-secrets/stop/devin-hooks.json
+.chock/compiled/scan-secrets/stop/gate.json
+.chock/compiled/scan-secrets/stop/gemini_cli-hooks.json
+.chock/compiled/scan-secrets/stop/stop.json
+.chock/compiled/scan-secrets/stop/tabnine-hooks.json
 ```
 
 ## INDEX.md entry

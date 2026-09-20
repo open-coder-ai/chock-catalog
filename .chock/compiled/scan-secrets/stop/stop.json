@@ -1,0 +1,9 @@
+{
+  "hooks": [
+    {
+      "type": "command",
+      "command": "@CHOCK_PYTHON@ \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/scan-secrets/stop/gate.json\"",
+      "timeout": 30
+    }
+  ]
+}

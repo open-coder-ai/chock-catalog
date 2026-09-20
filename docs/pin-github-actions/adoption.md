@@ -46,12 +46,18 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 INDEX.md: ~405 tokens (chars/4, max 2000)
 Recompiled 1 policies
 pin-github-actions:
-  claude: enforced-at-commit
+  claude: best-effort (live-run)
   copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -64,6 +70,13 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+INDEX.md: ~405 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -101,6 +114,16 @@ pin-github-actions  [deterministic]
 .chock/compiled/pin-github-actions/git-hook/git-pre-commit.sh
 .chock/compiled/pin-github-actions/managed-setting/managed-settings.json
 .chock/compiled/pin-github-actions/mcp-gateway/gateway-gate.json
+.chock/compiled/pin-github-actions/pre-tool-use/gate.json
+.chock/compiled/pin-github-actions/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/pin-github-actions/pre-tool-use/pretooluse-write.json
+.chock/compiled/pin-github-actions/stop/antigravity-hooks.json
+.chock/compiled/pin-github-actions/stop/codex_cli-hooks.json
+.chock/compiled/pin-github-actions/stop/devin-hooks.json
+.chock/compiled/pin-github-actions/stop/gate.json
+.chock/compiled/pin-github-actions/stop/gemini_cli-hooks.json
+.chock/compiled/pin-github-actions/stop/stop.json
+.chock/compiled/pin-github-actions/stop/tabnine-hooks.json
 ```
 
 ## INDEX.md entry

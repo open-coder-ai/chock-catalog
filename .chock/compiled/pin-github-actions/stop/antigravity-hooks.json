@@ -1,0 +1,14 @@
+{
+  "agentseam": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@CHOCK_PYTHON@ \".chock/bin/antigravity.py\" --gate \".chock/compiled/pin-github-actions/stop/gate.json\""
+          }
+        ]
+      }
+    ]
+  }
+}

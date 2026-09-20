@@ -1,0 +1,14 @@
+{
+  "agentseam": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "@CHOCK_PYTHON@ \".chock/bin/antigravity.py\" --gate \".chock/compiled/block-wildcard-agent-permissions/stop/gate.json\""
+          }
+        ]
+      }
+    ]
+  }
+}
