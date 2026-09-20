@@ -1,0 +1,10 @@
+{
+  "matcher": "write_file|replace",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "@CHOCK_PYTHON@ \"${CLAUDE_PROJECT_DIR}/.chock/bin/gemini_cli.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/scan-secrets/pre-tool-use/gate.json\"",
+      "timeout": 30
+    }
+  ]
+}

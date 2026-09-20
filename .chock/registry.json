@@ -95,7 +95,7 @@
       {
         "id": "block-wildcard-agent-permissions",
         "artifact": "hook",
-        "version": "0.0.4",
+        "version": "0.0.5",
         "name": "Block Wildcard Agent Permissions",
         "description": "The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or allow-list is a bare wildcard hands the agent unlimited tool authority for every future session, in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). Escape: 'pragma: allowlist broad-agency' on the same line.",
         "path": ".agents/policies/block-wildcard-agent-permissions",
@@ -230,7 +230,7 @@
       {
         "id": "pin-github-actions",
         "artifact": "hook",
-        "version": "0.0.2",
+        "version": "0.0.3",
         "name": "Pin GitHub Actions",
         "description": "The mechanizable slice of CI supply-chain hardening, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- a workflow that references a third-party GitHub Action by a movable ref -- a branch or a version tag -- instead of a full 40-character commit SHA. A tag like v4 or a branch like main can be re-pointed at new code after review, so the action that runs tomorrow need not be the one that was audited today; a compromised or rug-pulled release rides in on exactly that mutability. The gate blocks an added line that references an action by a non-SHA ref (owner/repo at a tag/branch); a full 40-char SHA pin passes, local actions (no ref) pass, and 'pragma: allowlist unpinned-action' on the same line is a visible, deliberate exception. This is the OpenSSF Scorecard Pinned-Dependencies control for the slice a diff can show; signature and provenance verification stay out of scope.",
         "path": ".agents/policies/pin-github-actions",

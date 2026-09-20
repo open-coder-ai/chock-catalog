@@ -22,6 +22,16 @@
         ]
       },
       {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-invisible-unicode/pre-tool-use/gate.json\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -37,6 +47,26 @@
           {
             "type": "command",
             "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-wildcard-agent-permissions/pre-tool-use/gate.json\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/pin-github-actions/pre-tool-use/gate.json\"",
             "timeout": 30
           }
         ]
@@ -72,6 +102,16 @@
         ]
       },
       {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/scan-secrets/pre-tool-use/gate.json\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -89,6 +129,44 @@
             "type": "command",
             "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\"",
             "timeout": 300
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-invisible-unicode/stop/gate.json\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-wildcard-agent-permissions/stop/gate.json\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/pin-github-actions/stop/gate.json\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/scan-secrets/stop/gate.json\"",
+            "timeout": 30
           }
         ]
       }

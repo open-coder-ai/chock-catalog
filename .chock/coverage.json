@@ -207,13 +207,13 @@
       "witnessed": false
     },
     "claude": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run",
       "witnessed": false
     },
     "codex": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run-partial",
       "witnessed": false
     },
     "copilot": {
@@ -227,13 +227,13 @@
       "witnessed": false
     },
     "devin": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "gemini": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-source",
       "witnessed": false
     },
     "grok": {
@@ -252,8 +252,8 @@
       "witnessed": false
     },
     "tabnine": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "vscode": {
@@ -408,13 +408,13 @@
       "witnessed": false
     },
     "claude": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run",
       "witnessed": false
     },
     "codex": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run-partial",
       "witnessed": false
     },
     "copilot": {
@@ -428,13 +428,13 @@
       "witnessed": false
     },
     "devin": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "gemini": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-source",
       "witnessed": false
     },
     "grok": {
@@ -453,8 +453,8 @@
       "witnessed": false
     },
     "tabnine": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "vscode": {
@@ -877,13 +877,13 @@
       "witnessed": false
     },
     "claude": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run",
       "witnessed": false
     },
     "codex": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run-partial",
       "witnessed": false
     },
     "copilot": {
@@ -897,13 +897,13 @@
       "witnessed": false
     },
     "devin": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "gemini": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-source",
       "witnessed": false
     },
     "grok": {
@@ -922,8 +922,8 @@
       "witnessed": false
     },
     "tabnine": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "vscode": {
@@ -1212,13 +1212,13 @@
       "witnessed": false
     },
     "claude": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run",
       "witnessed": false
     },
     "codex": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "live-run-partial",
       "witnessed": false
     },
     "copilot": {
@@ -1232,13 +1232,13 @@
       "witnessed": false
     },
     "devin": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "gemini": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-source",
       "witnessed": false
     },
     "grok": {
@@ -1257,8 +1257,8 @@
       "witnessed": false
     },
     "tabnine": {
-      "level": "enforced-at-commit",
-      "basis": null,
+      "level": "best-effort",
+      "basis": "vendor-docs",
       "witnessed": false
     },
     "vscode": {

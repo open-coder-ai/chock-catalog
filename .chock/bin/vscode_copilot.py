@@ -597,6 +597,140 @@ def evaluate(argv: list[str], command: str, tool: str='') -> tuple[str, str] | N
         return (VERDICT_ESCALATE, f"chock could not check this command: the {guard.stem} guard did not complete (see this hook's stderr). Approving runs it unchecked.")
     return None
 
+GATE_FLAG = '--gate'
+
+_GATE_TIMEOUT_SECONDS = 30
+
+_GATE_DEPTH_TO_CHOCK = 3
+
+_RUNNER_PARTS = ('bin', 'gate.py')
+
+_GIT = 'git'
+
+_DELETED = 'D'
+
+_RENAMED = 'R'
+
+GATE_BLOCKED = 'blocked'
+
+GATE_CLEAN = 'clean'
+
+GATE_ERRORED = 'errored'
+
+VERDICT_DENY = 'deny'
+
+def gate_path_from_argv(argv):
+    """The `--gate <path>` argument a vendored runtime was invoked with, or None."""
+    if GATE_FLAG in argv:
+        index = argv.index(GATE_FLAG)
+        if index + 1 < len(argv):
+            return _chock_Path(argv[index + 1])
+    return None
+
+def runner_for(gate):
+    """The vendored gate runner beside this compiled gate, or None when it is not there."""
+    parents = gate.resolve().parents
+    if len(parents) <= _GATE_DEPTH_TO_CHOCK:
+        return None
+    runner = parents[_GATE_DEPTH_TO_CHOCK].joinpath(*_RUNNER_PARTS)
+    return runner if runner.exists() else None
+
+def writes_from_event(event):
+    """The one file this tool call would write, or none when it carries no file text."""
+    path = getattr(event, 'path', None)
+    content = getattr(event, 'content', None)
+    if not path or not isinstance(content, str):
+        return {}
+    return {str(path): content}
+
+def changed_paths(repo_root):
+    """Every uncommitted path in the worktree. Outside a repository there is nothing to list."""
+    try:
+        proc = _chock_subprocess.run([_GIT, '-C', str(repo_root), 'status', '--porcelain=v1', '--untracked-files=all', '-z'], capture_output=True, text=True, timeout=_GATE_TIMEOUT_SECONDS, check=False)
+    except (OSError, _chock_subprocess.SubprocessError):
+        return []
+    if proc.returncode != 0:
+        return []
+    fields = [field for field in (proc.stdout or '').split('\x00') if field]
+    paths = []
+    skip_next = False
+    for field in fields:
+        if skip_next:
+            skip_next = False
+            continue
+        status, path = (field[:2], field[3:])
+        skip_next = status.startswith(_RENAMED)
+        if _DELETED in status or not path:
+            continue
+        paths.append(path)
+    return paths
+
+def writes_from_worktree(repo_root):
+    """What this turn actually left on disk, however it was written.
+
+    The write path sees only writes it recognises; a shell heredoc carries no file argument.
+    Reading final state is what makes that stop mattering, so this deliberately does not care
+    which tool produced the bytes.
+    """
+    writes = {}
+    for path in changed_paths(repo_root):
+        try:
+            writes[path] = _chock_Path(repo_root, path).read_text(encoding='utf-8')
+        except (OSError, UnicodeDecodeError):
+            continue
+    return writes
+
+def run_gate(gate, writes, event):
+    """Ask the vendored runner. Returns (outcome, message) and never decides for itself."""
+    runner = runner_for(gate)
+    if runner is None:
+        return (GATE_ERRORED, 'the vendored gate runner is not installed beside this gate')
+    try:
+        proc = _chock_subprocess.run([sys.executable, str(runner), 'run', '--gate', str(gate), '--event', event], input=json.dumps({'writes': writes}), capture_output=True, text=True, timeout=_GATE_TIMEOUT_SECONDS, check=False)
+    except (OSError, _chock_subprocess.SubprocessError) as exc:
+        return (GATE_ERRORED, str(exc))
+    if proc.returncode == 0:
+        return (GATE_CLEAN, '')
+    if proc.returncode == 1:
+        return (GATE_BLOCKED, (proc.stderr or '').strip())
+    return (GATE_ERRORED, (proc.stderr or '').strip())
+
+_EVENT_ARG = {'pre_tool': 'pre-tool-use', 'stop': 'stop'}
+
+PRE_TOOL = 'pre_tool'
+
+def root_for(gate):
+    """The repository this compiled gate belongs to, or None when the layout is not that."""
+    parents = gate.resolve().parents
+    if len(parents) <= _GATE_DEPTH_TO_CHOCK:
+        return None
+    return parents[_GATE_DEPTH_TO_CHOCK].parent
+
+def writes_for(event, gate):
+    """What this event puts under judgement: the call's own text, or what the turn left behind."""
+    if event.event == PRE_TOOL:
+        return writes_from_event(event)
+    if (event.raw or {}).get('stop_hook_active'):
+        return {}
+    root = root_for(gate)
+    return writes_from_worktree(root) if root is not None else {}
+
+def evaluate_gate(argv, event):
+    """The decision this event earns from a compiled gate, or None when it has nothing to say."""
+    gate = gate_path_from_argv(argv)
+    name = _EVENT_ARG.get(getattr(event, 'event', ''))
+    if gate is None or name is None or (not gate.exists()):
+        return None
+    writes = writes_for(event, gate)
+    if not writes:
+        return None
+    outcome, message = run_gate(gate, writes, name)
+    if outcome == GATE_BLOCKED:
+        return (VERDICT_DENY, message or f'Blocked by chock policy: {gate.parent.parent.name}')
+    if outcome == GATE_ERRORED:
+        return (VERDICT_DENY, f'chock could not check this write: {message}. Refusing rather than reporting an allow it never established.')
+    return None
+
 
 def handle(event):
     if event.event == "pre_tool" and event.command:
@@ -604,6 +738,9 @@ def handle(event):
         if verdict is not None:
             outcome, reason = verdict
             return Decision.escalate(reason) if outcome == ESCALATE else Decision.deny(reason)
+    gated = evaluate_gate(sys.argv[1:], event)
+    if gated is not None:
+        return Decision.deny(gated[1])
     return None
 # <<< agentseam handler <<<
 

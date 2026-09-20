@@ -1,0 +1,12 @@
+{
+  "Stop": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "@CHOCK_PYTHON@ \".chock/bin/devin.py\" --gate \".chock/compiled/block-invisible-unicode/stop/gate.json\""
+        }
+      ]
+    }
+  ]
+}

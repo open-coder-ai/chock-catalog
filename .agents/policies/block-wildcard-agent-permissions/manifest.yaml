@@ -1,6 +1,6 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   The mechanizable slice of excessive agency, enforced at two points: at commit (the git
   hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the
@@ -16,6 +16,25 @@ effects:
 - read_only
 approval:
   required: false
+applies_to:
+  # Where an agent permission grant can live: each vendor's repo-level settings directory
+  # (the config_path table agentseam records, minus the two home-anchored ones a repo
+  # cannot carry) plus the MCP client file. Without this bound the gate judges every file it
+  # is shown -- at the turn's end, the whole worktree -- and a docs page quoting a grant as
+  # an example of what not to write is refused for describing it.
+  paths:
+  - ".claude/*"
+  - ".cursor/*"
+  - ".codex/*"
+  - ".gemini/*"
+  - ".devin/*"
+  - ".tabnine/*"
+  - ".windsurf/*"
+  - ".grok/*"
+  - ".vscode/*"
+  - ".github/hooks/*"
+  - ".agents/hooks.json"
+  - "*mcp.json"
 
 hook:
   gate:
@@ -56,7 +75,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-08-24T00:00:00Z"
+  updated_at: "2026-09-20T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -86,3 +105,7 @@ changelog:
   date: '2026-08-28'
   changes:
   - "Bind at tool-use as well as commit: gate.on now [commit, tool_use], so a wildcard grant is caught as the agent WRITES it into a settings file (the excessive-agency self-escalation path), not only when a human commits one. No pattern change. Message notes the allowlist pragma is a commit-review concept NOT honored at tool-use (live, attacker-controllable tool argument -- a match always blocks, matching the gateway's content_regex semantics)."
+- version: 0.0.5
+  date: '2026-09-20'
+  changes:
+  - "Bound the gate to the files an agent permission grant can live in (applies_to.paths: each vendor's repo-level settings directory from agentseam's config_path table, .vscode/, .github/hooks/, .agents/hooks.json and any *mcp.json). The engine now runs this policy at the agent's write path and at the end of a turn, where the text under judgement is whatever was written -- unbounded, a docs page quoting a wildcard grant as the thing not to write was refused for describing it. No pattern change; every eval case still stages into a bounded path and judges as before."

@@ -10,5 +10,19 @@
     "scan": "added_lines",
     "allowlist_pragma": "pragma:\\s*allowlist\\s+broad-agency",
     "content_pattern": "Bash\\([*]\\)|\"allow\"\\s*:\\s*\\[[^\\]]*\"\\*\"|\"alwaysAllow\"\\s*:\\s*\\[[^\\]]*\"\\*\"|\"tools\"\\s*:\\s*\\[[^\\]]*\"\\*\"|\"defaultMode\"\\s*:\\s*\"bypassPermissions\""
-  }
+  },
+  "paths": [
+    ".claude/*",
+    ".cursor/*",
+    ".codex/*",
+    ".gemini/*",
+    ".devin/*",
+    ".tabnine/*",
+    ".windsurf/*",
+    ".grok/*",
+    ".vscode/*",
+    ".github/hooks/*",
+    ".agents/hooks.json",
+    "*mcp.json"
+  ]
 }
