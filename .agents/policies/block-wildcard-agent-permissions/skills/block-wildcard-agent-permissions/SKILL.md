@@ -1,6 +1,6 @@
 ---
 name: block-wildcard-agent-permissions
-description: "The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or allow-list is a bare wildcard hands the agent unlimited tool authority for every future session, in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). Escape: 'pragma: allowlist broad-agency' on the same line."
+description: "The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or allow-list is a bare wildcard hands the agent unlimited tool authority for every future session, in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes them, word-bounded so \"disallow\"/\"allowlist\" are not mistaken for \"allow\". Escape: 'pragma: allowlist broad-agency' on the same line."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Block Wildcard Agent Permissions
 
-The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or allow-list is a bare wildcard hands the agent unlimited tool authority for every future session, in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). Escape: 'pragma: allowlist broad-agency' on the same line.
+The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or allow-list is a bare wildcard hands the agent unlimited tool authority for every future session, in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes them, word-bounded so "disallow"/"allowlist" are not mistaken for "allow". Escape: 'pragma: allowlist broad-agency' on the same line.
 
 ```
 on(commit|tool_use): block(content_regex) scan=added_lines allowlist_pragma=pragma:\s*allowlist\s+broad-agency ...

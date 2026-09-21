@@ -172,3 +172,51 @@ suite:
       files:
         .env.defaults: "DATABASE_URL=postgres://localhost/dev\n"
       expect: allow
+  - id: tc-021
+    category: trigger
+    prompt: A staged file contains an AWS STS temporary access key ID (ASIA prefix).
+    expect: The hook blocks the commit; ASIA keys are as sensitive as long-term AKIA ones.
+    execute:
+      files:
+        creds.py: "AWS_ACCESS_KEY_ID = 'ASIAIOSFODNN7EXAMPLE'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-022
+    category: trigger
+    prompt: A staged file contains a GitHub OAuth access token.
+    expect: The hook blocks the commit; gho_ tokens grant the same access a ghp_ PAT does.
+    execute:
+      files:
+        creds.py: "TOKEN = 'gho_1234567890abcdefghijklmnopqrstuvwxyz'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-023
+    category: trigger
+    prompt: A staged file contains a GitHub App user-to-server token.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        creds.py: "TOKEN = 'ghu_1234567890abcdefghijklmnopqrstuvwxyz'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-024
+    category: trigger
+    prompt: A staged file contains a GitHub App refresh token.
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        creds.py: "TOKEN = 'ghr_1234567890abcdefghijklmnopqrstuvwxyz'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-025
+    category: trigger
+    prompt: A staged file contains a legacy-format OpenAI API key (no sk-proj- prefix).
+    expect: The hook blocks the commit; the pre-project-key sk- format is still issued and valid.
+    execute:
+      files:
+        creds.py: "OPENAI_API_KEY = 'sk-abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOP12'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-026
+    category: negative_trigger
+    prompt: A commit adds a comment mentioning the scikit-learn library.
+    expect: The hook allows it; "sk-learn"/"sklearn" must not be mistaken for an OpenAI key.
+    execute:
+      files:
+        notes.md: "sk-learn is a machine learning library; import sklearn to use it.\n"
+      expect: allow

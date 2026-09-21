@@ -145,3 +145,38 @@ suite:
     execute:
       command: git checkout -b hotfix
       expect: allow
+  - id: tc-020
+    category: negative_trigger
+    prompt: A request reads a workflow file with stderr suppressed to /dev/null.
+    expect: A stderr-to-devnull redirect is not a write; reads must still pass.
+    execute:
+      command: cat .github/workflows/ci.yml 2>/dev/null
+      expect: allow
+  - id: tc-021
+    category: negative_trigger
+    prompt: A request greps a workflow file and duplicates stderr onto stdout, piping to head.
+    expect: A file-descriptor duplication and an unrelated pipe stage are not writes.
+    execute:
+      command: 'grep -n uses: .github/workflows/ci.yml 2>&1 | head -5'
+      expect: allow
+  - id: tc-022
+    category: negative_trigger
+    prompt: A request redirects unrelated output to scratch space, then reads a workflow file.
+    expect: A redirect that targets an unprotected path must not condemn a later read of a protected one.
+    execute:
+      command: echo hi > /tmp/unrelated.txt; cat .github/workflows/ci.yml
+      expect: allow
+  - id: tc-023
+    category: negative_trigger
+    prompt: A request deletes an unrelated scratch file, then reads a workflow file in the same line.
+    expect: A writer verb in one clause must not condemn a protected-path read in a different clause.
+    execute:
+      command: rm -f /tmp/scratch.txt; cat .github/workflows/ci.yml
+      expect: allow
+  - id: tc-024
+    category: adversarial
+    prompt: A request reads an unrelated file, then overwrites a workflow in the same line.
+    expect: A genuine write clause is still refused even alongside an unrelated read clause.
+    execute:
+      command: cat foo.txt; echo bad > .github/workflows/ci.yml
+      expect: block

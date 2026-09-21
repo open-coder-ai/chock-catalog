@@ -186,9 +186,16 @@ def main() -> int:
                 f"ladder row {row}: README says {found.group(1)}, repo has {want}"
             )
 
+    # A table cell's own text can carry a markdown-escaped pipe (block-curl-pipe-sh's
+    # description spells out `curl … \| sh`) -- literal content, not a column break. A
+    # cell pattern of plain "not a pipe" characters stops at that escaped pipe instead of
+    # the real column separator, so the row never matches and its count goes unchecked
+    # with no error at all (found silently comes back falsy). Matching either a `\|`
+    # or any other non-pipe character keeps the escaped pipe inside its cell.
+    cell = r"(?:\\\||[^\r\n|])*"
     for policy_id, (executed, count) in evals.items():
         found = re.search(
-            rf"`{re.escape(policy_id)}`\]\([^)]*\)[^\r\n|]*\|[^\r\n|]*\|[ \t]*(\d+)/(\d+)[ \t]*\|",
+            rf"`{re.escape(policy_id)}`\]\([^)]*\){cell}\|{cell}\|[ \t]*(\d+)/(\d+)[ \t]*\|",
             text,
         )
         if found and (int(found.group(1)), int(found.group(2))) != (executed, count):

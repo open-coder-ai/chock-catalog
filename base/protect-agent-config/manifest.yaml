@@ -1,19 +1,20 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.0.5"
+version: "0.0.6"
 description: >
   Guard against an agent hand-editing its own guardrails. Agent instruction files
   (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json,
   .mcp.json) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the
   agent may do -- so a shell command that rewrites them is the agent modifying its own
-  authority (MITRE ATLAS AML.T0081; the AIVSS self-modification factor). The guard
-  refuses shell write-commands targeting those paths; reads pass, and regeneration
-  through `chock sync` passes because the tool writes them itself rather than through
-  shell editing. Best-effort and deliberately coarse: a compound command that both
-  reads a protected file and writes elsewhere may be refused -- rewrite it in two
-  steps. The 'chock: approved-config-change' escape marker is friction plus an audit
-  trail, not authentication -- the agent can write it too; the check an agent cannot
-  self-approve is the commit-time gate and CI.
+  authority (MITRE ATLAS AML.T0081). The guard refuses shell write-commands targeting
+  those paths; reads pass, and regeneration
+  through `chock sync` passes because the tool writes them itself. Best-effort and
+  deliberately coarse: a write signal (a `>`/`>>` redirect, or a writer verb like
+  rm/cp/sed -i) is scoped to its own clause of the command line, so it must actually
+  target the protected path, not merely appear alongside it; a glued-on separator or a
+  non-redirect writer's own operand are not resolved that finely. The
+  'chock: approved-config-change' marker is friction plus an audit trail, not
+  authentication; the check an agent cannot self-approve is the commit-time gate and CI.
 artifact: rule
 enforcement: advise
 rule:
@@ -55,6 +56,20 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.6
+  date: '2026-09-21'
+  changes:
+  - "False-positive fix (deep review): a redirect ('>'/'>>') is now only a write when the
+    protected path is its actual target, not merely present anywhere in the command, so
+    `cat .claude/settings.json 2>/dev/null` and `... 2>&1` (stderr suppressed or
+    duplicated, not a write to anything) no longer refuse a plain read. Writer-verb
+    detection (rm/mv/cp/tee/sed -i/interpreter write-forms) is now scoped to the same
+    command-line clause (split at ';', '&&', '||', '|', including a separator glued to
+    the END of a token) as the protected-path mention, so an unrelated write in a
+    different clause (`rm -f /tmp/x; cat .claude/settings.json`, `echo hi > /tmp/x; cat
+    .claude/settings.json`) no longer refuses the read. A genuine write, alone or beside
+    an unrelated read clause, is still refused. Seven eval cases added (tc-025..tc-031)
+    covering the false-positive fix and the regression it must not reopen."
 - version: 0.0.1
   date: '2026-08-16'
   changes:

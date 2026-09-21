@@ -1,18 +1,20 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Guard against an agent weakening the automated checks that review its own work. CI/CD
   workflow files (.github/workflows/), the composite actions they call (.github/actions/)
   and the dependency-update automation (.github/dependabot.yml) define what must pass
-  before a change lands -- so a shell command that rewrites or deletes them is the agent
-  removing the gate that would catch it. The guard refuses shell write-commands targeting
-  those paths; reads pass, and tool-driven regeneration (chock sync) passes because it
-  writes through the tool, not shell editing. Best-effort and deliberately coarse: a
-  compound command that both reads a protected file and writes elsewhere may be refused --
-  rewrite it in two steps. The 'chock: approved-config-change' escape marker is friction
-  plus an audit trail, not authentication -- the agent can write it too; the check an agent
-  cannot self-approve is branch protection and required-status-checks enforced server-side.
+  before a change lands -- so rewriting or deleting them is the agent removing the gate
+  that would catch it. The guard refuses shell write-commands targeting those paths;
+  reads pass, and tool-driven regeneration (chock sync) passes. Best-effort and
+  deliberately coarse: a write signal (a
+  `>`/`>>` redirect, or a writer verb like rm/cp/sed -i/git checkout) is scoped to its
+  own clause of the command line, so it must actually target the protected path, not
+  merely appear alongside it; a glued-on separator or a non-redirect writer's own
+  operand are not resolved that finely. The 'chock: approved-config-change' marker is
+  friction plus an audit trail, not authentication; the check an agent cannot
+  self-approve is server-side branch protection.
 artifact: rule
 enforcement: advise
 rule:
@@ -47,6 +49,19 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.2
+  date: '2026-09-21'
+  changes:
+  - "False-positive fix (deep review): a redirect ('>'/'>>') is now only a write when the
+    protected path is its actual target, not merely present anywhere in the command, so
+    `cat .github/workflows/ci.yml 2>/dev/null` and a piped `grep ... 2>&1 | head` no
+    longer refuse a plain read. Writer-verb detection (rm/mv/cp/tee/sed -i/interpreter
+    write-forms/git checkout|restore) is now scoped to the same command-line clause
+    (split at ';', '&&', '||', '|', including a separator glued to the END of a token) as
+    the protected-path mention, so an unrelated write in a different clause no longer
+    refuses the read. A genuine write, alone or beside an unrelated read clause, is still
+    refused. Five eval cases added (tc-020..tc-024). Same fix as protect-agent-config
+    0.0.6, which this policy's write-detection engine is a sibling of."
 - version: 0.0.1
   date: '2026-08-26'
   changes:

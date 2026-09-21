@@ -47,14 +47,13 @@ case "$cmd" in
         done
         ;;
 esac
-if [[ "$is_target" -eq 0 ]]; then
-    exit 0
-fi
 
 # Marker phrases that describe the conversation rather than the change. Matched
 # case-insensitively as substrings. The session-URL marker is the concrete leak this
 # policy was hardened for: agent harnesses append a claude.ai/code/session link to PR
-# bodies, publishing a private session identifier on a public repo forever.
+# bodies, publishing a private session identifier on a public repo forever. Defined here,
+# before the raw-text fallback below, so that fallback (which runs before the positional
+# is_target==0 exit) sees a populated array rather than an empty one under `set -u`.
 MARKERS=(
     "claude.ai/code/session"
     "user asked"
@@ -74,6 +73,39 @@ MARKERS=(
     "as agreed with"
     "docs/internal/"
 )
+
+# A shell wrapper (sh -c "...", bash -c "...") hides the real git/gh invocation and its
+# message inside ONE opaque argv token -- shlex has already collapsed the quoted inner
+# command by the time this guard sees argv, so cmd is "sh"/"bash"/"zsh"/etc, never
+# "git"/"gh", and the positional scan above never runs. Scoped to cmd actually being a
+# shell interpreter (not, say, "echo", which is already correctly excluded by keying on
+# argv[0] and must stay excluded here too -- printing "git commit ..." is not running it)
+# so this does not re-open the exact false positive that keying on argv[0] exists to close.
+# Fall back to scanning the raw command text for the same markers when it looks like a
+# wrapped commit/PR composition. Coarser (a marker anywhere in the wrapped command, not
+# only inside the message argument) but not blind to it; the message-fragment extraction
+# above stays the precise path for the direct-invocation case.
+case "$cmd" in
+    sh|bash|zsh|ksh|dash)
+        if [[ "$is_target" -eq 0 && -n "${CHOCK_RAW_COMMAND:-}" ]]; then
+            raw_lower="$(printf '%s' "$CHOCK_RAW_COMMAND" | tr '[:upper:]' '[:lower:]')"
+            case "$raw_lower" in
+                *git*commit* | *gh*pr*create* | *gh*pr*edit*)
+                    for marker in "${MARKERS[@]}"; do
+                        if [[ "$raw_lower" == *"$marker"* ]]; then
+                            echo "BLOCKED: commit message or PR body narrates the development process ('$marker'). Describe the change itself; keep conversations, plans, session links and decision trails out of published history -- on a public repo every message is published forever. If this phrase is legitimate here, edit the MARKERS list in this guard." >&2
+                            exit 1
+                        fi
+                    done
+                    ;;
+            esac
+        fi
+        ;;
+esac
+
+if [[ "$is_target" -eq 0 ]]; then
+    exit 0
+fi
 
 collect=""
 expect_msg=0

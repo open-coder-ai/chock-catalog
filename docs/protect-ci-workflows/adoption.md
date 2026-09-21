@@ -47,14 +47,7 @@ No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
-Registered 1 hook entr(y/ies) in .agents/hooks.json
-Registered 1 hook entr(y/ies) in .codex/hooks.json
-Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
-Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
-Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~325 tokens (chars/4, max 2000)
 Recompiled 1 policies
@@ -116,9 +109,14 @@ protect-ci-workflows  [deterministic]
   PASS  tc-017                             authored  BLOCKED: shell write touching CI/CD workflow config is not allowed …
   PASS  tc-018                             authored  BLOCKED: shell write touching CI/CD workflow config is not allowed …
   PASS  tc-019                             authored  guard exit 0
+  PASS  tc-020                             authored  guard exit 0
+  PASS  tc-021                             authored  guard exit 0
+  PASS  tc-022                             authored  guard exit 0
+  PASS  tc-023                             authored  guard exit 0
+  PASS  tc-024                             authored  BLOCKED: shell write touching CI/CD workflow config is not allowed …
   score 1.00
 
-5 policies: 19 pass, 41 skipped
+5 policies: 24 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -47,11 +47,7 @@ Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 hook entr(y/ies) in .agents/hooks.json
-Registered 1 hook entr(y/ies) in .codex/hooks.json
-Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
-Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 INDEX.md: ~366 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-agent-permissions:
@@ -100,9 +96,14 @@ block-wildcard-agent-permissions  [deterministic]
   PASS  tc-009                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
   PASS  tc-010                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
   PASS  tc-011                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
+  PASS  tc-012                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
+  PASS  tc-013                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
+  PASS  tc-014                             authored  Wildcard agent permission grant detected. Scope the grant to specif…
+  PASS  tc-015                             authored  gate exit 0
+  PASS  tc-016                             authored  gate exit 0
   score 1.00
 
-5 policies: 11 pass, 41 skipped
+5 policies: 16 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

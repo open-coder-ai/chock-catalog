@@ -1,6 +1,6 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.0.6"
+version: "0.0.7"
 description: >
   Blocks known credential patterns -- vendor key prefixes, private-key blocks, and
   key/token/password assignments -- at two enforcement points: at commit (the git hook,
@@ -34,7 +34,7 @@ hook:
       forbidden_path_regex: '(\.env(\.(?!(sample|example|template|dist|defaults)$)[^/]+)?|\.(pem|key|p12|pfx|jks|keystore))$'
       allowlist_pragma: '#\s*pragma:\s*allowlist\s+secret'
       content_pattern: |-
-        (?i)(AKIA[0-9A-Z]{16}|ghp_[0-9A-Za-z]{36}|ghs_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{22,}|xox[bpas]-[0-9A-Za-z-]{10,}|(sk|rk)_live_[0-9A-Za-z]{16,}|sk-proj-[0-9A-Za-z_-]{20,}|sk-ant-[0-9A-Za-z_-]{20,}|AIza[0-9A-Za-z_-]{35}|npm_[0-9A-Za-z]{36}|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|password\s*=\s*["'][^"'\s]{12,}["']|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}|password\s*[=:]\s*[^\s"'${}]{12,})
+        (?i)((AKIA|ASIA)[0-9A-Z]{16}|gh[oprsu]_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{22,}|xox[bpas]-[0-9A-Za-z-]{10,}|(sk|rk)_live_[0-9A-Za-z]{16,}|sk-proj-[0-9A-Za-z_-]{20,}|sk-ant-[0-9A-Za-z_-]{20,}|sk-[0-9A-Za-z]{20,}|AIza[0-9A-Za-z_-]{35}|npm_[0-9A-Za-z]{36}|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|password\s*=\s*["'][^"'\s]{12,}["']|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}|password\s*[=:]\s*[^\s"'${}]{12,})
 
 compliance:
   mitre_atlas:
@@ -59,6 +59,16 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.7
+  date: '2026-09-21'
+  changes:
+  - "Token format coverage (deep review, CONTRIBUTING.md's own invited first contribution):
+    AWS ASIA (STS temporary access keys, as common as AKIA in CI); GitHub gho_/ghu_/ghr_
+    (OAuth, App user-to-server, App refresh tokens -- ghp_/ghs_/github_pat_ were already
+    covered); and the legacy sk- OpenAI API key format (pre sk-proj-, still issued and valid,
+    distinct from sk-ant- and sk-proj- which were already covered). Six eval cases added
+    (tc-021..tc-026), one of them a negative guarding scikit-learn/sklearn text against the
+    broadened sk- pattern."
 - version: 0.0.1
   date: '2026-07-12'
   changes:

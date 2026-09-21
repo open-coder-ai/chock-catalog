@@ -26,9 +26,6 @@ case "$full" in
     *"chock: approved-config-change"*) exit 0 ;;
 esac
 
-# Normalize Windows backslash paths so a `.mcp.json` reference matches either separator.
-norm="${full//\\//}"
-
 # Whole-token raw writers (deleters/movers/editors), word-split with globbing disabled so a
 # `bash -c "tee .mcp.json"` payload is reached and basename-normalized so a path-qualified
 # interpreter still matches. Copied from protect-agent-config's own writer detection --
@@ -62,23 +59,78 @@ _interp_write() {
     return 1
 }
 
-has_writer=0
-case "$full" in
-    *"sed -i"*|*"--in-place"*|*">"*) has_writer=1 ;;
-esac
-if _has_writer_token "$*" || _has_writer_token "${CHOCK_RAW_COMMAND:-}"; then
-    has_writer=1
-fi
-if _interp_write "$*" || _interp_write "${CHOCK_RAW_COMMAND:-}"; then
-    has_writer=1
-fi
-if [ "$has_writer" -eq 0 ]; then
+# Split a word-list string into clauses at command separators (';', '&&', '||', '|'), same
+# helper as protect-agent-config: a writer verb or redirect in one clause must not condemn a
+# protected-path mention in a DIFFERENT clause of the same command line -- `rm -f /tmp/x; cat
+# .mcp.json` is a read, not a write, and `cat .mcp.json 2>/dev/null` (stderr suppressed) is
+# not a write to anything at all.
+_clauses() {
+    local tok body sep
+    local -a cur=()
+    set -f
+    for tok in $1; do
+        case "$tok" in
+            ';' | '&&' | '||' | '|') body="" sep="$tok" ;;
+            *'||') body="${tok%'||'}" sep="||" ;;
+            *'&&') body="${tok%'&&'}" sep="&&" ;;
+            *';') body="${tok%';'}" sep=";" ;;
+            *'|') body="${tok%'|'}" sep="|" ;;
+            *) body="$tok" sep="" ;;
+        esac
+        [[ -n "$body" ]] && cur+=("$body")
+        if [[ -n "$sep" ]]; then
+            [[ ${#cur[@]} -gt 0 ]] && printf '%s\n' "${cur[*]}"
+            cur=()
+        fi
+    done
+    [[ ${#cur[@]} -gt 0 ]] && printf '%s\n' "${cur[*]}"
+    set +f
+}
+
+_clause_protected_path() {
+    local n="${1//\\//}"
+    case "$n" in
+        *verify-mcp-allowlist.sh* | *"$MCP_CONFIG_PATH"*) return 0 ;;
+    esac
+    return 1
+}
+
+_clause_writer() {
+    case "$1" in
+        *"sed -i"* | *"--in-place"*) return 0 ;;
+    esac
+    _has_writer_token "$1" && return 0
+    _interp_write "$1" && return 0
+    return 1
+}
+
+_redirect_target_protected() {
+    local n="${1//\\//}"
+    local redirect_re='[0-9]?>>?[[:space:]]*'
+    local target_re='(verify-mcp-allowlist\.sh|\.mcp\.json)'
+    [[ "$n" =~ $redirect_re$target_re ]]
+}
+
+protected_clause=""
+while IFS= read -r clause; do
+    [[ -z "$clause" ]] && continue
+    if _redirect_target_protected "$clause"; then
+        protected_clause="$clause"
+        break
+    fi
+    if _clause_writer "$clause" && _clause_protected_path "$clause"; then
+        protected_clause="$clause"
+        break
+    fi
+done < <(_clauses "$*"; _clauses "${CHOCK_RAW_COMMAND:-}")
+
+if [ -z "$protected_clause" ]; then
     exit 0
 fi
 
 # Is the write target the allowlist itself? It lives in this script
 # (implementations/verify-mcp-allowlist.sh), so protecting the file protects the allowlist.
-case "$norm" in
+case "${protected_clause//\\//}" in
     *verify-mcp-allowlist.sh*)
         echo "BLOCKED: shell write to the MCP server allowlist is not allowed -- it is protected content, the same way protect-agent-config protects every policy's guard source. Have a human approve by including 'chock: approved-config-change' in the command." >&2
         exit 1
@@ -86,7 +138,7 @@ case "$norm" in
 esac
 
 # Not a write touching the MCP config path either? Nothing to guard.
-case "$norm" in
+case "${protected_clause//\\//}" in
     *"$MCP_CONFIG_PATH"*) ;;
     *) exit 0 ;;
 esac

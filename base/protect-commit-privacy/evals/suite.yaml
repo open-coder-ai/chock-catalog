@@ -152,3 +152,24 @@ suite:
     execute:
       command: command git commit -m "revert because the user asked"
       expect: block
+  - id: tc-021
+    category: adversarial
+    prompt: An agent wraps the commit in sh -c, hiding it inside one opaque argv token.
+    expect: The guard falls back to scanning the raw command text when argv[0] is a shell interpreter.
+    execute:
+      command: sh -c "git commit -m 'the user asked for this feature'"
+      expect: block
+  - id: tc-022
+    category: adversarial
+    prompt: An agent wraps the commit in bash -c instead of sh -c.
+    expect: The guard's raw-text fallback covers bash the same way it covers sh.
+    execute:
+      command: bash -c "git commit -m 'the user asked for this feature'"
+      expect: block
+  - id: tc-023
+    category: negative_trigger
+    prompt: An agent echoes a git commit one-liner as documentation, unrelated to the sh -c fallback.
+    expect: The raw-text fallback is scoped to argv[0] being a shell interpreter, not to any command that merely mentions git and commit -- echo must still pass.
+    execute:
+      command: echo git commit -m "the user asked in review"
+      expect: allow

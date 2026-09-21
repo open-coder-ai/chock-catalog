@@ -153,3 +153,17 @@ suite:
         {"mcpServers":{"totally-new":{"command":"uvx","args":["some-other-server"]}}}
         EOF
       expect: block
+  - id: tc-016
+    category: negative_trigger
+    prompt: An agent reads its MCP config with stderr suppressed to /dev/null.
+    expect: A stderr-to-devnull redirect is not a write; reads must still pass.
+    execute:
+      command: cat .mcp.json 2>/dev/null
+      expect: allow
+  - id: tc-017
+    category: negative_trigger
+    prompt: An agent deletes an unrelated scratch file, then reads its MCP config in the same line.
+    expect: A writer verb in one clause must not condemn a protected-path read in a different clause.
+    execute:
+      command: rm -f /tmp/scratch.txt; cat .mcp.json
+      expect: allow
