@@ -1,14 +1,16 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   The mechanizable slice of excessive agency, enforced at two points: at commit (the git
   hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the
   agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or
   allow-list is a bare wildcard hands the agent unlimited tool authority for every future
   session, in a file reviewers rarely read as code. The agent-world twin of
-  block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)).
-  Escape: 'pragma: allowlist broad-agency' on the same line.
+  block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The
+  allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes
+  them, word-bounded so "disallow"/"allowlist" are not mistaken for "allow". Escape:
+  'pragma: allowlist broad-agency' on the same line.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -41,7 +43,7 @@ hook:
       # inside an allow array without unacceptable false positives on unrelated arrays.
       # Catching that form needs a structure-aware gate kind (future work).
       content_pattern: |-
-        Bash\([*]\)|"allow"\s*:\s*\[[^\]]*"\*"|"alwaysAllow"\s*:\s*\[[^\]]*"\*"|"tools"\s*:\s*\[[^\]]*"\*"|"defaultMode"\s*:\s*"bypassPermissions"
+        Bash\([*]\)|["']?\ballow\b["']?\s*:\s*\[[^\]]*["'][*]["']|["']?\balwaysAllow\b["']?\s*:\s*\[[^\]]*["'][*]["']|["']?\btools\b["']?\s*:\s*\[[^\]]*["'][*]["']|["']?\bdefaultMode\b["']?\s*:\s*["']bypassPermissions["']
 
 compliance:
   mitre_atlas:
@@ -70,6 +72,19 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-09-21'
+  changes:
+  - "Bypass fix (deep review): the key-matching half of the pattern required a literal
+    double quote directly before allow/alwaysAllow/tools/defaultMode, so an unquoted
+    YAML-style key (as opposed to JSON's always-quoted keys) escaped detection entirely --
+    a wildcard grant under an unquoted allow or tools key passed clean. Quoting is now
+    optional around each key (and around the wildcard element itself, so a single-quoted
+    array element is caught too), with an explicit word boundary added so an unrelated key
+    merely containing one of these names as a substring (disallow, allowlist) is not
+    mistaken for it -- a regression the unbounded fix would otherwise have introduced,
+    caught in self-testing before it shipped. Five eval cases added (tc-012..tc-016), one
+    of them the disallow/allowlist regression guard."
 - version: 0.0.1
   date: '2026-08-16'
   changes:

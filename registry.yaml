@@ -469,21 +469,23 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 11
-  eval_executed: 11
-  description: 'The mechanizable slice of excessive agency, enforced at two points: at commit (the
-    git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the agent
-    writes) -- agent permission grants that allow everything. A settings file whose shell grant or
-    allow-list is a bare wildcard hands the agent unlimited tool authority for every future session,
-    in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants
-    to what the task needs (e.g. Bash(git status:*)). Escape: ''pragma: allowlist broad-agency'' on
-    the same line.'
+  eval_cases: 16
+  eval_executed: 16
+  description: 'The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook,
+    over staged changes) and at agent tool-use (over a tool call''s arguments, as the agent
+    writes) -- agent permission grants that allow everything. A settings file whose shell grant
+    or allow-list is a bare wildcard hands the agent unlimited tool authority for every future
+    session, in a file reviewers rarely read as code. The agent-world twin of
+    block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The
+    allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes them,
+    word-bounded so "disallow"/"allowlist" are not mistaken for "allow". Escape: ''pragma:
+    allowlist broad-agency'' on the same line.'
 - id: pin-github-actions
   path: base/pin-github-actions
   version: 0.0.2
