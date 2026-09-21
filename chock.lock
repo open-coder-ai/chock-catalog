@@ -14,9 +14,10 @@
       "id": "block-curl-pipe-sh",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "1a6bcc98cac00261da6e588625599e5e45ccc9430430581733a12747dcd52c0a",
-      "source": "local",
-      "artifacts_sha256": "a6217f28715ba14d30102abd5f504c63856ab91a7377d798eb9eeffe34e63555"
+      "sha256": "6af3c9bf6ed53198b1ea3c852b4501b545b49c9a214ecd50cc58b61c3585423f",
+      "source": ".",
+      "artifacts_sha256": "a6217f28715ba14d30102abd5f504c63856ab91a7377d798eb9eeffe34e63555",
+      "source_commit": null
     },
     {
       "id": "block-destructive-commands",
@@ -127,9 +128,8 @@
       "version": "0.0.1",
       "managed": false,
       "sha256": "9b749c9aab064fcdd1b16aafe4aebb7868821c5c7b881bd4c93569e9fa52751a",
-      "source": ".",
-      "artifacts_sha256": "796e13d87a8b8d3c240ac6a32eb4d7cb955b4f764d7ce1d1c30f3e0f2fbd21e3",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "796e13d87a8b8d3c240ac6a32eb4d7cb955b4f764d7ce1d1c30f3e0f2fbd21e3"
     },
     {
       "id": "protect-commit-privacy",

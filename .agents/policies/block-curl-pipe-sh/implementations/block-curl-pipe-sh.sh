@@ -42,11 +42,15 @@ shopt -s nocasematch 2>/dev/null || true
 fetch_re='(^|[[:space:];|&(<.])(curl|wget|lynx|fetch|aria2c|iwr|invoke-webrequest|invoke-restmethod|irm|start-bitstransfer|net\.webclient|downloadstring|downloaddata|downloadfile)([[:space:](./)]|$)'
 
 # A shell or script interpreter fed by a pipe. Covers, in one matcher: a bare or path-qualified
-# interpreter (`| sh`, `| /bin/sh`), a no-space pipe (`...|sh`), grouped consumers that still
-# receive the fetch on stdin (`| (sh)`, `| { sh; }`), and transparent wrappers in front of it
-# (`| sudo bash`, `| exec sh`, `| command sh`, `| env python`). python/perl/ruby/node are
-# included because piping a download into them executes the fetched code exactly as a shell does.
-pipe_re='\|&?[[:space:]]*[({]?[[:space:]]*((sudo|exec|command|env)[[:space:]]+(-[^[:space:]|;&(){}]+[[:space:]]+)*)*([^[:space:]|;&(){}]*/)?(sh|bash|zsh|dash|ksh|ash|fish|python[0-9.]*|perl|ruby|node)([[:space:]);}]|$)'
+# interpreter (`| sh`, `| /bin/sh`), a QUOTED interpreter name (`| "sh"`, `| 'bash'` -- the
+# interpreter still runs the same either way, only the token's spelling in argv changed),
+# a no-space pipe (`...|sh`), grouped consumers that still receive the fetch on stdin
+# (`| (sh)`, `| { sh; }`), and transparent wrappers in front of it (`| sudo bash`, `| exec sh`,
+# `| command sh`, `| env python`, `| xargs sh`, `| nohup sh`, `| timeout 5 sh`). xargs and
+# timeout each may carry one bare (non-flag) positional before the interpreter -- xargs's
+# replace-string form (`-I{}`) and timeout's duration. python/perl/ruby/node are included
+# because piping a download into them executes the fetched code exactly as a shell does.
+pipe_re='\|&?[[:space:]]*[({]?[[:space:]]*((sudo|exec|command|env|xargs|nohup|timeout|nice|stdbuf|ionice|setsid)[[:space:]]+((-[^[:space:]|;&()]+|[0-9][^[:space:]|;&()]*)[[:space:]]+)*)*["'"'"']?([^[:space:]|;&(){}]*/)?(sh|bash|zsh|dash|ksh|ash|fish|python[0-9.]*|perl|ruby|node)["'"'"']?([[:space:]);}]|$)'
 # A shell interpreter fed by process/command substitution: `bash -c "$(...)"`, `sh <(...)`.
 subst_re='(sh|bash|zsh|dash|ksh|python[0-9.]*|perl|ruby|node)[[:space:]]+(-[[:alnum:]]+[[:space:]]+)*["'"'"']?(\$\(|<\()'
 # PowerShell: `... | iex`, `iex(...)`, `Invoke-Expression(...)`.
