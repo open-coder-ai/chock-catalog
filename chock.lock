@@ -118,7 +118,7 @@
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "1b6417c5e643c1c05e18396bbef07585a4249a0ed687c6cc61373ae6f93678fd",
+      "sha256": "44cc7a5307ad4ed3178a4efb202ba1ce9ff463bd241c32c2dc11da0ad3a94e47",
       "source": "local",
       "artifacts_sha256": "1cc2918921e5d6d8f4cb2031381c51d7ec22af71ef5ea3187b73e5c58e651fdd"
     },
@@ -126,9 +126,10 @@
       "id": "protect-ci-workflows",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "5a6726762106b96d357b50c46091e54c823dbcb830335f9d9191b5b57ca542e6",
-      "source": "local",
-      "artifacts_sha256": "796e13d87a8b8d3c240ac6a32eb4d7cb955b4f764d7ce1d1c30f3e0f2fbd21e3"
+      "sha256": "9b749c9aab064fcdd1b16aafe4aebb7868821c5c7b881bd4c93569e9fa52751a",
+      "source": ".",
+      "artifacts_sha256": "796e13d87a8b8d3c240ac6a32eb4d7cb955b4f764d7ce1d1c30f3e0f2fbd21e3",
+      "source_commit": null
     },
     {
       "id": "protect-commit-privacy",

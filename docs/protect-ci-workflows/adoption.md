@@ -109,9 +109,14 @@ protect-ci-workflows  [deterministic]
   PASS  tc-017                             authored  BLOCKED: shell write touching CI/CD workflow config is not allowed …
   PASS  tc-018                             authored  BLOCKED: shell write touching CI/CD workflow config is not allowed …
   PASS  tc-019                             authored  guard exit 0
+  PASS  tc-020                             authored  guard exit 0
+  PASS  tc-021                             authored  guard exit 0
+  PASS  tc-022                             authored  guard exit 0
+  PASS  tc-023                             authored  guard exit 0
+  PASS  tc-024                             authored  BLOCKED: shell write touching CI/CD workflow config is not allowed …
   score 1.00
 
-5 policies: 19 pass, 41 skipped
+5 policies: 24 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

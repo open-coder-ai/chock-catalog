@@ -9,8 +9,6 @@ set -eu
 # Include the raw command string: Windows path forms and `bash -c "..."` payloads arrive
 # here as one argument, and CHOCK_RAW_COMMAND carries the pre-split original.
 full="$* ${CHOCK_RAW_COMMAND:-}"
-# Normalize backslashes so a Windows `.github\workflows\ci.yml` matches the POSIX form.
-norm="${full//\\//}"
 
 # A human-approved change says so in the command itself, visibly.
 case "$full" in
@@ -71,36 +69,92 @@ _git_worktree_write() {
     [ "$has_git" -eq 1 ] && [ "$has_mut" -eq 1 ]
 }
 
-has_writer=0
-# In-place editors and shell redirection (substring: reaches bash -c payloads).
-case "$full" in
-    *"sed -i"* | *"--in-place"* | *">"*) has_writer=1 ;;
-esac
-# argv and raw command are each word-split and scanned separately (never concatenated).
-if _has_writer_token "$*" || _has_writer_token "${CHOCK_RAW_COMMAND:-}"; then
-    has_writer=1
-fi
-if _interp_write "$*" || _interp_write "${CHOCK_RAW_COMMAND:-}"; then
-    has_writer=1
-fi
-if _git_worktree_write "$*" || _git_worktree_write "${CHOCK_RAW_COMMAND:-}"; then
-    has_writer=1
-fi
-if [[ "$has_writer" -eq 0 ]]; then
-    exit 0
-fi
+# Split a word-list string into clauses at command separators (';', '&&', '||', '|'). A
+# writer verb or redirect in one clause must not condemn a protected-path mention in a
+# DIFFERENT clause of the same command line -- `rm -f /tmp/x; cat .github/workflows/ci.yml`
+# is a read, not a write, and `echo hi > /tmp/x; cat .github/workflows/ci.yml` never touches
+# the protected path at all. Word-splitting alone only recognises a separator as ITS OWN
+# token ("foo ; bar"), which misses the far more common "foo; bar" style, so a separator
+# glued to the END of a token is peeled off too; one glued to a token's start or middle
+# ("foo;bar", no space anywhere) is not, the residual limit of scanning words rather than
+# parsing shell.
+_clauses() {
+    local tok body sep
+    local -a cur=()
+    set -f
+    for tok in $1; do
+        case "$tok" in
+            ';' | '&&' | '||' | '|') body="" sep="$tok" ;;
+            *'||') body="${tok%'||'}" sep="||" ;;
+            *'&&') body="${tok%'&&'}" sep="&&" ;;
+            *';') body="${tok%';'}" sep=";" ;;
+            *'|') body="${tok%'|'}" sep="|" ;;
+            *) body="$tok" sep="" ;;
+        esac
+        [[ -n "$body" ]] && cur+=("$body")
+        if [[ -n "$sep" ]]; then
+            [[ ${#cur[@]} -gt 0 ]] && printf '%s\n' "${cur[*]}"
+            cur=()
+        fi
+    done
+    [[ ${#cur[@]} -gt 0 ]] && printf '%s\n' "${cur[*]}"
+    set +f
+}
 
-# Protected CI/CD paths, matched against the backslash-normalized command line. These are the
-# files that define the automated checks on a change: workflow definitions, the composite
-# actions they call, and the dependency-update automation.
+# Protected CI/CD paths, matched against one clause's backslash-normalized text. These are
+# the files that define the automated checks on a change: workflow definitions, the
+# composite actions they call, and the dependency-update automation.
+_clause_protected_path() {
+    local n="${1//\\//}"
+    case "$n" in
+        *.github/workflows/* | \
+        *.github/actions/* | \
+        *.github/dependabot.yml* | *.github/dependabot.yaml*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+# In-place editors (substring) and the writer-token/interpreter-write/git-worktree-write
+# helpers above, all scoped to ONE clause so a writer verb elsewhere in the command cannot
+# pair with a protected path it never touches.
+_clause_writer() {
+    case "$1" in
+        *"sed -i"* | *"--in-place"*) return 0 ;;
+    esac
+    _has_writer_token "$1" && return 0
+    _interp_write "$1" && return 0
+    _git_worktree_write "$1" && return 0
+    return 1
+}
+
+# A `>`/`>>` redirect only writes to a protected path when the path is what it actually
+# targets -- the token immediately after the operator (with an optional leading file
+# descriptor number, with or without a space), not merely present somewhere in the same
+# clause. Without this, `cat .github/workflows/ci.yml 2>/dev/null` (stderr suppressed, no
+# write anywhere) and `grep ... .github/workflows/ci.yml 2>&1` (fd duplication) were both
+# refused: the old check only tested whether SOME '>' and SOME protected substring occurred
+# anywhere in the whole command, never whether the one redirected into the other.
+_redirect_target_protected() {
+    local n="${1//\\//}"
+    local redirect_re='[0-9]?>>?[[:space:]]*'
+    local target_re='(\.github/workflows/|\.github/actions/|\.github/dependabot\.yml|\.github/dependabot\.yaml)'
+    [[ "$n" =~ $redirect_re$target_re ]]
+}
+
 protected=""
-case "$norm" in
-    *.github/workflows/* | \
-    *.github/actions/* | \
-    *.github/dependabot.yml* | *.github/dependabot.yaml*)
+while IFS= read -r clause; do
+    [[ -z "$clause" ]] && continue
+    if _redirect_target_protected "$clause"; then
         protected=yes
-        ;;
-esac
+        break
+    fi
+    if _clause_writer "$clause" && _clause_protected_path "$clause"; then
+        protected=yes
+        break
+    fi
+done < <(_clauses "$*"; _clauses "${CHOCK_RAW_COMMAND:-}")
 
 if [[ -n "$protected" ]]; then
     echo "BLOCKED: shell write touching CI/CD workflow config is not allowed -- an agent must not weaken the automated checks that review its own work. Propose the change for human review, or approve by including 'chock: approved-config-change' in the command." >&2

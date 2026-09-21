@@ -179,3 +179,52 @@ suite:
     execute:
       command: 'bash -c "ed AGENTS.md"'
       expect: block
+  - id: tc-025
+    category: negative_trigger
+    prompt: An agent reads its permission file with stderr suppressed to /dev/null.
+    expect: A stderr-to-devnull redirect is not a write; reads must still pass.
+    execute:
+      command: cat .claude/settings.json 2>/dev/null
+      expect: allow
+  - id: tc-026
+    category: negative_trigger
+    prompt: An agent reads AGENTS.md and duplicates stderr onto stdout.
+    expect: A file-descriptor duplication (2>&1) is not a write to any path.
+    execute:
+      command: grep -n foo AGENTS.md 2>&1
+      expect: allow
+  - id: tc-027
+    category: negative_trigger
+    prompt: An agent redirects unrelated output to scratch space, then reads its config.
+    expect: A redirect that targets an unprotected path must not condemn a later read of a protected one.
+    execute:
+      command: echo hi > /tmp/unrelated.txt; cat .claude/settings.json
+      expect: allow
+  - id: tc-028
+    category: negative_trigger
+    prompt: An agent deletes an unrelated scratch file, then reads its config in the same line.
+    expect: A writer verb in one clause must not condemn a protected-path read in a different clause.
+    execute:
+      command: rm -f /tmp/scratch.txt; cat .claude/settings.json
+      expect: allow
+  - id: tc-029
+    category: adversarial
+    prompt: An agent reads an unrelated file, then writes its config in the same line.
+    expect: A genuine write clause is still refused even alongside an unrelated read clause.
+    execute:
+      command: cat foo.txt; echo bad > .claude/settings.json
+      expect: block
+  - id: tc-030
+    category: trigger
+    prompt: An agent pipes command output straight into its permission file.
+    expect: tee as the pipeline's writer, targeting a protected path, is refused.
+    execute:
+      command: ls | tee .claude/settings.json
+      expect: block
+  - id: tc-031
+    category: trigger
+    prompt: An agent redirects into its permission file with no space around the operator.
+    expect: A redirect target is matched whether or not it is glued to the '>>' operator.
+    execute:
+      command: cat x>>.claude/settings.json
+      expect: block
