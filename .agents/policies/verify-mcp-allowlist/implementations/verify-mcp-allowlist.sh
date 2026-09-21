@@ -26,9 +26,6 @@ case "$full" in
     *"chock: approved-config-change"*) exit 0 ;;
 esac
 
-# Normalize Windows backslash paths so a `.mcp.json` reference matches either separator.
-norm="${full//\\//}"
-
 # Whole-token raw writers (deleters/movers/editors), word-split with globbing disabled so a
 # `bash -c "tee .mcp.json"` payload is reached and basename-normalized so a path-qualified
 # interpreter still matches. Copied from protect-agent-config's own writer detection --
