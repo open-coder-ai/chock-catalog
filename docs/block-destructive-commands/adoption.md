@@ -47,14 +47,7 @@ No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
-Registered 1 hook entr(y/ies) in .agents/hooks.json
-Registered 1 hook entr(y/ies) in .codex/hooks.json
-Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
-Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
-Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~392 tokens (chars/4, max 2000)
 Recompiled 1 policies
