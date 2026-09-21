@@ -105,9 +105,11 @@ verify-mcp-allowlist  [deterministic]
   PASS  tc-013                             authored  BLOCKED: MCP server config change refused -- 'remote-evil' is not o…
   PASS  tc-014                             authored  BLOCKED: this command writes .mcp.json but no server entry is visib…
   PASS  tc-015                             authored  BLOCKED: MCP server config change refused -- 'totally-new' is not o…
+  PASS  tc-016                             authored  guard exit 0
+  PASS  tc-017                             authored  guard exit 0
   score 1.00
 
-5 policies: 15 pass, 41 skipped
+5 policies: 17 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -55,9 +55,8 @@
       "version": "0.0.1",
       "managed": false,
       "sha256": "f50744b5e2813c1e67764593a545c8496ef1c1448a2cd84316df54cedf21b421",
-      "source": ".",
-      "artifacts_sha256": "51cdf7921f22884abb6d3ca25e270f40cdf0ad080b64865d83af39abe3fd4ba9",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "51cdf7921f22884abb6d3ca25e270f40cdf0ad080b64865d83af39abe3fd4ba9"
     },
     {
       "id": "code-safety",
@@ -182,9 +181,10 @@
       "id": "verify-mcp-allowlist",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "189263acd12ebf7a654ca45b4803580f917398582368a16df566fa2673c6b6e7",
-      "source": "local",
-      "artifacts_sha256": "adfdf14006023dce5212c5e3b0cdf1142ec907ca81caaab0b63ec11074b87290"
+      "sha256": "b9ad0ffa48a27b3f45993eae17a4022e040f140800f712268dabf74845320305",
+      "source": ".",
+      "artifacts_sha256": "adfdf14006023dce5212c5e3b0cdf1142ec907ca81caaab0b63ec11074b87290",
+      "source_commit": null
     }
   ]
 }
