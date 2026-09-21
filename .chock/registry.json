@@ -320,7 +320,7 @@
       {
         "id": "scan-secrets",
         "artifact": "hook",
-        "version": "0.0.6",
+        "version": "0.0.7",
         "name": "Scan Secrets",
         "description": "Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at agent tool-use (the mcp-gateway / agent write guard, over a tool call's arguments), so a secret is caught as the agent writes it, before it ever reaches a commit. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.",
         "path": ".agents/policies/scan-secrets",

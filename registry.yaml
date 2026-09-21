@@ -600,14 +600,14 @@ policies:
     indirection, sourced files, interpreters, indirect scripts. This is friction, not a security boundary.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.0.6
+  version: 0.0.7
   artifact: hook
   enforcement: block
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 20
-  eval_executed: 20
+  eval_cases: 26
+  eval_executed: 26
   description: 'Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password
     assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at
     agent tool-use (the mcp-gateway / agent write guard, over a tool call''s arguments), so a secret

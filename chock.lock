@@ -47,9 +47,8 @@
       "version": "0.0.1",
       "managed": false,
       "sha256": "06dd3f12560ad517b9b35d0c805455acfbc4a6dda3ad289cd75d06cd4eaeb7bc",
-      "source": ".",
-      "artifacts_sha256": "26a9b76c284d50ac8cb41eb8224ce4d7d6755219cd95254006d32ac97862ab03",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "26a9b76c284d50ac8cb41eb8224ce4d7d6755219cd95254006d32ac97862ab03"
     },
     {
       "id": "block-wildcard-agent-permissions",
@@ -151,9 +150,10 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "6f8285363e7795bf2cedb78a449b7f5b49d7b188047a7802c12fbdc7f63cad4b",
-      "source": "local",
-      "artifacts_sha256": "2630ba912e7cb676e2bfd5e1bdbe94e6cb849fc4cb845461dca7bbc3f351b34f"
+      "sha256": "5e533e0820b43e0447a4adc415c7a151bd75ea5b4a1da9cef517f8353d4d855b",
+      "source": ".",
+      "artifacts_sha256": "df73ec2ab88904f8129232a03544ec63aed14248ec8ace173a70cb4ccb14eee7",
+      "source_commit": null
     },
     {
       "id": "token-efficiency",
