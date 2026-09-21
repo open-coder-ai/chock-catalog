@@ -553,21 +553,25 @@ policies:
     branch protection.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 20
-  eval_executed: 20
-  description: 'Keep the development conversation out of git history. Agent-authored commits narrate
-    by default -- who asked for what, which discussion decided it, what the plan was -- and on a public
-    repo that narration is published forever. The guard refuses git commit commands whose message
-    (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells
-    the agent to describe the change, not the conversation, and to propose sensitive messages to the
-    human before committing. Best-effort: markers are a narrow deny-list, and a message the human
-    explicitly approves can say anything -- edit the marker list in the guard, the content is yours.'
+  eval_cases: 23
+  eval_executed: 23
+  description: 'Keep the development conversation out of git history. Agent-authored commits narrate by
+    default -- who asked for what, which discussion decided it, what the plan was -- and on a
+    public repo that narration is published forever. The guard refuses git commit commands whose
+    message (inline -m/--message or the file behind -F/--file) contains process-leak markers;
+    the rule tells the agent to describe the change, not the conversation, and to propose
+    sensitive messages to the human before committing. A commit or gh pr create|edit wrapped in
+    sh -c/bash -c (hiding it inside one opaque argv token) falls back to scanning the raw
+    command text, scoped to argv[0] actually being a shell interpreter so a command that merely
+    echoes the pattern as documentation still passes. Best-effort: markers are a narrow
+    deny-list, and a message the human explicitly approves can say anything -- edit the marker
+    list in the guard, the content is yours.'
 - id: protect-main-branch
   path: base/protect-main-branch
   version: 0.0.1

@@ -134,9 +134,10 @@
       "id": "protect-commit-privacy",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "21839f1af785444e08f1e3dc3270d57f41b01dc4b8af53348b0308aef0d8d822",
-      "source": "local",
-      "artifacts_sha256": "e27d75a558ff05e9c5a3858d68ecbbfa4ec7a9d3243b85fa8ce76aa0da7c72ba"
+      "sha256": "8c93a98fcd9daac4af043a5dd1c33fe1c4d6d88d09c8f9f59ab43c1f7c43f624",
+      "source": ".",
+      "artifacts_sha256": "e27d75a558ff05e9c5a3858d68ecbbfa4ec7a9d3243b85fa8ce76aa0da7c72ba",
+      "source_commit": null
     },
     {
       "id": "protect-main-branch",
@@ -182,9 +183,8 @@
       "version": "0.0.1",
       "managed": false,
       "sha256": "b9ad0ffa48a27b3f45993eae17a4022e040f140800f712268dabf74845320305",
-      "source": ".",
-      "artifacts_sha256": "adfdf14006023dce5212c5e3b0cdf1142ec907ca81caaab0b63ec11074b87290",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "adfdf14006023dce5212c5e3b0cdf1142ec907ca81caaab0b63ec11074b87290"
     }
   ]
 }

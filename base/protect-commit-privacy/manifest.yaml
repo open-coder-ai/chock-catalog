@@ -1,13 +1,16 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Keep the development conversation out of git history. Agent-authored commits narrate by
   default -- who asked for what, which discussion decided it, what the plan was -- and on a
   public repo that narration is published forever. The guard refuses git commit commands
   whose message (inline -m/--message or the file behind -F/--file) contains process-leak
   markers; the rule tells the agent to describe the change, not the conversation, and to
-  propose sensitive messages to the human before committing. Best-effort: markers are a
+  propose sensitive messages to the human before committing. A commit or gh pr create|edit
+  wrapped in sh -c/bash -c (hiding it inside one opaque argv token) falls back to scanning
+  the raw command text, scoped to argv[0] actually being a shell interpreter so a command
+  that merely echoes the pattern as documentation still passes. Best-effort: markers are a
   narrow deny-list, and a message the human explicitly approves can say anything -- edit
   the marker list in the guard, the content is yours.
 artifact: rule
@@ -38,6 +41,19 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-09-21'
+  changes:
+  - "Bypass fix (deep review): the guard keys on argv[0] to tell a real git/gh invocation
+    from one merely printed (echo git commit ...), but shlex collapses a sh -c/bash -c
+    payload into one opaque argv token before this guard ever sees it, so argv[0] becomes
+    sh/bash and the message never reaches the positional scan at all -- a commit or PR
+    composed this way carried no marker check whatsoever. Added a raw-text fallback scoped
+    to argv[0] actually being a shell interpreter (sh/bash/zsh/ksh/dash), so the echo case
+    that keying on argv[0] exists to allow stays allowed -- caught as a regression in
+    self-testing before it shipped, together with an unrelated bug (the fallback read the
+    MARKERS array before it was defined, a silent no-op under set -u) found the same way.
+    Three eval cases added (tc-021..tc-023)."
 - version: 0.0.1
   date: '2026-08-16'
   changes:
