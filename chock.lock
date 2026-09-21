@@ -15,9 +15,8 @@
       "version": "0.0.1",
       "managed": false,
       "sha256": "6af3c9bf6ed53198b1ea3c852b4501b545b49c9a214ecd50cc58b61c3585423f",
-      "source": ".",
-      "artifacts_sha256": "a6217f28715ba14d30102abd5f504c63856ab91a7377d798eb9eeffe34e63555",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "a6217f28715ba14d30102abd5f504c63856ab91a7377d798eb9eeffe34e63555"
     },
     {
       "id": "block-destructive-commands",
@@ -47,9 +46,10 @@
       "id": "block-unapproved-egress",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "0491fb23961cccf92704d358e76704d7521c3bfea11506e7163aac9967317e24",
-      "source": "local",
-      "artifacts_sha256": "26a9b76c284d50ac8cb41eb8224ce4d7d6755219cd95254006d32ac97862ab03"
+      "sha256": "06dd3f12560ad517b9b35d0c805455acfbc4a6dda3ad289cd75d06cd4eaeb7bc",
+      "source": ".",
+      "artifacts_sha256": "26a9b76c284d50ac8cb41eb8224ce4d7d6755219cd95254006d32ac97862ab03",
+      "source_commit": null
     },
     {
       "id": "block-wildcard-agent-permissions",
