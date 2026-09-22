@@ -160,7 +160,7 @@ class WriteContext(GateContext):
 #: Kinds whose question a write can answer. A branch name is not in a tool call, so
 #: forbidden_ref has nothing to read here; saying so beats passing it empty and calling
 #: that an allow.
-WRITE_PATH_KINDS = frozenset({"content_regex"})
+WRITE_PATH_KINDS = frozenset({"content_regex", "script"})
 
 
 #: Events at which a line-level waiver is honoured: the ones where a human staged the text. At
@@ -339,11 +339,68 @@ def _kind_test_integrity(ctx: GateContext, params: dict, _event: str) -> GateRes
     return GateResult(allowed=not matches, matches=matches)
 
 
+#: A script gate's budget to answer. Past it the script has not decided, and an undecided
+#: gate refuses.
+_SCRIPT_TIMEOUT_SECONDS = 30
+
+#: The exit codes a script gate speaks -- this runner's own, so a policy's script reads like
+#: the runner that calls it. Anything else is not a verdict.
+_SCRIPT_ALLOW, _SCRIPT_BLOCK = 0, 1
+
+_UNDECIDED = " -- refusing rather than allowing what it never judged"
+
+
+def _kind_script(ctx: GateContext, params: dict, event: str) -> GateResult:
+    """Hand the material to the policy's own script and carry back its verdict.
+
+    The script reads `{"event", "repo_root", "writes": {path: text}}` on stdin -- the staged
+    blobs at commit and push, the write itself at tool use and at the turn's end -- so one
+    script serves every surface the declarative kinds do, and reads them the same way. It
+    answers with an exit code: 0 allows; 1 refuses, with its own words on stderr. A missing
+    script, a crash or a timeout refuses too, in this runner's words: a gate that cannot
+    reach a decision never reports an allow it never established.
+    """
+    named = str(params.get("script", ""))
+    script = ctx.repo_root / named
+    if not script.is_file():
+        return GateResult(allowed=False, message=f"script gate: {named!r} is not installed{_UNDECIDED}")
+    writes = {path: ctx.staged_blob(path) for path in ctx.staged_paths()}
+    if not writes:
+        return GateResult(allowed=True)
+    payload = json.dumps({"event": event, "repo_root": str(ctx.repo_root), "writes": writes})
+    try:
+        proc = subprocess.run(  # noqa: S603 -- the script is the policy's own, named in its manifest
+            [sys.executable, str(script)],
+            input=payload,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=ctx.repo_root,
+            timeout=_SCRIPT_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        budget = f"gave no verdict within {_SCRIPT_TIMEOUT_SECONDS}s"
+        return GateResult(allowed=False, message=f"script gate: {script.name} {budget}{_UNDECIDED}")
+    except OSError as exc:
+        return GateResult(allowed=False, message=f"script gate: {script.name} could not run ({exc}){_UNDECIDED}")
+    spoken = ((proc.stderr or "") + (proc.stdout or "")).strip()
+    if proc.returncode == _SCRIPT_ALLOW:
+        return GateResult(allowed=True)
+    if proc.returncode == _SCRIPT_BLOCK:
+        return GateResult(allowed=False, message=spoken or f"blocked by {script.name}")
+    first = spoken.splitlines()[0] if spoken else ""
+    detail = f": {first}" if first else ""
+    return GateResult(allowed=False, message=f"script gate: {script.name} exited {proc.returncode}{detail}{_UNDECIDED}")
+
+
 KINDS = {
     "content_regex": _kind_content_regex,
     "forbidden_ref": _kind_forbidden_ref,
     "dependency_allowlist": _kind_dependency_allowlist,
     "test_integrity": _kind_test_integrity,
+    "script": _kind_script,
 }
 
 
