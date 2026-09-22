@@ -12,7 +12,7 @@ metadata:
   chock.enforcement: advise
   chock.provenance.author: chock-core
   chock.provenance.created_at: "2026-09-22T00:00:00Z"
-  chock.provenance.source_repo: "https://github.com/open-coder-ai/chock-java-security"
+  chock.provenance.source_repo: "https://github.com/open-coder-ai/chock-catalog"
   chock.provenance.license: Apache-2.0
   chock.provenance.trust_tier: community
   chock.lifecycle.status: draft

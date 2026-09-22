@@ -280,7 +280,7 @@ policies:
     plus atomic-commit and diff-size guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.2.0
+  version: 0.2.1
   artifact: hook
   enforcement: block
   mandatory: false

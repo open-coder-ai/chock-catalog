@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.2.0"
+version: "0.2.1"
 description: >
   trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates,
   application.properties or application.yml. avoid: string-interpolated SQL, unescaped template
@@ -28,8 +28,8 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-09-22T14:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock-java-security"
+  updated_at: "2026-09-22T17:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -42,6 +42,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.1
+  date: '2026-09-22'
+  changes:
+  - "The engine's home is this folder. open-coder-ai/chock-java-security, the repository these rules and implementations/chock_security/ moved in from, is retired: provenance now names this catalog, and the guided setup page no longer hands its result to that repository's `chock-security setup apply` -- the configure-java-security skill writes .chock/security.json itself after showing every row, as its procedure already said. implementations/chock_security/frontends/, the pre-commit front end the retired repository's CLI drove and nothing here imported since 0.2.0 replaced the commit script with the gate, is removed. No rule, verdict or gate behaviour changes; every case in tools/check_java_security.py and the eval suite is the same."
+  - "One check did not move and is named rather than implied: the retired repository's CI compared a pull request's .chock/security.json against its base branch and failed the build when a verdict was weakened, the check a hook cannot make about its own config. chock's `check --only baseline` compares the policy set, not a policy's own selection file, so an adopter has no CI-side guard for a weakened java-security verdict until the engine offers a policy a way to name a file for that comparison. Until then, review the selection file's diff as you would any other."
 - version: 0.2.0
   date: '2026-09-22'
   changes:
