@@ -66,6 +66,8 @@
 
 ## Skills — invoke when the task matches
 
+- **configure-java-security** — Choose what each java-security rule does when it fires -- "customize java security", "configure java security rules", "change a java security verdict", and anything meaning it. args(scope) returns(.chock/security.json) invoke(customize, configure, review) exclude(coding, writing_rules)
+  → `skills/configure-java-security/SKILL.md`
 - **eval** — Run Chock policy eval suite. args(policy_path) returns(pass_rate, verdict) invoke(test, run_evals, promotion_check) exclude(validate, optimize)
   → `.agents/skills/eval/SKILL.md`
 - **optimize** — Improve Chock policy from usage evidence. args(policy_path, >=3 traces) returns(promoted_edit / rejected_record / no_bar) invoke(misfire, ignore, tuning) exclude(policy_init, one_off_edit)

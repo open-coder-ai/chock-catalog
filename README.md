@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="41 policies" src="https://img.shields.io/badge/policies-41-blue">
-<img alt="19 enforced" src="https://img.shields.io/badge/enforced-19-brightgreen">
+<img alt="42 policies" src="https://img.shields.io/badge/policies-42-blue">
+<img alt="20 enforced" src="https://img.shields.io/badge/enforced-20-brightgreen">
 <img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -40,23 +40,23 @@ attention.
 **A rule an agent reads is advice. A hook that exits non-zero is a control.** Both belong in
 a repo, and the difference has to be visible, because the failure mode of governance tooling
 is that everyone believes it is doing more than it is. So every policy here is labelled with
-what it actually reaches — stated up front rather than in the appendix, because 22 of the 41
+what it actually reaches — stated up front rather than in the appendix, because 22 of the 42
 are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 10 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 11 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
 | `advisory` | text an agent reads and may or may not follow | 22 |
 
-<img alt="41 policies: 10 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
+<img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
 The same distribution, in the shared open-coder-ai figure language and readable in either
 theme:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-dark.svg">
-  <img alt="Of 41 chock-catalog policies, 10 are enforced at commit and 9 more are enforced in-agent, for 19 enforced overall -- 22, more than half, are advisory only, read by the agent but backed by no mechanism." src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-light.svg" width="760">
+  <img alt="Of 42 chock-catalog policies, 11 are enforced at commit and 9 more are enforced in-agent, for 20 enforced overall -- 22, more than half, are advisory only, read by the agent but backed by no mechanism." src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/figures/enforcement-light.svg" width="760">
 </picture>
 
 Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay.
@@ -76,6 +76,7 @@ throwaway repo on every push.
 | [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | agent components pulled at an unpinned version -- `npx`/`uvx`/`bunx` launches at `@latest` (the standard MCP server idiom), quoted `"@latest"` in agent config, and `:latest` image tags -- the mechanizable slice of ASI04 | 6/6 |
 | [`block-unsafe-code-execution`](docs/block-unsafe-code-execution/) | bare `eval`/`exec`, shell-mode subprocess calls, `os.system`, `pickle`/`marshal` loads, `yaml.load` without `SafeLoader`, `execSync` and `new Function` -- a best-effort line scan over the mechanizable slice of ASI05 | 7/7 |
 | [`no-a11y-regression`](docs/no-a11y-regression/) | a change that destroys an accessibility assertion the previous revision carried -- a description replaced by `alt=""`, or a flagged element deleted rather than fixed; neither produces a violation, so both pass every violation report | 0/13 |
+| [`java-security`](docs/java-security/) | eight Java constructs at the commit -- `${}` in MyBatis SQL, unescaped template output (`th:utext`, `<%=`, `escapeXml="false"`, `?no_esc`), Jackson default typing or an XStream with no allowlist, a wildcard CORS origin with credentials, `management.endpoints.web.exposure.include=*`, an unverified JWT parse, a request-chosen file path, an `ObjectInputStream` over request bytes -- each rule `allow\|deny\|ask` in `.chock/security.json`, silence denies; the correct sibling of each (`#{}`, `th:text`, a named origin, `parseClaimsJws`) stays silent | 0/28 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command, natively wired in Claude Code, Cursor, Copilot CLI and VS Code (and, via the
@@ -351,7 +352,7 @@ ledger and Discussions link are in [CONTRIBUTING.md](CONTRIBUTING.md#good-first-
 |---|---|
 | [agentseam](https://github.com/open-coder-ai/agentseam) | the primitives — one handler API and a verified capability matrix across 16 agents |
 | [chock](https://github.com/open-coder-ai/chock) | the compiler — one policy into git hooks, CI gates and native pre-tool hooks |
-| [chock-catalog](https://github.com/open-coder-ai/chock-catalog) | the policies — 41, each labelled enforced or advisory, with replayed evals |
+| [chock-catalog](https://github.com/open-coder-ai/chock-catalog) | the policies — 42, each labelled enforced or advisory, with replayed evals |
 | [context-report](https://github.com/open-coder-ai/context-report) | the evidence — a signed report of whether an agent artifact actually works |
 | [chock-threat-intel](https://github.com/open-coder-ai/chock-threat-intel) | the threat ledger the catalog's policies answer to |
 | chock-{claude,cursor,copilot,codex}-plugins | the catalog, packaged for each agent's plugin format (generated) |

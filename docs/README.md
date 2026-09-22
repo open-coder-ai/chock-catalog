@@ -23,6 +23,8 @@ effect rather than the intent.
 | [block-unpinned-agent-components](block-unpinned-agent-components/) | unpinned agent actions/images/models | 6/6 |
 | [block-unsafe-code-execution](block-unsafe-code-execution/) | `eval`/`exec`-style dynamic execution in staged changes | 7/7 |
 | [block-wildcard-iam](block-wildcard-iam/) | wildcard IAM grants in staged IaC | 6/6 |
+| [no-a11y-regression](no-a11y-regression/) | a lost accessibility assertion -- an emptied `alt`, a flagged element deleted | 0/13 |
+| [java-security](java-security/) | eight Java constructs: interpolated MyBatis SQL, unescaped templates, unsafe deserialization, wildcard CORS with credentials, wildcard actuator exposure, unverified JWT, request-chosen paths and streams | 0/28 |
 
 ## Enforced before the tool runs
 

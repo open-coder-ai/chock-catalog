@@ -249,6 +249,15 @@ jobs:
       - name: The a11y guard's decision table holds
         run: python tools/check_a11y_table.py
 
+      # The same argument for the Java guard, whose verdicts come from eight rules over a flow
+      # model and a facts file. Its eval suite has no executable form on this engine (a
+      # hook.script is not replayed by `chock check --only evals`), so this is where every
+      # trigger and every negative case runs against the shipped guard -- including the commit
+      # path in a throwaway repository, and the setup page's embedded contract against the
+      # rules it must describe. A rule that fires on `parseClaimsJws` or `#{}` fails here.
+      - name: The Java security guard agrees with every rule it ships
+        run: python tools/check_java_security.py
+
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before
       # anyone has used it voluntarily is how the ritual becomes the point. What it does

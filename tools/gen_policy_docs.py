@@ -9,6 +9,7 @@ from pathlib import Path
 
 import yaml
 
+from mechanism import EVENT_SCRIPT, GATE, GUARD, classify, event_scripts
 from trees import policy_dirs
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,7 @@ PROSE = DOCS / "policy-prose.yaml"
 
 CEILING = {
     "gate": "`enforced-at-commit` — the command exits non-zero and the commit does not happen",
+    "script": "`enforced-at-commit` — the script exits non-zero and the commit does not happen",
     "guard": (
         "`best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — "
         "the tool call is refused before it runs, on a hook that is actually wired up. "
@@ -29,6 +31,7 @@ CEILING = {
 
 SURFACES = {
     "gate": ["`git-hook`", "`ci-gate`", "`ambient-rule`"],
+    "script": ["`git-hook`", "`ambient-rule`"],
     "guard": ["`pre-tool-use`", "`ambient-rule`"],
     "text": ["`ambient-rule`"],
 }
@@ -39,6 +42,12 @@ PRIMITIVE = {
         "`install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is "
         "declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather "
         "than the intent."
+    ),
+    "script": (
+        "A **commit-time guard script**. `recompile` registers `implementations/{script}` under "
+        "`.git/hooks/pre-commit.d/`, and the hook runs it with no arguments at every commit. The script "
+        "reads the staged revision from git itself and exits non-zero to refuse; the rule text compiles "
+        "to `ambient-rule` beside it, so the agent knows the constraint before the commit is refused."
     ),
     "guard": (
         "A **PreToolUse guard**. `recompile` writes `.chock/compiled/{id}/pre-tool-use/"
@@ -57,13 +66,20 @@ MARK_START = "<!-- generated:start — tools/gen_policy_docs.py; edit policy-pro
 MARK_END = "<!-- generated:end -->"
 
 
+#: The one classifier (tools/mechanism.py), so this page and the registry cannot disagree.
+_KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard"}
+
+
 def kind_of(policy_dir: Path, manifest: dict) -> str:
-    if ((manifest.get("hook") or {}).get("gate") or {}).get("kind"):
-        return "gate"
-    impl = policy_dir / "implementations"
-    if impl.is_dir() and any(impl.glob("*.sh")):
-        return "guard"
-    return "text"
+    return _KIND.get(classify(policy_dir, manifest)[0], "text")
+
+
+def _mechanism(kind: str, gate: dict, scripts: list[str]) -> str:
+    if kind == "gate":
+        return f"{gate['kind']} gate"
+    if kind == "script":
+        return f"commit-time guard script `{scripts[0]}`"
+    return f"guard script `{scripts[0]}`" if scripts else "rule text"
 
 
 def load_cases(policy_dir: Path) -> list[dict]:
@@ -82,6 +98,8 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
     cases = load_cases(policy_dir)
     executed = sum(1 for c in cases if c.get("execute")) if kind != "text" else 0
     scripts = sorted(p.name for p in (policy_dir / "implementations").glob("*.sh")) if kind == "guard" else []
+    if kind == "script":
+        scripts = [p.name for p in event_scripts(policy_dir, policy_id)]
     disabled = "disabled by default" in (manifest.get("description") or "")
 
     lines: list[str] = [
@@ -95,7 +113,7 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
         "| | |",
         "| :--- | :--- |",
         f"| **Type** | `{manifest.get('artifact')}` (`enforcement: {manifest.get('enforcement')}`) |",
-        f"| **Mechanism** | {gate['kind'] + ' gate' if kind == 'gate' else ('guard script `' + scripts[0] + '`' if scripts else 'rule text')} |",
+        f"| **Mechanism** | {_mechanism(kind, gate, scripts)} |",
         f"| **Reaches** | {CEILING[kind]} |",
         f"| **Compiles to** | {', '.join(SURFACES[kind])} |",
         f"| **Eval cases** | {len(cases)} total, {executed} executable |",
@@ -129,6 +147,18 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
             "> " + " ".join((gate.get("message") or "").split()),
             "",
         ]
+    elif kind == "script":
+        lines += [
+            f"A guard script, `implementations/{scripts[0]}`, run by the git hook at every commit with no "
+            "arguments. It reads the staged revision of each file from git and exits non-zero to refuse the commit.",
+            "",
+            "The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:",
+            "",
+            "```text",
+            ((manifest.get("rule") or {}).get("text") or "").strip(),
+            "```",
+            "",
+        ]
     elif kind == "guard":
         lines += [
             f"A guard script, `implementations/{scripts[0]}`, run before the agent executes a Bash "
@@ -156,7 +186,7 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
     lines += [
         "## Which primitive it becomes",
         "",
-        PRIMITIVE[kind].format(id=policy_id),
+        PRIMITIVE[kind].format(id=policy_id, script=scripts[0] if scripts else ""),
         "",
         "## Installing it",
         "",
