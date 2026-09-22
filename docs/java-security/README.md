@@ -1,16 +1,16 @@
 # Java Security Rules
 
-`java-security` · rule · enforces
+`java-security` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: block`) |
-| **Mechanism** | commit-time guard script `java-security-pre-commit.py` |
-| **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
-| **Compiles to** | `git-hook`, `ambient-rule` |
-| **Eval cases** | 28 total, 0 executable |
+| **Type** | `hook` (`enforcement: block`) |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
+| **Eval cases** | 28 total, 25 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,18 +25,19 @@ A coding agent writing Java reaches for the construct that compiles and passes t
 
 ## How it works
 
-A guard script, `implementations/java-security-pre-commit.py`, run by the git hook at every commit with no arguments. It reads the staged revision of each file from git and exits non-zero to refuse the commit.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `block`.
 
-The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:
+Parameters, from `manifest.yaml`:
 
-```text
-never(write): mybatis ${} in SQL | th:utext|<%=|escapeXml="false"|?no_esc|<#noescape> | jackson defaultTyping | XStream w/o allowTypes | CORS "*" + allowCredentials(true) | actuator exposure.include=* | parseClaimsJwt|parseUnsecuredClaims|Algorithm.none|unverified JWT.decode | request data -> file path | ObjectInputStream
-on(fire): .chock/security.json -> allow|deny|ask per rule; absent|no-terminal ask = deny; waive a line: // chock: allow <rule-id>; choose: skill configure-java-security
-```
+- `script`
+
+On a match it prints:
+
+> java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny); waive one line with // chock: allow <rule-id>; choose per rule with skill configure-java-security.
 
 ## Which primitive it becomes
 
-A **commit-time guard script**. `recompile` registers `implementations/java-security-pre-commit.py` under `.git/hooks/pre-commit.d/`, and the hook runs it with no arguments at every commit. The script reads the staged revision from git itself and exits non-zero to refuse; the rule text compiles to `ambient-rule` beside it, so the agent knows the constraint before the commit is refused.
+A **git hook**. `recompile` writes `.chock/compiled/java-security/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 

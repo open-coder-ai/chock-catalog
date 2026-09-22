@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.1.0"
+version: "0.2.0"
 description: >
   trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates,
   application.properties or application.yml. avoid: string-interpolated SQL, unescaped template
@@ -8,20 +8,27 @@ description: >
   exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over
   request bytes. Eight rules, each with an allow|deny|ask verdict in .chock/security.json;
   a rule the file does not name denies.
-artifact: rule
+artifact: hook
 enforcement: block
 effects: [read_only]
-rule:
-  text: |
-    never(write): mybatis ${} in SQL | th:utext|<%=|escapeXml="false"|?no_esc|<#noescape> | jackson defaultTyping | XStream w/o allowTypes | CORS "*" + allowCredentials(true) | actuator exposure.include=* | parseClaimsJwt|parseUnsecuredClaims|Algorithm.none|unverified JWT.decode | request data -> file path | ObjectInputStream
-    on(fire): .chock/security.json -> allow|deny|ask per rule; absent|no-terminal ask = deny; waive a line: // chock: allow <rule-id>; choose: skill configure-java-security
 hook:
-  script:
-    "on": [commit]
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template
+      output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator
+      exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over
+      request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny);
+      waive one line with // chock: allow <rule-id>; choose per rule with skill
+      configure-java-security.
+    params:
+      script: java-security-gate.py
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-09-22T00:00:00Z"
+  updated_at: "2026-09-22T14:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-java-security"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -35,6 +42,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-09-22'
+  changes:
+  - "Reach the write path. The engine's `kind: script` gate (chock 0.9.3, adopted by this catalog) hands a policy's own program the same material every declarative kind reads -- the staged blobs at commit and the write itself at tool use and at the turn's end -- so artifact becomes hook and the check runs where the plugin form of these rules already ran: the construct is refused as the agent writes it, not only at the commit that carries it. implementations/java-security-gate.py replaces the commit-only java-security-pre-commit.py; it reads the writes from stdin instead of from git, and refuses on a deny, on an ask (a gate has no terminal), on an unreadable selection and on any failure inside the engine, exactly as before."
+  - "The eval suite gains its executable form: 25 of the 28 cases now carry the staged-files shape `chock check --only evals` replays against the compiled gate in a throwaway repository, selection file included where the case is about one. The three without one are the working-tree-versus-index case, which the gate never sees (it is handed the staged blobs), and the two implicit prompts an agent answers rather than a file. tools/check_java_security.py keeps its 52 rule cases and drives the gate over its stdin protocol for the commit path."
+  - "The two-line rule text is gone with the artifact: a hook renders its ambient line from the gate's message, which now names the eight constructs and the selection contract. Ceiling is still enforced-at-commit as the registry grades it; what changed is that the same script also refuses at tool use, on every vendor the write fragment reaches."
 - version: 0.1.0
   date: '2026-09-22'
   changes:

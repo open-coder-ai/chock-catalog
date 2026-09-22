@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shlex
 import shutil
@@ -91,11 +92,14 @@ def interpreter(bash: str, guard: Path) -> str:
     return sys.executable if guard.suffix == ".py" else bash
 
 
-def run_guard(bash: str, guard: Path, command: str | None, workspace: Path, home: Path, scratch: Path) -> None:
+def run_guard(
+    bash: str, guard: Path, command: str | None, workspace: Path, home: Path, scratch: Path, stdin: str | None = None
+) -> None:
     """Invoke the guard as its runtime does, inside the throwaway workspace.
 
     `command` is None for a git-event script: the hook passes it no argv and it reads the
-    staged change from git itself.
+    staged change from git itself. `stdin` is the runner's payload for a script gate, which
+    is handed the writes and never reads git.
     """
     env = dict(os.environ, HOME=str(home), TMPDIR=str(scratch), GIT_CONFIG_GLOBAL=str(home / ".gitconfig"))
     argv = [] if command is None else shlex.split(command)
@@ -104,6 +108,8 @@ def run_guard(bash: str, guard: Path, command: str | None, workspace: Path, home
             [interpreter(bash, guard), str(guard), *argv],
             cwd=workspace,
             env=env,
+            input=stdin,
+            text=stdin is not None,
             capture_output=True,
             timeout=30,
             check=False,
@@ -121,9 +127,12 @@ def check_policy(policy_dir: Path, bash: str) -> list[str]:
         return []
 
     policy_id = manifest.get("id") or policy_dir.name
+    # A script gate is handed the writes on stdin by the runner; the payload with no writes
+    # is what a commit that stages nothing looks like to it.
+    script_gate = ((manifest.get("hook") or {}).get("gate") or {}).get("kind") == "script"
     # A git-event script takes no argv, so an eval case's command is not its exercise: running
     # it with none, in a repo with nothing staged, is exactly what the hook does.
-    if all(is_event_script(g, policy_id) for g in guards):
+    if script_gate or all(is_event_script(g, policy_id) for g in guards):
         commands: list[str | None] = [None]
     else:
         commands = list(eval_commands(policy_dir))
@@ -142,10 +151,13 @@ def check_policy(policy_dir: Path, bash: str) -> list[str]:
             if any(is_event_script(g, policy_id) for g in guards):
                 init_repo(workspace)
 
+            payload = None
+            if script_gate:
+                payload = json.dumps({"event": "commit", "repo_root": str(workspace), "writes": {}})
             before = {"workspace": snapshot(workspace), "home": snapshot(home)}
             for command in commands:
                 try:
-                    run_guard(bash, guard, command, workspace, home, scratch)
+                    run_guard(bash, guard, command, workspace, home, scratch, stdin=payload)
                 except RuntimeError as exc:
                     failures.append(f"{policy_dir.name}/{guard.name}: {exc}")
                     break

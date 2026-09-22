@@ -50,5 +50,5 @@ verdicts: allow|deny|ask per rule; absent rule = deny; page preselects deny
 - never(write): pattern|severity|path into the file; the guard refuses it at the next commit.
 - text walk (`references/setup-contract.json`, one rule at a time, deny unless told otherwise):
   only where the page cannot be shown at all.
-- wiring is chock's: commit hook from `chock sync`, ambient rule from `INDEX.md`; no tool-use
-  or turn-end door until this catalog adopts the engine's `kind: script` gate (chock#154).
+- wiring is chock's: the commit hook and the tool-use door from `chock sync`, the ambient
+  line from `INDEX.md`. Both read the same selection file; nothing here wires anything.
