@@ -121,21 +121,6 @@
         "script_hashes": {}
       }
     ],
-    "configure-java-security": [
-      {
-        "id": "configure-java-security",
-        "artifact": "skill",
-        "version": "0.1.0",
-        "name": "Configure Java Security",
-        "description": "Choose what each java-security rule does when it fires -- \"customize java security\", \"configure java security rules\", \"change a java security verdict\", and anything meaning it. args(scope) returns(.chock/security.json) invoke(customize, configure, review) exclude(coding, writing_rules)",
-        "path": "skills/configure-java-security",
-        "manifest": "SKILL.md",
-        "trust_tier": "community",
-        "lifecycle_status": "draft",
-        "dependencies": [],
-        "script_hashes": {}
-      }
-    ],
     "context-hygiene": [
       {
         "id": "context-hygiene",

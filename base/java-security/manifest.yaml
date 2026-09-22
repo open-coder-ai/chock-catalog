@@ -1,13 +1,13 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.2.1"
+version: "0.3.0"
 description: >
   trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates,
-  application.properties or application.yml. avoid: string-interpolated SQL, unescaped template
-  output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator
-  exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over
-  request bytes. Eight rules, each with an allow|deny|ask verdict in .chock/security.json;
-  a rule the file does not name denies.
+  application.properties or .yml; "customize java security" opens this skill's guided page. avoid:
+  string-interpolated SQL, unescaped template output, unsafe deserialization, wildcard CORS with
+  credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an
+  ObjectInputStream over request bytes. Eight rules, each allow|deny|ask in .chock/security.json;
+  absent = deny.
 artifact: hook
 enforcement: block
 effects: [read_only]
@@ -21,14 +21,14 @@ hook:
       output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator
       exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over
       request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny);
-      waive one line with // chock: allow <rule-id>; choose per rule with skill
-      configure-java-security.
+      waive one line with // chock: allow <rule-id>; choose per rule by asking to customize
+      java security, which opens this skill's guided page.
     params:
       script: java-security-gate.py
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-09-22T17:00:00Z"
+  updated_at: "2026-09-22T23:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -42,6 +42,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.0
+  date: '2026-09-22'
+  changes:
+  - "One skill. The guided setup page and its contract move from the separate configure-java-security skill into this policy's own skill/ folder, which chock 0.11.0 ships beside the rendered SKILL.md in both package formats: the skill that names the rules is the skill that opens the page, and \"customize java security\" is in this policy's own trigger. The procedure is the same -- the page writes nothing, the agent shows every row and writes .chock/security.json at repo or user scope -- and the five eval cases that pinned it join this suite as tc-029 to tc-033."
+  - "Enforced as a plugin. On chock 0.11.0 the Claude package carries this policy's gate, its runner and the engine beside it, wired to PreToolUse on the client's write tools and to Stop: installed at the agent with no repository change, a denied construct is refused as it is written and again at the turn's end, reading .chock/security.json from the working repository or ~/.chock/security.json outside one. Nothing in this folder changed for that; the manifest already declared tool_use."
 - version: 0.2.1
   date: '2026-09-22'
   changes:

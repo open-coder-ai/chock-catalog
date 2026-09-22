@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>java-security guided setup</title>
+<!--
+  A static page beside the configure-java-security skill. It carries exactly one fill-in: the
+  #contract script element below -- every rule's texts, the closed scopes and doors, and no
+  agent's reach (the catalog's page claims none; `agent` is null). tools/check_java_security.py
+  fails when the embedded rules drift from the shipped ones. Nothing on this page is fetched at
+  run time: inline and offline, both themes, large-text and audio-read.
+  Walked in order: reach (a statement, not a question -- the build named the agent already) ->
+  one verdict per rule with deny preselected, or keep all at deny -> doors, honest about what a
+  plugin install cannot carry -> review, every answer tickable and editable, every weakening
+  marked. Relaunching this page reopens on the repository's own selection, prefilled from the
+  contract's own `current`. The result is handed to the configure-java-security skill, which is
+  the only thing that writes; nothing is written here.
+  Verdicts are chosen, never derived: no answer about a team's stack turns a rule off.
+-->
+<style>
+  :root {
+    --bg:#f4f6f8; --surface:#ffffff; --text:#1b1e24; --muted:#5b6270;
+    --accent:#2f8f83; --accent-c:#ffffff; --danger:#c0392b; --border:#e5e8ec;
+    --pill:#eceff2; --pillh:#e2e7ea; --soft:#f7f9fa; --glow:rgba(47,143,131,.18);
+    --dangerbg:rgba(192,57,43,.10);
+    --fs:16px;
+    --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, Menlo, Consolas, monospace;
+    --ease: cubic-bezier(.22,.9,.24,1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0f1115; --surface:#171a21; --text:#e8eaed; --muted:#9aa0aa;
+      --accent:#5eb0a6; --accent-c:#0f1115; --danger:#e06c6c; --border:#262b34;
+      --pill:#1f242d; --pillh:#262c36; --soft:#131720; --glow:rgba(94,176,166,.22);
+      --dangerbg:rgba(224,108,108,.14);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0f1115; --surface:#171a21; --text:#e8eaed; --muted:#9aa0aa;
+    --accent:#5eb0a6; --accent-c:#0f1115; --danger:#e06c6c; --border:#262b34;
+    --pill:#1f242d; --pillh:#262c36; --soft:#131720; --glow:rgba(94,176,166,.22);
+    --dangerbg:rgba(224,108,108,.14);
+  }
+  * { box-sizing:border-box; }
+  html { font-size:var(--fs); }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:var(--font);
+         line-height:1.5; min-height:100vh; padding-block:2rem 3rem; padding-inline:1rem; }
+  .panel { max-width:780px; margin:0 auto; background:var(--surface); border:1px solid var(--border);
+           border-radius:22px; overflow:hidden; box-shadow:0 24px 70px -40px rgba(20,30,40,.35); }
+  code { font-family:var(--mono); font-size:.86em; }
+
+  /* ---------- milestone tracker ---------- */
+  .trackwrap { padding:2rem 2.4rem 1.6rem; }
+  .brandline { display:flex; align-items:center; gap:.5rem; margin-bottom:1.4rem; flex-wrap:wrap; }
+  .dotmark { width:11px; height:11px; border-radius:50%; background:var(--accent);
+             box-shadow:0 0 10px var(--glow); }
+  .brandline b { font-size:.92rem; }
+  .brandline span { font-size:.8rem; color:var(--muted); }
+  .prefs { margin-left:auto; display:flex; gap:.35rem; }
+  .prefs button { font:inherit; font-size:.78rem; color:var(--muted); background:transparent;
+      border:1px solid var(--border); border-radius:999px; padding:.24rem .62rem; cursor:pointer; }
+  .prefs button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+
+  .track { display:flex; align-items:flex-start; }
+  .mile { flex:1; display:flex; flex-direction:column; align-items:center; gap:.5rem; position:relative;
+          background:none; border:none; padding:0; font:inherit; cursor:default; color:inherit; }
+  .mile.jump { cursor:pointer; }
+  .mile .lbl { font-size:.8rem; color:var(--muted); white-space:nowrap; transition:color .3s, font-weight .3s; }
+  .mile.now .lbl { color:var(--text); font-weight:700; }
+  .mile.jump:hover .lbl { color:var(--accent); }
+  .node { width:18px; height:18px; border-radius:50%; background:var(--pill); position:relative; z-index:1;
+          transition:background .3s, box-shadow .3s, transform .3s var(--ease); }
+  .mile.done .node { background:var(--accent); box-shadow:inset 0 0 0 4px var(--surface), 0 0 0 2px var(--accent); width:14px; height:14px; margin:2px; }
+  .mile.now .node { background:var(--accent); transform:scale(1.25); box-shadow:0 0 0 5px var(--glow); }
+  .mile::after { content:""; position:absolute; top:9px; left:calc(50% + 14px); right:calc(-50% + 14px);
+                 border-top:3px dotted var(--border); }
+  .mile.done::after { border-top:3px solid var(--accent); }
+  .mile:last-child::after { display:none; }
+  .mile:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:8px; }
+
+  /* ---------- spoken question ---------- */
+  .ask { text-align:center; padding:1.7rem 2.4rem .4rem; min-height:7.2rem; }
+  .quote { font-size:1.22rem; font-weight:550; letter-spacing:-.01em; line-height:1.45;
+           max-width:36ch; margin:0 auto; text-wrap:balance; animation:fadeq .45s var(--ease) both; }
+  .quote::before { content:"\201C"; color:var(--muted); } .quote::after { content:"\201D"; color:var(--muted); }
+  @keyframes fadeq { from { opacity:0; transform:translateY(8px); } }
+  .wave { display:flex; gap:4px; justify-content:center; align-items:center; height:26px; margin-top:.9rem; }
+  .wave i { width:4px; border-radius:99px; background:var(--accent); opacity:.75; height:8px; }
+  .wave.on i { animation:wv 1s ease-in-out infinite; }
+  .wave i:nth-child(1){height:8px}  .wave i:nth-child(2){height:16px} .wave i:nth-child(3){height:10px}
+  .wave i:nth-child(4){height:20px} .wave i:nth-child(5){height:12px} .wave i:nth-child(6){height:18px}
+  .wave i:nth-child(7){height:8px}  .wave i:nth-child(8){height:14px}
+  .wave.on i:nth-child(odd){ animation-delay:.15s } .wave.on i:nth-child(3n){ animation-delay:.3s }
+  @keyframes wv { 0%,100%{transform:scaleY(.5)} 50%{transform:scaleY(1.4)} }
+
+  /* ---------- stats strip ---------- */
+  .stats { display:flex; border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+           background:var(--soft); }
+  .stat { flex:1; text-align:center; padding:.85rem .4rem; }
+  .stat .k { font-size:.8rem; color:var(--muted); }
+  .stat .v { font-size:1.12rem; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .stat .v em { font-style:normal; color:var(--accent); }
+  .stat .v em.warn { color:var(--danger); }
+
+  /* ---------- answer area ---------- */
+  .answer { padding:1.5rem 2.4rem 1.9rem; }
+  .topic { font-size:.95rem; font-weight:650; margin-bottom:1rem; }
+  .topic span { color:var(--muted); font-weight:500; }
+  .opts { display:flex; gap:.6rem; flex-wrap:wrap; }
+  .opt { flex:1 1 0; min-width:8.5rem; font:inherit; font-size:.97rem; color:var(--text);
+         background:var(--pill); border:2px solid transparent; border-radius:999px;
+         padding:.85rem 1.1rem; cursor:pointer; text-align:center;
+         transition:background .2s, border-color .2s, transform .16s var(--ease), box-shadow .25s; }
+  .opt:hover { background:var(--pillh); transform:translateY(-1px); }
+  .opt:active { transform:scale(.98); }
+  .opt[aria-pressed="true"] { border-color:var(--accent); background:var(--surface); font-weight:650;
+        box-shadow:0 6px 18px -8px var(--glow); }
+  .opt.weak[aria-pressed="true"] { border-color:var(--danger); box-shadow:none; }
+  .opt.ghost { flex:0 1 auto; background:transparent; border:2px dashed var(--border); color:var(--muted); }
+  .opt:focus-visible, .btn:focus-visible, .prefs button:focus-visible,
+  .editlink:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+
+  .why { margin-top:.9rem; font-size:.86rem; color:var(--muted); min-height:2.6em; line-height:1.45; }
+  .why b { color:var(--text); }
+
+  /* ---------- rule card ---------- */
+  .rule { background:var(--soft); border:1px solid var(--border); border-radius:14px;
+          padding:.9rem 1.05rem; margin-bottom:1rem; animation:fadeq .4s var(--ease) both; }
+  .rule .rid { font-family:var(--mono); font-size:.76rem; color:var(--muted); }
+  .rule dl { display:grid; grid-template-columns:max-content 1fr; gap:.3rem .8rem; margin:.55rem 0 0; font-size:.88rem; }
+  .rule dt { color:var(--muted); font-weight:600; text-transform:uppercase; font-size:.68rem; letter-spacing:.08em; padding-top:.25em; }
+  .rule dd { margin:0; }
+  .rule .cons { margin-top:.6rem; font-family:var(--mono); font-size:.74rem; color:var(--muted);
+                white-space:pre-wrap; word-break:break-word; border-top:1px dashed var(--border); padding-top:.5rem; }
+  @media (max-width:560px){ .rule dl { grid-template-columns:1fr; } }
+
+  /* ---------- reach table ---------- */
+  .reachwrap { overflow-x:auto; border:1px solid var(--border); border-radius:14px; background:var(--soft); }
+  table.reach { border-collapse:collapse; width:100%; font-size:.86rem; min-width:22rem; }
+  .reach th, .reach td { padding:.55rem .8rem; text-align:left; border-bottom:1px solid var(--border); vertical-align:top; }
+  .reach th { font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700; }
+  .reach th small { display:block; text-transform:none; letter-spacing:0; font-weight:500; font-family:var(--mono); font-size:.68rem; }
+  .reach tr:last-child td { border-bottom:none; }
+  .reach td .ev { font-family:var(--mono); font-size:.7rem; color:var(--muted); display:block; }
+  .reach td.layer b { display:block; } .reach td.layer code { color:var(--muted); }
+  .grade { display:inline-block; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+           border-radius:99px; padding:.12rem .55rem; }
+  .grade.enforced, .grade.enforceable, .grade.best-effort { color:var(--accent); background:var(--glow); }
+  .grade.detect, .grade.none { color:var(--danger); background:var(--dangerbg); }
+  .grade.repo_only { color:var(--muted); border:1px solid var(--border); }
+  .grade.advise { color:var(--muted); background:var(--pill); }
+  .gap { margin-top:.9rem; font-size:.86rem; color:var(--text); background:var(--dangerbg);
+         border:1px solid var(--danger); border-radius:12px; padding:.6rem .85rem; animation:fadeq .4s var(--ease) both; }
+  .gap b { color:var(--danger); }
+  .hint { font-size:.86rem; color:var(--muted); padding:.6rem 0; }
+
+  /* ---------- review ---------- */
+  .rgroup { margin-bottom:1.2rem; animation:fadeq .4s var(--ease) both; }
+  .rhead { display:flex; align-items:center; gap:.55rem; font-size:.78rem; font-weight:700;
+           text-transform:uppercase; letter-spacing:.1em; color:var(--accent); margin-bottom:.5rem; }
+  .rhead::after { content:""; flex:1; border-top:1px solid var(--border); }
+  .rrow { display:flex; gap:.7rem; align-items:center; background:var(--soft);
+          border:1px solid var(--border); border-radius:12px; padding:.6rem .85rem; margin-bottom:.45rem;
+          animation:fadeq .4s var(--ease) both; transition:opacity .25s; }
+  .rrow.off { opacity:.45; }
+  .rrow.off .ra { text-decoration:line-through; }
+  .rrow.weak { border-color:var(--danger); }
+  .rrow input[type=checkbox] { accent-color:var(--accent); width:1.05rem; height:1.05rem; flex:none; }
+  .rbody { flex:1; min-width:0; }
+  .rq { color:var(--muted); font-size:.8rem; line-height:1.35; }
+  .rq code { font-size:.74rem; }
+  .ra { font-weight:650; font-size:.94rem; }
+  .editlink { flex:none; font:inherit; font-size:.8rem; color:var(--accent); background:transparent;
+              border:1px solid var(--border); border-radius:99px; padding:.28rem .8rem; cursor:pointer;
+              transition:border-color .2s; }
+  .editlink:hover { border-color:var(--accent); }
+  .badge { font-size:.64rem; text-transform:uppercase; letter-spacing:.07em; color:var(--accent);
+           background:var(--glow); border-radius:99px; padding:.1rem .5rem; margin-left:.4rem; }
+  .badge.weak { color:var(--danger); background:var(--dangerbg); }
+  .badge.repo { color:var(--muted); background:transparent; border:1px solid var(--border); }
+  details { margin-top:.9rem; } summary { cursor:pointer; color:var(--muted); font-size:.85rem; }
+  #out { width:100%; min-height:11rem; margin-top:.5rem; font-family:var(--mono);
+         font-size:.76rem; color:var(--text); background:var(--soft); border:1px solid var(--border);
+         border-radius:10px; padding:.6rem; }
+  .savednote { text-align:center; color:var(--muted); font-size:.85rem; margin-top:1rem;
+               animation:fadeq .4s var(--ease) both; }
+  .savednote b { color:var(--accent); }
+
+  /* nav */
+  .navrow { display:flex; align-items:center; padding:0 2.4rem 1.9rem; gap:.7rem; }
+  .btn { font:inherit; border:none; border-radius:999px; padding:.75rem 1.6rem; cursor:pointer;
+         background:var(--pill); color:var(--text); transition:transform .16s var(--ease), background .2s, opacity .2s; }
+  .btn:hover { background:var(--pillh); transform:translateY(-1px); }
+  .btn:active { transform:scale(.97); }
+  .btn.round { border-radius:50%; width:2.8rem; height:2.8rem; padding:0; margin:0 auto; font-size:1.05rem; }
+  .btn.cta { background:var(--accent); color:var(--accent-c); font-weight:700;
+             box-shadow:0 8px 24px -10px var(--glow); }
+  .btn.cta:disabled { opacity:.45; cursor:default; transform:none; }
+  .footnote { text-align:center; font-size:.72rem; color:var(--muted); margin:1.1rem auto 0; max-width:62ch; }
+
+  @media (max-width:640px){ .mile .lbl { font-size:.66rem; } .trackwrap,.answer,.navrow,.ask { padding-left:1.2rem; padding-right:1.2rem; } }
+  @media (prefers-reduced-motion: reduce){
+    .quote,.rule,.rrow,.rgroup,.savednote,.gap{animation:none} .wave.on i{animation:none} .opt,.btn,.node{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <div class="trackwrap">
+    <div class="brandline"><span class="dotmark"></span><b>chock-java-security</b><span id="modeline">· guided setup</span>
+      <div class="prefs" role="group" aria-label="display preferences">
+        <button id="theme" type="button" aria-pressed="false" title="light / dark">🌓</button>
+        <button id="hue" type="button" aria-pressed="false" title="accent: teal">🎨</button>
+        <button id="bigger" type="button" aria-pressed="false" title="larger text">A+</button>
+        <button id="read" type="button" aria-pressed="false" title="read questions aloud">🔊</button>
+      </div>
+    </div>
+    <div class="track" id="track"></div>
+  </div>
+
+  <div class="ask">
+    <p class="quote" id="quote"></p>
+    <div class="wave" id="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="k">Progress</div><div class="v" id="pct">0%</div></div>
+    <div class="stat"><div class="k">Rules at deny</div><div class="v"><em id="atdeny"></em> / <span id="total"></span></div></div>
+    <div class="stat"><div class="k">Weakened</div><div class="v"><em id="weak" class="warn">0</em></div></div>
+    <div class="stat"><div class="k">Est. remaining</div><div class="v" id="eta">–</div></div>
+  </div>
+
+  <div class="answer">
+    <div class="topic" id="topiclbl"></div>
+    <div id="optzone"></div>
+  </div>
+
+  <div class="navrow">
+    <button class="btn" id="back" type="button">Back</button>
+    <button class="btn round" id="reset" type="button" title="clear this answer" aria-label="clear this answer">↺</button>
+    <button class="btn cta" id="cont" type="button">Continue</button>
+  </div>
+</div>
+<p class="footnote">Every rule's texts come from the catalog's own rule registry, embedded above when this page was
+written — nothing here is fetched at run time. Answers stay in this browser until the <code>configure-java-security</code>
+skill reads the result, shows you every row, and writes <code>.chock/security.json</code>; it is the only thing that
+writes, and <code>chock sync</code> wires the rest. Come back anytime: this screen reopens on whatever selection the
+repository already has.</p>
+
+<script type="application/json" id="contract">{"version": 1, "agent": null, "layers": [{"door": "ambient", "does": "advise"}, {"door": "pre_tool", "does": "write_path"}, {"door": "stop", "does": "final_state"}, {"door": "pre_commit", "does": "repo_only"}, {"door": "ci", "does": "repo_only"}], "rules": [{"id": "java-sqli-mybatis-interpolation", "pack": "java", "title": "MyBatis string interpolation in SQL", "refuses": "`${}` in a mapper or a MyBatis-annotated source", "silent_on": "`#{}`, and `${}` anywhere that is not MyBatis", "constraint": "never(interpolate): mybatis ${...} in mapper|@Select|@Insert|@Update|@Delete -- ${} is pasted into the SQL text before preparing; bind with #{...}"}, {"id": "java-xss-unescaped-template", "pack": "java", "title": "Unescaped template output", "refuses": "`th:utext`, `<%=`, `escapeXml=\"false\"`, `?no_esc`, `<#noescape>`", "silent_on": "the escaping sibling, and other `<% %>` forms", "constraint": "never(write): th:utext|<%=|escapeXml=\"false\"|?no_esc|<#noescape> -- these put a value into the page as markup; use the escaping sibling"}, {"id": "java-unsafe-deserialization", "pack": "java", "title": "Unsafe polymorphic deserialization", "refuses": "Jackson default typing; an XStream built with no allowlist", "silent_on": "a plain `ObjectMapper`; an XStream that allowlists", "constraint": "never(enable): jackson activateDefaultTyping|enableDefaultTyping; never(build): XStream without allowTypes|allowTypeHierarchy"}, {"id": "java-cors-wildcard-credentials", "pack": "java", "title": "Wildcard CORS origin with credentials", "refuses": "a wildcard origin **with** credentials enabled", "silent_on": "a wildcard alone; a named origin; `setAllowedOriginPatterns`", "constraint": "never(pair): CORS origin \"*\" with allowCredentials(true) -- the spec refuses it; name the origins, or use setAllowedOriginPatterns"}, {"id": "java-actuator-wildcard-exposure", "pack": "java", "title": "Every actuator endpoint exposed", "refuses": "`exposure.include=*` in properties or YAML", "silent_on": "named endpoints; a wildcard `include:` outside actuator config", "constraint": "never(expose): management.endpoints.web.exposure.include=* -- it publishes heapdump and env; name the endpoints served"}, {"id": "java-jwt-unverified-parse", "pack": "java", "title": "JWT read without verifying its signature", "refuses": "`parseClaimsJwt`, `parseUnsecuredClaims`, `Algorithm.none()`, `SignatureAlgorithm.NONE`; `JWT.decode` where nothing in the file verifies", "silent_on": "`parseClaimsJws`, `parseSignedClaims`, a real algorithm, issuing a token, and a decode beside a verify", "constraint": "never(call): parseClaimsJwt|parseUnsecuredClaims|Algorithm.none|SignatureAlgorithm.NONE, or JWT.decode where nothing in the file verifies -- they skip the signature; use parseClaimsJws|parseSignedClaims with a key"}, {"id": "java-path-traversal-request-data", "pack": "java", "title": "Path built from request data", "refuses": "a file path a method body shows request data reaching", "silent_on": "a constant path; a name taken with `getFileName`; a parsed number", "constraint": "never(open): a file path built from @RequestParam|@PathVariable|request.get* -- take getFileName, resolve against a fixed base, check startsWith"}, {"id": "java-deserialization-request-stream", "pack": "java", "title": "Java deserialization of request data", "refuses": "`ObjectInputStream` over request data", "silent_on": "a stream the application opened itself; the same bytes read as JSON", "constraint": "never(construct): ObjectInputStream over @RequestBody|request.getInputStream -- the bytes name the classes; carry the payload as JSON into a declared type"}], "verdicts": ["allow", "ask", "deny"], "default": "deny", "scopes": ["repo", "user"], "doors": ["ambient", "pre_tool", "stop", "pre_commit", "ci"], "current": null, "bounds": {"review_before_apply": "Every answer is a row you can tick and edit before anything is written. The configure-java-security skill is the only thing that writes, and only after you have reviewed every row.", "relaunch_to_edit": "There is no separate edit mode. An existing selection prefills every rule's current verdict, so changing an answer means reopening this page, not finding a second flow.", "sandbox": "This page is a file: inline and offline, nothing it loads reaches outside itself, and nothing it does can reach the network.", "accessibility": "Every control is reachable by keyboard and carries a label a screen reader can read; no choice depends on color alone.", "theme_choice": "The page renders correctly in both light and dark themes on its own, and offers an explicit toggle besides.", "verdicts_are_chosen_never_derived": "A verdict is what you choose for a rule, never something inferred from a question about your stack. There is no field here a stack answer could land in.", "plugin_tier_is_not_commit_or_ci": "Installing this policy as an agent plugin reaches that agent's own tool calls and turn end. It does not reach a commit or a CI run -- those need the policy installed in the repository itself with chock.", "nothing_written_from_the_page": "This page writes nothing. It produces a result the configure-java-security skill reads, shows you row by row, refuses to overwrite an existing selection without your say-so, and only then writes .chock/security.json."}}</script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const TOPICS = ["Reach","Verdicts","Doors","Review"];
+const REVIEW = TOPICS.length - 1;
+
+/* --- everything below is derived from #contract; nothing here is typed by hand --- */
+const CONTRACT = JSON.parse($("#contract").textContent);
+const AGENT = CONTRACT.agent ? CONTRACT.agent.agent : null;
+const AGENT_LABEL = CONTRACT.agent ? CONTRACT.agent.label : "this agent";
+const DEFAULT_VERDICT = CONTRACT.default;
+const LS_KEY = "chock-security-setup:" + (AGENT || "agent");
+
+/* editorial text only -- not a fact a build computes, so it stays here rather than in the
+   contract; keyed by the same door names the contract's own `layers` and `doors` use. */
+const LAYER_INFO = {
+  ambient:     ["prose",         "ambient rule", "shapes what gets written"],
+  pre_tool:    ["write guard",   "pre_tool",     "Write / Edit — the file the call would write"],
+  stop:        ["state guard",   "stop",         "anything on disk, however written"],
+  pre_commit:  ["commit guard",  "pre-commit",   "the staged revision"],
+  ci:          ["baseline",      "CI",           "a verdict weakened vs main"],
+};
+
+const RULES = CONTRACT.rules.map(r => [r.id, r.title, r.refuses, r.silent_on, r.constraint, r.pack]);
+const VERDICT_WHY = {
+  deny:  "<b>deny</b> stops the tool call, the commit, or the CI run. The default: a rule nobody spoke about enforces.",
+  ask:   "<b>ask</b> puts it to the developer, case by case. At commit time that needs a terminal — an unattended commit touching it refuses; it never degrades to allow.",
+  allow: "<b>allow</b> means the rule does not run. Off is a word a reviewer sees: <code>check-baseline</code> fails a pull request that is weaker than <code>main</code>.",
+};
+
+const BASE_Q = [
+  {topic:0, id:"reach", kind:"info", short:"Reach",
+   q:`This plugin is installed in ${AGENT_LABEL}. Here is what each layer reaches here. Nothing in this table is typed by hand — a build reads it from agentseam, evidence basis included.`},
+  {topic:1, id:"walk", kind:"pick", short:"Verdict walk",
+   q:"Every rule enforces by default. Walk through each one, or keep them all at deny?",
+   opts:[["walk","Walk through each"],["keep","Keep all at deny"]]},
+  {topic:2, id:"scope", kind:"pick", short:"Where it runs",
+   q:"Where does this run — a repository the team shares, or just your own agent?",
+   opts:[["repo","This repository (team)"],["user","Just my agent (user-level)"]]},
+  {topic:2, id:"repo_doors", kind:"pick", short:"Commit guard + CI baseline",
+   q:"Wire the commit guard and the CI baseline too? They are the two doors a plugin cannot carry.",
+   opts:[["yes","Yes, both"],["no","Not yet"]]},
+];
+const RULE_Q = RULES.map(r => ({topic:1, id:"rule:"+r[0], kind:"verdict", rule:r, short:r[1],
+  q:`${r[1]}. What does this rule do when it fires?`}));
+
+const state = { i:0, answers:{}, excluded:{}, review:false, returning:false, reviewReached:false, editReturn:false, hue:0 };
+let queue = [];
+
+function defaults(){
+  RULES.forEach(r => { if (state.answers["rule:"+r[0]] === undefined) state.answers["rule:"+r[0]] = DEFAULT_VERDICT; });
+}
+function rebuildQueue(){
+  const walk = state.answers.walk === "walk";
+  const repo = state.answers.scope === "repo";
+  queue = [];
+  BASE_Q.forEach(qd => {
+    if (qd.id === "repo_doors" && !repo) return;
+    queue.push(qd);
+    if (qd.id === "walk" && walk) queue.push(...RULE_Q);
+  });
+}
+
+/* ---- persistence: relaunching later reopens on the selection this repository already has,
+   or -- mid-walk, before anything is applied -- on this browser's own unsent progress ---- */
+function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify({
+    answers:state.answers, excluded:state.excluded, reviewReached:state.reviewReached, hue:state.hue })); } catch(e){} }
+function loadState(){ try { const s = JSON.parse(localStorage.getItem(LS_KEY));
+    if (s && s.answers && s.answers.walk){ Object.assign(state, s); return true; } } catch(e){}
+  return false; }
+function loadCurrent(){
+  if (!CONTRACT.current) return false;
+  RULES.forEach(r => { state.answers["rule:"+r[0]] = CONTRACT.current[r[0]] || DEFAULT_VERDICT; });
+  state.answers.walk = "walk";
+  state.answers.scope = "repo";
+  return true;
+}
+
+/* prefs */
+$("#theme").onclick = e => { const cur = document.documentElement.getAttribute("data-theme");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  e.target.setAttribute("aria-pressed", String(next === "dark")); applyHue(); };
+$("#bigger").onclick = e => { const on = document.documentElement.style.getPropertyValue("--fs") === "19px";
+  document.documentElement.style.setProperty("--fs", on ? "16px" : "19px");
+  e.target.setAttribute("aria-pressed", String(!on)); };
+const HUES = [
+  { n:"teal" },
+  { n:"indigo", l:["#4f5fd6","rgba(79,95,214,.18)"],  d:["#8b9bf4","rgba(139,155,244,.22)"] },
+  { n:"amber",  l:["#b0741f","rgba(176,116,31,.18)"], d:["#d9a441","rgba(217,164,65,.22)"] },
+  { n:"rose",   l:["#b8506a","rgba(184,80,106,.18)"], d:["#e08aa0","rgba(224,138,160,.22)"] },
+];
+function isDark(){ const t = document.documentElement.getAttribute("data-theme");
+  return t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches); }
+function applyHue(){
+  const h = HUES[state.hue] || HUES[0], r = document.documentElement.style;
+  if (!h.l){ r.removeProperty("--accent"); r.removeProperty("--glow"); r.removeProperty("--accent-c"); }
+  else { const [a,g] = isDark() ? h.d : h.l;
+    r.setProperty("--accent", a); r.setProperty("--glow", g);
+    r.setProperty("--accent-c", isDark() ? "#0f1115" : "#ffffff"); }
+  const b = $("#hue"); b.setAttribute("aria-pressed", String(state.hue !== 0));
+  b.title = "accent: " + h.n;
+}
+$("#hue").onclick = () => { state.hue = ((state.hue||0) + 1) % HUES.length; applyHue(); saveState(); };
+let readOn = false;
+$("#read").onclick = e => { readOn = !readOn; e.target.setAttribute("aria-pressed", String(readOn));
+  if (!readOn && window.speechSynthesis) speechSynthesis.cancel(); $("#wave").classList.remove("on"); };
+function say(t){
+  if (!readOn || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(t.replace(/[“”]/g,""));
+  u.onstart = () => $("#wave").classList.add("on");
+  u.onend = () => $("#wave").classList.remove("on");
+  speechSynthesis.speak(u);
+}
+
+let lastAck = "";
+function ackFor(qd, v){
+  if (qd.kind === "verdict") return v === "deny" ? "Enforcing." : v === "ask" ? "Noted — case by case." : "Off, and visible.";
+  if (qd.id === "walk") return v === "keep" ? "Good — nothing to weaken." : "Let's take them one at a time.";
+  if (qd.id === "scope") return v === "repo" ? "A team install, then." : "Your agent only, then.";
+  if (qd.id === "repo_doors") return v === "yes" ? "Both doors it is." : "Plugin tier only, for now.";
+  return "Got it.";
+}
+
+function topicOf(i){ return queue[i] ? queue[i].topic : REVIEW; }
+function highestTopicVisited(){
+  let t = 0; queue.forEach(q => { if (q.kind !== "info" && q.kind !== "verdict" && state.answers[q.id] !== undefined) t = Math.max(t, q.topic); });
+  return (state.returning || state.reviewReached) ? REVIEW : Math.max(t, topicOf(state.i));
+}
+function weakened(){ return RULES.filter(r => !state.excluded["rule:"+r[0]] && state.answers["rule:"+r[0]] !== "deny"); }
+
+function renderTrack(){
+  const cur = state.review ? REVIEW : topicOf(state.i);
+  const reach = highestTopicVisited();
+  const track = $("#track"); track.innerHTML = "";
+  TOPICS.forEach((t,k)=>{
+    const canJump = k <= reach;
+    const m = document.createElement(canJump ? "button" : "div");
+    if (canJump) m.type = "button";
+    m.className = "mile" + (k < cur ? " done" : k === cur ? " now" : "") + (canJump && k !== cur ? " jump" : "");
+    m.innerHTML = `<div class="node"></div><div class="lbl">${t}</div>`;
+    if (canJump) m.onclick = () => jumpToTopic(k);
+    track.appendChild(m);
+  });
+}
+function jumpToTopic(k){
+  lastAck = ""; state.editReturn = false;
+  if (k === REVIEW){ backToReview(); return; }
+  const at = queue.findIndex(q => q.topic === k);
+  if (at !== -1){ state.review = false; state.i = at; restoreCont(); render(); }
+}
+function jumpToQuestion(id){
+  if (id.startsWith("rule:") && state.answers.walk !== "walk"){ state.answers.walk = "walk"; rebuildQueue(); }
+  const at = queue.findIndex(q => q.id === id);
+  if (at !== -1){ state.review = false; state.i = at; state.editReturn = true;
+    lastAck = "Let's revisit this one."; restoreCont(); render(); }
+}
+function backToReview(){ state.editReturn = false; state.review = true; lastAck = ""; render(); }
+
+function renderStats(){
+  const total = queue.length + 1;
+  const at = state.review ? total : state.i;
+  $("#pct").textContent = Math.round((Math.min(at,total)/total)*100) + "%";
+  const w = weakened().length;
+  $("#atdeny").textContent = RULES.length - w;
+  $("#total").textContent = RULES.length;
+  $("#weak").textContent = w;
+  const remaining = state.review ? 0 : (queue.length - state.i);
+  $("#eta").textContent = remaining ? ((remaining*8)/60).toFixed(1) + "m" : "0m";
+}
+
+function render(){
+  if (state.review) state.reviewReached = true;
+  renderTrack(); renderStats(); saveState();
+  $("#back").style.visibility = (state.i === 0 && !state.review && !state.editReturn) ? "hidden" : "visible";
+  const zone = $("#optzone"); zone.innerHTML = "";
+  if (state.review){ renderReview(zone); return; }
+
+  const qd = queue[state.i];
+  const quote = (lastAck ? lastAck + " " : "") + qd.q;
+  const qe = $("#quote"); qe.textContent = quote;
+  qe.style.animation = "none"; void qe.offsetWidth; qe.style.animation = "";
+  say(quote);
+  $("#topiclbl").innerHTML = `Topic ${qd.topic+1}: ${TOPICS[qd.topic]} <span>· step ${state.i+1} of ${queue.length}</span>`;
+  $("#cont").textContent = state.editReturn ? "Back to review" : "Continue";
+  $("#cont").disabled = false;
+
+  if (qd.kind === "info"){ renderReach(zone); return; }
+  if (qd.kind === "verdict") zone.appendChild(ruleCard(qd.rule));
+
+  const opts = document.createElement("div"); opts.className = "opts";
+  const current = state.answers[qd.id];
+  const choices = qd.kind === "verdict" ? [["deny","Deny"],["ask","Ask"],["allow","Allow"]] : qd.opts.slice();
+  choices.forEach(([v,label])=>{
+    const b = document.createElement("button"); b.type="button"; b.className="opt" + (v === "ask" || v === "allow" ? " weak" : "");
+    b.textContent = label;
+    b.setAttribute("aria-pressed", String(current === v));
+    b.onclick = () => pick(qd, v, opts, b);
+    opts.appendChild(b);
+  });
+  zone.appendChild(opts);
+
+  if (qd.kind === "verdict"){
+    const why = document.createElement("p"); why.className = "why"; why.id = "why";
+    why.innerHTML = VERDICT_WHY[current] || "";
+    zone.appendChild(why);
+  }
+  if (qd.id === "scope" && current === "user"){
+    const g = document.createElement("div"); g.className = "gap";
+    g.innerHTML = `<b>User-level reaches the prose and the two in-agent hooks, and nothing else.</b> The commit guard and the CI baseline need files in a repository; a plugin install is never sold as covering them.`;
+    zone.appendChild(g);
+  }
+}
+
+function ruleCard(r){
+  const [id, title, refuses, silent, cons] = r;
+  const card = document.createElement("div"); card.className = "rule";
+  card.innerHTML = `<div class="rid">${esc(id)}</div>
+    <dl><dt>refuses</dt><dd>${esc(refuses)}</dd><dt>silent on</dt><dd>${esc(silent)}</dd></dl>
+    <div class="cons">${esc(cons)}</div>`;
+  return card;
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function renderReach(zone){
+  const agent = CONTRACT.agent;
+  const wrap = document.createElement("div"); wrap.className = "reachwrap";
+  let html = `<table class="reach"><thead><tr><th>layer</th>`;
+  html += `<th>${esc(AGENT_LABEL)}<small>${esc(agent ? agent.basis : "unknown")}</small></th>`;
+  html += `</tr></thead><tbody>`;
+  CONTRACT.layers.forEach(l => {
+    const [name, event, catches] = LAYER_INFO[l.door] || [l.door, l.door, ""];
+    html += `<tr><td class="layer"><b>${esc(name)}</b><code>${esc(event)}</code><span class="ev">${esc(catches)}</span></td>`;
+    let cell;
+    if (l.does === "advise") cell = `<span class="grade advise">advise</span>`;
+    else if (l.does === "repo_only") cell = `<span class="grade repo_only">repo install only</span>`;
+    else {
+      const g = agent ? agent[l.door] : null;
+      cell = g
+        ? `<span class="grade ${esc(g)}">${esc(g === "detect" ? "detect only" : g)}</span>`
+        : `<span class="grade none">unknown</span>`;
+    }
+    html += `<td>${cell}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html; zone.appendChild(wrap);
+  if (agent && agent.stop === "detect"){
+    const g = document.createElement("div"); g.className = "gap";
+    g.innerHTML = `<b>On ${esc(AGENT_LABEL)} the plugin tier keeps the Bash gap.</b> The write guard sees only writes it recognises — a shell heredoc carries no file path — and the state guard there only detects. That hole closes with the repo install, or not at all.`;
+    zone.appendChild(g);
+  }
+}
+
+function pick(qd, v, opts, btn){
+  state.answers[qd.id] = v;
+  delete state.excluded[qd.id];
+  opts.querySelectorAll(".opt").forEach(o=>o.setAttribute("aria-pressed","false"));
+  btn.setAttribute("aria-pressed","true");
+  if (qd.id === "walk" || qd.id === "scope") rebuildQueue();
+  if (qd.kind === "verdict"){ $("#why").innerHTML = VERDICT_WHY[v]; renderStats(); }
+  lastAck = ackFor(qd, v);
+  saveState();
+  setTimeout(advance, 420);
+}
+
+function advance(){
+  if (state.review) return;
+  if (state.editReturn){
+    const next = queue[state.i + 1];
+    if (next && next.kind !== "verdict" && next.kind !== "info" && state.answers[next.id] === undefined){ state.i++; render(); return; }
+    backToReview(); return;
+  }
+  if (state.i < queue.length - 1){ state.i++; render(); }
+  else { state.review = true; lastAck = ""; render(); }
+}
+
+/* ---------- the review screen: every answer, tickable, editable; every weakening marked ---------- */
+function labelFor(qd, v){
+  if (v === undefined) return "— not answered";
+  if (qd.kind === "verdict") return v;
+  const hit = (qd.opts||[]).find(o => o[0] === v);
+  return hit ? hit[1] : v;
+}
+function row(qd, extra){
+  const key = qd.id;
+  const off = !!state.excluded[key];
+  const v = state.answers[key];
+  const weak = qd.kind === "verdict" && !off && v !== "deny";
+  const r = document.createElement("div"); r.className = "rrow" + (off ? " off" : "") + (weak ? " weak" : "");
+  const sub = qd.kind === "verdict" ? `<code>${esc(qd.rule[0])}</code>` : esc(qd.short);
+  r.innerHTML = `<input type="checkbox" ${off?"":"checked"} aria-label="include ${esc(qd.short)}">
+    <div class="rbody"><div class="rq">${sub}${extra||""}</div>
+    <div class="ra">${esc(labelFor(qd, v))}${weak ? `<span class="badge weak">weakened</span>` : ""}${qd.kind === "verdict" && off ? `<span class="badge repo">unspoken → deny</span>` : ""}</div></div>
+    <button type="button" class="editlink">Edit</button>`;
+  r.querySelector("input").onchange = e => {
+    if (e.target.checked) delete state.excluded[key]; else state.excluded[key] = true;
+    r.classList.toggle("off", !e.target.checked);
+    r.classList.toggle("weak", e.target.checked && qd.kind === "verdict" && state.answers[key] !== "deny");
+    refreshJson(); renderStats(); saveState(); };
+  r.querySelector(".editlink").onclick = () => jumpToQuestion(qd.id);
+  return r;
+}
+
+function renderReview(zone){
+  const qe = $("#quote");
+  const w = weakened().length;
+  qe.textContent = state.returning
+    ? "Welcome back. Here is the selection as it stands — change anything, then re-stage."
+    : (w ? `That's everything. ${w} rule${w>1?"s are":" is"} weaker than deny — each is marked, and a reviewer will see it in the pull request.`
+         : "That's everything. Every rule enforces. Review it all before anything is written.");
+  qe.style.animation="none"; void qe.offsetWidth; qe.style.animation="";
+  say(qe.textContent);
+  $("#topiclbl").innerHTML = `Topic ${REVIEW+1}: Review <span>· ${esc(AGENT_LABEL)} · ${state.answers.scope === "repo" ? "repository" : "user-level"}</span>`;
+
+  let g = 0;
+  const grp = (title) => { const d = document.createElement("div"); d.className = "rgroup"; d.style.animationDelay = (g++*70)+"ms";
+    d.innerHTML = `<div class="rhead">${title}</div>`; zone.appendChild(d); return d; };
+
+  const gv = grp("Verdicts · .chock/security.json");
+  RULE_Q.forEach(qd => gv.appendChild(row(qd, ` · ${esc(qd.rule[1])}`)));
+
+  const gd = grp("Doors");
+  gd.appendChild(row(BASE_Q.find(q => q.id === "scope")));
+  if (state.answers.scope === "repo") gd.appendChild(row(BASE_Q.find(q => q.id === "repo_doors")));
+  const doors = doorList();
+  const dl = document.createElement("div"); dl.className = "rrow";
+  dl.innerHTML = `<div class="rbody"><div class="rq">wired doors</div><div class="ra">${doors.map(d=>`<code>${d}</code>`).join(" · ")}</div></div>`;
+  gd.appendChild(dl);
+
+  const det = document.createElement("details");
+  det.innerHTML = `<summary>See the exact result JSON</summary><textarea id="out" readonly aria-label="setup result JSON"></textarea>`;
+  zone.appendChild(det);
+  refreshJson();
+
+  const note = document.createElement("p"); note.className = "savednote";
+  note.innerHTML = state.returning
+    ? `Loaded from the repository's selection — edits re-stage on submit, same as the first time.`
+    : `Your answers are kept — <b>relaunch this screen anytime</b> to edit the selection later.`;
+  zone.appendChild(note);
+
+  const cta = $("#cont");
+  cta.textContent = state.returning ? "Re-submit selection" : "Submit selection";
+  cta.disabled = false;
+  cta.onclick = async () => {
+    saveState();
+    cta.disabled = true;
+    const landed = await stage(buildResult());
+    cta.disabled = false;
+    if (landed === "store") cta.textContent = "Submitted ✓  ·  the agent can apply it now";
+    else if (landed === "clipboard") cta.textContent = "Copied ✓  ·  hand it to the configure-java-security skill";
+    else { det.open = true; det.querySelector("#out").select(); }
+  };
+}
+
+/* Where a submitted result goes. Open as an Artifact, the store is the hand-off: the agent
+   reads this document and writes the selection it carries. Opened as a plain file there is
+   no store and no agent, so the clipboard carries it, and the textarea when even that is
+   refused -- the page still writes nothing itself, in either case. */
+async function stage(result){
+  const staged = { version: 1, result, stagedAt: new Date().toISOString() };
+  try {
+    const db = await window.claude?.use?.("db");
+    if (db) { await db.doc("selection/current").set(staged); return "store"; }
+  } catch (e) { /* no store, or it refused this viewer: the clipboard still works */ }
+  try { await navigator.clipboard.writeText(JSON.stringify(result, null, 2)); return "clipboard"; }
+  catch { return "shown"; }
+}
+function refreshJson(){ const o = $("#out"); if (o) o.value = JSON.stringify(buildResult(), null, 2); }
+
+function doorList(){
+  const doors = ["ambient", "pre_tool", "stop"];
+  if (state.answers.scope === "repo" && state.answers.repo_doors === "yes" && !state.excluded.repo_doors) doors.push("pre_commit", "ci");
+  return doors;
+}
+function buildResult(){
+  const packs = {};
+  RULES.forEach(r => {
+    const k = "rule:"+r[0];
+    if (state.excluded[k]) return;
+    const pack = packs[r[5]] || (packs[r[5]] = { rules: {} });
+    pack.rules[r[0]] = state.answers[k];
+  });
+  return {
+    selection: { version: 1, packs },
+    wiring: { scope: state.answers.scope || "repo", doors: doorList() },
+  };
+}
+
+function restoreCont(){ const c = $("#cont"); c.onclick = defaultCont; c.textContent = "Continue"; }
+function defaultCont(){
+  if (state.review) return;
+  if (state.editReturn){ backToReview(); return; }
+  const qd = queue[state.i];
+  if (qd.kind !== "info" && state.answers[qd.id] === undefined) lastAck = "Okay, we'll leave that one.";
+  advance();
+}
+$("#cont").onclick = defaultCont;
+$("#back").onclick = () => {
+  if (state.review){ state.review = false; state.i = queue.length - 1; restoreCont(); render(); return; }
+  if (state.editReturn){ backToReview(); return; }
+  if (state.i > 0){ state.i--; lastAck = ""; render(); }
+};
+$("#reset").onclick = () => {
+  if (state.review){
+    try { localStorage.removeItem(LS_KEY); } catch(e){}
+    state.answers = {}; state.excluded = {}; state.review = false; state.returning = false;
+    state.reviewReached = false; state.editReturn = false; state.i = 0; state.hue = 0; applyHue();
+    $("#modeline").textContent = `· guided setup · ${AGENT_LABEL} plugin · ${RULES.length} rules at deny`;
+    defaults(); rebuildQueue(); restoreCont(); lastAck = ""; render(); return;
+  }
+  const qd = queue[state.i];
+  if (qd.kind === "verdict") state.answers[qd.id] = "deny";
+  else if (qd.kind !== "info") delete state.answers[qd.id];
+  delete state.excluded[qd.id];
+  if (qd.id === "walk" || qd.id === "scope") rebuildQueue();
+  lastAck = ""; saveState(); render();
+};
+
+/* ---- boot: unsent progress in this browser wins; otherwise the repository's own selection,
+   if it has one, lands on review already loaded; otherwise every rule starts fresh at deny ---- */
+if (loadState() || loadCurrent()){
+  state.returning = true; state.review = true;
+  defaults(); rebuildQueue(); state.i = queue.length - 1;
+} else {
+  defaults(); rebuildQueue();
+}
+$("#modeline").textContent = state.returning
+  ? `· editing the selection · ${RULES.length} rules`
+  : `· guided setup · ${AGENT_LABEL} plugin · ${RULES.length} rules at deny`;
+applyHue();
+render();
+</script>
+
+</body>
+</html>

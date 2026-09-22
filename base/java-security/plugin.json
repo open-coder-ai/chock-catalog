@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "java-security",
-  "version": "0.2.1",
-  "description": "trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates, application.properties or application.yml. avoid: string-interpolated SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules, each with an allow|deny|ask verdict in .chock/security.json; a rule the file does not name denies.",
+  "version": "0.3.0",
+  "description": "trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates, application.properties or .yml; \"customize java security\" opens this skill's guided page. avoid: string-interpolated SQL, unescaped template output, unsafe deserialization, wildcard CORS with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules, each allow|deny|ask in .chock/security.json; absent = deny.",
   "author": {
     "name": "chock-core"
   },
