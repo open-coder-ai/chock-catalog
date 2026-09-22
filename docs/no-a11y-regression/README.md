@@ -1,15 +1,15 @@
 # No Accessibility Regression Rule
 
-`no-a11y-regression` · rule · advises
+`no-a11y-regression` · rule · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: block`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
+| **Mechanism** | commit-time guard script `no-a11y-regression-pre-commit.py` |
+| **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ambient-rule` |
 | **Eval cases** | 13 total, 0 executable |
 | **Enabled by default** | yes |
 
@@ -25,24 +25,24 @@ An agent remediating accessibility can make it worse while the report says it im
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A guard script, `implementations/no-a11y-regression-pre-commit.py`, run by the git hook at every commit with no arguments. It reads the staged revision of each file from git and exits non-zero to refuse the commit.
+
+The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:
 
 ```text
 never(break): name|lang an element already had -- remove, empty(alt=""), aria-hidden, role=presentation|none; never(resolve_violation_by): delete(element)
 on(name_added): record, never_ask; alt="" asserts decorative and only its author may retract a description; present -> present (reworded label) is a copy decision, stay silent
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/no-a11y-regression/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **commit-time guard script**. `recompile` registers `implementations/no-a11y-regression-pre-commit.py` under `.git/hooks/pre-commit.d/`, and the hook runs it with no arguments at every commit. The script reads the staged revision from git itself and exits non-zero to refuse; the rule text compiles to `ambient-rule` beside it, so the agent knows the constraint before the commit is refused.
 
 ## Installing it
 
 ```bash
 chock add no-a11y-regression
-chock sync --repo .
+chock sync .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:

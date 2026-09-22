@@ -28,7 +28,9 @@ TIERS = (
 
 def read_counts():
     """(count, label, colour_index) per tier, strongest first, from registry.yaml itself."""
-    text = REGISTRY.read_text(encoding="utf-8")
+    # Only the `policies:` records: a `skills:` section lists procedures, which enforce nothing
+    # and carry no `enforces` label, so a skill counted here would abort the render.
+    text = REGISTRY.read_text(encoding="utf-8").split("\nskills:\n", 1)[0]
     entries = re.findall(
         r"^- id: \S+.*?(?=\n- id: |\Z)", text, re.MULTILINE | re.DOTALL
     )

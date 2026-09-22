@@ -1,0 +1,44 @@
+id: java-security
+name: "Java Security Rules"
+version: "0.1.0"
+description: >
+  trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates,
+  application.properties or application.yml. avoid: string-interpolated SQL, unescaped template
+  output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator
+  exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over
+  request bytes. Eight rules, each with an allow|deny|ask verdict in .chock/security.json;
+  a rule the file does not name denies.
+artifact: rule
+enforcement: block
+effects: [read_only]
+rule:
+  text: |
+    never(write): mybatis ${} in SQL | th:utext|<%=|escapeXml="false"|?no_esc|<#noescape> | jackson defaultTyping | XStream w/o allowTypes | CORS "*" + allowCredentials(true) | actuator exposure.include=* | parseClaimsJwt|parseUnsecuredClaims|Algorithm.none|unverified JWT.decode | request data -> file path | ObjectInputStream
+    on(fire): .chock/security.json -> allow|deny|ask per rule; absent|no-terminal ask = deny; waive a line: // chock: allow <rule-id>; choose: skill configure-java-security
+hook:
+  script:
+    "on": [commit]
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-22T00:00:00Z"
+  updated_at: "2026-09-22T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-java-security"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.1.0
+  date: '2026-09-22'
+  changes:
+  - "First release in the catalog, moved in from open-coder-ai/chock-java-security with its engine. One policy folder carries all eight Java rules; an adopter picks and chooses per rule in .chock/security.json (allow|deny|ask), never per policy folder, so a ninth rule lands as a version bump here and not as a ninth policy. The selection file says what a rule does, never what it is: a pattern, severity or path there is refused, because a rule definable in JSON is a program in disguise."
+  - "Ships the guard. implementations/java-security-pre-commit.py reads the staged revision of every file and refuses the commit when a rule its selection does not set to allow fires; an ask with no terminal to ask refuses too, and so does an unreadable selection or any failure inside the engine -- no path in this guard allows what it never judged. The engine beside it, implementations/chock_security/, is the same package the plugin form of these rules runs; facts about the world (API names, template tokens) are data in data/java.json, and what to do about them is code."
+  - "artifact: rule and hook.script: on [commit], the shape no-a11y-regression established for a script-backed check: the manifest schema admits artifact: hook only with one of four declarative gate kinds. The write path -- refusing the construct at the moment an agent writes it, at tool use and at the turn's end -- is what the plugin form of these rules already does, and reaches this policy through the engine's `kind: script` gate (open-coder-ai/chock#154) once this catalog adopts a release that carries it; the eval cases are written in the staged-files shape that gate will replay, and until then tools/check_java_security.py runs every one of them through the shipped guard in CI."
+  - "Every rule carries its negative cases: a control that fires on correct Java has failed, however sound its reasoning. The check runs 52 cases ported from the engine's own suite -- the wildcard origin without credentials, the pattern-form CORS setter, `#{}` binding, `parseClaimsJws` one letter from the refused `parseClaimsJwt`, a Maven `${project.version}`, a wildcard `include:` outside actuator config -- and the commit path itself in a throwaway repository, because evaluate can be right while the front end reads the wrong revision or returns the wrong exit code."

@@ -1,0 +1,156 @@
+{
+  "mybatis": {
+    "mapper_markers": [
+      "//mybatis.org//DTD Mapper",
+      "<mapper namespace="
+    ],
+    "annotation_import": "org.apache.ibatis",
+    "interpolation": "${",
+    "bound_parameter": "#{}"
+  },
+  "unescaped_output": {
+    ".html": [
+      "th:utext"
+    ],
+    ".xhtml": [
+      "th:utext"
+    ],
+    ".jsp": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".jspx": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".tag": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".ftl": [
+      "?no_esc",
+      "<#noescape>"
+    ],
+    ".ftlh": [
+      "?no_esc",
+      "<#noescape>"
+    ]
+  },
+  "deserialization": {
+    "jackson_default_typing": [
+      "enableDefaultTyping",
+      "activateDefaultTyping"
+    ],
+    "xstream_construction": "new XStream(",
+    "xstream_allowlist_calls": [
+      "allowTypes",
+      "allowTypeHierarchy",
+      "allowTypesByWildcard",
+      "addPermission",
+      "setupDefaultSecurity"
+    ]
+  },
+  "cors": {
+    "origin_setters": [
+      "setAllowedOrigins",
+      "addAllowedOrigin",
+      "allowedOrigins",
+      "origins"
+    ],
+    "pattern_forms": [
+      "OriginPattern",
+      "originPattern"
+    ],
+    "wildcard": "\"*\"",
+    "credentials": [
+      "setAllowCredentials(true)",
+      ".allowCredentials(true)",
+      "allowCredentials = \"true\"",
+      "allowCredentials=\"true\""
+    ]
+  },
+  "actuator": {
+    "exposure_marker": "exposure",
+    "properties_key": "exposure.include",
+    "yaml_key": "include:",
+    "wildcard": "*"
+  },
+  "jwt": {
+    "unverified_calls": [
+      "parseClaimsJwt(",
+      "parseUnsecuredClaims(",
+      "Algorithm.none()",
+      "SignatureAlgorithm.NONE"
+    ],
+    "verified_siblings": [
+      "parseClaimsJws(",
+      "parseSignedClaims("
+    ],
+    "decode_without_verify": "JWT.decode(",
+    "verification_calls": [
+      "JWT.require(",
+      ".verify("
+    ]
+  },
+  "flow": {
+    "source_annotations": [
+      "@RequestParam",
+      "@PathVariable",
+      "@RequestHeader",
+      "@RequestBody",
+      "@CookieValue",
+      "@ModelAttribute",
+      "@QueryParam",
+      "@PathParam",
+      "@FormParam",
+      "@HeaderParam"
+    ],
+    "source_calls": [
+      "request.getParameter(",
+      "request.getParameterValues(",
+      "request.getHeader(",
+      "request.getQueryString(",
+      "request.getInputStream(",
+      "request.getReader(",
+      "request.getPathInfo(",
+      "request.getCookies(",
+      "getServletPath("
+    ],
+    "sanitizers": [
+      "FilenameUtils.getName(",
+      ".getFileName()",
+      ".normalize()",
+      ".startsWith(",
+      "UUID.fromString(",
+      "Pattern.matches(",
+      ".matches(",
+      "Integer.parseInt(",
+      "Long.parseLong(",
+      "isValid",
+      "sanitize",
+      "allowlist",
+      "allowList",
+      "whitelist"
+    ],
+    "path_sinks": [
+      "new File(",
+      "new FileInputStream(",
+      "new FileOutputStream(",
+      "new RandomAccessFile(",
+      "Paths.get(",
+      "Path.of(",
+      "Files.newInputStream(",
+      "Files.newOutputStream(",
+      "Files.readAllBytes(",
+      "Files.readString(",
+      "Files.delete(",
+      "Files.copy("
+    ],
+    "stream_sinks": [
+      "new ObjectInputStream("
+    ]
+  }
+}

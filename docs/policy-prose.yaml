@@ -285,6 +285,25 @@ git-safety:
     The `diff > 500_lines` threshold and the protected branch names are the two knobs that
     matter. Both are conventions, not findings, so set them to your team's.
 
+java-security:
+  solves: >
+    A coding agent writing Java reaches for the construct that compiles and passes the test:
+    `${col}` in a MyBatis ORDER BY, `th:utext` to stop a bio rendering as escaped text, a
+    wildcard CORS origin with credentials to make the browser error go away, `include=*` so the
+    dashboard sees every actuator endpoint, `parseClaimsJwt` one letter from the verifying call.
+    Each is a vulnerability a reviewer would catch and a linter run at merge time reports after
+    the agent has moved on. This policy refuses the eight at the commit, with the fix named in
+    the refusal, and every rule carries the negative cases that keep it silent on the correct
+    form -- `#{}`, `th:text`, a named origin, `setAllowedOriginPatterns`, `parseClaimsJws`.
+  customise: >
+    Verdicts, never rules. `.chock/security.json` sets each rule to `allow`, `deny` or `ask`
+    (the `configure-java-security` skill walks the page that writes it), and a rule the file does
+    not name denies, so an upgrade's new rule runs until someone speaks for it. A single line is
+    waived in place with `// chock: allow <rule-id>`, where the diff shows it. What a rule matches
+    lives in `implementations/chock_security/data/java.json` (API names, template tokens) and
+    `rules/*.py`; a pattern in the selection file is refused, because a rule definable in JSON is
+    a program in disguise. Adding a rule is a version bump of this one policy, not a ninth folder.
+
 injection-defense:
   solves: >
     An agent that reads a web page, a ticket, or a file, finds text addressed to it, and
