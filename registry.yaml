@@ -280,14 +280,14 @@ policies:
     plus atomic-commit and diff-size guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.1.0
-  artifact: rule
+  version: 0.2.0
+  artifact: hook
   enforcement: block
   mandatory: false
-  mechanism: commit-time guard script
+  mechanism: script
   enforces: enforced-at-commit
   eval_cases: 28
-  eval_executed: 0
+  eval_executed: 25
   description: 'trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates,
     application.properties or application.yml. avoid: string-interpolated SQL, unescaped template output,
     unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified

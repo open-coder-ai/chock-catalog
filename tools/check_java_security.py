@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail if the shipped Java security guard misjudges any construct its rules name, or passes one."""
+"""Fail if the shipped Java security gate misjudges any construct its rules name, or passes one."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "base" / "java-security"
-GUARD = POLICY / "implementations" / "java-security-pre-commit.py"
+GATE = POLICY / "implementations" / "java-security-gate.py"
 SETUP = ROOT / "skills" / "configure-java-security"
 
 sys.path.insert(0, str(POLICY / "implementations"))
@@ -168,55 +168,42 @@ def check_rules(probe: Probe) -> None:
                  "the traversal refusal must say what to do instead without echoing the line")
 
 
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
-
-
-def _commit(repo: Path, name: str, text: str, selection: dict | str | None = None, stage: bool = True) -> tuple[int, str]:
-    """Stage `name` and run the guard as the hook does: no argv, cwd at the repo, no terminal."""
+def _gate(repo: Path, writes: dict[str, str], selection: dict | str | None = None) -> tuple[int, str]:
+    """Run the gate as the runner does: the writes on stdin, the repository root beside them."""
     if selection is not None:
         (repo / ".chock").mkdir(exist_ok=True)
         body = selection if isinstance(selection, str) else json.dumps(selection)
         (repo / ".chock" / "security.json").write_text(body, encoding="utf-8")
-    (repo / name).write_text(text, encoding="utf-8")
-    if stage:
-        _git(repo, "add", name)
+    payload = json.dumps({"event": "commit", "repo_root": str(repo), "writes": writes})
     proc = subprocess.run(
-        [sys.executable, str(GUARD)], cwd=repo, capture_output=True, text=True, timeout=60,
-        stdin=subprocess.DEVNULL, start_new_session=True,  # no controlling terminal, so an ask has nobody
+        [sys.executable, str(GATE)], cwd=repo, input=payload, capture_output=True, text=True, timeout=60,
+        start_new_session=True,  # no controlling terminal, so an ask has nobody
     )
     return proc.returncode, proc.stderr
 
 
-def check_commit_path(probe: Probe) -> None:
-    """The exit code is what refuses a commit; `evaluate` can be right while the front end is not."""
+def check_gate(probe: Probe) -> None:
+    """The exit code is the verdict the runner carries; `evaluate` can be right while the gate is not."""
     with tempfile.TemporaryDirectory(prefix="java-security-") as tmp:
         repo = Path(tmp)
-        _git(repo, "init", "-q", ".")
-        _git(repo, "config", "user.email", "check@chock.invalid")
-        _git(repo, "config", "user.name", "check")
-        code, err = _commit(repo, "p.html", UNESCAPED)
-        probe.expect(code == 1 and XSS in err, f"a staged violation with no selection must refuse (exit 1); got {code}")
-        code, _ = _commit(repo, "p.html", ESCAPED)
-        probe.expect(code == 0, f"clean markup must commit; got {code}")
-        _commit(repo, "p.html", UNESCAPED)
-        (repo / "p.html").write_text(ESCAPED, encoding="utf-8")
-        code, _ = _commit(repo, "q.html", ESCAPED)
-        probe.expect(code == 1, f"an unstaged fix must not excuse the staged revision; got {code}")
-        _git(repo, "rm", "-q", "-f", "--cached", "p.html", "q.html")
-        code, _ = _commit(repo, "p.html", UNESCAPED, {"version": 1, "packs": {"java": {"rules": {XSS: ALLOW}}}})
+        code, err = _gate(repo, {"p.html": UNESCAPED})
+        probe.expect(code == 1 and XSS in err, f"a violating write with no selection must refuse (exit 1); got {code}")
+        code, _ = _gate(repo, {"p.html": ESCAPED})
+        probe.expect(code == 0, f"clean markup must pass; got {code}")
+        code, _ = _gate(repo, {})
+        probe.expect(code == 0, f"nothing written is nothing to refuse; got {code}")
+        code, _ = _gate(repo, {"p.html": UNESCAPED}, {"version": 1, "packs": {"java": {"rules": {XSS: ALLOW}}}})
         probe.expect(code == 0, f"a rule set to allow must be honoured; got {code}")
-        code, _ = _commit(repo, "p.html", UNESCAPED, {"version": 1, "packs": {"java": {"verdict": ALLOW}}})
+        code, _ = _gate(repo, {"p.html": UNESCAPED}, {"version": 1, "packs": {"java": {"verdict": ALLOW}}})
         probe.expect(code == 0, f"a pack set to allow must be honoured; got {code}")
-        code, err = _commit(repo, "p.html", UNESCAPED, {"version": 1, "packs": {"java": {"rules": {XSS: ASK}}}})
+        code, err = _gate(repo, {"p.html": UNESCAPED}, {"version": 1, "packs": {"java": {"rules": {XSS: ASK}}}})
         probe.expect(code == 1 and "no terminal to ask" in err, f"an ask with nobody to ask must refuse; got {code}")
-        code, err = _commit(repo, "p.html", UNESCAPED, "{not json")
-        probe.expect(code == 2, f"an unreadable selection must refuse with exit 2; got {code}")
-        code, err = _commit(repo, "p.html", UNESCAPED,
-                            {"version": 1, "packs": {"java": {"rules": {XSS: {"pattern": "x"}}}}})
-        probe.expect(code == 2 and "program in disguise" in err, f"a pattern in place of a verdict must refuse; got {code}")
-        code, err = _commit(repo, "p.html", UNESCAPED, {"version": 1, "packs": {"java": {"rules": {"no-such-rule": DENY}}}})
-        probe.expect(code == 2, f"a rule the engine does not have must refuse; got {code}")
+        code, err = _gate(repo, {"p.html": UNESCAPED}, "{not json")
+        probe.expect(code == 1 and "chock-security:" in err, f"an unreadable selection must refuse in words; got {code}")
+        code, err = _gate(repo, {"p.html": UNESCAPED}, {"version": 1, "packs": {"java": {"rules": {XSS: {"pattern": "x"}}}}})
+        probe.expect(code == 1 and "program in disguise" in err, f"a pattern in place of a verdict must refuse; got {code}")
+        code, err = _gate(repo, {"p.html": UNESCAPED}, {"version": 1, "packs": {"java": {"rules": {"no-such-rule": DENY}}}})
+        probe.expect(code == 1, f"a rule the engine does not have must refuse; got {code}")
 
 
 def _rows(rules: dict) -> list[dict]:
@@ -241,7 +228,7 @@ def check_setup_page(probe: Probe) -> None:
 def main() -> int:
     probe = Probe()
     check_rules(probe)
-    check_commit_path(probe)
+    check_gate(probe)
     check_setup_page(probe)
     if probe.failures:
         print(f"java-security: {len(probe.failures)} of {probe.checked} checks failed:", file=sys.stderr)
@@ -249,7 +236,7 @@ def main() -> int:
             print(f"  - {failure}", file=sys.stderr)
         return 1
     print(f"java-security: {probe.checked} checks passed over {len(registry())} rules "
-          f"({len(CASES)} rule cases, {len(FLOW_CASES)} flow cases, the commit path, the setup page).")
+          f"({len(CASES)} rule cases, {len(FLOW_CASES)} flow cases, the gate protocol, the setup page).")
     return 0
 
 

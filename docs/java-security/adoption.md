@@ -46,12 +46,14 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~393 tokens (chars/4, max 2000)
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+INDEX.md: ~390 tokens (chars/4, max 2000)
 Recompiled 1 policies
 java-security:
-  claude: enforced-at-commit
+  claude: best-effort (live-run)
   copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -64,33 +66,80 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+INDEX.md: ~390 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
 
 ```text
-[PASS] All checks passed.
+[PASS] Passed with warnings.
+  [WARN]  …/.agents/policies/java-security :: interface: Artifact ID 'java-security' does not start with a verb (INT-3). Suggest rename to a verb-first id, e.g. 'create-...', 'validate-...', 'check-...'
 ```
 
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 69 skipped
-69 case(s) have no executable form; they are agent-mode material (tier 3).
+java-security  [deterministic]
+  PASS  tc-001                             authored  UserMapper.xml:3: [deny: java-sqli-mybatis-interpolation] MyBatis $…
+  PASS  tc-002                             authored  gate exit 0
+  PASS  tc-003                             authored  gate exit 0
+  PASS  tc-004                             authored  p.html:1: [deny: java-xss-unescaped-template] th:utext writes this …
+  PASS  tc-005                             authored  p.jsp:1: [deny: java-xss-unescaped-template] <%= writes this value …
+  PASS  tc-006                             authored  gate exit 0
+  PASS  tc-007                             authored  M.java:1: [deny: java-unsafe-deserialization] Default typing makes …
+  PASS  tc-008                             authored  M.java:1: [deny: java-unsafe-deserialization] This XStream instance…
+  PASS  tc-009                             authored  gate exit 0
+  PASS  tc-010                             authored  Api.java:1: [deny: java-cors-wildcard-credentials] A wildcard origi…
+  PASS  tc-011                             authored  gate exit 0
+  PASS  tc-012                             authored  application.properties:1: [deny: java-actuator-wildcard-exposure] E…
+  PASS  tc-013                             authored  gate exit 0
+  PASS  tc-014                             authored  Auth.java:1: [deny: java-jwt-unverified-parse] This parses the toke…
+  PASS  tc-015                             authored  gate exit 0
+  PASS  tc-016                             authored  Auth.java:1: [deny: java-jwt-unverified-parse] JWT.decode() reads t…
+  PASS  tc-017                             authored  gate exit 0
+  PASS  tc-018                             authored  C.java:4: [deny: java-path-traversal-request-data] This path is bui…
+  PASS  tc-019                             authored  gate exit 0
+  PASS  tc-020                             authored  C.java:4: [deny: java-deserialization-request-stream] This ObjectIn…
+  PASS  tc-021                             authored  gate exit 0
+  PASS  tc-022                             authored  gate exit 0
+  PASS  tc-023                             authored  p.html:1: [ask: java-xss-unescaped-template] th:utext writes this v…
+  PASS  tc-024                             authored  chock-security: selection is not valid JSON: Expecting property nam…
+  PASS  tc-026                             authored  gate exit 0
+  score 1.00
+
+5 policies: 25 pass, 44 skipped
+44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
 
 ```text
 .chock/compiled/java-security/ambient-rule/ambient.md
+.chock/compiled/java-security/ci-gate/gate.json
+.chock/compiled/java-security/ci-gate/step.yaml
+.chock/compiled/java-security/git-hook/gate.json
 .chock/compiled/java-security/git-hook/git-pre-commit.sh
 .chock/compiled/java-security/managed-setting/managed-settings.json
+.chock/compiled/java-security/pre-tool-use/gate.json
+.chock/compiled/java-security/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/java-security/pre-tool-use/pretooluse-write.json
+.chock/compiled/java-security/stop/antigravity-hooks.json
+.chock/compiled/java-security/stop/codex_cli-hooks.json
+.chock/compiled/java-security/stop/devin-hooks.json
+.chock/compiled/java-security/stop/gate.json
+.chock/compiled/java-security/stop/gemini_cli-hooks.json
+.chock/compiled/java-security/stop/stop.json
+.chock/compiled/java-security/stop/tabnine-hooks.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **java-security**:
-  never(write): mybatis ${} in SQL | th:utext|<%=|escapeXml="false"|?no_esc|<#noescape> | jackson defaultTyping | XStream w/o allowTypes | CORS "*" + allowCredentials(true) | actuator exposure.include=* | parseClaimsJwt|parseUnsecuredClaims|Algorithm.none|unverified JWT.decode | request data -> file path | ObjectInputStream
-  on(fire): .chock/security.json -> allow|deny|ask per rule; absent|no-terminal ask = deny; waive a line: // chock: allow <rule-id>; choose: skill configure-java-security
+- **java-security**: java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny); waive one line with // chock: allow <rule-id>; choose per rule with skill configure-java-security.
 ```
