@@ -108,13 +108,13 @@
   ],
   "current": null,
   "bounds": {
-    "review_before_apply": "Every answer is a row you can tick and edit before anything is written. The configure-java-security skill is the only thing that writes, and only after you have reviewed every row.",
+    "review_before_apply": "Every answer is a row you can tick and edit before anything is written. The java-security skill is the only thing that writes, and only after you have reviewed every row.",
     "relaunch_to_edit": "There is no separate edit mode. An existing selection prefills every rule's current verdict, so changing an answer means reopening this page, not finding a second flow.",
     "sandbox": "This page is a file: inline and offline, nothing it loads reaches outside itself, and nothing it does can reach the network.",
     "accessibility": "Every control is reachable by keyboard and carries a label a screen reader can read; no choice depends on color alone.",
     "theme_choice": "The page renders correctly in both light and dark themes on its own, and offers an explicit toggle besides.",
     "verdicts_are_chosen_never_derived": "A verdict is what you choose for a rule, never something inferred from a question about your stack. There is no field here a stack answer could land in.",
     "plugin_tier_is_not_commit_or_ci": "Installing this policy as an agent plugin reaches that agent's own tool calls and turn end. It does not reach a commit or a CI run -- those need the policy installed in the repository itself with chock.",
-    "nothing_written_from_the_page": "This page writes nothing. It produces a result the configure-java-security skill reads, shows you row by row, refuses to overwrite an existing selection without your say-so, and only then writes .chock/security.json."
+    "nothing_written_from_the_page": "This page writes nothing. It produces a result the java-security skill reads, shows you row by row, refuses to overwrite an existing selection without your say-so, and only then writes .chock/security.json."
   }
 }

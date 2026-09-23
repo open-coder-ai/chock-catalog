@@ -10,7 +10,7 @@
 <img alt="42 policies" src="https://img.shields.io/badge/policies-42-blue">
 <img alt="20 enforced" src="https://img.shields.io/badge/enforced-20-brightgreen">
 <img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
-<img alt="agents" src="https://img.shields.io/badge/agents-13-8957e5">
+<img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
 <a href="https://scorecard.dev/viewer/?uri=github.com/open-coder-ai/chock-catalog"><img alt="OpenSSF Scorecard" src="https://api.scorecard.dev/projects/github.com/open-coder-ai/chock-catalog/badge"></a>
@@ -79,8 +79,9 @@ throwaway repo on every push.
 | [`java-security`](docs/java-security/) | eight Java constructs at the commit -- `${}` in MyBatis SQL, unescaped template output (`th:utext`, `<%=`, `escapeXml="false"`, `?no_esc`), Jackson default typing or an XStream with no allowlist, a wildcard CORS origin with credentials, `management.endpoints.web.exposure.include=*`, an unverified JWT parse, a request-chosen file path, an `ObjectInputStream` over request bytes -- each rule `allow\|deny\|ask` in `.chock/security.json`, silence denies; the correct sibling of each (`#{}`, `th:text`, a named origin, `parseClaimsJws`) stays silent | 25/33 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
-command, natively wired in Claude Code, Cursor, Copilot CLI and VS Code (and, via the
-codex plugin format, Codex after its per-hook trust review).
+command. `chock sync` wires these natively on the 11 agents with an in-agent surface,
+Claude Code, Cursor, Codex, Copilot CLI and VS Code among them; Codex additionally requires a
+per-hook trust review before its hooks run.
 
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
@@ -257,13 +258,13 @@ whichever surfaces the agent you use actually supports:
 <img alt="A policy folder compiles into git-hook, native pre-execution hook and ambient-rule surfaces, which reach different enforcement levels" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/how-it-works.svg">
 
 The same policy reaches different levels on different agents, and `coverage.json` records
-every pair — `unsupported` where a surface can't carry it, rather than a silently missing row.
+every pair — `none` where no surface can carry it, rather than a silently missing row.
 
 Gates run in **git** itself, so they hold no matter which agent, or human, is at the
 keyboard — the whole argument for a hook over a prompt an agent can forget once the
-instruction scrolls out of context. Thirteen adapters (`claude`, `copilot`, `cursor`,
-`gemini`, `codex`, `aider`, `windsurf`, `devin`, `grok`, `kimi-code`, `replit`, `tabnine`,
-`vscode`) are generated from one `AGENTS.md`, because the rules live in one place and the
+instruction scrolls out of context. Fifteen adapters (`aider`, `antigravity`, `claude`,
+`codex`, `copilot`, `cursor`, `devin`, `gemini`, `grok`, `junie`, `kimi-code`, `replit`,
+`tabnine`, `vscode`, `windsurf`) are generated from one `AGENTS.md`, because the rules live in one place and the
 adapters exist only to match filenames each agent looks for.
 
 Every policy folder is yours: `cp -r base/scan-secrets <your-repo>/.agents/policies/` plus
@@ -276,8 +277,8 @@ list, and what editing your copy looks like are in
 
 ## This repo runs what it publishes
 
-The catalog is a Chock adopter: `.agents/policies/` holds every `base/` policy, so it
-protects itself the same way it asks any open-source repo to, and the first commit after
+The catalog is a Chock adopter: `.agents/policies/` holds the subset of `base/` that governs
+this repository, so it protects itself the same way it asks any open-source repo to, and the first commit after
 adoption was rejected by `protect-main-branch`. That is not a flourish — a worked example
 that is a repository cannot drift from the instructions the way a README snippet does, and
 running it has already found four framework bugs no test caught. CI still keeps two things
@@ -307,14 +308,18 @@ destructive command on a real install —
 
 ## Installing this is running code
 
-A policy here is not inert data: its `implementations/*.sh` becomes a git hook that runs on
-every commit and a guard consulted before your agent executes a command, so `chock add`
-installs executable content over `git clone`. There is no signing key — pin and verify when
+A policy here is not inert data. A declarative policy compiles to a git hook that runs on every
+commit in your repository; a policy shipping an `implementations/` guard becomes a guard script
+consulted before your agent runs a command; `java-security` and `no-a11y-regression` run their
+own program at commit. Either way `chock add` installs executable content over `git clone`. There is no signing key — pin and verify when
 the catalog is not one you control:
 
 ```bash
-chock add scan-secrets --ref v1.0.0 --verify-sha <sha256>
+chock add scan-secrets --ref <commit-sha> --verify-sha <sha256>
 ```
+
+This catalog publishes no tags, so pin a commit SHA. `--ref` takes any ref the remote has;
+`--verify-sha` refuses the install unless the fetched pack hashes to the value you name.
 
 Two limits worth knowing before you rely on any of this: `git commit --no-verify` skips every
 git hook, and git hooks are not cloned — a fresh clone enforces nothing until someone runs

@@ -3,7 +3,7 @@
 > The policy catalog for Chock — policies you can adopt, each labelled by what it actually
 > enforces, with replayed evals as the evidence rather than a claim in an appendix.
 
-39 policies, one folder per id under `base/` (plus `compliance/` and `agentic-security/` packs
+42 policies, one folder per id under `base/` (plus `compliance/` and `agentic-security/` packs
 that only earn their place where they apply). Every policy states its enforcement tier —
 `enforced-at-commit`, `in-agent`, or `advisory` — and the tier is checked by CI against what the
 mechanism actually does, not asserted in prose. The catalog is itself a Chock adopter: it runs
@@ -16,7 +16,7 @@ its own `base/` policies against itself in `.agents/policies/`.
 - [CONTRIBUTING](https://github.com/open-coder-ai/chock-catalog/blob/main/CONTRIBUTING.md):
   the contribution ladder, DCO sign-off, the local check loop, and review criteria.
 - [SECURITY](https://github.com/open-coder-ai/chock-catalog/blob/main/SECURITY.md): a policy
-  here is executable content — `implementations/*.sh` runs as a git hook in every adopter's
+  here is executable content — a policy's `implementations/` guard runs as a git hook in every adopter's
   repo — so this is the threat model and how to report a vulnerability privately.
 - [docs/how-it-works.md](https://github.com/open-coder-ai/chock-catalog/blob/main/docs/how-it-works.md):
   the uncondensed argument for gates over prompts, what `chock sync` compiles a manifest into,
@@ -40,7 +40,7 @@ its own `base/` policies against itself in `.agents/policies/`.
 - [base/](https://github.com/open-coder-ai/chock-catalog/tree/main/base): one folder per
   policy — `manifest.yaml` (the claim: identity, enforcement tier, gate or rule text),
   `evals/suite.yaml` (the evidence: cases that decide whether the claim holds), and
-  `implementations/*.sh` where the tier is enforced rather than advisory.
+  `implementations/` guards where the tier is enforced rather than advisory.
 - [registry.yaml](https://github.com/open-coder-ai/chock-catalog/blob/main/registry.yaml):
   the machine-readable index every `chock add` resolves against — id, path, version,
   enforcement, and mechanism for every published policy.

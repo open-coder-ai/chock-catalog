@@ -16,14 +16,15 @@ effect rather than the intent.
 | Policy | Blocks | Evals |
 | :--- | :--- | ---: |
 | [protect-main-branch](protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
-| [scan-secrets](scan-secrets/) | credentials in staged changes | 11/11 |
+| [scan-secrets](scan-secrets/) | credentials in staged changes | 26/26 |
 | [verify-dependency-exists](verify-dependency-exists/) | dependencies absent from your allowlist | 5/5 |
 | [block-invisible-unicode](block-invisible-unicode/) | bidi/tag-block Unicode in staged changes (Trojan Source) | 8/8 |
-| [block-wildcard-agent-permissions](block-wildcard-agent-permissions/) | committed allow-everything agent grants | 7/7 |
+| [block-wildcard-agent-permissions](block-wildcard-agent-permissions/) | committed allow-everything agent grants | 16/16 |
 | [block-unpinned-agent-components](block-unpinned-agent-components/) | unpinned agent actions/images/models | 6/6 |
 | [block-unsafe-code-execution](block-unsafe-code-execution/) | `eval`/`exec`-style dynamic execution in staged changes | 7/7 |
 | [block-wildcard-iam](block-wildcard-iam/) | wildcard IAM grants in staged IaC | 6/6 |
 | [no-a11y-regression](no-a11y-regression/) | a lost accessibility assertion -- an emptied `alt`, a flagged element deleted | 0/13 |
+| [pin-github-actions](pin-github-actions/) | a workflow referencing a tag or branch instead of a pinned commit -- at commit and as the agent writes | 9/9 |
 | [java-security](java-security/) | eight Java constructs: interpolated MyBatis SQL, unescaped templates, unsafe deserialization, wildcard CORS with credentials, wildcard actuator exposure, unverified JWT, request-chosen paths and streams | 25/33 |
 
 ## Enforced before the tool runs
@@ -35,10 +36,14 @@ enforce nothing, and coverage says so.
 
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
-| [block-destructive-commands](block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, PowerShell/cmd removals | 26/26 |
-| [block-no-verify](block-no-verify/) | `--no-verify`, which bypasses every gate above | 12/12 |
-| [protect-agent-config](protect-agent-config/) | shell rewrites of the agent's own guardrails | 8/8 |
-| [protect-commit-privacy](protect-commit-privacy/) | commit messages that leak the development conversation | 7/7 |
+| [block-destructive-commands](block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, PowerShell/cmd removals | 55/55 |
+| [block-no-verify](block-no-verify/) | `--no-verify`, which bypasses every gate above | 17/17 |
+| [protect-agent-config](protect-agent-config/) | shell rewrites of the agent's own guardrails | 31/31 |
+| [protect-commit-privacy](protect-commit-privacy/) | commit messages that leak the development conversation | 23/23 |
+| [block-curl-pipe-sh](block-curl-pipe-sh/) | a network download piped straight into a shell or script interpreter | 34/34 |
+| [block-unapproved-egress](block-unapproved-egress/) | an upload to a host outside the egress allowlist -- exfiltration through the tool channel | 38/38 |
+| [protect-ci-workflows](protect-ci-workflows/) | shell rewrites of the automated checks that review the agent's own work | 24/24 |
+| [verify-mcp-allowlist](verify-mcp-allowlist/) | an `.mcp.json` write adding a server that is not on the allowlist | 17/17 |
 | [rtk-dangerous-actions-blocker](rtk-dangerous-actions-blocker/) | rtk-ai/rtk#1007's table, carved out under rtk's name: `rm -rf /`, force push, credential reads and `DROP` refused; `rm -rf <dir>`, `git reset --hard`, `docker system prune` held for confirmation | 70/70 |
 
 ## Compliance (adopted deliberately, jurisdiction-specific)
@@ -67,7 +72,9 @@ passing.
 | :--- | :--- |
 | [agent-discipline](agent-discipline/) | editing unread files, unverified "done", tests weakened to pass |
 | [code-safety](code-safety/) | secrets, `eval`/`exec`, unsanitised SQL, invented dependencies |
+| [chock-mise](chock-mise/) | an agent that ignores its owner's recorded dialect, taste and habits |
 | [context-hygiene](context-hygiene/) | context bloat, stale observations, lost-in-the-middle |
+| [firecrawl-fallback-only](firecrawl-fallback-only/) | reaching for the Firecrawl connector as the default fetch path |
 | [git-safety](git-safety/) | force push, hard reset, branch deletion, direct `main` commits |
 | [injection-defense](injection-defense/) | instructions found in tool output treated as commands |
 | [memory-discipline](memory-discipline/) | memory filling with what the repo already records |
