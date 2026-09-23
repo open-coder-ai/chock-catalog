@@ -67,6 +67,7 @@ Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
@@ -126,11 +127,13 @@ java-security  [deterministic]
 .chock/compiled/java-security/git-hook/gate.json
 .chock/compiled/java-security/git-hook/git-pre-commit.sh
 .chock/compiled/java-security/managed-setting/managed-settings.json
+.chock/compiled/java-security/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/java-security/pre-tool-use/gate.json
 .chock/compiled/java-security/pre-tool-use/gemini_cli-write-hooks.json
 .chock/compiled/java-security/pre-tool-use/pretooluse-write.json
 .chock/compiled/java-security/stop/antigravity-hooks.json
 .chock/compiled/java-security/stop/codex_cli-hooks.json
+.chock/compiled/java-security/stop/cursor-hooks.json
 .chock/compiled/java-security/stop/devin-hooks.json
 .chock/compiled/java-security/stop/gate.json
 .chock/compiled/java-security/stop/gemini_cli-hooks.json

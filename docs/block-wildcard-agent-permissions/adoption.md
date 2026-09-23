@@ -67,6 +67,7 @@ Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
@@ -117,11 +118,13 @@ block-wildcard-agent-permissions  [deterministic]
 .chock/compiled/block-wildcard-agent-permissions/git-hook/git-pre-commit.sh
 .chock/compiled/block-wildcard-agent-permissions/managed-setting/managed-settings.json
 .chock/compiled/block-wildcard-agent-permissions/mcp-gateway/gateway-gate.json
+.chock/compiled/block-wildcard-agent-permissions/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/block-wildcard-agent-permissions/pre-tool-use/gate.json
 .chock/compiled/block-wildcard-agent-permissions/pre-tool-use/gemini_cli-write-hooks.json
 .chock/compiled/block-wildcard-agent-permissions/pre-tool-use/pretooluse-write.json
 .chock/compiled/block-wildcard-agent-permissions/stop/antigravity-hooks.json
 .chock/compiled/block-wildcard-agent-permissions/stop/codex_cli-hooks.json
+.chock/compiled/block-wildcard-agent-permissions/stop/cursor-hooks.json
 .chock/compiled/block-wildcard-agent-permissions/stop/devin-hooks.json
 .chock/compiled/block-wildcard-agent-permissions/stop/gate.json
 .chock/compiled/block-wildcard-agent-permissions/stop/gemini_cli-hooks.json
