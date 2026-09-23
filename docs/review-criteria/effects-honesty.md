@@ -4,8 +4,9 @@
 actually does when run.
 
 First of the catalog's review criteria, and first deliberately. This repository distributes
-executable content: `implementations/*.sh` becomes a git hook on every commit in an adopter's
-repository and a guard consulted before their agent runs a command. A framework bug is a bug in
+executable content: a declarative gate compiles to a git hook that runs on every commit in an
+adopter's repository, and an `implementations/` guard is consulted before their agent runs a
+command. A framework bug is a bug in
 our repo; a mislabelled policy is a wrong claim running on someone else's machine.
 
 ## What `effects` means
@@ -67,7 +68,7 @@ Deliberate gaps, so a green check is not read as more than it is:
   in the sense `read_only` is about, and failing it would be an over-block.
 - **Gate policies are excluded.** Their behaviour is the framework's vendored runner, not
   catalog content.
-- **Four policies ship guards today.** The rest have nothing to run.
+- **Eleven policies ship guards today.** The rest have nothing to run.
 
 ## What a reviewer still has to judge
 

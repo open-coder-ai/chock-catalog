@@ -30,11 +30,15 @@ That is what advisory means, and the README says so up front.
 
 ## This catalog distributes executable content
 
-`base/<id>/implementations/*.sh` is not documentation. Installed via `chock add`, it
-becomes:
+A policy's compiled output is not documentation. Installed via `chock add`, it becomes:
 
-- a **git hook** that runs on every commit in the adopter's repository, and
-- a **guard** consulted before the adopter's coding agent executes a command.
+- a **git hook** that runs on every commit in the adopter's repository, compiled from the
+  policy's declarative gate, and
+- a **guard** consulted before the adopter's coding agent runs a command, for the policies that
+  ship an `implementations/` script.
+
+Two policies run their own program at commit rather than a declarative gate: `java-security`
+and `no-a11y-regression`, both Python.
 
 So a change to a guard script in this repository runs on other people's machines.
 
@@ -50,8 +54,11 @@ There is no signing key and no trust root, so pin and verify when the catalog is
 control:
 
 ```bash
-chock add scan-secrets --ref v1.0.0 --verify-sha <sha256>
+chock add scan-secrets --ref <commit-sha> --verify-sha <sha256>
 ```
+
+This catalog publishes no tags, so pin a commit SHA. `--ref` takes any ref the remote has;
+`--verify-sha` refuses the install unless the fetched pack hashes to the value you name.
 
 `add` prints the resolved commit and content hash and records them in `chock.lock`;
 `chock check --only verify` re-checks them later. The full trust model, including what it does not
@@ -62,13 +69,13 @@ cover, is in the framework's
 
 - **`git commit --no-verify` skips every git hook**, and therefore every enforced policy
   here. `block-no-verify` refuses the flag before the command runs on the agents
-  `chock sync` wires natively — Claude Code, Cursor, Copilot CLI, VS Code — and the
-  codex plugin format extends this to Codex — with its conditions: Codex hooks are
+  `chock sync` wires natively — eleven of them, including Claude Code, Cursor, Codex,
+  Copilot CLI and VS Code — with Codex's own conditions: Codex hooks are
   untrusted until a human approves them, and an unavailable, untrusted or failing hook
   permits the command (repo-level coverage records Codex as advisory for exactly this
   reason). On agents without hooks, and for a human at a terminal, nothing stops it.
 - **Git hooks live in `.git/hooks`, which is not cloned.** A fresh clone of an adopting repo
   enforces nothing until someone runs `chock sync`.
-- **Most policies are advisory** (twenty of the thirty-two at this writing — the README
+- **Most policies are advisory** (twenty-two of the forty-two at this writing — the README
   badges carry the current counts). They compile to text an agent reads and may or may
   not follow. Their eval cases report as `skipped`, never as passing.

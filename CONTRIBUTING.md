@@ -8,7 +8,7 @@ overstated policy is worse here than a missing one.
 All are mechanical, and all are checked by CI rather than by a reviewer's memory.
 
 **1. A policy claims only what it can do.** If it does not exit non-zero, it is advisory,
-and the tooling labels it that way whatever the manifest says. Twenty of the thirty-two
+and the tooling labels it that way whatever the manifest says. Twenty-two of the forty-two
 policies here are advisory, and the README says so in its third paragraph rather than its
 appendix. Do not raise a claim your mechanism cannot support.
 
@@ -38,7 +38,7 @@ earns triage rights; see [The ladder](#the-ladder) below.
 
 Or, without waiting for an issue to be filed, roughly in order of usefulness:
 
-1. **Turn an advisory policy into an enforced one.** Any of the twenty that can be expressed
+1. **Turn an advisory policy into an enforced one.** Any of the twenty-two that can be expressed
    as a `content_regex`, `forbidden_ref` or `dependency_allowlist` gate is a strict upgrade —
    and the eval suite already describes the behaviour you would need to satisfy. Where only a
    slice is greppable, add a narrow sibling gate instead of promoting the rule: the
@@ -159,8 +159,9 @@ base/<id>/
 
 Two things, kept apart on purpose:
 
-- **What this repo runs** — every `base/` policy, installed in `.agents/policies/` to
-  govern the catalog itself: the repo protects itself the same way it asks adopters to.
+- **What this repo runs** — the subset of `base/` that applies to this repository, installed in
+  `.agents/policies/` to govern the catalog itself (four do not apply here: `chock-mise`,
+  `java-security`, `no-a11y-regression` and `rtk-dangerous-actions-blocker`): the repo protects itself the same way it asks adopters to.
   The compliance and agentic-security packs stay uninstalled — by their own doctrine they
   only earn their place where they apply. This repo is a Chock adopter, and the first
   commit after adoption was rejected by `protect-main-branch`.
@@ -198,8 +199,9 @@ never add a per-repo lint or format exclude to work around them.
 
 ## Security
 
-A policy in this catalog is executable content — `implementations/*.sh` becomes a git hook
-that runs on every commit in an adopter's repo. Review PRs to guard scripts accordingly. See
+A policy in this catalog is executable content — a declarative gate compiles to a git hook that
+runs on every commit in an adopter's repo, and an `implementations/` guard is consulted before
+their agent runs a command. Review PRs to either accordingly. See
 [SECURITY.md](SECURITY.md).
 
 [`.github/CODEOWNERS`](.github/CODEOWNERS) routes review for the paths where that matters:

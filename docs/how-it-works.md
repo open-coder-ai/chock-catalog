@@ -10,7 +10,7 @@ You have already told your agent not to commit secrets. It agreed. Then the sess
 long, the instruction moved to the middle of the context window, and it did it anyway.
 
 Gates run in **git**, so they hold no matter which agent — or which human — is at the
-keyboard. And where a policy cannot reach an agent, `coverage.json` says `unsupported`
+keyboard. And where a policy cannot reach an agent, `coverage.json` says `none`
 rather than quietly omitting the row — an understated number is the same failure as an
 overstated one.
 
@@ -24,11 +24,11 @@ every pair.
 
 ## Works with the agent you already use
 
-Thirteen adapters, generated from one `AGENTS.md`. The rules live in one place; the adapters
+Fifteen adapters, generated from one `AGENTS.md`. The rules live in one place; the adapters
 exist because agents look for different filenames.
 
-`claude` · `copilot` · `cursor` · `gemini` · `codex` · `aider` · `windsurf` · `devin` ·
-`grok` · `kimi-code` · `replit` · `tabnine` · `vscode`
+`aider` · `antigravity` · `claude` · `codex` · `copilot` · `cursor` · `devin` · `gemini` ·
+`grok` · `junie` · `kimi-code` · `replit` · `tabnine` · `vscode` · `windsurf`
 
 ```bash
 chock init . --agent-agnostic   # generate all of them
@@ -58,8 +58,8 @@ Add your own token formats. Loosen a threshold. Delete the rules you disagree wi
 The README's [_This repo runs what it publishes_](../README.md#this-repo-runs-what-it-publishes)
 condenses the three paragraphs below into one. Verbatim, uncut:
 
-The catalog is a Chock adopter. `.agents/policies/` holds every `base/` policy — the
-catalog protects itself the same way it asks any open-source repo to — and the first
+The catalog is a Chock adopter. `.agents/policies/` holds the subset of `base/` that governs
+this repository — the catalog protects itself the same way it asks any open-source repo to — and the first
 commit after adoption was rejected by `protect-main-branch`. One is installed but
 disabled with its reasons written in `.chock/config.yaml`: `verify-dependency-exists`
 watches dependency manifests this repo does not have.
