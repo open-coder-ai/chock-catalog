@@ -297,7 +297,7 @@ java-security:
     form -- `#{}`, `th:text`, a named origin, `setAllowedOriginPatterns`, `parseClaimsJws`.
   customise: >
     Verdicts, never rules. `.chock/security.json` sets each rule to `allow`, `deny` or `ask`
-    (the `configure-java-security` skill walks the page that writes it), and a rule the file does
+    (asking to customize java security opens the guided page in this policy's own skill, which writes it), and a rule the file does
     not name denies, so an upgrade's new rule runs until someone speaks for it. A single line is
     waived in place with `// chock: allow <rule-id>`, where the diff shows it. What a rule matches
     lives in `implementations/chock_security/data/java.json` (API names, template tokens) and

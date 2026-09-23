@@ -280,19 +280,21 @@ policies:
     plus atomic-commit and diff-size guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.2.1
+  version: 0.3.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 28
+  eval_cases: 33
   eval_executed: 25
-  description: 'trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates,
-    application.properties or application.yml. avoid: string-interpolated SQL, unescaped template output,
-    unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified
-    JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules, each
-    with an allow|deny|ask verdict in .chock/security.json; a rule the file does not name denies.'
+  description: >-
+    trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker
+    templates, application.properties or .yml; "customize java security" opens this skill's
+    guided page. avoid: string-interpolated SQL, unescaped template output, unsafe
+    deserialization, wildcard CORS with credentials, wildcard actuator exposure, an unverified
+    JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules,
+    each allow|deny|ask in .chock/security.json; absent = deny.
 - id: injection-defense
   path: base/injection-defense
   version: 0.0.3
@@ -681,6 +683,3 @@ policies:
     to its own clause of the command line, so a writer or redirect elsewhere -- or stderr merely
     suppressed -- cannot condemn a plain read of .mcp.json. Matching and path checks are
     otherwise exact-string and substring-coarse. No pragma for .mcp.json.'
-skills:
-- id: configure-java-security
-  path: skills/configure-java-security

@@ -48,7 +48,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
-INDEX.md: ~390 tokens (chars/4, max 2000)
+INDEX.md: ~400 tokens (chars/4, max 2000)
 Recompiled 1 policies
 java-security:
   claude: best-effort (live-run)
@@ -73,7 +73,7 @@ Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-INDEX.md: ~390 tokens (chars/4, max 2000)
+INDEX.md: ~400 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -114,8 +114,8 @@ java-security  [deterministic]
   PASS  tc-026                             authored  gate exit 0
   score 1.00
 
-5 policies: 25 pass, 44 skipped
-44 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 25 pass, 49 skipped
+49 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -144,5 +144,5 @@ java-security  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **java-security**: java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny); waive one line with // chock: allow <rule-id>; choose per rule with skill configure-java-security.
+- **java-security**: java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny); waive one line with // chock: allow <rule-id>; choose per rule by asking to customize java security, which opens this skill's guided page.
 ```

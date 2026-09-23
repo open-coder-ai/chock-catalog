@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "base" / "java-security"
 GATE = POLICY / "implementations" / "java-security-gate.py"
-SETUP = ROOT / "skills" / "configure-java-security"
+SETUP = POLICY / "skill"
 
 sys.path.insert(0, str(POLICY / "implementations"))
 from chock_security.decision import ALLOW, ASK, DENY, FileText  # noqa: E402

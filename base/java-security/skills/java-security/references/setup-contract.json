@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "agent": null,
+  "layers": [
+    {
+      "door": "ambient",
+      "does": "advise"
+    },
+    {
+      "door": "pre_tool",
+      "does": "write_path"
+    },
+    {
+      "door": "stop",
+      "does": "final_state"
+    },
+    {
+      "door": "pre_commit",
+      "does": "repo_only"
+    },
+    {
+      "door": "ci",
+      "does": "repo_only"
+    }
+  ],
+  "rules": [
+    {
+      "id": "java-sqli-mybatis-interpolation",
+      "pack": "java",
+      "title": "MyBatis string interpolation in SQL",
+      "refuses": "`${}` in a mapper or a MyBatis-annotated source",
+      "silent_on": "`#{}`, and `${}` anywhere that is not MyBatis",
+      "constraint": "never(interpolate): mybatis ${...} in mapper|@Select|@Insert|@Update|@Delete -- ${} is pasted into the SQL text before preparing; bind with #{...}"
+    },
+    {
+      "id": "java-xss-unescaped-template",
+      "pack": "java",
+      "title": "Unescaped template output",
+      "refuses": "`th:utext`, `<%=`, `escapeXml=\"false\"`, `?no_esc`, `<#noescape>`",
+      "silent_on": "the escaping sibling, and other `<% %>` forms",
+      "constraint": "never(write): th:utext|<%=|escapeXml=\"false\"|?no_esc|<#noescape> -- these put a value into the page as markup; use the escaping sibling"
+    },
+    {
+      "id": "java-unsafe-deserialization",
+      "pack": "java",
+      "title": "Unsafe polymorphic deserialization",
+      "refuses": "Jackson default typing; an XStream built with no allowlist",
+      "silent_on": "a plain `ObjectMapper`; an XStream that allowlists",
+      "constraint": "never(enable): jackson activateDefaultTyping|enableDefaultTyping; never(build): XStream without allowTypes|allowTypeHierarchy"
+    },
+    {
+      "id": "java-cors-wildcard-credentials",
+      "pack": "java",
+      "title": "Wildcard CORS origin with credentials",
+      "refuses": "a wildcard origin **with** credentials enabled",
+      "silent_on": "a wildcard alone; a named origin; `setAllowedOriginPatterns`",
+      "constraint": "never(pair): CORS origin \"*\" with allowCredentials(true) -- the spec refuses it; name the origins, or use setAllowedOriginPatterns"
+    },
+    {
+      "id": "java-actuator-wildcard-exposure",
+      "pack": "java",
+      "title": "Every actuator endpoint exposed",
+      "refuses": "`exposure.include=*` in properties or YAML",
+      "silent_on": "named endpoints; a wildcard `include:` outside actuator config",
+      "constraint": "never(expose): management.endpoints.web.exposure.include=* -- it publishes heapdump and env; name the endpoints served"
+    },
+    {
+      "id": "java-jwt-unverified-parse",
+      "pack": "java",
+      "title": "JWT read without verifying its signature",
+      "refuses": "`parseClaimsJwt`, `parseUnsecuredClaims`, `Algorithm.none()`, `SignatureAlgorithm.NONE`; `JWT.decode` where nothing in the file verifies",
+      "silent_on": "`parseClaimsJws`, `parseSignedClaims`, a real algorithm, issuing a token, and a decode beside a verify",
+      "constraint": "never(call): parseClaimsJwt|parseUnsecuredClaims|Algorithm.none|SignatureAlgorithm.NONE, or JWT.decode where nothing in the file verifies -- they skip the signature; use parseClaimsJws|parseSignedClaims with a key"
+    },
+    {
+      "id": "java-path-traversal-request-data",
+      "pack": "java",
+      "title": "Path built from request data",
+      "refuses": "a file path a method body shows request data reaching",
+      "silent_on": "a constant path; a name taken with `getFileName`; a parsed number",
+      "constraint": "never(open): a file path built from @RequestParam|@PathVariable|request.get* -- take getFileName, resolve against a fixed base, check startsWith"
+    },
+    {
+      "id": "java-deserialization-request-stream",
+      "pack": "java",
+      "title": "Java deserialization of request data",
+      "refuses": "`ObjectInputStream` over request data",
+      "silent_on": "a stream the application opened itself; the same bytes read as JSON",
+      "constraint": "never(construct): ObjectInputStream over @RequestBody|request.getInputStream -- the bytes name the classes; carry the payload as JSON into a declared type"
+    }
+  ],
+  "verdicts": [
+    "allow",
+    "ask",
+    "deny"
+  ],
+  "default": "deny",
+  "scopes": [
+    "repo",
+    "user"
+  ],
+  "doors": [
+    "ambient",
+    "pre_tool",
+    "stop",
+    "pre_commit",
+    "ci"
+  ],
+  "current": null,
+  "bounds": {
+    "review_before_apply": "Every answer is a row you can tick and edit before anything is written. The configure-java-security skill is the only thing that writes, and only after you have reviewed every row.",
+    "relaunch_to_edit": "There is no separate edit mode. An existing selection prefills every rule's current verdict, so changing an answer means reopening this page, not finding a second flow.",
+    "sandbox": "This page is a file: inline and offline, nothing it loads reaches outside itself, and nothing it does can reach the network.",
+    "accessibility": "Every control is reachable by keyboard and carries a label a screen reader can read; no choice depends on color alone.",
+    "theme_choice": "The page renders correctly in both light and dark themes on its own, and offers an explicit toggle besides.",
+    "verdicts_are_chosen_never_derived": "A verdict is what you choose for a rule, never something inferred from a question about your stack. There is no field here a stack answer could land in.",
+    "plugin_tier_is_not_commit_or_ci": "Installing this policy as an agent plugin reaches that agent's own tool calls and turn end. It does not reach a commit or a CI run -- those need the policy installed in the repository itself with chock.",
+    "nothing_written_from_the_page": "This page writes nothing. It produces a result the configure-java-security skill reads, shows you row by row, refuses to overwrite an existing selection without your say-so, and only then writes .chock/security.json."
+  }
+}

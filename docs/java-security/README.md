@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 28 total, 25 executable |
+| **Eval cases** | 33 total, 25 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates, application.properties or application.yml. avoid: string-interpolated SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules, each with an allow|deny|ask verdict in .chock/security.json; a rule the file does not name denies.
+trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates, application.properties or .yml; "customize java security" opens this skill's guided page. avoid: string-interpolated SQL, unescaped template output, unsafe deserialization, wildcard CORS with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules, each allow|deny|ask in .chock/security.json; absent = deny.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny); waive one line with // chock: allow <rule-id>; choose per rule with skill configure-java-security.
+> java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny); waive one line with // chock: allow <rule-id>; choose per rule by asking to customize java security, which opens this skill's guided page.
 
 ## Which primitive it becomes
 
@@ -55,7 +55,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-Verdicts, never rules. `.chock/security.json` sets each rule to `allow`, `deny` or `ask` (the `configure-java-security` skill walks the page that writes it), and a rule the file does not name denies, so an upgrade's new rule runs until someone speaks for it. A single line is waived in place with `// chock: allow <rule-id>`, where the diff shows it. What a rule matches lives in `implementations/chock_security/data/java.json` (API names, template tokens) and `rules/*.py`; a pattern in the selection file is refused, because a rule definable in JSON is a program in disguise. Adding a rule is a version bump of this one policy, not a ninth folder.
+Verdicts, never rules. `.chock/security.json` sets each rule to `allow`, `deny` or `ask` (asking to customize java security opens the guided page in this policy's own skill, which writes it), and a rule the file does not name denies, so an upgrade's new rule runs until someone speaks for it. A single line is waived in place with `// chock: allow <rule-id>`, where the diff shows it. What a rule matches lives in `implementations/chock_security/data/java.json` (API names, template tokens) and `rules/*.py`; a pattern in the selection file is refused, because a rule definable in JSON is a program in disguise. Adding a rule is a version bump of this one policy, not a ninth folder.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

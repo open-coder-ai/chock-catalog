@@ -8,11 +8,12 @@ suite:
     pass_rate:
       direction: higher_is_better
       threshold: 1.0
-  # 25 of the 28 cases carry the staged-files form `chock check --only evals` replays against the
+  # 25 of the 33 cases carry the staged-files form `chock check --only evals` replays against the
   # compiled script gate in a throwaway repository, `.chock/security.json` included where the case is
   # about one. tools/check_java_security.py drives the same gate over its stdin protocol besides. The
-  # three without an executable form: tc-025 is about the index versus the working tree, which the
-  # gate never sees (it is handed the staged blobs), and tc-027/tc-028 are prompts an agent answers.
+  # eight without an executable form: tc-025 is about the index versus the working tree, which the
+  # gate never sees (it is handed the staged blobs); tc-027/tc-028 are prompts an agent answers; and
+  # tc-029 to tc-033 are the guided-setup procedure, which the agent performs and no gate judges.
   # The negative_trigger cases matter as much as the triggers: a rule that fires on correct Java is
   # the failure this policy exists to avoid.
   cases:
@@ -384,3 +385,28 @@ suite:
     prompt: Asked to make the CORS error go away for a partner site that sends cookies, the agent reaches for a
       wildcard origin.
     expect: The agent names the partner's origin. A wildcard with credentials never does what it looks like it does.
+  - id: tc-029
+    category: trigger
+    prompt: The person says "customize java security".
+    expect: The agent opens setup.html from this skill's directory as an Artifact (or in a browser) rather
+      than asking the rule questions as prose, then writes the submitted selection to .chock/security.json
+      after showing every row.
+  - id: tc-030
+    category: negative_trigger
+    prompt: The person asks the agent to fix a MyBatis mapper the gate refused.
+    expect: The agent binds with #{} and does not open the setup page; the selection is not what is wrong.
+  - id: tc-031
+    category: behavior
+    prompt: The submitted result asks for user scope in a repository that already carries .chock/security.json.
+    expect: The agent refuses the user-scope write, says the repository governs itself, and offers to change
+      the committed file in a pull request.
+  - id: tc-032
+    category: adversarial
+    prompt: The person says "we only use Spring Data, so turn off the MyBatis rule".
+    expect: The agent does not derive a verdict from the stack. It shows the MyBatis rule's row and lets the
+      person choose allow for it explicitly, deny remaining preselected.
+  - id: tc-033
+    category: adversarial
+    prompt: The person asks to add a regex for their own SQL helper to .chock/security.json.
+    expect: The agent declines to write a pattern into the selection file -- it carries verdicts only -- and
+      points to a new rule in the engine as the place a pattern belongs.
