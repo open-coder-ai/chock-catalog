@@ -74,4 +74,4 @@ compliance and agentic-security packs stay uninstalled because, by their own doc
 they only earn their place where they apply, and this repo ships no agentic system and
 falls under no covered regulation) and **what this repo ships** (every published policy,
 staged into a throwaway repo the way an adopter installs them). A catalog should still
-publish more than it is bound by, and [the reasoning is written down](README.md).
+publish more than it is bound by, and [the reasoning is written down](../README.md).
