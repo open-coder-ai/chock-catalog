@@ -454,6 +454,17 @@ _EVENT_NAME = {"pre-commit": "commit", "pre-push": "push", "pre-tool-use": "tool
 
 AGENT_EVENTS = ("pre-tool-use", "stop")
 
+#: `script_base` value naming the gate file's own directory as where `params.script` lives.
+SCRIPT_BASE_GATE = "gate"
+
+
+def _params(gate_path: Path, spec: dict) -> dict:
+    """The gate's params, with a packaged script gate's program located beside the gate file."""
+    params = dict(spec.get("params", {}))
+    if spec.get("script_base") == SCRIPT_BASE_GATE:
+        params["script"] = str(gate_path.resolve().parent / str(params.get("script", "")))
+    return params
+
 
 def _context(
     event: str,
@@ -518,7 +529,7 @@ def run(
             file=sys.stderr,
         )
         return 2
-    result = kind(ctx, spec.get("params", {}), name)
+    result = kind(ctx, _params(gate_path, spec), name)
     _log_outcome(gate_path, name, spec, result)
     if not result.allowed:
         print(result.message or spec.get("message", ""), file=sys.stderr)
