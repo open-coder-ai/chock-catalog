@@ -130,10 +130,19 @@ def _parameters(signature: str) -> set[str]:
     for parameter in inside.split(","):
         if not _holds(parameter, _FACTS["source_annotations"]):
             continue
-        words = re.findall(r"\w+", parameter)
+        words = re.findall(r"\w+", _without_annotations(parameter))
+        # A number, a boolean, a UUID or a date is parsed before the method sees it: it cannot
+        # carry '../', a host or a shell metacharacter, so it taints nothing downstream.
+        if len(words) >= 2 and words[-2] in _FACTS["scalar_types"]:
+            continue
         if words:
             tainted.add(words[-1])
     return tainted
+
+
+def _without_annotations(parameter: str) -> str:
+    """The declaration with its annotations (and their arguments) removed: `Long id`, not `@PathVariable(...)`."""
+    return re.sub(r"@\w+(?:\s*\([^()]*\))?", " ", parameter)
 
 
 def _retaint(line: str, tainted: set[str], sanitizers: list[str]) -> None:

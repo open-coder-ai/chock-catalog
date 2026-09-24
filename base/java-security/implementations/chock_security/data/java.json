@@ -86,6 +86,35 @@
     ],
     "stream_sinks": [
       "new ObjectInputStream("
+    ],
+    "scalar_types": [
+      "byte",
+      "short",
+      "int",
+      "long",
+      "float",
+      "double",
+      "boolean",
+      "char",
+      "Byte",
+      "Short",
+      "Integer",
+      "Long",
+      "Float",
+      "Double",
+      "Boolean",
+      "BigDecimal",
+      "BigInteger",
+      "UUID",
+      "LocalDate",
+      "LocalDateTime",
+      "LocalTime",
+      "Instant",
+      "OffsetDateTime",
+      "ZonedDateTime",
+      "Year",
+      "YearMonth",
+      "Duration"
     ]
   },
   "command": {
