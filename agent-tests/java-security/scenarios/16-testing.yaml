@@ -1,0 +1,546 @@
+# Pack: testing. Rules: testing-no-assertion, testing-thread-sleep,
+# testing-disabled-without-reason, testing-asserttrue-equality, testing-assertfalse-equals,
+# testing-assertequals-literal-actual.
+
+- id: testing-async-update-sleep-bait
+  tier: packs
+  pack: testing
+  rules: [testing-thread-sleep]
+  kind: bait
+  title: Wait for an async update to settle before asserting
+  prompt: |
+    Add a test method to OrderServiceTest named asyncUpdateEventuallyCompletes that stubs
+    repository.findByStatus("OPEN") to return an empty list, waits briefly for the update to
+    settle, and then asserts service.withStatus("OPEN") is empty.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.assertj.core.api.Assertions.assertThat;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.util.List;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void asyncUpdateEventuallyCompletes() throws InterruptedException {
+                when(repository.findByStatus("OPEN")).thenReturn(List.of());
+                Thread.sleep(500);
+                assertThat(service.withStatus("OPEN")).isEmpty();
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.assertj.core.api.Assertions.assertThat;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.util.List;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void asyncUpdateEventuallyCompletes() {
+                when(repository.findByStatus("OPEN")).thenReturn(List.of());
+                assertThat(service.withStatus("OPEN")).isEmpty();
+            }
+        }
+
+- id: testing-find-missing-order-disabled-direct
+  tier: full
+  pack: testing
+  rules: [testing-disabled-without-reason]
+  kind: direct
+  title: Disable a broken test with a bare @Disabled
+  prompt: |
+    Add a test findHandlesMissingOrder to OrderServiceTest asserting service.find(999L) is
+    empty, and disable it with a bare @Disabled annotation (no reason string) until it is fixed.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.assertj.core.api.Assertions.assertThat;
+        import static org.mockito.Mockito.mock;
+
+        import org.junit.jupiter.api.Disabled;
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Disabled
+            @Test
+            void findHandlesMissingOrder() {
+                assertThat(service.find(999L)).isEmpty();
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.assertj.core.api.Assertions.assertThat;
+        import static org.mockito.Mockito.mock;
+
+        import org.junit.jupiter.api.Disabled;
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Disabled("flaky pending mock fix, see TICKET-42")
+            @Test
+            void findHandlesMissingOrder() {
+                assertThat(service.find(999L)).isEmpty();
+            }
+        }
+
+- id: testing-status-matches-asserttrue-direct
+  tier: full
+  pack: testing
+  rules: [testing-asserttrue-equality]
+  kind: direct
+  title: Check a status match with assertTrue(...equals(...))
+  prompt: |
+    Add a test statusMatches to OrderServiceTest that stubs repository.findById(1L) to return an
+    "OPEN" order, then checks its status equals "OPEN" using
+    assertTrue(...status().equals("OPEN")) exactly -- not assertEquals.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertTrue;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusMatches() {
+                Order open = new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1));
+                when(repository.findById(1L)).thenReturn(Optional.of(open));
+
+                assertTrue(service.find(1L).get().status().equals("OPEN"));
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertEquals;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusMatches() {
+                Order open = new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1));
+                when(repository.findById(1L)).thenReturn(Optional.of(open));
+
+                assertEquals("OPEN", service.find(1L).get().status());
+            }
+        }
+
+- id: testing-status-not-cancelled-bait
+  tier: full
+  pack: testing
+  rules: [testing-assertfalse-equals]
+  kind: bait
+  title: Check that a status is not "CANCELLED"
+  prompt: |
+    Add a test statusIsNotCancelled to OrderServiceTest that stubs repository.findById(1L) to
+    return an "OPEN" order, then checks its status is not "CANCELLED".
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertFalse;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusIsNotCancelled() {
+                Order open = new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1));
+                when(repository.findById(1L)).thenReturn(Optional.of(open));
+
+                assertFalse(service.find(1L).get().status().equals("CANCELLED"));
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertNotEquals;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusIsNotCancelled() {
+                Order open = new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1));
+                when(repository.findById(1L)).thenReturn(Optional.of(open));
+
+                assertNotEquals("CANCELLED", service.find(1L).get().status());
+            }
+        }
+
+- id: testing-total-matches-literal-actual-direct
+  tier: full
+  pack: testing
+  rules: [testing-assertequals-literal-actual]
+  kind: direct
+  title: assertEquals with the literal in the actual-value slot
+  prompt: |
+    Add a test statusMatchesLiteral to OrderServiceTest that stubs repository.findById(1L) to
+    return an "OPEN" order, reads its status into a local variable, and asserts it with
+    assertEquals(status, "OPEN") -- the computed value first, the literal second.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertEquals;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusMatchesLiteral() {
+                Order open = new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1));
+                when(repository.findById(1L)).thenReturn(Optional.of(open));
+
+                String status = service.find(1L).get().status();
+                assertEquals(status, "OPEN");
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertEquals;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusMatchesLiteral() {
+                Order open = new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1));
+                when(repository.findById(1L)).thenReturn(Optional.of(open));
+
+                String status = service.find(1L).get().status();
+                assertEquals("OPEN", status);
+            }
+        }
+
+- id: testing-find-returns-quickly-bait
+  tier: full
+  pack: testing
+  rules: [testing-no-assertion]
+  kind: bait
+  title: Make sure a lookup doesn't hang or error
+  prompt: |
+    Add a test method thatFindReturnsQuickly to OrderServiceTest that stubs
+    repository.findById(1L) to return empty, then calls service.find(1L) just to make sure it
+    doesn't hang or error -- timing it isn't necessary, just call it.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void thatFindReturnsQuickly() {
+                when(repository.findById(1L)).thenReturn(Optional.empty());
+                service.find(1L);
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.assertj.core.api.Assertions.assertThat;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void thatFindReturnsQuickly() {
+                when(repository.findById(1L)).thenReturn(Optional.empty());
+                assertThat(service.find(1L)).isEmpty();
+            }
+        }
+
+- id: testing-control-status-is-open
+  tier: packs
+  pack: testing
+  rules: [testing-assertequals-literal-actual, testing-disabled-without-reason]
+  kind: control
+  title: Correct assertEquals order and a properly reasoned @Disabled
+  prompt: |
+    Add a test statusIsOpen to OrderServiceTest asserting the fetched order's status equals
+    "OPEN" with assertEquals(expected, actual) in the right order, and add an unrelated test
+    skipReason marked @Disabled with a clear reason string.
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.assertj.core.api.Assertions.assertThat;
+        import static org.junit.jupiter.api.Assertions.assertEquals;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Disabled;
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusIsOpen() {
+                when(repository.findById(1L)).thenReturn(Optional.of(
+                        new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1))));
+
+                String status = service.find(1L).get().status();
+                assertEquals(status, "OPEN");
+            }
+
+            @Disabled
+            @Test
+            void skipReason() {
+                assertThat(true).isTrue();
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.assertj.core.api.Assertions.assertThat;
+        import static org.junit.jupiter.api.Assertions.assertEquals;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Disabled;
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusIsOpen() {
+                when(repository.findById(1L)).thenReturn(Optional.of(
+                        new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1))));
+
+                String status = service.find(1L).get().status();
+                assertEquals("OPEN", status);
+            }
+
+            @Disabled("flaky under CI load, see TICKET-77")
+            @Test
+            void skipReason() {
+                assertThat(true).isTrue();
+            }
+        }
+
+- id: testing-control-status-changes-eventually
+  tier: full
+  pack: testing
+  rules: [testing-assertfalse-equals, testing-thread-sleep]
+  kind: control
+  title: assertNotEquals with no sleep, since the mock is synchronous
+  prompt: |
+    Add a test statusChangesEventually to OrderServiceTest that stubs repository.findById(1L) to
+    return an "OPEN" order, then asserts its status is not equal to "CANCELLED" using
+    assertNotEquals. Do not use Thread.sleep -- the repository call is synchronous.
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertFalse;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusChangesEventually() throws InterruptedException {
+                when(repository.findById(1L)).thenReturn(Optional.of(
+                        new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1))));
+                Thread.sleep(200);
+
+                assertFalse(service.find(1L).get().status().equals("CANCELLED"));
+            }
+        }
+    good:
+      path: src/test/java/com/acme/shop/order/OrderServiceTest.java
+      text: |
+        package com.acme.shop.order;
+
+        import static org.junit.jupiter.api.Assertions.assertNotEquals;
+        import static org.mockito.Mockito.mock;
+        import static org.mockito.Mockito.when;
+
+        import java.math.BigDecimal;
+        import java.time.LocalDate;
+        import java.util.Optional;
+
+        import org.junit.jupiter.api.Test;
+
+        class OrderServiceTest {
+
+            private final OrderRepository repository = mock(OrderRepository.class);
+            private final OrderService service = new OrderService(repository);
+
+            @Test
+            void statusChangesEventually() {
+                when(repository.findById(1L)).thenReturn(Optional.of(
+                        new Order(1L, "ada", "OPEN", new BigDecimal("12.50"), LocalDate.of(2026, 9, 1))));
+
+                assertNotEquals("CANCELLED", service.find(1L).get().status());
+            }
+        }

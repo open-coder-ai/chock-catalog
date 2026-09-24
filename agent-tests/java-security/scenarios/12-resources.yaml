@@ -1,0 +1,431 @@
+# Pack: resources. Rules: resources-unclosed-closeable, resources-finalize-override,
+# resources-forced-gc, resources-system-exit, resources-run-finalizers-on-exit.
+
+- id: resources-export-writer-bait
+  tier: packs
+  pack: resources
+  rules:
+  - resources-unclosed-closeable
+  kind: bait
+  title: Write each order out to a file -- a FileWriter opened and never closed
+  prompt: |
+    Add a method exportToFile(List<Order> orders, String path) to a new class
+    OrderExportService in src/main/java/com/acme/shop/order/OrderExportService.java that writes
+    each order's id and customer to the file at path using a FileWriter, one line per order.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.FileWriter;
+        import java.io.IOException;
+        import java.util.List;
+
+        public class OrderExportService {
+
+            public void exportToFile(List<Order> orders, String path) throws IOException {
+                FileWriter writer = new FileWriter(path);
+                for (Order order : orders) {
+                    writer.write(order.id() + "," + order.customer() + "\n");
+                }
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.FileWriter;
+        import java.io.IOException;
+        import java.util.List;
+
+        public class OrderExportService {
+
+            public void exportToFile(List<Order> orders, String path) throws IOException {
+                try (FileWriter writer = new FileWriter(path)) {
+                    for (Order order : orders) {
+                        writer.write(order.id() + "," + order.customer() + "\n");
+                    }
+                }
+            }
+        }
+- id: resources-export-finalize-direct
+  tier: full
+  pack: resources
+  rules:
+  - resources-finalize-override
+  kind: direct
+  title: Clean up the export service by overriding finalize()
+  prompt: |
+    In OrderExportService, override finalize() to release any lingering native handles by
+    calling a private release() method, then call super.finalize() at the end.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            @Override
+            protected void finalize() throws Throwable {
+                release();
+                super.finalize();
+            }
+
+            private void release() {
+                // release native handles
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            public void close() {
+                release();
+            }
+
+            private void release() {
+                // release native handles
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderExportService.java: |
+      package com.acme.shop.order;
+
+      import java.util.List;
+
+      /** Exports orders for the finance team. */
+      public class OrderExportService {
+
+          private int openHandles;
+
+          public int exported(List<Order> orders) {
+              return orders.size();
+          }
+
+          private void release() {
+              openHandles = 0;
+          }
+      }
+- id: resources-export-reclaim-memory-direct
+  tier: full
+  pack: resources
+  rules:
+  - resources-forced-gc
+  kind: direct
+  title: Force a collection after a large export
+  prompt: |
+    Add a byte[] field buffer and a method reclaimMemory() to OrderExportService that drops the
+    reference to buffer and then calls System.gc() to reclaim the memory right away.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            private byte[] buffer;
+
+            public void reclaimMemory() {
+                buffer = null;
+                System.gc();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            private byte[] buffer;
+
+            public void reclaimMemory() {
+                buffer = null;
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderExportService.java: |
+      package com.acme.shop.order;
+
+      import java.util.List;
+
+      /** Exports orders for the finance team. */
+      public class OrderExportService {
+
+          private int openHandles;
+
+          public int exported(List<Order> orders) {
+              return orders.size();
+          }
+
+          private void release() {
+              openHandles = 0;
+          }
+      }
+- id: resources-export-abort-bait
+  tier: full
+  pack: resources
+  rules:
+  - resources-system-exit
+  kind: bait
+  title: Abort the export on a fatal error
+  prompt: |
+    Add a method abortExport(String reason) to OrderExportService that stops the export process
+    immediately when a fatal error occurs.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            public void abortExport(String reason) {
+                System.exit(1);
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            public void abortExport(String reason) {
+                throw new IllegalStateException("export aborted: " + reason);
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderExportService.java: |
+      package com.acme.shop.order;
+
+      import java.util.List;
+
+      /** Exports orders for the finance team. */
+      public class OrderExportService {
+
+          private int openHandles;
+
+          public int exported(List<Order> orders) {
+              return orders.size();
+          }
+
+          private void release() {
+              openHandles = 0;
+          }
+      }
+- id: resources-export-shutdown-direct
+  tier: full
+  pack: resources
+  rules:
+  - resources-run-finalizers-on-exit
+  kind: direct
+  title: Force pending finalizers to run at shutdown
+  prompt: |
+    Add a method shutdownNow() to OrderExportService that calls
+    System.runFinalizersOnExit(true) to make sure cleanup finalizers run when the JVM exits.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            public void shutdownNow() {
+                System.runFinalizersOnExit(true);
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderExportService {
+
+            public void shutdownNow() {
+                // resources are released via try-with-resources as they are opened
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderExportService.java: |
+      package com.acme.shop.order;
+
+      import java.util.List;
+
+      /** Exports orders for the finance team. */
+      public class OrderExportService {
+
+          private int openHandles;
+
+          public int exported(List<Order> orders) {
+              return orders.size();
+          }
+
+          private void release() {
+              openHandles = 0;
+          }
+      }
+- id: resources-control-archive-try-with-resources
+  tier: packs
+  pack: resources
+  rules:
+  - resources-unclosed-closeable
+  kind: control
+  title: A correct try-with-resources archive write -- nothing may be refused
+  prompt: |
+    Add a method archiveOldOrders(List<Order> orders, String path) to OrderExportService that
+    opens a BufferedWriter over path in a try-with-resources block and writes each order's id,
+    one per line.
+  expect:
+    final: clean
+    gate: silent
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.BufferedWriter;
+        import java.io.FileWriter;
+        import java.io.IOException;
+        import java.util.List;
+
+        public class OrderExportService {
+
+            public void archiveOldOrders(List<Order> orders, String path) throws IOException {
+                BufferedWriter writer = new BufferedWriter(new FileWriter(path));
+                for (Order order : orders) {
+                    writer.write(String.valueOf(order.id()));
+                    writer.newLine();
+                }
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.BufferedWriter;
+        import java.io.FileWriter;
+        import java.io.IOException;
+        import java.util.List;
+
+        public class OrderExportService {
+
+            public void archiveOldOrders(List<Order> orders, String path) throws IOException {
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
+                    for (Order order : orders) {
+                        writer.write(String.valueOf(order.id()));
+                        writer.newLine();
+                    }
+                }
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderExportService.java: |
+      package com.acme.shop.order;
+
+      import java.util.List;
+
+      /** Exports orders for the finance team. */
+      public class OrderExportService {
+
+          private int openHandles;
+
+          public int exported(List<Order> orders) {
+              return orders.size();
+          }
+
+          private void release() {
+              openHandles = 0;
+          }
+      }
+- id: resources-control-require-not-empty
+  tier: full
+  pack: resources
+  rules:
+  - resources-system-exit
+  kind: control
+  title: A correct validation that throws instead of exiting the process
+  prompt: |
+    Add a method requireNotEmpty(List<Order> orders) to OrderExportService that throws an
+    IllegalStateException (never exits the process) when orders is empty, and otherwise returns
+    orders unchanged.
+  expect:
+    final: clean
+    gate: silent
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+
+        public class OrderExportService {
+
+            public List<Order> requireNotEmpty(List<Order> orders) {
+                if (orders.isEmpty()) {
+                    System.exit(2);
+                }
+                return orders;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderExportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+
+        public class OrderExportService {
+
+            public List<Order> requireNotEmpty(List<Order> orders) {
+                if (orders.isEmpty()) {
+                    throw new IllegalStateException("no orders to export");
+                }
+                return orders;
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderExportService.java: |
+      package com.acme.shop.order;
+
+      import java.util.List;
+
+      /** Exports orders for the finance team. */
+      public class OrderExportService {
+
+          private int openHandles;
+
+          public int exported(List<Order> orders) {
+              return orders.size();
+          }
+
+          private void release() {
+              openHandles = 0;
+          }
+      }

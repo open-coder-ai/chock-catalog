@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.4.0"
+version: "0.4.1"
 description: >
   trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or
   Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties
@@ -46,6 +46,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.1
+  date: '2026-09-24'
+  changes:
+  - "The per-line waiver works for every rule. The engine read `// chock: allow <rule-id>` off the line a rule reported, and the thirteen rules that read through the comment-blanking lexer -- every style and testing rule that inspects code, and jakarta-struts-ognl -- report that line with its comments blanked, so their waivers never matched and a waived line was refused anyway. The waiver is now read off the file's own line. A test proves it for all 129 rules: each rule's first refusal, with the waiver added to every line it reported, draws nothing."
+  - "The request-data flow model no longer refuses the correct fix, found by writing a correct and an incorrect answer for every rule. An allowlist is recognised by what it does -- `String target = ALLOWED.contains(next) ? next : \"/home\";` passes `next` on only when the collection holds it -- instead of by a variable happening to be named `allowlist`; that refused the correct fix for open redirects, path traversal, SSRF, command and code injection and every other flow rule. A parameter's name inside a string literal is no longer a use of it, so a bound XPath variable `$sku` named after its `sku` parameter is not an injection."
+  - "Two misses closed. `Pattern.compile(p).matcher(s).matches()` -- ReDoS in its most natural one-line form -- was read as validated, because `.matches(` was a sanitizer; a validation now needs a pattern in the parentheses (`.matches(\"[a-z]+\")`, `.matches(SAFE_NAME)`). And java-xpath-injection no longer reads `Pattern.compile(` as an XPath compile in a file that imports both."
 - version: 0.4.0
   date: '2026-09-24'
   changes:

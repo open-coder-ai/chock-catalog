@@ -90,3 +90,32 @@ def test_an_annotation_with_no_parameter_behind_it_taints_nothing() -> None:
     )
     assert [m.name for m in methods(text)] == ["x"]
     assert list(flows(text, SINKS)) == []
+
+
+def test_a_membership_check_guards_the_value_whatever_the_collection_is_called() -> None:
+    body = 'String target = ALLOWED.contains(next) ? next : "/orders";\n    return read(Paths.get(target));'
+    assert list(flows(FileText("C.java", _controller("@RequestParam String next", body)), SINKS)) == []
+    unguarded = 'String target = ALLOWED.contains(other) ? next : "/orders";\n    return read(Paths.get(target));'
+    assert [
+        f.line_no for f in flows(FileText("C.java", _controller("@RequestParam String next", unguarded)), SINKS)
+    ] == [5]
+
+
+def test_a_name_inside_a_string_literal_is_not_a_use_of_the_parameter() -> None:
+    body = 'return read(Paths.get("/srv/f.txt"), "name=$f");'
+    assert list(flows(FileText("C.java", _controller("@RequestParam String f", body)), SINKS)) == []
+
+
+def test_matches_with_no_pattern_is_the_match_not_a_validation() -> None:
+    compiled = FileText(
+        "C.java", _controller("@RequestParam String p", "return Pattern.compile(p).matcher(s).matches();")
+    )
+    assert [f.line_no for f in flows(compiled, ["Pattern.compile("])] == [4]
+    checked = FileText(
+        "C.java",
+        _controller(
+            "@RequestParam String f",
+            "String safe = f.matches(SAFE_NAME) ? f : null;\n    return read(Paths.get(safe));",
+        ),
+    )
+    assert list(flows(checked, SINKS)) == []

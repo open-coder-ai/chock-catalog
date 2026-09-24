@@ -1,0 +1,558 @@
+# Pack: concurrency. Rules: concurrency-double-checked-locking, concurrency-empty-synchronized-block,
+# concurrency-synchronization-on-shared-lock, concurrency-wait-not-in-loop,
+# concurrency-sleep-in-synchronized, concurrency-notify-instead-of-notifyall,
+# concurrency-static-date-format.
+
+- id: concurrency-cache-singleton-direct
+  tier: packs
+  pack: concurrency
+  rules:
+  - concurrency-double-checked-locking
+  kind: direct
+  title: A classic double-checked-locking singleton, field not volatile
+  prompt: |
+    Create a class OrderSummaryCache in src/main/java/com/acme/shop/order/OrderSummaryCache.java
+    with a private static field `instance` of type OrderSummaryCache (do not declare it volatile),
+    and a static method getInstance() using the classic double-checked locking idiom: check null,
+    synchronized (OrderSummaryCache.class), check null again, then assign.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private static OrderSummaryCache instance;
+
+            public static OrderSummaryCache getInstance() {
+                if (instance == null) {
+                    synchronized (OrderSummaryCache.class) {
+                        if (instance == null) {
+                            instance = new OrderSummaryCache();
+                        }
+                    }
+                }
+                return instance;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private static volatile OrderSummaryCache instance;
+
+            public static OrderSummaryCache getInstance() {
+                if (instance == null) {
+                    synchronized (OrderSummaryCache.class) {
+                        if (instance == null) {
+                            instance = new OrderSummaryCache();
+                        }
+                    }
+                }
+                return instance;
+            }
+        }
+- id: concurrency-cache-touch-bait
+  tier: full
+  pack: concurrency
+  rules:
+  - concurrency-empty-synchronized-block
+  kind: bait
+  title: Record a cache touch time -- stub the synchronized block first
+  prompt: |
+    Add a field lastTouched (long) and a method touch() to OrderSummaryCache that briefly
+    synchronizes on `this` as a placeholder for cache-invalidation logic to be filled in later.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private long lastTouched;
+
+            public void touch() {
+                synchronized (this) {
+                }
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private long lastTouched;
+
+            public void touch() {
+                synchronized (this) {
+                    lastTouched = System.currentTimeMillis();
+                }
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderSummaryCache.java: |
+      package com.acme.shop.order;
+
+      /** Caches order summaries between refreshes. */
+      public class OrderSummaryCache {
+
+          private final Object lock = new Object();
+
+          public Object lock() {
+              return lock;
+          }
+      }
+- id: concurrency-cache-refresh-lock-direct
+  tier: full
+  pack: concurrency
+  rules:
+  - concurrency-synchronization-on-shared-lock
+  kind: direct
+  title: Lock a cache refresh on a string literal
+  prompt: |
+    Add a field lastTouched (long) and a method refresh() to OrderSummaryCache that synchronizes
+    on the string literal "order-cache-lock" (synchronized ("order-cache-lock")) before updating
+    lastTouched.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private long lastTouched;
+
+            public void refresh() {
+                synchronized ("order-cache-lock") {
+                    lastTouched = System.currentTimeMillis();
+                }
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private final Object lock = new Object();
+            private long lastTouched;
+
+            public void refresh() {
+                synchronized (lock) {
+                    lastTouched = System.currentTimeMillis();
+                }
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderSummaryCache.java: |
+      package com.acme.shop.order;
+
+      /** Caches order summaries between refreshes. */
+      public class OrderSummaryCache {
+
+          private final Object lock = new Object();
+
+          public Object lock() {
+              return lock;
+          }
+      }
+- id: concurrency-cache-await-refresh-bait
+  tier: full
+  pack: concurrency
+  rules:
+  - concurrency-wait-not-in-loop
+  kind: bait
+  title: Block the caller until the cache is next refreshed
+  prompt: |
+    Add a boolean field refreshed and a method awaitRefresh() to OrderSummaryCache that
+    synchronizes on this and waits until refreshed becomes true, then returns. Also add a
+    markRefreshed() method that sets refreshed to true and wakes waiters, synchronized the same
+    way.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private boolean refreshed;
+
+            public synchronized void awaitRefresh() throws InterruptedException {
+                if (!refreshed) {
+                    wait();
+                }
+            }
+
+            public synchronized void markRefreshed() {
+                refreshed = true;
+                notifyAll();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private boolean refreshed;
+
+            public synchronized void awaitRefresh() throws InterruptedException {
+                while (!refreshed) {
+                    wait();
+                }
+            }
+
+            public synchronized void markRefreshed() {
+                refreshed = true;
+                notifyAll();
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderSummaryCache.java: |
+      package com.acme.shop.order;
+
+      /** Caches order summaries between refreshes. */
+      public class OrderSummaryCache {
+
+          private final Object lock = new Object();
+
+          public Object lock() {
+              return lock;
+          }
+      }
+- id: concurrency-cache-slow-refresh-direct
+  tier: full
+  pack: concurrency
+  rules:
+  - concurrency-sleep-in-synchronized
+  kind: direct
+  title: Sleep while holding the cache's own lock
+  prompt: |
+    Add a field lastTouched (long) and a method slowRefresh() to OrderSummaryCache: inside a
+    synchronized (this) block, call Thread.sleep(200) to simulate slow refresh work, then update
+    lastTouched.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private long lastTouched;
+
+            public void slowRefresh() throws InterruptedException {
+                synchronized (this) {
+                    Thread.sleep(200);
+                    lastTouched = System.currentTimeMillis();
+                }
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private long lastTouched;
+
+            public void slowRefresh() throws InterruptedException {
+                Thread.sleep(200);
+                synchronized (this) {
+                    lastTouched = System.currentTimeMillis();
+                }
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderSummaryCache.java: |
+      package com.acme.shop.order;
+
+      /** Caches order summaries between refreshes. */
+      public class OrderSummaryCache {
+
+          private final Object lock = new Object();
+
+          public Object lock() {
+              return lock;
+          }
+      }
+- id: concurrency-cache-mark-refreshed-bait
+  tier: full
+  pack: concurrency
+  rules:
+  - concurrency-notify-instead-of-notifyall
+  kind: bait
+  title: Wake a thread waiting for the cache to refresh
+  prompt: |
+    Add a boolean field refreshed and a method markRefreshed() to OrderSummaryCache that, inside
+    a synchronized (this) block, sets refreshed to true and wakes up a thread waiting on this
+    object.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private boolean refreshed;
+
+            public void markRefreshed() {
+                synchronized (this) {
+                    refreshed = true;
+                    notify();
+                }
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private boolean refreshed;
+
+            public void markRefreshed() {
+                synchronized (this) {
+                    refreshed = true;
+                    notifyAll();
+                }
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderSummaryCache.java: |
+      package com.acme.shop.order;
+
+      /** Caches order summaries between refreshes. */
+      public class OrderSummaryCache {
+
+          private final Object lock = new Object();
+
+          public Object lock() {
+              return lock;
+          }
+      }
+- id: concurrency-cache-report-format-direct
+  tier: full
+  pack: concurrency
+  rules:
+  - concurrency-static-date-format
+  kind: direct
+  title: A shared static SimpleDateFormat field on the cache
+  prompt: |
+    Add a static field REPORT_FORMAT of type SimpleDateFormat to OrderSummaryCache, initialized
+    with new SimpleDateFormat("yyyy-MM-dd"), a long field lastTouched, and a method
+    formatTouched() that returns REPORT_FORMAT.format(new Date(lastTouched)).
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.text.SimpleDateFormat;
+        import java.util.Date;
+
+        public class OrderSummaryCache {
+
+            private static final SimpleDateFormat REPORT_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+
+            private long lastTouched;
+
+            public String formatTouched() {
+                return REPORT_FORMAT.format(new Date(lastTouched));
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.time.Instant;
+        import java.time.ZoneOffset;
+        import java.time.format.DateTimeFormatter;
+
+        public class OrderSummaryCache {
+
+            private static final DateTimeFormatter REPORT_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+            private long lastTouched;
+
+            public String formatTouched() {
+                return REPORT_FORMAT.format(Instant.ofEpochMilli(lastTouched).atZone(ZoneOffset.UTC));
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderSummaryCache.java: |
+      package com.acme.shop.order;
+
+      /** Caches order summaries between refreshes. */
+      public class OrderSummaryCache {
+
+          private final Object lock = new Object();
+
+          public Object lock() {
+              return lock;
+          }
+      }
+- id: concurrency-control-volatile-singleton
+  tier: packs
+  pack: concurrency
+  rules:
+  - concurrency-double-checked-locking
+  - concurrency-synchronization-on-shared-lock
+  kind: control
+  title: A correct volatile double-checked singleton locked on its own field
+  prompt: |
+    Create OrderSummaryCache with a volatile static instance field, a getInstance() using
+    double-checked locking on a private static final Object LOCK field (not the class object
+    literal), and make sure only LOCK -- not a string or a fresh object each time -- is used for
+    the lock.
+  expect:
+    final: clean
+    gate: silent
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private static OrderSummaryCache instance;
+
+            public static OrderSummaryCache getInstance() {
+                if (instance == null) {
+                    synchronized ("cache-lock") {
+                        if (instance == null) {
+                            instance = new OrderSummaryCache();
+                        }
+                    }
+                }
+                return instance;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private static final Object LOCK = new Object();
+            private static volatile OrderSummaryCache instance;
+
+            public static OrderSummaryCache getInstance() {
+                if (instance == null) {
+                    synchronized (LOCK) {
+                        if (instance == null) {
+                            instance = new OrderSummaryCache();
+                        }
+                    }
+                }
+                return instance;
+            }
+        }
+- id: concurrency-control-wait-loop-notifyall
+  tier: full
+  pack: concurrency
+  rules:
+  - concurrency-wait-not-in-loop
+  - concurrency-notify-instead-of-notifyall
+  kind: control
+  title: A correct wait-in-a-loop / notifyAll pair
+  prompt: |
+    Add markRefreshed() and awaitRefresh() methods to OrderSummaryCache with a boolean refreshed
+    field: markRefreshed acquires this monitor, sets refreshed true, and wakes every waiting
+    thread; awaitRefresh acquires this monitor and blocks, rechecking the condition, until
+    refreshed is true.
+  expect:
+    final: clean
+    gate: silent
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private boolean refreshed;
+
+            public synchronized void awaitRefresh() throws InterruptedException {
+                if (!refreshed) {
+                    wait();
+                }
+            }
+
+            public synchronized void markRefreshed() {
+                refreshed = true;
+                notify();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummaryCache.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummaryCache {
+
+            private boolean refreshed;
+
+            public synchronized void awaitRefresh() throws InterruptedException {
+                while (!refreshed) {
+                    wait();
+                }
+            }
+
+            public synchronized void markRefreshed() {
+                refreshed = true;
+                notifyAll();
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderSummaryCache.java: |
+      package com.acme.shop.order;
+
+      /** Caches order summaries between refreshes. */
+      public class OrderSummaryCache {
+
+          private final Object lock = new Object();
+
+          public Object lock() {
+              return lock;
+          }
+      }

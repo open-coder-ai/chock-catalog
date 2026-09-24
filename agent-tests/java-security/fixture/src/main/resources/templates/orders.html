@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+  <h1>Orders</h1>
+  <table>
+    <tr th:each="order : ${orders}">
+      <td th:text="${order.id}">1</td>
+      <td th:text="${order.customer}">customer</td>
+      <td th:text="${order.status}">OPEN</td>
+    </tr>
+  </table>
+</body>
+</html>
