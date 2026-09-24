@@ -1,0 +1,108 @@
+{
+  "redirect": {
+    "sinks": [
+      "response.sendRedirect(",
+      "resp.sendRedirect(",
+      "httpResponse.sendRedirect(",
+      "Response.seeOther(",
+      "Response.temporaryRedirect(",
+      ".location(",
+      ".putHeader(\"Location\"",
+      ".putHeader(\"location\"",
+      "HttpResponse.redirect(",
+      "HttpResponse.seeOther(",
+      ".redirect("
+    ],
+    "sanitizers": [
+      "allowlist",
+      "allowList",
+      "whitelist",
+      "isValid",
+      ".startsWith(\"/\")",
+      "URI.create("
+    ],
+    "guard_imports": [
+      "jakarta.servlet",
+      "javax.servlet",
+      "jakarta.ws.rs",
+      "javax.ws.rs",
+      "io.vertx",
+      "io.micronaut"
+    ]
+  },
+  "forward": {
+    "sinks": [
+      "request.getRequestDispatcher(",
+      "req.getRequestDispatcher(",
+      "servletContext.getRequestDispatcher(",
+      "getServletContext().getRequestDispatcher("
+    ],
+    "sanitizers": [
+      "allowlist",
+      "allowList",
+      "whitelist",
+      "isValid"
+    ],
+    "guard_imports": [
+      "jakarta.servlet",
+      "javax.servlet"
+    ]
+  },
+  "cors": {
+    "origin_header_key": "Access-Control-Allow-Origin",
+    "credentials_header_key": "Access-Control-Allow-Credentials",
+    "wildcard": "*",
+    "credentials_true": "true",
+    "vertx_cors_create_wildcard": "CorsHandler.create(\"*\")",
+    "vertx_credentials": ".allowCredentials(true)",
+    "quarkus_origins_key": "quarkus.http.cors.origins",
+    "quarkus_credentials_key": "quarkus.http.cors.access-control-allow-credentials",
+    "micronaut_cors_marker": "micronaut.server.cors",
+    "micronaut_origins_key": "allowed-origins",
+    "micronaut_credentials_key": "allow-credentials"
+  },
+  "directory_listing": {
+    "web_xml_param_name": "<param-name>listings</param-name>",
+    "web_xml_param_value_true": "<param-value>true</param-value>",
+    "jetty_key": "dirAllowed",
+    "undertow_key": "directory-listing",
+    "vertx_call": "setDirectoryListing(true)",
+    "true_token": "true"
+  },
+  "http_method_constraint": {
+    "collection_open": "<web-resource-collection>",
+    "collection_close": "</web-resource-collection>",
+    "method_tag": "<http-method>",
+    "omission_tag": "<http-method-omission>"
+  },
+  "struts": {
+    "xml_marker": "struts.apache.org/dtds/struts",
+    "properties_marker": "struts.devMode",
+    "code_imports": [
+      "com.opensymphony.xwork2",
+      "org.apache.struts2"
+    ],
+    "devmode_key": "struts.devMode",
+    "static_access_key": "struts.ognl.allowStaticMethodAccess",
+    "dmi_key": "struts.enable.DynamicMethodInvocation",
+    "true_value": "true",
+    "ognl_sinks": [
+      "ValueStack.findValue(",
+      "getValueStack().findValue(",
+      ".findValue("
+    ]
+  },
+  "cookie": {
+    "false_setters": [
+      ".setHttpOnly(false)",
+      ".setSecure(false)"
+    ],
+    "cookie_config_tag": "<cookie-config>",
+    "web_xml_httponly_false": "<http-only>false</http-only>",
+    "web_xml_secure_false": "<secure>false</secure>"
+  },
+  "security_disabled": {
+    "micronaut_key": "micronaut.security.enabled",
+    "false_value": "false"
+  }
+}
