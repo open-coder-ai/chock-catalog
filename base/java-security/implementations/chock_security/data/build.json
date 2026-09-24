@@ -1,0 +1,207 @@
+{
+  "insecure_repository": {
+    "maven_block_open": {
+      "repository": "<repository>",
+      "pluginRepository": "<pluginRepository>",
+      "mirror": "<mirror>",
+      "distributionManagement": "<distributionManagement>"
+    },
+    "maven_url_marker": "<url>",
+    "scheme": "http://",
+    "safe_hosts": [
+      "http://localhost",
+      "http://127.0.0.1"
+    ],
+    "gradle_block_marker": "maven",
+    "gradle_flags": [
+      "allowInsecureProtocol = true",
+      "isAllowInsecureProtocol = true"
+    ],
+    "wrapper_key": "distributionUrl="
+  },
+  "checksum_disabled": {
+    "maven_disabled": "<checksumPolicy>ignore</checksumPolicy>",
+    "gradle_key": "org.gradle.dependency.verification",
+    "gradle_disabled_value": "off"
+  },
+  "dynamic_version": {
+    "gradle_markers": [
+      "latest.release",
+      "latest.integration"
+    ],
+    "maven_tokens": [
+      "LATEST",
+      "RELEASE"
+    ]
+  },
+  "vulnerable_dependencies": [
+    {
+      "group": "org.apache.logging.log4j",
+      "artifact": "log4j-core",
+      "name": "Log4Shell",
+      "cve": "CVE-2021-44228, CVE-2021-45046, CVE-2021-45105, CVE-2021-44832",
+      "ranges": [
+        {
+          "min": "2.0-beta9",
+          "below": "2.17.1"
+        }
+      ],
+      "exceptions": [
+        "2.12.4",
+        "2.3.2"
+      ]
+    },
+    {
+      "group": "org.springframework",
+      "artifact": "spring-beans",
+      "name": "Spring4Shell",
+      "cve": "CVE-2022-22965",
+      "ranges": [
+        {
+          "min": "5.3.0",
+          "below": "5.3.18"
+        },
+        {
+          "min": "5.2.0",
+          "below": "5.2.20"
+        }
+      ]
+    },
+    {
+      "group": "org.springframework",
+      "artifact": "spring-webmvc",
+      "name": "Spring4Shell",
+      "cve": "CVE-2022-22965",
+      "ranges": [
+        {
+          "min": "5.3.0",
+          "below": "5.3.18"
+        },
+        {
+          "min": "5.2.0",
+          "below": "5.2.20"
+        }
+      ]
+    },
+    {
+      "group": "org.springframework",
+      "artifact": "spring-webflux",
+      "name": "Spring4Shell",
+      "cve": "CVE-2022-22965",
+      "ranges": [
+        {
+          "min": "5.3.0",
+          "below": "5.3.18"
+        },
+        {
+          "min": "5.2.0",
+          "below": "5.2.20"
+        }
+      ]
+    },
+    {
+      "group": "org.springframework.cloud",
+      "artifact": "spring-cloud-function-context",
+      "name": "Spring Cloud Function SpEL injection",
+      "cve": "CVE-2022-22963",
+      "ranges": [
+        {
+          "min": "0",
+          "below": "3.1.7"
+        },
+        {
+          "min": "3.2.0",
+          "below": "3.2.3"
+        }
+      ]
+    },
+    {
+      "group": "org.apache.commons",
+      "artifact": "commons-text",
+      "name": "Text4Shell",
+      "cve": "CVE-2022-42889",
+      "ranges": [
+        {
+          "min": "1.5",
+          "below": "1.10"
+        }
+      ]
+    },
+    {
+      "group": "com.thoughtworks.xstream",
+      "artifact": "xstream",
+      "name": "XStream remote code execution via unmarshalled types",
+      "cve": "CVE-2021-39144, and the CVE-2021-39139 to CVE-2021-39154 series",
+      "ranges": [
+        {
+          "min": "0",
+          "below": "1.4.18"
+        }
+      ]
+    },
+    {
+      "group": "org.yaml",
+      "artifact": "snakeyaml",
+      "name": "SnakeYAML unsafe constructor RCE",
+      "cve": "CVE-2022-1471",
+      "ranges": [
+        {
+          "min": "0",
+          "below": "2.0"
+        }
+      ]
+    },
+    {
+      "group": "com.alibaba",
+      "artifact": "fastjson",
+      "name": "Fastjson autotype bypass RCE",
+      "cve": "CVE-2022-25845",
+      "ranges": [
+        {
+          "min": "0",
+          "below": "1.2.83"
+        }
+      ]
+    },
+    {
+      "group": "org.apache.struts",
+      "artifact": "struts2-core",
+      "name": "Struts file-upload path traversal RCE",
+      "cve": "CVE-2023-50164",
+      "ranges": [
+        {
+          "min": "0",
+          "below": "2.5.33"
+        },
+        {
+          "min": "6.0.0",
+          "below": "6.3.0.2"
+        }
+      ]
+    },
+    {
+      "group": "com.h2database",
+      "artifact": "h2",
+      "name": "H2 console/JNDI RCE",
+      "cve": "CVE-2021-42392, CVE-2022-23221",
+      "ranges": [
+        {
+          "min": "0",
+          "below": "2.1.210"
+        }
+      ]
+    },
+    {
+      "group": "org.apache.shiro",
+      "artifact": "shiro-core",
+      "name": "Shiro path-traversal auth bypass",
+      "cve": "CVE-2022-32532",
+      "ranges": [
+        {
+          "min": "0",
+          "below": "1.9.1"
+        }
+      ]
+    }
+  ]
+}

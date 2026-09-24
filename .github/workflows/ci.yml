@@ -249,14 +249,33 @@ jobs:
       - name: The a11y guard's decision table holds
         run: python tools/check_a11y_table.py
 
-      # The same argument for the Java guard, whose verdicts come from eight rules over a flow
-      # model and a facts file. Its eval suite has no executable form on this engine (a
-      # hook.script is not replayed by `chock check --only evals`), so this is where every
-      # trigger and every negative case runs against the shipped guard -- including the commit
-      # path in a throwaway repository, and the setup page's embedded contract against the
-      # rules it must describe. A rule that fires on `parseClaimsJws` or `#{}` fails here.
-      - name: The Java security guard agrees with every rule it ships
-        run: python tools/check_java_security.py
+      # The framework's merge bar, applied to this repository's own code: the same ruff rule set
+      # and limits (pyproject.toml), formatting, and a test suite that must pass. tests/ proves
+      # every java-security rule case by case -- each refusing and silent case is a named test,
+      # and a rule without a case in each direction fails `test_rule_is_proven_both_ways` -- and
+      # drives the shipped gate, the eval suite, the selection file, the flow model and a corpus of
+      # correct enterprise code no rule may fire on. `chock check --only evals` does not replay a
+      # script gate on this engine, so this is where those cases run. Nothing under tests/ is
+      # published: the distribution repos build from base/ alone.
+      - name: Install the lint and test tooling
+        run: pip install --require-hashes -r requirements/test.txt
+
+      - name: Lint (ruff, the framework's rule set)
+        run: ruff check .
+
+      - name: Formatting (ruff format)
+        run: ruff format --check base/java-security tests tools/gen_java_security_contract.py
+
+      # Every policy in every tree is validated and has each executable eval case replayed as a
+      # named test (tests/policies); every statement of every shipped bash guard must be run by one
+      # of those cases (bash's own trace, tests/policies/shellcov.py); and every line and branch of
+      # the shipped Python -- the java-security engine and gate, the a11y guard -- must run under a
+      # test: coverage below 100 fails the step (pyproject.toml [tool.coverage]).
+      - name: Tests (every policy, every rule, 100% line and branch coverage)
+        run: python -m pytest --cov
+
+      - name: The Java security setup contract matches the rules it describes
+        run: python tools/gen_java_security_contract.py --check
 
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before

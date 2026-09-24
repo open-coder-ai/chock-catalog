@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+  <h1 th:text="${user.name}">Name</h1>
+  <p th:text="${user.bio}"></p>
+  <p>[[${user.city}]]</p>
+  <div th:replace="~{fragments/footer :: footer}"></div>
+  <a th:href="@{/users/{id}(id=${user.id})}">link</a>
+</body>
+</html>

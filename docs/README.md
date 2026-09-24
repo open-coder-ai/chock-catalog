@@ -25,7 +25,7 @@ effect rather than the intent.
 | [block-wildcard-iam](block-wildcard-iam/) | wildcard IAM grants in staged IaC | 6/6 |
 | [no-a11y-regression](no-a11y-regression/) | a lost accessibility assertion -- an emptied `alt`, a flagged element deleted | 0/13 |
 | [pin-github-actions](pin-github-actions/) | a workflow referencing a tag or branch instead of a pinned commit -- at commit and as the agent writes | 9/9 |
-| [java-security](java-security/) | eight Java constructs: interpolated MyBatis SQL, unescaped templates, unsafe deserialization, wildcard CORS with credentials, wildcard actuator exposure, unverified JWT, request-chosen paths and streams | 25/33 |
+| [java-security](java-security/) | 129 rules in sixteen packs: core Java injection, XXE, SSRF and deserialization; crypto and TLS; Spring; Jakarta EE, Struts, Quarkus, Micronaut and Vert.x; persistence; templates; logging; Maven and Gradle builds; Android; and quality -- bugs, concurrency, resources, exceptions, performance, style, tests | 87/95 |
 
 ## Enforced before the tool runs
 

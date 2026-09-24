@@ -1,0 +1,145 @@
+{
+  "unescaped_output": {
+    ".html": [
+      "th:utext",
+      "[(${"
+    ],
+    ".xhtml": [
+      "th:utext",
+      "[(${",
+      "escape=\"false\"",
+      "escape='false'"
+    ],
+    ".jsp": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".jspx": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".tag": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".ftl": [
+      "?no_esc",
+      "<#noescape>"
+    ],
+    ".ftlh": [
+      "?no_esc",
+      "<#noescape>"
+    ],
+    ".peb": [
+      "| raw",
+      "|raw"
+    ],
+    ".pebble": [
+      "| raw",
+      "|raw"
+    ],
+    ".mustache": [
+      "{{{",
+      "{{&"
+    ],
+    ".hbs": [
+      "{{{",
+      "{{&"
+    ]
+  },
+  "ssti": {
+    "engines": [
+      {
+        "sink": "new Template(",
+        "markers": ["freemarker."]
+      },
+      {
+        "sink": "StringTemplateLoader.putTemplate(",
+        "markers": ["freemarker."]
+      },
+      {
+        "sink": "Velocity.evaluate(",
+        "markers": ["org.apache.velocity"]
+      },
+      {
+        "sink": "velocityEngine.evaluate(",
+        "markers": ["org.apache.velocity"]
+      },
+      {
+        "sink": "RuntimeSingleton.parse(",
+        "markers": ["org.apache.velocity"]
+      },
+      {
+        "sink": "templateEngine.process(",
+        "markers": ["StringTemplateResolver"]
+      },
+      {
+        "sink": "engine.getLiteralTemplate(",
+        "markers": ["io.pebbletemplates", "com.mitchellbosecke.pebble"]
+      },
+      {
+        "sink": ".compile(new StringReader(",
+        "markers": ["com.samskivert.mustache", "com.github.mustachejava"]
+      },
+      {
+        "sink": "Handlebars.compileInline(",
+        "markers": ["com.github.jknack.handlebars"]
+      },
+      {
+        "sink": ".render(",
+        "markers": ["com.hubspot.jinjava.Jinjava"]
+      }
+    ]
+  },
+  "autoescape_disabled": {
+    "java_tokens": [
+      {
+        "token": ".autoEscaping(false)",
+        "markers": ["io.pebbletemplates", "com.mitchellbosecke.pebble"]
+      },
+      {
+        "token": "EscapingStrategy.NOOP",
+        "markers": ["com.github.jknack.handlebars"]
+      },
+      {
+        "token": "setOutputFormat(PlainTextOutputFormat.INSTANCE)",
+        "markers": ["freemarker."]
+      },
+      {
+        "token": "setAutoEscapingPolicy(Configuration.DISABLE_AUTO_ESCAPING_POLICY)",
+        "markers": ["freemarker."]
+      }
+    ],
+    "ftlh_tokens": [
+      "output_format=\"plainText\"",
+      "auto_esc=false"
+    ]
+  },
+  "freemarker_unsafe_builtins": {
+    "template_tokens": [
+      "?new(",
+      "?api"
+    ],
+    "java_tokens": [
+      "setNewBuiltinClassResolver(TemplateClassResolver.UNRESTRICTED_RESOLVER)",
+      "setAPIBuiltinEnabled(true)"
+    ],
+    "safe_resolvers": [
+      "ALLOWS_NOTHING_RESOLVER",
+      "SAFER_RESOLVER"
+    ]
+  },
+  "include_request_path": {
+    "tokens": [
+      "<jsp:include page=\"<%= request.getParameter",
+      "<c:import url=\"${param.",
+      "<jsp:include page=\"${param.",
+      "th:replace=\"${param.",
+      "th:insert=\"${param.",
+      "~{${param."
+    ]
+  }
+}

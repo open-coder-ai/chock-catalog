@@ -31,10 +31,13 @@ class Finding:
     line: str
     message: str
     verdict: str = DENY
+    #: The rule's CWE ids, so the refusal names the weakness it is evidence of.
+    cwe: tuple[str, ...] = ()
 
     def render(self) -> str:
         """One line a human reads in a hook's output. The matched line is never echoed."""
-        return f"{self.path}:{self.line_no}: [{self.verdict}: {self.rule_id}] {self.message}"
+        tag = f" {', '.join(self.cwe)}" if self.cwe else ""
+        return f"{self.path}:{self.line_no}: [{self.verdict}: {self.rule_id}{tag}] {self.message}"
 
 
 @dataclass(frozen=True)

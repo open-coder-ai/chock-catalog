@@ -1,0 +1,16 @@
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee" version="6.0">
+  <session-config>
+    <cookie-config><http-only>true</http-only><secure>true</secure></cookie-config>
+  </session-config>
+  <security-constraint>
+    <web-resource-collection>
+      <web-resource-name>admin</web-resource-name>
+      <url-pattern>/admin/*</url-pattern>
+    </web-resource-collection>
+    <auth-constraint><role-name>admin</role-name></auth-constraint>
+  </security-constraint>
+  <servlet>
+    <servlet-name>default</servlet-name>
+    <init-param><param-name>listings</param-name><param-value>false</param-value></init-param>
+  </servlet>
+</web-app>

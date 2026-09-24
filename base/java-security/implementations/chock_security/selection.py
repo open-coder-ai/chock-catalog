@@ -9,7 +9,26 @@ from pathlib import Path
 from chock_security.decision import DENY, VERDICTS
 from chock_security.pack import Rule
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+#: Version 1 had one pack, `java`, holding the eight rules this policy first shipped. Those rules
+#: now live in the packs their frameworks name, under the same ids, so a version-1 file keeps
+#: exactly the meaning it was written with: its `java` pack speaks for those eight, and every
+#: rule it could not have known about enforces, as any upgrade's new rule does.
+LEGACY_VERSION = 1
+LEGACY_PACK = "java"
+LEGACY_RULES = frozenset(
+    {
+        "java-sqli-mybatis-interpolation",
+        "java-xss-unescaped-template",
+        "java-unsafe-deserialization",
+        "java-cors-wildcard-credentials",
+        "java-actuator-wildcard-exposure",
+        "java-jwt-unverified-parse",
+        "java-path-traversal-request-data",
+        "java-deserialization-request-stream",
+    }
+)
 
 FILENAME = ".chock/security.json"
 
@@ -72,8 +91,7 @@ def _verdicts_in(pack: str, ids: set[str], declared: object) -> dict[str, str]:
         msg = f"{where} names rule(s) it does not contain: {absent}"
         raise SelectionError(msg)
     return {
-        rule_id: _verdict(where, repr(rule_id), spoken[rule_id]) if rule_id in spoken else DEFAULT
-        for rule_id in ids
+        rule_id: _verdict(where, repr(rule_id), spoken[rule_id]) if rule_id in spoken else DEFAULT for rule_id in ids
     }
 
 
@@ -88,10 +106,18 @@ def _document(raw: str) -> dict:
         msg = f"selection must be an object with keys {sorted(_TOP_KEYS)}, got {got}"
         raise SelectionError(msg)
     _require_keys(document, _TOP_KEYS, "selection")
-    if document.get("version") != SCHEMA_VERSION:
-        msg = f"selection version must be {SCHEMA_VERSION}, got {document.get('version')!r}"
+    if document.get("version") not in (SCHEMA_VERSION, LEGACY_VERSION):
+        msg = (
+            f"selection version must be {SCHEMA_VERSION} (or {LEGACY_VERSION}, read as it was "
+            f"written), got {document.get('version')!r}"
+        )
         raise SelectionError(msg)
     return document
+
+
+def _legacy_packs(rules: Mapping[str, Rule]) -> dict[str, set[str]]:
+    """How a version-1 file groups the rules: its one pack, over the rules it could name."""
+    return {LEGACY_PACK: {rule_id for rule_id in rules if rule_id in LEGACY_RULES}}
 
 
 def parse(raw: str, rules: Mapping[str, Rule]) -> dict[str, str]:
@@ -101,11 +127,15 @@ def parse(raw: str, rules: Mapping[str, Rule]) -> dict[str, str]:
     if not isinstance(declared, dict):
         msg = "selection 'packs' must be an object of pack name -> {verdict, rules}"
         raise SelectionError(msg)
-    packs = _packs_of(rules)
+    legacy = document.get("version") == LEGACY_VERSION
+    packs = _legacy_packs(rules) if legacy else _packs_of(rules)
     if absent := sorted(set(declared) - set(packs)):
-        msg = f"selection names pack(s) this build does not carry: {absent}"
+        known = (
+            f"a version-{LEGACY_VERSION} selection has only {LEGACY_PACK!r}" if legacy else "this build does not carry"
+        )
+        msg = f"selection names pack(s) {absent}; {known}"
         raise SelectionError(msg)
-    verdicts: dict[str, str] = {}
+    verdicts = dict.fromkeys(rules, DEFAULT)
     for pack, ids in packs.items():
         verdicts |= _verdicts_in(pack, ids, declared.get(pack))
     return verdicts
@@ -113,10 +143,7 @@ def parse(raw: str, rules: Mapping[str, Rule]) -> dict[str, str]:
 
 def render(rules: Mapping[str, Rule]) -> str:
     """The exhaustive selection, every rule enforcing: what install writes, upgrade reconciles."""
-    packs = {
-        pack: {"rules": dict.fromkeys(sorted(ids), DEFAULT)}
-        for pack, ids in sorted(_packs_of(rules).items())
-    }
+    packs = {pack: {"rules": dict.fromkeys(sorted(ids), DEFAULT)} for pack, ids in sorted(_packs_of(rules).items())}
     return json.dumps({"version": SCHEMA_VERSION, "packs": packs}, indent=2) + "\n"
 
 

@@ -103,7 +103,36 @@ python tools/check_workflows.py          # no workflow trigger can hand fork cod
 python tools/gen_adoption_transcript.py --check --base origin/main
                                          # transcripts of touched policies reproduce from empty repos
 python tools/check_effects.py            # a read_only guard does not actually write
+
+pip install --require-hashes -r requirements/test.txt
+ruff check .                             # the framework's own lint rule set, from pyproject.toml
+ruff format --check base/java-security tests tools/gen_java_security_contract.py
+python -m pytest --cov                   # every policy and rule, case by case; 100% line+branch coverage
 ```
+
+**No rule merges without its tests.** A script-backed policy's checks live in `tests/` as pytest,
+held to the framework's bar: every refusing and every silent case is a named test, and a
+java-security rule with no case in each direction fails `test_rule_is_proven_both_ways` -- a
+rule that has never been shown refusing proves nothing, and one never shown staying silent on
+correct code has not been shown to be usable. A new rule adds its rows to
+`tests/java_security/cases/<pack>.py`; if it could fire on code that is correct, add that code
+to `tests/java_security/corpus/`, where no rule may fire. `tests/` is never published: the
+distribution repos build from `base/` alone.
+
+**Every policy is tested, and all of its code runs under a test.** `tests/policies/` validates
+every policy in every tree with the framework's own validator and replays each executable eval
+case as a named test, so a failure names the policy and the case. A policy that ships a guard or
+a gate must prove it both ways, refused and allowed. Coverage is 100% or the build fails: every
+line and branch of shipped Python (`[tool.coverage]` in `pyproject.toml`), and every statement
+of every shipped bash guard, measured from bash's own trace (`tests/policies/shellcov.py`). A
+branch no case reaches gets a case, or, if nothing can reach it, is deleted. Nothing is excluded
+with a pragma.
+
+**Every java-security rule carries its evidence.** `cwe` names the MITRE weakness (only ids
+MITRE allows for vulnerability mapping; `data/cwe.json` carries their names verbatim) and
+`references` names where the construct is shown to be a defect: the CVE, the vendor's security
+documentation, the OWASP cheat sheet, and for a quality rule the Sonar, SpotBugs, PMD, Checkstyle
+or Error Prone rule it mirrors. `tests/java_security/test_evidence.py` holds every rule to it.
 
 The last five matter more than they look. The factual half of every policy page is derived
 from `base/<id>/`, so a stale doc is an overclaim published where adopters read first.

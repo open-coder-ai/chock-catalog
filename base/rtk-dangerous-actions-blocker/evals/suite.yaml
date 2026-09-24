@@ -503,3 +503,64 @@ suite:
     execute:
       command: Remove-Item -Recurse -Force C:\Users\me\project
       expect: block
+  - id: tc-071
+    category: trigger
+    prompt: A request reads an SSH config file whose name is not itself a recognized credential filename.
+    expect: The guard refuses it; the path-containment check catches files under a .ssh/.aws/.gnupg directory even when the basename alone would not match.
+    execute:
+      command: cat ./.ssh/config
+      expect: block
+  - id: tc-072
+    category: negative_trigger
+    prompt: A request checks the caller identity using an AWS profile that happens to be named "s3".
+    expect: >
+      The guard allows it. Regression test for a bug where a value-flag's VALUE ("s3") could
+      satisfy the has_command "s3" check without ever becoming a positional, so the aws-action
+      lookup found nothing; under set -eu that unguarded lookup used to abort the whole script
+      and silently block an unrelated command with no message. The lookup now always succeeds
+      (returning empty when not found) instead of failing the script.
+    execute:
+      command: aws --profile s3 sts get-caller-identity
+      expect: allow
+  - id: tc-073
+    category: behavior
+    prompt: A request prunes every unused Docker image.
+    expect: The guard asks for confirmation; docker image prune sweeps every unused image, not just one named target.
+    execute:
+      command: docker image prune
+      expect: ask
+  - id: tc-074
+    category: trigger
+    prompt: A request tears down the whole environment with terraform destroy.
+    expect: The guard refuses terraform destroy without approval.
+    execute:
+      command: terraform destroy -auto-approve
+      expect: block
+  - id: tc-075
+    category: trigger
+    prompt: A request recursively removes an entire S3 bucket's contents.
+    expect: The guard refuses aws s3 rm --recursive without approval.
+    execute:
+      command: aws s3 rm s3://bucket --recursive
+      expect: block
+  - id: tc-076
+    category: trigger
+    prompt: A request uninstalls a Helm release.
+    expect: The guard refuses helm uninstall without approval; it removes every resource in the release.
+    execute:
+      command: helm uninstall api
+      expect: block
+  - id: tc-077
+    category: trigger
+    prompt: A request force-removes an S3 bucket with aws s3 rb --force.
+    expect: The guard refuses aws s3 rb --force; it deletes the bucket and everything in it.
+    execute:
+      command: aws s3 rb s3://staging-artifacts --force
+      expect: block
+  - id: tc-078
+    category: trigger
+    prompt: A request deletes a cloud resource with gcloud.
+    expect: The guard refuses any gcloud invocation carrying a delete token without approval.
+    execute:
+      command: gcloud compute instances delete my-vm
+      expect: block

@@ -1,6 +1,6 @@
 id: rtk-dangerous-actions-blocker
 name: "rtk Dangerous Actions Blocker"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Carved out for rtk-ai/rtk#1007: rtk's own decision table as a chock policy (rtk's own hooks
   may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and '+' refspecs (not --force-with-lease); reads of
@@ -53,6 +53,19 @@ tags:
 - requested-by:rtk-ai/rtk#1007
 
 changelog:
+- version: 0.0.2
+  date: '2026-09-24'
+  changes:
+  - "Bug fix: pos_after (used to read the docker/aws/helm action slot) returned failure when
+    its target word was never a positional -- reachable whenever that word only appears as
+    the VALUE of an earlier value-flag (e.g. `aws --profile s3 sts get-caller-identity`,
+    profile literally named \"s3\"). Every caller assigns its output directly and only
+    compares the string, but the unguarded assignment's failing exit code aborted the whole
+    script under `set -eu`, silently blocking an unrelated command with no message.
+    pos_after now always succeeds (empty output when not found), matching how every caller
+    already treats it. Eval cases added covering a credential-path read under .ssh/, the
+    pos_after regression (now allowed), docker image prune (ask), terraform destroy,
+    aws s3 rm --recursive, helm uninstall, aws s3 rb --force, and gcloud ... delete."
 - version: 0.0.1
   date: '2026-09-13'
   changes:

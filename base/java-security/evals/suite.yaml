@@ -8,12 +8,15 @@ suite:
     pass_rate:
       direction: higher_is_better
       threshold: 1.0
-  # 25 of the 33 cases carry the staged-files form `chock check --only evals` replays against the
-  # compiled script gate in a throwaway repository, `.chock/security.json` included where the case is
-  # about one. tools/check_java_security.py drives the same gate over its stdin protocol besides. The
-  # eight without an executable form: tc-025 is about the index versus the working tree, which the
-  # gate never sees (it is handed the staged blobs); tc-027/tc-028 are prompts an agent answers; and
-  # tc-029 to tc-033 are the guided-setup procedure, which the agent performs and no gate judges.
+  # 76 of the 84 cases carry the staged-files form. `chock check --only evals` does not replay a
+  # script gate on this engine, so tests/java_security/test_evals.py replays every one of them through the
+  # shipped gate, in a throwaway repository, `.chock/security.json` included where the case is about
+  # one -- CI fails on any case whose block or allow the gate does not reproduce. The eight without
+  # an executable form: tc-025 is about the index versus the working tree, which the gate never
+  # sees (it is handed the staged blobs); tc-027/tc-028 are prompts an agent answers; and tc-029 to
+  # tc-033 are the guided-setup procedure, which the agent performs and no gate judges. tc-034 on
+  # are the packs' own cases, in registry order: java, crypto, spring, jakarta, persistence,
+  # templates, logging, build, android.
   # The negative_trigger cases matter as much as the triggers: a rule that fires on correct Java is
   # the failure this policy exists to avoid.
   cases:
@@ -410,3 +413,909 @@ suite:
     prompt: The person asks to add a regex for their own SQL helper to .chock/security.json.
     expect: The agent declines to write a pattern into the selection file -- it carries verdicts only -- and
       points to a new rule in the engine as the place a pattern belongs.
+  - id: tc-034
+    category: trigger
+    prompt: A controller runs Runtime.getRuntime().exec() with a command string built from a @RequestParam.
+    expect: The commit is refused. The caller chooses what the shell runs; the agent passes a fixed executable with
+      each argument as its own array element.
+    execute:
+      files:
+        C.java: |
+          public class C {
+            @PostMapping("/run")
+            public void run(@RequestParam String cmd) throws Exception {
+              Runtime.getRuntime().exec(cmd);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-035
+    category: negative_trigger
+    prompt: A controller runs Runtime.getRuntime().exec() with a constant command and an argument array of constants.
+    expect: The commit proceeds silently. Nothing from the request reaches the call.
+    execute:
+      files:
+        C.java: |
+          public class C {
+            @PostMapping("/run")
+            public void run(@RequestParam String cmd) throws Exception {
+              Runtime.getRuntime().exec(new String[]{"sh", "-c", "ls -la"});
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-036
+    category: trigger
+    prompt: A DocumentBuilderFactory is built with DocumentBuilderFactory.newInstance() and nothing in the file ever
+      hardens it against external entities.
+    expect: The commit is refused. A document's own DOCTYPE can pull in external entities; the agent disables DOCTYPE
+      declarations or sets XMLConstants.ACCESS_EXTERNAL_DTD to the empty string.
+    execute:
+      files:
+        X.java: |
+          public class X {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+          }
+      event: commit
+      expect: block
+  - id: tc-037
+    category: negative_trigger
+    prompt: A DocumentBuilderFactory is built, and the same file also disables DOCTYPE declarations.
+    expect: The commit proceeds silently. The file hardens the factory it builds.
+    execute:
+      files:
+        X.java: |
+          public class X {
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+          }
+      event: commit
+      expect: allow
+  - id: tc-038
+    category: trigger
+    prompt: A zip extractor builds the output file from new File(dest, entry.getName()) and never checks the resolved
+      path stays inside the destination directory.
+    expect: The commit is refused. An entry named '../../etc/passwd' writes outside the directory meant for extraction;
+      the agent normalizes the result and checks it still starts with the destination.
+    execute:
+      files:
+        Z.java: |
+          public class Z {
+            public void extract(ZipInputStream zis, File dest) throws Exception {
+              ZipEntry entry = zis.getNextEntry();
+              File out = new File(dest, entry.getName());
+              write(out);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-039
+    category: negative_trigger
+    prompt: A zip extractor builds the output file from entry.getName(), then normalizes the result and checks it
+      starts with the destination directory before writing.
+    expect: The commit proceeds silently. The method checks the resolved path before it is used.
+    execute:
+      files:
+        Z.java: |
+          public class Z {
+            public void extract(ZipInputStream zis, File dest) throws Exception {
+              ZipEntry entry = zis.getNextEntry();
+              File out = new File(dest, entry.getName());
+              String canon = dest.toPath().normalize().toString();
+              if (!out.toPath().normalize().startsWith(canon)) throw new IOException("bad entry");
+              write(out);
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-040
+    category: trigger
+    prompt: A Cipher is built with Cipher.getInstance("DES/CBC/PKCS5Padding").
+    expect: The commit is refused. DES is broken; the agent uses AES/GCM/NoPadding with a fresh SecureRandom nonce.
+    execute:
+      files:
+        Crypto.java: |
+          Cipher c = Cipher.getInstance("DES/CBC/PKCS5Padding");
+      event: commit
+      expect: block
+  - id: tc-041
+    category: negative_trigger
+    prompt: A Cipher is built with Cipher.getInstance("AES/GCM/NoPadding").
+    expect: The commit proceeds silently. This is the recommended transform.
+    execute:
+      files:
+        Crypto.java: |
+          Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+      event: commit
+      expect: allow
+  - id: tc-042
+    category: trigger
+    prompt: A password is hashed with MessageDigest.getInstance("MD5").
+    expect: The commit is refused. MD5 is a fast general-purpose digest, not a password hash; the agent uses BCrypt/Argon2/PBKDF2/SCrypt.
+    execute:
+      files:
+        Auth.java: |
+          public byte[] hashPassword(String password) throws Exception {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            return md.digest(password.getBytes());
+          }
+      event: commit
+      expect: block
+  - id: tc-043
+    category: negative_trigger
+    prompt: A response body is checksummed with DigestUtils.md5Hex, and a real password hasher (BCrypt) is used elsewhere.
+    expect: The commit proceeds silently. No password is involved in the MD5 call, and BCrypt is the correct tool
+      for the other.
+    execute:
+      files:
+        Cache.java: |
+          String etag = DigestUtils.md5Hex(responseBody);
+        Auth.java: |
+          String hash = BCrypt.hashpw(password, BCrypt.gensalt());
+      event: commit
+      expect: allow
+  - id: tc-044
+    category: trigger
+    prompt: A trust manager's checkServerTrusted and checkClientTrusted methods have empty bodies.
+    expect: The commit is refused. An empty trust check accepts every certificate for every host.
+    execute:
+      files:
+        TrustAll.java: |
+          class TrustAll implements X509TrustManager {
+            public void checkServerTrusted(X509Certificate[] c, String a) {
+            }
+            public void checkClientTrusted(X509Certificate[] c, String a) {}
+            public X509Certificate[] getAcceptedIssuers() { return null; }
+          }
+      event: commit
+      expect: block
+  - id: tc-045
+    category: trigger
+    prompt: A token is generated with new Random().nextInt() rather than SecureRandom.
+    expect: The commit is refused. java.util.Random is predictable and reconstructible; the agent uses SecureRandom
+      for a token.
+    execute:
+      files:
+        Tokens.java: |
+          String token = new Random().nextInt() + "";
+      event: commit
+      expect: block
+  - id: tc-046
+    category: negative_trigger
+    prompt: new Random() is used to shuffle a deck of cards for a game.
+    expect: The commit proceeds silently. Shuffling a game deck does not need to resist prediction.
+    execute:
+      files:
+        Game.java: |
+          Collections.shuffle(deck, new Random());
+      event: commit
+      expect: allow
+  - id: tc-047
+    category: trigger
+    prompt: A Spring Security filter chain disables CSRF with http.csrf(AbstractHttpConfigurer::disable).
+    expect: The commit is refused. This turns off CSRF for every request the chain covers; the agent scopes it with
+      ignoringRequestMatchers to the specific paths that need it, or waives it with a justification if the API is
+      genuinely stateless.
+    execute:
+      files:
+        SecurityConfig.java: |
+          import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+          import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+
+          public class SecurityConfig {
+            public void configure(HttpSecurity http) throws Exception {
+              http.csrf(AbstractHttpConfigurer::disable);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-048
+    category: negative_trigger
+    prompt: A Spring Security filter chain scopes csrf().ignoringRequestMatchers to a webhook path, leaving CSRF protection
+      on everywhere else.
+    expect: The commit proceeds silently. CSRF stays enabled for the app; only a signature-verified webhook endpoint
+      is exempted.
+    execute:
+      files:
+        SecurityConfig.java: |
+          import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+          public class SecurityConfig {
+            public void configure(HttpSecurity http) throws Exception {
+              http.csrf(csrf -> csrf.ignoringRequestMatchers("/webhooks/stripe"));
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-049
+    category: trigger
+    prompt: A Spring Security authorization chain matches anyRequest().permitAll(), removing authorization from the
+      whole application.
+    expect: The commit is refused. The agent matches specific public paths instead, such as requestMatchers("/public/**").permitAll(),
+      and requires authentication for anyRequest().
+    execute:
+      files:
+        SecurityConfig.java: |
+          import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+          public class SecurityConfig {
+            public void configure(HttpSecurity http) throws Exception {
+              http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-050
+    category: negative_trigger
+    prompt: A Spring Security authorization chain permits only a named public path, requestMatchers("/public/**").permitAll(),
+      and requires authentication for everything else.
+    expect: The commit proceeds silently. A specific public path is common and correct.
+    execute:
+      files:
+        SecurityConfig.java: |
+          import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+          public class SecurityConfig {
+            public void configure(HttpSecurity http) throws Exception {
+              http.authorizeHttpRequests(auth -> auth
+                  .requestMatchers("/public/**").permitAll()
+                  .anyRequest().authenticated());
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-051
+    category: trigger
+    prompt: application.properties sets spring.datasource.password to a plain literal value.
+    expect: The commit is refused. The agent references the password from an environment variable (${DB_PASSWORD})
+      or a config-server value encrypted with {cipher}, instead of a literal.
+    execute:
+      files:
+        application.properties: |
+          spring.datasource.url=jdbc:postgresql://db:5432/app
+          spring.datasource.username=app
+          spring.datasource.password=hunter2
+      event: commit
+      expect: block
+  - id: tc-052
+    category: trigger
+    prompt: A Spring Security UserDetailsService is configured with NoOpPasswordEncoder, which stores and compares
+      passwords as plaintext.
+    expect: The commit is refused. The agent uses BCryptPasswordEncoder, Argon2PasswordEncoder or Pbkdf2PasswordEncoder
+      instead, so a stolen password store is not immediately readable.
+    execute:
+      files:
+        UserConfig.java: |
+          import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+          import org.springframework.security.crypto.password.PasswordEncoder;
+
+          public class UserConfig {
+            public PasswordEncoder passwordEncoder() {
+              return NoOpPasswordEncoder.getInstance();
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-053
+    category: trigger
+    prompt: A JAX-RS resource redirects to a `next` query parameter with response.sendRedirect(next), with no allowlist
+      check.
+    expect: The commit is refused. The caller chooses where the browser goes next, which is an open redirect; the
+      agent checks the target against a fixed allowlist or path first.
+    execute:
+      files:
+        Redirect.java: |
+          import jakarta.ws.rs.QueryParam;
+          public class Redirect {
+            public void go(@QueryParam("next") String next, HttpServletResponse response) throws Exception {
+              response.sendRedirect(next);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-054
+    category: negative_trigger
+    prompt: The same handler checks the target against an allowlist before redirecting, on the same line as the sendRedirect
+      call.
+    expect: The commit proceeds silently; the allowlist check is the fix this rule asks for.
+    execute:
+      files:
+        Redirect.java: |
+          import jakarta.ws.rs.QueryParam;
+          public class Redirect {
+            public void go(@QueryParam("next") String next, HttpServletResponse response) throws Exception {
+              response.sendRedirect(allowlist.contains(next) ? next : "/home");
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-055
+    category: trigger
+    prompt: A servlet forwards to request.getRequestDispatcher(page) where page is a @PathParam, letting the caller
+      name any internal resource including files under WEB-INF.
+    expect: The commit is refused. The agent maps the request to a fixed path with a lookup table instead of forwarding
+      to the raw value.
+    execute:
+      files:
+        Forward.java: |
+          import jakarta.servlet.http.HttpServletRequest;
+          public class Forward {
+            public void go(@PathParam("page") String page, HttpServletRequest request) throws Exception {
+              request.getRequestDispatcher(page).forward(request, response);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-056
+    category: trigger
+    prompt: A servlet filter sets Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin to "*"
+      in the same file.
+    expect: The commit is refused. A wildcard origin with credentials is refused by every browser, so the agent names
+      the origins that may send credentials instead.
+    execute:
+      files:
+        CorsFilter.java: |
+          import jakarta.servlet.Filter;
+          public class CorsFilter implements Filter {
+            public void doFilter() {
+              response.setHeader("Access-Control-Allow-Credentials", "true");
+              response.setHeader("Access-Control-Allow-Origin", "*");
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-057
+    category: negative_trigger
+    prompt: A Spring MVC controller sets Access-Control-Allow-Credentials and a wildcard origin the same way -- this
+      pack does not own Spring code.
+    expect: The commit proceeds silently here; Spring's own pack judges Spring's CORS configuration.
+    execute:
+      files:
+        CorsFilter.java: |
+          import org.springframework.web.bind.annotation.RestController;
+          public class CorsFilter {
+            public void doFilter() {
+              response.setHeader("Access-Control-Allow-Credentials", "true");
+              response.setHeader("Access-Control-Allow-Origin", "*");
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-058
+    category: trigger
+    prompt: A struts.xml turns on struts.devMode, or a Struts action evaluates ActionContext.getContext().getValueStack().findValue(expr)
+      where expr is a request parameter.
+    expect: The commit is refused. Dev mode and an OGNL expression built from the request each let an attacker reach
+      static methods through the value stack.
+    execute:
+      files:
+        struts.xml: |
+          <!DOCTYPE struts PUBLIC "-//Apache Software Foundation//DTD Struts Configuration 2.5//EN"
+            "http://struts.apache.org/dtds/struts-2.5.dtd">
+          <struts>
+            <constant name="struts.devMode" value="true" />
+          </struts>
+      event: commit
+      expect: block
+  - id: tc-059
+    category: trigger
+    prompt: A JdbcTemplate query is built by joining a request-derived name into the SQL text with +.
+    expect: The commit is refused. The joined value controls the statement; the agent binds it with a placeholder.
+    execute:
+      files:
+        UserDao.java: |
+          import org.springframework.jdbc.core.JdbcTemplate;
+          public class UserDao {
+            public void run(JdbcTemplate jdbc, String name) {
+              jdbc.query("SELECT * FROM users WHERE name = '" + name + "'", mapper);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-060
+    category: negative_trigger
+    prompt: A JDBC PreparedStatement binds its value with a ? placeholder instead of joining it into the SQL text.
+    expect: The commit proceeds silently. A bind parameter carries the value; the text itself never changes.
+    execute:
+      files:
+        UserDao.java: |
+          import java.sql.Connection;
+          public class UserDao {
+            public void run(Connection conn) throws Exception {
+              conn.prepareStatement("SELECT * FROM users WHERE name = ?");
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-061
+    category: trigger
+    prompt: A JDBC URL sets autoDeserialize=true, letting the server hand the driver a serialized object to deserialize.
+    expect: The commit is refused. The flag must be removed regardless of which host the URL points at.
+    execute:
+      files:
+        Db.java: |
+          String url = "jdbc:mysql://db.example.com:3306/app?autoDeserialize=true";
+      event: commit
+      expect: block
+  - id: tc-062
+    category: trigger
+    prompt: application.properties sets spring.jpa.hibernate.ddl-auto=create in the main configuration.
+    expect: The commit is refused. Hibernate would rewrite the schema itself on deploy; the agent uses validate/none
+      and a migration tool.
+    execute:
+      files:
+        application.properties: |
+          spring.jpa.hibernate.ddl-auto=create
+      event: commit
+      expect: block
+  - id: tc-063
+    category: negative_trigger
+    prompt: The same ddl-auto=create setting appears only in an application-dev.properties profile, and a MongoDB
+      document is parsed from a fixed, literal JSON string.
+    expect: The commit proceeds silently. A dev-only profile is not the deploy configuration, and a fixed literal
+      carries no attacker-controlled operators.
+    execute:
+      files:
+        application-dev.properties: |
+          spring.jpa.hibernate.ddl-auto=create
+        M.java: |
+          import org.bson.Document;
+          public class M {
+            public void run() {
+              Document d = Document.parse("{ 'active': true }");
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-064
+    category: trigger
+    prompt: A Thymeleaf page writes a bio with the inlined unescaped syntax [(${bio})].
+    expect: The commit is refused; the agent uses the escaped inline syntax [[${bio}]] instead.
+    execute:
+      files:
+        p.html: |
+          <p>[(${bio})]</p>
+      event: commit
+      expect: block
+  - id: tc-065
+    category: negative_trigger
+    prompt: The same page uses the escaped inline syntax [[${bio}]].
+    expect: The commit proceeds silently. The escaped form is the safe sibling.
+    execute:
+      files:
+        p.html: |
+          <p>[[${bio}]]</p>
+      event: commit
+      expect: allow
+  - id: tc-066
+    category: trigger
+    prompt: A FreeMarker template is compiled at request time with new Template(name, requestBody, cfg), where requestBody
+      is a @RequestParam.
+    expect: The commit is refused. Compiling request data as a template lets the caller write template syntax that
+      runs on the server.
+    execute:
+      files:
+        Preview.java: |
+          import freemarker.template.Template;
+          public class Preview {
+            public String preview(@RequestParam String body) throws Exception {
+              Template t = new Template("preview", body, cfg);
+              return render(t);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-067
+    category: trigger
+    prompt: A FreeMarker configuration calls setNewBuiltinClassResolver(TemplateClassResolver.UNRESTRICTED_RESOLVER).
+    expect: The commit is refused. An unrestricted resolver lets ?new reach any class on the classpath from template
+      text.
+    execute:
+      files:
+        Config.java: |
+          cfg.setNewBuiltinClassResolver(TemplateClassResolver.UNRESTRICTED_RESOLVER);
+      event: commit
+      expect: block
+  - id: tc-068
+    category: negative_trigger
+    prompt: A JSP includes a fixed, constant fragment path, and a FreeMarker configuration uses SAFER_RESOLVER.
+    expect: The commit proceeds silently. Neither the include path nor the resolver is attacker-influenced.
+    execute:
+      files:
+        p.jsp: |
+          <jsp:include page="/WEB-INF/header.jsp"/>
+        Config.java: |
+          cfg.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
+      event: commit
+      expect: allow
+  - id: tc-069
+    category: trigger
+    prompt: A log4j2.properties file sets log4j2.formatMsgNoLookups=false.
+    expect: The commit is refused. This re-opens the message-lookup path Log4Shell used; the agent removes the setting.
+    execute:
+      files:
+        log4j2.properties: |
+          log4j2.formatMsgNoLookups=false
+      event: commit
+      expect: block
+  - id: tc-070
+    category: negative_trigger
+    prompt: A log4j2.xml pattern layout uses a plain %d %m%n pattern with no lookups token.
+    expect: The commit proceeds silently. Nothing here reopens message lookups.
+    execute:
+      files:
+        log4j2.xml: |
+          <PatternLayout pattern="%d %m%n"/>
+      event: commit
+      expect: allow
+  - id: tc-071
+    category: trigger
+    prompt: A login handler logs the user's password directly, log.info("login attempt for user {} with password {}",
+      user, password).
+    expect: The commit is refused. The password itself lands in the log; the agent logs an identifier or masks the
+      value.
+    execute:
+      files:
+        Login.java: |
+          log.info("login attempt for user {} with password {}", user, password);
+      event: commit
+      expect: block
+  - id: tc-072
+    category: negative_trigger
+    prompt: A handler logs that a password reset was requested, naming only the user id, log.info("password reset
+      requested for {}", userId).
+    expect: The commit proceeds silently. The word password only appears in the message text, and the value logged
+      is just an id.
+    execute:
+      files:
+        Reset.java: |
+          log.info("password reset requested for {}", userId);
+      event: commit
+      expect: allow
+  - id: tc-073
+    category: trigger
+    prompt: An error handler writes the exception's stack trace straight into the HTTP response, e.printStackTrace(response.getWriter()).
+    expect: The commit is refused. This discloses package layout and library versions to the caller; the agent logs
+      server-side and returns a generic error.
+    execute:
+      files:
+        ErrorHandler.java: |
+          e.printStackTrace(response.getWriter());
+      event: commit
+      expect: block
+  - id: tc-074
+    category: negative_trigger
+    prompt: An error handler logs the exception server-side and returns a fixed error message with a correlation id.
+    expect: The commit proceeds silently. The exception never reaches the response body.
+    execute:
+      files:
+        ErrorHandler.java: |
+          log.error("request failed", e);
+          return ResponseEntity.status(500).body("Internal error, ref " + correlationId);
+      event: commit
+      expect: allow
+  - id: tc-075
+    category: trigger
+    prompt: A pom.xml declares org.apache.logging.log4j:log4j-core at version 2.14.1.
+    expect: The commit is refused. 2.14.1 is affected by Log4Shell; the agent raises the version to 2.17.1 or later.
+    execute:
+      files:
+        pom.xml: |
+          <project>
+            <dependencies>
+              <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>2.14.1</version>
+              </dependency>
+            </dependencies>
+          </project>
+      event: commit
+      expect: block
+  - id: tc-076
+    category: negative_trigger
+    prompt: The same pom.xml declares log4j-core at version 2.17.1, the fixed release.
+    expect: The commit proceeds silently; 2.17.1 is at the version that fixed Log4Shell.
+    execute:
+      files:
+        pom.xml: |
+          <project>
+            <dependencies>
+              <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>2.17.1</version>
+              </dependency>
+            </dependencies>
+          </project>
+      event: commit
+      expect: allow
+  - id: tc-077
+    category: trigger
+    prompt: A Gradle build script adds a Maven repository over plain HTTP, url "http://repo.example.com/maven2".
+    expect: The commit is refused. A network attacker on that path can substitute the artifact; the agent changes
+      the scheme to https://.
+    execute:
+      files:
+        build.gradle: |
+          repositories {
+              maven {
+                  url "http://repo.example.com/maven2"
+              }
+          }
+      event: commit
+      expect: block
+  - id: tc-078
+    category: negative_trigger
+    prompt: The same repository block instead points at a loopback Nexus instance, url "http://localhost:8081/repository/internal".
+    expect: The commit proceeds silently; a loopback URL never leaves the machine that built it.
+    execute:
+      files:
+        build.gradle: |
+          repositories {
+              maven {
+                  url "http://localhost:8081/repository/internal"
+              }
+          }
+      event: commit
+      expect: allow
+  - id: tc-079
+    category: trigger
+    prompt: A build.gradle.kts pins a dependency to a floating version, "com.squareup.okhttp3:okhttp:4.+".
+    expect: The commit is refused. The version is not pinned, so a compromised release under that alias reaches the
+      build automatically; the agent names an exact version.
+    execute:
+      files:
+        build.gradle.kts: |
+          dependencies {
+              implementation("com.squareup.okhttp3:okhttp:4.+")
+          }
+      event: commit
+      expect: block
+  - id: tc-080
+    category: trigger
+    prompt: A WebView enables JavaScript with setJavaScriptEnabled(true) and then calls addJavascriptInterface(new
+      JsBridge(), "Android").
+    expect: The commit is refused. Any page the WebView loads gets reflective access to the bridged object; the agent
+      removes the bridge or scopes it with @JavascriptInterface and validated input.
+    execute:
+      files:
+        MainActivity.java: |
+          webView.getSettings().setJavaScriptEnabled(true);
+          webView.addJavascriptInterface(new JsBridge(), "Android");
+      event: commit
+      expect: block
+  - id: tc-081
+    category: negative_trigger
+    prompt: The same WebView never enables JavaScript, so the bridge call has no reflective access to give away.
+    expect: The commit proceeds silently; the file never turns JavaScript on.
+    execute:
+      files:
+        MainActivity.java: |
+          webView.addJavascriptInterface(new JsBridge(), "Android");
+      event: commit
+      expect: allow
+  - id: tc-082
+    category: trigger
+    prompt: A WebViewClient overrides onReceivedSslError and calls handler.proceed() unconditionally.
+    expect: The commit is refused. Every certificate error is accepted, so TLS no longer protects this WebView; the
+      agent calls handler.cancel() instead.
+    execute:
+      files:
+        InsecureClient.java: |
+          public class InsecureClient extends WebViewClient {
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+              handler.proceed();
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-083
+    category: trigger
+    prompt: An AndroidManifest.xml declares android:usesCleartextTraffic="true" on the application element.
+    expect: The commit is refused. Plain HTTP is allowed to any host with no per-domain override; the agent removes
+      the attribute or scopes it with a network security config.
+    execute:
+      files:
+        AndroidManifest.xml: |
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application android:usesCleartextTraffic="true">
+            </application>
+          </manifest>
+      event: commit
+      expect: block
+  - id: tc-084
+    category: negative_trigger
+    prompt: An AndroidManifest.xml exports an activity that is also the launcher, with a MAIN/LAUNCHER intent-filter
+      and no android:permission.
+    expect: The commit proceeds silently; the launcher activity's own intent-filter is what the system uses to reach
+      it, and needs no permission.
+    execute:
+      files:
+        AndroidManifest.xml: |
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <application>
+              <activity android:name=".MainActivity" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN" />
+                  <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+      event: commit
+      expect: allow
+  - id: tc-085
+    category: trigger
+    prompt: A controller writes a request parameter straight into the servlet response writer.
+    expect: The commit is refused (java-xss-writer, CWE-79); the agent encodes the value for HTML or renders it
+      through an escaping template.
+    execute:
+      files:
+        GreetController.java: |
+          public class GreetController {
+            @GetMapping("/greet")
+            public void greet(@RequestParam String name, HttpServletResponse response) throws IOException {
+              response.getWriter().write("<p>Hello " + name + "</p>");
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-086
+    category: trigger
+    prompt: A service compares a status string with == against a literal.
+    expect: The commit is refused (bugs-string-identity-comparison, CWE-597); the agent uses equals, which compares
+      the characters rather than the object identity.
+    execute:
+      files:
+        OrderStatus.java: |
+          public class OrderStatus {
+            boolean shipped(String status) {
+              return status == "SHIPPED";
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-087
+    category: negative_trigger
+    prompt: The same service compares the status with "SHIPPED".equals(status).
+    expect: The commit proceeds silently; equals on the literal is the correct, null-safe comparison.
+    execute:
+      files:
+        OrderStatus.java: |
+          public class OrderStatus {
+            boolean shipped(String status) {
+              return "SHIPPED".equals(status);
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-088
+    category: trigger
+    prompt: A formatter holds a SimpleDateFormat in a static field shared by every request thread.
+    expect: The commit is refused (concurrency-static-date-format, CWE-567); SimpleDateFormat is not thread-safe,
+      and the agent uses a static DateTimeFormatter instead.
+    execute:
+      files:
+        Dates.java: |
+          public class Dates {
+            private static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+          }
+      event: commit
+      expect: block
+  - id: tc-089
+    category: trigger
+    prompt: A method opens a FileInputStream into a local, reads it, and never closes it.
+    expect: The commit is refused (resources-unclosed-closeable, CWE-772); the agent opens it in try-with-resources.
+    execute:
+      files:
+        Loader.java: |
+          public class Loader {
+            byte[] load(File file) throws IOException {
+              FileInputStream in = new FileInputStream(file);
+              return in.readAllBytes();
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-090
+    category: negative_trigger
+    prompt: The same method opens the stream in try-with-resources.
+    expect: The commit proceeds silently; the stream is closed on every path.
+    execute:
+      files:
+        Loader.java: |
+          public class Loader {
+            byte[] load(File file) throws IOException {
+              try (FileInputStream in = new FileInputStream(file)) {
+                return in.readAllBytes();
+              }
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-091
+    category: trigger
+    prompt: A catch block swallows an exception with nothing in it.
+    expect: The commit is refused (exceptions-empty-catch, CWE-1071); the agent handles, logs or rethrows it, or
+      says in a comment why nothing is done.
+    execute:
+      files:
+        Sync.java: |
+          public class Sync {
+            void run() {
+              try {
+                push();
+              } catch (IOException e) {
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-092
+    category: trigger
+    prompt: A loop builds a report by appending to a String with +=.
+    expect: The commit is refused (performance-string-concat-loop); every += copies the whole string, and the agent
+      uses a StringBuilder.
+    execute:
+      files:
+        Report.java: |
+          public class Report {
+            String render(List<String> rows) {
+              String out = "";
+              for (String row : rows) {
+                out += row + "\n";
+              }
+              return out;
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-093
+    category: trigger
+    prompt: Production code prints a diagnostic with System.out.println.
+    expect: The commit is refused (style-system-out-println); the agent logs through the application's logger.
+    execute:
+      files:
+        src/main/java/com/acme/Importer.java: |
+          public class Importer {
+            void run(int rows) {
+              System.out.println("imported " + rows);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-094
+    category: trigger
+    prompt: A JUnit test calls the service and asserts nothing.
+    expect: The commit is refused (testing-no-assertion); a test that cannot fail proves nothing, and the agent adds
+      an assertion on the result.
+    execute:
+      files:
+        src/test/java/com/acme/ImporterTest.java: |
+          class ImporterTest {
+            @Test
+            void imports() {
+              new Importer().run(3);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-095
+    category: negative_trigger
+    prompt: The test asserts on the result with AssertJ.
+    expect: The commit proceeds silently.
+    execute:
+      files:
+        src/test/java/com/acme/ImporterTest.java: |
+          class ImporterTest {
+            @Test
+            void imports() {
+              assertThat(new Importer().count(3)).isEqualTo(3);
+            }
+          }
+      event: commit
+      expect: allow

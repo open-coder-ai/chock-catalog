@@ -1,44 +1,4 @@
 {
-  "mybatis": {
-    "mapper_markers": [
-      "//mybatis.org//DTD Mapper",
-      "<mapper namespace="
-    ],
-    "annotation_import": "org.apache.ibatis",
-    "interpolation": "${",
-    "bound_parameter": "#{}"
-  },
-  "unescaped_output": {
-    ".html": [
-      "th:utext"
-    ],
-    ".xhtml": [
-      "th:utext"
-    ],
-    ".jsp": [
-      "<%=",
-      "escapeXml=\"false\"",
-      "escapeXml='false'"
-    ],
-    ".jspx": [
-      "<%=",
-      "escapeXml=\"false\"",
-      "escapeXml='false'"
-    ],
-    ".tag": [
-      "<%=",
-      "escapeXml=\"false\"",
-      "escapeXml='false'"
-    ],
-    ".ftl": [
-      "?no_esc",
-      "<#noescape>"
-    ],
-    ".ftlh": [
-      "?no_esc",
-      "<#noescape>"
-    ]
-  },
   "deserialization": {
     "jackson_default_typing": [
       "enableDefaultTyping",
@@ -52,31 +12,6 @@
       "addPermission",
       "setupDefaultSecurity"
     ]
-  },
-  "cors": {
-    "origin_setters": [
-      "setAllowedOrigins",
-      "addAllowedOrigin",
-      "allowedOrigins",
-      "origins"
-    ],
-    "pattern_forms": [
-      "OriginPattern",
-      "originPattern"
-    ],
-    "wildcard": "\"*\"",
-    "credentials": [
-      "setAllowCredentials(true)",
-      ".allowCredentials(true)",
-      "allowCredentials = \"true\"",
-      "allowCredentials=\"true\""
-    ]
-  },
-  "actuator": {
-    "exposure_marker": "exposure",
-    "properties_key": "exposure.include",
-    "yaml_key": "include:",
-    "wildcard": "*"
   },
   "jwt": {
     "unverified_calls": [
@@ -151,6 +86,231 @@
     ],
     "stream_sinks": [
       "new ObjectInputStream("
+    ],
+    "scalar_types": [
+      "byte",
+      "short",
+      "int",
+      "long",
+      "float",
+      "double",
+      "boolean",
+      "char",
+      "Byte",
+      "Short",
+      "Integer",
+      "Long",
+      "Float",
+      "Double",
+      "Boolean",
+      "BigDecimal",
+      "BigInteger",
+      "UUID",
+      "LocalDate",
+      "LocalDateTime",
+      "LocalTime",
+      "Instant",
+      "OffsetDateTime",
+      "ZonedDateTime",
+      "Year",
+      "YearMonth",
+      "Duration"
+    ]
+  },
+  "command": {
+    "sinks": [
+      "Runtime.getRuntime().exec(",
+      "new ProcessBuilder(",
+      ".command("
+    ]
+  },
+  "code_injection": {
+    "imports": [
+      "javax.script.",
+      "jdk.nashorn.",
+      "groovy.lang.GroovyShell",
+      "ognl.Ognl",
+      "org.mvel2.MVEL",
+      "javax.el.ExpressionFactory",
+      "jakarta.el.ExpressionFactory",
+      "javax.el.ELProcessor",
+      "jakarta.el.ELProcessor",
+      "jdk.jshell.JShell"
+    ],
+    "sinks": [
+      ".eval(",
+      ".evaluate(",
+      "Ognl.getValue(",
+      "Ognl.parseExpression(",
+      "MVEL.eval(",
+      "MVEL.compileExpression(",
+      "ExpressionFactory.createValueExpression(",
+      "ExpressionFactory.createMethodExpression("
+    ]
+  },
+  "reflection": {
+    "sinks": [
+      "Class.forName(",
+      ".loadClass(",
+      ".getMethod("
+    ]
+  },
+  "xxe": {
+    "factories": [
+      "DocumentBuilderFactory.newInstance(",
+      "SAXParserFactory.newInstance(",
+      "XMLInputFactory.newInstance(",
+      "TransformerFactory.newInstance(",
+      "SchemaFactory.newInstance(",
+      "XMLReaderFactory.createXMLReader(",
+      "new SAXReader(",
+      "new SAXBuilder(",
+      "XMLInputFactory.newFactory(",
+      "XMLInputFactory.newDefaultFactory(",
+      "DocumentBuilderFactory.newDefaultInstance(",
+      "SAXParserFactory.newDefaultInstance(",
+      "TransformerFactory.newDefaultInstance(",
+      "SchemaFactory.newDefaultInstance("
+    ],
+    "hardening": [
+      "disallow-doctype-decl",
+      "external-general-entities",
+      "XMLConstants.ACCESS_EXTERNAL_DTD",
+      "XMLConstants.ACCESS_EXTERNAL_SCHEMA",
+      "FEATURE_SECURE_PROCESSING",
+      "XMLInputFactory.SUPPORT_DTD",
+      "IS_SUPPORTING_EXTERNAL_ENTITIES"
+    ]
+  },
+  "xml_decoder": {
+    "xmldecoder_construction": "new XMLDecoder(",
+    "snakeyaml_import": "org.yaml.snakeyaml",
+    "snakeyaml_load": ".load(",
+    "unsafe_constructor_calls": [
+      "new UnsafeConstructor",
+      "new Yaml(new Constructor("
+    ]
+  },
+  "ssrf": {
+    "sinks": [
+      "new URL(",
+      "URI.create(",
+      "new URI(",
+      "HttpRequest.newBuilder(",
+      ".uri(",
+      "restTemplate.getForObject(",
+      ".getForObject(",
+      ".getForEntity(",
+      ".exchange(",
+      "new HttpGet(",
+      "new HttpPost(",
+      ".url(",
+      "Jsoup.connect("
+    ]
+  },
+  "zip_slip": {
+    "markers": [
+      "ZipEntry",
+      "JarEntry",
+      "TarArchiveEntry",
+      "ZipInputStream",
+      "ZipFile",
+      "ZipArchiveEntry",
+      "JarInputStream"
+    ],
+    "path_calls": [
+      "new File(",
+      "Paths.get(",
+      ".resolve("
+    ],
+    "hardening": [
+      ".toRealPath(",
+      ".normalize()"
+    ],
+    "startswith_check": ".startsWith("
+  },
+  "ldap": {
+    "imports": [
+      "javax.naming.directory",
+      "org.springframework.ldap"
+    ],
+    "sinks": [
+      ".search("
+    ],
+    "sanitizers": [
+      "LdapEncoder",
+      ".is("
+    ]
+  },
+  "xpath": {
+    "imports": [
+      "javax.xml.xpath"
+    ],
+    "sinks": [
+      ".compile(",
+      ".evaluate("
+    ],
+    "sanitizers": [
+      "XPathVariableResolver",
+      "setXPathVariableResolver("
+    ]
+  },
+  "header_injection": {
+    "sinks": [
+      "response.setHeader(",
+      "response.addHeader(",
+      "resp.setHeader(",
+      "resp.addHeader(",
+      "httpResponse.setHeader(",
+      "httpResponse.addHeader(",
+      "new Cookie("
+    ]
+  },
+  "xss_writer": {
+    "sinks": [
+      "response.getWriter().write(",
+      "response.getWriter().print(",
+      "response.getWriter().println(",
+      "response.getOutputStream().print(",
+      "resp.getWriter().write(",
+      "resp.getWriter().print(",
+      "resp.getWriter().println("
+    ],
+    "sanitizers": [
+      "HtmlUtils.htmlEscape(",
+      "StringEscapeUtils.escapeHtml4(",
+      "Encode.forHtml(",
+      "ESAPI.encoder("
+    ]
+  },
+  "session_trust": {
+    "sinks": [
+      "session.setAttribute(",
+      "httpSession.setAttribute(",
+      "getSession().setAttribute("
+    ]
+  },
+  "regex_redos": {
+    "sinks": [
+      "Pattern.compile("
+    ],
+    "sanitizers": [
+      "Pattern.quote("
+    ]
+  },
+  "mail_injection": {
+    "guard_imports": [
+      "javax.mail",
+      "jakarta.mail"
+    ],
+    "sinks": [
+      ".setSubject(",
+      ".setFrom(",
+      ".setReplyTo(",
+      ".addRecipient(",
+      ".addRecipients(",
+      ".setRecipients(",
+      ".setRecipient("
     ]
   }
 }

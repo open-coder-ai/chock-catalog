@@ -1,0 +1,56 @@
+{
+  "cipher": {
+    "weak_algorithms": ["DES", "DESede", "RC2", "RC4", "ARCFOUR", "Blowfish"],
+    "weak_mode": "/ECB/",
+    "bare_aes": "AES",
+    "rsa_ecb_prefix": "RSA/ECB/"
+  },
+  "password_hash": {
+    "digest_algorithms": ["MD5", "SHA-1", "SHA1", "SHA-256", "SHA256"],
+    "digest_utils_calls": ["DigestUtils.md5Hex(", "DigestUtils.sha1Hex(", "DigestUtils.sha256Hex("],
+    "password_names": ["password", "passwd", "pwd"]
+  },
+  "random": {
+    "constructs": ["new Random(", "new java.util.Random(", "Math.random()", "ThreadLocalRandom.current()",
+                   "RandomStringUtils.random(", "RandomStringUtils.randomAlphabetic(",
+                   "RandomStringUtils.randomAlphanumeric(", "RandomStringUtils.randomNumeric("],
+    "sensitive_names": ["token", "secret", "password", "passwd", "otp", "nonce", "salt",
+                         "sessionid", "session_id", "apikey", "api_key", "resetcode", "reset_code"]
+  },
+  "tls_trust": {
+    "trust_manager_marker": "X509TrustManager",
+    "hostname_verifier_marker": "HostnameVerifier",
+    "trivial_return_lines": ["return;", "return true;", "return null;"],
+    "unambiguous_tokens": ["NoopHostnameVerifier", "ALLOW_ALL_HOSTNAME_VERIFIER", "TrustAllStrategy",
+                           "TrustSelfSignedStrategy", "InsecureTrustManagerFactory.INSTANCE"]
+  },
+  "legacy_tls": {
+    "getinstance_marker": "SSLContext.getInstance(",
+    "set_protocols_marker": "setEnabledProtocols(",
+    "property_keys": ["server.ssl.enabled-protocols", "https.protocols", "ssl.enabled-protocols",
+                       "enabled-protocols:"],
+    "legacy_protocols": ["SSL", "SSLv2", "SSLv2Hello", "SSLv3", "TLSv1", "TLSv1.1"],
+    "safe_protocols": ["TLS", "TLSv1.2", "TLSv1.3"]
+  },
+  "iv_salt": {
+    "constructors": ["IvParameterSpec", "GCMParameterSpec", "PBEKeySpec"]
+  },
+  "short_key": {
+    "keypair_algorithms": ["RSA", "DSA", "DH"],
+    "keypair_threshold": 2048,
+    "ec_algorithm": "EC",
+    "ec_threshold": 224,
+    "aes_algorithm": "AES",
+    "aes_threshold": 128,
+    "pbe_iteration_threshold": 10000
+  },
+  "hardcoded_credential": {
+    "test_path_marker": "src/test/"
+  },
+  "random_seed": {
+    "declarations": ["SecureRandom(", "java.security.SecureRandom("]
+  },
+  "signature": {
+    "weak_algorithms": ["MD2withRSA", "MD5withRSA", "MD5andMD2withRSA", "SHA1withRSA", "SHA1withDSA", "SHA1withECDSA"]
+  }
+}

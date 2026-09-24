@@ -1,0 +1,5 @@
+{
+  "static_date_format": {
+    "types": ["SimpleDateFormat", "DateFormat", "MessageFormat", "DecimalFormat", "Calendar"]
+  }
+}

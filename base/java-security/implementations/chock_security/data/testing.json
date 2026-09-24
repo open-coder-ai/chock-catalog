@@ -1,0 +1,40 @@
+{
+  "test_annotations": [
+    "@Test",
+    "@ParameterizedTest",
+    "@RepeatedTest"
+  ],
+  "assertion_markers": [
+    ".andExpect(",
+    ".expectStatus(",
+    "StepVerifier."
+  ],
+  "disabled_annotations": [
+    "@Disabled",
+    "@Ignore"
+  ],
+  "sleep_call": "Thread.sleep(",
+  "test_path": {
+    "dir_marker": "src/test/",
+    "name_suffixes": [
+      "Test.java",
+      "Tests.java",
+      "IT.java",
+      "Test.kt",
+      "Tests.kt",
+      "IT.kt"
+    ]
+  },
+  "assertion_call_prefixes": [
+    "assert",
+    "verify",
+    "expect",
+    "fail",
+    "should",
+    "check"
+  ],
+  "assertion_bare_calls": [
+    "then(",
+    "await("
+  ]
+}

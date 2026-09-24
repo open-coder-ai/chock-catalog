@@ -1,0 +1,54 @@
+{
+  "boxing_ctor": {
+    "types": [
+      "Integer",
+      "Long",
+      "Short",
+      "Byte",
+      "Double",
+      "Float",
+      "Boolean",
+      "Character",
+      "String"
+    ]
+  },
+  "string_concat_loop": {
+    "condition_loops": [
+      "for",
+      "while"
+    ],
+    "block_loops": [
+      "do"
+    ]
+  },
+  "size_check": {
+    "collection_types": [
+      "List",
+      "ArrayList",
+      "LinkedList",
+      "CopyOnWriteArrayList",
+      "Set",
+      "HashSet",
+      "LinkedHashSet",
+      "TreeSet",
+      "CopyOnWriteArraySet",
+      "Map",
+      "HashMap",
+      "LinkedHashMap",
+      "TreeMap",
+      "ConcurrentHashMap",
+      "Collection",
+      "Queue",
+      "Deque",
+      "ArrayDeque"
+    ],
+    "string_type": "String"
+  },
+  "legacy_collections": {
+    "types": [
+      "Vector",
+      "Hashtable",
+      "Stack"
+    ]
+  }
+}

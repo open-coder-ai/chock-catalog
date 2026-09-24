@@ -1,13 +1,18 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.3.0"
+version: "0.4.0"
 description: >
-  trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates,
-  application.properties or .yml; "customize java security" opens this skill's guided page. avoid:
-  string-interpolated SQL, unescaped template output, unsafe deserialization, wildcard CORS with
-  credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an
-  ObjectInputStream over request bytes. Eight rules, each allow|deny|ask in .chock/security.json;
-  absent = deny.
+  trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or
+  Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties
+  or .yml, web.xml, pom.xml or Gradle builds; "customize java security" opens this skill's guided
+  page. avoid: injection (SQL, command, code, SpEL, LDAP, XPath, template), XXE, SSRF, unsafe
+  deserialization, path traversal and zip slip, weak crypto and trust-all TLS, disabled Spring
+  Security protections, exposed secrets and actuator data, known-exploited dependency versions,
+  exported Android components; and the bugs, leaks and style breaches SpotBugs, Sonar, PMD and
+  Checkstyle report. 129 rules in 16 packs -- security: java, crypto, spring, jakarta,
+  persistence, templates, logging, build, android; quality: bugs, concurrency, resources,
+  exceptions, performance, style, testing -- each rule or pack allow|deny|ask in
+  .chock/security.json; absent = deny.
 artifact: hook
 enforcement: block
 effects: [read_only]
@@ -17,18 +22,17 @@ hook:
     "on": [commit, tool_use]
     action: block
     message: >
-      java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template
-      output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator
-      exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over
-      request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny);
-      waive one line with // chock: allow <rule-id>; choose per rule by asking to customize
-      java security, which opens this skill's guided page.
+      java-security: a construct one of its rules denies -- the refusal above names the rule, the
+      pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json,
+      per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build,
+      android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to
+      customize java security, which opens this skill's guided page.
     params:
       script: java-security-gate.py
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-09-22T23:00:00Z"
+  updated_at: "2026-09-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -42,6 +46,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.0
+  date: '2026-09-24'
+  changes:
+  - "Every rule carries its evidence. `cwe` names the MITRE weakness it is an instance of -- only ids MITRE allows for vulnerability mapping, their names verbatim in data/cwe.json -- and `references` names where the construct is shown to be a defect: the CVE (Log4Shell, Spring4Shell, Text4Shell, Struts CVE-2017-5638, Spring Cloud Function CVE-2022-22963, plexus-archiver's zip slip, the H2 console), the vendor's security documentation, the OWASP cheat sheet, or the Sonar, SpotBugs, PMD or Checkstyle rule a quality rule mirrors. Every refusal names its CWE: `[deny: persistence-sql-string-concat CWE-89, CWE-564]`, and the setup page links each."
+  - "Seven quality packs, 50 rules, enforced like the security ones and switched off the same way: bugs (string identity, equals without hashCode, BigDecimal(double), NaN comparison, discarded results of immutable methods, run() for start()), concurrency (static SimpleDateFormat, double-checked locking, locks on shared constants, wait outside a loop, sleep under a lock), resources (unclosed streams, connections and executors; finalize; System.exit outside main), exceptions (empty catch, catching Throwable or NullPointerException, return from finally, generic exceptions, a lost cause), performance (boxing constructors, String += in a loop, keySet-then-get, size() == 0, Vector and Hashtable), style (redundant imports, System.out in production code, boolean literal comparison, empty statements, naming, C-style arrays) and testing (tests with no assertion, Thread.sleep in tests, @Disabled without a reason, assertTrue(a.equals(b)), a literal in assertEquals' actual slot). Seven more security rules close the gaps a SAST scan reports: header injection, XSS through the servlet writer, session trust boundary, ReDoS through Pattern.compile, mail header injection, a constant SecureRandom seed and SHA-1 or MD5 signatures."
+  - "Nine security packs, 72 rules. The eight rules this policy shipped keep their ids and move into the packs their stacks name -- java, spring, persistence, templates -- beside five new ones: crypto, jakarta (Jakarta EE and every non-Spring framework: Servlet, JAX-RS, JSF, Struts, Quarkus, Micronaut, Vert.x), logging, build (Maven and Gradle) and android. Sixty-four new rules cover injection into commands, code, SpEL, LDAP, XPath, SQL/JPQL/HQL and NoSQL; XXE, SSRF, zip slip and unsafe reflection; weak ciphers, password hashes, randomness, keys and IVs, trust-all TLS and legacy protocols; hard-coded credentials and literal secrets in application config; CSRF, catch-all permitAll, weak password encoders, session fixation and security headers switched off in Spring Security; open redirects, view-name and template injection; directory listing, method-limited constraints and Struts OGNL switches; Log4j lookups and secrets in logs; plain-HTTP repositories, disabled checksums, dynamic versions and dependencies below the fix for Log4Shell, Spring4Shell, Text4Shell and seven more; and WebView bridges, SSL errors ignored, exported components, cleartext traffic and debuggable manifests on Android."
+  - "One policy, chosen per pack. A team that does not run Spring, or ships no Android app, switches that pack off in one line -- or to ask -- rather than managing a policy per rule or per framework: .chock/security.json version 2 keys verdicts by pack, and a pack's rules can still be set one by one. The guided setup page asks once per pack and opens a pack's rules only on request. A version-1 file is read as it was written: its one `java` pack speaks for the first eight rules, and every rule it could not have named denies, as any upgrade's new rule does -- so upgrading from 0.3.0 enforces the 64 new rules until someone speaks for them."
+  - "Every new rule was held to the bar the first eight met: a case that could have failed in each direction, and silence on the correct sibling. A corpus of ordinary, correct enterprise code -- controllers, a security chain, repositories with dynamic bind-parameter queries, crypto, XML and archive handling, templates, application.yml, Maven and Gradle builds, an Android manifest, web.xml -- must draw no finding from any rule. All of it is a pytest suite in this catalog's tests/ -- every refusing and silent case a named test, a rule without a case in each direction failing test_rule_is_proven_both_ways, every executable eval case replayed through the shipped gate (`chock check --only evals` does not replay a script gate) -- that CI requires beside the framework's own ruff rule set, and that is never published: the distribution repos build from base/ alone. Building it fixed two findings in the engine the first rules share: a request parameter typed as a number, boolean, UUID or date no longer taints anything, and a one-line method now has a body the flow model reads."
 - version: 0.3.0
   date: '2026-09-22'
   changes:

@@ -1,6 +1,6 @@
 ---
 name: java-security
-description: "trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates, application.properties or .yml; \"customize java security\" opens this skill's guided page. avoid: string-interpolated SQL, unescaped template output, unsafe deserialization, wildcard CORS with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules, each allow|deny|ask in .chock/security.json; absent = deny."
+description: "trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties or .yml, web.xml, pom.xml or Gradle builds; \"customize java security\" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL, LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip, weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and actuator data, known-exploited dependency versions, exported Android components; and the bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in 16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging, build, android; quality: bugs, concurrency, resources, exceptions, performance, style, testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,11 +9,11 @@ metadata:
 
 # Java Security Rules
 
-trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker templates, application.properties or .yml; "customize java security" opens this skill's guided page. avoid: string-interpolated SQL, unescaped template output, unsafe deserialization, wildcard CORS with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules, each allow|deny|ask in .chock/security.json; absent = deny.
+trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties or .yml, web.xml, pom.xml or Gradle builds; "customize java security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL, LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip, weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and actuator data, known-exploited dependency versions, exported Android components; and the bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in 16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging, build, android; quality: bugs, concurrency, resources, exceptions, performance, style, testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
 
 ```
 on(commit|tool_use): block(script) script=java-security-gate.py
-java-security: a Java construct a rule denies -- ${} in MyBatis SQL, unescaped template output, unsafe deserialization, a wildcard CORS origin with credentials, wildcard actuator exposure, an unverified JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Each rule's verdict is allow|deny|ask in .chock/security.json (absent = deny); waive one line with // chock: allow <rule-id>; choose per rule by asking to customize java security, which opens this skill's guided page.
+java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to customize java security, which opens this skill's guided page.
 ```
 
 ## Guided setup
@@ -24,7 +24,9 @@ as prose. Open it unasked, once, when Java is about to be written and no selecti
 exists at either scope: every rule denies until someone chooses, and the page is a better
 first meeting than the refusal. It is `setup.html`, in this skill's own directory beside this file and
 `references/`. It is offline and writes nothing itself; deny is preselected for every rule,
-and a verdict is chosen, never derived from a question about the stack.
+and a verdict is chosen, never derived from a question about the stack. It asks once per pack --
+java, crypto, spring, jakarta, persistence, templates, logging, build, android -- so a team
+switches off a stack it does not run in one answer, and opens a pack's rules only when asked.
 
 Where this client can publish an Artifact, publish that file as one, declaring
 `capabilities: {db: {}}`, and let the person walk it in the panel. Their Submit writes the

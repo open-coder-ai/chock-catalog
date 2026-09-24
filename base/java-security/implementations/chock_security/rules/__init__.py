@@ -1,31 +1,65 @@
-"""The rule registry: every rule a pack contributes, keyed by the id a selection names."""
+"""The rule registry: every pack, and every rule a pack contributes, keyed by the id a selection names."""
 
 from __future__ import annotations
 
-from chock_security.pack import Rule
+from chock_security.pack import Pack, Rule
 from chock_security.rules import (
-    java_actuator_exposure,
-    java_cors_wildcard,
-    java_deserialize_request,
-    java_jwt_unverified,
-    java_path_traversal,
-    java_sqli_mybatis,
-    java_unsafe_deserialization,
-    java_xss_template,
+    android,
+    bugs,
+    build,
+    concurrency,
+    crypto,
+    exceptions,
+    jakarta,
+    java,
+    logging,
+    performance,
+    persistence,
+    resources,
+    spring,
+    style,
+    templates,
+    testing,
 )
 
-_RULES: tuple[Rule, ...] = (
-    java_sqli_mybatis.RULE,
-    java_xss_template.RULE,
-    java_unsafe_deserialization.RULE,
-    java_cors_wildcard.RULE,
-    java_actuator_exposure.RULE,
-    java_jwt_unverified.RULE,
-    java_path_traversal.RULE,
-    java_deserialize_request.RULE,
+#: Registry order is the order the setup page and the contract show: the language, then the
+#: frameworks on it, then the layers every framework shares, then the build and the platform;
+#: then the quality packs, correctness first and style last.
+_PACKS = (
+    java,
+    crypto,
+    spring,
+    jakarta,
+    persistence,
+    templates,
+    logging,
+    build,
+    android,
+    bugs,
+    concurrency,
+    resources,
+    exceptions,
+    performance,
+    style,
+    testing,
 )
+
+
+def packs() -> dict[str, Pack]:
+    """Every pack installed here, keyed by the name a selection uses."""
+    return {module.PACK.id: module.PACK for module in _PACKS}
 
 
 def registry() -> dict[str, Rule]:
     """Every rule installed here. A selection may name these ids and no others."""
-    return {rule.id: rule for rule in _RULES}
+    rules: dict[str, Rule] = {}
+    for module in _PACKS:
+        for rule in module.RULES:
+            if rule.pack != module.PACK.id:
+                msg = f"rule {rule.id!r} says pack {rule.pack!r} but is registered in {module.PACK.id!r}"
+                raise ValueError(msg)
+            if rule.id in rules:
+                msg = f"rule id {rule.id!r} is registered twice"
+                raise ValueError(msg)
+            rules[rule.id] = rule
+    return rules

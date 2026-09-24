@@ -1,0 +1,14 @@
+{
+  "equals_hashcode": {
+    "lombok_marker": "@EqualsAndHashCode"
+  },
+  "ignored_return": {
+    "methods": [
+      "trim", "strip", "toUpperCase", "toLowerCase", "substring", "concat",
+      "plusDays", "plusWeeks", "plusMonths", "plusYears",
+      "minusDays", "minusWeeks", "minusMonths", "minusYears",
+      "plusHours", "minusHours", "plusMinutes", "minusMinutes", "plusSeconds", "minusSeconds",
+      "withYear", "withMonth", "withDayOfMonth"
+    ]
+  }
+}

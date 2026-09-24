@@ -1,0 +1,38 @@
+{
+  "webview": {
+    "js_enable": "setJavaScriptEnabled(true)",
+    "js_bridge": "addJavascriptInterface(",
+    "file_url_access": [
+      "setAllowUniversalAccessFromFileURLs(true)",
+      "setAllowFileAccessFromFileURLs(true)",
+      "setAllowFileAccess(true)"
+    ]
+  },
+  "ssl_error": {
+    "method_marker": "onReceivedSslError",
+    "proceed_call": ".proceed(",
+    "cancel_call": ".cancel("
+  },
+  "world_accessible": {
+    "mode_tokens": ["MODE_WORLD_READABLE", "MODE_WORLD_WRITEABLE"]
+  },
+  "manifest": {
+    "file_name": "AndroidManifest.xml",
+    "debuggable_true": "android:debuggable=\"true\"",
+    "debuggable_false": "android:debuggable=\"false\"",
+    "allow_backup_true": "android:allowBackup=\"true\"",
+    "allow_backup_false": "android:allowBackup=\"false\"",
+    "backup_rules_markers": ["android:fullBackupContent", "android:dataExtractionRules"],
+    "cleartext_manifest": "android:usesCleartextTraffic=\"true\"",
+    "cleartext_config_attr": "cleartextTrafficPermitted=\"true\"",
+    "network_config_marker": "<network-security-config",
+    "trust_user_certs_marker": "<certificates",
+    "trust_user_certs_value": "src=\"user\""
+  },
+  "exported_component": {
+    "tags": ["activity", "service", "receiver", "provider"],
+    "ns": "http://schemas.android.com/apk/res/android",
+    "launcher_action": "android.intent.action.MAIN",
+    "launcher_category": "android.intent.category.LAUNCHER"
+  }
+}

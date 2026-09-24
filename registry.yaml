@@ -24,7 +24,7 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -43,14 +43,14 @@ policies:
     is friction, not a security boundary.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.0.9
+  version: 0.0.10
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 55
-  eval_executed: 55
+  eval_cases: 61
+  eval_executed: 61
   description: 'Best-effort guard against destructive commands: rm -rf targeting absolute, home
     ($HOME/~) or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push
     --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform
@@ -83,21 +83,21 @@ policies:
     a source tree, are blocked. Escape: ''pragma: allowlist invisible-unicode'' on the same line.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.0.6
+  version: 0.0.7
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 17
-  eval_executed: 17
+  eval_cases: 19
+  eval_executed: 19
   description: Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's
     short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays allowed.
     Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying
     hook failure instead of skipping validation.
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -280,21 +280,27 @@ policies:
     plus atomic-commit and diff-size guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.3.0
+  version: 0.4.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 33
-  eval_executed: 25
+  eval_cases: 95
+  eval_executed: 87
   description: >-
-    trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker
-    templates, application.properties or .yml; "customize java security" opens this skill's
-    guided page. avoid: string-interpolated SQL, unescaped template output, unsafe
-    deserialization, wildcard CORS with credentials, wildcard actuator exposure, an unverified
-    JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules,
-    each allow|deny|ask in .chock/security.json; absent = deny.
+    trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut,
+    Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates,
+    application.properties or .yml, web.xml, pom.xml or Gradle builds; "customize java
+    security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL,
+    LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip,
+    weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and
+    actuator data, known-exploited dependency versions, exported Android components; and the
+    bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in
+    16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging,
+    build, android; quality: bugs, concurrency, resources, exceptions, performance, style,
+    testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
+
 - id: injection-defense
   path: base/injection-defense
   version: 0.0.3
@@ -526,14 +532,14 @@ policies:
     stay out of scope.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.0.6
+  version: 0.0.7
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 31
-  eval_executed: 31
+  eval_cases: 34
+  eval_executed: 34
   description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
     and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json) and
     vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a
@@ -548,14 +554,14 @@ policies:
     self-approve is the commit-time gate and CI.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 24
-  eval_executed: 24
+  eval_cases: 27
+  eval_executed: 27
   description: 'Guard against an agent weakening the automated checks that review its own work. CI/CD
     workflow files (.github/workflows/), the composite actions they call (.github/actions/) and
     the dependency-update automation (.github/dependabot.yml) define what must pass before a
@@ -570,14 +576,14 @@ policies:
     branch protection.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 23
-  eval_executed: 23
+  eval_cases: 26
+  eval_executed: 26
   description: 'Keep the development conversation out of git history. Agent-authored commits narrate by
     default -- who asked for what, which discussion decided it, what the plan was -- and on a
     public repo that narration is published forever. The guard refuses git commit commands whose
@@ -603,14 +609,14 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 70
-  eval_executed: 70
+  eval_cases: 78
+  eval_executed: 78
   description: 'Carved out for rtk-ai/rtk#1007: rtk''s own decision table as a chock policy (rtk''s own
     hooks may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and
     ''+'' refspecs (not --force-with-lease); reads of credential files (.env, *.pem, *.key, id_rsa, ~/.ssh,
@@ -664,14 +670,14 @@ policies:
     with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 17
-  eval_executed: 17
+  eval_cases: 22
+  eval_executed: 22
   description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
     unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an
     unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches

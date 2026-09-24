@@ -1,0 +1,341 @@
+{
+  "source": "MITRE CWE List v4.14 (2024-02-29), https://cwe.mitre.org/data/downloads.html; names verbatim, usage from Mapping_Notes",
+  "weaknesses": {
+    "CWE-22": {
+      "name": "Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+      "usage": "Allowed"
+    },
+    "CWE-73": {
+      "name": "External Control of File Name or Path",
+      "usage": "Allowed"
+    },
+    "CWE-77": {
+      "name": "Improper Neutralization of Special Elements used in a Command ('Command Injection')",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-78": {
+      "name": "Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-79": {
+      "name": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')",
+      "usage": "Allowed"
+    },
+    "CWE-89": {
+      "name": "Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-90": {
+      "name": "Improper Neutralization of Special Elements used in an LDAP Query ('LDAP Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-91": {
+      "name": "XML Injection (aka Blind XPath Injection)",
+      "usage": "Allowed"
+    },
+    "CWE-93": {
+      "name": "Improper Neutralization of CRLF Sequences ('CRLF Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-95": {
+      "name": "Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-113": {
+      "name": "Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Request/Response Splitting')",
+      "usage": "Allowed"
+    },
+    "CWE-116": {
+      "name": "Improper Encoding or Escaping of Output",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-117": {
+      "name": "Improper Output Neutralization for Logs",
+      "usage": "Allowed"
+    },
+    "CWE-209": {
+      "name": "Generation of Error Message Containing Sensitive Information",
+      "usage": "Allowed"
+    },
+    "CWE-215": {
+      "name": "Insertion of Sensitive Information Into Debugging Code",
+      "usage": "Allowed"
+    },
+    "CWE-252": {
+      "name": "Unchecked Return Value",
+      "usage": "Allowed"
+    },
+    "CWE-256": {
+      "name": "Plaintext Storage of a Password",
+      "usage": "Allowed"
+    },
+    "CWE-259": {
+      "name": "Use of Hard-coded Password",
+      "usage": "Allowed"
+    },
+    "CWE-276": {
+      "name": "Incorrect Default Permissions",
+      "usage": "Allowed"
+    },
+    "CWE-295": {
+      "name": "Improper Certificate Validation",
+      "usage": "Allowed"
+    },
+    "CWE-306": {
+      "name": "Missing Authentication for Critical Function",
+      "usage": "Allowed"
+    },
+    "CWE-319": {
+      "name": "Cleartext Transmission of Sensitive Information",
+      "usage": "Allowed"
+    },
+    "CWE-321": {
+      "name": "Use of Hard-coded Cryptographic Key",
+      "usage": "Allowed"
+    },
+    "CWE-323": {
+      "name": "Reusing a Nonce, Key Pair in Encryption",
+      "usage": "Allowed"
+    },
+    "CWE-326": {
+      "name": "Inadequate Encryption Strength",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-327": {
+      "name": "Use of a Broken or Risky Cryptographic Algorithm",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-329": {
+      "name": "Generation of Predictable IV with CBC Mode",
+      "usage": "Allowed"
+    },
+    "CWE-337": {
+      "name": "Predictable Seed in Pseudo-Random Number Generator (PRNG)",
+      "usage": "Allowed"
+    },
+    "CWE-338": {
+      "name": "Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)",
+      "usage": "Allowed"
+    },
+    "CWE-347": {
+      "name": "Improper Verification of Cryptographic Signature",
+      "usage": "Allowed"
+    },
+    "CWE-352": {
+      "name": "Cross-Site Request Forgery (CSRF)",
+      "usage": "Allowed"
+    },
+    "CWE-353": {
+      "name": "Missing Support for Integrity Check",
+      "usage": "Allowed"
+    },
+    "CWE-382": {
+      "name": "J2EE Bad Practices: Use of System.exit()",
+      "usage": "Allowed"
+    },
+    "CWE-384": {
+      "name": "Session Fixation",
+      "usage": "Allowed"
+    },
+    "CWE-395": {
+      "name": "Use of NullPointerException Catch to Detect NULL Pointer Dereference",
+      "usage": "Allowed"
+    },
+    "CWE-396": {
+      "name": "Declaration of Catch for Generic Exception",
+      "usage": "Allowed"
+    },
+    "CWE-397": {
+      "name": "Declaration of Throws for Generic Exception",
+      "usage": "Allowed"
+    },
+    "CWE-441": {
+      "name": "Unintended Proxy or Intermediary ('Confused Deputy')",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-470": {
+      "name": "Use of Externally-Controlled Input to Select Classes or Code ('Unsafe Reflection')",
+      "usage": "Allowed"
+    },
+    "CWE-481": {
+      "name": "Assigning instead of Comparing",
+      "usage": "Allowed"
+    },
+    "CWE-489": {
+      "name": "Active Debug Code",
+      "usage": "Allowed"
+    },
+    "CWE-494": {
+      "name": "Download of Code Without Integrity Check",
+      "usage": "Allowed"
+    },
+    "CWE-497": {
+      "name": "Exposure of Sensitive System Information to an Unauthorized Control Sphere",
+      "usage": "Allowed"
+    },
+    "CWE-501": {
+      "name": "Trust Boundary Violation",
+      "usage": "Allowed"
+    },
+    "CWE-502": {
+      "name": "Deserialization of Untrusted Data",
+      "usage": "Allowed"
+    },
+    "CWE-530": {
+      "name": "Exposure of Backup File to an Unauthorized Control Sphere",
+      "usage": "Allowed"
+    },
+    "CWE-532": {
+      "name": "Insertion of Sensitive Information into Log File",
+      "usage": "Allowed"
+    },
+    "CWE-548": {
+      "name": "Exposure of Information Through Directory Listing",
+      "usage": "Allowed"
+    },
+    "CWE-564": {
+      "name": "SQL Injection: Hibernate",
+      "usage": "Allowed"
+    },
+    "CWE-567": {
+      "name": "Unsynchronized Access to Shared Data in a Multithreaded Context",
+      "usage": "Allowed"
+    },
+    "CWE-570": {
+      "name": "Expression is Always False",
+      "usage": "Allowed"
+    },
+    "CWE-581": {
+      "name": "Object Model Violation: Just One of Equals and Hashcode Defined",
+      "usage": "Allowed"
+    },
+    "CWE-584": {
+      "name": "Return Inside Finally Block",
+      "usage": "Allowed"
+    },
+    "CWE-585": {
+      "name": "Empty Synchronized Block",
+      "usage": "Allowed"
+    },
+    "CWE-597": {
+      "name": "Use of Wrong Operator in String Comparison",
+      "usage": "Allowed"
+    },
+    "CWE-601": {
+      "name": "URL Redirection to Untrusted Site ('Open Redirect')",
+      "usage": "Allowed"
+    },
+    "CWE-609": {
+      "name": "Double-Checked Locking",
+      "usage": "Allowed"
+    },
+    "CWE-611": {
+      "name": "Improper Restriction of XML External Entity Reference",
+      "usage": "Allowed"
+    },
+    "CWE-614": {
+      "name": "Sensitive Cookie in HTTPS Session Without 'Secure' Attribute",
+      "usage": "Allowed"
+    },
+    "CWE-643": {
+      "name": "Improper Neutralization of Data within XPath Expressions ('XPath Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-732": {
+      "name": "Incorrect Permission Assignment for Critical Resource",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-749": {
+      "name": "Exposed Dangerous Method or Function",
+      "usage": "Allowed"
+    },
+    "CWE-760": {
+      "name": "Use of a One-Way Hash with a Predictable Salt",
+      "usage": "Allowed"
+    },
+    "CWE-772": {
+      "name": "Missing Release of Resource after Effective Lifetime",
+      "usage": "Allowed"
+    },
+    "CWE-775": {
+      "name": "Missing Release of File Descriptor or Handle after Effective Lifetime",
+      "usage": "Allowed"
+    },
+    "CWE-798": {
+      "name": "Use of Hard-coded Credentials",
+      "usage": "Allowed"
+    },
+    "CWE-829": {
+      "name": "Inclusion of Functionality from Untrusted Control Sphere",
+      "usage": "Allowed"
+    },
+    "CWE-862": {
+      "name": "Missing Authorization",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-916": {
+      "name": "Use of Password Hash With Insufficient Computational Effort",
+      "usage": "Allowed"
+    },
+    "CWE-917": {
+      "name": "Improper Neutralization of Special Elements used in an Expression Language Statement ('Expression Language Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-918": {
+      "name": "Server-Side Request Forgery (SSRF)",
+      "usage": "Allowed"
+    },
+    "CWE-921": {
+      "name": "Storage of Sensitive Data in a Mechanism without Access Control",
+      "usage": "Allowed"
+    },
+    "CWE-926": {
+      "name": "Improper Export of Android Application Components",
+      "usage": "Allowed"
+    },
+    "CWE-942": {
+      "name": "Permissive Cross-domain Policy with Untrusted Domains",
+      "usage": "Allowed"
+    },
+    "CWE-943": {
+      "name": "Improper Neutralization of Special Elements in Data Query Logic",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-1004": {
+      "name": "Sensitive Cookie Without 'HttpOnly' Flag",
+      "usage": "Allowed"
+    },
+    "CWE-1021": {
+      "name": "Improper Restriction of Rendered UI Layers or Frames",
+      "usage": "Allowed"
+    },
+    "CWE-1071": {
+      "name": "Empty Code Block",
+      "usage": "Allowed"
+    },
+    "CWE-1164": {
+      "name": "Irrelevant Code",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-1188": {
+      "name": "Initialization of a Resource with an Insecure Default",
+      "usage": "Allowed"
+    },
+    "CWE-1333": {
+      "name": "Inefficient Regular Expression Complexity",
+      "usage": "Allowed"
+    },
+    "CWE-1336": {
+      "name": "Improper Neutralization of Special Elements Used in a Template Engine",
+      "usage": "Allowed"
+    },
+    "CWE-1357": {
+      "name": "Reliance on Insufficiently Trustworthy Component",
+      "usage": "Allowed-with-Review"
+    },
+    "CWE-1395": {
+      "name": "Dependency on Vulnerable Third-Party Component",
+      "usage": "Allowed-with-Review"
+    }
+  }
+}
