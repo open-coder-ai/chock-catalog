@@ -33,6 +33,7 @@ TRUSTED_HOSTS = {
     "nvd.nist.gov",
     "docs.spring.io",
     "developer.android.com",
+    "docs.oracle.com",
     "mybatis.org",
     "freemarker.apache.org",
     "logging.apache.org",

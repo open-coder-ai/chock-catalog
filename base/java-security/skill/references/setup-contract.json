@@ -27,13 +27,13 @@
     {
       "id": "java",
       "title": "Core Java",
-      "covers": "The JDK itself, whatever framework sits on top: injection into commands, code, reflection, LDAP and XPath; XML parsers; outbound URLs; archives; file paths; Java and polymorphic deserialization; JWT libraries.",
+      "covers": "The JDK itself, whatever framework sits on top: injection into commands, code, reflection, LDAP and XPath; XML parsers; outbound URLs; archives; file paths; Java and polymorphic deserialization; JWT libraries; response headers, cookies, the response body, the session and JavaMail; regex patterns built from request data.",
       "kind": "security"
     },
     {
       "id": "crypto",
       "title": "Cryptography and TLS",
-      "covers": "JCA ciphers, digests, random numbers, keys and IVs; TLS contexts, trust managers and hostname verifiers; credentials written into the source.",
+      "covers": "JCA ciphers, digests, signature algorithms, random numbers, keys and IVs; TLS contexts, trust managers and hostname verifiers; credentials written into the source.",
       "kind": "security"
     },
     {
@@ -361,6 +361,91 @@
       ]
     },
     {
+      "id": "java-response-header-injection",
+      "pack": "java",
+      "title": "Response header built from request data",
+      "refuses": "a setHeader/addHeader call or a Cookie constructor a method body shows request data reaching",
+      "silent_on": "a constant header/cookie value; a value validated or encoded before the call; the same call fed a scalar path variable (Long, UUID, ...) that cannot carry a control character",
+      "constraint": "never(call): response.setHeader|addHeader|new Cookie(...) built from @RequestParam|@PathVariable|request.get* -- strip control characters or encode the value first",
+      "cwe": [
+        {
+          "id": "CWE-113",
+          "name": "Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Request/Response Splitting')"
+        }
+      ],
+      "references": [
+        "https://owasp.org/www-community/attacks/HTTP_Response_Splitting"
+      ]
+    },
+    {
+      "id": "java-xss-writer",
+      "pack": "java",
+      "title": "Response body written from request data, unescaped",
+      "refuses": "a getWriter()/getOutputStream() write/print/println a method body shows request data reaching",
+      "silent_on": "the same value passed through HtmlUtils.htmlEscape/StringEscapeUtils.escapeHtml4/Encode.forHtml/ESAPI.encoder first; a constant or server-built response body",
+      "constraint": "never(call): response.getWriter().write|print|println or .getOutputStream().print built from @RequestParam|@PathVariable|request.get* with no HTML escaping in between",
+      "cwe": [
+        {
+          "id": "CWE-79",
+          "name": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "java-session-trust-boundary",
+      "pack": "java",
+      "title": "Request data stored into the session unvalidated",
+      "refuses": "a session.setAttribute() call a method body shows request data reaching",
+      "silent_on": "a constant or server-derived value (a lookup result, a DB entity); the same value checked with isValid/allowlist first; a scalar path variable (Long, UUID, ...)",
+      "constraint": "never(call): session.setAttribute(...) built from @RequestParam|@PathVariable|request.get* with no validation in between -- check it against server-side state first",
+      "cwe": [
+        {
+          "id": "CWE-501",
+          "name": "Trust Boundary Violation"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "java-regex-redos",
+      "pack": "java",
+      "title": "Regex pattern built from request data",
+      "refuses": "a Pattern.compile() call a method body shows request data reaching as the pattern argument",
+      "silent_on": "the same call fed a constant pattern; a request value wrapped in Pattern.quote() first",
+      "constraint": "never(call): Pattern.compile(...) built from @RequestParam|@PathVariable|request.get* -- choose the pattern from a fixed set, or wrap the value in Pattern.quote() first",
+      "cwe": [
+        {
+          "id": "CWE-1333",
+          "name": "Inefficient Regular Expression Complexity"
+        }
+      ],
+      "references": [
+        "https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS"
+      ]
+    },
+    {
+      "id": "java-mail-header-injection",
+      "pack": "java",
+      "title": "Mail header built from request data",
+      "refuses": "a setSubject/setFrom/setReplyTo/addRecipient(s)/setRecipient(s) call a method body shows request data reaching, in a file that imports javax.mail or jakarta.mail",
+      "silent_on": "a constant subject/address; the same call in a file with no javax.mail/jakarta.mail import; an address built through InternetAddress(value, true), which rejects control characters",
+      "constraint": "never(call): Message.setSubject|setFrom|setReplyTo|addRecipient(s)|setRecipient(s) built from @RequestParam|@PathVariable|request.get* in a file using javax.mail/jakarta.mail -- strip control characters first, or use InternetAddress(value, true)",
+      "cwe": [
+        {
+          "id": "CWE-93",
+          "name": "Improper Neutralization of CRLF Sequences ('CRLF Injection')"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html"
+      ]
+    },
+    {
       "id": "crypto-weak-cipher",
       "pack": "crypto",
       "title": "Weak cipher algorithm or ECB mode",
@@ -395,6 +480,23 @@
       ]
     },
     {
+      "id": "crypto-weak-signature-algorithm",
+      "pack": "crypto",
+      "title": "Weak signature algorithm",
+      "refuses": "Signature.getInstance() naming an MD2/MD5- or SHA-1-based signature algorithm",
+      "silent_on": "SHA256withRSA, SHA256withECDSA, SHA384withRSA, SHA512withRSA, Ed25519, and any other SHA-2/SHA-3-based algorithm",
+      "constraint": "never(call): Signature.getInstance(\"MD2withRSA\"|\"MD5withRSA\"|\"MD5andMD2withRSA\"|\"SHA1withRSA\"|\"SHA1withDSA\"|\"SHA1withECDSA\") -- use a SHA-2/SHA-3-based algorithm instead",
+      "cwe": [
+        {
+          "id": "CWE-327",
+          "name": "Use of a Broken or Risky Cryptographic Algorithm"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"
+      ]
+    },
+    {
       "id": "crypto-insecure-random",
       "pack": "crypto",
       "title": "Predictable random used for a secret value",
@@ -409,6 +511,24 @@
       ],
       "references": [
         "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "crypto-securerandom-fixed-seed",
+      "pack": "crypto",
+      "title": "SecureRandom seeded with a fixed value",
+      "refuses": "setSeed() on a `new SecureRandom()` variable, called with a quoted string (with or without .getBytes()), a numeric literal, or an ALL_CAPS constant name",
+      "silent_on": "a SecureRandom never reseeded; setSeed() called with a variable or a call expression (e.g. a value read from generateSeed()); setSeed() on a variable this file never built as SecureRandom",
+      "constraint": "never(call): secureRandom.setSeed(...) with a literal string, number, or ALL_CAPS constant -- drop the call, or seed from SecureRandom.getInstanceStrong().generateSeed()",
+      "cwe": [
+        {
+          "id": "CWE-337",
+          "name": "Predictable Seed in Pseudo-Random Number Generator (PRNG)"
+        }
+      ],
+      "references": [
+        "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/security/SecureRandom.html",
+        "https://rules.sonarsource.com/java/RSPEC-4347/"
       ]
     },
     {

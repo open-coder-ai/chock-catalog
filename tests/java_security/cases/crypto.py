@@ -16,6 +16,8 @@ LEGACY_TLS = "crypto-legacy-tls"
 STATIC_IV_OR_SALT = "crypto-static-iv-or-salt"
 SHORT_KEY = "crypto-short-key"
 HARDCODED_CREDENTIAL = "crypto-hardcoded-credential"
+SECURERANDOM_FIXED_SEED = "crypto-securerandom-fixed-seed"
+WEAK_SIGNATURE_ALGORITHM = "crypto-weak-signature-algorithm"
 
 #: (rule id, path, text, lines)
 CASES: list[tuple[str, str, str, list[int]]] = [
@@ -212,6 +214,45 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         'Connection c = DriverManager.getConnection(url, "admin", "s3cr3t");\n',
         [],
     ),
+    # crypto-securerandom-fixed-seed
+    (
+        SECURERANDOM_FIXED_SEED,
+        "C.java",
+        "SecureRandom random = new SecureRandom();\nrandom.setSeed(1234L);\n",
+        [2],
+    ),
+    (
+        SECURERANDOM_FIXED_SEED,
+        "C.java",
+        'SecureRandom random = new SecureRandom();\nrandom.setSeed("fixed-seed".getBytes());\n',
+        [2],
+    ),
+    (
+        SECURERANDOM_FIXED_SEED,
+        "C.java",
+        "SecureRandom random = new SecureRandom();\nrandom.setSeed(SEED_CONSTANT);\n",
+        [2],
+    ),
+    (SECURERANDOM_FIXED_SEED, "C.java", "SecureRandom random = new SecureRandom();\n", []),
+    (
+        SECURERANDOM_FIXED_SEED,
+        "C.java",
+        "Random random = new Random();\nrandom.setSeed(1234L);\n",
+        [],
+    ),
+    (
+        SECURERANDOM_FIXED_SEED,
+        "C.java",
+        "SecureRandom random = new SecureRandom();\nrandom.setSeed(entropy);\n",
+        [],
+    ),
+    # crypto-weak-signature-algorithm
+    (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Signature sig = Signature.getInstance("MD5withRSA");\n', [1]),
+    (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Signature sig = Signature.getInstance("SHA1withRSA");\n', [1]),
+    (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Signature sig = Signature.getInstance("SHA1withDSA");\n', [1]),
+    (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Signature sig = Signature.getInstance("SHA256withRSA");\n', []),
+    (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Signature sig = Signature.getInstance("SHA256withECDSA");\n', []),
+    (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Cipher c = Cipher.getInstance("AES/GCM/NoPadding");\n', []),
 ]
 
 #: (label, path, text, expected rule ids, rule ids this case is about)

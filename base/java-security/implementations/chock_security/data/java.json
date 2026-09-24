@@ -254,5 +254,63 @@
       "XPathVariableResolver",
       "setXPathVariableResolver("
     ]
+  },
+  "header_injection": {
+    "sinks": [
+      "response.setHeader(",
+      "response.addHeader(",
+      "resp.setHeader(",
+      "resp.addHeader(",
+      "httpResponse.setHeader(",
+      "httpResponse.addHeader(",
+      "new Cookie("
+    ]
+  },
+  "xss_writer": {
+    "sinks": [
+      "response.getWriter().write(",
+      "response.getWriter().print(",
+      "response.getWriter().println(",
+      "response.getOutputStream().print(",
+      "resp.getWriter().write(",
+      "resp.getWriter().print(",
+      "resp.getWriter().println("
+    ],
+    "sanitizers": [
+      "HtmlUtils.htmlEscape(",
+      "StringEscapeUtils.escapeHtml4(",
+      "Encode.forHtml(",
+      "ESAPI.encoder("
+    ]
+  },
+  "session_trust": {
+    "sinks": [
+      "session.setAttribute(",
+      "httpSession.setAttribute(",
+      "getSession().setAttribute("
+    ]
+  },
+  "regex_redos": {
+    "sinks": [
+      "Pattern.compile("
+    ],
+    "sanitizers": [
+      "Pattern.quote("
+    ]
+  },
+  "mail_injection": {
+    "guard_imports": [
+      "javax.mail",
+      "jakarta.mail"
+    ],
+    "sinks": [
+      ".setSubject(",
+      ".setFrom(",
+      ".setReplyTo(",
+      ".addRecipient(",
+      ".addRecipients(",
+      ".setRecipients(",
+      ".setRecipient("
+    ]
   }
 }

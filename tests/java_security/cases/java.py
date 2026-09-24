@@ -8,6 +8,7 @@ expected set leaves out a rule it is about proves that rule stays silent there.
 
 from __future__ import annotations
 
+from java_security.cases.java_sast import CASES as SAST_CASES
 from java_security.cases.java_xml import CASES as XML_AND_ARCHIVE_CASES
 
 TRAVERSAL = "java-path-traversal-request-data"
@@ -209,4 +210,5 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         [],
     ),
     *XML_AND_ARCHIVE_CASES,
+    *SAST_CASES,
 ]

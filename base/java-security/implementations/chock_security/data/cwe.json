@@ -33,8 +33,16 @@
       "name": "XML Injection (aka Blind XPath Injection)",
       "usage": "Allowed"
     },
+    "CWE-93": {
+      "name": "Improper Neutralization of CRLF Sequences ('CRLF Injection')",
+      "usage": "Allowed"
+    },
     "CWE-95": {
       "name": "Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')",
+      "usage": "Allowed"
+    },
+    "CWE-113": {
+      "name": "Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Request/Response Splitting')",
       "usage": "Allowed"
     },
     "CWE-116": {
@@ -97,6 +105,10 @@
       "name": "Generation of Predictable IV with CBC Mode",
       "usage": "Allowed"
     },
+    "CWE-337": {
+      "name": "Predictable Seed in Pseudo-Random Number Generator (PRNG)",
+      "usage": "Allowed"
+    },
     "CWE-338": {
       "name": "Use of Cryptographically Weak Pseudo-Random Number Generator (PRNG)",
       "usage": "Allowed"
@@ -135,6 +147,10 @@
     },
     "CWE-497": {
       "name": "Exposure of Sensitive System Information to an Unauthorized Control Sphere",
+      "usage": "Allowed"
+    },
+    "CWE-501": {
+      "name": "Trust Boundary Violation",
       "usage": "Allowed"
     },
     "CWE-502": {
@@ -235,6 +251,10 @@
     },
     "CWE-1188": {
       "name": "Initialization of a Resource with an Insecure Default",
+      "usage": "Allowed"
+    },
+    "CWE-1333": {
+      "name": "Inefficient Regular Expression Complexity",
       "usage": "Allowed"
     },
     "CWE-1336": {
