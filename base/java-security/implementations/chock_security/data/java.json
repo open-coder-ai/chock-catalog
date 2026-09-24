@@ -61,7 +61,7 @@
       ".startsWith(",
       "UUID.fromString(",
       "Pattern.matches(",
-      ".matches(",
+      ".matches(\"",
       "Integer.parseInt(",
       "Long.parseLong(",
       "isValid",
@@ -253,6 +253,9 @@
     "sanitizers": [
       "XPathVariableResolver",
       "setXPathVariableResolver("
+    ],
+    "not_xpath": [
+      "Pattern.compile("
     ]
   },
   "header_injection": {

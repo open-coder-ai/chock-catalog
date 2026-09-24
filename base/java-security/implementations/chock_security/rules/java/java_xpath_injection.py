@@ -28,11 +28,20 @@ def _uses_xpath(text: FileText) -> bool:
     return text.holds(*_FACTS["imports"])
 
 
+def _xpath_sink(line: str) -> bool:
+    """A file that imports XPath can compile regexes too: `Pattern.compile(` is not an XPath sink."""
+    for other in _FACTS["not_xpath"]:
+        line = line.replace(other, "")
+    return any(sink in line for sink in _FACTS["sinks"])
+
+
 def scan(text: FileText) -> Iterator[Finding]:
     """Every XPath compile/evaluate a method body shows request data reaching unbound."""
     if not _uses_xpath(text):
         return
     for flow in flows(text, _FACTS["sinks"], sanitizers=tuple(_FACTS["sanitizers"])):
+        if not _xpath_sink(flow.line):
+            continue
         message = _MESSAGE.format(source=flow.source)
         yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message)
 

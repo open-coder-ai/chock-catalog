@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 from chock_security.decision import FileText
 from chock_security.pack import facts
+from chock_security.source import blank
 
 _FACTS = facts("java")["flow"]
 
@@ -131,7 +132,28 @@ def methods(text: FileText) -> list[Method]:
 
 
 def _mentions(line: str, names: set[str]) -> bool:
-    return any(re.search(rf"\b{re.escape(name)}\b", line) for name in names)
+    """Whether the line USES one of these names: in its code, never inside a string literal or a
+    comment -- `"//item[@sku=$sku]"` names an XPath variable, not the `sku` parameter."""
+    code_only = blank(line)
+    return any(re.search(rf"\b{re.escape(name)}\b", code_only) for name in names)
+
+
+#: `ALLOWED.contains(v) ? v : fallback` -- membership decides whether `v` is used at all, however the
+#: collection is named, so `v` arrives only as one of the collection's own values.
+_MEMBERSHIP = re.compile(r"\.(?:contains|containsKey)\(\s*(\w+)\s*\)\s*\?\s*(\w+)\s*:")
+
+
+#: `value.matches(SAFE_NAME)`: validation against a named pattern. `Matcher.matches()`, with nothing
+#: between its parentheses, is the match itself -- often the very sink being judged -- never a check.
+_VALIDATED = re.compile(r"\.matches\(\s*[A-Z][A-Z0-9_]*\s*\)")
+
+
+def _sanitized(line: str, sanitizers: list[str]) -> bool:
+    return _holds(line, sanitizers) or _VALIDATED.search(line) is not None
+
+
+def _guarded(line: str, tainted: set[str]) -> bool:
+    return any(m.group(1) == m.group(2) and m.group(1) in tainted for m in _MEMBERSHIP.finditer(blank(line)))
 
 
 def _holds(line: str, tokens: list[str]) -> bool:
@@ -166,7 +188,7 @@ def _retaint(line: str, tainted: set[str], sanitizers: list[str]) -> None:
         target = match.group(1)
         right = line[match.end() :]
         carries = _holds(right, _FACTS["source_calls"]) or _mentions(right, tainted)
-        if carries and not _holds(line, sanitizers):
+        if carries and not _sanitized(line, sanitizers) and not _guarded(right, tainted):
             tainted.add(target)
         else:
             tainted.discard(target)
@@ -184,7 +206,7 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     for line_no, line in method.body:
         direct = _holds(line, _FACTS["source_calls"])
         reached = _holds(line, sinks) and (direct or _mentions(line, tainted))
-        if reached and not _holds(line, clean):
+        if reached and not _sanitized(line, clean) and not _guarded(line, tainted):
             yield Flow(line_no, line, "a request parameter" if annotated else "the request")
         _retaint(line, tainted, clean)
 

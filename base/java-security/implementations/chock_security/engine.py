@@ -12,8 +12,12 @@ from chock_security.rules import registry
 PRAGMA = "chock: allow "
 
 
-def _waived(finding: Finding) -> bool:
-    return f"{PRAGMA}{finding.rule_id}" in finding.line
+def _waived(finding: Finding, text: FileText) -> bool:
+    """Read on the file's own line: a rule may report the line with its comments blanked, and the
+    waiver is a comment."""
+    lines = text.lines
+    line = lines[finding.line_no - 1] if 0 < finding.line_no <= len(lines) else finding.line
+    return f"{PRAGMA}{finding.rule_id}" in line
 
 
 def evaluate(files: Iterable[FileText], verdicts: Mapping[str, str]) -> list[Finding]:
@@ -25,5 +29,5 @@ def evaluate(files: Iterable[FileText], verdicts: Mapping[str, str]) -> list[Fin
             if not rule.reads(text):
                 continue
             found = (replace(f, verdict=verdicts[rule_id], cwe=rule.cwe) for f in rule.scan(text))
-            findings.extend(f for f in found if not _waived(f))
+            findings.extend(f for f in found if not _waived(f, text))
     return findings

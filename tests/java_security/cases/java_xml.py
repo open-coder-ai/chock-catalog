@@ -221,3 +221,30 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         [],
     ),
 ]
+
+#: A file that uses XPath can compile a regex from request data too: that is ReDoS's to report, and
+#: the XPath rule's `.compile(` sink is not `Pattern.compile(`.
+CASES += [
+    (
+        "java-xpath-injection",
+        "C.java",
+        "import javax.xml.xpath.XPath;\n"
+        "public class C {\n"
+        '  @GetMapping("/find")\n'
+        "  public boolean find(@RequestParam String pattern) {\n"
+        "    return Pattern.compile(pattern).matcher(name).matches();\n"
+        "  }\n}\n",
+        [],
+    ),
+    (
+        "java-xpath-injection",
+        "C.java",
+        "import javax.xml.xpath.XPath;\n"
+        "public class C {\n"
+        '  @GetMapping("/find")\n'
+        "  public Object find(@RequestParam String expr) throws Exception {\n"
+        "    return xpath.compile(expr).evaluate(doc);\n"
+        "  }\n}\n",
+        [5],
+    ),
+]
