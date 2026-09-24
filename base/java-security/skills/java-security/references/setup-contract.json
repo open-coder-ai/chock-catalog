@@ -27,47 +27,98 @@
     {
       "id": "java",
       "title": "Core Java",
-      "covers": "The JDK itself, whatever framework sits on top: injection into commands, code, reflection, LDAP and XPath; XML parsers; outbound URLs; archives; file paths; Java and polymorphic deserialization; JWT libraries."
+      "covers": "The JDK itself, whatever framework sits on top: injection into commands, code, reflection, LDAP and XPath; XML parsers; outbound URLs; archives; file paths; Java and polymorphic deserialization; JWT libraries; response headers, cookies, the response body, the session and JavaMail; regex patterns built from request data.",
+      "kind": "security"
     },
     {
       "id": "crypto",
       "title": "Cryptography and TLS",
-      "covers": "JCA ciphers, digests, random numbers, keys and IVs; TLS contexts, trust managers and hostname verifiers; credentials written into the source."
+      "covers": "JCA ciphers, digests, signature algorithms, random numbers, keys and IVs; TLS contexts, trust managers and hostname verifiers; credentials written into the source.",
+      "kind": "security"
     },
     {
       "id": "spring",
       "title": "Spring",
-      "covers": "Spring Framework, Boot, Security, Data and Cloud: security filter chains, controllers, SpEL, actuator, and application.properties / application.yml."
+      "covers": "Spring Framework, Boot, Security, Data and Cloud: security filter chains, controllers, SpEL, actuator, and application.properties / application.yml.",
+      "kind": "security"
     },
     {
       "id": "jakarta",
       "title": "Jakarta EE and other frameworks",
-      "covers": "Everything that is not Spring: Servlet, JAX-RS, JSF and web.xml; Struts; Quarkus, Micronaut, Helidon, Vert.x and Dropwizard, and their configuration."
+      "covers": "Everything that is not Spring: Servlet, JAX-RS, JSF and web.xml; Struts; Quarkus, Micronaut, Helidon, Vert.x and Dropwizard, and their configuration.",
+      "kind": "security"
     },
     {
       "id": "persistence",
       "title": "Persistence",
-      "covers": "JDBC, JPA and Hibernate, JdbcTemplate, MyBatis, jOOQ, MongoDB and other NoSQL drivers, and the JDBC URLs and schema settings that configure them."
+      "covers": "JDBC, JPA and Hibernate, JdbcTemplate, MyBatis, jOOQ, MongoDB and other NoSQL drivers, and the JDBC URLs and schema settings that configure them.",
+      "kind": "security"
     },
     {
       "id": "templates",
       "title": "Templates and views",
-      "covers": "Thymeleaf, JSP and JSTL, JSF Facelets, FreeMarker, Velocity, Pebble, Mustache and Handlebars: output escaping and templates built at run time."
+      "covers": "Thymeleaf, JSP and JSTL, JSF Facelets, FreeMarker, Velocity, Pebble, Mustache and Handlebars: output escaping and templates built at run time.",
+      "kind": "security"
     },
     {
       "id": "logging",
       "title": "Logging",
-      "covers": "Log4j 2, Logback, SLF4J and java.util.logging: lookups, secrets written to logs, and stack traces sent to the caller."
+      "covers": "Log4j 2, Logback, SLF4J and java.util.logging: lookups, secrets written to logs, and stack traces sent to the caller.",
+      "kind": "security"
     },
     {
       "id": "build",
       "title": "Build and dependencies",
-      "covers": "Maven pom.xml and Gradle build scripts: repositories, checksums, and dependency versions with known remote-code-execution flaws."
+      "covers": "Maven pom.xml and Gradle build scripts: repositories, checksums, and dependency versions with known remote-code-execution flaws.",
+      "kind": "security"
     },
     {
       "id": "android",
       "title": "Android",
-      "covers": "Android apps in Java or Kotlin: WebView, TLS error handling, file modes, components and the AndroidManifest.xml flags that expose them."
+      "covers": "Android apps in Java or Kotlin: WebView, TLS error handling, file modes, components and the AndroidManifest.xml flags that expose them.",
+      "kind": "security"
+    },
+    {
+      "id": "bugs",
+      "title": "Bug patterns",
+      "covers": "Code that compiles and is wrong: identity compared where value was meant, results thrown away, contracts broken between equals and hashCode, arithmetic that overflows or loses precision -- the correctness findings SpotBugs and Sonar report as bugs.",
+      "kind": "quality"
+    },
+    {
+      "id": "concurrency",
+      "title": "Concurrency",
+      "covers": "Threads, locks, executors and shared state: unsafe publication, broken double-checked locking, locks on shared or boxed objects, thread-unsafe formatters held in static fields, deprecated thread control.",
+      "kind": "quality"
+    },
+    {
+      "id": "resources",
+      "title": "Resources and lifecycle",
+      "covers": "Streams, readers, connections, statements, sockets and executors that must be closed; finalizers, forced garbage collection and exiting the JVM from library code.",
+      "kind": "quality"
+    },
+    {
+      "id": "exceptions",
+      "title": "Exception handling",
+      "covers": "Catch, throw and finally: swallowed exceptions, catching Throwable or NullPointerException, control flow escaping finally, causes discarded, over-broad throws clauses.",
+      "kind": "quality"
+    },
+    {
+      "id": "performance",
+      "title": "Performance",
+      "covers": "Allocation and complexity mistakes a profiler would find later: boxing constructors, strings built in loops, patterns recompiled per call, the wrong collection access for the job.",
+      "kind": "quality"
+    },
+    {
+      "id": "style",
+      "title": "Code style",
+      "covers": "The conventions Checkstyle and PMD enforce that a reviewer would otherwise repeat: imports, naming, console output in production code, statement shape.",
+      "kind": "quality"
+    },
+    {
+      "id": "testing",
+      "title": "Tests",
+      "covers": "JUnit and TestNG tests that cannot fail or fail at random: tests with no assertion, sleeps, disabled tests with no reason, assertions written backwards or on the wrong API.",
+      "kind": "quality"
     }
   ],
   "rules": [
@@ -310,6 +361,91 @@
       ]
     },
     {
+      "id": "java-response-header-injection",
+      "pack": "java",
+      "title": "Response header built from request data",
+      "refuses": "a setHeader/addHeader call or a Cookie constructor a method body shows request data reaching",
+      "silent_on": "a constant header/cookie value; a value validated or encoded before the call; the same call fed a scalar path variable (Long, UUID, ...) that cannot carry a control character",
+      "constraint": "never(call): response.setHeader|addHeader|new Cookie(...) built from @RequestParam|@PathVariable|request.get* -- strip control characters or encode the value first",
+      "cwe": [
+        {
+          "id": "CWE-113",
+          "name": "Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Request/Response Splitting')"
+        }
+      ],
+      "references": [
+        "https://owasp.org/www-community/attacks/HTTP_Response_Splitting"
+      ]
+    },
+    {
+      "id": "java-xss-writer",
+      "pack": "java",
+      "title": "Response body written from request data, unescaped",
+      "refuses": "a getWriter()/getOutputStream() write/print/println a method body shows request data reaching",
+      "silent_on": "the same value passed through HtmlUtils.htmlEscape/StringEscapeUtils.escapeHtml4/Encode.forHtml/ESAPI.encoder first; a constant or server-built response body",
+      "constraint": "never(call): response.getWriter().write|print|println or .getOutputStream().print built from @RequestParam|@PathVariable|request.get* with no HTML escaping in between",
+      "cwe": [
+        {
+          "id": "CWE-79",
+          "name": "Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "java-session-trust-boundary",
+      "pack": "java",
+      "title": "Request data stored into the session unvalidated",
+      "refuses": "a session.setAttribute() call a method body shows request data reaching",
+      "silent_on": "a constant or server-derived value (a lookup result, a DB entity); the same value checked with isValid/allowlist first; a scalar path variable (Long, UUID, ...)",
+      "constraint": "never(call): session.setAttribute(...) built from @RequestParam|@PathVariable|request.get* with no validation in between -- check it against server-side state first",
+      "cwe": [
+        {
+          "id": "CWE-501",
+          "name": "Trust Boundary Violation"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "java-regex-redos",
+      "pack": "java",
+      "title": "Regex pattern built from request data",
+      "refuses": "a Pattern.compile() call a method body shows request data reaching as the pattern argument",
+      "silent_on": "the same call fed a constant pattern; a request value wrapped in Pattern.quote() first",
+      "constraint": "never(call): Pattern.compile(...) built from @RequestParam|@PathVariable|request.get* -- choose the pattern from a fixed set, or wrap the value in Pattern.quote() first",
+      "cwe": [
+        {
+          "id": "CWE-1333",
+          "name": "Inefficient Regular Expression Complexity"
+        }
+      ],
+      "references": [
+        "https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS"
+      ]
+    },
+    {
+      "id": "java-mail-header-injection",
+      "pack": "java",
+      "title": "Mail header built from request data",
+      "refuses": "a setSubject/setFrom/setReplyTo/addRecipient(s)/setRecipient(s) call a method body shows request data reaching, in a file that imports javax.mail or jakarta.mail",
+      "silent_on": "a constant subject/address; the same call in a file with no javax.mail/jakarta.mail import; an address built through InternetAddress(value, true), which rejects control characters",
+      "constraint": "never(call): Message.setSubject|setFrom|setReplyTo|addRecipient(s)|setRecipient(s) built from @RequestParam|@PathVariable|request.get* in a file using javax.mail/jakarta.mail -- strip control characters first, or use InternetAddress(value, true)",
+      "cwe": [
+        {
+          "id": "CWE-93",
+          "name": "Improper Neutralization of CRLF Sequences ('CRLF Injection')"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html"
+      ]
+    },
+    {
       "id": "crypto-weak-cipher",
       "pack": "crypto",
       "title": "Weak cipher algorithm or ECB mode",
@@ -344,6 +480,23 @@
       ]
     },
     {
+      "id": "crypto-weak-signature-algorithm",
+      "pack": "crypto",
+      "title": "Weak signature algorithm",
+      "refuses": "Signature.getInstance() naming an MD2/MD5- or SHA-1-based signature algorithm",
+      "silent_on": "SHA256withRSA, SHA256withECDSA, SHA384withRSA, SHA512withRSA, Ed25519, and any other SHA-2/SHA-3-based algorithm",
+      "constraint": "never(call): Signature.getInstance(\"MD2withRSA\"|\"MD5withRSA\"|\"MD5andMD2withRSA\"|\"SHA1withRSA\"|\"SHA1withDSA\"|\"SHA1withECDSA\") -- use a SHA-2/SHA-3-based algorithm instead",
+      "cwe": [
+        {
+          "id": "CWE-327",
+          "name": "Use of a Broken or Risky Cryptographic Algorithm"
+        }
+      ],
+      "references": [
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"
+      ]
+    },
+    {
       "id": "crypto-insecure-random",
       "pack": "crypto",
       "title": "Predictable random used for a secret value",
@@ -358,6 +511,24 @@
       ],
       "references": [
         "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"
+      ]
+    },
+    {
+      "id": "crypto-securerandom-fixed-seed",
+      "pack": "crypto",
+      "title": "SecureRandom seeded with a fixed value",
+      "refuses": "setSeed() on a `new SecureRandom()` variable, called with a quoted string (with or without .getBytes()), a numeric literal, or an ALL_CAPS constant name",
+      "silent_on": "a SecureRandom never reseeded; setSeed() called with a variable or a call expression (e.g. a value read from generateSeed()); setSeed() on a variable this file never built as SecureRandom",
+      "constraint": "never(call): secureRandom.setSeed(...) with a literal string, number, or ALL_CAPS constant -- drop the call, or seed from SecureRandom.getInstanceStrong().generateSeed()",
+      "cwe": [
+        {
+          "id": "CWE-337",
+          "name": "Predictable Seed in Pseudo-Random Number Generator (PRNG)"
+        }
+      ],
+      "references": [
+        "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/security/SecureRandom.html",
+        "https://rules.sonarsource.com/java/RSPEC-4347/"
       ]
     },
     {
@@ -1419,6 +1590,199 @@
       "references": [
         "https://developer.android.com/privacy-and-security/risks/access-control-to-exported-components",
         "https://developer.android.com/privacy-and-security/risks/android-exported"
+      ]
+    },
+    {
+      "id": "style-redundant-import",
+      "pack": "style",
+      "title": "Redundant import",
+      "refuses": "`import java.lang.String;`, `import java.lang.*;`; a second `import` of the same name; a type imported from this file's own package",
+      "silent_on": "`import static java.lang.Math.PI;`; imports from other packages, each written once",
+      "constraint": "never(import): a java.lang type, a type from this file's own package, or the same import twice",
+      "cwe": [],
+      "references": [
+        "https://checkstyle.org/checks/imports/redundantimport.html"
+      ]
+    },
+    {
+      "id": "style-system-out-println",
+      "pack": "style",
+      "title": "System.out/err used directly",
+      "refuses": "System.out.println/print or System.err.println/print in a production class with no `static void main(`",
+      "silent_on": "the same call in a test file; a class with a `static void main(` entry point; `// System.out.println(...)` in a comment",
+      "constraint": "never(call): System.out.print*/System.err.print* outside tests and outside a main() class -- use a logger",
+      "cwe": [],
+      "references": [
+        "https://pmd.github.io/pmd/pmd_rules_java_bestpractices.html#systemprintln",
+        "https://rules.sonarsource.com/java/RSPEC-106/"
+      ]
+    },
+    {
+      "id": "style-boolean-literal-comparison",
+      "pack": "style",
+      "title": "Boolean literal compared with == / !=",
+      "refuses": "`x == true`, `x == false`, `x != true`, `x != false`, in either operand order",
+      "silent_on": "`x`, `!x`; `Boolean.TRUE.equals(x)`; `x == y` comparing two variables; the words `true`/`false` inside a string or comment",
+      "constraint": "never(compare): expr == true|false|expr != true|false -- use the expression itself, negated with ! if needed",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1125/"
+      ]
+    },
+    {
+      "id": "style-empty-statement",
+      "pack": "style",
+      "title": "Empty statement after if/for/while",
+      "refuses": "`if (cond);`, `for (...);`, `while (cond);` on one line, with nothing or only whitespace between `)` and `;`",
+      "silent_on": "`if (cond) {}`; `if (cond) doThing();`; `while (queue.poll() != null) {}`; a `;` inside a string or comment",
+      "constraint": "never(write): if (...); / for (...); / while (...); -- an empty statement where a block was meant",
+      "cwe": [
+        {
+          "id": "CWE-1071",
+          "name": "Empty Code Block"
+        }
+      ],
+      "references": [
+        "https://checkstyle.org/checks/coding/emptystatement.html",
+        "https://rules.sonarsource.com/java/RSPEC-1116/"
+      ]
+    },
+    {
+      "id": "style-type-name",
+      "pack": "style",
+      "title": "Type name not UpperCamelCase",
+      "refuses": "`class userService`, `interface http_client`, `enum status_Code`, `record order_id(...)`",
+      "silent_on": "`class UserService`, `interface HttpClient`, `enum StatusCode`, `record OrderId(...)`; `@interface MyAnnotation` (a different declaration kind)",
+      "constraint": "never(name): class/interface/enum/record not matching ^[A-Z][A-Za-z0-9]*$",
+      "cwe": [],
+      "references": [
+        "https://checkstyle.org/checks/naming/typename.html",
+        "https://rules.sonarsource.com/java/RSPEC-101/"
+      ]
+    },
+    {
+      "id": "style-constant-name",
+      "pack": "style",
+      "title": "Constant name not UPPER_SNAKE_CASE",
+      "refuses": "`private static final String tableName = ...;`, `static final int maxRetries = 3;`",
+      "silent_on": "`private static final String TABLE_NAME = ...;`; `private static final long serialVersionUID = 1L;`; `private static final Logger log = ...;` (not a primitive or String)",
+      "constraint": "never(name): static final int/long/short/byte/char/boolean/float/double/String not matching ^[A-Z][A-Z0-9_]*$",
+      "cwe": [],
+      "references": [
+        "https://checkstyle.org/checks/naming/constantname.html",
+        "https://rules.sonarsource.com/java/RSPEC-115/"
+      ]
+    },
+    {
+      "id": "style-multiple-variable-declarations",
+      "pack": "style",
+      "title": "Multiple variables declared in one statement",
+      "refuses": "`int a, b;`, `String first, last;`, `double x = 0, y = 0;`",
+      "silent_on": "`int a; int b;` on separate lines; `for (int i = 0, j = len; i < j; i++, j--)`; `String name(int a, int b)` (a parameter list); `String url = builder.queryParam(\"city\", city).build();` (a comma inside a method call, not a second declaration)",
+      "constraint": "never(declare): int a, b; -- one variable declaration per statement",
+      "cwe": [],
+      "references": [
+        "https://checkstyle.org/checks/coding/multiplevariabledeclarations.html",
+        "https://rules.sonarsource.com/java/RSPEC-1659/"
+      ]
+    },
+    {
+      "id": "style-upper-ell",
+      "pack": "style",
+      "title": "Long literal with lowercase l suffix",
+      "refuses": "`10l`, `0x1Fl`, `0b101l`",
+      "silent_on": "`10L`, `0x1FL`; `10` (no suffix, an int); a variable named `l`; the letter `l` inside a string or comment",
+      "constraint": "never(write): a long literal suffixed with lowercase l -- use uppercase L",
+      "cwe": [],
+      "references": [
+        "https://checkstyle.org/checks/misc/upperell.html",
+        "https://rules.sonarsource.com/java/RSPEC-818/"
+      ]
+    },
+    {
+      "id": "style-array-type-style",
+      "pack": "style",
+      "title": "C-style array declaration",
+      "refuses": "`String args[]`, `public static void main(String argv[])`, `int matrix[][]`",
+      "silent_on": "`String[] args`; `int[] matrix`; `new int[]{1, 2, 3}`; `values[i]` (an array access, not a declaration)",
+      "constraint": "never(declare): Type name[] -- write Type[] name instead",
+      "cwe": [],
+      "references": [
+        "https://checkstyle.org/checks/misc/arraytypestyle.html",
+        "https://rules.sonarsource.com/java/RSPEC-1197/"
+      ]
+    },
+    {
+      "id": "testing-no-assertion",
+      "pack": "testing",
+      "title": "Test with no assertion",
+      "refuses": "an @Test/@ParameterizedTest/@RepeatedTest method whose body calls nothing from JUnit, AssertJ, Hamcrest, Mockito, MockMvc or StepVerifier that checks a value",
+      "silent_on": "a test calling anything named assert*/verify*/expect*/fail*/should*/check*, a BDD then() or await(), .andExpect/StepVerifier; `@Test(expected = SomeException.class)` with no assertion; the same empty method outside a test file",
+      "constraint": "never(write): @Test method with no assertThat/assertEquals/verify/assertThrows/... call and no @Test(expected=...)",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2699/",
+        "https://pmd.github.io/pmd/pmd_rules_java_bestpractices.html#unittestshouldincludeassert"
+      ]
+    },
+    {
+      "id": "testing-thread-sleep",
+      "pack": "testing",
+      "title": "Thread.sleep in a test",
+      "refuses": "`Thread.sleep(500)` anywhere in a test class's body",
+      "silent_on": "`Thread.sleep(...)` in production code (not a test file); `await().atMost(...)`; `Thread.sleep(` inside a comment or string",
+      "constraint": "never(call): Thread.sleep(...) in a test -- use Awaitility or an explicit wait instead",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2925/"
+      ]
+    },
+    {
+      "id": "testing-disabled-without-reason",
+      "pack": "testing",
+      "title": "Disabled test with no reason",
+      "refuses": "bare `@Disabled`, `@Disabled()`, bare `@Ignore`, `@Ignore()`",
+      "silent_on": "`@Disabled(\"flaky, see JIRA-123\")`; `@Ignore(\"pending API fix\")`; an enabled test; `// @Disabled` in a comment",
+      "constraint": "never(write): @Disabled or @Ignore with no reason string -- always @Disabled(\"why\")",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1607/"
+      ]
+    },
+    {
+      "id": "testing-asserttrue-equality",
+      "pack": "testing",
+      "title": "assertTrue used for an equality check",
+      "refuses": "`assertTrue(actual.equals(expected))`, `assertTrue(count == 3)`",
+      "silent_on": "`assertEquals(expected, actual)`; `assertTrue(list.isEmpty())`; `assertTrue(user.isActive())` (no equality inside)",
+      "constraint": "never(call): assertTrue(a.equals(b)) / assertTrue(a == b) -- use assertEquals(a, b)",
+      "cwe": [],
+      "references": [
+        "https://pmd.github.io/pmd/pmd_rules_java_bestpractices.html#simplifiabletestassertion"
+      ]
+    },
+    {
+      "id": "testing-assertfalse-equals",
+      "pack": "testing",
+      "title": "assertFalse used for an equals() check",
+      "refuses": "`assertFalse(actual.equals(expected))`, `assertFalse(user.getName().equals(\"admin\"))`",
+      "silent_on": "`assertNotEquals(expected, actual)`; `assertFalse(list.isEmpty())`; `assertFalse(count == 0)` (an inequality, not an equals() call)",
+      "constraint": "never(call): assertFalse(a.equals(b)) -- use assertNotEquals(a, b)",
+      "cwe": [],
+      "references": [
+        "https://pmd.github.io/pmd/pmd_rules_java_bestpractices.html#simplifiabletestassertion"
+      ]
+    },
+    {
+      "id": "testing-assertequals-literal-actual",
+      "pack": "testing",
+      "title": "assertEquals literal in the actual-value position",
+      "refuses": "`assertEquals(result, 42)`, `assertEquals(computedTotal, \"5\")`, `assertNotEquals(userId, 7)`",
+      "silent_on": "`assertEquals(42, result)`; `assertEquals(expected, actual)` (neither is a literal); `assertEquals(1, 2)` (both are literals); `assertEquals(total(), \"5\")` (a nested call, outside this rule's plain two-argument shape)",
+      "constraint": "never(call): assertEquals(actual, 42) -- assertEquals(expected, actual) takes the expected value first",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-3415/"
       ]
     }
   ],

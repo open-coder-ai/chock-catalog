@@ -183,7 +183,12 @@ CASES: list[tuple[str, str, str, list[int]]] = [
 #: Assertions named the way real suites name them, and class-level annotations that are not tests.
 _T = "src/test/java/com/acme/OrderTest.java"
 CASES += [
-    ("testing-no-assertion", _T, "@Test\nvoid a() {\n  assertThatThrownBy(() -> svc.run()).isInstanceOf(X.class);\n}\n", []),
+    (
+        "testing-no-assertion",
+        _T,
+        "@Test\nvoid a() {\n  assertThatThrownBy(() -> svc.run()).isInstanceOf(X.class);\n}\n",
+        [],
+    ),
     ("testing-no-assertion", _T, "@Test\nvoid a() {\n  svc.run();\n  verifyNoInteractions(repo);\n}\n", []),
     ("testing-no-assertion", _T, "@Test\nvoid a() {\n  assertValidOrder(svc.place());\n}\n", []),
     ("testing-no-assertion", _T, "@Test\nvoid a() {\n  then(repo).should().save(order);\n}\n", []),

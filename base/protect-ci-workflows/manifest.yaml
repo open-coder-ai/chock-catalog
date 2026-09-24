@@ -1,6 +1,6 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Guard against an agent weakening the automated checks that review its own work. CI/CD
   workflow files (.github/workflows/), the composite actions they call (.github/actions/)
@@ -49,6 +49,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-09-24'
+  changes:
+  - "Eval cases added so every guard statement is exercised: clause-splitter arms for a
+    separator glued to the end of a token (`status|| rm`, `status&& rm`, `notes.txt| rm`)
+    targeting a workflow file. Guard unchanged."
 - version: 0.0.2
   date: '2026-09-21'
   changes:

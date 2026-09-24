@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.0.6"
+version: "0.0.7"
 description: >
   Guard against an agent hand-editing its own guardrails. Agent instruction files
   (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json,
@@ -56,6 +56,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.7
+  date: '2026-09-24'
+  changes:
+  - "Eval cases added so every guard statement is exercised: clause-splitter arms for a
+    separator glued to the end of a token (`status|| rm`, `status&& rm`, `notes.txt| rm`)
+    targeting .claude/settings.json. Guard unchanged."
 - version: 0.0.6
   date: '2026-09-21'
   changes:

@@ -98,6 +98,12 @@ for arg in "$@"; do
     fi
 done
 
+# Every caller assigns the output directly (`x="$(pos_after ...)"`) and only ever compares
+# that string, never the exit code -- so this always succeeds. It must: `$1` can be present
+# in has_command's raw argv (e.g. as a value-flag's VALUE, like `--profile s3`) while never
+# landing in `positionals` at all, and a failing return code on an unguarded assignment
+# would abort the whole script under `set -eu`, silently "blocking" an unrelated command
+# with no message -- exactly the false positive this returns-0 always avoids.
 pos_after() {
     local want="$1" off="$2" i
     for i in "${!positionals[@]}"; do
@@ -106,7 +112,7 @@ pos_after() {
             return 0
         fi
     done
-    return 1
+    return 0
 }
 
 # The program actually invoked: the first positional that is not a transparent wrapper.

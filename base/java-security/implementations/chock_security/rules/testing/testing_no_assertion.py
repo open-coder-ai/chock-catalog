@@ -20,8 +20,11 @@ _ANNOTATION = re.compile("(?:" + "|".join(re.escape(a) for a in _FACTS["test_ann
 #: (`verifyNoInteractions`), Truth, a team's own `assertValidOrder` helper -- or a BDD `then(`
 #: or Awaitility `await(`. Reading too much as an assertion only keeps the rule silent.
 _ASSERTION = re.compile(
-    r"\b(?:" + "|".join(_FACTS["assertion_call_prefixes"]) + r")\w*\s*\("
-    + "|" + "|".join(r"\b" + re.escape(c) for c in _FACTS["assertion_bare_calls"])
+    r"\b(?:"
+    + "|".join(_FACTS["assertion_call_prefixes"])
+    + r")\w*\s*\("
+    + "|"
+    + "|".join(r"\b" + re.escape(c) for c in _FACTS["assertion_bare_calls"])
 )
 
 _MESSAGE = (

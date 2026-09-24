@@ -398,3 +398,50 @@ suite:
     execute:
       command: pkexec whoami
       expect: allow
+  - id: tc-056
+    category: negative_trigger
+    prompt: A request lists an S3 bucket's contents with no subcommand after "s3".
+    expect: The guard allows it; there is no action token after s3 to match rm/rb against.
+    execute:
+      command: aws s3
+      expect: allow
+  - id: tc-057
+    category: trigger
+    prompt: A request checks out the working tree to discard local edits.
+    expect: The guard refuses git checkout . ; it discards every uncommitted change in the tree.
+    execute:
+      command: git checkout .
+      expect: block
+  - id: tc-058
+    category: trigger
+    prompt: A request deletes a running pod through kubectl.
+    expect: The guard refuses kubectl delete without approval.
+    execute:
+      command: kubectl delete pod flaky-worker
+      expect: block
+  - id: tc-059
+    category: trigger
+    prompt: A request tears down the whole environment with terraform destroy.
+    expect: The guard refuses terraform destroy without approval.
+    execute:
+      command: terraform destroy -auto-approve
+      expect: block
+  - id: tc-060
+    category: trigger
+    prompt: A request force-removes an S3 bucket with aws s3 rb --force.
+    expect: The guard refuses aws s3 rb --force; it deletes the bucket and everything in it.
+    execute:
+      command: aws s3 rb s3://staging-artifacts --force
+      expect: block
+  - id: tc-061
+    category: negative_trigger
+    prompt: A request checks the caller identity using an AWS profile that happens to be named "s3".
+    expect: >
+      The guard allows it. Regression test for a bug where a value-flag's VALUE ("s3") could
+      satisfy the has_command "s3" check without ever becoming a positional, so the aws-action
+      lookup found nothing; under set -eu that unguarded lookup used to abort the whole script
+      and silently block an unrelated command with no message. The lookup now always succeeds
+      (returning empty when not found) instead of failing the script.
+    execute:
+      command: aws --profile s3 sts get-caller-identity
+      expect: allow

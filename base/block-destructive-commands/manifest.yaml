@@ -1,6 +1,6 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.0.9"
+version: "0.0.10"
 description: >
   Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~)
   or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push
@@ -50,6 +50,19 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.10
+  date: '2026-09-24'
+  changes:
+  - "Bug fix: pos_after (used to read the aws/helm/find action slot) returned failure when
+    its target word was never a positional -- reachable whenever that word only appears as
+    the VALUE of an earlier value-flag (e.g. `aws --profile s3 sts get-caller-identity`,
+    profile literally named \"s3\"). Every caller assigns its output directly and only
+    compares the string, but the unguarded assignment's failing exit code aborted the whole
+    script under `set -eu`, silently blocking an unrelated command with no BLOCKED message.
+    pos_after now always succeeds (empty output when not found), matching how every caller
+    already treats it. Eval cases added covering aws s3 rb --force, git checkout .,
+    kubectl delete, terraform destroy, a bare `aws s3` with no action, and the pos_after
+    regression (aws --profile s3 ..., now allowed)."
 - version: 0.0.9
   date: '2026-09-17'
   changes:
