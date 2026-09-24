@@ -17,7 +17,11 @@ RULE_ID = "performance-string-concat-loop"
 _FACTS = facts("performance")["string_concat_loop"]
 
 _STRING_DECL = re.compile(r"^\s*(?:final\s+)?String\s+(\w+)\s*[=;]")
-_LOOP_OPEN = re.compile(r"\b(?:for|while)\s*\(|\bdo\s*\{")
+#: `for (`/`while (` at any spacing, and a `do {` block -- `} while (...)` closing one reads as a
+#: loop keyword too, which is harmless: the do-block already opened the loop.
+_LOOP_OPEN = re.compile(
+    r"\b(?:" + "|".join(_FACTS["condition_loops"]) + r")\s*\(" + r"|\b(?:" + "|".join(_FACTS["block_loops"]) + r")\s*\{"
+)
 _CONCAT = re.compile(r"\b(\w+)\s*\+=")
 _SELF_CONCAT = re.compile(r"\b(\w+)\s*=\s*\1\s*\+(?!=)")
 
