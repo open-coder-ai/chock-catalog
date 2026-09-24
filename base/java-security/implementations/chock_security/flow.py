@@ -148,19 +148,24 @@ def _retaint(line: str, tainted: set[str]) -> None:
             tainted.discard(target)
 
 
-def reaching(method: Method, sinks: list[str]) -> Iterator[Flow]:
-    """Every line in this body where request data reaches one of these sinks."""
+def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
+    """Every line in this body where request data reaches one of these sinks.
+
+    `sanitizers` adds a pack's own checks to the shared list -- an allowlist lookup that only
+    makes sense for redirects, say -- without the pack editing another pack's facts.
+    """
     tainted = _parameters(method.signature)
     annotated = bool(tainted)
+    clean = [*_FACTS["sanitizers"], *sanitizers]
     for line_no, line in method.body:
         direct = _holds(line, _FACTS["source_calls"])
         reached = _holds(line, sinks) and (direct or _mentions(line, tainted))
-        if reached and not _holds(line, _FACTS["sanitizers"]):
+        if reached and not _holds(line, clean):
             yield Flow(line_no, line, "a request parameter" if annotated else "the request")
         _retaint(line, tainted)
 
 
-def flows(text: FileText, sinks: list[str]) -> Iterator[Flow]:
+def flows(text: FileText, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
     """Every sink in this file that a method body shows request data reaching."""
     for method in methods(text):
-        yield from reaching(method, sinks)
+        yield from reaching(method, sinks, sanitizers)

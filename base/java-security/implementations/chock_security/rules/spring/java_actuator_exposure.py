@@ -9,7 +9,7 @@ from chock_security.pack import Rule, facts
 
 RULE_ID = "java-actuator-wildcard-exposure"
 
-_FACTS = facts("java")["actuator"]
+_FACTS = facts("spring")["actuator"]
 
 _MESSAGE = (
     "Exposing every actuator endpoint publishes heapdump, env, threaddump and mappings, not "
@@ -65,7 +65,7 @@ def scan(text: FileText) -> Iterator[Finding]:
 
 RULE = Rule(
     id=RULE_ID,
-    pack="java",
+    pack="spring",
     title="Every actuator endpoint exposed",
     suffixes=(".properties", ".yml", ".yaml"),
     scan=scan,

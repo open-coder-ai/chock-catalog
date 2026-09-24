@@ -1,0 +1,11 @@
+{
+  "mybatis": {
+    "mapper_markers": [
+      "//mybatis.org//DTD Mapper",
+      "<mapper namespace="
+    ],
+    "annotation_import": "org.apache.ibatis",
+    "interpolation": "${",
+    "bound_parameter": "#{}"
+  }
+}

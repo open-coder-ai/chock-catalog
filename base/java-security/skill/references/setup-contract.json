@@ -23,23 +23,54 @@
       "does": "repo_only"
     }
   ],
+  "packs": [
+    {
+      "id": "java",
+      "title": "Core Java",
+      "covers": "The JDK itself, whatever framework sits on top: injection into commands, code, reflection, LDAP and XPath; XML parsers; outbound URLs; archives; file paths; Java and polymorphic deserialization; JWT libraries."
+    },
+    {
+      "id": "crypto",
+      "title": "Cryptography and TLS",
+      "covers": "JCA ciphers, digests, random numbers, keys and IVs; TLS contexts, trust managers and hostname verifiers; credentials written into the source."
+    },
+    {
+      "id": "spring",
+      "title": "Spring",
+      "covers": "Spring Framework, Boot, Security, Data and Cloud: security filter chains, controllers, SpEL, actuator, and application.properties / application.yml."
+    },
+    {
+      "id": "jakarta",
+      "title": "Jakarta EE and other frameworks",
+      "covers": "Everything that is not Spring: Servlet, JAX-RS, JSF and web.xml; Struts; Quarkus, Micronaut, Helidon, Vert.x and Dropwizard, and their configuration."
+    },
+    {
+      "id": "persistence",
+      "title": "Persistence",
+      "covers": "JDBC, JPA and Hibernate, JdbcTemplate, MyBatis, jOOQ, MongoDB and other NoSQL drivers, and the JDBC URLs and schema settings that configure them."
+    },
+    {
+      "id": "templates",
+      "title": "Templates and views",
+      "covers": "Thymeleaf, JSP and JSTL, JSF Facelets, FreeMarker, Velocity, Pebble, Mustache and Handlebars: output escaping and templates built at run time."
+    },
+    {
+      "id": "logging",
+      "title": "Logging",
+      "covers": "Log4j 2, Logback, SLF4J and java.util.logging: lookups, secrets written to logs, and stack traces sent to the caller."
+    },
+    {
+      "id": "build",
+      "title": "Build and dependencies",
+      "covers": "Maven pom.xml and Gradle build scripts: repositories, checksums, and dependency versions with known remote-code-execution flaws."
+    },
+    {
+      "id": "android",
+      "title": "Android",
+      "covers": "Android apps in Java or Kotlin: WebView, TLS error handling, file modes, components and the AndroidManifest.xml flags that expose them."
+    }
+  ],
   "rules": [
-    {
-      "id": "java-sqli-mybatis-interpolation",
-      "pack": "java",
-      "title": "MyBatis string interpolation in SQL",
-      "refuses": "`${}` in a mapper or a MyBatis-annotated source",
-      "silent_on": "`#{}`, and `${}` anywhere that is not MyBatis",
-      "constraint": "never(interpolate): mybatis ${...} in mapper|@Select|@Insert|@Update|@Delete -- ${} is pasted into the SQL text before preparing; bind with #{...}"
-    },
-    {
-      "id": "java-xss-unescaped-template",
-      "pack": "java",
-      "title": "Unescaped template output",
-      "refuses": "`th:utext`, `<%=`, `escapeXml=\"false\"`, `?no_esc`, `<#noescape>`",
-      "silent_on": "the escaping sibling, and other `<% %>` forms",
-      "constraint": "never(write): th:utext|<%=|escapeXml=\"false\"|?no_esc|<#noescape> -- these put a value into the page as markup; use the escaping sibling"
-    },
     {
       "id": "java-unsafe-deserialization",
       "pack": "java",
@@ -49,20 +80,12 @@
       "constraint": "never(enable): jackson activateDefaultTyping|enableDefaultTyping; never(build): XStream without allowTypes|allowTypeHierarchy"
     },
     {
-      "id": "java-cors-wildcard-credentials",
+      "id": "java-deserialization-request-stream",
       "pack": "java",
-      "title": "Wildcard CORS origin with credentials",
-      "refuses": "a wildcard origin **with** credentials enabled",
-      "silent_on": "a wildcard alone; a named origin; `setAllowedOriginPatterns`",
-      "constraint": "never(pair): CORS origin \"*\" with allowCredentials(true) -- the spec refuses it; name the origins, or use setAllowedOriginPatterns"
-    },
-    {
-      "id": "java-actuator-wildcard-exposure",
-      "pack": "java",
-      "title": "Every actuator endpoint exposed",
-      "refuses": "`exposure.include=*` in properties or YAML",
-      "silent_on": "named endpoints; a wildcard `include:` outside actuator config",
-      "constraint": "never(expose): management.endpoints.web.exposure.include=* -- it publishes heapdump and env; name the endpoints served"
+      "title": "Java deserialization of request data",
+      "refuses": "`ObjectInputStream` over request data",
+      "silent_on": "a stream the application opened itself; the same bytes read as JSON",
+      "constraint": "never(construct): ObjectInputStream over @RequestBody|request.getInputStream -- the bytes name the classes; carry the payload as JSON into a declared type"
     },
     {
       "id": "java-jwt-unverified-parse",
@@ -81,12 +104,36 @@
       "constraint": "never(open): a file path built from @RequestParam|@PathVariable|request.get* -- take getFileName, resolve against a fixed base, check startsWith"
     },
     {
-      "id": "java-deserialization-request-stream",
-      "pack": "java",
-      "title": "Java deserialization of request data",
-      "refuses": "`ObjectInputStream` over request data",
-      "silent_on": "a stream the application opened itself; the same bytes read as JSON",
-      "constraint": "never(construct): ObjectInputStream over @RequestBody|request.getInputStream -- the bytes name the classes; carry the payload as JSON into a declared type"
+      "id": "java-cors-wildcard-credentials",
+      "pack": "spring",
+      "title": "Wildcard CORS origin with credentials",
+      "refuses": "a wildcard origin **with** credentials enabled",
+      "silent_on": "a wildcard alone; a named origin; `setAllowedOriginPatterns`",
+      "constraint": "never(pair): CORS origin \"*\" with allowCredentials(true) -- the spec refuses it; name the origins, or use setAllowedOriginPatterns"
+    },
+    {
+      "id": "java-actuator-wildcard-exposure",
+      "pack": "spring",
+      "title": "Every actuator endpoint exposed",
+      "refuses": "`exposure.include=*` in properties or YAML",
+      "silent_on": "named endpoints; a wildcard `include:` outside actuator config",
+      "constraint": "never(expose): management.endpoints.web.exposure.include=* -- it publishes heapdump and env; name the endpoints served"
+    },
+    {
+      "id": "java-sqli-mybatis-interpolation",
+      "pack": "persistence",
+      "title": "MyBatis string interpolation in SQL",
+      "refuses": "`${}` in a mapper or a MyBatis-annotated source",
+      "silent_on": "`#{}`, and `${}` anywhere that is not MyBatis",
+      "constraint": "never(interpolate): mybatis ${...} in mapper|@Select|@Insert|@Update|@Delete -- ${} is pasted into the SQL text before preparing; bind with #{...}"
+    },
+    {
+      "id": "java-xss-unescaped-template",
+      "pack": "templates",
+      "title": "Unescaped template output",
+      "refuses": "`th:utext`, `<%=`, `escapeXml=\"false\"`, `?no_esc`, `<#noescape>`",
+      "silent_on": "the escaping sibling, and other `<% %>` forms",
+      "constraint": "never(write): th:utext|<%=|escapeXml=\"false\"|?no_esc|<#noescape> -- these put a value into the page as markup; use the escaping sibling"
     }
   ],
   "verdicts": [

@@ -258,6 +258,12 @@ jobs:
       - name: The Java security guard agrees with every rule it ships
         run: python tools/check_java_security.py
 
+      # The guided page and its reference file carry every pack's and rule's own texts; both are
+      # rendered from the registry the gate runs, so a rule change that did not regenerate them
+      # fails here rather than showing an adopter a page that describes a different policy.
+      - name: The Java security setup contract matches the rules it describes
+        run: python tools/gen_java_security_contract.py --check
+
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before
       # anyone has used it voluntarily is how the ritual becomes the point. What it does

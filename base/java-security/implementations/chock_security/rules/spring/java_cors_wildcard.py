@@ -9,7 +9,7 @@ from chock_security.pack import Rule, facts
 
 RULE_ID = "java-cors-wildcard-credentials"
 
-_FACTS = facts("java")["cors"]
+_FACTS = facts("spring")["cors"]
 
 _MESSAGE = (
     "A wildcard origin together with credentials is refused by every browser and throws at "
@@ -42,7 +42,7 @@ def scan(text: FileText) -> Iterator[Finding]:
 
 RULE = Rule(
     id=RULE_ID,
-    pack="java",
+    pack="spring",
     title="Wildcard CORS origin with credentials",
     suffixes=(".java",),
     scan=scan,

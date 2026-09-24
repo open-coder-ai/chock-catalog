@@ -1,0 +1,33 @@
+{
+  "unescaped_output": {
+    ".html": [
+      "th:utext"
+    ],
+    ".xhtml": [
+      "th:utext"
+    ],
+    ".jsp": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".jspx": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".tag": [
+      "<%=",
+      "escapeXml=\"false\"",
+      "escapeXml='false'"
+    ],
+    ".ftl": [
+      "?no_esc",
+      "<#noescape>"
+    ],
+    ".ftlh": [
+      "?no_esc",
+      "<#noescape>"
+    ]
+  }
+}

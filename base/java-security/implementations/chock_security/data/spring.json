@@ -1,0 +1,27 @@
+{
+  "cors": {
+    "origin_setters": [
+      "setAllowedOrigins",
+      "addAllowedOrigin",
+      "allowedOrigins",
+      "origins"
+    ],
+    "pattern_forms": [
+      "OriginPattern",
+      "originPattern"
+    ],
+    "wildcard": "\"*\"",
+    "credentials": [
+      "setAllowCredentials(true)",
+      ".allowCredentials(true)",
+      "allowCredentials = \"true\"",
+      "allowCredentials=\"true\""
+    ]
+  },
+  "actuator": {
+    "exposure_marker": "exposure",
+    "properties_key": "exposure.include",
+    "yaml_key": "include:",
+    "wildcard": "*"
+  }
+}

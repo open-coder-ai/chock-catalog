@@ -9,7 +9,7 @@ from chock_security.pack import Rule, facts
 
 RULE_ID = "java-sqli-mybatis-interpolation"
 
-_FACTS = facts("java")["mybatis"]
+_FACTS = facts("persistence")["mybatis"]
 
 _MESSAGE = (
     "MyBatis ${} substitutes this value into the SQL text before the statement is prepared, "
@@ -37,7 +37,7 @@ def scan(text: FileText) -> Iterator[Finding]:
 
 RULE = Rule(
     id=RULE_ID,
-    pack="java",
+    pack="persistence",
     title="MyBatis string interpolation in SQL",
     suffixes=(".xml", ".java"),
     scan=scan,

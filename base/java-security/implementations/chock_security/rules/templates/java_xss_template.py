@@ -9,7 +9,7 @@ from chock_security.pack import Rule, facts
 
 RULE_ID = "java-xss-unescaped-template"
 
-_TOKENS = facts("java")["unescaped_output"]
+_TOKENS = facts("templates")["unescaped_output"]
 
 #: The escaping sibling each token opted out of -- beside the condition that names the token.
 _SAFE_SIBLING = {
@@ -41,7 +41,7 @@ def scan(text: FileText) -> Iterator[Finding]:
 
 RULE = Rule(
     id=RULE_ID,
-    pack="java",
+    pack="templates",
     title="Unescaped template output",
     suffixes=tuple(_TOKENS),
     scan=scan,

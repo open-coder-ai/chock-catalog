@@ -18,6 +18,16 @@ def facts(pack: str) -> dict:
 
 
 @dataclass(frozen=True)
+class Pack:
+    """A category of rules an adopter can switch as one: a framework, a layer, a platform."""
+
+    id: str
+    title: str
+    #: What code this pack reads, in the words a developer would recognise their stack by.
+    covers: str
+
+
+@dataclass(frozen=True)
 class Rule:
     """One refusable construct: the files it reads, and the scan that finds it."""
 
