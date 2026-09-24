@@ -249,12 +249,12 @@ jobs:
       - name: The a11y guard's decision table holds
         run: python tools/check_a11y_table.py
 
-      # The same argument for the Java guard, whose verdicts come from eight rules over a flow
-      # model and a facts file. Its eval suite has no executable form on this engine (a
-      # hook.script is not replayed by `chock check --only evals`), so this is where every
-      # trigger and every negative case runs against the shipped guard -- including the commit
-      # path in a throwaway repository, and the setup page's embedded contract against the
-      # rules it must describe. A rule that fires on `parseClaimsJws` or `#{}` fails here.
+      # The same argument for the Java guard, whose verdicts come from rules in nine packs over a
+      # flow model and per-pack facts files. `chock check --only evals` does not replay a script
+      # gate on this engine, so this is where every rule's trigger and negative cases run, every
+      # executable eval case is replayed through the shipped gate, the gate protocol is driven in a
+      # throwaway repository, and a corpus of ordinary, correct enterprise code must draw no finding
+      # from any rule. A rule that fires on `parseClaimsJws`, `#{}` or a bind parameter fails here.
       - name: The Java security guard agrees with every rule it ships
         run: python tools/check_java_security.py
 

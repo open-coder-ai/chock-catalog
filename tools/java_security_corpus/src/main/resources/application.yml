@@ -1,0 +1,42 @@
+server:
+  port: 8080
+  error:
+    include-stacktrace: never
+    include-message: always
+  servlet:
+    session:
+      cookie:
+        secure: true
+        http-only: true
+spring:
+  datasource:
+    url: jdbc:postgresql://db.internal:5432/app?sslmode=verify-full
+    username: app
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: acme-app
+            client-secret: ${GITHUB_CLIENT_SECRET}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    token-validity-seconds: 3600
+  feature:
+    password-reset: true
+logging:
+  level:
+    root: INFO

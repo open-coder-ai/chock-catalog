@@ -8,12 +8,18 @@ import re
 import subprocess
 import sys
 import tempfile
+
+import yaml
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / "base" / "java-security"
 GATE = POLICY / "implementations" / "java-security-gate.py"
 SETUP = POLICY / "skill"
+#: Ordinary, correct enterprise code -- controllers, security configuration, repositories, crypto,
+#: XML and archive handling, templates, build files, an Android manifest, web.xml. No rule may fire
+#: on any of it: a rule that does has failed, whatever its own cases say.
+CORPUS = ROOT / "tools" / "java_security_corpus"
 
 sys.path.insert(0, str(POLICY / "implementations"))
 from chock_security.decision import ALLOW, ASK, DENY, FileText  # noqa: E402
@@ -92,6 +98,15 @@ def check_rules(probe: Probe) -> None:
                  "the traversal refusal must say what to do instead without echoing the line")
 
 
+def check_corpus(probe: Probe) -> None:
+    """Every rule, over code that is correct: silence is the only passing answer."""
+    files = [FileText(str(p.relative_to(CORPUS)), p.read_text(encoding="utf-8"))
+             for p in sorted(CORPUS.rglob("*")) if p.is_file()]
+    probe.expect(len(files) >= 10, f"the correct-code corpus holds {len(files)} files; it must not quietly empty")
+    for finding in evaluate(files, ALL_DENY):
+        probe.expect(False, f"corpus: {finding.rule_id} fired on correct code at {finding.path}:{finding.line_no}")
+
+
 def _gate(repo: Path, writes: dict[str, str], selection: dict | str | None = None) -> tuple[int, str]:
     """Run the gate as the runner does: the writes on stdin, the repository root beside them."""
     if selection is not None:
@@ -104,6 +119,31 @@ def _gate(repo: Path, writes: dict[str, str], selection: dict | str | None = Non
         start_new_session=True,  # no controlling terminal, so an ask has nobody
     )
     return proc.returncode, proc.stderr
+
+
+def check_evals(probe: Probe) -> int:
+    """Every eval case with an executable form, replayed through the gate as a commit would run it.
+
+    `chock check --only evals` does not replay a script gate on this engine, so without this the
+    suite's executable cases would be prose that nothing runs. A case's `.chock/security.json`, when
+    it carries one -- staged or already in the repository -- is written as the selection; every other
+    staged file is a write.
+    """
+    suite = yaml.safe_load((POLICY / "evals" / "suite.yaml").read_text(encoding="utf-8"))["suite"]
+    replayed = 0
+    for case in suite["cases"]:
+        execute = case.get("execute")
+        if not execute:
+            continue
+        files = dict(execute.get("files") or {})
+        present = dict(execute.get("repo_files") or {})
+        selection = files.pop(".chock/security.json", None) or present.get(".chock/security.json")
+        with tempfile.TemporaryDirectory(prefix="java-security-eval-") as tmp:
+            code, err = _gate(Path(tmp), files, selection)
+        want = {"block": 1, "allow": 0}[execute["expect"]]
+        probe.expect(code == want, f"eval {case['id']}: expected {execute['expect']}, gate exited {code}: {err.strip()[:160]}")
+        replayed += 1
+    return replayed
 
 
 def check_gate(probe: Probe) -> None:
@@ -169,6 +209,8 @@ def main() -> int:
     probe = Probe()
     check_registry(probe)
     check_rules(probe)
+    check_corpus(probe)
+    replayed = check_evals(probe)
     check_gate(probe)
     check_setup_page(probe)
     if probe.failures:
@@ -177,7 +219,8 @@ def main() -> int:
             print(f"  - {failure}", file=sys.stderr)
         return 1
     print(f"java-security: {probe.checked} checks passed over {len(registry())} rules in {len(packs())} packs "
-          f"({len(CASES)} rule cases, {len(FLOW_CASES)} flow cases, the gate protocol, the setup page).")
+          f"({len(CASES)} rule cases, {len(FLOW_CASES)} flow cases, {replayed} eval cases through the gate, "
+          "the correct-code corpus, the gate protocol, the setup page).")
     return 0
 
 
