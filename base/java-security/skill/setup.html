@@ -275,6 +275,10 @@ const LAYER_INFO = {
 };
 
 const RULES = CONTRACT.rules.map(r => [r.id, r.title, r.refuses, r.silent_on, r.constraint, r.pack]);
+/* packs are the unit a team usually decides by -- a framework it does not run, a layer it
+   owns elsewhere -- so the walk asks per pack, and opens a pack's rules only when asked to */
+const PACKS = (CONTRACT.packs || []).map(p => ({...p, rules: RULES.filter(r => r[5] === p.id)}));
+const PACK_TITLE = Object.fromEntries(PACKS.map(p => [p.id, p.title]));
 const VERDICT_WHY = {
   deny:  "<b>deny</b> stops the tool call, the commit, or the CI run. The default: a rule nobody spoke about enforces.",
   ask:   "<b>ask</b> puts it to the developer, case by case. At commit time that needs a terminal — an unattended commit touching it refuses; it never degrades to allow.",
@@ -285,8 +289,8 @@ const BASE_Q = [
   {topic:0, id:"reach", kind:"info", short:"Reach",
    q:`This plugin is installed in ${AGENT_LABEL}. Here is what each layer reaches here. Nothing in this table is typed by hand — a build reads it from agentseam, evidence basis included.`},
   {topic:1, id:"walk", kind:"pick", short:"Verdict walk",
-   q:"Every rule enforces by default. Walk through each one, or keep them all at deny?",
-   opts:[["walk","Walk through each"],["keep","Keep all at deny"]]},
+   q:`Every rule enforces by default: ${RULES.length} rules in ${PACKS.length} packs. Walk through the packs, or keep them all at deny?`,
+   opts:[["walk","Walk through the packs"],["keep","Keep all at deny"]]},
   {topic:2, id:"scope", kind:"pick", short:"Where it runs",
    q:"Where does this run — a repository the team shares, or just your own agent?",
    opts:[["repo","This repository (team)"],["user","Just my agent (user-level)"]]},
@@ -295,13 +299,22 @@ const BASE_Q = [
    opts:[["yes","Yes, both"],["no","Not yet"]]},
 ];
 const RULE_Q = RULES.map(r => ({topic:1, id:"rule:"+r[0], kind:"verdict", rule:r, short:r[1],
-  q:`${r[1]}. What does this rule do when it fires?`}));
+  q:`${PACK_TITLE[r[5]] || r[5]} · ${r[1]}. What does this rule do when it fires?`}));
+const PACK_Q = PACKS.map(p => ({topic:1, id:"pack:"+p.id, kind:"pack", pack:p, short:p.title,
+  q:`${p.title}: ${p.rules.length} rule${p.rules.length === 1 ? "" : "s"}. What should this pack do when one of them fires?`,
+  opts:[["deny","Deny"],["ask","Ask"],["allow","Allow"],["rules","Choose per rule"]]}));
+/* A pack's answer as its rules already stand: their one shared verdict, or per rule. */
+function packVerdict(p){
+  const vs = new Set(p.rules.map(r => state.answers["rule:"+r[0]] || DEFAULT_VERDICT));
+  return vs.size === 1 ? [...vs][0] : "rules";
+}
 
 const state = { i:0, answers:{}, excluded:{}, review:false, returning:false, reviewReached:false, editReturn:false, hue:0 };
 let queue = [];
 
 function defaults(){
   RULES.forEach(r => { if (state.answers["rule:"+r[0]] === undefined) state.answers["rule:"+r[0]] = DEFAULT_VERDICT; });
+  PACKS.forEach(p => { if (state.answers["pack:"+p.id] === undefined) state.answers["pack:"+p.id] = packVerdict(p); });
 }
 function rebuildQueue(){
   const walk = state.answers.walk === "walk";
@@ -310,7 +323,10 @@ function rebuildQueue(){
   BASE_Q.forEach(qd => {
     if (qd.id === "repo_doors" && !repo) return;
     queue.push(qd);
-    if (qd.id === "walk" && walk) queue.push(...RULE_Q);
+    if (qd.id === "walk" && walk) PACK_Q.forEach(pq => {
+      queue.push(pq);
+      if (state.answers[pq.id] === "rules") queue.push(...RULE_Q.filter(rq => rq.rule[5] === pq.pack.id));
+    });
   });
 }
 
@@ -324,6 +340,7 @@ function loadState(){ try { const s = JSON.parse(localStorage.getItem(LS_KEY));
 function loadCurrent(){
   if (!CONTRACT.current) return false;
   RULES.forEach(r => { state.answers["rule:"+r[0]] = CONTRACT.current[r[0]] || DEFAULT_VERDICT; });
+  PACKS.forEach(p => { state.answers["pack:"+p.id] = packVerdict(p); });
   state.answers.walk = "walk";
   state.answers.scope = "repo";
   return true;
@@ -370,6 +387,7 @@ function say(t){
 let lastAck = "";
 function ackFor(qd, v){
   if (qd.kind === "verdict") return v === "deny" ? "Enforcing." : v === "ask" ? "Noted — case by case." : "Off, and visible.";
+  if (qd.kind === "pack") return v === "rules" ? "Rule by rule, then." : v === "deny" ? "The whole pack enforces." : v === "ask" ? "The whole pack asks, case by case." : "The whole pack is off, and visible.";
   if (qd.id === "walk") return v === "keep" ? "Good — nothing to weaken." : "Let's take them one at a time.";
   if (qd.id === "scope") return v === "repo" ? "A team install, then." : "Your agent only, then.";
   if (qd.id === "repo_doors") return v === "yes" ? "Both doors it is." : "Plugin tier only, for now.";
@@ -404,7 +422,12 @@ function jumpToTopic(k){
   if (at !== -1){ state.review = false; state.i = at; restoreCont(); render(); }
 }
 function jumpToQuestion(id){
-  if (id.startsWith("rule:") && state.answers.walk !== "walk"){ state.answers.walk = "walk"; rebuildQueue(); }
+  if (id.startsWith("rule:")){
+    const r = RULES.find(x => "rule:"+x[0] === id);
+    state.answers.walk = "walk";
+    if (r) state.answers["pack:"+r[5]] = "rules";
+    rebuildQueue();
+  }
   const at = queue.findIndex(q => q.id === id);
   if (at !== -1){ state.review = false; state.i = at; state.editReturn = true;
     lastAck = "Let's revisit this one."; restoreCont(); render(); }
@@ -441,6 +464,7 @@ function render(){
 
   if (qd.kind === "info"){ renderReach(zone); return; }
   if (qd.kind === "verdict") zone.appendChild(ruleCard(qd.rule));
+  if (qd.kind === "pack") zone.appendChild(packCard(qd.pack));
 
   const opts = document.createElement("div"); opts.className = "opts";
   const current = state.answers[qd.id];
@@ -454,9 +478,9 @@ function render(){
   });
   zone.appendChild(opts);
 
-  if (qd.kind === "verdict"){
+  if (qd.kind === "verdict" || qd.kind === "pack"){
     const why = document.createElement("p"); why.className = "why"; why.id = "why";
-    why.innerHTML = VERDICT_WHY[current] || "";
+    why.innerHTML = VERDICT_WHY[current] || (current === "rules" ? "Each rule in this pack gets its own question next; the ones you do not change stay at deny." : "");
     zone.appendChild(why);
   }
   if (qd.id === "scope" && current === "user"){
@@ -472,6 +496,12 @@ function ruleCard(r){
   card.innerHTML = `<div class="rid">${esc(id)}</div>
     <dl><dt>refuses</dt><dd>${esc(refuses)}</dd><dt>silent on</dt><dd>${esc(silent)}</dd></dl>
     <div class="cons">${esc(cons)}</div>`;
+  return card;
+}
+function packCard(p){
+  const card = document.createElement("div"); card.className = "rule";
+  card.innerHTML = `<div class="rid">pack · ${esc(p.id)}</div>
+    <dl><dt>covers</dt><dd>${esc(p.covers)}</dd><dt>rules</dt><dd>${p.rules.map(r => esc(r[1])).join(" · ")}</dd></dl>`;
   return card;
 }
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -510,6 +540,11 @@ function pick(qd, v, opts, btn){
   delete state.excluded[qd.id];
   opts.querySelectorAll(".opt").forEach(o=>o.setAttribute("aria-pressed","false"));
   btn.setAttribute("aria-pressed","true");
+  if (qd.kind === "pack"){
+    if (v !== "rules") qd.pack.rules.forEach(r => { state.answers["rule:"+r[0]] = v; delete state.excluded["rule:"+r[0]]; });
+    rebuildQueue(); renderStats();
+    $("#why").innerHTML = VERDICT_WHY[v] || "Each rule in this pack gets its own question next; the ones you do not change stay at deny.";
+  }
   if (qd.id === "walk" || qd.id === "scope") rebuildQueue();
   if (qd.kind === "verdict"){ $("#why").innerHTML = VERDICT_WHY[v]; renderStats(); }
   lastAck = ackFor(qd, v);
@@ -571,7 +606,7 @@ function renderReview(zone){
     d.innerHTML = `<div class="rhead">${title}</div>`; zone.appendChild(d); return d; };
 
   const gv = grp("Verdicts · .chock/security.json");
-  RULE_Q.forEach(qd => gv.appendChild(row(qd, ` · ${esc(qd.rule[1])}`)));
+  RULE_Q.forEach(qd => gv.appendChild(row(qd, ` · ${esc(PACK_TITLE[qd.rule[5]] || qd.rule[5])} · ${esc(qd.rule[1])}`)));
 
   const gd = grp("Doors");
   gd.appendChild(row(BASE_Q.find(q => q.id === "scope")));
@@ -664,9 +699,10 @@ $("#reset").onclick = () => {
   }
   const qd = queue[state.i];
   if (qd.kind === "verdict") state.answers[qd.id] = "deny";
+  else if (qd.kind === "pack"){ state.answers[qd.id] = "deny"; qd.pack.rules.forEach(r => { state.answers["rule:"+r[0]] = "deny"; }); }
   else if (qd.kind !== "info") delete state.answers[qd.id];
   delete state.excluded[qd.id];
-  if (qd.id === "walk" || qd.id === "scope") rebuildQueue();
+  if (qd.id === "walk" || qd.id === "scope" || qd.kind === "pack") rebuildQueue();
   lastAck = ""; saveState(); render();
 };
 
