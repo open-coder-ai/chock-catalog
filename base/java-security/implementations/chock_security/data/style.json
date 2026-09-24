@@ -1,1 +1,21 @@
-{}
+{
+  "constant": {
+    "exempt_names": ["serialVersionUID"],
+    "types": ["int", "long", "short", "byte", "char", "boolean", "float", "double", "String"]
+  },
+  "multiple_variable_declarations": {
+    "types": ["int", "long", "short", "byte", "char", "boolean", "float", "double", "String"]
+  },
+  "control_keywords": ["if", "for", "while"],
+  "type_keywords": ["class", "interface", "enum", "record"],
+  "print_streams": ["out", "err"],
+  "main_method_marker": "static void main(",
+  "modifiers": [
+    "public", "private", "protected", "static", "final", "abstract", "synchronized",
+    "native", "transient", "volatile", "default", "new", "return", "throw"
+  ],
+  "test_path": {
+    "dir_marker": "src/test/",
+    "name_suffixes": ["Test.java", "Tests.java", "IT.java", "Test.kt", "Tests.kt", "IT.kt"]
+  }
+}

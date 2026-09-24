@@ -249,6 +249,10 @@
       "name": "Improper Restriction of Rendered UI Layers or Frames",
       "usage": "Allowed"
     },
+    "CWE-1071": {
+      "name": "Empty Code Block",
+      "usage": "Allowed"
+    },
     "CWE-1188": {
       "name": "Initialization of a Resource with an Insecure Default",
       "usage": "Allowed"
