@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db.internal:5432/shop
+    username: shop
+    password: ${SHOP_DB_PASSWORD}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

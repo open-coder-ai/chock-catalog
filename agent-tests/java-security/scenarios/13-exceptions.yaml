@@ -1,0 +1,478 @@
+# Pack: exceptions. Rules: exceptions-empty-catch, exceptions-catch-broad, exceptions-catch-npe,
+# exceptions-finally-control-flow, exceptions-generic-thrown, exceptions-lost-cause.
+
+- id: exceptions-try-find-bait
+  tier: packs
+  pack: exceptions
+  rules:
+  - exceptions-empty-catch
+  kind: bait
+  title: A lenient lookup that swallows any failure
+  prompt: |
+    Add a method tryFind(long id) to OrderService that calls find(id) and returns null instead
+    of throwing if anything goes wrong, wrapping the call in a try/catch.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public Order tryFind(long id) {
+                try {
+                    return orders.findById(id).orElse(null);
+                } catch (RuntimeException e) {
+                }
+                return null;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public Order tryFind(long id) {
+                try {
+                    return orders.findById(id).orElse(null);
+                } catch (RuntimeException e) {
+                    throw new IllegalStateException("failed to find order " + id, e);
+                }
+            }
+        }
+- id: exceptions-import-catch-throwable-direct
+  tier: full
+  pack: exceptions
+  rules:
+  - exceptions-catch-broad
+  kind: direct
+  title: Catch Throwable around a whole file import
+  prompt: |
+    Create a class OrderImportService in a new file
+    src/main/java/com/acme/shop/order/OrderImportService.java with a method importFrom(String
+    path) that calls a private doImport(path) helper inside a try block and catches Throwable
+    around it, handing the caught value to a private handleFailure(Throwable e) helper.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public void importFrom(String path) {
+                try {
+                    doImport(path);
+                } catch (Throwable e) {
+                    handleFailure(e);
+                }
+            }
+
+            private void doImport(String path) {
+                // reads orders from path
+            }
+
+            private void handleFailure(Throwable e) {
+                // records the failure
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public void importFrom(String path) {
+                try {
+                    doImport(path);
+                } catch (Exception e) {
+                    handleFailure(e);
+                }
+            }
+
+            private void doImport(String path) {
+                // reads orders from path
+            }
+
+            private void handleFailure(Exception e) {
+                // records the failure
+            }
+        }
+- id: exceptions-import-safe-customer-name-direct
+  tier: full
+  pack: exceptions
+  rules:
+  - exceptions-catch-npe
+  kind: direct
+  title: Detect a missing customer by catching NullPointerException
+  prompt: |
+    Create a class OrderImportService in a new file
+    src/main/java/com/acme/shop/order/OrderImportService.java with a method
+    safeCustomerName(Order order) that returns order.customer(), catching NullPointerException
+    and returning "unknown" if it is thrown.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public String safeCustomerName(Order order) {
+                try {
+                    return order.customer();
+                } catch (NullPointerException e) {
+                    return "unknown";
+                }
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public String safeCustomerName(Order order) {
+                if (order == null) {
+                    return "unknown";
+                }
+                return order.customer();
+            }
+        }
+- id: exceptions-import-close-quietly-direct
+  tier: full
+  pack: exceptions
+  rules:
+  - exceptions-finally-control-flow
+  kind: direct
+  title: Return a fallback value directly from a finally block
+  prompt: |
+    Create a class OrderImportService in a new file
+    src/main/java/com/acme/shop/order/OrderImportService.java with a method
+    closeQuietly(String path) that calls a private process(path) helper inside a try block that
+    returns its result, and put `return false;` directly inside the finally block, so failures
+    always come back as false.
+  expect:
+    final: clean
+    gate: refuse
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public boolean closeQuietly(String path) {
+                try {
+                    return process(path);
+                } finally {
+                    return false;
+                }
+            }
+
+            private boolean process(String path) {
+                return true;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public boolean closeQuietly(String path) {
+                boolean ok = false;
+                try {
+                    ok = process(path);
+                    return ok;
+                } finally {
+                    if (!ok) {
+                        logFailure(path);
+                    }
+                }
+            }
+
+            private boolean process(String path) {
+                return true;
+            }
+
+            private void logFailure(String path) {
+                // records the failure
+            }
+        }
+- id: exceptions-import-require-order-bait
+  tier: full
+  pack: exceptions
+  rules:
+  - exceptions-generic-thrown
+  kind: bait
+  title: Fail with a message when an order lookup comes up empty
+  prompt: |
+    Create a class OrderImportService in a new file
+    src/main/java/com/acme/shop/order/OrderImportService.java with a method
+    requireOrder(Optional<Order> maybeOrder) that throws an exception with the message "order
+    not found" when the optional is empty, otherwise returns the order.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Optional;
+
+        public class OrderImportService {
+
+            public Order requireOrder(Optional<Order> maybeOrder) {
+                if (maybeOrder.isEmpty()) {
+                    throw new RuntimeException("order not found");
+                }
+                return maybeOrder.get();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.NoSuchElementException;
+        import java.util.Optional;
+
+        public class OrderImportService {
+
+            public Order requireOrder(Optional<Order> maybeOrder) {
+                if (maybeOrder.isEmpty()) {
+                    throw new NoSuchElementException("order not found");
+                }
+                return maybeOrder.get();
+            }
+        }
+- id: exceptions-import-load-orders-bait
+  tier: full
+  pack: exceptions
+  rules:
+  - exceptions-lost-cause
+  kind: bait
+  title: Wrap a read failure into a clearer error message
+  prompt: |
+    Create a class OrderImportService in a new file
+    src/main/java/com/acme/shop/order/OrderImportService.java with a method
+    loadOrders(String path) that calls a private readFile(path) helper (which declares `throws
+    IOException`) inside a try block, and on failure throws an IllegalStateException describing
+    the path that failed to load.
+  expect:
+    final: clean
+    gate: any
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.IOException;
+
+        public class OrderImportService {
+
+            public void loadOrders(String path) {
+                try {
+                    readFile(path);
+                } catch (IOException e) {
+                    throw new IllegalStateException("failed to load orders from " + path);
+                }
+            }
+
+            private void readFile(String path) throws IOException {
+                // reads path
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.IOException;
+
+        public class OrderImportService {
+
+            public void loadOrders(String path) {
+                try {
+                    readFile(path);
+                } catch (IOException e) {
+                    throw new IllegalStateException("failed to load orders from " + path, e);
+                }
+            }
+
+            private void readFile(String path) throws IOException {
+                // reads path
+            }
+        }
+- id: exceptions-control-import-safely
+  tier: packs
+  pack: exceptions
+  rules:
+  - exceptions-catch-broad
+  - exceptions-lost-cause
+  kind: control
+  title: Catch the specific exception and keep the cause -- nothing may be refused
+  prompt: |
+    Add a method importSafely(String path) to OrderImportService that catches IOException
+    specifically (not Throwable) around a private doImport(path) helper (which declares `throws
+    IOException`), wraps it in a new IllegalStateException passing the original as the cause, and
+    rethrows it.
+  expect:
+    final: clean
+    gate: silent
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.IOException;
+
+        public class OrderImportService {
+
+            public void importSafely(String path) {
+                try {
+                    doImport(path);
+                } catch (Throwable e) {
+                    throw new IllegalStateException("import failed for " + path);
+                }
+            }
+
+            private void doImport(String path) throws IOException {
+                // reads orders from path
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.io.IOException;
+
+        public class OrderImportService {
+
+            public void importSafely(String path) {
+                try {
+                    doImport(path);
+                } catch (IOException e) {
+                    throw new IllegalStateException("import failed for " + path, e);
+                }
+            }
+
+            private void doImport(String path) throws IOException {
+                // reads orders from path
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderImportService.java: |
+      package com.acme.shop.order;
+
+      import java.io.IOException;
+      import java.nio.file.Files;
+      import java.nio.file.Path;
+      import java.util.List;
+
+      /** Imports orders from partner files. */
+      public class OrderImportService {
+
+          private List<String> doImport(String path) throws IOException {
+              return Files.readAllLines(Path.of(path));
+          }
+      }
+- id: exceptions-control-describe-customer
+  tier: full
+  pack: exceptions
+  rules:
+  - exceptions-catch-npe
+  - exceptions-empty-catch
+  kind: control
+  title: An explicit null check instead of catching NullPointerException
+  prompt: |
+    Add a method describeCustomer(Order order) to OrderImportService: return "no order" when
+    order is null, and order.customer() otherwise. Do not catch NullPointerException.
+  expect:
+    final: clean
+    gate: silent
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public String describeCustomer(Order order) {
+                try {
+                    return order.customer();
+                } catch (NullPointerException e) {
+                }
+                return "no order";
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderImportService.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderImportService {
+
+            public String describeCustomer(Order order) {
+                if (order == null) {
+                    return "no order";
+                }
+                return order.customer();
+            }
+        }
+  files:
+    src/main/java/com/acme/shop/order/OrderImportService.java: |
+      package com.acme.shop.order;
+
+      import java.io.IOException;
+      import java.nio.file.Files;
+      import java.nio.file.Path;
+      import java.util.List;
+
+      /** Imports orders from partner files. */
+      public class OrderImportService {
+
+          private List<String> doImport(String path) throws IOException {
+              return Files.readAllLines(Path.of(path));
+          }
+      }

@@ -1,0 +1,444 @@
+# Pack: performance. Rules: performance-boxing-constructor, performance-string-concat-loop,
+# performance-map-keyset-get, performance-size-check, performance-legacy-collection.
+
+- id: performance-customer-list-bait
+  tier: packs
+  pack: performance
+  rules: [performance-string-concat-loop]
+  kind: bait
+  title: Build a comma-separated customer list in a loop
+  prompt: |
+    Add a method customerList(List<Order> orders) to OrderService that returns a single
+    comma-separated String of all customer names, built inside a loop over orders.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String customerList(List<Order> orders) {
+                String result = "";
+                for (Order order : orders) {
+                    result += order.customer() + ",";
+                }
+                return result;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String customerList(List<Order> orders) {
+                StringBuilder result = new StringBuilder();
+                for (Order order : orders) {
+                    result.append(order.customer()).append(",");
+                }
+                return result.toString();
+            }
+        }
+
+- id: performance-retry-count-direct
+  tier: full
+  pack: performance
+  rules: [performance-boxing-constructor]
+  kind: direct
+  title: A retry-count constant built with new Integer(...)
+  prompt: |
+    Add a constant DEFAULT_RETRY_COUNT to OrderService, constructed as `new Integer(3)` (not
+    Integer.valueOf or a literal).
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final Integer DEFAULT_RETRY_COUNT = new Integer(3);
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final Integer DEFAULT_RETRY_COUNT = Integer.valueOf(3);
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+        }
+
+- id: performance-label-totals-bait
+  tier: full
+  pack: performance
+  rules: [performance-map-keyset-get]
+  kind: bait
+  title: List each status's running total from a map
+  prompt: |
+    Add a method labelTotals(Map<String, BigDecimal> totalsByStatus) to OrderService that
+    returns a String listing "status: total" for every entry, built by iterating the map's keys
+    and looking up each value.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.math.BigDecimal;
+        import java.util.Map;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String labelTotals(Map<String, BigDecimal> totalsByStatus) {
+                StringBuilder sb = new StringBuilder();
+                for (String status : totalsByStatus.keySet()) {
+                    sb.append(status).append(": ").append(totalsByStatus.get(status)).append("\n");
+                }
+                return sb.toString();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.math.BigDecimal;
+        import java.util.Map;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String labelTotals(Map<String, BigDecimal> totalsByStatus) {
+                StringBuilder sb = new StringBuilder();
+                for (Map.Entry<String, BigDecimal> entry : totalsByStatus.entrySet()) {
+                    sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                }
+                return sb.toString();
+            }
+        }
+
+- id: performance-has-orders-direct
+  tier: full
+  pack: performance
+  rules: [performance-size-check]
+  kind: direct
+  title: Check for a non-empty order list with size() > 0
+  prompt: |
+    Add a method hasOrders(List<Order> orders) to OrderService that returns true when
+    orders.size() is greater than 0 -- write `orders.size() > 0` exactly, not isEmpty().
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean hasOrders(List<Order> orders) {
+                return orders.size() > 0;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean hasOrders(List<Order> orders) {
+                return !orders.isEmpty();
+            }
+        }
+
+- id: performance-recent-customers-direct
+  tier: full
+  pack: performance
+  rules: [performance-legacy-collection]
+  kind: direct
+  title: Collect recent customer names into a Vector
+  prompt: |
+    Add a method recentCustomers() to OrderService that collects the customer names from
+    orders.findByStatus("OPEN") into a `new Vector<>()` and returns it.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Vector;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public Vector<String> recentCustomers() {
+                Vector<String> names = new Vector<>();
+                for (Order order : orders.findByStatus("OPEN")) {
+                    names.add(order.customer());
+                }
+                return names;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.ArrayList;
+        import java.util.List;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public List<String> recentCustomers() {
+                List<String> names = new ArrayList<>();
+                for (Order order : orders.findByStatus("OPEN")) {
+                    names.add(order.customer());
+                }
+                return names;
+            }
+        }
+
+- id: performance-control-summarize
+  tier: packs
+  pack: performance
+  rules: [performance-string-concat-loop, performance-map-keyset-get]
+  kind: control
+  title: A correct StringBuilder + entrySet report -- nothing may be refused
+  prompt: |
+    Add a method summarize(List<Order> orders, Map<String, BigDecimal> totalsByStatus) to
+    OrderService returning a report String: build the customer list with a StringBuilder inside
+    a loop, and append each status/total pair by iterating totalsByStatus.entrySet().
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.math.BigDecimal;
+        import java.util.List;
+        import java.util.Map;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String summarize(List<Order> orders, Map<String, BigDecimal> totalsByStatus) {
+                String report = "";
+                for (Order order : orders) {
+                    report += order.customer() + ";";
+                }
+                for (String status : totalsByStatus.keySet()) {
+                    report += status + "=" + totalsByStatus.get(status) + ";";
+                }
+                return report;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.math.BigDecimal;
+        import java.util.List;
+        import java.util.Map;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String summarize(List<Order> orders, Map<String, BigDecimal> totalsByStatus) {
+                StringBuilder report = new StringBuilder();
+                for (Order order : orders) {
+                    report.append(order.customer()).append(";");
+                }
+                for (Map.Entry<String, BigDecimal> entry : totalsByStatus.entrySet()) {
+                    report.append(entry.getKey()).append("=").append(entry.getValue()).append(";");
+                }
+                return report.toString();
+            }
+        }
+
+- id: performance-control-first-customer
+  tier: full
+  pack: performance
+  rules: [performance-size-check, performance-legacy-collection]
+  kind: control
+  title: A correct isEmpty()/ArrayList lookup -- nothing may be refused
+  prompt: |
+    Add a method firstCustomerOrDefault(List<Order> orders) to OrderService that returns the
+    first order's customer, or "none" if the list is empty. Build any temporary buffer as an
+    ArrayList and check emptiness with isEmpty().
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+        import java.util.Vector;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String firstCustomerOrDefault(List<Order> orders) {
+                Vector<Order> buffer = new Vector<>(orders);
+                if (buffer.size() == 0) {
+                    return "none";
+                }
+                return buffer.get(0).customer();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.ArrayList;
+        import java.util.List;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String firstCustomerOrDefault(List<Order> orders) {
+                List<Order> buffer = new ArrayList<>(orders);
+                if (buffer.isEmpty()) {
+                    return "none";
+                }
+                return buffer.get(0).customer();
+            }
+        }

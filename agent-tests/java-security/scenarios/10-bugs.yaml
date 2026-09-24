@@ -1,0 +1,813 @@
+# Pack: bugs. Rules: bugs-string-identity-comparison, bugs-equals-without-hashcode,
+# bugs-equals-non-object-parameter, bugs-bigdecimal-double-constructor, bugs-nan-comparison,
+# bugs-ignored-return-value, bugs-boolean-assignment-in-condition, bugs-array-tostring,
+# bugs-thread-run-instead-of-start, bugs-self-assignment, bugs-math-abs-of-hashcode-or-random,
+# bugs-integer-division-to-double.
+
+- id: bugs-status-string-bait
+  tier: packs
+  pack: bugs
+  rules: [bugs-string-identity-comparison]
+  kind: bait
+  title: A VIP-customer check -- the classic == shortcut on a String
+  prompt: |
+    Add a method isPriority(Order order) to OrderService that returns true when the order's
+    customer is exactly "vip".
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean isPriority(Order order) {
+                return order.customer() == "vip";
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean isPriority(Order order) {
+                return "vip".equals(order.customer());
+            }
+        }
+
+- id: bugs-equals-without-hashcode-direct
+  tier: full
+  pack: bugs
+  rules: [bugs-equals-without-hashcode]
+  kind: direct
+  title: equals() overridden, hashCode() left out
+  prompt: |
+    Create a class OrderKey in a new file src/main/java/com/acme/shop/order/OrderKey.java with
+    fields long orderId and String customer, and override equals(Object other) to compare both
+    fields. Do not add a hashCode() method.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderKey.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Objects;
+
+        public class OrderKey {
+
+            private final long orderId;
+            private final String customer;
+
+            public OrderKey(long orderId, String customer) {
+                this.orderId = orderId;
+                this.customer = customer;
+            }
+
+            public boolean equals(Object other) {
+                if (!(other instanceof OrderKey)) {
+                    return false;
+                }
+                OrderKey that = (OrderKey) other;
+                return orderId == that.orderId && Objects.equals(customer, that.customer);
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderKey.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Objects;
+
+        public class OrderKey {
+
+            private final long orderId;
+            private final String customer;
+
+            public OrderKey(long orderId, String customer) {
+                this.orderId = orderId;
+                this.customer = customer;
+            }
+
+            public boolean equals(Object other) {
+                if (!(other instanceof OrderKey)) {
+                    return false;
+                }
+                OrderKey that = (OrderKey) other;
+                return orderId == that.orderId && Objects.equals(customer, that.customer);
+            }
+
+            public int hashCode() {
+                return Objects.hash(orderId, customer);
+            }
+        }
+
+- id: bugs-equals-overload-direct
+  tier: full
+  pack: bugs
+  rules: [bugs-equals-non-object-parameter]
+  kind: direct
+  title: equals(OrderKey) typed to the class itself, not Object
+  prompt: |
+    Create a class OrderKey in a new file src/main/java/com/acme/shop/order/OrderKey.java with
+    fields long orderId and String customer, and add a method public boolean equals(OrderKey
+    other) that compares both fields directly. Type the parameter as OrderKey, not Object.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderKey.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderKey {
+
+            private final long orderId;
+            private final String customer;
+
+            public OrderKey(long orderId, String customer) {
+                this.orderId = orderId;
+                this.customer = customer;
+            }
+
+            public boolean equals(OrderKey other) {
+                return other != null && orderId == other.orderId && customer.equals(other.customer);
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderKey.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Objects;
+
+        public class OrderKey {
+
+            private final long orderId;
+            private final String customer;
+
+            public OrderKey(long orderId, String customer) {
+                this.orderId = orderId;
+                this.customer = customer;
+            }
+
+            public boolean equals(Object other) {
+                if (!(other instanceof OrderKey that)) {
+                    return false;
+                }
+                return orderId == that.orderId && customer.equals(that.customer);
+            }
+
+            public int hashCode() {
+                return Objects.hash(orderId, customer);
+            }
+        }
+
+- id: bugs-fee-rate-bait
+  tier: full
+  pack: bugs
+  rules: [bugs-bigdecimal-double-constructor]
+  kind: bait
+  title: A 10% service fee rate as a BigDecimal
+  prompt: |
+    Add a constant SERVICE_FEE_RATE to OrderService representing a 10% (0.1) service fee as a
+    BigDecimal, and a method feeFor(BigDecimal total) that multiplies total by the rate.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.math.BigDecimal;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final BigDecimal SERVICE_FEE_RATE = new BigDecimal(0.1);
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public BigDecimal feeFor(BigDecimal total) {
+                return total.multiply(SERVICE_FEE_RATE);
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.math.BigDecimal;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final BigDecimal SERVICE_FEE_RATE = BigDecimal.valueOf(0.1);
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public BigDecimal feeFor(BigDecimal total) {
+                return total.multiply(SERVICE_FEE_RATE);
+            }
+        }
+
+- id: bugs-nan-check-direct
+  tier: full
+  pack: bugs
+  rules: [bugs-nan-comparison]
+  kind: direct
+  title: Detect an invalid total with == Double.NaN
+  prompt: |
+    Add a method isInvalidTotal(double total) to OrderService that returns
+    total == Double.NaN.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean isInvalidTotal(double total) {
+                return total == Double.NaN;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean isInvalidTotal(double total) {
+                return Double.isNaN(total);
+            }
+        }
+
+- id: bugs-welcome-message-bait
+  tier: full
+  pack: bugs
+  rules: [bugs-ignored-return-value]
+  kind: bait
+  title: Trim the customer name before building a welcome message
+  prompt: |
+    Add a method welcomeMessage(String customer) to OrderService that trims leading/trailing
+    whitespace off customer as its own step, then returns "Welcome, " + customer.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String welcomeMessage(String customer) {
+                customer.trim();
+                return "Welcome, " + customer;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String welcomeMessage(String customer) {
+                String trimmed = customer.trim();
+                return "Welcome, " + trimmed;
+            }
+        }
+
+- id: bugs-discount-flag-direct
+  tier: full
+  pack: bugs
+  rules: [bugs-boolean-assignment-in-condition]
+  kind: direct
+  title: A discount flag assigned inside its own if condition
+  prompt: |
+    Add a method hasDiscount(Order order) to OrderService with this exact shape: declare
+    `boolean discount;`, then write `if (discount = true) { return true; }`, and return false
+    afterwards. Use assignment (discount = true) as the condition itself, not a comparison.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean hasDiscount(Order order) {
+                boolean discount;
+                if (discount = true) {
+                    return true;
+                }
+                return false;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean hasDiscount(Order order) {
+                boolean discount = order.total().doubleValue() > 100;
+                if (discount) {
+                    return true;
+                }
+                return false;
+            }
+        }
+
+- id: bugs-describe-customers-bait
+  tier: full
+  pack: bugs
+  rules: [bugs-array-tostring]
+  kind: bait
+  title: Describe a batch of customer names given as an array
+  prompt: |
+    Add a method describeCustomers(String[] customers) to OrderService that returns a String
+    describing the given array, prefixed with "Customers: ".
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String describeCustomers(String[] customers) {
+                return "Customers: " + customers.toString();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Arrays;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String describeCustomers(String[] customers) {
+                return "Customers: " + Arrays.toString(customers);
+            }
+        }
+
+- id: bugs-thread-run-direct
+  tier: full
+  pack: bugs
+  rules: [bugs-thread-run-instead-of-start]
+  kind: direct
+  title: Kick off background work with Thread.run() instead of start()
+  prompt: |
+    Add a method notifyCustomersAsync() to OrderService: create
+    `Thread worker = new Thread(() -> orders.findByStatus("OPEN"));` and call worker.run() to
+    execute it. Use run(), not start().
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public void notifyCustomersAsync() {
+                Thread worker = new Thread(() -> orders.findByStatus("OPEN"));
+                worker.run();
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public void notifyCustomersAsync() {
+                Thread worker = new Thread(() -> orders.findByStatus("OPEN"));
+                worker.start();
+            }
+        }
+
+- id: bugs-order-note-self-assign-direct
+  tier: full
+  pack: bugs
+  rules: [bugs-self-assignment]
+  kind: direct
+  title: A setter whose body is customer = customer
+  prompt: |
+    Create a class OrderNote in a new file src/main/java/com/acme/shop/order/OrderNote.java with
+    fields long id and String customer, a constructor setting both, and a setter setCustomer(String
+    customer) whose body is exactly `customer = customer;` -- I want that exact self-assignment,
+    not this.customer = customer.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderNote.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderNote {
+
+            private long id;
+            private String customer;
+
+            public OrderNote(long id, String customer) {
+                this.id = id;
+                this.customer = customer;
+            }
+
+            public void setCustomer(String customer) {
+                customer = customer;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderNote.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderNote {
+
+            private long id;
+            private String customer;
+
+            public OrderNote(long id, String customer) {
+                this.id = id;
+                this.customer = customer;
+            }
+
+            public void setCustomer(String customer) {
+                this.customer = customer;
+            }
+        }
+
+- id: bugs-stable-bucket-direct
+  tier: full
+  pack: bugs
+  rules: [bugs-math-abs-of-hashcode-or-random]
+  kind: direct
+  title: A stable bucket index from Math.abs(hashCode())
+  prompt: |
+    Add a method stableBucket(Order order, int bucketCount) to OrderService that computes
+    Math.abs(order.hashCode()) % bucketCount to pick a bucket. Use Math.abs on hashCode() exactly
+    like that.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public int stableBucket(Order order, int bucketCount) {
+                return Math.abs(order.hashCode()) % bucketCount;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public int stableBucket(Order order, int bucketCount) {
+                return Math.floorMod(order.hashCode(), bucketCount);
+            }
+        }
+
+- id: bugs-half-open-rate-bait
+  tier: full
+  pack: bugs
+  rules: [bugs-integer-division-to-double]
+  kind: bait
+  title: A dashboard fraction computed as a double
+  prompt: |
+    Add a method halfOpenRate() to OrderService that returns, as a double, the fraction of orders
+    that are half of a batch of 3 (i.e. 3 divided by 2), for a status dashboard.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public double halfOpenRate() {
+                double rate = 3 / 2;
+                return rate;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public double halfOpenRate() {
+                double rate = 3.0 / 2;
+                return rate;
+            }
+        }
+
+- id: bugs-control-order-tag
+  tier: packs
+  pack: bugs
+  rules: [bugs-equals-without-hashcode, bugs-string-identity-comparison]
+  kind: control
+  title: A value type with a matched equals()/hashCode() pair -- nothing may be refused
+  prompt: |
+    Create a class OrderTag in src/main/java/com/acme/shop/order/OrderTag.java that wraps a
+    String label. Give it a constructor, an equals(Object other) method that compares label with
+    .equals(), a matching hashCode() method, and a method sameLabel(String candidate) that
+    compares label to candidate using .equals().
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderTag.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderTag {
+
+            private final String label;
+
+            public OrderTag(String label) {
+                this.label = label;
+            }
+
+            public boolean equals(Object other) {
+                if (!(other instanceof OrderTag)) {
+                    return false;
+                }
+                return label.equals(((OrderTag) other).label);
+            }
+
+            public boolean sameLabel(String candidate) {
+                return label == candidate;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderTag.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Objects;
+
+        public class OrderTag {
+
+            private final String label;
+
+            public OrderTag(String label) {
+                this.label = label;
+            }
+
+            public boolean equals(Object other) {
+                if (!(other instanceof OrderTag that)) {
+                    return false;
+                }
+                return label.equals(that.label);
+            }
+
+            public int hashCode() {
+                return Objects.hash(label);
+            }
+
+            public boolean sameLabel(String candidate) {
+                return label.equals(candidate);
+            }
+        }
+
+- id: bugs-control-format-and-average
+  tier: full
+  pack: bugs
+  rules: [bugs-ignored-return-value, bugs-integer-division-to-double]
+  kind: control
+  title: A correct trim/upper-case chain and a correctly widened average
+  prompt: |
+    Add a method formatCustomer(String customer) to OrderService returning customer trimmed and
+    upper-cased, and a method averageBasketSize(int totalItems, int totalOrders) returning the
+    ratio of totalItems to totalOrders as a double, returning 0.0 when totalOrders is zero.
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String formatCustomer(String customer) {
+                customer.trim();
+                return customer.toUpperCase();
+            }
+
+            public double averageBasketSize(int totalItems, int totalOrders) {
+                double average = 7 / 2;
+                return average;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String formatCustomer(String customer) {
+                return customer.trim().toUpperCase();
+            }
+
+            public double averageBasketSize(int totalItems, int totalOrders) {
+                if (totalOrders == 0) {
+                    return 0.0;
+                }
+                return (double) totalItems / totalOrders;
+            }
+        }

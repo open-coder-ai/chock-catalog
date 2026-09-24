@@ -1,0 +1,578 @@
+# Pack: style. Rules: style-redundant-import, style-system-out-println,
+# style-boolean-literal-comparison, style-empty-statement, style-type-name, style-constant-name,
+# style-multiple-variable-declarations, style-upper-ell, style-array-type-style.
+
+- id: style-redundant-import-direct
+  tier: packs
+  pack: style
+  rules: [style-redundant-import]
+  kind: direct
+  title: An explicit import of java.lang.String
+  prompt: |
+    In OrderService, add an explicit import statement `import java.lang.String;` at the top,
+    above the other imports, to be explicit about the types used.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.lang.String;
+        import java.util.List;
+        import java.util.Optional;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public Optional<Order> find(long id) {
+                return orders.findById(id);
+            }
+
+            public List<Order> withStatus(String status) {
+                return orders.findByStatus(status);
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.List;
+        import java.util.Optional;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public Optional<Order> find(long id) {
+                return orders.findById(id);
+            }
+
+            public List<Order> withStatus(String status) {
+                return orders.findByStatus(status);
+            }
+        }
+
+- id: style-is-open-boolean-compare-direct
+  tier: full
+  pack: style
+  rules: [style-boolean-literal-comparison]
+  kind: direct
+  title: Compare a status check to true explicitly
+  prompt: |
+    Add a method isOpen(Order order) to OrderService that returns
+    `order.status().equals("OPEN") == true`, written exactly with the `== true`.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean isOpen(Order order) {
+                return order.status().equals("OPEN") == true;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public boolean isOpen(Order order) {
+                return order.status().equals("OPEN");
+            }
+        }
+
+- id: style-touch-if-present-direct
+  tier: full
+  pack: style
+  rules: [style-empty-statement]
+  kind: direct
+  title: An if condition immediately followed by a stray semicolon
+  prompt: |
+    Add a method touchIfPresent(Optional<Order> maybeOrder) to OrderService with this exact
+    shape: `if (maybeOrder.isPresent());` on its own line (a semicolon right after the closing
+    parenthesis), followed by a call that looks up the order when present via
+    orders.findById(order.id()).
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Optional;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public void touchIfPresent(Optional<Order> maybeOrder) {
+                if (maybeOrder.isPresent());
+                maybeOrder.ifPresent(order -> orders.findById(order.id()));
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import java.util.Optional;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public void touchIfPresent(Optional<Order> maybeOrder) {
+                if (maybeOrder.isPresent()) {
+                    maybeOrder.ifPresent(order -> orders.findById(order.id()));
+                }
+            }
+        }
+
+- id: style-order-summary-type-name-direct
+  tier: full
+  pack: style
+  rules: [style-type-name]
+  kind: direct
+  title: A lower-case class name for a new value type
+  prompt: |
+    Create a new class named `orderSummary` (lower-case o) in a new file
+    src/main/java/com/acme/shop/order/orderSummary.java with fields long orderId and String
+    status, and a constructor setting both.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/orderSummary.java
+      text: |
+        package com.acme.shop.order;
+
+        public class orderSummary {
+
+            private final long orderId;
+            private final String status;
+
+            public orderSummary(long orderId, String status) {
+                this.orderId = orderId;
+                this.status = status;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummary.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummary {
+
+            private final long orderId;
+            private final String status;
+
+            public OrderSummary(long orderId, String status) {
+                this.orderId = orderId;
+                this.status = status;
+            }
+        }
+
+- id: style-max-page-size-bait
+  tier: full
+  pack: style
+  rules: [style-constant-name]
+  kind: bait
+  title: A constant for the maximum page size
+  prompt: |
+    Add a constant to OrderService for the maximum page size (100) used when paging through
+    orders, named descriptively.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final int maxPageSize = 100;
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final int MAX_PAGE_SIZE = 100;
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+        }
+
+- id: style-range-summary-multi-decl-direct
+  tier: full
+  pack: style
+  rules: [style-multiple-variable-declarations]
+  kind: direct
+  title: Two local ints declared on one line
+  prompt: |
+    Add a method rangeSummary() to OrderService that declares two local ints, min and max, both
+    initialized to 0, on a single line: `int min = 0, max = 0;`. Return "min-max" as a String.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String rangeSummary() {
+                int min = 0, max = 0;
+                return min + "-" + max;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String rangeSummary() {
+                int min = 0;
+                int max = 0;
+                return min + "-" + max;
+            }
+        }
+
+- id: style-timeout-lowercase-ell-direct
+  tier: full
+  pack: style
+  rules: [style-upper-ell]
+  kind: direct
+  title: A timeout constant with a lowercase l suffix
+  prompt: |
+    Add a constant TIMEOUT_MILLIS to OrderService representing 500 milliseconds as a long
+    literal, written with a lowercase l suffix: `500l`.
+  expect: {final: clean, gate: refuse}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final long TIMEOUT_MILLIS = 500l;
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final long TIMEOUT_MILLIS = 500L;
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+        }
+
+- id: style-status-codes-array-bait
+  tier: full
+  pack: style
+  rules: [style-array-type-style]
+  kind: bait
+  title: Return the known order statuses as an array
+  prompt: |
+    Add a method statusCodes() to OrderService that returns the known order statuses (OPEN,
+    SHIPPED, CANCELLED) as a String array, built as a local variable before returning it.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String[] statusCodes() {
+                String codes[] = {"OPEN", "SHIPPED", "CANCELLED"};
+                return codes;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String[] statusCodes() {
+                String[] codes = {"OPEN", "SHIPPED", "CANCELLED"};
+                return codes;
+            }
+        }
+
+- id: style-debug-print-bait
+  tier: full
+  pack: style
+  rules: [style-system-out-println]
+  kind: bait
+  title: Print an order's details for quick debugging
+  prompt: |
+    Add a method debugPrint(Order order) to OrderService that prints the order's id and status
+    to the console for quick debugging.
+  expect: {final: clean, gate: any}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public void debugPrint(Order order) {
+                System.out.println(order.id() + ": " + order.status());
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.slf4j.Logger;
+        import org.slf4j.LoggerFactory;
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final Logger LOG = LoggerFactory.getLogger(OrderService.class);
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public void debugPrint(Order order) {
+                LOG.debug("{}: {}", order.id(), order.status());
+            }
+        }
+
+- id: style-control-order-summary
+  tier: packs
+  pack: style
+  rules: [style-type-name, style-constant-name]
+  kind: control
+  title: A properly named class and constant -- nothing may be refused
+  prompt: |
+    Create a class OrderSummary (proper UpperCamelCase) in
+    src/main/java/com/acme/shop/order/OrderSummary.java with a constant DEFAULT_STATUS
+    (UPPER_SNAKE_CASE) initialized to "OPEN".
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderSummary.java
+      text: |
+        package com.acme.shop.order;
+
+        public class orderSummary {
+
+            private static final String defaultStatus = "OPEN";
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderSummary.java
+      text: |
+        package com.acme.shop.order;
+
+        public class OrderSummary {
+
+            private static final String DEFAULT_STATUS = "OPEN";
+        }
+
+- id: style-control-window
+  tier: full
+  pack: style
+  rules: [style-multiple-variable-declarations, style-upper-ell]
+  kind: control
+  title: Separate declarations and an upper-case L -- nothing may be refused
+  prompt: |
+    Add a method window() to OrderService declaring separate local variables `int start = 0;`
+    and `int end = 100;` on their own lines, and a long constant PAGE_TOKEN initialized to `1L`
+    (upper-case L).
+  expect: {final: clean, gate: silent}
+  evidence:
+    bad:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final long PAGE_TOKEN = 1l;
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String window() {
+                int start = 0, end = 100;
+                return start + "-" + end;
+            }
+        }
+    good:
+      path: src/main/java/com/acme/shop/order/OrderService.java
+      text: |
+        package com.acme.shop.order;
+
+        import org.springframework.stereotype.Service;
+
+        @Service
+        public class OrderService {
+
+            private static final long PAGE_TOKEN = 1L;
+
+            private final OrderRepository orders;
+
+            public OrderService(OrderRepository orders) {
+                this.orders = orders;
+            }
+
+            public String window() {
+                int start = 0;
+                int end = 100;
+                return start + "-" + end;
+            }
+        }
