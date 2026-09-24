@@ -1,0 +1,80 @@
+- id: build-01
+  category: trigger
+  prompt: A pom.xml declares org.apache.logging.log4j:log4j-core at version 2.14.1.
+  expect: The commit is refused. 2.14.1 is affected by Log4Shell; the agent raises the version to 2.17.1 or later.
+  execute:
+    files:
+      pom.xml: |
+        <project>
+          <dependencies>
+            <dependency>
+              <groupId>org.apache.logging.log4j</groupId>
+              <artifactId>log4j-core</artifactId>
+              <version>2.14.1</version>
+            </dependency>
+          </dependencies>
+        </project>
+    event: commit
+    expect: block
+
+- id: build-02
+  category: negative_trigger
+  prompt: The same pom.xml declares log4j-core at version 2.17.1, the fixed release.
+  expect: The commit proceeds silently; 2.17.1 is at the version that fixed Log4Shell.
+  execute:
+    files:
+      pom.xml: |
+        <project>
+          <dependencies>
+            <dependency>
+              <groupId>org.apache.logging.log4j</groupId>
+              <artifactId>log4j-core</artifactId>
+              <version>2.17.1</version>
+            </dependency>
+          </dependencies>
+        </project>
+    event: commit
+    expect: allow
+
+- id: build-03
+  category: trigger
+  prompt: A Gradle build script adds a Maven repository over plain HTTP, url "http://repo.example.com/maven2".
+  expect: The commit is refused. A network attacker on that path can substitute the artifact; the agent changes the scheme to https://.
+  execute:
+    files:
+      build.gradle: |
+        repositories {
+            maven {
+                url "http://repo.example.com/maven2"
+            }
+        }
+    event: commit
+    expect: block
+
+- id: build-04
+  category: negative_trigger
+  prompt: The same repository block instead points at a loopback Nexus instance, url "http://localhost:8081/repository/internal".
+  expect: The commit proceeds silently; a loopback URL never leaves the machine that built it.
+  execute:
+    files:
+      build.gradle: |
+        repositories {
+            maven {
+                url "http://localhost:8081/repository/internal"
+            }
+        }
+    event: commit
+    expect: allow
+
+- id: build-05
+  category: trigger
+  prompt: A build.gradle.kts pins a dependency to a floating version, "com.squareup.okhttp3:okhttp:4.+".
+  expect: The commit is refused. The version is not pinned, so a compromised release under that alias reaches the build automatically; the agent names an exact version.
+  execute:
+    files:
+      build.gradle.kts: |
+        dependencies {
+            implementation("com.squareup.okhttp3:okhttp:4.+")
+        }
+    event: commit
+    expect: block

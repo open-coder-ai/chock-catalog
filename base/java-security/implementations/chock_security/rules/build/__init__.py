@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from chock_security.pack import Pack, Rule
+from chock_security.rules.build import build_checksum_disabled
+from chock_security.rules.build import build_dynamic_version
+from chock_security.rules.build import build_insecure_repository
+from chock_security.rules.build import build_vulnerable_dependency
 
 PACK = Pack(
     id="build",
@@ -13,4 +17,8 @@ PACK = Pack(
 )
 
 RULES: tuple[Rule, ...] = (
+    build_insecure_repository.RULE,
+    build_checksum_disabled.RULE,
+    build_vulnerable_dependency.RULE,
+    build_dynamic_version.RULE,
 )

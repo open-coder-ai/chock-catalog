@@ -1,0 +1,74 @@
+- id: android-01
+  category: trigger
+  prompt: A WebView enables JavaScript with setJavaScriptEnabled(true) and then calls addJavascriptInterface(new JsBridge(), "Android").
+  expect: The commit is refused. Any page the WebView loads gets reflective access to the bridged object; the agent removes the bridge or scopes it with @JavascriptInterface and validated input.
+  execute:
+    files:
+      MainActivity.java: |
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.addJavascriptInterface(new JsBridge(), "Android");
+    event: commit
+    expect: block
+
+- id: android-02
+  category: negative_trigger
+  prompt: The same WebView never enables JavaScript, so the bridge call has no reflective access to give away.
+  expect: The commit proceeds silently; the file never turns JavaScript on.
+  execute:
+    files:
+      MainActivity.java: |
+        webView.addJavascriptInterface(new JsBridge(), "Android");
+    event: commit
+    expect: allow
+
+- id: android-03
+  category: trigger
+  prompt: A WebViewClient overrides onReceivedSslError and calls handler.proceed() unconditionally.
+  expect: The commit is refused. Every certificate error is accepted, so TLS no longer protects this WebView; the agent calls handler.cancel() instead.
+  execute:
+    files:
+      InsecureClient.java: |
+        public class InsecureClient extends WebViewClient {
+          @Override
+          public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+            handler.proceed();
+          }
+        }
+    event: commit
+    expect: block
+
+- id: android-04
+  category: trigger
+  prompt: An AndroidManifest.xml declares android:usesCleartextTraffic="true" on the application element.
+  expect: The commit is refused. Plain HTTP is allowed to any host with no per-domain override; the agent removes the attribute or scopes it with a network security config.
+  execute:
+    files:
+      AndroidManifest.xml: |
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <application android:usesCleartextTraffic="true">
+          </application>
+        </manifest>
+    event: commit
+    expect: block
+
+- id: android-05
+  category: negative_trigger
+  prompt: An AndroidManifest.xml exports an activity that is also the launcher, with a MAIN/LAUNCHER intent-filter and no android:permission.
+  expect: The commit proceeds silently; the launcher activity's own intent-filter is what the system uses to reach it, and needs no permission.
+  execute:
+    files:
+      AndroidManifest.xml: |
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+          <application>
+            <activity android:name=".MainActivity" android:exported="true">
+              <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+              </intent-filter>
+            </activity>
+          </application>
+        </manifest>
+    event: commit
+    expect: allow
