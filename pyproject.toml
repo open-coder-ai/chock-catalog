@@ -9,6 +9,21 @@ testpaths = ["tests"]
 pythonpath = ["base/java-security/implementations", "tools", "tests"]
 addopts = "-q --strict-markers"
 
+# Every line and every branch of the code this catalog ships runs under a test: `pytest --cov`
+# fails below 100. The source is each shipped implementation tree holding Python; a test in
+# tests/test_repo_standards.py fails if one is added without being listed here. Guards run as
+# processes (the java-security gate is started the way a hook runner starts it), so coverage
+# follows subprocesses.
+[tool.coverage.run]
+branch = true
+source = ["base/java-security/implementations", "base/no-a11y-regression/implementations"]
+patch = ["subprocess"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
 [tool.ruff]
 line-length = 120
 target-version = "py311"
