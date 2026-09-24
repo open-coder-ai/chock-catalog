@@ -8,6 +8,8 @@ expected set leaves out a rule it is about proves that rule stays silent there.
 
 from __future__ import annotations
 
+from java_security.cases.crypto_edges import CASES as EDGE_CASES
+
 WEAK_CIPHER = "crypto-weak-cipher"
 WEAK_PASSWORD_HASH = "crypto-weak-password-hash"
 INSECURE_RANDOM = "crypto-insecure-random"
@@ -253,6 +255,7 @@ CASES: list[tuple[str, str, str, list[int]]] = [
     (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Signature sig = Signature.getInstance("SHA256withRSA");\n', []),
     (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Signature sig = Signature.getInstance("SHA256withECDSA");\n', []),
     (WEAK_SIGNATURE_ALGORITHM, "C.java", 'Cipher c = Cipher.getInstance("AES/GCM/NoPadding");\n', []),
+    *EDGE_CASES,
 ]
 
 #: (label, path, text, expected rule ids, rule ids this case is about)

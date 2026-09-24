@@ -23,8 +23,6 @@ _MESSAGE = (
 
 
 def scan(text: FileText) -> Iterator[Finding]:
-    if text.suffix != ".xml":
-        return
     base_lines = base_config_lines(text)
     for line_no, line in enumerate(text.lines, 1):
         if (

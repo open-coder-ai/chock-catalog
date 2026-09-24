@@ -9,6 +9,7 @@ expected set leaves out a rule it is about proves that rule stays silent there.
 from __future__ import annotations
 
 from java_security.cases.jakarta_config import CASES as CONFIG_CASES
+from java_security.cases.jakarta_edges import CASES as EDGE_CASES
 
 OPEN_REDIRECT = "jakarta-open-redirect"
 FORWARD = "jakarta-forward-request-path"
@@ -188,4 +189,5 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         [],
     ),
     *CONFIG_CASES,
+    *EDGE_CASES,
 ]

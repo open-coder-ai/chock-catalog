@@ -8,6 +8,8 @@ expected set leaves out a rule it is about proves that rule stays silent there.
 
 from __future__ import annotations
 
+from java_security.cases.spring_edges import CASES as EDGE_CASES
+
 CREDENTIALS = "config.setAllowCredentials(true);\n"
 
 _SECURITY_IMPORT = "import org.springframework.security.config.annotation.web.builders.HttpSecurity;\n"
@@ -213,4 +215,5 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         "app.security.token=true\napp.jwt.secret=3600\napp.token=abc123def456\n",
         [3],
     ),
+    *EDGE_CASES,
 ]

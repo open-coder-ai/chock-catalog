@@ -54,9 +54,11 @@ def _has_micronaut_cors_block(text: FileText) -> bool:
 
 
 def _micronaut_wildcard_lines(text: FileText) -> Iterator[int]:
-    """The `allowed-origins` key inside a `micronaut.server.cors` block, set to a wildcard."""
-    if not _has_micronaut_cors_block(text):
-        return
+    """The `allowed-origins` key inside a `micronaut.server.cors` block, set to a wildcard.
+
+    Called only after `_micronaut_credentials` has already confirmed the cors block is there,
+    so that check is not repeated here.
+    """
     lines = text.lines
     for offset, line in enumerate(lines):
         if _FACTS["micronaut_origins_key"] not in line.strip().partition(":")[0]:
@@ -96,13 +98,13 @@ def scan(text: FileText) -> Iterator[Finding]:
         for line_no in _java_wildcard_lines(text):
             yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _MESSAGE)
         return
-    if text.suffix in {".properties", ".yml", ".yaml"}:
-        if _quarkus_credentials(text):
-            for line_no in _quarkus_wildcard_lines(text):
-                yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _MESSAGE)
-        if text.suffix in {".yml", ".yaml"} and _micronaut_credentials(text):
-            for line_no in _micronaut_wildcard_lines(text):
-                yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _MESSAGE)
+    # the only suffixes reaching here, given this rule's own `suffixes`, are .properties/.yml/.yaml
+    if _quarkus_credentials(text):
+        for line_no in _quarkus_wildcard_lines(text):
+            yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _MESSAGE)
+    if text.suffix in {".yml", ".yaml"} and _micronaut_credentials(text):
+        for line_no in _micronaut_wildcard_lines(text):
+            yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _MESSAGE)
 
 
 RULE = Rule(

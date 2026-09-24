@@ -38,8 +38,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     if not _guarded_class(text):
         return
     for method in methods(text):
-        if not method.body:
-            continue
+        # `methods()` only ever returns a method that has a body, so `method.body` is never empty.
         if _response_body_above(text, method.body[0][0]):
             continue
         for flow in reaching(method, [_FACTS["sink"]]):

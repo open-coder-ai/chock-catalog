@@ -90,9 +90,7 @@ def scan(text: FileText) -> Iterator[Finding]:
                 continue
             if tag == "activity" and _is_launcher_activity(element):
                 continue
-            line_no = lines.get(id(element))
-            if line_no is None:
-                continue
+            line_no = lines[id(element)]
             yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _message(tag))
 
 

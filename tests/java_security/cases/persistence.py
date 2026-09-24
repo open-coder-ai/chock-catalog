@@ -8,6 +8,8 @@ expected set leaves out a rule it is about proves that rule stays silent there.
 
 from __future__ import annotations
 
+from java_security.cases.persistence_edges import CASES as EDGE_CASES
+
 MAPPER = '<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN">\n<mapper namespace="a">\n'
 
 CONCAT = "persistence-sql-string-concat"
@@ -216,6 +218,7 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         'import java.sql.*;\npublic class D {\n  ResultSet a(Statement st, String id) throws Exception { return st.executeQuery("SELECT * FROM t WHERE id = " + id); }\n  int b(long id) { return jdbc.update("DELETE FROM t WHERE id = ?", id); }\n}\n',
         [3],
     ),
+    *EDGE_CASES,
 ]
 
 #: (label, path, text, expected rule ids, rule ids this case is about)

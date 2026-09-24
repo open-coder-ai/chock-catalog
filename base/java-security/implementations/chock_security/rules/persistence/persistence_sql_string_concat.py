@@ -28,6 +28,10 @@ _CONCAT = re.compile(rf"{_STRING}\s*\+\s*({_IDENT})|({_IDENT})\s*\+\s*{_STRING}"
 _ASSIGN = re.compile(rf"(?:^|[^=!<>+\-*/%&|^])({_IDENT})\s*=(?!=)")
 _APPEND = re.compile(rf"(\w+)\.append\(\s*({_IDENT})\s*\)")
 _CONSTANT = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+#: The argument list of a `String.format(...)`/`.formatted(...)` call -- scoped to just those
+#: parentheses, so an unrelated identifier earlier on the same line (the receiver a result is
+#: assigned through, say) is never mistaken for the value being formatted in.
+_FORMAT_CALL = re.compile(r"(?:String\.format|\.formatted)\(([^)]*)\)")
 
 
 def _is_constant(name: str) -> bool:
@@ -45,12 +49,17 @@ def _concat_identifier(line: str) -> str | None:
 
 
 def _formatted_identifier(line: str) -> str | None:
-    """`String.format(...)` / `.formatted(...)` with a non-constant, non-literal argument."""
-    if "String.format(" not in line and ".formatted(" not in line:
+    """`String.format(...)` / `.formatted(...)` with a non-constant, non-literal argument.
+
+    Only the call's own argument list is searched, with any quoted literal in it blanked out
+    first -- so a word inside the format template string, or the constant/literal a later
+    argument passes, is never mistaken for a request-shaped value.
+    """
+    match = _FORMAT_CALL.search(line)
+    if match is None:
         return None
-    for name in re.findall(_IDENT, line):
-        if name in {"String", "format", "formatted"} or name.isdigit():
-            continue
+    unquoted = re.sub(_STRING, '""', match.group(1))
+    for name in re.findall(_IDENT, unquoted):
         if not _is_constant(name):
             return name
     return None

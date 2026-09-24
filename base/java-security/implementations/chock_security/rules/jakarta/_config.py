@@ -60,6 +60,3 @@ def yaml_value(text: FileText, dotted_key: str) -> Iterator[tuple[int, str, str]
             else:
                 open_indent[depth] = indent
                 depth += 1
-        elif depth == len(segments):
-            depth = 0
-            open_indent.clear()

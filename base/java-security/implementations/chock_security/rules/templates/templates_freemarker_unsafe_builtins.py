@@ -36,7 +36,7 @@ def scan(text: FileText) -> Iterator[Finding]:
             hit = next((t for t in _FACTS["template_tokens"] if t in line), None)
             if hit is not None:
                 yield Finding(RULE_ID, text.path, line_no, line, _TEMPLATE_MESSAGE.format(token=hit))
-    elif text.suffix in {".java", ".kt"}:
+    else:
         for line_no, line in enumerate(text.lines, 1):
             hit = next((t for t in _FACTS["java_tokens"] if t in line), None)
             if hit is not None:

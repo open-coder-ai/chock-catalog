@@ -8,6 +8,8 @@ expected set leaves out a rule it is about proves that rule stays silent there.
 
 from __future__ import annotations
 
+from java_security.cases.logging_edges import CASES as EDGE_CASES
+
 LOG4J_LOOKUPS = "logging-log4j-lookups"
 SENSITIVE_DATA = "logging-sensitive-data"
 STACKTRACE_TO_RESPONSE = "logging-stacktrace-to-response"
@@ -65,6 +67,7 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         'return ResponseEntity.status(500).body("Internal error, ref " + correlationId);\n',
         [],
     ),
+    *EDGE_CASES,
 ]
 
 #: (label, path, text, expected rule ids, rule ids this case is about)

@@ -217,6 +217,28 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         "<project>\n  <repositories>\n    <repository><id>c</id><url>https://repo.example.com/m2</url></repository>\n  </repositories>\n  <scm><url>http://github.com/acme/app</url></scm>\n  <mirrors><mirror><url>http://mirror.example.com/m2</url></mirror></mirrors>\n</project>\n",
         [6],
     ),
+    (
+        "build-vulnerable-dependency",
+        "pom.xml",
+        "<project>\n  <dependencies>\n    <dependency>\n      <groupId>org.springframework</groupId>\n      <artifactId>spring-beans</artifactId>\n      <version>5.3.17.RELEASE</version>\n    </dependency>\n  </dependencies>\n</project>\n",
+        [6],
+    ),
+    (
+        "build-vulnerable-dependency",
+        "pom.xml",
+        "<project>\n  <dependencies>\n    <dependency>\n      <groupId>org.springframework</groupId>\n      <artifactId>spring-webflux</artifactId>\n      <version>5.3.17-SNAPSHOT</version>\n    </dependency>\n  </dependencies>\n</project>\n",
+        [6],
+    ),
+    (
+        "build-vulnerable-dependency",
+        "build.gradle.kts",
+        'val baseVersion = "1.6"\n'
+        'val textVersion = "$baseVersion"\n'
+        "dependencies {\n"
+        '    implementation("org.apache.commons:commons-text:$textVersion")\n'
+        "}\n",
+        [4],
+    ),
 ]
 
 #: (label, path, text, expected rule ids, rule ids this case is about)

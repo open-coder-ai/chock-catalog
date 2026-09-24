@@ -29,12 +29,14 @@ _FIXED_HOST = re.compile(r'^"(?:/(?!/)|[a-zA-Z][a-zA-Z0-9+.-]*://[^/"?#{}+\s]+[/
 
 
 def _destination_is_fixed(line: str) -> bool:
-    """Whether the sink's first argument opens with a literal that fixes the host (or is relative)."""
-    for sink in _FACTS["sinks"]:
-        at = line.find(sink)
-        if at != -1:
-            return bool(_FIXED_HOST.match(line[at + len(sink) :].lstrip()))
-    return False
+    """Whether the sink's first argument opens with a literal that fixes the host (or is relative).
+
+    Only ever called on a flow's own line, which `flows()` has already matched against this same
+    sink list, so one of them is always present here.
+    """
+    sink = next(s for s in _FACTS["sinks"] if s in line)
+    at = line.find(sink)
+    return bool(_FIXED_HOST.match(line[at + len(sink) :].lstrip()))
 
 
 def scan(text: FileText) -> Iterator[Finding]:

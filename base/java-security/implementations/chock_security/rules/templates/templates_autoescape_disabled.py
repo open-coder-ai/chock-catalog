@@ -28,7 +28,7 @@ def scan(text: FileText) -> Iterator[Finding]:
             for line_no, line in enumerate(text.lines, 1):
                 if entry["token"] in line:
                     yield Finding(RULE_ID, text.path, line_no, line, _MESSAGE.format(token=entry["token"]))
-    elif text.suffix == ".ftlh":
+    else:
         for line_no, line in enumerate(text.lines, 1):
             hit = next((t for t in _FACTS["ftlh_tokens"] if t in line), None)
             if hit is not None:

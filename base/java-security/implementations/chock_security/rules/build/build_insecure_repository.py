@@ -31,12 +31,6 @@ def _is_safe_host(line: str) -> bool:
     return any(host in line for host in _FACTS["safe_hosts"])
 
 
-def _http_url_lines(text: FileText) -> Iterator[int]:
-    for line_no, line in enumerate(text.lines, 1):
-        if _FACTS["scheme"] in line and not _is_safe_host(line):
-            yield line_no
-
-
 def _maven_lines(text: FileText) -> Iterator[int]:
     """Only a `<url>` inside a repository/mirror/distributionManagement block -- the same tag
     appears, harmlessly, on `<scm>` or `<issueManagement>` elsewhere in the same file. Tags are

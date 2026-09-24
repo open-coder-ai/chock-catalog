@@ -33,16 +33,18 @@ def _jackson(text: FileText) -> Iterator[Finding]:
 
 
 def _xstream(text: FileText) -> Iterator[Finding]:
-    """XStream built with no allowlist anywhere in the file -- absence, so judged per file."""
+    """XStream built with no allowlist anywhere in the file -- absence, so judged per file.
+
+    `construction` holds no newline, so once `text.holds` finds it somewhere in the file, the
+    same substring search per line below is guaranteed to land on some line too.
+    """
     construction = _FACTS["xstream_construction"]
     if not text.holds(construction):
         return
     if text.holds(*_FACTS["xstream_allowlist_calls"]):
         return
-    for line_no, line in enumerate(text.lines, 1):
-        if construction in line:
-            yield Finding(RULE_ID, text.path, line_no, line, _XSTREAM_MESSAGE)
-            return
+    line_no, line = next((n, candidate) for n, candidate in enumerate(text.lines, 1) if construction in candidate)
+    yield Finding(RULE_ID, text.path, line_no, line, _XSTREAM_MESSAGE)
 
 
 def scan(text: FileText) -> Iterator[Finding]:

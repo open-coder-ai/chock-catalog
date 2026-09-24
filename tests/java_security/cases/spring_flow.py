@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from java_security.cases.spring_edges import FLOW_CASES as EDGE_FLOW_CASES
+
 _SPEL_GUARD = "import org.springframework.expression.spel.standard.SpelExpressionParser;\n"
 
 #: (label, path, text, expected rule ids, rule ids this case is about)
@@ -89,4 +91,5 @@ FLOW_CASES: list[tuple[str, str, str, set[str], set[str]]] = [
         set(),
         {"spring-view-name-injection"},
     ),
+    *EDGE_FLOW_CASES,
 ]

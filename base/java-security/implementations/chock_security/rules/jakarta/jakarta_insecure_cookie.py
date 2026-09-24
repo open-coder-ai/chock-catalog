@@ -41,7 +41,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     if text.suffix in {".java", ".kt"}:
         for line_no in _code_lines(text):
             yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _MESSAGE)
-    elif text.suffix == ".xml":
+    else:
         for line_no in _web_xml_lines(text):
             yield Finding(RULE_ID, text.path, line_no, text.lines[line_no - 1], _MESSAGE)
 

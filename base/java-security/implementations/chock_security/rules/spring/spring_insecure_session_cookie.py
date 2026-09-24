@@ -60,7 +60,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     """Secure/HttpOnly turned false, in application config or a ResponseCookie builder chain."""
     if text.suffix in {".properties", ".yml", ".yaml"}:
         yield from _config_findings(text)
-    elif text.suffix == ".java":
+    else:
         yield from _java_findings(text)
 
 

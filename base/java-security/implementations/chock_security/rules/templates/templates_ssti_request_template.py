@@ -23,8 +23,6 @@ _MESSAGE = (
 
 def scan(text: FileText) -> Iterator[Finding]:
     """Every template-compiling sink whose engine this file shows configured, request data reaching it."""
-    if text.suffix != ".java":
-        return
     for engine in _ENGINES:
         if not text.holds(*engine["markers"]):
             continue

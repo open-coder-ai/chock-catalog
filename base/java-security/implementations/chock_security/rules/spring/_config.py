@@ -88,10 +88,14 @@ def _yaml_pairs(text: FileText) -> Iterator[ConfigEntry]:
 
 
 def config_pairs(text: FileText) -> Iterator[ConfigEntry]:
-    """Every key this configuration file sets, dotted the same way in `.properties` and YAML."""
+    """Every key this configuration file sets, dotted the same way in `.properties` and YAML.
+
+    Every rule in this pack calls this only after its own suffix gate has already narrowed
+    `text` to `.properties`, `.yml` or `.yaml`, so those are the only two shapes handled here.
+    """
     if text.suffix == ".properties":
         yield from _properties_pairs(text)
-    elif text.suffix in {".yml", ".yaml"}:
+    else:
         yield from _yaml_pairs(text)
 
 

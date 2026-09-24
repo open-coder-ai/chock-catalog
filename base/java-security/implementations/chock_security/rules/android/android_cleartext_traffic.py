@@ -36,8 +36,6 @@ def scan(text: FileText) -> Iterator[Finding]:
             if _FACTS["cleartext_manifest"] in line:
                 yield Finding(RULE_ID, text.path, line_no, line, _MANIFEST_MESSAGE)
         return
-    if text.suffix != ".xml":
-        return
     base_lines = base_config_lines(text)
     for line_no, line in enumerate(text.lines, 1):
         if line_no in base_lines and _FACTS["cleartext_config_attr"] in line:

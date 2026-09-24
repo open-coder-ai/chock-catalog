@@ -80,6 +80,12 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         [],
     ),
     (SSL, "Plain.java", 'public class Plain {\n  public void connect() {\n    System.out.println("ok");\n  }\n}\n', []),
+    (
+        SSL,
+        "SslCallback.java",
+        "public interface SslCallback {\n  void onReceivedSslError(SslErrorHandler handler);\n}\n",
+        [],
+    ),
     # --- android-world-accessible-file -----------------------------------------------------------
     (WORLD, "Prefs.java", 'SharedPreferences p = getSharedPreferences("app", Context.MODE_WORLD_READABLE);\n', [1]),
     (WORLD, "Store.java", 'FileOutputStream out = openFileOutput("data", Context.MODE_WORLD_WRITEABLE);\n', [1]),
@@ -226,6 +232,15 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
         '  <application><activity android:exported="true"</application>\n</manifest>\n',
         [],
+    ),
+    (
+        EXPORTED,
+        "AndroidManifest.xml",
+        MANIFEST_HEAD + '  <application>\n    <activity android:name=".ShareActivity" android:exported="true">\n'
+        '      <intent-filter>\n        <action android:name="android.intent.action.SEND" />\n'
+        '        <category android:name="android.intent.category.DEFAULT" />\n'
+        "      </intent-filter>\n    </activity>\n  </application>\n" + MANIFEST_TAIL,
+        [4],
     ),
 ]
 
