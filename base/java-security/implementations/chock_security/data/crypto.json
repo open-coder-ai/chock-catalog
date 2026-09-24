@@ -33,8 +33,7 @@
     "safe_protocols": ["TLS", "TLSv1.2", "TLSv1.3"]
   },
   "iv_salt": {
-    "constructors": ["IvParameterSpec", "GCMParameterSpec", "PBEKeySpec"],
-    "securerandom_marker": "SecureRandom"
+    "constructors": ["IvParameterSpec", "GCMParameterSpec", "PBEKeySpec"]
   },
   "short_key": {
     "keypair_algorithms": ["RSA", "DSA", "DH"],

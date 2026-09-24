@@ -15,8 +15,11 @@ _FACTS = facts("crypto")["iv_salt"]
 
 #: A literal byte array (has values) or a string turned into bytes, passed straight into the
 #: constructor -- as opposed to a variable, which the array-tracking check below handles.
+#: The parameter-spec constructors that take an IV, nonce or salt -- facts, from data/crypto.json.
+_CONSTRUCTORS = "|".join(re.escape(name) for name in _FACTS["constructors"])
+
 _INLINE_LITERAL = re.compile(
-    r"new\s+(?:IvParameterSpec|GCMParameterSpec|PBEKeySpec)\("
+    r"new\s+(?:" + _CONSTRUCTORS + r")\("
     r"[^)]*(?:\"[^\"]*\"\.getBytes\(|new\s+byte\[\]\s*\{[^}]*\d)"
 )
 _FIXED_ARRAY_DECL = re.compile(r"\bbyte\[\]\s*(\w+)\s*=\s*new\s+byte\[\d+\]\s*;")
@@ -59,7 +62,7 @@ def _unfilled_array_findings(text: FileText) -> Iterator[Finding]:
                 continue
             for line_no, line in method.body:
                 used = re.search(
-                    rf"new\s+(?:IvParameterSpec|GCMParameterSpec|PBEKeySpec)\([^)]*\b{re.escape(name)}\b", line,
+                    r"new\s+(?:" + _CONSTRUCTORS + r")\([^)]*\b" + re.escape(name) + r"\b", line,
                 )
                 if used:
                     yield Finding(

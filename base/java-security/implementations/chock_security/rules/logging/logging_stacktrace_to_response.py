@@ -13,9 +13,12 @@ RULE_ID = "logging-stacktrace-to-response"
 
 _FACTS = facts("logging")["stacktrace_response"]
 
-_PRINT_TO_WRITER = re.compile(r"\.printStackTrace\(\s*[\w.]*getWriter\(\)\s*\)")
+#: The servlet response's writer call -- a fact, from data/logging.json.
+_WRITER = re.escape(_FACTS["writer_call"])
+
+_PRINT_TO_WRITER = re.compile(r"\.printStackTrace\(\s*[\w.]*" + _WRITER + r"\s*\)")
 _WRITE_EXCEPTION = re.compile(
-    r"getWriter\(\)\.(?:write|print)\([^)]*(?:getMessage\(\)|getStackTrace\(\)|"
+    _WRITER + r"\.(?:write|print)\([^)]*(?:getMessage\(\)|getStackTrace\(\)|"
     r"ExceptionUtils\.getStackTrace\()"
 )
 _BODY_EXCEPTION = re.compile(r"\.body\([^)]*(?:getStackTrace\(\)|ExceptionUtils\.getStackTrace\()")
