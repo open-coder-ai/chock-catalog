@@ -263,7 +263,17 @@ CASES += [
         '    throw new IllegalStateException("read failed");\n  }\n}\n',
         [4],
     ),
-    ("exceptions-empty-catch", "A.java", "void f() {\n  try { g(); } catch (InterruptedException ignored) {\n  }\n}\n", []),
-    ("exceptions-empty-catch", "A.java", "void f() {\n  try { g(); } catch (NumberFormatException expected) {}\n}\n", []),
+    (
+        "exceptions-empty-catch",
+        "A.java",
+        "void f() {\n  try { g(); } catch (InterruptedException ignored) {\n  }\n}\n",
+        [],
+    ),
+    (
+        "exceptions-empty-catch",
+        "A.java",
+        "void f() {\n  try { g(); } catch (NumberFormatException expected) {}\n}\n",
+        [],
+    ),
     ("exceptions-empty-catch", "A.java", "void f() {\n  try { g(); } catch (NumberFormatException ex) {}\n}\n", [2]),
 ]

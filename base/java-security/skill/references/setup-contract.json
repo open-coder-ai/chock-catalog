@@ -87,7 +87,7 @@
     {
       "id": "concurrency",
       "title": "Concurrency",
-      "covers": "Threads, locks, executors and shared state: unsafe publication, broken double-checked locking, locks on shared or boxed objects, thread-unsafe formatters held in static fields, deprecated thread control.",
+      "covers": "Threads, locks and shared state: unsafe publication, broken double-checked locking, locks on shared or boxed objects, thread-unsafe formatters held in static fields, and the wait()/notify()/sleep() misuses that break under real contention.",
       "kind": "quality"
     },
     {
@@ -1590,6 +1590,288 @@
       "references": [
         "https://developer.android.com/privacy-and-security/risks/access-control-to-exported-components",
         "https://developer.android.com/privacy-and-security/risks/android-exported"
+      ]
+    },
+    {
+      "id": "bugs-string-identity-comparison",
+      "pack": "bugs",
+      "title": "String compared by reference with == or !=",
+      "refuses": "a String variable compared with == or != against a string literal or new String(...)",
+      "silent_on": ".equals()/.equalsIgnoreCase() calls; == against null; == between two plain variables",
+      "constraint": "never(compare): stringVar == \"literal\" | stringVar != \"literal\" | == new String(...) -- use .equals()/.equalsIgnoreCase(), or Objects.equals() when either side can be null",
+      "cwe": [
+        {
+          "id": "CWE-597",
+          "name": "Use of Wrong Operator in String Comparison"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-4973/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#es-comparison-of-string-objects-using-or-es-comparing-strings-with-eq"
+      ]
+    },
+    {
+      "id": "bugs-equals-without-hashcode",
+      "pack": "bugs",
+      "title": "equals() overridden without hashCode(), or hashCode() without equals()",
+      "refuses": "a top-level class overriding only equals(Object) or only hashCode()",
+      "silent_on": "a class overriding both, or neither; @EqualsAndHashCode; records and enums (generated)",
+      "constraint": "never(define): public boolean equals(Object o) without public int hashCode(), or the reverse, in the same top-level class -- define both together (or neither)",
+      "cwe": [
+        {
+          "id": "CWE-581",
+          "name": "Object Model Violation: Just One of Equals and Hashcode Defined"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1206/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#he-class-defines-equals-but-not-hashcode-he-equals-no-hashcode"
+      ]
+    },
+    {
+      "id": "bugs-equals-non-object-parameter",
+      "pack": "bugs",
+      "title": "equals() overload instead of override",
+      "refuses": "public boolean equals(<Type> x) where Type is not Object",
+      "silent_on": "public boolean equals(Object o); a private/package helper not named equals",
+      "constraint": "never(define): public boolean equals(NotObject x) -- overloads Object.equals(Object) instead of overriding it; take Object and check instanceof inside",
+      "cwe": [],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#eq-equals-method-defined-that-doesn-t-override-equals-object-eq-other-no-object"
+      ]
+    },
+    {
+      "id": "bugs-bigdecimal-double-constructor",
+      "pack": "bugs",
+      "title": "BigDecimal constructed from a double literal",
+      "refuses": "new BigDecimal(0.1), new BigDecimal(3.14f) and other single floating-point-literal calls",
+      "silent_on": "new BigDecimal(\"0.1\"); BigDecimal.valueOf(0.1); new BigDecimal(100); new BigDecimal(aDoubleVariable)",
+      "constraint": "never(construct): new BigDecimal(<floating-point literal>) -- the literal has already lost precision as a double; use new BigDecimal(\"literal\") or BigDecimal.valueOf(literal)",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2111/"
+      ]
+    },
+    {
+      "id": "bugs-nan-comparison",
+      "pack": "bugs",
+      "title": "Doomed test for equality to NaN",
+      "refuses": "== or != against Double.NaN or Float.NaN, in either operand order",
+      "silent_on": "Double.isNaN(x); Float.isNaN(x); Double.compare(x, Double.NaN)",
+      "constraint": "never(compare): x == Double.NaN | x != Float.NaN -- always false/true; use Double.isNaN(x)/Float.isNaN(x)",
+      "cwe": [
+        {
+          "id": "CWE-570",
+          "name": "Expression is Always False"
+        }
+      ],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#fe-doomed-test-for-equality-to-nan-fe-test-if-equal-to-not-a-number"
+      ]
+    },
+    {
+      "id": "bugs-ignored-return-value",
+      "pack": "bugs",
+      "title": "Return value of an immutable-type method ignored",
+      "refuses": "s.trim(); str.toUpperCase(); date.plusDays(1); as a standalone statement, result unused",
+      "silent_on": "x = s.trim(); return s.trim(); if (s.trim().isEmpty()) ...; list.add(x); (List.add has real side effects)",
+      "constraint": "never(statement): s.trim(); | date.plusDays(1); (or strip/toUpperCase/toLowerCase/substring/concat/with*/plus*/minus* as a bare statement) -- assign the result back",
+      "cwe": [
+        {
+          "id": "CWE-252",
+          "name": "Unchecked Return Value"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2201/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#rv-method-ignores-return-value-rv-return-value-ignored"
+      ]
+    },
+    {
+      "id": "bugs-boolean-assignment-in-condition",
+      "pack": "bugs",
+      "title": "Boolean literal assigned inside an if/while condition",
+      "refuses": "if (x = true), while (x = false) -- assigning a boolean literal as the whole condition",
+      "silent_on": "if (x == true); while (x); if (x = computeFlag()); if (a && b)",
+      "constraint": "never(condition): if (flag = true) | while (flag = false) -- use == to compare, not = to assign",
+      "cwe": [
+        {
+          "id": "CWE-481",
+          "name": "Assigning instead of Comparing"
+        }
+      ],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#qba-method-assigns-boolean-literal-in-boolean-expression-qba-questionable-boolean-assignment"
+      ]
+    },
+    {
+      "id": "bugs-array-tostring",
+      "pack": "bugs",
+      "title": "toString() invoked on an array",
+      "refuses": "<arrayVariable>.toString() where that variable was declared as an array type",
+      "silent_on": "Arrays.toString(array); Arrays.deepToString(array); list.toString() on a List/Collection",
+      "constraint": "never(call): arrayVar.toString() -- prints the type and identity hash, not the contents; use Arrays.toString(arrayVar)",
+      "cwe": [],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#useless-string-invocation-of-tostring-on-an-array-dmi-invoking-tostring-on-array"
+      ]
+    },
+    {
+      "id": "bugs-thread-run-instead-of-start",
+      "pack": "bugs",
+      "title": "Thread.run() called instead of Thread.start()",
+      "refuses": "new Thread(...).run(); a variable declared `Thread x` later called as x.run()",
+      "silent_on": "thread.start(); runnable.run() where runnable is not declared as a Thread; a class's own run() body",
+      "constraint": "never(call): thread.run() -- runs synchronously on the caller's thread; call thread.start() to actually run it concurrently",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1217/"
+      ]
+    },
+    {
+      "id": "bugs-self-assignment",
+      "pack": "bugs",
+      "title": "Variable assigned to itself",
+      "refuses": "x = x; as a bare statement, both sides the exact same plain variable name",
+      "silent_on": "this.x = x; (legitimate field-from-parameter assignment); x = y; count = count + 1;",
+      "constraint": "never(statement): x = x; -- changes nothing; likely meant this.x = x; to set the field from a same-named parameter",
+      "cwe": [
+        {
+          "id": "CWE-1164",
+          "name": "Irrelevant Code"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1656/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#sa-self-assignment-of-field-sa-field-self-assignment"
+      ]
+    },
+    {
+      "id": "bugs-math-abs-of-hashcode-or-random",
+      "pack": "bugs",
+      "title": "Math.abs() of a hashCode() or a random int",
+      "refuses": "Math.abs(anything.hashCode()); Math.abs(anything.nextInt())",
+      "silent_on": "Math.abs(x); Math.abs(random.nextInt(bound)); random.nextInt(bound) without Math.abs()",
+      "constraint": "never(call): Math.abs(x.hashCode()) | Math.abs(random.nextInt()) -- both can still be Integer.MIN_VALUE, which stays negative under Math.abs()",
+      "cwe": [],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#rv-bad-attempt-to-compute-absolute-value-of-signed-32-bit-hashcode-rv-absolute-value-of-hashcode",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#rv-bad-attempt-to-compute-absolute-value-of-signed-random-integer-rv-absolute-value-of-random-int"
+      ]
+    },
+    {
+      "id": "bugs-integer-division-to-double",
+      "pack": "bugs",
+      "title": "Integer division cast to double after the fact",
+      "refuses": "double d = 7 / 2; and other assignments dividing two plain integer literals",
+      "silent_on": "double d = 7.0 / 2; double d = a / b; (variables); int n = 7 / 2;",
+      "constraint": "never(assign): double d = intLiteral / intLiteral; -- divides as integers, truncating, before widening; make an operand a double first",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2184/"
+      ]
+    },
+    {
+      "id": "concurrency-static-date-format",
+      "pack": "concurrency",
+      "title": "Static SimpleDateFormat/DateFormat/Calendar field",
+      "refuses": "a static (with or without final) field typed SimpleDateFormat, DateFormat, MessageFormat, DecimalFormat or Calendar",
+      "silent_on": "the same types as an instance field or a local variable; a static DateTimeFormatter field (immutable)",
+      "constraint": "never(declare): static SimpleDateFormat|DateFormat|MessageFormat|DecimalFormat|Calendar field -- these mutate on every call and are not thread-safe; use an instance field, a ThreadLocal, or DateTimeFormatter",
+      "cwe": [
+        {
+          "id": "CWE-567",
+          "name": "Unsynchronized Access to Shared Data in a Multithreaded Context"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2885/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#stcal-static-dateformat-stcal-static-simple-date-format-instance"
+      ]
+    },
+    {
+      "id": "concurrency-double-checked-locking",
+      "pack": "concurrency",
+      "title": "Double-checked locking on a non-volatile field",
+      "refuses": "the null/synchronized/null-again/assign idiom on a field never declared volatile",
+      "silent_on": "the same idiom when the field is declared volatile; a single null check with no synchronized block",
+      "constraint": "never(pattern): if (x == null) { synchronized (...) { if (x == null) { x = ...; } } } unless x is volatile -- otherwise a thread can see a non-null, half-constructed x",
+      "cwe": [
+        {
+          "id": "CWE-609",
+          "name": "Double-Checked Locking"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2168/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#dc-possible-double-check-of-field-dc-doublecheck"
+      ]
+    },
+    {
+      "id": "concurrency-synchronization-on-shared-lock",
+      "pack": "concurrency",
+      "title": "synchronized on a string literal, new Object(), getClass() or a boxed constant",
+      "refuses": "synchronized(\"a literal\"); synchronized(new Object()); synchronized(getClass()); synchronized(Boolean.TRUE)",
+      "silent_on": "synchronized(this); synchronized(lockField); synchronized(SomeClass.class)",
+      "constraint": "never(lock): synchronized(\"literal\"|new Object()|getClass()|Boolean.TRUE|Integer.valueOf(n)) -- none of these is a lock exclusive to this critical section; use a private final Object field",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1860/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#dl-synchronization-on-shared-constant"
+      ]
+    },
+    {
+      "id": "concurrency-empty-synchronized-block",
+      "pack": "concurrency",
+      "title": "Empty synchronized block",
+      "refuses": "synchronized (lock) { } with nothing but whitespace or a comment inside",
+      "silent_on": "synchronized (lock) { doWork(); }; a synchronized method with a real body",
+      "constraint": "never(block): synchronized (lock) { } -- pays for the lock and forces a happens-before edge that protects nothing; fill it in or remove it",
+      "cwe": [
+        {
+          "id": "CWE-585",
+          "name": "Empty Synchronized Block"
+        }
+      ],
+      "references": [
+        "https://pmd.github.io/pmd/pmd_rules_java_codestyle.html#emptycontrolstatement"
+      ]
+    },
+    {
+      "id": "concurrency-wait-not-in-loop",
+      "pack": "concurrency",
+      "title": "wait() not called inside a loop",
+      "refuses": "Object.wait()/x.wait() reached with no enclosing while or for loop",
+      "silent_on": "while (!condition) { x.wait(); }; a wait() call inside a for loop",
+      "constraint": "never(call): x.wait() outside a while/for loop -- spurious wakeups and races between notify() and resuming both need the condition rechecked",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2274/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#wa-wait-not-in-loop"
+      ]
+    },
+    {
+      "id": "concurrency-sleep-in-synchronized",
+      "pack": "concurrency",
+      "title": "Thread.sleep() called while holding a lock",
+      "refuses": "Thread.sleep(...) reached from inside a synchronized(...) { } block",
+      "silent_on": "Thread.sleep(...) outside any synchronized block; Thread.sleep(...) inside a plain while loop",
+      "constraint": "never(call): Thread.sleep(...) inside a synchronized block -- blocks every other thread waiting on that lock for the whole sleep; move it outside",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2276/"
+      ]
+    },
+    {
+      "id": "concurrency-notify-instead-of-notifyall",
+      "pack": "concurrency",
+      "title": "notify() used instead of notifyAll()",
+      "refuses": "a bare notify() call, or this.notify()",
+      "silent_on": "notifyAll(); lock.notify() (some other object's notify, judged separately from this object's own monitor)",
+      "constraint": "never(call): notify() | this.notify() -- wakes an arbitrary single waiter, which can be the wrong one; use notifyAll()",
+      "cwe": [],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#no-notify-not-notifyall"
       ]
     },
     {
