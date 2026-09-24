@@ -286,8 +286,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 84
-  eval_executed: 76
+  eval_cases: 95
+  eval_executed: 87
   description: >-
     trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut,
     Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates,
@@ -295,9 +295,12 @@ policies:
     security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL,
     LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip,
     weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and
-    actuator data, known-exploited dependency versions, exported Android components. 72
-    rules in 9 packs (java, crypto, spring, jakarta, persistence, templates, logging, build,
-    android), each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
+    actuator data, known-exploited dependency versions, exported Android components; and the
+    bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in
+    16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging,
+    build, android; quality: bugs, concurrency, resources, exceptions, performance, style,
+    testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
+
 - id: injection-defense
   path: base/injection-defense
   version: 0.0.3

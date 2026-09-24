@@ -145,9 +145,15 @@ block-destructive-commands  [deterministic]
   PASS  tc-053                             authored  guard exit 0
   PASS  tc-054                             authored  BLOCKED: dropdb is not allowed without approval.
   PASS  tc-055                             authored  guard exit 0
+  PASS  tc-056                             authored  guard exit 0
+  PASS  tc-057                             authored  BLOCKED: git checkout . is not allowed without approval.
+  PASS  tc-058                             authored  BLOCKED: kubectl delete is not allowed without approval.
+  PASS  tc-059                             authored  BLOCKED: terraform destroy is not allowed without approval.
+  PASS  tc-060                             authored  BLOCKED: aws s3 rb --force is not allowed without approval.
+  PASS  tc-061                             authored  guard exit 0
   score 1.00
 
-5 policies: 55 pass, 41 skipped
+5 policies: 61 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

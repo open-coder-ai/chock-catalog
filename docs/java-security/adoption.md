@@ -48,7 +48,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
-INDEX.md: ~384 tokens (chars/4, max 2000)
+INDEX.md: ~402 tokens (chars/4, max 2000)
 Recompiled 1 policies
 java-security:
   claude: best-effort (live-run)
@@ -73,7 +73,7 @@ Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-INDEX.md: ~384 tokens (chars/4, max 2000)
+INDEX.md: ~402 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -163,9 +163,20 @@ java-security  [deterministic]
   PASS  tc-082                             authored  InsecureClient.java:4: [deny: android-ssl-error-ignored CWE-295] Th…
   PASS  tc-083                             authored  AndroidManifest.xml:3: [deny: android-cleartext-traffic CWE-319] an…
   PASS  tc-084                             authored  gate exit 0
+  PASS  tc-085                             authored  GreetController.java:4: [deny: java-xss-writer CWE-79] This respons…
+  PASS  tc-086                             authored  OrderStatus.java:3: [deny: bugs-string-identity-comparison CWE-597]…
+  PASS  tc-087                             authored  gate exit 0
+  PASS  tc-088                             authored  Dates.java:2: [deny: concurrency-static-date-format CWE-567] FORMAT…
+  PASS  tc-089                             authored  Loader.java:3: [deny: resources-unclosed-closeable CWE-772, CWE-775…
+  PASS  tc-090                             authored  gate exit 0
+  PASS  tc-091                             authored  Sync.java:5: [deny: exceptions-empty-catch CWE-1071] This catch blo…
+  PASS  tc-092                             authored  Report.java:5: [deny: performance-string-concat-loop] out is concat…
+  PASS  tc-093                             authored  src/main/java/com/acme/Importer.java:3: [deny: style-system-out-pri…
+  PASS  tc-094                             authored  src/test/java/com/acme/ImporterTest.java:2: [deny: testing-no-asser…
+  PASS  tc-095                             authored  gate exit 0
   score 1.00
 
-5 policies: 76 pass, 49 skipped
+5 policies: 87 pass, 49 skipped
 49 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -195,5 +206,5 @@ java-security  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to customize java security, which opens this skill's guided page.
+- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to customize java security, which opens this skill's guided page.
 ```

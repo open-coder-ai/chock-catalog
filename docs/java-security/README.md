@@ -10,18 +10,18 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 84 total, 76 executable |
+| **Eval cases** | 95 total, 87 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties or .yml, web.xml, pom.xml or Gradle builds; "customize java security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL, LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip, weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and actuator data, known-exploited dependency versions, exported Android components. 72 rules in 9 packs (java, crypto, spring, jakarta, persistence, templates, logging, build, android), each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
+trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties or .yml, web.xml, pom.xml or Gradle builds; "customize java security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL, LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip, weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and actuator data, known-exploited dependency versions, exported Android components; and the bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in 16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging, build, android; quality: bugs, concurrency, resources, exceptions, performance, style, testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
 
 ## What it solves
 
-A coding agent writing Java reaches for the construct that compiles and passes the test: `${col}` in a MyBatis ORDER BY, a SQL string glued together with `+`, `csrf().disable()` to get a POST working, `th:utext` so a bio renders, a trust-all TrustManager to get past a certificate error, `include=*` so the dashboard sees every actuator endpoint, a Log4j version from a tutorial. Each is a vulnerability a reviewer would catch and a scanner run at merge time reports after the agent has moved on. This policy refuses them as they are written and at the commit, with the fix named in the refusal, across 72 rules in nine packs -- core Java, crypto, Spring, Jakarta EE and the other frameworks, persistence, templates, logging, the build, and Android -- and every rule carries the negative cases that keep it silent on the correct form: `#{}` and bind parameters, `th:text`, `parseClaimsJws`, AES-GCM, a named CORS origin.
+A coding agent writing Java reaches for the construct that compiles and passes the test: `${col}` in a MyBatis ORDER BY, a SQL string glued together with `+`, `csrf().disable()` to get a POST working, `th:utext` so a bio renders, a trust-all TrustManager to get past a certificate error, `include=*` so the dashboard sees every actuator endpoint, a Log4j version from a tutorial. Each is a vulnerability a reviewer would catch and a scanner run at merge time reports after the agent has moved on. This policy refuses them as they are written and at the commit, with the fix and the CWE named in the refusal, across 79 security rules in nine packs -- core Java, crypto, Spring, Jakarta EE and the other frameworks, persistence, templates, logging, the build, and Android -- and 50 quality rules in seven more: the bugs, races, leaks, swallowed exceptions, slow paths, style breaches and assertion-free tests SpotBugs, Sonar, PMD and Checkstyle report. Every rule cites its evidence -- the CWE, the CVE or vendor advisory, the analyser rule it mirrors -- and carries the negative cases that keep it silent on the correct form: `#{}` and bind parameters, `th:text`, `parseClaimsJws`, AES-GCM, a named CORS origin, `"SHIPPED".equals(status)`, try-with-resources.
 
 ## How it works
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to customize java security, which opens this skill's guided page.
+> java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to customize java security, which opens this skill's guided page.
 
 ## Which primitive it becomes
 
