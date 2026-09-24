@@ -87,5 +87,143 @@
     "stream_sinks": [
       "new ObjectInputStream("
     ]
+  },
+  "command": {
+    "sinks": [
+      "Runtime.getRuntime().exec(",
+      "new ProcessBuilder(",
+      ".command("
+    ]
+  },
+  "code_injection": {
+    "imports": [
+      "javax.script.",
+      "jdk.nashorn.",
+      "groovy.lang.GroovyShell",
+      "ognl.Ognl",
+      "org.mvel2.MVEL",
+      "javax.el.ExpressionFactory",
+      "jakarta.el.ExpressionFactory",
+      "javax.el.ELProcessor",
+      "jakarta.el.ELProcessor",
+      "jdk.jshell.JShell"
+    ],
+    "sinks": [
+      ".eval(",
+      ".evaluate(",
+      "Ognl.getValue(",
+      "Ognl.parseExpression(",
+      "MVEL.eval(",
+      "MVEL.compileExpression(",
+      "ExpressionFactory.createValueExpression(",
+      "ExpressionFactory.createMethodExpression("
+    ]
+  },
+  "reflection": {
+    "sinks": [
+      "Class.forName(",
+      ".loadClass(",
+      ".getMethod("
+    ]
+  },
+  "xxe": {
+    "factories": [
+      "DocumentBuilderFactory.newInstance(",
+      "SAXParserFactory.newInstance(",
+      "XMLInputFactory.newInstance(",
+      "TransformerFactory.newInstance(",
+      "SchemaFactory.newInstance(",
+      "XMLReaderFactory.createXMLReader(",
+      "new SAXReader(",
+      "new SAXBuilder(",
+      "XMLInputFactory.newFactory(",
+      "XMLInputFactory.newDefaultFactory(",
+      "DocumentBuilderFactory.newDefaultInstance(",
+      "SAXParserFactory.newDefaultInstance(",
+      "TransformerFactory.newDefaultInstance(",
+      "SchemaFactory.newDefaultInstance("
+    ],
+    "hardening": [
+      "disallow-doctype-decl",
+      "external-general-entities",
+      "XMLConstants.ACCESS_EXTERNAL_DTD",
+      "XMLConstants.ACCESS_EXTERNAL_SCHEMA",
+      "FEATURE_SECURE_PROCESSING",
+      "XMLInputFactory.SUPPORT_DTD",
+      "IS_SUPPORTING_EXTERNAL_ENTITIES"
+    ]
+  },
+  "xml_decoder": {
+    "xmldecoder_construction": "new XMLDecoder(",
+    "snakeyaml_import": "org.yaml.snakeyaml",
+    "snakeyaml_load": ".load(",
+    "unsafe_constructor_calls": [
+      "new UnsafeConstructor",
+      "new Yaml(new Constructor("
+    ]
+  },
+  "ssrf": {
+    "sinks": [
+      "new URL(",
+      "URI.create(",
+      "new URI(",
+      "HttpRequest.newBuilder(",
+      ".uri(",
+      "restTemplate.getForObject(",
+      ".getForObject(",
+      ".getForEntity(",
+      ".exchange(",
+      "new HttpGet(",
+      "new HttpPost(",
+      ".url(",
+      "Jsoup.connect("
+    ]
+  },
+  "zip_slip": {
+    "markers": [
+      "ZipEntry",
+      "JarEntry",
+      "TarArchiveEntry",
+      "ZipInputStream",
+      "ZipFile",
+      "ZipArchiveEntry",
+      "JarInputStream"
+    ],
+    "path_calls": [
+      "new File(",
+      "Paths.get(",
+      ".resolve("
+    ],
+    "hardening": [
+      ".toRealPath(",
+      ".normalize()"
+    ],
+    "startswith_check": ".startsWith("
+  },
+  "ldap": {
+    "imports": [
+      "javax.naming.directory",
+      "org.springframework.ldap"
+    ],
+    "sinks": [
+      ".search("
+    ],
+    "sanitizers": [
+      "LdapEncoder",
+      ".is("
+    ]
+  },
+  "xpath": {
+    "imports": [
+      "javax.xml.xpath"
+    ],
+    "sinks": [
+      ".compile(",
+      ".evaluate("
+    ],
+    "sanitizers": [
+      "XPathVariableResolver",
+      "setXPathVariableResolver("
+    ]
   }
 }

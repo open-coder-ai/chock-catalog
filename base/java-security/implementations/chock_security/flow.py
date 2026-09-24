@@ -136,13 +136,13 @@ def _parameters(signature: str) -> set[str]:
     return tainted
 
 
-def _retaint(line: str, tainted: set[str]) -> None:
+def _retaint(line: str, tainted: set[str], sanitizers: list[str]) -> None:
     """Follow one assignment: the target carries what its right-hand side carries, and no more."""
     for match in _ASSIGNMENT.finditer(line):
         target = match.group(1)
         right = line[match.end() :]
         carries = _holds(right, _FACTS["source_calls"]) or _mentions(right, tainted)
-        if carries and not _holds(line, _FACTS["sanitizers"]):
+        if carries and not _holds(line, sanitizers):
             tainted.add(target)
         else:
             tainted.discard(target)
@@ -162,7 +162,7 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
         reached = _holds(line, sinks) and (direct or _mentions(line, tainted))
         if reached and not _holds(line, clean):
             yield Flow(line_no, line, "a request parameter" if annotated else "the request")
-        _retaint(line, tainted)
+        _retaint(line, tainted, clean)
 
 
 def flows(text: FileText, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:

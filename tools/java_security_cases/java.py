@@ -62,6 +62,256 @@ CASES: list[tuple[str, str, str, list[int]]] = [
      'var kid = JWT.decode(token).getKeyId();\nJwts.parser().verifyWith(key).build().parseSignedClaims(token);\n', []),
     ('java-jwt-unverified-parse', 'Auth.java',
      'var t = JWT.create().withSubject(id).sign(Algorithm.HMAC256(secret));\n', []),
+
+    # -- java-command-injection --------------------------------------------------------------
+    ('java-command-injection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/run")\n'
+     '  public void run(@RequestParam String cmd) throws Exception {\n'
+     '    Runtime.getRuntime().exec(cmd);\n'
+     '  }\n}\n', [4]),
+    ('java-command-injection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/ping")\n'
+     '  public void ping(@RequestParam String host) throws Exception {\n'
+     '    ProcessBuilder pb = new ProcessBuilder("ping", host);\n'
+     '    pb.start();\n'
+     '  }\n}\n', [4]),
+    ('java-command-injection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/run")\n'
+     '  public void run(@RequestParam String cmd) throws Exception {\n'
+     '    Runtime.getRuntime().exec("ls -la");\n'
+     '  }\n}\n', []),
+    ('java-command-injection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/run")\n'
+     '  public void run(@RequestParam String cmd) throws Exception {\n'
+     '    Runtime.getRuntime().exec(new String[]{"sh", "-c", "ls -la"});\n'
+     '  }\n}\n', []),
+
+    # -- java-code-injection -------------------------------------------------------------------
+    ('java-code-injection', 'C.java',
+     'import javax.script.ScriptEngine;\n'
+     'import javax.script.ScriptEngineManager;\n'
+     'public class C {\n'
+     '  @PostMapping("/calc")\n'
+     '  public Object calc(@RequestParam String expr) throws Exception {\n'
+     '    ScriptEngine engine = new ScriptEngineManager().getEngineByName("js");\n'
+     '    return engine.eval(expr);\n'
+     '  }\n}\n', [7]),
+    ('java-code-injection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/calc")\n'
+     '  public Object calc(@RequestParam String expr) throws Exception {\n'
+     '    return engine.eval(expr);\n'
+     '  }\n}\n', []),
+    ('java-code-injection', 'C.java',
+     'import javax.script.ScriptEngine;\n'
+     'public class C {\n'
+     '  @PostMapping("/calc")\n'
+     '  public Object calc(@RequestParam String expr) throws Exception {\n'
+     '    ScriptEngine engine = mgr.getEngineByName("js");\n'
+     '    return engine.eval("1+1");\n'
+     '  }\n}\n', []),
+
+    # -- java-unsafe-reflection ------------------------------------------------------------------
+    ('java-unsafe-reflection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/load")\n'
+     '  public Object load(@RequestParam String className) throws Exception {\n'
+     '    return Class.forName(className).newInstance();\n'
+     '  }\n}\n', [4]),
+    ('java-unsafe-reflection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/load")\n'
+     '  public Object load(@RequestParam String className) throws Exception {\n'
+     '    return Class.forName("com.acme.Handler").newInstance();\n'
+     '  }\n}\n', []),
+    ('java-unsafe-reflection', 'C.java',
+     'public class C {\n'
+     '  @PostMapping("/load")\n'
+     '  public Object load(@RequestParam String className) throws Exception {\n'
+     '    String checked = allowlist.get(className);\n'
+     '    return Class.forName(checked).newInstance();\n'
+     '  }\n}\n', []),
+
+    # -- java-xxe-parser --------------------------------------------------------------------------
+    ('java-xxe-parser', 'X.java',
+     'public class X {\n'
+     '  DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();\n'
+     '}\n', [2]),
+    ('java-xxe-parser', 'X.java',
+     'public class X {\n'
+     '  DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();\n'
+     '  dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);\n'
+     '}\n', []),
+    ('java-xxe-parser', 'X.java',
+     'public class X {\n'
+     '  TransformerFactory tf = TransformerFactory.newInstance();\n'
+     '  tf.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");\n'
+     '}\n', []),
+
+    # -- java-xml-decoder -------------------------------------------------------------------------
+    ('java-xml-decoder', 'X.java',
+     'public class X {\n'
+     '  XMLDecoder d = new XMLDecoder(in);\n'
+     '  Object o = d.readObject();\n'
+     '}\n', [2]),
+    ('java-xml-decoder', 'X.java',
+     'import org.yaml.snakeyaml.Yaml;\n'
+     'import org.yaml.snakeyaml.constructor.Constructor;\n'
+     'public class X {\n'
+     '  Yaml yaml = new Yaml(new Constructor(Object.class));\n'
+     '  Object o = yaml.load(input);\n'
+     '}\n', [4]),
+    ('java-xml-decoder', 'X.java',
+     'import org.yaml.snakeyaml.Yaml;\n'
+     'public class X {\n'
+     '  Yaml yaml = new Yaml();\n'
+     '  Object o = yaml.load(input);\n'
+     '}\n', []),
+    ('java-xml-decoder', 'X.java',
+     'import org.yaml.snakeyaml.Yaml;\n'
+     'import org.yaml.snakeyaml.constructor.Constructor;\n'
+     'public class X {\n'
+     '  Yaml yaml = new Yaml(new Constructor(Person.class));\n'
+     '  Object o = yaml.load(input);\n'
+     '}\n', []),
+    ('java-xml-decoder', 'X.java',
+     'public class X {\n'
+     '  XMLEncoder e = new XMLEncoder(out);\n'
+     '}\n', []),
+
+    # -- java-ssrf-request-url --------------------------------------------------------------------
+    ('java-ssrf-request-url', 'C.java',
+     'public class C {\n'
+     '  @GetMapping("/fetch")\n'
+     '  public String fetch(@RequestParam String url) throws Exception {\n'
+     '    URL u = new URL(url);\n'
+     '    return u.toString();\n'
+     '  }\n}\n', [4]),
+    ('java-ssrf-request-url', 'C.java',
+     'public class C {\n'
+     '  @GetMapping("/fetch")\n'
+     '  public String fetch(@RequestParam String target) throws Exception {\n'
+     '    return restTemplate.getForObject(target, String.class);\n'
+     '  }\n}\n', [4]),
+    ('java-ssrf-request-url', 'C.java',
+     'public class C {\n'
+     '  @GetMapping("/fetch")\n'
+     '  public String fetch(@RequestParam String url) throws Exception {\n'
+     '    URL u = new URL("https://example.com/api");\n'
+     '    return u.toString();\n'
+     '  }\n}\n', []),
+    ('java-ssrf-request-url', 'C.java',
+     'public class C {\n'
+     '  @GetMapping("/fetch")\n'
+     '  public String fetch(@RequestParam String host) throws Exception {\n'
+     '    String checked = allowlist.get(host);\n'
+     '    URL u = new URL(checked);\n'
+     '    return u.toString();\n'
+     '  }\n}\n', []),
+
+    # -- java-zip-slip ------------------------------------------------------------------------------
+    ('java-zip-slip', 'Z.java',
+     'public class Z {\n'
+     '  public void extract(ZipInputStream zis, File dest) throws Exception {\n'
+     '    ZipEntry entry = zis.getNextEntry();\n'
+     '    File out = new File(dest, entry.getName());\n'
+     '    write(out);\n'
+     '  }\n}\n', [4]),
+    ('java-zip-slip', 'Z.java',
+     'public class Z {\n'
+     '  public void extract(ZipInputStream zis, File dest) throws Exception {\n'
+     '    ZipEntry entry = zis.getNextEntry();\n'
+     '    File out = new File(dest, entry.getName());\n'
+     '    String canon = dest.toPath().normalize().toString();\n'
+     '    if (!out.toPath().normalize().startsWith(canon)) throw new IOException("bad entry");\n'
+     '    write(out);\n'
+     '  }\n}\n', []),
+    ('java-zip-slip', 'Z.java',
+     'public class Z {\n'
+     '  public void extract(ZipInputStream zis, File dest) throws Exception {\n'
+     '    ZipEntry entry = zis.getNextEntry();\n'
+     '    File out = new File(dest, entry.getName());\n'
+     '    Path real = out.toPath().toRealPath();\n'
+     '    if (!real.startsWith(dest.toPath())) throw new IOException("bad entry");\n'
+     '    write(out);\n'
+     '  }\n}\n', []),
+    ('java-zip-slip', 'F.java',
+     'public class F {\n'
+     '  public void copy(File src, File dir) {\n'
+     '    File out = new File(dir, src.getName());\n'
+     '  }\n}\n', []),
+
+    # -- java-ldap-injection ------------------------------------------------------------------------
+    ('java-ldap-injection', 'C.java',
+     'import javax.naming.directory.DirContext;\n'
+     'import javax.naming.directory.InitialDirContext;\n'
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public void find(@RequestParam String uid) throws Exception {\n'
+     '    DirContext ctx = new InitialDirContext(env);\n'
+     '    ctx.search("ou=people", "(uid=" + uid + ")", controls);\n'
+     '  }\n}\n', [7]),
+    ('java-ldap-injection', 'C.java',
+     'import javax.naming.directory.DirContext;\n'
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public void find(@RequestParam String uid) throws Exception {\n'
+     '    ctx.search("ou=people", "(uid=" + LdapEncoder.filterEncode(uid) + ")", controls);\n'
+     '  }\n}\n', []),
+    ('java-ldap-injection', 'C.java',
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public void find(@RequestParam String uid) throws Exception {\n'
+     '    ctx.search("ou=people", "(uid=" + uid + ")", controls);\n'
+     '  }\n}\n', []),
+    ('java-ldap-injection', 'C.java',
+     'import org.springframework.ldap.core.LdapTemplate;\n'
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public void find(@RequestParam String uid) throws Exception {\n'
+     '    ldapTemplate.search(query().where("uid").is(uid), mapper);\n'
+     '  }\n}\n', []),
+
+    # -- java-xpath-injection -----------------------------------------------------------------------
+    ('java-xpath-injection', 'C.java',
+     'import javax.xml.xpath.XPath;\n'
+     'import javax.xml.xpath.XPathFactory;\n'
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public String find(@RequestParam String username) throws Exception {\n'
+     '    XPath xpath = XPathFactory.newInstance().newXPath();\n'
+     '    return xpath.evaluate("//user[@name=\'" + username + "\']", doc);\n'
+     '  }\n}\n', [7]),
+    ('java-xpath-injection', 'C.java',
+     'import javax.xml.xpath.XPath;\n'
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public String find(@RequestParam String username) throws Exception {\n'
+     '    xpath.setXPathVariableResolver(resolver); xpath.compile("//user[@name=$username]");\n'
+     '    return "";\n'
+     '  }\n}\n', []),
+    ('java-xpath-injection', 'C.java',
+     'import javax.xml.xpath.XPath;\n'
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public String find(@RequestParam String username) throws Exception {\n'
+     '    return xpath.evaluate("//user[@name=\'root\']", doc);\n'
+     '  }\n}\n', []),
+    ('java-xpath-injection', 'C.java',
+     'public class C {\n'
+     '  @GetMapping("/find")\n'
+     '  public String find(@RequestParam String username) throws Exception {\n'
+     '    return xpath.evaluate("//user[@name=\'" + username + "\']", doc);\n'
+     '  }\n}\n', []),
+    ("java-xxe-parser", "Feed.java",
+     "XMLInputFactory f = XMLInputFactory.newFactory();\nXMLStreamReader r = f.createXMLStreamReader(in);\n", [1]),
+    ("java-xxe-parser", "Feed.java",
+     "DocumentBuilderFactory f = DocumentBuilderFactory.newDefaultInstance();\n"
+     "f.setFeature(\"http://apache.org/xml/features/disallow-doctype-decl\", true);\n", []),
 ]
 
 #: (label, path, text, expected rule ids, rule ids this case is about)

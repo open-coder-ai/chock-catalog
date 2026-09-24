@@ -7,6 +7,15 @@ from chock_security.rules.java import java_unsafe_deserialization
 from chock_security.rules.java import java_deserialize_request
 from chock_security.rules.java import java_jwt_unverified
 from chock_security.rules.java import java_path_traversal
+from chock_security.rules.java import java_command_injection
+from chock_security.rules.java import java_code_injection
+from chock_security.rules.java import java_unsafe_reflection
+from chock_security.rules.java import java_xxe_parser
+from chock_security.rules.java import java_xml_decoder
+from chock_security.rules.java import java_ssrf_request_url
+from chock_security.rules.java import java_zip_slip
+from chock_security.rules.java import java_ldap_injection
+from chock_security.rules.java import java_xpath_injection
 
 PACK = Pack(
     id="java",
@@ -21,4 +30,13 @@ RULES: tuple[Rule, ...] = (
     java_deserialize_request.RULE,
     java_jwt_unverified.RULE,
     java_path_traversal.RULE,
+    java_command_injection.RULE,
+    java_code_injection.RULE,
+    java_unsafe_reflection.RULE,
+    java_xxe_parser.RULE,
+    java_xml_decoder.RULE,
+    java_ssrf_request_url.RULE,
+    java_zip_slip.RULE,
+    java_ldap_injection.RULE,
+    java_xpath_injection.RULE,
 )
