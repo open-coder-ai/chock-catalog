@@ -44,6 +44,10 @@ def test_a_pack_verdict_covers_that_pack_and_no_other() -> None:
         (_v2({"templates": {"rules": {}, "severity": "high"}}), "unknown key"),
         (json.dumps({"version": 3, "packs": {}}), "version must be"),
         ("{not json", "not valid JSON"),
+        ("[]", "selection must be an object"),
+        (json.dumps({"version": 2, "packs": ["templates"]}), "'packs' must be an object"),
+        (_v2({"templates": "deny"}), "must be an object with keys"),
+        (_v2({"templates": {"rules": [XSS]}}), "'rules' must be an object"),
     ],
     ids=[
         "unknown-verdict",
@@ -53,6 +57,10 @@ def test_a_pack_verdict_covers_that_pack_and_no_other() -> None:
         "extra-pack-key",
         "future-version",
         "not-json",
+        "document-not-an-object",
+        "packs-not-an-object",
+        "pack-not-an-object",
+        "rules-not-an-object",
     ],
 )
 def test_anything_but_a_verdict_is_refused(document: str, complaint: str) -> None:

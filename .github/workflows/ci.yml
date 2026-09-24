@@ -266,8 +266,13 @@ jobs:
       - name: Formatting (ruff format)
         run: ruff format --check base/java-security tests tools/gen_java_security_contract.py
 
-      - name: Tests (every java-security rule, the gate, the evals, the corpus, repo standards)
-        run: python -m pytest
+      # Every policy in every tree is validated and has each executable eval case replayed as a
+      # named test (tests/policies); every statement of every shipped bash guard must be run by one
+      # of those cases (bash's own trace, tests/policies/shellcov.py); and every line and branch of
+      # the shipped Python -- the java-security engine and gate, the a11y guard -- must run under a
+      # test: coverage below 100 fails the step (pyproject.toml [tool.coverage]).
+      - name: Tests (every policy, every rule, 100% line and branch coverage)
+        run: python -m pytest --cov
 
       - name: The Java security setup contract matches the rules it describes
         run: python tools/gen_java_security_contract.py --check

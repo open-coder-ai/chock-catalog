@@ -54,3 +54,39 @@ def test_a_declaration_without_a_body_is_not_a_method() -> None:
 
 def test_nothing_fires_on_an_empty_write() -> None:
     assert evaluate([FileText("Empty.java", "")], ALL_DENY) == []
+
+
+def test_a_parameter_list_over_several_lines_is_read_whole() -> None:
+    text = FileText(
+        "C.java",
+        "class C {\n  Object x(\n      @RequestParam String f,\n      int n) {\n"
+        '    return read(Paths.get("/srv/" + f));\n  }\n}\n',
+    )
+    assert [m.name for m in methods(text)] == ["x"]
+    assert [f.line_no for f in flows(text, SINKS)] == [5]
+
+
+def test_a_brace_on_its_own_line_opens_the_body() -> None:
+    text = FileText(
+        "C.java",
+        'class C {\n  Object x(@RequestParam String f)\n  {\n    return read(Paths.get("/srv/" + f));\n  }\n}\n',
+    )
+    assert [f.line_no for f in flows(text, SINKS)] == [4]
+
+
+def test_a_signature_still_being_typed_is_no_method() -> None:
+    text = FileText("C.java", "class C {\n  Object x(@RequestParam String f,\n")
+    assert methods(text) == []
+
+
+def test_a_body_still_being_typed_is_no_method() -> None:
+    text = FileText("C.java", 'class C {\n  Object x(@RequestParam String f) {\n    read(Paths.get("/srv/" + f));\n')
+    assert methods(text) == []
+
+
+def test_an_annotation_with_no_parameter_behind_it_taints_nothing() -> None:
+    text = FileText(
+        "C.java", 'class C {\n  Object x(@RequestParam) {\n    return read(Paths.get("/srv/" + f));\n  }\n}\n'
+    )
+    assert [m.name for m in methods(text)] == ["x"]
+    assert list(flows(text, SINKS)) == []

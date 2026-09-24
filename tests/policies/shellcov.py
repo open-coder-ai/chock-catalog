@@ -87,7 +87,7 @@ def statements(script: str) -> list[tuple[int, ...]]:
             if opened:
                 heredoc = opened.group(2)
                 continue
-            if quote or depth or _CONTINUES.search(line) and not _SYNTAX.match(line.strip()):
+            if quote or depth or (_CONTINUES.search(line) and not _SYNTAX.match(line.strip())):
                 continue
         if group:
             joined = " ".join(text)

@@ -65,18 +65,21 @@ def _declares(line: str) -> str | None:
 
 
 def _signature(lines: list[str], start: int, name: str) -> tuple[str, int] | None:
-    """The parameter list following the method name, and the line it closes on."""
+    """The parameter list following the method name, and the line it closes on.
+
+    `_declares` read `name(` on `start`'s own line, so the opening parenthesis is found there;
+    the list may close up to twenty lines later.
+    """
+    anchor = re.search(rf"\b{re.escape(name)}\s*\(", lines[start])
+    begin, opening = (anchor.start(), anchor.end() - 1) if anchor else (0, len(lines[start]))
     text = ""
     for offset in range(start, min(start + 20, len(lines))):
         text = f"{text} {lines[offset]}" if text else lines[offset]
-        anchor = re.search(rf"\b{re.escape(name)}\s*\(", text)
-        if not anchor:
-            continue
         depth = 0
-        for index in range(anchor.end() - 1, len(text)):
+        for index in range(opening, len(text)):
             depth += (text[index] == "(") - (text[index] == ")")
             if depth == 0:
-                return text[anchor.start() : index + 1], offset
+                return text[begin : index + 1], offset
     return None
 
 

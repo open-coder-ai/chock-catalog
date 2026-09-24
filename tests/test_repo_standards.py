@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
+
+from trees import TREES
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_LINES = 300
@@ -38,3 +41,23 @@ def test_no_code_file_exceeds_the_review_budget() -> None:
 def test_the_baseline_only_shrinks() -> None:
     still_over = {rel for rel in BASELINE if len((ROOT / rel).read_text(encoding="utf-8").splitlines()) > MAX_LINES}
     assert still_over == BASELINE, f"no longer over budget, remove from BASELINE: {sorted(BASELINE - still_over)}"
+
+
+def test_every_shipped_implementation_is_measured_for_coverage() -> None:
+    """A policy that starts shipping Python is measured the day it does, not when someone notices."""
+    source = set(
+        tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["coverage"]["run"]["source"]
+    )
+    shipped = {
+        path.parent.relative_to(ROOT).as_posix()
+        for tree in TREES
+        for path in (ROOT / tree).glob("*/implementations/*.py")
+    }
+    assert shipped <= source, f"add to [tool.coverage.run] source: {sorted(shipped - source)}"
+    assert all((ROOT / s).is_dir() for s in source), "a coverage source that no longer exists"
+
+
+def test_every_shipped_guard_is_python_or_bash() -> None:
+    """Coverage is measured for exactly these two languages; a guard in a third would go unmeasured."""
+    guards = {path.suffix for tree in TREES for path in (ROOT / tree).glob("*/implementations/*") if path.is_file()}
+    assert guards <= {".py", ".sh"}, sorted(guards)
