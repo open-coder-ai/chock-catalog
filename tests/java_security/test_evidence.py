@@ -16,7 +16,7 @@ import pytest
 from chock_security.decision import DENY, FileText
 from chock_security.engine import evaluate
 from chock_security.pack import weaknesses
-from chock_security.rules import registry
+from chock_security.rules import packs, registry
 from gen_java_security_contract import rendered
 from java_security.cases import CASES, FLOW_CASES
 
@@ -39,11 +39,26 @@ TRUSTED_HOSTS = {
     "struts.apache.org",
 }
 
+#: Where a static analyser documents the rule a quality rule mirrors. A quality rule's evidence
+#: is that the tools the industry already runs report the same construct.
+TOOL_HOSTS = {
+    "rules.sonarsource.com",
+    "spotbugs.readthedocs.io",
+    "pmd.github.io",
+    "checkstyle.org",
+    "errorprone.info",
+}
+
+PACK_KIND = {pack_id: pack.kind for pack_id, pack in packs().items()}
+
 
 @pytest.mark.parametrize("rule_id", sorted(RULES))
 def test_rule_carries_at_least_one_mapped_cwe(rule_id: str) -> None:
     rule = RULES[rule_id]
-    assert rule.cwe, f"{rule_id} carries no CWE"
+    # A vulnerability always has a weakness to name. A style breach may have none MITRE lists;
+    # it must then be a construct a static analyser reports (the tool-reference test below).
+    if PACK_KIND[rule.pack] == "security":
+        assert rule.cwe, f"{rule_id} carries no CWE"
     for cwe_id in rule.cwe:
         assert cwe_id in WEAKNESSES, f"{rule_id} cites {cwe_id}, which data/cwe.json does not carry"
         usage = WEAKNESSES[cwe_id]["usage"]
@@ -58,7 +73,19 @@ def test_rule_carries_at_least_one_verified_reference(rule_id: str) -> None:
     for url in rule.references:
         parsed = urlparse(url)
         assert parsed.scheme == "https", f"{rule_id} references a non-https URL: {url}"
-        assert parsed.netloc in TRUSTED_HOSTS, f"{rule_id} references an untrusted host: {url}"
+        assert parsed.netloc in TRUSTED_HOSTS | TOOL_HOSTS, f"{rule_id} references an untrusted host: {url}"
+
+
+@pytest.mark.parametrize("rule_id", sorted(r for r in RULES if PACK_KIND[RULES[r].pack] == "quality"))
+def test_quality_rule_names_the_analyser_rule_it_mirrors(rule_id: str) -> None:
+    hosts = {urlparse(url).netloc for url in RULES[rule_id].references}
+    assert hosts & TOOL_HOSTS, (
+        f"{rule_id} cites no static analyser rule (Sonar, SpotBugs, PMD, Checkstyle, Error Prone)"
+    )
+
+
+def test_pack_kinds_are_known() -> None:
+    assert set(PACK_KIND.values()) <= {"security", "quality"}
 
 
 def test_cwe_json_holds_nothing_no_rule_cites() -> None:

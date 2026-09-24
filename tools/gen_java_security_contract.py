@@ -29,7 +29,7 @@ _EMBEDDED = re.compile(r'(<script type="application/json" id="contract">)(.*?)(<
 def contract() -> dict:
     """The reference contract with its packs and rules replaced by the registry's own."""
     document = json.loads(REFERENCE.read_text(encoding="utf-8"))
-    document["packs"] = [{"id": p.id, "title": p.title, "covers": p.covers} for p in packs().values()]
+    document["packs"] = [{"id": p.id, "title": p.title, "covers": p.covers, "kind": p.kind} for p in packs().values()]
     cwe = weaknesses()
     document["rules"] = [
         {

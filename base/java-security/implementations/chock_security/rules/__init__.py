@@ -3,11 +3,46 @@
 from __future__ import annotations
 
 from chock_security.pack import Pack, Rule
-from chock_security.rules import android, build, crypto, jakarta, java, logging, persistence, spring, templates
+from chock_security.rules import (
+    android,
+    bugs,
+    build,
+    concurrency,
+    crypto,
+    exceptions,
+    jakarta,
+    java,
+    logging,
+    performance,
+    persistence,
+    resources,
+    spring,
+    style,
+    templates,
+    testing,
+)
 
 #: Registry order is the order the setup page and the contract show: the language, then the
-#: frameworks on it, then the layers every framework shares, then the build and the platform.
-_PACKS = (java, crypto, spring, jakarta, persistence, templates, logging, build, android)
+#: frameworks on it, then the layers every framework shares, then the build and the platform;
+#: then the quality packs, correctness first and style last.
+_PACKS = (
+    java,
+    crypto,
+    spring,
+    jakarta,
+    persistence,
+    templates,
+    logging,
+    build,
+    android,
+    bugs,
+    concurrency,
+    resources,
+    exceptions,
+    performance,
+    style,
+    testing,
+)
 
 
 def packs() -> dict[str, Pack]:

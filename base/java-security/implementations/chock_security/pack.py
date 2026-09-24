@@ -30,6 +30,9 @@ class Pack:
     title: str
     #: What code this pack reads, in the words a developer would recognise their stack by.
     covers: str
+    #: "security" refuses a vulnerability; "quality" refuses a bug, a leak or a style breach a
+    #: static analyser (SpotBugs, Sonar, PMD, Checkstyle, Error Prone) reports. Both enforce.
+    kind: str = "security"
 
 
 @dataclass(frozen=True)

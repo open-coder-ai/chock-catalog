@@ -27,47 +27,98 @@
     {
       "id": "java",
       "title": "Core Java",
-      "covers": "The JDK itself, whatever framework sits on top: injection into commands, code, reflection, LDAP and XPath; XML parsers; outbound URLs; archives; file paths; Java and polymorphic deserialization; JWT libraries."
+      "covers": "The JDK itself, whatever framework sits on top: injection into commands, code, reflection, LDAP and XPath; XML parsers; outbound URLs; archives; file paths; Java and polymorphic deserialization; JWT libraries.",
+      "kind": "security"
     },
     {
       "id": "crypto",
       "title": "Cryptography and TLS",
-      "covers": "JCA ciphers, digests, random numbers, keys and IVs; TLS contexts, trust managers and hostname verifiers; credentials written into the source."
+      "covers": "JCA ciphers, digests, random numbers, keys and IVs; TLS contexts, trust managers and hostname verifiers; credentials written into the source.",
+      "kind": "security"
     },
     {
       "id": "spring",
       "title": "Spring",
-      "covers": "Spring Framework, Boot, Security, Data and Cloud: security filter chains, controllers, SpEL, actuator, and application.properties / application.yml."
+      "covers": "Spring Framework, Boot, Security, Data and Cloud: security filter chains, controllers, SpEL, actuator, and application.properties / application.yml.",
+      "kind": "security"
     },
     {
       "id": "jakarta",
       "title": "Jakarta EE and other frameworks",
-      "covers": "Everything that is not Spring: Servlet, JAX-RS, JSF and web.xml; Struts; Quarkus, Micronaut, Helidon, Vert.x and Dropwizard, and their configuration."
+      "covers": "Everything that is not Spring: Servlet, JAX-RS, JSF and web.xml; Struts; Quarkus, Micronaut, Helidon, Vert.x and Dropwizard, and their configuration.",
+      "kind": "security"
     },
     {
       "id": "persistence",
       "title": "Persistence",
-      "covers": "JDBC, JPA and Hibernate, JdbcTemplate, MyBatis, jOOQ, MongoDB and other NoSQL drivers, and the JDBC URLs and schema settings that configure them."
+      "covers": "JDBC, JPA and Hibernate, JdbcTemplate, MyBatis, jOOQ, MongoDB and other NoSQL drivers, and the JDBC URLs and schema settings that configure them.",
+      "kind": "security"
     },
     {
       "id": "templates",
       "title": "Templates and views",
-      "covers": "Thymeleaf, JSP and JSTL, JSF Facelets, FreeMarker, Velocity, Pebble, Mustache and Handlebars: output escaping and templates built at run time."
+      "covers": "Thymeleaf, JSP and JSTL, JSF Facelets, FreeMarker, Velocity, Pebble, Mustache and Handlebars: output escaping and templates built at run time.",
+      "kind": "security"
     },
     {
       "id": "logging",
       "title": "Logging",
-      "covers": "Log4j 2, Logback, SLF4J and java.util.logging: lookups, secrets written to logs, and stack traces sent to the caller."
+      "covers": "Log4j 2, Logback, SLF4J and java.util.logging: lookups, secrets written to logs, and stack traces sent to the caller.",
+      "kind": "security"
     },
     {
       "id": "build",
       "title": "Build and dependencies",
-      "covers": "Maven pom.xml and Gradle build scripts: repositories, checksums, and dependency versions with known remote-code-execution flaws."
+      "covers": "Maven pom.xml and Gradle build scripts: repositories, checksums, and dependency versions with known remote-code-execution flaws.",
+      "kind": "security"
     },
     {
       "id": "android",
       "title": "Android",
-      "covers": "Android apps in Java or Kotlin: WebView, TLS error handling, file modes, components and the AndroidManifest.xml flags that expose them."
+      "covers": "Android apps in Java or Kotlin: WebView, TLS error handling, file modes, components and the AndroidManifest.xml flags that expose them.",
+      "kind": "security"
+    },
+    {
+      "id": "bugs",
+      "title": "Bug patterns",
+      "covers": "Code that compiles and is wrong: identity compared where value was meant, results thrown away, contracts broken between equals and hashCode, arithmetic that overflows or loses precision -- the correctness findings SpotBugs and Sonar report as bugs.",
+      "kind": "quality"
+    },
+    {
+      "id": "concurrency",
+      "title": "Concurrency",
+      "covers": "Threads, locks, executors and shared state: unsafe publication, broken double-checked locking, locks on shared or boxed objects, thread-unsafe formatters held in static fields, deprecated thread control.",
+      "kind": "quality"
+    },
+    {
+      "id": "resources",
+      "title": "Resources and lifecycle",
+      "covers": "Streams, readers, connections, statements, sockets and executors that must be closed; finalizers, forced garbage collection and exiting the JVM from library code.",
+      "kind": "quality"
+    },
+    {
+      "id": "exceptions",
+      "title": "Exception handling",
+      "covers": "Catch, throw and finally: swallowed exceptions, catching Throwable or NullPointerException, control flow escaping finally, causes discarded, over-broad throws clauses.",
+      "kind": "quality"
+    },
+    {
+      "id": "performance",
+      "title": "Performance",
+      "covers": "Allocation and complexity mistakes a profiler would find later: boxing constructors, strings built in loops, patterns recompiled per call, the wrong collection access for the job.",
+      "kind": "quality"
+    },
+    {
+      "id": "style",
+      "title": "Code style",
+      "covers": "The conventions Checkstyle and PMD enforce that a reviewer would otherwise repeat: imports, naming, console output in production code, statement shape.",
+      "kind": "quality"
+    },
+    {
+      "id": "testing",
+      "title": "Tests",
+      "covers": "JUnit and TestNG tests that cannot fail or fail at random: tests with no assertion, sleeps, disabled tests with no reason, assertions written backwards or on the wrong API.",
+      "kind": "quality"
     }
   ],
   "rules": [
