@@ -78,8 +78,9 @@ def scan(text: FileText) -> Iterator[Finding]:
             value = _password_argument(argument)
             if value is not None:
                 reported.add(source[0])
-                yield Finding(RULE_ID, text.path, source[0], source[1],
-                              _MESSAGE.format(what="This digest", value=value))
+                yield Finding(
+                    RULE_ID, text.path, source[0], source[1], _MESSAGE.format(what="This digest", value=value)
+                )
         for du_call in _DIGEST_UTILS_CALL.finditer(line):
             call_name, argument = du_call.groups()
             if f"{call_name}(" not in _FACTS["digest_utils_calls"] or line_no in reported:
@@ -87,8 +88,7 @@ def scan(text: FileText) -> Iterator[Finding]:
             value = _password_argument(argument)
             if value is not None:
                 reported.add(line_no)
-                yield Finding(RULE_ID, text.path, line_no, line,
-                              _MESSAGE.format(what=call_name, value=value))
+                yield Finding(RULE_ID, text.path, line_no, line, _MESSAGE.format(what=call_name, value=value))
 
 
 RULE = Rule(

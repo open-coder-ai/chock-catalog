@@ -16,7 +16,7 @@ _FACTS = facts("spring")["open_redirect"]
 _MESSAGE = (
     "This redirect target is built from {source}, so the caller chooses where the browser is sent "
     "-- including an attacker's own host. Check the target against a fixed allowlist of hosts or "
-    "paths before redirecting, or require it to start with \"/\" and not \"//\" (a same-site path)."
+    'paths before redirecting, or require it to start with "/" and not "//" (a same-site path).'
 )
 
 

@@ -249,18 +249,26 @@ jobs:
       - name: The a11y guard's decision table holds
         run: python tools/check_a11y_table.py
 
-      # The same argument for the Java guard, whose verdicts come from rules in nine packs over a
-      # flow model and per-pack facts files. `chock check --only evals` does not replay a script
-      # gate on this engine, so this is where every rule's trigger and negative cases run, every
-      # executable eval case is replayed through the shipped gate, the gate protocol is driven in a
-      # throwaway repository, and a corpus of ordinary, correct enterprise code must draw no finding
-      # from any rule. A rule that fires on `parseClaimsJws`, `#{}` or a bind parameter fails here.
-      - name: The Java security guard agrees with every rule it ships
-        run: python tools/check_java_security.py
+      # The framework's merge bar, applied to this repository's own code: the same ruff rule set
+      # and limits (pyproject.toml), formatting, and a test suite that must pass. tests/ proves
+      # every java-security rule case by case -- each refusing and silent case is a named test,
+      # and a rule without a case in each direction fails `test_rule_is_proven_both_ways` -- and
+      # drives the shipped gate, the eval suite, the selection file, the flow model and a corpus of
+      # correct enterprise code no rule may fire on. `chock check --only evals` does not replay a
+      # script gate on this engine, so this is where those cases run. Nothing under tests/ is
+      # published: the distribution repos build from base/ alone.
+      - name: Install the lint and test tooling
+        run: pip install --require-hashes -r requirements/test.txt
 
-      # The guided page and its reference file carry every pack's and rule's own texts; both are
-      # rendered from the registry the gate runs, so a rule change that did not regenerate them
-      # fails here rather than showing an adopter a page that describes a different policy.
+      - name: Lint (ruff, the framework's rule set)
+        run: ruff check .
+
+      - name: Formatting (ruff format)
+        run: ruff format --check base/java-security tests tools/gen_java_security_contract.py
+
+      - name: Tests (every java-security rule, the gate, the evals, the corpus, repo standards)
+        run: python -m pytest
+
       - name: The Java security setup contract matches the rules it describes
         run: python tools/gen_java_security_contract.py --check
 

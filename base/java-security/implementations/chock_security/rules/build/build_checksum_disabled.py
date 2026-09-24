@@ -21,9 +21,7 @@ _MESSAGE = (
     "on this line and a plan to get one that publishes them."
 )
 
-_GRADLE_OFF = re.compile(
-    rf"{re.escape(_FACTS['gradle_key'])}\s*=\s*{re.escape(_FACTS['gradle_disabled_value'])}\b"
-)
+_GRADLE_OFF = re.compile(rf"{re.escape(_FACTS['gradle_key'])}\s*=\s*{re.escape(_FACTS['gradle_disabled_value'])}\b")
 
 
 def scan(text: FileText) -> Iterator[Finding]:

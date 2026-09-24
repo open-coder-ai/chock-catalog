@@ -40,11 +40,14 @@ def scan(text: FileText) -> Iterator[Finding]:
         if matched is None:
             continue
         message = _MESSAGE.format(
-            group=dependency.group, artifact=dependency.artifact, version=version,
-            name=entry["name"], cve=entry["cve"], fixed=matched["below"],
+            group=dependency.group,
+            artifact=dependency.artifact,
+            version=version,
+            name=entry["name"],
+            cve=entry["cve"],
+            fixed=matched["below"],
         )
         yield Finding(RULE_ID, text.path, dependency.line_no, text.lines[dependency.line_no - 1], message)
-
 
 
 def _ranges(entry: dict) -> str:

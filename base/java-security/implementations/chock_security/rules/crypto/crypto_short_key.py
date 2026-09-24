@@ -59,7 +59,10 @@ def _key_size_findings(text: FileText) -> Iterator[Finding]:
             bounds = _threshold_for(algorithm)
             if bounds is not None and size < bounds[1]:
                 yield Finding(
-                    RULE_ID, text.path, line_no, line,
+                    RULE_ID,
+                    text.path,
+                    line_no,
+                    line,
                     _MESSAGE_KEY.format(algorithm=algorithm, size=size, threshold=bounds[1]),
                 )
 
@@ -69,7 +72,10 @@ def _pbe_iteration_findings(text: FileText) -> Iterator[Finding]:
         match = _PBE_KEY_SPEC.search(line)
         if match and int(match.group(1)) < _FACTS["pbe_iteration_threshold"]:
             yield Finding(
-                RULE_ID, text.path, line_no, line,
+                RULE_ID,
+                text.path,
+                line_no,
+                line,
                 _MESSAGE_PBE.format(iterations=match.group(1), threshold=_FACTS["pbe_iteration_threshold"]),
             )
 

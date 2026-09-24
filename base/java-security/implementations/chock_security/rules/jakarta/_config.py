@@ -43,7 +43,7 @@ def yaml_value(text: FileText, dotted_key: str) -> Iterator[tuple[int, str, str]
     depth = 0
     for line_no, line in enumerate(text.lines, 1):
         stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped.startswith("-"):
+        if not stripped or stripped.startswith(("#", "-")):
             continue
         indent = len(line) - len(line.lstrip(" "))
         while depth > 0 and indent <= open_indent.get(depth - 1, -1):

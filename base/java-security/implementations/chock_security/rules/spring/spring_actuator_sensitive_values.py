@@ -56,9 +56,9 @@ def scan(text: FileText) -> Iterator[Finding]:
                 if endpoint in _FACTS["sensitive_endpoints"]:
                     message = _ENDPOINT_MESSAGE.format(endpoint=endpoint, what=_WHAT[endpoint])
                     yield Finding(RULE_ID, text.path, entry.line_no, line, message)
-        elif entry.key == _FACTS["shutdown_enabled_key"] and value.lower() == "true":
-            yield Finding(RULE_ID, text.path, entry.line_no, line, _SHUTDOWN_MESSAGE)
-        elif entry.key == _FACTS["shutdown_access_key"] and value.strip('"').lower() == _FACTS["shutdown_access_bad"]:
+        elif (entry.key == _FACTS["shutdown_enabled_key"] and value.lower() == "true") or (
+            entry.key == _FACTS["shutdown_access_key"] and value.strip('"').lower() == _FACTS["shutdown_access_bad"]
+        ):
             yield Finding(RULE_ID, text.path, entry.line_no, line, _SHUTDOWN_MESSAGE)
 
 

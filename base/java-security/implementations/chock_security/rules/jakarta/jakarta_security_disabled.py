@@ -15,7 +15,7 @@ _FACTS = facts("jakarta")["security_disabled"]
 _MESSAGE = (
     "This turns Micronaut security off for the whole application, so every endpoint -- including "
     "ones that assume @Secured is enforced -- serves any caller. Leave it enabled and secure "
-    "individual endpoints with @Secured(\"anonymous\") where they must be public."
+    'individual endpoints with @Secured("anonymous") where they must be public.'
 )
 
 

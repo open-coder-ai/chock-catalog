@@ -13,7 +13,7 @@ RULE_ID = "android-manifest-allow-backup"
 _FACTS = facts("android")["manifest"]
 
 _MESSAGE = (
-    "android:allowBackup=\"true\" with no android:fullBackupContent or android:dataExtractionRules "
+    'android:allowBackup="true" with no android:fullBackupContent or android:dataExtractionRules '
     "means adb backup (with no root, over USB, on any pre-Android-12 device with debugging on) "
     "and the OEM's cloud auto-backup both copy every file this app owns, including session "
     "tokens and databases -- there is no rule here narrowing what gets copied. Add "

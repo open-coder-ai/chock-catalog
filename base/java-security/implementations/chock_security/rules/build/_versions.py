@@ -20,10 +20,14 @@ _RELEASE_QUALIFIERS = {"release", "final", "ga", "sec01", "sec02"}
 
 #: Known pre-release qualifiers, ranked older (lower) to newer (higher), all below a release.
 _PRERELEASE_ORDER = {
-    "alpha": 0, "a": 0,
-    "beta": 1, "b": 1,
-    "milestone": 2, "m": 2,
-    "cr": 3, "rc": 3,
+    "alpha": 0,
+    "a": 0,
+    "beta": 1,
+    "b": 1,
+    "milestone": 2,
+    "m": 2,
+    "cr": 3,
+    "rc": 3,
 }
 
 _TOKEN = re.compile(r"[0-9]+|[A-Za-z]+")

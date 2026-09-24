@@ -13,7 +13,7 @@ RULE_ID = "android-manifest-debuggable"
 _FACTS = facts("android")["manifest"]
 
 _MESSAGE = (
-    "android:debuggable=\"true\" lets any app on the device (or anyone with a USB cable) attach a "
+    'android:debuggable="true" lets any app on the device (or anyone with a USB cable) attach a '
     "debugger, dump memory and step through this app's code -- Gradle sets this flag itself from "
     "the build type, so writing it in the manifest freezes it on regardless of build type. Remove "
     f"the attribute and let debuggable follow the debug build type instead. A manifest for a "

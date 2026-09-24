@@ -9,7 +9,7 @@ suite:
       direction: higher_is_better
       threshold: 1.0
   # 76 of the 84 cases carry the staged-files form. `chock check --only evals` does not replay a
-  # script gate on this engine, so tools/check_java_security.py replays every one of them through the
+  # script gate on this engine, so tests/java_security/test_evals.py replays every one of them through the
   # shipped gate, in a throwaway repository, `.chock/security.json` included where the case is about
   # one -- CI fails on any case whose block or allow the gate does not reproduce. The eight without
   # an executable form: tc-025 is about the index versus the working tree, which the gate never

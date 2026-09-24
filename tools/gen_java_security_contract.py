@@ -30,8 +30,14 @@ def contract() -> dict:
     document = json.loads(REFERENCE.read_text(encoding="utf-8"))
     document["packs"] = [{"id": p.id, "title": p.title, "covers": p.covers} for p in packs().values()]
     document["rules"] = [
-        {"id": r.id, "pack": r.pack, "title": r.title, "refuses": r.refuses, "silent_on": r.silent_on,
-         "constraint": r.constraint}
+        {
+            "id": r.id,
+            "pack": r.pack,
+            "title": r.title,
+            "refuses": r.refuses,
+            "silent_on": r.silent_on,
+            "constraint": r.constraint,
+        }
         for r in registry().values()
     ]
     # Keys in a fixed order, so the diff a rule change produces is the rule, not a reshuffle.
@@ -56,10 +62,14 @@ def main(argv: list[str]) -> int:
     reference, page = rendered()
     targets = {REFERENCE: reference, PAGE: page}
     if "--check" in argv:
-        stale = [str(path.relative_to(ROOT)) for path, text in targets.items() if path.read_text(encoding="utf-8") != text]
+        stale = [
+            str(path.relative_to(ROOT)) for path, text in targets.items() if path.read_text(encoding="utf-8") != text
+        ]
         if stale:
-            print(f"java-security contract is stale: {', '.join(stale)}; run python tools/gen_java_security_contract.py",
-                  file=sys.stderr)
+            print(
+                f"java-security contract is stale: {', '.join(stale)}; run python tools/gen_java_security_contract.py",
+                file=sys.stderr,
+            )
             return 1
         print("java-security contract matches the registry.")
         return 0

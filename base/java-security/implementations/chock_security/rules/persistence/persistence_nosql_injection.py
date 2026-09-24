@@ -32,7 +32,7 @@ _MESSAGE_PARSE = (
 
 _STRING = r'"[^"]*"'
 _IDENT = r"[A-Za-z_]\w*"
-_CONCAT = re.compile(rf'{_STRING}\s*\+\s*({_IDENT})|({_IDENT})\s*\+\s*{_STRING}')
+_CONCAT = re.compile(rf"{_STRING}\s*\+\s*({_IDENT})|({_IDENT})\s*\+\s*{_STRING}")
 _CONSTANT = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
 

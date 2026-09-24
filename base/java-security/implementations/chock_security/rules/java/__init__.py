@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 from chock_security.pack import Pack, Rule
-from chock_security.rules.java import java_unsafe_deserialization
-from chock_security.rules.java import java_deserialize_request
-from chock_security.rules.java import java_jwt_unverified
-from chock_security.rules.java import java_path_traversal
-from chock_security.rules.java import java_command_injection
-from chock_security.rules.java import java_code_injection
-from chock_security.rules.java import java_unsafe_reflection
-from chock_security.rules.java import java_xxe_parser
-from chock_security.rules.java import java_xml_decoder
-from chock_security.rules.java import java_ssrf_request_url
-from chock_security.rules.java import java_zip_slip
-from chock_security.rules.java import java_ldap_injection
-from chock_security.rules.java import java_xpath_injection
+from chock_security.rules.java import (
+    java_code_injection,
+    java_command_injection,
+    java_deserialize_request,
+    java_jwt_unverified,
+    java_ldap_injection,
+    java_path_traversal,
+    java_ssrf_request_url,
+    java_unsafe_deserialization,
+    java_unsafe_reflection,
+    java_xml_decoder,
+    java_xpath_injection,
+    java_xxe_parser,
+    java_zip_slip,
+)
 
 PACK = Pack(
     id="java",

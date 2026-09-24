@@ -24,7 +24,7 @@ _MESSAGE = (
 _STRING = r'"[^"]*"'
 _IDENT = r"[A-Za-z_]\w*"
 #: `"..." + ident` or `ident + "..."` -- the shape a query is joined together in, on one line.
-_CONCAT = re.compile(rf'{_STRING}\s*\+\s*({_IDENT})|({_IDENT})\s*\+\s*{_STRING}')
+_CONCAT = re.compile(rf"{_STRING}\s*\+\s*({_IDENT})|({_IDENT})\s*\+\s*{_STRING}")
 _ASSIGN = re.compile(rf"(?:^|[^=!<>+\-*/%&|^])({_IDENT})\s*=(?!=)")
 _APPEND = re.compile(rf"(\w+)\.append\(\s*({_IDENT})\s*\)")
 _CONSTANT = re.compile(r"^[A-Z_][A-Z0-9_]*$")

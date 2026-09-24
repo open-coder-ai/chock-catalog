@@ -23,6 +23,9 @@ _NOT_A_DECLARATION = frozenset(
     {"if", "for", "while", "switch", "catch", "try", "else", "do", "synchronized", "return", "new"}
 )
 
+#: A typed declaration is at least a type and a name: `Long id`.
+_TYPE_AND_NAME = 2
+
 _ASSIGNMENT = re.compile(r"(?:^|[^=!<>+\-*/%&|^])(\w+)\s*=(?!=)")
 _NAME_BEFORE_PAREN = re.compile(r"(\w+)\s*\($")
 #: An annotation can sit on its own line or in front of the declaration on the same one.
@@ -142,7 +145,7 @@ def _parameters(signature: str) -> set[str]:
         words = re.findall(r"\w+", _without_annotations(parameter))
         # A number, a boolean, a UUID or a date is parsed before the method sees it: it cannot
         # carry '../', a host or a shell metacharacter, so it taints nothing downstream.
-        if len(words) >= 2 and words[-2] in _FACTS["scalar_types"]:
+        if len(words) >= _TYPE_AND_NAME and words[-2] in _FACTS["scalar_types"]:
             continue
         if words:
             tainted.add(words[-1])

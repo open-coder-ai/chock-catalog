@@ -35,9 +35,9 @@ RULE = Rule(
     suffixes=(".java", ".kt", ".xml", ".properties", ".yml", ".yaml"),
     scan=scan,
     constraint=(
-        'never(configure): log4j2.formatMsgNoLookups=false, a pattern using %m{lookups}/%msg{lookups}, '
+        "never(configure): log4j2.formatMsgNoLookups=false, a pattern using %m{lookups}/%msg{lookups}, "
         'or a literal "${jndi:" -- Log4j 2.15+ disables message lookups by default; do not turn them back on'
     ),
-    refuses='`log4j2.formatMsgNoLookups=false`; `%m{lookups}`/`%msg{lookups}` in a pattern; a literal `${jndi:`',
+    refuses="`log4j2.formatMsgNoLookups=false`; `%m{lookups}`/`%msg{lookups}` in a pattern; a literal `${jndi:`",
     silent_on="an ordinary pattern layout with no lookups token; formatMsgNoLookups=true",
 )

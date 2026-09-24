@@ -62,11 +62,15 @@ def _unfilled_array_findings(text: FileText) -> Iterator[Finding]:
                 continue
             for line_no, line in method.body:
                 used = re.search(
-                    r"new\s+(?:" + _CONSTRUCTORS + r")\([^)]*\b" + re.escape(name) + r"\b", line,
+                    r"new\s+(?:" + _CONSTRUCTORS + r")\([^)]*\b" + re.escape(name) + r"\b",
+                    line,
                 )
                 if used:
                     yield Finding(
-                        RULE_ID, text.path, line_no, line,
+                        RULE_ID,
+                        text.path,
+                        line_no,
+                        line,
                         _MESSAGE_UNFILLED.format(name=name, kind=_kind_of(used.group(0))),
                     )
 
@@ -84,7 +88,7 @@ RULE = Rule(
     suffixes=(".java", ".kt"),
     scan=scan,
     constraint=(
-        'never(construct): IvParameterSpec|GCMParameterSpec|PBEKeySpec from a literal '
+        "never(construct): IvParameterSpec|GCMParameterSpec|PBEKeySpec from a literal "
         '"...".getBytes()/byte[]{...}, or a `new byte[N]` never filled by SecureRandom.nextBytes '
         "in the same method -- fill it with SecureRandom.nextBytes() first"
     ),

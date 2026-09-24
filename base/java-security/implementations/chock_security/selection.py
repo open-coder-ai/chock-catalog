@@ -91,8 +91,7 @@ def _verdicts_in(pack: str, ids: set[str], declared: object) -> dict[str, str]:
         msg = f"{where} names rule(s) it does not contain: {absent}"
         raise SelectionError(msg)
     return {
-        rule_id: _verdict(where, repr(rule_id), spoken[rule_id]) if rule_id in spoken else DEFAULT
-        for rule_id in ids
+        rule_id: _verdict(where, repr(rule_id), spoken[rule_id]) if rule_id in spoken else DEFAULT for rule_id in ids
     }
 
 
@@ -131,7 +130,9 @@ def parse(raw: str, rules: Mapping[str, Rule]) -> dict[str, str]:
     legacy = document.get("version") == LEGACY_VERSION
     packs = _legacy_packs(rules) if legacy else _packs_of(rules)
     if absent := sorted(set(declared) - set(packs)):
-        known = f"a version-{LEGACY_VERSION} selection has only {LEGACY_PACK!r}" if legacy else "this build does not carry"
+        known = (
+            f"a version-{LEGACY_VERSION} selection has only {LEGACY_PACK!r}" if legacy else "this build does not carry"
+        )
         msg = f"selection names pack(s) {absent}; {known}"
         raise SelectionError(msg)
     verdicts = dict.fromkeys(rules, DEFAULT)
@@ -142,10 +143,7 @@ def parse(raw: str, rules: Mapping[str, Rule]) -> dict[str, str]:
 
 def render(rules: Mapping[str, Rule]) -> str:
     """The exhaustive selection, every rule enforcing: what install writes, upgrade reconciles."""
-    packs = {
-        pack: {"rules": dict.fromkeys(sorted(ids), DEFAULT)}
-        for pack, ids in sorted(_packs_of(rules).items())
-    }
+    packs = {pack: {"rules": dict.fromkeys(sorted(ids), DEFAULT)} for pack, ids in sorted(_packs_of(rules).items())}
     return json.dumps({"version": SCHEMA_VERSION, "packs": packs}, indent=2) + "\n"
 
 

@@ -43,10 +43,9 @@ RULE = Rule(
     suffixes=(".java", ".kt"),
     scan=scan,
     constraint=(
-        "never(redirect): sendRedirect|Response.seeOther|.putHeader(\"Location\"|HttpResponse.redirect "
+        'never(redirect): sendRedirect|Response.seeOther|.putHeader("Location"|HttpResponse.redirect '
         "built from @QueryParam|@PathParam|request.get* -- check against a fixed allowlist first"
     ),
-    refuses="a redirect target a method body shows request data reaching, in a Servlet/JAX-RS/"
-    "Vert.x/Micronaut file",
+    refuses="a redirect target a method body shows request data reaching, in a Servlet/JAX-RS/Vert.x/Micronaut file",
     silent_on="a constant redirect target; a target checked against an allowlist first; Spring code",
 )

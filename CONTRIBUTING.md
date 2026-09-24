@@ -103,7 +103,21 @@ python tools/check_workflows.py          # no workflow trigger can hand fork cod
 python tools/gen_adoption_transcript.py --check --base origin/main
                                          # transcripts of touched policies reproduce from empty repos
 python tools/check_effects.py            # a read_only guard does not actually write
+
+pip install --require-hashes -r requirements/test.txt
+ruff check .                             # the framework's own lint rule set, from pyproject.toml
+ruff format --check base/java-security tests tools/gen_java_security_contract.py
+python -m pytest                         # every java-security rule, case by case; repo standards
 ```
+
+**No rule merges without its tests.** A script-backed policy's checks live in `tests/` as pytest,
+held to the framework's bar: every refusing and every silent case is a named test, and a
+java-security rule with no case in each direction fails `test_rule_is_proven_both_ways` -- a
+rule that has never been shown refusing proves nothing, and one never shown staying silent on
+correct code has not been shown to be usable. A new rule adds its rows to
+`tests/java_security/cases/<pack>.py`; if it could fire on code that is correct, add that code
+to `tests/java_security/corpus/`, where no rule may fire. `tests/` is never published: the
+distribution repos build from `base/` alone.
 
 The last five matter more than they look. The factual half of every policy page is derived
 from `base/<id>/`, so a stale doc is an overclaim published where adopters read first.

@@ -19,8 +19,8 @@ _KOTLIN_AUTHORIZE = re.compile(_FACTS["kotlin_authorize_permit_all"])
 _MESSAGE = (
     "This permits every request the filter chain sees (or, for web.ignoring(), skips Spring "
     "Security for it entirely), so any endpoint added later inherits no authorization by default. "
-    "Match the specific public paths instead, for example requestMatchers(\"/public/**\", "
-    "\"/actuator/health\").permitAll(), and require authentication for anyRequest()."
+    'Match the specific public paths instead, for example requestMatchers("/public/**", '
+    '"/actuator/health").permitAll(), and require authentication for anyRequest().'
 )
 
 
@@ -60,9 +60,9 @@ RULE = Rule(
     suffixes=(".java", ".kt"),
     scan=scan,
     constraint=(
-        "never(catchall): anyRequest().permitAll()|requestMatchers(\"/**\").permitAll()|"
-        "web.ignoring().requestMatchers(\"/**\") -- match specific public paths instead"
+        'never(catchall): anyRequest().permitAll()|requestMatchers("/**").permitAll()|'
+        'web.ignoring().requestMatchers("/**") -- match specific public paths instead'
     ),
-    refuses="anyRequest()/\"/**\" matchers passed to permitAll() or web.ignoring(), and the Kotlin DSL form",
-    silent_on="a specific public path such as \"/public/**\" or \"/actuator/health\"",
+    refuses='anyRequest()/"/**" matchers passed to permitAll() or web.ignoring(), and the Kotlin DSL form',
+    silent_on='a specific public path such as "/public/**" or "/actuator/health"',
 )

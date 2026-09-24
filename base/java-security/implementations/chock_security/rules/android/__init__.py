@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from chock_security.pack import Pack, Rule
-from chock_security.rules.android import android_cleartext_traffic
-from chock_security.rules.android import android_exported_component
-from chock_security.rules.android import android_manifest_allow_backup
-from chock_security.rules.android import android_manifest_debuggable
-from chock_security.rules.android import android_ssl_error_ignored
-from chock_security.rules.android import android_trust_user_certs
-from chock_security.rules.android import android_webview_js_bridge
-from chock_security.rules.android import android_world_accessible_file
+from chock_security.rules.android import (
+    android_cleartext_traffic,
+    android_exported_component,
+    android_manifest_allow_backup,
+    android_manifest_debuggable,
+    android_ssl_error_ignored,
+    android_trust_user_certs,
+    android_webview_js_bridge,
+    android_world_accessible_file,
+)
 
 PACK = Pack(
     id="android",

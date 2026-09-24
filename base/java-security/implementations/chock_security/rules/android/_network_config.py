@@ -29,8 +29,6 @@ def base_config_lines(text: FileText) -> set[int]:
             depth += 1
         if depth > 0:
             lines.add(line_no)
-        if opens and stripped.endswith("/>"):
-            depth = max(depth - 1, 0)
-        elif stripped.startswith(_CLOSE):
+        if (opens and stripped.endswith("/>")) or stripped.startswith(_CLOSE):
             depth = max(depth - 1, 0)
     return lines

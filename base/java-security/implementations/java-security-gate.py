@@ -12,10 +12,10 @@ from pathlib import Path
 # never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from chock_security.decision import ASK, DENY, FileText, UNJUDGED  # noqa: E402
-from chock_security.engine import evaluate  # noqa: E402
-from chock_security.rules import registry  # noqa: E402
-from chock_security.selection import SelectionError, load  # noqa: E402
+from chock_security.decision import ASK, DENY, UNJUDGED, FileText
+from chock_security.engine import evaluate
+from chock_security.rules import registry
+from chock_security.selection import SelectionError, load
 
 ALLOW, REFUSE = 0, 1
 

@@ -42,7 +42,7 @@ RULE = Rule(
     suffixes=(".java", ".ftlh"),
     scan=scan,
     constraint=(
-        'never(disable): Pebble .autoEscaping(false)|Handlebars EscapingStrategy.NOOP|'
+        "never(disable): Pebble .autoEscaping(false)|Handlebars EscapingStrategy.NOOP|"
         "FreeMarker setOutputFormat(PlainTextOutputFormat.INSTANCE)|"
         'setAutoEscapingPolicy(DISABLE_AUTO_ESCAPING_POLICY)|.ftlh output_format="plainText"|'
         "auto_esc=false -- leave auto-escaping on; mark the rare safe value at its call site"

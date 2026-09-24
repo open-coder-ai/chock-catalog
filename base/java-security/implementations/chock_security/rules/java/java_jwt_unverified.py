@@ -68,7 +68,6 @@ RULE = Rule(
         "`JWT.decode` where nothing in the file verifies"
     ),
     silent_on=(
-        "`parseClaimsJws`, `parseSignedClaims`, a real algorithm, issuing a token, and a decode "
-        "beside a verify"
+        "`parseClaimsJws`, `parseSignedClaims`, a real algorithm, issuing a token, and a decode beside a verify"
     ),
 )

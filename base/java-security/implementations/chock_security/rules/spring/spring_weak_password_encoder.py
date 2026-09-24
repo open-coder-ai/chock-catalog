@@ -45,7 +45,7 @@ RULE = Rule(
     scan=scan,
     constraint=(
         "never(hash): NoOpPasswordEncoder|Md5/Sha/Standard/LdapSha/MessageDigestPasswordEncoder|"
-        "\"{noop}\" password|User.withDefaultPasswordEncoder() -- use BCrypt, Argon2 or Pbkdf2"
+        '"{noop}" password|User.withDefaultPasswordEncoder() -- use BCrypt, Argon2 or Pbkdf2'
     ),
     refuses="the no-op and legacy digest encoders, a {noop} literal, and withDefaultPasswordEncoder()"
     " outside test sources",

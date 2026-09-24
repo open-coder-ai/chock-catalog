@@ -22,6 +22,10 @@ _MESSAGE = (
 )
 
 
+#: A quoted property is a key and a value: `"https.protocols", "TLSv1"`.
+_KEY_AND_VALUE = 2
+
+
 def _legacy_in(protocols: list[str]) -> str | None:
     return next((p for p in protocols if p in _FACTS["legacy_protocols"]), None)
 
@@ -45,7 +49,7 @@ def _system_property_protocols(line: str) -> list[str]:
         return []
     quoted = _QUOTED.findall(line)
     bare_keys = {marker.rstrip("=:") for marker in _FACTS["property_keys"]}
-    if len(quoted) >= 2 and quoted[0] in bare_keys:
+    if len(quoted) >= _KEY_AND_VALUE and quoted[0] in bare_keys:
         return [token.strip() for token in quoted[1].split(",") if token.strip()]
     return []
 
@@ -70,9 +74,9 @@ RULE = Rule(
     suffixes=(".java", ".kt", ".properties", ".yml", ".yaml"),
     scan=scan,
     constraint=(
-        'never(enable): SSLContext.getInstance|setEnabledProtocols|enabled-protocols with '
+        "never(enable): SSLContext.getInstance|setEnabledProtocols|enabled-protocols with "
         '"SSL"|"SSLv2"|"SSLv3"|"TLSv1"|"TLSv1.1" -- use "TLS" or name "TLSv1.2"/"TLSv1.3"'
     ),
-    refuses='SSLContext.getInstance/setEnabledProtocols/enabled-protocols naming SSL, SSLv2, SSLv3, TLSv1, or TLSv1.1',
+    refuses="SSLContext.getInstance/setEnabledProtocols/enabled-protocols naming SSL, SSLv2, SSLv3, TLSv1, or TLSv1.1",
     silent_on='"TLS", "TLSv1.2", "TLSv1.3"',
 )

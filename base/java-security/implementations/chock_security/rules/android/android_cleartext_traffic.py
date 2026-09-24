@@ -14,7 +14,7 @@ RULE_ID = "android-cleartext-traffic"
 _FACTS = facts("android")["manifest"]
 
 _MANIFEST_MESSAGE = (
-    "android:usesCleartextTraffic=\"true\" lets this app make plain HTTP requests to any host with "
+    'android:usesCleartextTraffic="true" lets this app make plain HTTP requests to any host with '
     "no per-domain override, so a network attacker on the same Wi-Fi reads and rewrites that "
     "traffic freely. Remove the attribute (the platform default is already false on API 28+) or "
     "supply a network security config naming the specific hosts, if any, that truly need it. A "
@@ -23,7 +23,7 @@ _MANIFEST_MESSAGE = (
 )
 
 _CONFIG_MESSAGE = (
-    "cleartextTrafficPermitted=\"true\" on <base-config> allows plain HTTP to every domain this "
+    'cleartextTrafficPermitted="true" on <base-config> allows plain HTTP to every domain this '
     "app talks to, not just the one this file was written for -- scope it to a <domain-config> "
     "naming that host instead, so every other destination still requires TLS. A base config that "
     f"truly must allow this everywhere needs 'chock: allow {RULE_ID}' on this line."
@@ -52,7 +52,7 @@ RULE = Rule(
     scan=scan,
     constraint=(
         'never(set): android:usesCleartextTraffic="true" in AndroidManifest.xml, or '
-        "cleartextTrafficPermitted=\"true\" on <base-config> -- scope it to a named <domain-config>"
+        'cleartextTrafficPermitted="true" on <base-config> -- scope it to a named <domain-config>'
     ),
     refuses='`usesCleartextTraffic="true"` in the manifest; `cleartextTrafficPermitted="true"` on `<base-config>`',
     silent_on='the manifest attribute set to `"false"` or absent; `cleartextTrafficPermitted="true"` inside a `<domain-config>`',

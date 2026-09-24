@@ -27,6 +27,10 @@ _MESSAGE = (
 )
 
 
+#: A compound name's last two segments can spell the secret: `getApiKey` ends in api+key.
+_COMPOUND = 2
+
+
 def _segments(identifier: str) -> list[str]:
     """An identifier split on `_` and camelCase boundaries: `getPassword` -> ['get', 'password']."""
     spaced = _CASE_BOUNDARY.sub(" ", identifier.replace("_", " "))
@@ -47,14 +51,14 @@ def _is_sensitive(identifier: str) -> bool:
     segments = _segments(identifier)
     if segments and segments[-1] in _NAMES:
         return True
-    return len(segments) >= 2 and "".join(segments[-2:]) in _NAMES
+    return len(segments) >= _COMPOUND and "".join(segments[-2:]) in _NAMES
 
 
 def _call_arguments(line: str) -> str | None:
     match = _LOGGER_CALL.search(line)
     if match is None:
         return None
-    return line[match.end():].rstrip().removesuffix(";").rstrip(")")
+    return line[match.end() :].rstrip().removesuffix(";").rstrip(")")
 
 
 def _is_masked(arguments: str) -> bool:

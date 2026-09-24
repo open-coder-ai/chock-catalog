@@ -27,6 +27,10 @@ class ConfigEntry:
     value: str
 
 
+#: An opening and a closing quote.
+_QUOTE_PAIR = 2
+
+
 def is_spring_config_file(path: str) -> bool:
     """Whether this is a Spring configuration file: `application*` or `bootstrap*`, not any YAML."""
     name = PurePosixPath(path).name.lower()
@@ -40,7 +44,7 @@ def is_test_resource(path: str) -> bool:
 
 def _unquote(value: str) -> str:
     value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+    if len(value) >= _QUOTE_PAIR and value[0] == value[-1] and value[0] in {'"', "'"}:
         return value[1:-1]
     return value
 
@@ -65,7 +69,7 @@ def _yaml_pairs(text: FileText) -> Iterator[ConfigEntry]:
     stack: list[tuple[int, str]] = []
     for line_no, raw in enumerate(text.lines, 1):
         stripped = raw.strip()
-        if not stripped or stripped.startswith("#") or stripped.startswith("- "):
+        if not stripped or stripped.startswith(("#", "- ")):
             continue
         if ":" not in stripped:
             continue
@@ -75,7 +79,7 @@ def _yaml_pairs(text: FileText) -> Iterator[ConfigEntry]:
         key, _, value = stripped.partition(":")
         key = _unquote(key)
         value = value.strip()
-        if not value or value == "|" or value == ">":
+        if not value or value in {"|", ">"}:
             stack.append((indent, key))
             continue
         value = value.split(" #", 1)[0].strip()

@@ -13,10 +13,11 @@ RULE_ID = "crypto-hardcoded-credential"
 _FACTS = facts("crypto")["hardcoded_credential"]
 
 _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("DriverManager.getConnection", re.compile(
-        r'DriverManager\.getConnection\(\s*[^,]+,\s*[^,]+,\s*"([^"]*)"\s*\)')),
-    ("new PasswordAuthentication", re.compile(
-        r'new\s+PasswordAuthentication\(\s*[^,]+,\s*"([^"]*)"\s*\.toCharArray\(\)\s*\)')),
+    ("DriverManager.getConnection", re.compile(r'DriverManager\.getConnection\(\s*[^,]+,\s*[^,]+,\s*"([^"]*)"\s*\)')),
+    (
+        "new PasswordAuthentication",
+        re.compile(r'new\s+PasswordAuthentication\(\s*[^,]+,\s*"([^"]*)"\s*\.toCharArray\(\)\s*\)'),
+    ),
     (".setPassword", re.compile(r'\.setPassword\(\s*"([^"]*)"\s*\)')),
     ("new SecretKeySpec", re.compile(r'new\s+SecretKeySpec\(\s*"([^"]*)"\s*\.getBytes\(')),
     ("Algorithm.HMAC", re.compile(r'Algorithm\.HMAC(?:256|384|512)\(\s*"([^"]*)"\s*\)')),

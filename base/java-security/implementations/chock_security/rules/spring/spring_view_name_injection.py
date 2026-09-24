@@ -55,7 +55,7 @@ RULE = Rule(
     suffixes=(".java",),
     scan=scan,
     constraint=(
-        'never(return): a view name concatenated with request data in a @Controller method '
+        "never(return): a view name concatenated with request data in a @Controller method "
         "-- map the value to a view name through a fixed lookup instead"
     ),
     refuses='return "prefix/" + <request data>; in a @Controller method that is not @ResponseBody',

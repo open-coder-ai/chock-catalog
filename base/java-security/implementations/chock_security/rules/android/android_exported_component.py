@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import xml.etree.ElementTree as ElementTree
-import xml.parsers.expat as expat
 from collections.abc import Iterator
 from pathlib import PurePosixPath
+from xml.etree import ElementTree
+from xml.parsers import expat
 
 from chock_security.decision import FileText, Finding
 from chock_security.pack import Rule, facts
@@ -48,7 +48,7 @@ def _parse(xml_text: str) -> tuple[ElementTree.Element, dict[int, int]] | None:
         parser.StartElementHandler = start
         parser.EndElementHandler = end
         parser.CharacterDataHandler = builder.data
-        parser.Parse(xml_text, True)
+        parser.Parse(xml_text, True)  # noqa: FBT003 -- expat's C API takes isfinal positionally only
         root = builder.close()
     except Exception:  # noqa: BLE001 -- any parse failure is silence, not a crash
         return None
@@ -66,10 +66,10 @@ def _is_launcher_activity(element: ElementTree.Element) -> bool:
 
 def _message(tag: str) -> str:
     return (
-        f"This <{tag}> is exported (android:exported=\"true\") with no android:permission "
+        f'This <{tag}> is exported (android:exported="true") with no android:permission '
         "guarding it, so any app on the device -- including one holding no permissions of its "
         "own -- can start, bind to or query it directly. Add android:permission naming a "
-        "signature-level permission only this app holds, or set android:exported=\"false\" if "
+        'signature-level permission only this app holds, or set android:exported="false" if '
         "nothing outside this app ever calls it. The one exception is the launcher activity, "
         "whose own MAIN/LAUNCHER intent-filter is what the system uses to reach it, and needs no "
         f"permission of its own. A component that genuinely must accept any caller needs 'chock: "
@@ -103,10 +103,10 @@ RULE = Rule(
     suffixes=(".xml",),
     scan=scan,
     constraint=(
-        "never(export): activity|service|receiver|provider with android:exported=\"true\" and no "
-        "android:permission -- name a permission, or set exported=\"false\"; the launcher "
+        'never(export): activity|service|receiver|provider with android:exported="true" and no '
+        'android:permission -- name a permission, or set exported="false"; the launcher '
         "activity's own MAIN/LAUNCHER intent-filter is the one exception"
     ),
     refuses="an exported activity/service/receiver/provider with no `android:permission`",
-    silent_on="`android:permission` present; `exported=\"false\"` or the attribute omitted; the launcher activity",
+    silent_on='`android:permission` present; `exported="false"` or the attribute omitted; the launcher activity',
 )

@@ -64,8 +64,8 @@ RULE = Rule(
         "shows request data reaching"
     ),
     silent_on=(
-        "a constant or configured URL; a literal that fixes scheme and host (`\"https://api.x/v1?q=\" + q`) "
-        "or is a path on this server (`\"/users/\" + id`); a host checked against an allowlist before the "
+        'a constant or configured URL; a literal that fixes scheme and host (`"https://api.x/v1?q=" + q`) '
+        'or is a path on this server (`"/users/" + id`); a host checked against an allowlist before the '
         "call; the same builder called with no request data reaching it"
     ),
 )

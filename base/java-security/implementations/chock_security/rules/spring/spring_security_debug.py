@@ -29,9 +29,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     if not text.holds(*_GUARD):
         return
     for line_no, line in enumerate(text.lines, 1):
-        if _FACTS["annotation"] in line and _ANNOTATION_DEBUG.search(line):
-            yield Finding(RULE_ID, text.path, line_no, line, _MESSAGE)
-        elif _WEB_DEBUG.search(line):
+        if (_FACTS["annotation"] in line and _ANNOTATION_DEBUG.search(line)) or _WEB_DEBUG.search(line):
             yield Finding(RULE_ID, text.path, line_no, line, _MESSAGE)
 
 

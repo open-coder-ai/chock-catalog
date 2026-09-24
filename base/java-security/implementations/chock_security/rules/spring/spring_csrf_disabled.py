@@ -39,7 +39,7 @@ def _kotlin_block_disables(text: FileText) -> Iterator[int]:
             if depth <= 0 and ch == "}":
                 closed_at = offset
                 break
-        body = window[: closed_at] if closed_at is not None else window
+        body = window[:closed_at] if closed_at is not None else window
         if _FACTS["kotlin_disable_token"] in body:
             yield line_no
 

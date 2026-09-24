@@ -14,12 +14,10 @@ _FACTS = facts("spring")["session_cookie"]
 RULE_ID = "spring-insecure-session-cookie"
 
 _PROPERTY_MESSAGE = (
-    "`{key}` set to false lets this cookie {what}. Remove this line (the default is true), or set it "
-    "back to true."
+    "`{key}` set to false lets this cookie {what}. Remove this line (the default is true), or set it back to true."
 )
 _JAVA_MESSAGE = (
-    "This ResponseCookie is built with {what}. Set it true, or drop the call and keep the builder's"
-    " own default."
+    "This ResponseCookie is built with {what}. Set it true, or drop the call and keep the builder's own default."
 )
 
 _WHAT = {
@@ -53,9 +51,7 @@ def _java_findings(text: FileText) -> Iterator[Finding]:
             hit = next((call for call in _FACTS["insecure_calls"] if call in candidate), None)
             if hit is not None:
                 what = "secure(false)" if "secure" in hit else "httpOnly(false)"
-                yield Finding(
-                    RULE_ID, text.path, offset + 1, candidate, _JAVA_MESSAGE.format(what=what)
-                )
+                yield Finding(RULE_ID, text.path, offset + 1, candidate, _JAVA_MESSAGE.format(what=what))
             if _FACTS["build_call"] in candidate and offset > line_no - 1:
                 break
 

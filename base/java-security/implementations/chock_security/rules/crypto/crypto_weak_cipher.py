@@ -55,9 +55,9 @@ RULE = Rule(
     suffixes=(".java", ".kt"),
     scan=scan,
     constraint=(
-        "never(call): Cipher.getInstance(DES|DESede|RC2|RC4|ARCFOUR|Blowfish|.../ECB/...|bare \"AES\") "
+        'never(call): Cipher.getInstance(DES|DESede|RC2|RC4|ARCFOUR|Blowfish|.../ECB/...|bare "AES") '
         "-- use AES/GCM/NoPadding or ChaCha20-Poly1305 with a fresh SecureRandom nonce"
     ),
-    refuses="DES, DESede, RC2, RC4/ARCFOUR, Blowfish; any `/ECB/` mode; bare `\"AES\"`",
+    refuses='DES, DESede, RC2, RC4/ARCFOUR, Blowfish; any `/ECB/` mode; bare `"AES"`',
     silent_on="AES/GCM/NoPadding; ChaCha20-Poly1305; AES/CBC/PKCS5Padding; RSA/ECB/OAEP* and RSA/ECB/PKCS1Padding",
 )

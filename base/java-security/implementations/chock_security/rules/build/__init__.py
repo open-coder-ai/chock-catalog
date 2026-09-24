@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from chock_security.pack import Pack, Rule
-from chock_security.rules.build import build_checksum_disabled
-from chock_security.rules.build import build_dynamic_version
-from chock_security.rules.build import build_insecure_repository
-from chock_security.rules.build import build_vulnerable_dependency
+from chock_security.rules.build import (
+    build_checksum_disabled,
+    build_dynamic_version,
+    build_insecure_repository,
+    build_vulnerable_dependency,
+)
 
 PACK = Pack(
     id="build",

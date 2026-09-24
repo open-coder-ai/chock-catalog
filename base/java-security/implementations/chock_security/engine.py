@@ -18,11 +18,7 @@ def _waived(finding: Finding) -> bool:
 
 def evaluate(files: Iterable[FileText], verdicts: Mapping[str, str]) -> list[Finding]:
     """Findings from every rule the selection did not set to allow, each carrying its verdict."""
-    acting = {
-        rule_id: rule
-        for rule_id, rule in registry().items()
-        if verdicts.get(rule_id, ALLOW) != ALLOW
-    }
+    acting = {rule_id: rule for rule_id, rule in registry().items() if verdicts.get(rule_id, ALLOW) != ALLOW}
     findings: list[Finding] = []
     for text in files:
         for rule_id, rule in acting.items():

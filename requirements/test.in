@@ -1,0 +1,4 @@
+# Lint and test tooling for this repository's own code: the ruff rule set is the framework's,
+# so the version is the framework's range (ruff >=0.16,<0.17); pytest matches its ci-tools pin.
+pytest==9.1.1
+ruff==0.16.8

@@ -22,16 +22,15 @@ _MESSAGE = (
 
 def _java_credentials(text: FileText) -> bool:
     return text.holds(_FACTS["vertx_credentials"]) or any(
-        _FACTS["credentials_header_key"] in line and _FACTS["credentials_true"] in line
-        for line in text.lines
+        _FACTS["credentials_header_key"] in line and _FACTS["credentials_true"] in line for line in text.lines
     )
 
 
 def _java_wildcard_lines(text: FileText) -> Iterator[int]:
     for line_no, line in enumerate(text.lines, 1):
-        if _FACTS["vertx_cors_create_wildcard"] in line:
-            yield line_no
-        elif _FACTS["origin_header_key"] in line and f'"{_FACTS["wildcard"]}"' in line:
+        if _FACTS["vertx_cors_create_wildcard"] in line or (
+            _FACTS["origin_header_key"] in line and f'"{_FACTS["wildcard"]}"' in line
+        ):
             yield line_no
 
 
@@ -83,8 +82,7 @@ def _micronaut_credentials(text: FileText) -> bool:
     if not _has_micronaut_cors_block(text):
         return False
     return any(
-        _FACTS["micronaut_credentials_key"] in line.strip().partition(":")[0] and "true" in line
-        for line in text.lines
+        _FACTS["micronaut_credentials_key"] in line.strip().partition(":")[0] and "true" in line for line in text.lines
     )
 
 

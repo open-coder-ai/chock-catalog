@@ -43,9 +43,7 @@ def _snakeyaml(text: FileText) -> Iterator[Finding]:
     if not text.holds(_FACTS["snakeyaml_import"]) or not text.holds(_FACTS["snakeyaml_load"]):
         return
     for line_no, line in enumerate(text.lines, 1):
-        if "new UnsafeConstructor" in line:
-            yield Finding(RULE_ID, text.path, line_no, line, _SNAKEYAML_MESSAGE)
-        elif "new Yaml(new Constructor(" in line and "Object.class" in line:
+        if "new UnsafeConstructor" in line or ("new Yaml(new Constructor(" in line and "Object.class" in line):
             yield Finding(RULE_ID, text.path, line_no, line, _SNAKEYAML_MESSAGE)
 
 
