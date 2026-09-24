@@ -280,21 +280,24 @@ policies:
     plus atomic-commit and diff-size guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.3.0
+  version: 0.4.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 33
-  eval_executed: 25
+  eval_cases: 84
+  eval_executed: 76
   description: >-
-    trigger: writing Java or Spring code, MyBatis mappers, JSP, Thymeleaf or FreeMarker
-    templates, application.properties or .yml; "customize java security" opens this skill's
-    guided page. avoid: string-interpolated SQL, unescaped template output, unsafe
-    deserialization, wildcard CORS with credentials, wildcard actuator exposure, an unverified
-    JWT parse, a request-chosen file path, an ObjectInputStream over request bytes. Eight rules,
-    each allow|deny|ask in .chock/security.json; absent = deny.
+    trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut,
+    Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates,
+    application.properties or .yml, web.xml, pom.xml or Gradle builds; "customize java
+    security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL,
+    LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip,
+    weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and
+    actuator data, known-exploited dependency versions, exported Android components. 72
+    rules in 9 packs (java, crypto, spring, jakarta, persistence, templates, logging, build,
+    android), each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
 - id: injection-defense
   path: base/injection-defense
   version: 0.0.3

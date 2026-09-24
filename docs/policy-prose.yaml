@@ -288,21 +288,26 @@ git-safety:
 java-security:
   solves: >
     A coding agent writing Java reaches for the construct that compiles and passes the test:
-    `${col}` in a MyBatis ORDER BY, `th:utext` to stop a bio rendering as escaped text, a
-    wildcard CORS origin with credentials to make the browser error go away, `include=*` so the
-    dashboard sees every actuator endpoint, `parseClaimsJwt` one letter from the verifying call.
-    Each is a vulnerability a reviewer would catch and a linter run at merge time reports after
-    the agent has moved on. This policy refuses the eight at the commit, with the fix named in
-    the refusal, and every rule carries the negative cases that keep it silent on the correct
-    form -- `#{}`, `th:text`, a named origin, `setAllowedOriginPatterns`, `parseClaimsJws`.
+    `${col}` in a MyBatis ORDER BY, a SQL string glued together with `+`, `csrf().disable()` to
+    get a POST working, `th:utext` so a bio renders, a trust-all TrustManager to get past a
+    certificate error, `include=*` so the dashboard sees every actuator endpoint, a Log4j version
+    from a tutorial. Each is a vulnerability a reviewer would catch and a scanner run at merge time
+    reports after the agent has moved on. This policy refuses them as they are written and at the
+    commit, with the fix named in the refusal, across 72 rules in nine packs -- core Java, crypto,
+    Spring, Jakarta EE and the other frameworks, persistence, templates, logging, the build, and
+    Android -- and every rule carries the negative cases that keep it silent on the correct form:
+    `#{}` and bind parameters, `th:text`, `parseClaimsJws`, AES-GCM, a named CORS origin.
   customise: >
-    Verdicts, never rules. `.chock/security.json` sets each rule to `allow`, `deny` or `ask`
-    (asking to customize java security opens the guided page in this policy's own skill, which writes it), and a rule the file does
-    not name denies, so an upgrade's new rule runs until someone speaks for it. A single line is
-    waived in place with `// chock: allow <rule-id>`, where the diff shows it. What a rule matches
-    lives in `implementations/chock_security/data/java.json` (API names, template tokens) and
-    `rules/*.py`; a pattern in the selection file is refused, because a rule definable in JSON is
-    a program in disguise. Adding a rule is a version bump of this one policy, not a ninth folder.
+    Verdicts, never rules. `.chock/security.json` sets each pack, or each rule inside it, to
+    `allow`, `deny` or `ask` -- a team with no Android app or no Spring switches that pack off in
+    one line -- and asking to customize java security opens the guided page in this policy's own
+    skill, which asks once per pack and writes the file. A rule the file does not name denies, so an
+    upgrade's new rule runs until someone speaks for it. A single line is waived in place with
+    `// chock: allow <rule-id>`, where the diff shows it. What a rule matches lives in
+    `implementations/chock_security/data/<pack>.json` (API names, tokens, config keys, vulnerable
+    version ranges) and `rules/<pack>/*.py`; a pattern in the selection file is refused, because a
+    rule definable in JSON is a program in disguise. Adding a rule is a version bump of this one
+    policy, never another folder.
 
 injection-defense:
   solves: >

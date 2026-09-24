@@ -6,7 +6,9 @@ as prose. Open it unasked, once, when Java is about to be written and no selecti
 exists at either scope: every rule denies until someone chooses, and the page is a better
 first meeting than the refusal. It is `setup.html`, in this skill's own directory beside this file and
 `references/`. It is offline and writes nothing itself; deny is preselected for every rule,
-and a verdict is chosen, never derived from a question about the stack.
+and a verdict is chosen, never derived from a question about the stack. It asks once per pack --
+java, crypto, spring, jakarta, persistence, templates, logging, build, android -- so a team
+switches off a stack it does not run in one answer, and opens a pack's rules only when asked.
 
 Where this client can publish an Artifact, publish that file as one, declaring
 `capabilities: {db: {}}`, and let the person walk it in the panel. Their Submit writes the
