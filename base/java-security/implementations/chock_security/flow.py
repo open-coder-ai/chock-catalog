@@ -77,8 +77,12 @@ def _signature(lines: list[str], start: int, name: str) -> tuple[str, int] | Non
     return None
 
 
-def _body(lines: list[str], after: int) -> tuple[tuple[int, str], ...] | None:
-    """The braced block following a signature, or None when the declaration has no body."""
+def _body(lines: list[str], after: int) -> tuple[tuple[tuple[int, str], ...], int] | None:
+    """The braced block following a signature and the line it closes on, or None with no body.
+
+    What follows the opening brace on its own line is body too, so a one-line method
+    (`x(...) { return y; }`) has one, and the text before the brace is never mistaken for it.
+    """
     depth = 0
     opened = False
     collected: list[tuple[int, str]] = []
@@ -90,11 +94,16 @@ def _body(lines: list[str], after: int) -> tuple[tuple[int, str], ...] | None:
             if "{" not in line:
                 continue
             opened = True
-            depth = line.count("{") - line.count("}")
+            rest = line.split("{", 1)[1]
+            depth = 1 + rest.count("{") - rest.count("}")
+            if rest.strip() and rest.strip() != "}":
+                collected.append((offset + 1, rest))
+            if depth <= 0:
+                return tuple(collected), offset
             continue
         depth += line.count("{") - line.count("}")
         if depth <= 0:
-            return tuple(collected)
+            return tuple(collected), offset
         collected.append((offset + 1, line))
     return None
 
@@ -107,10 +116,10 @@ def methods(text: FileText) -> list[Method]:
     while offset < len(lines):
         name = _declares(lines[offset])
         signature = _signature(lines, offset, name) if name else None
-        body = _body(lines, signature[1]) if signature else None
-        if name and signature and body:
-            found.append(Method(name, signature[0], body))
-            offset = body[-1][0] if body else offset + 1
+        block = _body(lines, signature[1]) if signature else None
+        if name and signature and block and block[0]:
+            found.append(Method(name, signature[0], block[0]))
+            offset = block[1]
         offset += 1
     return found
 

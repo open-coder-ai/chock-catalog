@@ -7,5 +7,111 @@
     "annotation_import": "org.apache.ibatis",
     "interpolation": "${",
     "bound_parameter": "#{}"
+  },
+  "sql_concat": {
+    "context_markers": [
+      "java.sql.Statement",
+      "java.sql.Connection",
+      "java.sql.PreparedStatement",
+      "javax.persistence.",
+      "jakarta.persistence.",
+      "org.springframework.jdbc.",
+      "org.hibernate.Session",
+      "org.hibernate.query",
+      "org.jooq.",
+      "org.springframework.data.jpa.repository.Query",
+      "java.sql.*"
+    ],
+    "sinks": [
+      ".executeQuery(",
+      ".executeUpdate(",
+      ".execute(",
+      ".addBatch(",
+      ".prepareStatement(",
+      ".prepareCall(",
+      ".queryForObject(",
+      ".queryForList(",
+      ".queryForMap(",
+      ".batchUpdate(",
+      ".update(",
+      ".query(",
+      ".createQuery(",
+      ".createNativeQuery(",
+      ".createSQLQuery(",
+      "DSL.sql(",
+      ".resultQuery(",
+      ".fetch(",
+      "@Query("
+    ],
+    "builders": [
+      "StringBuilder",
+      "StringBuffer"
+    ]
+  },
+  "jdbc_url": {
+    "marker": "jdbc:",
+    "always_unsafe": [
+      "autoDeserialize=true",
+      "allowLoadLocalInfile=true",
+      "allowUrlInLocalInfile=true"
+    ],
+    "remote_unsafe": [
+      "allowPublicKeyRetrieval=true",
+      "useSSL=false",
+      "sslMode=DISABLED",
+      "sslmode=disable",
+      "trustServerCertificate=true",
+      "encrypt=false",
+      "verifyServerCertificate=false"
+    ],
+    "local_hosts": [
+      "localhost",
+      "127.0.0.1",
+      "h2:mem"
+    ],
+    "test_path_marker": "src/test/"
+  },
+  "ddl_auto": {
+    "keys": [
+      "spring.jpa.hibernate.ddl-auto",
+      "hibernate.hbm2ddl.auto",
+      "javax.persistence.schema-generation.database.action",
+      "jakarta.persistence.schema-generation.database.action"
+    ],
+    "destructive_values": [
+      "create-drop",
+      "create",
+      "drop",
+      "update"
+    ],
+    "safe_values": [
+      "validate",
+      "none"
+    ],
+    "main_config_names": [
+      "application.properties",
+      "application.yml",
+      "application.yaml",
+      "persistence.xml",
+      "hibernate.cfg.xml"
+    ],
+    "main_config_prefixes": [
+      "application-prod"
+    ],
+    "test_path_marker": "src/test/"
+  },
+  "nosql": {
+    "context_markers": [
+      "org.springframework.data.mongodb",
+      "com.mongodb",
+      "org.bson"
+    ],
+    "where_key": "$where",
+    "parse_sinks": [
+      "new BasicQuery(",
+      "Document.parse(",
+      "BasicDBObject.parse(",
+      "JSON.parse("
+    ]
   }
 }

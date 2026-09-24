@@ -1,0 +1,62 @@
+# Eval cases for the templates pack's new rules, shaped like base/java-security/evals/suite.yaml.
+- id: templates-01
+  category: trigger
+  prompt: A Thymeleaf page writes a bio with the inlined unescaped syntax [(${bio})].
+  expect: The commit is refused; the agent uses the escaped inline syntax [[${bio}]] instead.
+  execute:
+    files:
+      p.html: |
+        <p>[(${bio})]</p>
+    event: commit
+    expect: block
+- id: templates-02
+  category: negative_trigger
+  prompt: The same page uses the escaped inline syntax [[${bio}]].
+  expect: The commit proceeds silently. The escaped form is the safe sibling.
+  execute:
+    files:
+      p.html: |
+        <p>[[${bio}]]</p>
+    event: commit
+    expect: allow
+- id: templates-03
+  category: trigger
+  prompt: A FreeMarker template is compiled at request time with new Template(name, requestBody, cfg), where
+    requestBody is a @RequestParam.
+  expect: The commit is refused. Compiling request data as a template lets the caller write template syntax that
+    runs on the server.
+  execute:
+    files:
+      Preview.java: |
+        import freemarker.template.Template;
+        public class Preview {
+          public String preview(@RequestParam String body) throws Exception {
+            Template t = new Template("preview", body, cfg);
+            return render(t);
+          }
+        }
+    event: commit
+    expect: block
+- id: templates-04
+  category: trigger
+  prompt: A FreeMarker configuration calls setNewBuiltinClassResolver(TemplateClassResolver.UNRESTRICTED_RESOLVER).
+  expect: The commit is refused. An unrestricted resolver lets ?new reach any class on the classpath from template
+    text.
+  execute:
+    files:
+      Config.java: |
+        cfg.setNewBuiltinClassResolver(TemplateClassResolver.UNRESTRICTED_RESOLVER);
+    event: commit
+    expect: block
+- id: templates-05
+  category: negative_trigger
+  prompt: A JSP includes a fixed, constant fragment path, and a FreeMarker configuration uses SAFER_RESOLVER.
+  expect: The commit proceeds silently. Neither the include path nor the resolver is attacker-influenced.
+  execute:
+    files:
+      p.jsp: |
+        <jsp:include page="/WEB-INF/header.jsp"/>
+      Config.java: |
+        cfg.setNewBuiltinClassResolver(TemplateClassResolver.SAFER_RESOLVER);
+    event: commit
+    expect: allow

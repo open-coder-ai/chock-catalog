@@ -14,11 +14,18 @@ _TOKENS = facts("templates")["unescaped_output"]
 #: The escaping sibling each token opted out of -- beside the condition that names the token.
 _SAFE_SIBLING = {
     "th:utext": "th:text",
+    "[(${": "the escaped inline syntax [[${...}]]",
     "<%=": "<c:out>, or EL with the page's default escaping",
     'escapeXml="false"': 'the default escapeXml="true"',
     "escapeXml='false'": 'the default escapeXml="true"',
+    'escape="false"': 'the default escape="true" (or omit the attribute)',
+    "escape='false'": "the default escape='true' (or omit the attribute)",
     "?no_esc": "the default auto-escaping",
     "<#noescape>": "the default auto-escaping",
+    "| raw": "the default auto-escaping (drop the raw filter)",
+    "|raw": "the default auto-escaping (drop the raw filter)",
+    "{{{": "{{ }} (double mustache), which escapes",
+    "{{&": "{{ }} (double mustache), which escapes",
 }
 
 
@@ -46,9 +53,13 @@ RULE = Rule(
     suffixes=tuple(_TOKENS),
     scan=scan,
     constraint=(
-        'never(write): th:utext|<%=|escapeXml="false"|?no_esc|<#noescape> '
+        'never(write): th:utext|[(${|<%=|escapeXml="false"|escape="false"|?no_esc|<#noescape>'
+        "|raw|{{{|{{& "
         "-- these put a value into the page as markup; use the escaping sibling"
     ),
-    refuses='`th:utext`, `<%=`, `escapeXml="false"`, `?no_esc`, `<#noescape>`',
-    silent_on="the escaping sibling, and other `<% %>` forms",
+    refuses=(
+        '`th:utext`, `[(${...})]`, `<%=`, `escapeXml="false"`, `escape="false"` (JSF), '
+        "`?no_esc`, `<#noescape>`, `| raw` (Pebble), `{{{` / `{{&` (Mustache/Handlebars)"
+    ),
+    silent_on="the escaping sibling of each, and other `<% %>` forms",
 )

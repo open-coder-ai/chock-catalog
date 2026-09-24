@@ -364,4 +364,7 @@ FLOW_CASES: list[tuple[str, str, str, set[str], set[str]]] = [
     ('a string path variable still can', "C.java",
      'public class C {\n  @GetMapping("/x")\n  public Object x(@PathVariable String id) throws Exception {\n    return Files.readAllBytes(base.resolve(id + ".png"));\n  }\n}\n',
      {'java-path-traversal-request-data'}, {TRAVERSAL}),
+    ('one-line methods, back to back, are each read', "C.java",
+     'public class C {\n  @GetMapping("/a") public byte[] a(@RequestParam String f) throws Exception { return Files.readAllBytes(Paths.get("/srv/" + f)); }\n  @GetMapping("/b") public byte[] b(@RequestParam String f) throws Exception { return Files.readAllBytes(Paths.get("/srv/" + f)); }\n}\n',
+     {TRAVERSAL}, {TRAVERSAL}),
 ]
