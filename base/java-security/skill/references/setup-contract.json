@@ -99,13 +99,13 @@
     {
       "id": "exceptions",
       "title": "Exception handling",
-      "covers": "Catch, throw and finally: swallowed exceptions, catching Throwable or NullPointerException, control flow escaping finally, causes discarded, over-broad throws clauses.",
+      "covers": "Catch, throw and finally: swallowed exceptions, catching Throwable or NullPointerException, control flow escaping finally, causes discarded, generic exceptions thrown by name.",
       "kind": "quality"
     },
     {
       "id": "performance",
       "title": "Performance",
-      "covers": "Allocation and complexity mistakes a profiler would find later: boxing constructors, strings built in loops, patterns recompiled per call, the wrong collection access for the job.",
+      "covers": "Allocation and complexity mistakes a profiler would find later: boxing constructors, strings built in loops, the wrong Map iterator, size() checks that should be isEmpty(), and synchronized legacy collections.",
       "kind": "quality"
     },
     {
@@ -1590,6 +1590,244 @@
       "references": [
         "https://developer.android.com/privacy-and-security/risks/access-control-to-exported-components",
         "https://developer.android.com/privacy-and-security/risks/android-exported"
+      ]
+    },
+    {
+      "id": "resources-unclosed-closeable",
+      "pack": "resources",
+      "title": "Closeable or executor opened without try-with-resources or a finally close",
+      "refuses": "a stream, reader, writer, connection, statement, socket, or ExecutorService assigned to a local outside a `try (` header, with no close()/shutdown() call anywhere later in the method",
+      "silent_on": "the same resource declared inside a try-with-resources header (single- or multi-resource, including a raw reader wrapped and closed via an outer BufferedReader's own header); a resource explicitly closed or shut down later in the method; one returned to the caller, stored to a field, or handed to another constructor; a Scanner over a String or System.in",
+      "constraint": "never(declare): a local FileInputStream|FileOutputStream|FileReader|FileWriter|BufferedReader|RandomAccessFile|ZipFile|JarFile|Socket|ServerSocket|Files.newInputStream|DriverManager.getConnection|dataSource.getConnection|conn.createStatement|conn.prepareStatement|Executors.newFixedThreadPool outside a try-with-resources header with no close()/shutdown() in a finally -- use try-with-resources",
+      "cwe": [
+        {
+          "id": "CWE-772",
+          "name": "Missing Release of Resource after Effective Lifetime"
+        },
+        {
+          "id": "CWE-775",
+          "name": "Missing Release of File Descriptor or Handle after Effective Lifetime"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2095/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#obl-method-may-fail-to-clean-up-stream-or-resource-obl-unsatisfied-obligation"
+      ]
+    },
+    {
+      "id": "resources-finalize-override",
+      "pack": "resources",
+      "title": "Object.finalize() overridden",
+      "refuses": "a class declaring `void finalize()`, at any visibility",
+      "silent_on": "a call to super.finalize() or this.finalize(); a method named finalize that takes arguments",
+      "constraint": "never(override): protected void finalize() -- use try-with-resources, close()/shutdown(), or java.lang.ref.Cleaner",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1113/"
+      ]
+    },
+    {
+      "id": "resources-forced-gc",
+      "pack": "resources",
+      "title": "Garbage collection triggered explicitly",
+      "refuses": "System.gc(), Runtime.getRuntime().gc(), or System.runFinalization() called from application code",
+      "silent_on": "a comment or string mentioning garbage collection; gc() called on an unrelated object with a different receiver",
+      "constraint": "never(call): System.gc()|Runtime.getRuntime().gc()|System.runFinalization() -- let the collector decide when to run",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1215/"
+      ]
+    },
+    {
+      "id": "resources-system-exit",
+      "pack": "resources",
+      "title": "System.exit() called outside a main method",
+      "refuses": "System.exit/Runtime.exit/Runtime.halt in a file that declares no `static void main(`",
+      "silent_on": "the same calls in a file that also declares `static void main(`; a comment or string mentioning System.exit",
+      "constraint": "never(call): System.exit(...)|Runtime.getRuntime().exit(...)|Runtime.getRuntime().halt(...) outside static void main(...) -- throw or return an error instead",
+      "cwe": [
+        {
+          "id": "CWE-382",
+          "name": "J2EE Bad Practices: Use of System.exit()"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1147/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#dm-method-invokes-system-exit-dm-exit"
+      ]
+    },
+    {
+      "id": "resources-run-finalizers-on-exit",
+      "pack": "resources",
+      "title": "runFinalizersOnExit called",
+      "refuses": "System.runFinalizersOnExit(...) or Runtime.getRuntime().runFinalizersOnExit(...)",
+      "silent_on": "a comment or string mentioning runFinalizersOnExit; System.runFinalization() (a different, merely explicit-GC-adjacent call)",
+      "constraint": "never(call): System.runFinalizersOnExit(...)|Runtime.getRuntime().runFinalizersOnExit(...) -- there is no safe replacement, remove the call",
+      "cwe": [],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#dm-method-invokes-dangerous-method-runfinalizersonexit-dm-run-finalizers-on-exit"
+      ]
+    },
+    {
+      "id": "exceptions-empty-catch",
+      "pack": "exceptions",
+      "title": "Empty catch block",
+      "refuses": "a catch block with no statements and no comment inside it",
+      "silent_on": "a catch block containing a comment explaining why nothing is done, or whose variable is named ignored/ignore/expected; any catch block with at least one statement",
+      "constraint": "never(catch): an exception with an empty block and no comment -- handle it, log it with context, or rethrow it",
+      "cwe": [
+        {
+          "id": "CWE-1071",
+          "name": "Empty Code Block"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-108/",
+        "https://pmd.github.io/pmd/pmd_rules_java_errorprone.html#emptycatchblock"
+      ]
+    },
+    {
+      "id": "exceptions-catch-broad",
+      "pack": "exceptions",
+      "title": "Throwable or Error caught",
+      "refuses": "`catch (Throwable ...)` or `catch (Error ...)`, alone or in a multi-catch",
+      "silent_on": "`catch (Exception e)`; `catch (RuntimeException e)`; a specific Error subclass such as `catch (OutOfMemoryError e)` or `catch (AssertionError e)`",
+      "constraint": "never(catch): Throwable|Error directly -- catch the specific exception types this code can recover from",
+      "cwe": [
+        {
+          "id": "CWE-396",
+          "name": "Declaration of Catch for Generic Exception"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1181/"
+      ]
+    },
+    {
+      "id": "exceptions-catch-npe",
+      "pack": "exceptions",
+      "title": "NullPointerException caught",
+      "refuses": "`catch (NullPointerException e)`, alone or in a multi-catch",
+      "silent_on": "`catch (Exception e)`; `catch (IllegalArgumentException e)`; an explicit `if (x == null)` check",
+      "constraint": "never(catch): NullPointerException -- check for null explicitly instead of catching it",
+      "cwe": [
+        {
+          "id": "CWE-395",
+          "name": "Use of NullPointerException Catch to Detect NULL Pointer Dereference"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1696/"
+      ]
+    },
+    {
+      "id": "exceptions-finally-control-flow",
+      "pack": "exceptions",
+      "title": "return or throw inside a finally block",
+      "refuses": "a `return` or `throw` statement at the finally block's own top level",
+      "silent_on": "a `return`/`throw` inside a braced nested block (`if { }`, a loop, or an inner try/catch) within the finally block; `break`/`continue` anywhere in the finally block",
+      "constraint": "never(place): return|throw directly inside a finally block -- it silently replaces the exception the try was propagating",
+      "cwe": [
+        {
+          "id": "CWE-584",
+          "name": "Return Inside Finally Block"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1143/"
+      ]
+    },
+    {
+      "id": "exceptions-generic-thrown",
+      "pack": "exceptions",
+      "title": "Generic exception thrown",
+      "refuses": "`throw new Exception(...)`, `new RuntimeException(...)`, `new Throwable(...)`, or `new Error(...)`",
+      "silent_on": "`throw new IllegalArgumentException(...)`, a custom exception subclass, `throws Exception` on a method signature, or `throw e;` rethrowing a caught exception",
+      "constraint": "never(throw): new Exception(...)|new RuntimeException(...)|new Throwable(...)|new Error(...) -- define and throw a specific exception type",
+      "cwe": [
+        {
+          "id": "CWE-397",
+          "name": "Declaration of Throws for Generic Exception"
+        }
+      ],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-112/"
+      ]
+    },
+    {
+      "id": "exceptions-lost-cause",
+      "pack": "exceptions",
+      "title": "Caught exception not passed as the new exception's cause",
+      "refuses": "`throw new Y(...)` inside a catch block where none of the constructor arguments is the caught variable itself (e.g. `throw new Y(e.getMessage())` or `throw new Y(\"message\")`)",
+      "silent_on": "`throw new Y(e)`; `throw new Y(\"message\", e)`; `throw e;` rethrowing the original; a catch block that does not throw a new exception",
+      "constraint": "never(throw): new X(...) inside a catch block without passing the caught exception as an argument -- pass it as the cause",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1166/",
+        "https://pmd.github.io/pmd/pmd_rules_java_bestpractices.html#preservestacktrace"
+      ]
+    },
+    {
+      "id": "performance-boxing-constructor",
+      "pack": "performance",
+      "title": "Boxed primitive or String constructed with new",
+      "refuses": "`new Integer/Long/Short/Byte/Double/Float/Boolean/Character/String(...)`",
+      "silent_on": "Integer.valueOf(...), Long.valueOf(...), a literal; `new StringBuilder(...)` or `new StringBuffer(...)`",
+      "constraint": "never(construct): new Integer(...)|new Long(...)|new Short(...)|new Byte(...)|new Double(...)|new Float(...)|new Boolean(...)|new Character(...)|new String(...) -- use valueOf(...) or a literal",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-2129/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#dm-number-ctor"
+      ]
+    },
+    {
+      "id": "performance-string-concat-loop",
+      "pack": "performance",
+      "title": "String concatenated with '+' inside a loop",
+      "refuses": "`name += ...` or `name = name + ...` on a String local declared in the same method, inside a for/while/do loop body",
+      "silent_on": "the same pattern outside any loop; a StringBuilder/StringBuffer .append(...) call; concatenation of a field or a variable not declared String in this method",
+      "constraint": "never(concatenate): a String local with += or `x = x + ...` inside a for/while/do loop -- build it with a StringBuilder outside the loop instead",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1643/",
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#sbsc-method-concatenates-strings-using-in-a-loop-sbsc-use-stringbuffer-concatenation"
+      ]
+    },
+    {
+      "id": "performance-map-keyset-get",
+      "pack": "performance",
+      "title": "Map.keySet() iterated then get() called for every key",
+      "refuses": "a `for (K k : map.keySet())` loop whose body calls `map.get(k)` on that same map and key",
+      "silent_on": "a `for (Map.Entry<K,V> e : map.entrySet())` loop; a keySet() loop that never calls get() on the same map/key; a keySet() loop that only checks containment",
+      "constraint": "never(iterate): for (K k : map.keySet()) { ... map.get(k) ... } -- iterate map.entrySet() and read the value from the entry",
+      "cwe": [],
+      "references": [
+        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#wmi-inefficient-use-of-keyset-iterator-instead-of-entryset-iterator-wmi-wrong-map-iterator"
+      ]
+    },
+    {
+      "id": "performance-size-check",
+      "pack": "performance",
+      "title": "size()/length() compared to zero instead of isEmpty()",
+      "refuses": "`.size() == 0`/`> 0`/`!= 0` on a List/Set/Map/Collection/Queue/Deque local declared in this method; `.length() == 0`/`> 0`/`!= 0` on a String local declared in this method",
+      "silent_on": "`.isEmpty()`/`!.isEmpty()`; `.size()`/`.length()` compared to any value other than 0; `.size()`/`.length()` on a receiver not declared as one of those types in this method (a field, a custom class, an array)",
+      "constraint": "never(compare): collection.size() == 0|> 0|!= 0, or string.length() == 0|> 0|!= 0 -- use isEmpty()/!isEmpty() instead",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1155/",
+        "https://rules.sonarsource.com/java/RSPEC-7158/"
+      ]
+    },
+    {
+      "id": "performance-legacy-collection",
+      "pack": "performance",
+      "title": "Synchronized legacy collection (Vector/Hashtable/Stack) used",
+      "refuses": "`new Vector(...)`, `new Hashtable(...)`, or `new Stack(...)`",
+      "silent_on": "ArrayList, HashMap, ArrayDeque, LinkedList; java.util.concurrent types such as ConcurrentHashMap",
+      "constraint": "never(construct): new Vector(...)|new Hashtable(...)|new Stack(...) -- use ArrayList/HashMap/ArrayDeque, or java.util.concurrent for real thread-sharing",
+      "cwe": [],
+      "references": [
+        "https://rules.sonarsource.com/java/RSPEC-1149/"
       ]
     },
     {

@@ -1,1 +1,33 @@
-{}
+{
+  "catch_broad": {
+    "types": [
+      "Throwable",
+      "Error",
+      "java.lang.Throwable",
+      "java.lang.Error"
+    ]
+  },
+  "catch_npe": {
+    "types": [
+      "NullPointerException",
+      "java.lang.NullPointerException"
+    ]
+  },
+  "generic_throw": {
+    "types": [
+      "Exception",
+      "RuntimeException",
+      "Throwable",
+      "Error",
+      "java.lang.Exception",
+      "java.lang.RuntimeException",
+      "java.lang.Throwable",
+      "java.lang.Error"
+    ]
+  },
+  "intended_empty_catch_names": [
+    "ignored",
+    "ignore",
+    "expected"
+  ]
+}

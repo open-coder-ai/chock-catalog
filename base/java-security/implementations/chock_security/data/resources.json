@@ -1,1 +1,39 @@
-{}
+{
+  "unclosed": {
+    "constructors": [
+      "FileInputStream", "FileOutputStream", "FileReader", "FileWriter",
+      "BufferedReader", "BufferedWriter", "BufferedInputStream", "BufferedOutputStream",
+      "RandomAccessFile", "ZipFile", "JarFile", "ZipInputStream", "ZipOutputStream",
+      "GZIPInputStream", "GZIPOutputStream",
+      "Socket", "ServerSocket", "Scanner"
+    ],
+    "scanner_source_markers": ["File", "Path", "toPath("],
+    "factory_calls": [
+      "Files.newInputStream(", "Files.newOutputStream(",
+      "Files.newBufferedReader(", "Files.newBufferedWriter(",
+      "Files.lines(", "Files.list(", "Files.walk(", "Files.find(",
+      "DriverManager.getConnection("
+    ],
+    "method_names": ["getConnection", "createStatement", "prepareStatement", "prepareCall"],
+    "executor_factories": [
+      "Executors.newFixedThreadPool(", "Executors.newCachedThreadPool(",
+      "Executors.newSingleThreadExecutor(", "Executors.newScheduledThreadPool(",
+      "Executors.newSingleThreadScheduledExecutor(", "Executors.newWorkStealingPool("
+    ],
+    "executor_release": ["shutdown(", "shutdownNow(", "close("],
+    "default_release": ["close("]
+  },
+  "finalize": {
+    "signature": "protected void finalize("
+  },
+  "forced_gc": {
+    "calls": ["System.gc(", "Runtime.getRuntime().gc(", "System.runFinalization("]
+  },
+  "system_exit": {
+    "calls": ["System.exit(", "Runtime.getRuntime().exit(", "Runtime.getRuntime().halt("],
+    "main_signature": "static void main("
+  },
+  "run_finalizers_on_exit": {
+    "calls": ["System.runFinalizersOnExit(", "Runtime.getRuntime().runFinalizersOnExit("]
+  }
+}

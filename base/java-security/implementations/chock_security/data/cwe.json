@@ -125,8 +125,24 @@
       "name": "Missing Support for Integrity Check",
       "usage": "Allowed"
     },
+    "CWE-382": {
+      "name": "J2EE Bad Practices: Use of System.exit()",
+      "usage": "Allowed"
+    },
     "CWE-384": {
       "name": "Session Fixation",
+      "usage": "Allowed"
+    },
+    "CWE-395": {
+      "name": "Use of NullPointerException Catch to Detect NULL Pointer Dereference",
+      "usage": "Allowed"
+    },
+    "CWE-396": {
+      "name": "Declaration of Catch for Generic Exception",
+      "usage": "Allowed"
+    },
+    "CWE-397": {
+      "name": "Declaration of Throws for Generic Exception",
       "usage": "Allowed"
     },
     "CWE-441": {
@@ -173,6 +189,10 @@
       "name": "SQL Injection: Hibernate",
       "usage": "Allowed"
     },
+    "CWE-584": {
+      "name": "Return Inside Finally Block",
+      "usage": "Allowed"
+    },
     "CWE-601": {
       "name": "URL Redirection to Untrusted Site ('Open Redirect')",
       "usage": "Allowed"
@@ -199,6 +219,14 @@
     },
     "CWE-760": {
       "name": "Use of a One-Way Hash with a Predictable Salt",
+      "usage": "Allowed"
+    },
+    "CWE-772": {
+      "name": "Missing Release of Resource after Effective Lifetime",
+      "usage": "Allowed"
+    },
+    "CWE-775": {
+      "name": "Missing Release of File Descriptor or Handle after Effective Lifetime",
       "usage": "Allowed"
     },
     "CWE-798": {
