@@ -186,3 +186,21 @@ CASES: list[tuple[str, str, str, list[int]]] = [
     (RUN_FINALIZERS_ON_EXIT, "R.java", "void m() {\n    // System.runFinalizersOnExit(true) is banned here\n}\n", []),
     (RUN_FINALIZERS_ON_EXIT, "R.java", "void m() {\n    System.gc();\n}\n", []),
 ]
+
+#: Returning the resource hands it to the caller; returning what a call on it produced does not.
+CASES += [
+    (
+        "resources-unclosed-closeable",
+        "A.java",
+        "byte[] load(File f) throws IOException {\n  FileInputStream in = new FileInputStream(f);\n"
+        "  return in.readAllBytes();\n}\n",
+        [2],
+    ),
+    (
+        "resources-unclosed-closeable",
+        "A.java",
+        "InputStream open(File f) throws IOException {\n  FileInputStream in = new FileInputStream(f);\n"
+        "  return in;\n}\n",
+        [],
+    ),
+]

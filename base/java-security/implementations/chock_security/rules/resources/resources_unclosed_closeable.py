@@ -78,7 +78,7 @@ def _escapes(
             return True
         if line_no in covered and re.search(rf"\b{word}\b", line):
             return True  # wrapped into a later try-with-resources header -- that TWR releases it
-        if re.search(rf"\breturn\s+{word}\b", line):
+        if re.search(rf"\breturn\s+{word}\s*;", line):  # the resource itself, not a call on it
             return True
         if re.search(rf"=\s*{word}\s*;", line):
             return True

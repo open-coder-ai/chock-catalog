@@ -1148,3 +1148,174 @@ suite:
           </manifest>
       event: commit
       expect: allow
+  - id: tc-085
+    category: trigger
+    prompt: A controller writes a request parameter straight into the servlet response writer.
+    expect: The commit is refused (java-xss-writer, CWE-79); the agent encodes the value for HTML or renders it
+      through an escaping template.
+    execute:
+      files:
+        GreetController.java: |
+          public class GreetController {
+            @GetMapping("/greet")
+            public void greet(@RequestParam String name, HttpServletResponse response) throws IOException {
+              response.getWriter().write("<p>Hello " + name + "</p>");
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-086
+    category: trigger
+    prompt: A service compares a status string with == against a literal.
+    expect: The commit is refused (bugs-string-identity-comparison, CWE-597); the agent uses equals, which compares
+      the characters rather than the object identity.
+    execute:
+      files:
+        OrderStatus.java: |
+          public class OrderStatus {
+            boolean shipped(String status) {
+              return status == "SHIPPED";
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-087
+    category: negative_trigger
+    prompt: The same service compares the status with "SHIPPED".equals(status).
+    expect: The commit proceeds silently; equals on the literal is the correct, null-safe comparison.
+    execute:
+      files:
+        OrderStatus.java: |
+          public class OrderStatus {
+            boolean shipped(String status) {
+              return "SHIPPED".equals(status);
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-088
+    category: trigger
+    prompt: A formatter holds a SimpleDateFormat in a static field shared by every request thread.
+    expect: The commit is refused (concurrency-static-date-format, CWE-567); SimpleDateFormat is not thread-safe,
+      and the agent uses a static DateTimeFormatter instead.
+    execute:
+      files:
+        Dates.java: |
+          public class Dates {
+            private static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+          }
+      event: commit
+      expect: block
+  - id: tc-089
+    category: trigger
+    prompt: A method opens a FileInputStream into a local, reads it, and never closes it.
+    expect: The commit is refused (resources-unclosed-closeable, CWE-772); the agent opens it in try-with-resources.
+    execute:
+      files:
+        Loader.java: |
+          public class Loader {
+            byte[] load(File file) throws IOException {
+              FileInputStream in = new FileInputStream(file);
+              return in.readAllBytes();
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-090
+    category: negative_trigger
+    prompt: The same method opens the stream in try-with-resources.
+    expect: The commit proceeds silently; the stream is closed on every path.
+    execute:
+      files:
+        Loader.java: |
+          public class Loader {
+            byte[] load(File file) throws IOException {
+              try (FileInputStream in = new FileInputStream(file)) {
+                return in.readAllBytes();
+              }
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-091
+    category: trigger
+    prompt: A catch block swallows an exception with nothing in it.
+    expect: The commit is refused (exceptions-empty-catch, CWE-1071); the agent handles, logs or rethrows it, or
+      says in a comment why nothing is done.
+    execute:
+      files:
+        Sync.java: |
+          public class Sync {
+            void run() {
+              try {
+                push();
+              } catch (IOException e) {
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-092
+    category: trigger
+    prompt: A loop builds a report by appending to a String with +=.
+    expect: The commit is refused (performance-string-concat-loop); every += copies the whole string, and the agent
+      uses a StringBuilder.
+    execute:
+      files:
+        Report.java: |
+          public class Report {
+            String render(List<String> rows) {
+              String out = "";
+              for (String row : rows) {
+                out += row + "\n";
+              }
+              return out;
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-093
+    category: trigger
+    prompt: Production code prints a diagnostic with System.out.println.
+    expect: The commit is refused (style-system-out-println); the agent logs through the application's logger.
+    execute:
+      files:
+        src/main/java/com/acme/Importer.java: |
+          public class Importer {
+            void run(int rows) {
+              System.out.println("imported " + rows);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-094
+    category: trigger
+    prompt: A JUnit test calls the service and asserts nothing.
+    expect: The commit is refused (testing-no-assertion); a test that cannot fail proves nothing, and the agent adds
+      an assertion on the result.
+    execute:
+      files:
+        src/test/java/com/acme/ImporterTest.java: |
+          class ImporterTest {
+            @Test
+            void imports() {
+              new Importer().run(3);
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-095
+    category: negative_trigger
+    prompt: The test asserts on the result with AssertJ.
+    expect: The commit proceeds silently.
+    execute:
+      files:
+        src/test/java/com/acme/ImporterTest.java: |
+          class ImporterTest {
+            @Test
+            void imports() {
+              assertThat(new Importer().count(3)).isEqualTo(3);
+            }
+          }
+      event: commit
+      expect: allow
