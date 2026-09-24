@@ -76,4 +76,6 @@ RULE = Rule(
     ),
     refuses="cookie.secure/http-only=false in config, and .secure(false)/.httpOnly(false) in a ResponseCookie chain",
     silent_on="the cookie flags left at their true default, and cookies built without ResponseCookie",
+    cwe=("CWE-614", "CWE-1004"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",),
 )

@@ -68,4 +68,8 @@ RULE = Rule(
         'or is a path on this server (`"/users/" + id`); a host checked against an allowlist before the '
         "call; the same builder called with no request data reaching it"
     ),
+    cwe=("CWE-918",),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html",
+    ),
 )

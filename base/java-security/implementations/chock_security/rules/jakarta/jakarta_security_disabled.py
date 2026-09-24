@@ -47,4 +47,6 @@ RULE = Rule(
     ),
     refuses="`micronaut.security.enabled=false` in the main application config",
     silent_on="security left enabled or unset; the same key in a file whose path names it as test",
+    cwe=("CWE-306",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",),
 )

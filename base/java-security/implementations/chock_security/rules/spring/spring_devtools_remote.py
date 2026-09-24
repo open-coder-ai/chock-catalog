@@ -42,4 +42,6 @@ RULE = Rule(
     ),
     refuses="spring.devtools.remote.secret set to a non-empty value in main application config",
     silent_on="the key absent, an empty value, and test resources",
+    cwe=("CWE-489",),
+    references=("https://docs.spring.io/spring-boot/reference/using/devtools.html",),
 )

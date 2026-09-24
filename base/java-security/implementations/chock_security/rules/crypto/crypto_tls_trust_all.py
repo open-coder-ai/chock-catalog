@@ -135,4 +135,6 @@ RULE = Rule(
         "TrustSelfSignedStrategy, InsecureTrustManagerFactory.INSTANCE"
     ),
     silent_on="a trust manager or verifier that delegates to a real check and can reject",
+    cwe=("CWE-295",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html",),
 )

@@ -70,4 +70,6 @@ RULE = Rule(
     silent_on=(
         "`parseClaimsJws`, `parseSignedClaims`, a real algorithm, issuing a token, and a decode beside a verify"
     ),
+    cwe=("CWE-347",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html",),
 )

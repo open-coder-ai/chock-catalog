@@ -61,4 +61,6 @@ RULE = Rule(
         "`setAPIBuiltinEnabled(true)` in Java/Kotlin"
     ),
     silent_on="`ALLOWS_NOTHING_RESOLVER` and `SAFER_RESOLVER`",
+    cwe=("CWE-470",),
+    references=("https://freemarker.apache.org/docs/app_faq.html",),
 )

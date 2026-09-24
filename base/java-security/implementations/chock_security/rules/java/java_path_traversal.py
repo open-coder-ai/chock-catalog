@@ -39,4 +39,6 @@ RULE = Rule(
     ),
     refuses="a file path a method body shows request data reaching",
     silent_on="a constant path; a name taken with `getFileName`; a parsed number",
+    cwe=("CWE-22", "CWE-73"),
+    references=("https://owasp.org/www-community/attacks/Path_Traversal",),
 )

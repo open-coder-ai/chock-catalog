@@ -101,4 +101,9 @@ RULE = Rule(
         "a fixed JSON/document literal; concatenation of literals or ALL_CAPS constants only; "
         "and a file that never imports a MongoDB driver"
     ),
+    cwe=("CWE-943", "CWE-95"),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html",
+        "https://owasp.org/Top10/2021/A03_2021-Injection/",
+    ),
 )

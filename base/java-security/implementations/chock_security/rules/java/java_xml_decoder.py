@@ -74,4 +74,6 @@ RULE = Rule(
         "`new Yaml()` with no argument; `new Yaml(new Constructor(SomeType.class))`; "
         "`new Yaml(new SafeConstructor())`; a file that never calls `.load`"
     ),
+    cwe=("CWE-502",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html",),
 )

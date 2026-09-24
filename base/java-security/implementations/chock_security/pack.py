@@ -17,6 +17,11 @@ def facts(pack: str) -> dict:
     return json.loads((_DATA / f"{pack}.json").read_text(encoding="utf-8"))
 
 
+def weaknesses() -> dict[str, dict[str, str]]:
+    """The CWE entries rules cite, as MITRE's catalog names them, keyed by id."""
+    return facts("cwe")["weaknesses"]
+
+
 @dataclass(frozen=True)
 class Pack:
     """A category of rules an adopter can switch as one: a framework, a layer, a platform."""
@@ -43,6 +48,14 @@ class Rule:
     #: Rendered into the README table and the setup contract; never hand-written twice.
     refuses: str = ""
     silent_on: str = ""
+    #: The weakness this construct is an instance of, as MITRE's CWE ids ("CWE-89"). Each must be
+    #: in data/cwe.json and mappable there: a CWE that MITRE marks prohibited or discouraged for
+    #: vulnerability mapping is a category, not evidence. Printed on every refusal.
+    cwe: tuple[str, ...] = ()
+    #: Where the construct is shown to be a vulnerability: the CVE, the vendor's own security
+    #: documentation, the OWASP cheat sheet. A rule nobody outside this repository has called a
+    #: vulnerability is an opinion, and a refused commit needs more than one.
+    references: tuple[str, ...] = ()
 
     def reads(self, text: FileText) -> bool:
         return text.suffix in self.suffixes

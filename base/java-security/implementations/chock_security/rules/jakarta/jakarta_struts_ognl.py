@@ -82,4 +82,10 @@ RULE = Rule(
     refuses="struts.xml/struts.properties turning on dev mode, static access or DMI; a "
     "value-stack lookup a method body shows request data reaching",
     silent_on="those keys left false or absent; a fixed OGNL expression; non-Struts XML/properties",
+    cwe=("CWE-917",),
+    references=(
+        "https://struts.apache.org/security/",
+        "https://nvd.nist.gov/vuln/detail/CVE-2017-5638",
+        "https://owasp.org/Top10/2021/A03_2021-Injection/",
+    ),
 )

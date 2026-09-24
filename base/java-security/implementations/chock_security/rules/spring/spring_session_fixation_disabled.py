@@ -65,4 +65,6 @@ RULE = Rule(
     ),
     refuses="sessionFixation().none(), its lambda form, and the Kotlin DSL block",
     silent_on="sessionFixation().migrateSession()/changeSessionId(), and files with no HttpSecurity",
+    cwe=("CWE-384",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",),
 )

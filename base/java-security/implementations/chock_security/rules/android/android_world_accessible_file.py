@@ -54,4 +54,6 @@ RULE = Rule(
     ),
     refuses="`MODE_WORLD_READABLE`/`MODE_WORLD_WRITEABLE`; `setReadable`/`setWritable(true, false)`",
     silent_on="`MODE_PRIVATE`; `setReadable(true, true)`/`setReadable(true)` (owner-only)",
+    cwe=("CWE-732", "CWE-276"),
+    references=("https://developer.android.com/training/data-storage/shared-preferences",),
 )

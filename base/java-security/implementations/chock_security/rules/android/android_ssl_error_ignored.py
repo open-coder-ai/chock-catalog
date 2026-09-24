@@ -67,4 +67,9 @@ RULE = Rule(
     ),
     refuses="`.proceed()` on the handler inside an `onReceivedSslError` override",
     silent_on="`.cancel()` inside the same override; a file that never overrides it",
+    cwe=("CWE-295",),
+    references=(
+        "https://developer.android.com/reference/android/webkit/SslErrorHandler",
+        "https://developer.android.com/privacy-and-security/security-ssl",
+    ),
 )

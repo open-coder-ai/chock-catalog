@@ -58,4 +58,6 @@ RULE = Rule(
     ),
     refuses="an explicit `setHttpOnly(false)`/`setSecure(false)`; web.xml cookie-config set false",
     silent_on="flags left true, or left unset; a cookie-config that sets neither to false; Spring code",
+    cwe=("CWE-614", "CWE-1004"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html",),
 )

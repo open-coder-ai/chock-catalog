@@ -54,4 +54,6 @@ RULE = Rule(
     ),
     refuses="`addJavascriptInterface(` or a file-URL-access setter turned on, in a file where JS is enabled",
     silent_on="either call in a file that never enables JavaScript; a WebView with JS left off",
+    cwe=("CWE-749",),
+    references=("https://developer.android.com/privacy-and-security/risks/insecure-webview-native-bridges",),
 )

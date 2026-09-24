@@ -59,4 +59,6 @@ RULE = Rule(
         "PasswordAuthentication, dataSource.setPassword, SecretKeySpec, or Algorithm.HMAC256/384/512"
     ),
     silent_on="the same calls given a variable, an env/config/vault read, or an empty string literal; anything under src/test/",
+    cwe=("CWE-798", "CWE-321", "CWE-259"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",),
 )

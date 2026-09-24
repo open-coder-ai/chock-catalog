@@ -56,4 +56,9 @@ RULE = Rule(
     ),
     refuses='`usesCleartextTraffic="true"` in the manifest; `cleartextTrafficPermitted="true"` on `<base-config>`',
     silent_on='the manifest attribute set to `"false"` or absent; `cleartextTrafficPermitted="true"` inside a `<domain-config>`',
+    cwe=("CWE-319",),
+    references=(
+        "https://developer.android.com/privacy-and-security/risks/cleartext-communications",
+        "https://developer.android.com/privacy-and-security/security-config",
+    ),
 )

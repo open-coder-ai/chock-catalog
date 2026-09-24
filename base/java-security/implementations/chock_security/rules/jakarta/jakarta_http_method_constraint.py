@@ -55,4 +55,6 @@ RULE = Rule(
     ),
     refuses="a web-resource-collection naming <http-method> with no <http-method-omission>",
     silent_on="<http-method-omission>; a collection with no method list at all (covers every verb)",
+    cwe=("CWE-862",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",),
 )

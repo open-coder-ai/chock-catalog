@@ -67,4 +67,9 @@ RULE = Rule(
     ),
     refuses="csrf().disable(), the method-reference and lambda forms, and the Kotlin DSL block",
     silent_on="ignoringRequestMatchers(...) scoped to specific paths; files with no HttpSecurity",
+    cwe=("CWE-352",),
+    references=(
+        "https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+    ),
 )

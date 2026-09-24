@@ -56,4 +56,6 @@ RULE = Rule(
         "any of these method names in a file that never imports that template engine, and a "
         "`.ftlh` file that never sets those directives"
     ),
+    cwe=("CWE-79", "CWE-116"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",),
 )

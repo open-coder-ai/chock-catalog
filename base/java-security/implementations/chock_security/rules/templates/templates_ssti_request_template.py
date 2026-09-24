@@ -57,4 +57,6 @@ RULE = Rule(
         "compiling text; Thymeleaf `process(` with no `StringTemplateResolver` in the file; "
         "and a file that never configures one of these engines"
     ),
+    cwe=("CWE-1336",),
+    references=("https://freemarker.apache.org/docs/app_faq.html", "https://owasp.org/Top10/2021/A03_2021-Injection/"),
 )

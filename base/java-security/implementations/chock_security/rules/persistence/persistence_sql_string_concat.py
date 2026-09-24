@@ -121,4 +121,6 @@ RULE = Rule(
         "constants only; Criteria API, QueryDSL, and jOOQ DSL builders built from values "
         "rather than joined text; and a file that never mentions JDBC/JPA/Hibernate/jOOQ"
     ),
+    cwe=("CWE-89", "CWE-564"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",),
 )

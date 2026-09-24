@@ -42,4 +42,6 @@ RULE = Rule(
     ),
     refuses="spring.h2.console.settings.web-allow-others=true",
     silent_on="the key set to false, or absent (the framework default)",
+    cwe=("CWE-306",),
+    references=("https://nvd.nist.gov/vuln/detail/CVE-2022-23221",),
 )

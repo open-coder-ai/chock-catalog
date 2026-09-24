@@ -45,4 +45,6 @@ RULE = Rule(
     ),
     refuses='`allowBackup="true"` in a manifest naming no fullBackupContent/dataExtractionRules',
     silent_on='`allowBackup="false"`; `allowBackup="true"` alongside either backup-rules attribute',
+    cwe=("CWE-530", "CWE-921"),
+    references=("https://developer.android.com/privacy-and-security/risks/backup-best-practices",),
 )

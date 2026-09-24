@@ -66,4 +66,6 @@ RULE = Rule(
     ),
     refuses="a plain Random/Math.random/ThreadLocalRandom/RandomStringUtils value named as a token/secret/otp/nonce/salt/session id/api key/reset code",
     silent_on="the same constructs used to shuffle, sample or drive a game; any use of SecureRandom",
+    cwe=("CWE-338",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html",),
 )

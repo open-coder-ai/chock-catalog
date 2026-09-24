@@ -46,4 +46,6 @@ RULE = Rule(
     ),
     refuses="include-stacktrace=always/on_param, and include-exception=true",
     silent_on="include-stacktrace=never, or the key absent (the framework default)",
+    cwe=("CWE-209",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html",),
 )

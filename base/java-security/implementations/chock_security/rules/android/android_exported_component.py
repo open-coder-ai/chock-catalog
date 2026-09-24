@@ -109,4 +109,9 @@ RULE = Rule(
     ),
     refuses="an exported activity/service/receiver/provider with no `android:permission`",
     silent_on='`android:permission` present; `exported="false"` or the attribute omitted; the launcher activity',
+    cwe=("CWE-926", "CWE-862"),
+    references=(
+        "https://developer.android.com/privacy-and-security/risks/access-control-to-exported-components",
+        "https://developer.android.com/privacy-and-security/risks/android-exported",
+    ),
 )

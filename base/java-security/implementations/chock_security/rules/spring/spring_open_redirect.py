@@ -40,4 +40,6 @@ RULE = Rule(
     ),
     refuses="a redirect: prefix, RedirectView, a Location header, or sendRedirect built from request data",
     silent_on="a target checked against an allowlist or UriComponentsBuilder host, or a same-site startsWith check",
+    cwe=("CWE-601",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html",),
 )

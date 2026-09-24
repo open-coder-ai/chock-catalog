@@ -48,4 +48,6 @@ RULE = Rule(
     ),
     refuses="a redirect target a method body shows request data reaching, in a Servlet/JAX-RS/Vert.x/Micronaut file",
     silent_on="a constant redirect target; a target checked against an allowlist first; Spring code",
+    cwe=("CWE-601",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html",),
 )

@@ -63,4 +63,9 @@ RULE = Rule(
     ),
     refuses="Jackson default typing; an XStream built with no allowlist",
     silent_on="a plain `ObjectMapper`; an XStream that allowlists",
+    cwe=("CWE-502",),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html",
+        "https://commons.apache.org/proper/commons-collections/security.html",
+    ),
 )

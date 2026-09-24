@@ -40,4 +40,9 @@ RULE = Rule(
     ),
     refuses="`ObjectInputStream` over request data",
     silent_on="a stream the application opened itself; the same bytes read as JSON",
+    cwe=("CWE-502",),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html",
+        "https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/",
+    ),
 )

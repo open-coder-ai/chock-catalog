@@ -56,4 +56,6 @@ RULE = Rule(
         "the same call over a value bound through `XPathVariableResolver`; a constant "
         "expression; `.compile()`/`.evaluate()` in a file with no `javax.xml.xpath` import"
     ),
+    cwe=("CWE-643", "CWE-91"),
+    references=("https://owasp.org/www-community/attacks/XPATH_Injection",),
 )

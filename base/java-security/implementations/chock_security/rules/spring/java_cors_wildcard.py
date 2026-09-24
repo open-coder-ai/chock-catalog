@@ -52,4 +52,9 @@ RULE = Rule(
     ),
     refuses="a wildcard origin **with** credentials enabled",
     silent_on="a wildcard alone; a named origin; `setAllowedOriginPatterns`",
+    cwe=("CWE-942",),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html",
+    ),
 )

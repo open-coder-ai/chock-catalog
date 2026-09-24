@@ -24,6 +24,6 @@ def evaluate(files: Iterable[FileText], verdicts: Mapping[str, str]) -> list[Fin
         for rule_id, rule in acting.items():
             if not rule.reads(text):
                 continue
-            found = (replace(f, verdict=verdicts[rule_id]) for f in rule.scan(text))
+            found = (replace(f, verdict=verdicts[rule_id], cwe=rule.cwe) for f in rule.scan(text))
             findings.extend(f for f in found if not _waived(f))
     return findings

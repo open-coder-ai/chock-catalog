@@ -115,4 +115,6 @@ RULE = Rule(
         "`validate` and `none`; the same key in an application-dev/-local/-test profile or "
         "under src/test/; and any file that is not a Spring/Hibernate/JPA config file"
     ),
+    cwe=("CWE-1188",),
+    references=("https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/",),
 )

@@ -107,4 +107,6 @@ RULE = Rule(
         "the same digests fed a value not named as a password (a checksum, an ETag, file "
         "bytes), even in a method that separately logs something about a password; BCrypt/Argon2/PBKDF2/SCrypt"
     ),
+    cwe=("CWE-916",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",),
 )

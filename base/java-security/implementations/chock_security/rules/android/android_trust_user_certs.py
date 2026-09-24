@@ -47,4 +47,6 @@ RULE = Rule(
     ),
     refuses='`<certificates src="user" />` inside `<base-config>`',
     silent_on='the same element inside a `<domain-config>`; `src="system"`',
+    cwe=("CWE-295",),
+    references=("https://developer.android.com/privacy-and-security/security-config",),
 )

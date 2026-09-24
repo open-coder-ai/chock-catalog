@@ -56,4 +56,6 @@ RULE = Rule(
         "the same search over a value passed through `LdapEncoder`; Spring LDAP's query builder "
         "with `.is()`; a constant filter; `.search()` in a file with no LDAP import"
     ),
+    cwe=("CWE-90",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html",),
 )

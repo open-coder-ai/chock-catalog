@@ -65,4 +65,6 @@ RULE = Rule(
     ),
     refuses='anyRequest()/"/**" matchers passed to permitAll() or web.ignoring(), and the Kotlin DSL form',
     silent_on='a specific public path such as "/public/**" or "/actuator/health"',
+    cwe=("CWE-862",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",),
 )

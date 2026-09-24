@@ -102,4 +102,6 @@ RULE = Rule(
         "passwordPolicy, tokenizer, tokens); the same name only inside the message's string "
         "literal; a value passed through mask(...)/redact(...) or already shown as ****"
     ),
+    cwe=("CWE-532",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",),
 )

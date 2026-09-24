@@ -72,4 +72,10 @@ RULE = Rule(
     refuses="a declared, resolvable version inside one of these ranges",
     silent_on="a version at or above the fix; a BOM-managed dependency with no explicit version; "
     "a version behind an unresolvable property",
+    cwe=("CWE-1395",),
+    references=(
+        "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+        "https://nvd.nist.gov/vuln/detail/CVE-2022-22965",
+        "https://nvd.nist.gov/vuln/detail/CVE-2022-42889",
+    ),
 )

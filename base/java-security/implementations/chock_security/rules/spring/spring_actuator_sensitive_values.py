@@ -77,4 +77,6 @@ RULE = Rule(
     "and shutdown enabled or access=unrestricted",
     silent_on="the default masked show-values, health/info/metrics in exposure.include, and shutdown left disabled"
     " (the wildcard `*` itself is the other actuator rule's own case)",
+    cwe=("CWE-497",),
+    references=("https://docs.spring.io/spring-boot/reference/actuator/endpoints.html",),
 )

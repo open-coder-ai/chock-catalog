@@ -49,4 +49,6 @@ RULE = Rule(
     ),
     refuses='`android:debuggable="true"` outside a debug source set',
     silent_on='`android:debuggable="false"`; the attribute absent; a manifest under `src/debug/`',
+    cwe=("CWE-489", "CWE-215"),
+    references=("https://developer.android.com/privacy-and-security/risks/android-debuggable",),
 )

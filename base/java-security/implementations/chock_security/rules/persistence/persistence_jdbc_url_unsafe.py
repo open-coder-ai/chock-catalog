@@ -74,4 +74,9 @@ RULE = Rule(
         "the TLS-weakening flags against localhost/127.0.0.1/an in-memory H2 database, "
         "and any of these flags under src/test/"
     ),
+    cwe=("CWE-502", "CWE-319", "CWE-295"),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html",
+    ),
 )

@@ -103,4 +103,9 @@ RULE = Rule(
     ),
     refuses="an http:// repository, mirror or wrapper URL; `allowInsecureProtocol = true`",
     silent_on="https:// URLs; http://localhost and http://127.0.0.1",
+    cwe=("CWE-829", "CWE-494"),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html",
+        "https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/",
+    ),
 )

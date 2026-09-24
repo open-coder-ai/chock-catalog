@@ -68,4 +68,6 @@ RULE = Rule(
     ),
     refuses="directory listing turned on, in servlet, Jetty, Undertow or Vert.x/Quarkus config",
     silent_on="listing left off or explicitly false; Spring code",
+    cwe=("CWE-548",),
+    references=("https://owasp.org/www-community/attacks/Forced_browsing",),
 )

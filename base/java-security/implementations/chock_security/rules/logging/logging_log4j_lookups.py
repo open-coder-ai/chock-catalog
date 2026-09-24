@@ -40,4 +40,9 @@ RULE = Rule(
     ),
     refuses="`log4j2.formatMsgNoLookups=false`; `%m{lookups}`/`%msg{lookups}` in a pattern; a literal `${jndi:`",
     silent_on="an ordinary pattern layout with no lookups token; formatMsgNoLookups=true",
+    cwe=("CWE-917", "CWE-502"),
+    references=(
+        "https://logging.apache.org/log4j/2.x/security.html",
+        "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+    ),
 )

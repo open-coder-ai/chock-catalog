@@ -55,4 +55,9 @@ RULE = Rule(
     ),
     refuses="a Gradle `+`/`latest.release`/`latest.integration` version; Maven `LATEST`/`RELEASE`/an open range",
     silent_on="a pinned exact version; a closed Maven range with both bounds named",
+    cwe=("CWE-1357",),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Dependency_Graph_SBOM_Cheat_Sheet.html",
+    ),
 )

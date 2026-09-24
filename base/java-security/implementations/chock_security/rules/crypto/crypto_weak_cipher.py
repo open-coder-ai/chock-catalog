@@ -60,4 +60,6 @@ RULE = Rule(
     ),
     refuses='DES, DESede, RC2, RC4/ARCFOUR, Blowfish; any `/ECB/` mode; bare `"AES"`',
     silent_on="AES/GCM/NoPadding; ChaCha20-Poly1305; AES/CBC/PKCS5Padding; RSA/ECB/OAEP* and RSA/ECB/PKCS1Padding",
+    cwe=("CWE-327",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html",),
 )

@@ -61,4 +61,6 @@ RULE = Rule(
     refuses='return "prefix/" + <request data>; in a @Controller method that is not @ResponseBody',
     silent_on="a constant view name; @RestController classes; a method annotated @ResponseBody; "
     'a "redirect:"/"forward:" prefix (the open-redirect rule owns those)',
+    cwe=("CWE-1336",),
+    references=("https://freemarker.apache.org/docs/app_faq.html", "https://owasp.org/Top10/2021/A03_2021-Injection/"),
 )

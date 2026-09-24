@@ -45,4 +45,6 @@ RULE = Rule(
         '`th:insert="${param....`/`~{${param....` fragment expressions'
     ),
     silent_on="a constant include path, and `param`/request use that is not the include path itself",
+    cwe=("CWE-829", "CWE-73"),
+    references=("https://owasp.org/www-community/attacks/Path_Traversal",),
 )

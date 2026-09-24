@@ -58,4 +58,6 @@ RULE = Rule(
     ),
     refuses="a secret-shaped key set to a non-empty literal in main application/bootstrap config",
     silent_on="an empty value; a boolean or number; a ${...} placeholder; a {cipher}/ENC()/vault:/sm:// reference; test resources",
+    cwe=("CWE-798", "CWE-256"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",),
 )

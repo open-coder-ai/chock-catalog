@@ -56,4 +56,9 @@ RULE = Rule(
     ),
     refuses="headers()/frameOptions()/contentTypeOptions()/HSTS disable(), literal or lambda",
     silent_on="frameOptions().sameOrigin(), and files with no HttpSecurity",
+    cwe=("CWE-1021",),
+    references=(
+        "https://docs.spring.io/spring-security/reference/servlet/exploits/headers.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
+    ),
 )

@@ -79,4 +79,6 @@ RULE = Rule(
     ),
     refuses="SSLContext.getInstance/setEnabledProtocols/enabled-protocols naming SSL, SSLv2, SSLv3, TLSv1, or TLSv1.1",
     silent_on='"TLS", "TLSv1.2", "TLSv1.3"',
+    cwe=("CWE-327",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Security_Cheat_Sheet.html",),
 )

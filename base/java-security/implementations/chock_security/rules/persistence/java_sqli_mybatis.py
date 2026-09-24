@@ -47,4 +47,9 @@ RULE = Rule(
     ),
     refuses="`${}` in a mapper or a MyBatis-annotated source",
     silent_on="`#{}`, and `${}` anywhere that is not MyBatis",
+    cwe=("CWE-89",),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+        "https://mybatis.org/mybatis-3/sqlmap-xml.html",
+    ),
 )

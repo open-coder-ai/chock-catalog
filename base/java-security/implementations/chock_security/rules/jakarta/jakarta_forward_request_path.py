@@ -48,4 +48,6 @@ RULE = Rule(
     ),
     refuses="a getRequestDispatcher path a method body shows request data reaching",
     silent_on="a constant dispatcher path; a path chosen from a fixed lookup table; Spring code",
+    cwe=("CWE-441",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html",),
 )

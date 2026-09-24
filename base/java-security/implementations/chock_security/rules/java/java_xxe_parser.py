@@ -65,4 +65,6 @@ RULE = Rule(
         "or `XMLInputFactory.SUPPORT_DTD`/`IS_SUPPORTING_EXTERNAL_ENTITIES` set false anywhere in "
         "the same file"
     ),
+    cwe=("CWE-611",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html",),
 )

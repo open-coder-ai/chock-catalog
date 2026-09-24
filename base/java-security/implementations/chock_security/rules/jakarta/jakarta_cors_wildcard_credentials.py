@@ -117,4 +117,9 @@ RULE = Rule(
     ),
     refuses="a wildcard CORS origin **with** credentials enabled, in a non-Spring file",
     silent_on="a wildcard alone; a named origin; credentials without a wildcard; Spring code",
+    cwe=("CWE-942",),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html",
+    ),
 )

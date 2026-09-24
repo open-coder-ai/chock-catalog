@@ -48,4 +48,9 @@ RULE = Rule(
     ),
     refuses="Maven `checksumPolicy` set to `ignore`; Gradle dependency verification set to `off`",
     silent_on="`checksumPolicy` left at `fail` or set to `warn`; verification left at `strict`/`lenient`",
+    cwe=("CWE-353", "CWE-494"),
+    references=(
+        "https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Dependency_Graph_SBOM_Cheat_Sheet.html",
+    ),
 )

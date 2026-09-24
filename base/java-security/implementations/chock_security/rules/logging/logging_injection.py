@@ -42,4 +42,6 @@ RULE = Rule(
     ),
     refuses="a method body showing request data reaching a logger call through string concatenation",
     silent_on="the same value passed as a {} placeholder argument rather than concatenated; a constant message",
+    cwe=("CWE-117",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html",),
 )

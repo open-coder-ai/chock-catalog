@@ -67,4 +67,9 @@ RULE = Rule(
         "the same construction beside `.normalize()` and a `.startsWith()` check on the result; "
         "a `.toRealPath()` check; `.getName()` in a file that never opens an archive"
     ),
+    cwe=("CWE-22",),
+    references=(
+        "https://owasp.org/www-community/attacks/Path_Traversal",
+        "https://nvd.nist.gov/vuln/detail/CVE-2018-1002200",
+    ),
 )

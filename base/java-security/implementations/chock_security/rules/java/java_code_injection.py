@@ -58,4 +58,9 @@ RULE = Rule(
         "the same call over a constant expression; the engine's import with no request data "
         "reaching it; the same file with no scripting or EL import at all"
     ),
+    cwe=("CWE-95",),
+    references=(
+        "https://owasp.org/Top10/2021/A03_2021-Injection/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html",
+    ),
 )

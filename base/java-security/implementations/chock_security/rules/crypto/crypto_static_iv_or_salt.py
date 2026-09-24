@@ -97,4 +97,6 @@ RULE = Rule(
         "or from a fixed-size array the method never fills with SecureRandom.nextBytes"
     ),
     silent_on="the same array filled by SecureRandom.nextBytes(...) earlier in the method",
+    cwe=("CWE-329", "CWE-323", "CWE-760"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html",),
 )

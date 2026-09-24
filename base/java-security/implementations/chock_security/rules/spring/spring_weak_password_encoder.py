@@ -51,4 +51,6 @@ RULE = Rule(
     " outside test sources",
     silent_on="BCryptPasswordEncoder, Argon2PasswordEncoder, Pbkdf2PasswordEncoder, SCryptPasswordEncoder,"
     " DelegatingPasswordEncoder, a {bcrypt} literal, and test sources",
+    cwe=("CWE-256", "CWE-916"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html",),
 )

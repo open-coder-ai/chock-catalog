@@ -44,4 +44,6 @@ RULE = Rule(
         "a constant command; an argument array built entirely of constants; a value validated "
         "against an allowlist before the launch"
     ),
+    cwe=("CWE-78", "CWE-77"),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",),
 )

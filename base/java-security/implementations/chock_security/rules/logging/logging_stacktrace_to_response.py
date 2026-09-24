@@ -55,4 +55,6 @@ RULE = Rule(
         "e.getMessage()/e.getStackTrace()/ExceptionUtils.getStackTrace(e); a .body(...) built from either"
     ),
     silent_on="logging the exception server-side; a response body built from a fixed error message or an error code",
+    cwe=("CWE-209",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html",),
 )

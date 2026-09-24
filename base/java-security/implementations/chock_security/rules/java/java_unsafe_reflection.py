@@ -44,4 +44,9 @@ RULE = Rule(
         "a constant class or method name; a name checked against an allowlist before the call; "
         "reflection over a name the application computed itself"
     ),
+    cwe=("CWE-470",),
+    references=(
+        "https://owasp.org/Top10/2021/A08_2021-Software_and_Data_Integrity_Failures/",
+        "https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html",
+    ),
 )

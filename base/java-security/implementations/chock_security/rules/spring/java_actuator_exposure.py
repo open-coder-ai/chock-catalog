@@ -75,4 +75,6 @@ RULE = Rule(
     ),
     refuses="`exposure.include=*` in properties or YAML",
     silent_on="named endpoints; a wildcard `include:` outside actuator config",
+    cwe=("CWE-497",),
+    references=("https://docs.spring.io/spring-boot/reference/actuator/endpoints.html",),
 )

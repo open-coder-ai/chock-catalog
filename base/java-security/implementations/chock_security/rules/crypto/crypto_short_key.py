@@ -98,4 +98,6 @@ RULE = Rule(
     ),
     refuses="RSA/DSA/DH below 2048 bits, EC below 224 bits, AES below 128 bits, PBEKeySpec below 10000 iterations",
     silent_on="a literal size or iteration count at or above these floors; a size read from configuration rather than a literal",
+    cwe=("CWE-326",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html",),
 )

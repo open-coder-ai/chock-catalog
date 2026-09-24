@@ -45,4 +45,6 @@ RULE = Rule(
     ),
     refuses="@EnableWebSecurity(debug = true) and web.debug(true)",
     silent_on="@EnableWebSecurity() with no debug flag, and .debug(false)",
+    cwe=("CWE-489", "CWE-215"),
+    references=("https://owasp.org/Top10/2021/A05_2021-Security_Misconfiguration/",),
 )

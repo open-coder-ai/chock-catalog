@@ -62,4 +62,6 @@ RULE = Rule(
         "`?no_esc`, `<#noescape>`, `| raw` (Pebble), `{{{` / `{{&` (Mustache/Handlebars)"
     ),
     silent_on="the escaping sibling of each, and other `<% %>` forms",
+    cwe=("CWE-79",),
+    references=("https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",),
 )

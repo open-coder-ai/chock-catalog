@@ -43,4 +43,9 @@ RULE = Rule(
     ),
     refuses="parseExpression() where a method body shows request data reaching it",
     silent_on="a constant expression string; files that never mention SpEL's parser types",
+    cwe=("CWE-917",),
+    references=(
+        "https://nvd.nist.gov/vuln/detail/CVE-2022-22963",
+        "https://owasp.org/Top10/2021/A03_2021-Injection/",
+    ),
 )
