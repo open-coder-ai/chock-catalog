@@ -1,0 +1,66 @@
+- id: logging-01
+  category: trigger
+  prompt: A log4j2.properties file sets log4j2.formatMsgNoLookups=false.
+  expect: The commit is refused. This re-opens the message-lookup path Log4Shell used; the agent removes the setting.
+  execute:
+    files:
+      log4j2.properties: |
+        log4j2.formatMsgNoLookups=false
+    event: commit
+    expect: block
+
+- id: logging-02
+  category: negative_trigger
+  prompt: A log4j2.xml pattern layout uses a plain %d %m%n pattern with no lookups token.
+  expect: The commit proceeds silently. Nothing here reopens message lookups.
+  execute:
+    files:
+      log4j2.xml: |
+        <PatternLayout pattern="%d %m%n"/>
+    event: commit
+    expect: allow
+
+- id: logging-03
+  category: trigger
+  prompt: A login handler logs the user's password directly, log.info("login attempt for user {} with password {}", user, password).
+  expect: The commit is refused. The password itself lands in the log; the agent logs an identifier or masks the value.
+  execute:
+    files:
+      Login.java: |
+        log.info("login attempt for user {} with password {}", user, password);
+    event: commit
+    expect: block
+
+- id: logging-04
+  category: negative_trigger
+  prompt: A handler logs that a password reset was requested, naming only the user id, log.info("password reset requested for {}", userId).
+  expect: The commit proceeds silently. The word password only appears in the message text, and the value logged is just an id.
+  execute:
+    files:
+      Reset.java: |
+        log.info("password reset requested for {}", userId);
+    event: commit
+    expect: allow
+
+- id: logging-05
+  category: trigger
+  prompt: An error handler writes the exception's stack trace straight into the HTTP response, e.printStackTrace(response.getWriter()).
+  expect: The commit is refused. This discloses package layout and library versions to the caller; the agent logs server-side and returns a generic error.
+  execute:
+    files:
+      ErrorHandler.java: |
+        e.printStackTrace(response.getWriter());
+    event: commit
+    expect: block
+
+- id: logging-06
+  category: negative_trigger
+  prompt: An error handler logs the exception server-side and returns a fixed error message with a correlation id.
+  expect: The commit proceeds silently. The exception never reaches the response body.
+  execute:
+    files:
+      ErrorHandler.java: |
+        log.error("request failed", e);
+        return ResponseEntity.status(500).body("Internal error, ref " + correlationId);
+    event: commit
+    expect: allow

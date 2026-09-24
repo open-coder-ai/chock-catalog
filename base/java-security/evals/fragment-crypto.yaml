@@ -1,0 +1,86 @@
+- id: crypto-01
+  category: trigger
+  prompt: A Cipher is built with Cipher.getInstance("DES/CBC/PKCS5Padding").
+  expect: The commit is refused. DES is broken; the agent uses AES/GCM/NoPadding with a fresh SecureRandom nonce.
+  execute:
+    files:
+      Crypto.java: |
+        Cipher c = Cipher.getInstance("DES/CBC/PKCS5Padding");
+    event: commit
+    expect: block
+
+- id: crypto-02
+  category: negative_trigger
+  prompt: A Cipher is built with Cipher.getInstance("AES/GCM/NoPadding").
+  expect: The commit proceeds silently. This is the recommended transform.
+  execute:
+    files:
+      Crypto.java: |
+        Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
+    event: commit
+    expect: allow
+
+- id: crypto-03
+  category: trigger
+  prompt: A password is hashed with MessageDigest.getInstance("MD5").
+  expect: The commit is refused. MD5 is a fast general-purpose digest, not a password hash; the agent uses BCrypt/Argon2/PBKDF2/SCrypt.
+  execute:
+    files:
+      Auth.java: |
+        public byte[] hashPassword(String password) throws Exception {
+          MessageDigest md = MessageDigest.getInstance("MD5");
+          return md.digest(password.getBytes());
+        }
+    event: commit
+    expect: block
+
+- id: crypto-04
+  category: negative_trigger
+  prompt: A response body is checksummed with DigestUtils.md5Hex, and a real password hasher (BCrypt) is used elsewhere.
+  expect: The commit proceeds silently. No password is involved in the MD5 call, and BCrypt is the correct tool for the other.
+  execute:
+    files:
+      Cache.java: |
+        String etag = DigestUtils.md5Hex(responseBody);
+      Auth.java: |
+        String hash = BCrypt.hashpw(password, BCrypt.gensalt());
+    event: commit
+    expect: allow
+
+- id: crypto-05
+  category: trigger
+  prompt: A trust manager's checkServerTrusted and checkClientTrusted methods have empty bodies.
+  expect: The commit is refused. An empty trust check accepts every certificate for every host.
+  execute:
+    files:
+      TrustAll.java: |
+        class TrustAll implements X509TrustManager {
+          public void checkServerTrusted(X509Certificate[] c, String a) {
+          }
+          public void checkClientTrusted(X509Certificate[] c, String a) {}
+          public X509Certificate[] getAcceptedIssuers() { return null; }
+        }
+    event: commit
+    expect: block
+
+- id: crypto-06
+  category: trigger
+  prompt: A token is generated with new Random().nextInt() rather than SecureRandom.
+  expect: The commit is refused. java.util.Random is predictable and reconstructible; the agent uses SecureRandom for a token.
+  execute:
+    files:
+      Tokens.java: |
+        String token = new Random().nextInt() + "";
+    event: commit
+    expect: block
+
+- id: crypto-07
+  category: negative_trigger
+  prompt: new Random() is used to shuffle a deck of cards for a game.
+  expect: The commit proceeds silently. Shuffling a game deck does not need to resist prediction.
+  execute:
+    files:
+      Game.java: |
+        Collections.shuffle(deck, new Random());
+    event: commit
+    expect: allow
