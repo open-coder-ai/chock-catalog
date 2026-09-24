@@ -23,5 +23,129 @@
     "properties_key": "exposure.include",
     "yaml_key": "include:",
     "wildcard": "*"
+  },
+  "security_guard_tokens": [
+    "org.springframework.security",
+    "HttpSecurity",
+    "WebSecurity",
+    "@EnableWebSecurity"
+  ],
+  "csrf": {
+    "literal_disable": [
+      ".csrf().disable()",
+      "csrf(AbstractHttpConfigurer::disable)",
+      "csrf(CsrfConfigurer::disable)"
+    ],
+    "lambda_disable": "csrf\\s*\\(\\s*\\w+\\s*->\\s*\\w+\\.disable\\(\\)\\s*\\)",
+    "kotlin_open": "csrf\\s*\\{",
+    "kotlin_disable_token": "disable()"
+  },
+  "permit_all": {
+    "wildcard_path": "[\"']\\/\\*\\*[\"']",
+    "any_request_permit_all": "anyRequest\\s*\\(\\s*\\)\\s*\\.\\s*permitAll\\s*\\(\\s*\\)",
+    "matcher_calls": ["requestMatchers", "antMatchers", "mvcMatchers"],
+    "permit_all_call": ".permitAll()",
+    "kotlin_authorize_permit_all": "authorize\\s*\\(\\s*anyRequest\\s*,\\s*permitAll\\s*\\)",
+    "ignoring_call": "ignoring()"
+  },
+  "password_encoder": {
+    "weak_tokens": [
+      "NoOpPasswordEncoder",
+      "Md5PasswordEncoder",
+      "ShaPasswordEncoder",
+      "StandardPasswordEncoder",
+      "LdapShaPasswordEncoder",
+      "MessageDigestPasswordEncoder"
+    ],
+    "noop_literal": "{noop}",
+    "default_encoder_user": "User.withDefaultPasswordEncoder()"
+  },
+  "spel": {
+    "guard_tokens": ["SpelExpressionParser", "ExpressionParser"],
+    "sinks": ["parseExpression("]
+  },
+  "open_redirect": {
+    "guard_tokens": ["@Controller", "@RestController"],
+    "sinks": [
+      "\"redirect:\" +",
+      "new RedirectView(",
+      ".header(HttpHeaders.LOCATION",
+      "response.sendRedirect("
+    ],
+    "sanitizers": ["UriComponentsBuilder", ".getHost("]
+  },
+  "view_name": {
+    "sink": "return \"",
+    "response_body_window": 15
+  },
+  "secret_property": {
+    "suffixes": [
+      "password",
+      "secret",
+      "clientsecret",
+      "apikey",
+      "token",
+      "privatekey",
+      "credentials"
+    ],
+    "safe_value_prefixes": ["${", "{cipher}", "ENC(", "vault:", "sm://"]
+  },
+  "h2_console": {
+    "key": "spring.h2.console.settings.web-allow-others"
+  },
+  "error_details": {
+    "stacktrace_key": "server.error.include-stacktrace",
+    "stacktrace_values": ["always", "on_param"],
+    "exception_key": "server.error.include-exception"
+  },
+  "actuator_sensitive": {
+    "show_values_keys": [
+      "management.endpoint.env.show-values",
+      "management.endpoint.configprops.show-values"
+    ],
+    "show_values_bad": "always",
+    "exposure_include_key": "management.endpoints.web.exposure.include",
+    "sensitive_endpoints": ["heapdump", "env", "threaddump", "jolokia", "shutdown", "logfile"],
+    "shutdown_enabled_key": "management.endpoint.shutdown.enabled",
+    "shutdown_access_key": "management.endpoint.shutdown.access",
+    "shutdown_access_bad": "unrestricted"
+  },
+  "security_debug": {
+    "annotation": "@EnableWebSecurity",
+    "annotation_debug": "debug\\s*=\\s*true",
+    "web_debug_call": "\\.debug\\s*\\(\\s*true\\s*\\)"
+  },
+  "session_fixation": {
+    "literal": ".sessionFixation().none()",
+    "lambda": "sessionFixation\\s*\\(\\s*\\w+\\s*->\\s*\\w+\\.none\\(\\)\\s*\\)",
+    "kotlin_open": "sessionFixation\\s*\\{",
+    "kotlin_token": "none()"
+  },
+  "security_headers": {
+    "literal_disable": [
+      ".headers().disable()",
+      "headers(AbstractHttpConfigurer::disable)",
+      ".contentTypeOptions().disable()",
+      ".httpStrictTransportSecurity().disable()"
+    ],
+    "lambda_disable": [
+      "headers\\s*\\(\\s*\\w+\\s*->\\s*\\w+\\.disable\\(\\)\\s*\\)",
+      "frameOptions\\s*\\(\\s*\\w+\\s*->\\s*\\w+\\.disable\\(\\)\\s*\\)"
+    ],
+    "frame_options_disable": ".frameOptions().disable()"
+  },
+  "session_cookie": {
+    "properties_keys": [
+      "server.servlet.session.cookie.secure",
+      "server.servlet.session.cookie.http-only",
+      "server.reactive.session.cookie.secure",
+      "server.reactive.session.cookie.http-only"
+    ],
+    "response_cookie_open": "ResponseCookie.from(",
+    "insecure_calls": [".secure(false)", ".httpOnly(false)"],
+    "build_call": ".build()"
+  },
+  "devtools": {
+    "key": "spring.devtools.remote.secret"
   }
 }

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 CREDENTIALS = "config.setAllowCredentials(true);\n"
 
+_SECURITY_IMPORT = "import org.springframework.security.config.annotation.web.builders.HttpSecurity;\n"
+
 #: (rule id, path, text, lines)
 CASES: list[tuple[str, str, str, list[int]]] = [
     ('java-cors-wildcard-credentials', 'Cors.java',
@@ -38,8 +40,205 @@ CASES: list[tuple[str, str, str, list[int]]] = [
      'management:\n  endpoints:\n    web:\n      exposure:\n        include: health,info\n  other:\n    include: "*"\n', []),
     ('java-actuator-wildcard-exposure', 'application.properties',
      'server.port=8080\n', []),
+
+    # spring-csrf-disabled
+    ('spring-csrf-disabled', 'Sec.java',
+     _SECURITY_IMPORT + '.csrf().disable()\n', [2]),
+    ('spring-csrf-disabled', 'Sec.java',
+     _SECURITY_IMPORT + 'http.csrf(AbstractHttpConfigurer::disable);\n', [2]),
+    ('spring-csrf-disabled', 'Sec.java',
+     _SECURITY_IMPORT + 'http.csrf(csrf -> csrf.disable());\n', [2]),
+    ('spring-csrf-disabled', 'Sec.kt',
+     _SECURITY_IMPORT + 'csrf {\n    disable()\n}\n', [2]),
+    ('spring-csrf-disabled', 'Sec.java',
+     _SECURITY_IMPORT + 'http.csrf(csrf -> csrf.ignoringRequestMatchers("/webhooks/**"));\n', []),
+    ('spring-csrf-disabled', 'Plain.java',
+     '.csrf().disable()\n', []),
+
+    # spring-permit-all-catchall
+    ('spring-permit-all-catchall', 'Sec.java',
+     _SECURITY_IMPORT + 'http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());\n', [2]),
+    ('spring-permit-all-catchall', 'Sec.java',
+     _SECURITY_IMPORT + 'auth.requestMatchers("/**").permitAll();\n', [2]),
+    ('spring-permit-all-catchall', 'Sec.java',
+     _SECURITY_IMPORT + 'web.ignoring().requestMatchers("/**");\n', [2]),
+    ('spring-permit-all-catchall', 'Sec.java',
+     _SECURITY_IMPORT + 'auth.requestMatchers("/public/**").permitAll();\n', []),
+    ('spring-permit-all-catchall', 'Sec.java',
+     _SECURITY_IMPORT + 'auth.requestMatchers("/actuator/health").permitAll();\n', []),
+    ('spring-permit-all-catchall', 'Sec.java',
+     _SECURITY_IMPORT + 'auth.anyRequest().authenticated();\n', []),
+
+    # spring-weak-password-encoder
+    ('spring-weak-password-encoder', 'Enc.java',
+     'PasswordEncoder e = new NoOpPasswordEncoder();\n', [1]),
+    ('spring-weak-password-encoder', 'Enc.java',
+     'String p = "{noop}password123";\n', [1]),
+    ('spring-weak-password-encoder', 'Users.java',
+     'UserBuilder u = User.withDefaultPasswordEncoder();\n', [1]),
+    ('spring-weak-password-encoder', 'src/test/java/UsersTest.java',
+     'UserBuilder u = User.withDefaultPasswordEncoder();\n', []),
+    ('spring-weak-password-encoder', 'Enc.java',
+     'PasswordEncoder e = new BCryptPasswordEncoder();\n', []),
+    ('spring-weak-password-encoder', 'Enc.java',
+     'PasswordEncoder e = PasswordEncoderFactories.createDelegatingPasswordEncoder();\n', []),
+    ('spring-weak-password-encoder', 'Enc.java',
+     'String p = "{bcrypt}$2a$10$abc";\n', []),
+
+    # spring-plaintext-secret-property
+    ('spring-plaintext-secret-property', 'application.properties',
+     'spring.datasource.password=hunter2\n', [1]),
+    ('spring-plaintext-secret-property', 'application.yml',
+     'app:\n  client-secret: abc123\n', [2]),
+    ('spring-plaintext-secret-property', 'application.properties',
+     'spring.datasource.password=${DB_PASSWORD}\n', []),
+    ('spring-plaintext-secret-property', 'application.properties',
+     'spring.datasource.password={cipher}AQAbcdef\n', []),
+    ('spring-plaintext-secret-property', 'src/test/resources/application.properties',
+     'spring.datasource.password=hunter2\n', []),
+    ('spring-plaintext-secret-property', 'application.properties',
+     'server.port=8080\n', []),
+
+    # spring-h2-console-remote
+    ('spring-h2-console-remote', 'application.properties',
+     'spring.h2.console.settings.web-allow-others=true\n', [1]),
+    ('spring-h2-console-remote', 'application.properties',
+     'spring.h2.console.settings.web-allow-others=false\n', []),
+    ('spring-h2-console-remote', 'application.properties',
+     'server.port=8080\n', []),
+
+    # spring-error-details-exposed
+    ('spring-error-details-exposed', 'application.properties',
+     'server.error.include-stacktrace=always\n', [1]),
+    ('spring-error-details-exposed', 'application.properties',
+     'server.error.include-exception=true\n', [1]),
+    ('spring-error-details-exposed', 'application.properties',
+     'server.error.include-stacktrace=never\n', []),
+    ('spring-error-details-exposed', 'application.properties',
+     'server.error.include-exception=false\n', []),
+
+    # spring-actuator-sensitive-values
+    ('spring-actuator-sensitive-values', 'application.properties',
+     'management.endpoint.env.show-values=ALWAYS\n', [1]),
+    ('spring-actuator-sensitive-values', 'application.properties',
+     'management.endpoints.web.exposure.include=health,heapdump,info\n', [1]),
+    ('spring-actuator-sensitive-values', 'application.properties',
+     'management.endpoint.shutdown.enabled=true\n', [1]),
+    ('spring-actuator-sensitive-values', 'application.properties',
+     'management.endpoint.env.show-values=WHEN_AUTHORIZED\n', []),
+    ('spring-actuator-sensitive-values', 'application.properties',
+     'management.endpoints.web.exposure.include=health,info,metrics\n', []),
+    ('spring-actuator-sensitive-values', 'application.properties',
+     'management.endpoints.web.exposure.include=*\n', []),
+
+    # spring-security-debug
+    ('spring-security-debug', 'Sec.java',
+     _SECURITY_IMPORT + '@EnableWebSecurity(debug = true)\n', [2]),
+    ('spring-security-debug', 'Sec.java',
+     _SECURITY_IMPORT + 'web.debug(true);\n', [2]),
+    ('spring-security-debug', 'Sec.java',
+     _SECURITY_IMPORT + '@EnableWebSecurity\n', []),
+    ('spring-security-debug', 'Sec.java',
+     _SECURITY_IMPORT + 'web.debug(false);\n', []),
+
+    # spring-session-fixation-disabled
+    ('spring-session-fixation-disabled', 'Sec.java',
+     _SECURITY_IMPORT + '.sessionFixation().none()\n', [2]),
+    ('spring-session-fixation-disabled', 'Sec.java',
+     _SECURITY_IMPORT + 'sessionFixation(s -> s.none());\n', [2]),
+    ('spring-session-fixation-disabled', 'Sec.kt',
+     _SECURITY_IMPORT + 'sessionFixation { none() }\n', [2]),
+    ('spring-session-fixation-disabled', 'Sec.java',
+     _SECURITY_IMPORT + '.sessionFixation().migrateSession()\n', []),
+
+    # spring-security-headers-disabled
+    ('spring-security-headers-disabled', 'Sec.java',
+     _SECURITY_IMPORT + '.headers().disable()\n', [2]),
+    ('spring-security-headers-disabled', 'Sec.java',
+     _SECURITY_IMPORT + '.frameOptions().disable()\n', [2]),
+    ('spring-security-headers-disabled', 'Sec.java',
+     _SECURITY_IMPORT + 'headers(h -> h.disable());\n', [2]),
+    ('spring-security-headers-disabled', 'Sec.java',
+     _SECURITY_IMPORT + '.frameOptions().sameOrigin()\n', []),
+
+    # spring-insecure-session-cookie
+    ('spring-insecure-session-cookie', 'application.properties',
+     'server.servlet.session.cookie.secure=false\n', [1]),
+    ('spring-insecure-session-cookie', 'application.properties',
+     'server.servlet.session.cookie.http-only=false\n', [1]),
+    ('spring-insecure-session-cookie', 'Cookie.java',
+     'ResponseCookie cookie = ResponseCookie.from("SESSION", token)\n    .httpOnly(true)\n    .secure(false)\n    .build();\n',
+     [3]),
+    ('spring-insecure-session-cookie', 'application.properties',
+     'server.servlet.session.cookie.secure=true\n', []),
+    ('spring-insecure-session-cookie', 'Cookie.java',
+     'ResponseCookie cookie = ResponseCookie.from("SESSION", token)\n    .httpOnly(true)\n    .secure(true)\n    .build();\n',
+     []),
+
+    # spring-devtools-remote
+    ('spring-devtools-remote', 'application.properties',
+     'spring.devtools.remote.secret=change-me\n', [1]),
+    ('spring-devtools-remote', 'src/test/resources/application.properties',
+     'spring.devtools.remote.secret=change-me\n', []),
+    ('spring-devtools-remote', 'application.properties',
+     'server.port=8080\n', []),
+    ("spring-plaintext-secret-property", "src/main/resources/application.properties",
+     "app.security.token=true\napp.jwt.secret=3600\napp.token=abc123def456\n", [3]),
 ]
+
+_SPEL_GUARD = "import org.springframework.expression.spel.standard.SpelExpressionParser;\n"
 
 #: (label, path, text, expected rule ids, rule ids this case is about)
 FLOW_CASES: list[tuple[str, str, str, set[str], set[str]]] = [
+    ("spel: parsed expression from a request parameter", "Eval.java",
+     _SPEL_GUARD + (
+         "public class Eval {\n"
+         "  public String eval(@RequestParam String expr) {\n"
+         "    SpelExpressionParser parser = new SpelExpressionParser();\n"
+         "    return parser.parseExpression(expr).getValue(String.class);\n"
+         "  }\n}\n"
+     ), {"spring-spel-injection"}, {"spring-spel-injection"}),
+    ("spel: a constant expression string", "Eval.java",
+     _SPEL_GUARD + (
+         "public class Eval {\n"
+         "  public String eval() {\n"
+         "    SpelExpressionParser parser = new SpelExpressionParser();\n"
+         "    return parser.parseExpression(\"1 + 1\").getValue(String.class);\n"
+         "  }\n}\n"
+     ), set(), {"spring-spel-injection"}),
+    ("open-redirect: redirect: prefix built from a request parameter", "Go.java",
+     (
+         "@Controller\n"
+         "public class Go {\n"
+         "  public String go(@RequestParam String url) {\n"
+         "    return \"redirect:\" + url;\n"
+         "  }\n}\n"
+     ), {"spring-open-redirect"}, {"spring-open-redirect"}),
+    ("open-redirect: target resolved through an allowlist lookup", "Go.java",
+     (
+         "@Controller\n"
+         "public class Go {\n"
+         "  public String go(@RequestParam String url) {\n"
+         "    String target = allowlist.get(url);\n"
+         "    return \"redirect:\" + target;\n"
+         "  }\n}\n"
+     ), set(), {"spring-open-redirect"}),
+    ("view-name: request parameter concatenated into a returned view name", "User.java",
+     (
+         "@Controller\n"
+         "public class User {\n"
+         "  @GetMapping(\"/user\")\n"
+         "  public String user(@RequestParam String lang) {\n"
+         "    return \"user/\" + lang;\n"
+         "  }\n}\n"
+     ), {"spring-view-name-injection"}, {"spring-view-name-injection"}),
+    ("view-name: the same concatenation, but in a @RestController", "User.java",
+     (
+         "@RestController\n"
+         "public class User {\n"
+         "  @GetMapping(\"/user\")\n"
+         "  public String user(@RequestParam String lang) {\n"
+         "    return \"user/\" + lang;\n"
+         "  }\n}\n"
+     ), set(), {"spring-view-name-injection"}),
 ]
