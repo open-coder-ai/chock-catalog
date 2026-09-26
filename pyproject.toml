@@ -61,7 +61,7 @@ max-statements = 50
 "base/*/implementations/*.py" = ["T201"]
 # Command-line tools report to the terminal, and run git, chock and python by name on purpose.
 "tools/*.py" = ["T201", "S603", "S607"]
-"agent-tests/*/kit.py" = ["T201", "S603", "S607"]
+"agent-tests/*/*.py" = ["T201", "S603", "S607"]
 # TODO(lint-adoption): baseline debt in code that predates this configuration, listed per file and
 # rule family exactly as `ruff check` finds it today -- deferred the way the framework deferred its
 # own rather than rewritten under an unrelated change. Shrink these lists; never grow them. Code this
