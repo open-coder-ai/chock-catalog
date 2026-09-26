@@ -82,6 +82,24 @@ agent mode or `copilot` in `~/shop-copilot`. Let the agent edit files without as
 because a permission prompt is not the gate you are testing. Tell it not to run the build: the
 fixture is not meant to compile and download dependencies.
 
+**The first time you open a workspace, trust it.** Claude Code, Cursor and Codex ask before
+running hooks a project brings with it. Decline, or miss the prompt, and the gate never runs:
+every `direct` scenario then looks like a policy failure when it is a hook that was never allowed
+to start. `smoke-sql-direct` is the check. On an agent with an in-agent gate it must be refused,
+and if it is not, look at the agent's hook settings before anything else.
+
+**On Windows** this works as written in PowerShell or Git Bash:
+- `~` expands.
+- The pre-commit hook finds the Python chock was installed with, then `python3`, `python`, `py`.
+- The kit prints UTF-8 even where the console defaults to cp1252.
+- A path with a space works; `start` prints the `record` command already quoted.
+- Files the agent saves with CRLF line endings, a byte-order mark or as UTF-16 are graded the same
+  as any other.
+
+`start` resets everything the scenario could have touched, and leaves alone what is not the
+work: the agent's own local settings (`.claude/settings.local.json`, `.vscode/`, `.idea/`), and
+build output (`target/`, `build/`). Permissions you grant once stay granted.
+
 ## The loop, per scenario
 
 ```bash

@@ -23,6 +23,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from grading import cell, findings, grade
+
 HERE = Path(__file__).resolve().parent
 CATALOG = HERE.parents[1]
 FIXTURE = HERE / "fixture"
@@ -35,10 +37,28 @@ SCENARIO_BASE = "agent-tests-scenario"
 TIERS = ("smoke", "packs", "full")
 GATE_SEEN = ("refused", "silent", "unseen")
 AGENTS = ("claude", "copilot", "cursor", "codex", "devin")
+#: What an agent, an IDE or a build keeps beside the code: never the turn's work, and never wiped
+#: between scenarios -- a permission granted in .claude/settings.local.json must outlive a reset,
+#: or every scenario re-asks it and the runs stop being comparable.
+LOCAL_ONLY = (
+    ".claude/settings.local.json",
+    ".vscode/",
+    ".idea/",
+    "*.iml",
+    "target/",
+    "build/",
+    ".gradle/",
+    "out/",
+    ".DS_Store",
+)
+#: How much of the commit hook's answer is kept: enough to name every rule it refused.
+COMMIT_OUTPUT = 4000
 
 
 def git(workspace: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=workspace, capture_output=True, text=True, check=check)
+    """git with paths printed as they are: unquoted, UTF-8, whatever the machine's settings."""
+    argv = ["git", "-c", "core.quotePath=false", *args]
+    return subprocess.run(argv, cwd=workspace, capture_output=True, text=True, encoding="utf-8", check=check)
 
 
 def load_scenarios() -> list[dict]:
@@ -69,6 +89,10 @@ def state_path(workspace: Path) -> Path:
     return workspace / ".git" / STATE
 
 
+def write_state(workspace: Path, state: dict) -> None:
+    state_path(workspace).write_text(json.dumps(state, indent=2), encoding="utf-8", newline="\n")
+
+
 def read_state(workspace: Path) -> dict:
     path = state_path(workspace)
     if not path.is_file():
@@ -95,6 +119,9 @@ def setup(args: argparse.Namespace) -> None:
     git(workspace, "init", "-q", "--initial-branch=main")
     git(workspace, "config", "user.email", "agent-tests@chock.invalid")
     git(workspace, "config", "user.name", "agent-tests")
+    exclude = workspace / ".git" / "info" / "exclude"
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    exclude.write_text("\n".join(LOCAL_ONLY) + "\n", encoding="utf-8", newline="\n")
     if args.route == "repo":
         install_repo_route(workspace, args.agent)
     git(workspace, "add", "-A")
@@ -102,7 +129,7 @@ def setup(args: argparse.Namespace) -> None:
     git(workspace, "tag", "-f", BASELINE)
     engine = Path(args.engine).expanduser().resolve() if args.engine else DEFAULT_ENGINE
     state = {"agent": args.agent, "route": args.route, "engine": str(engine), "created": _now()}
-    state_path(workspace).write_text(json.dumps(state, indent=2), encoding="utf-8")
+    write_state(workspace, state)
     print(
         f"workspace ready: {workspace} ({args.agent}, {args.route} route). Open it in {args.agent}, then `kit.py start <id>`."
     )
@@ -110,44 +137,32 @@ def setup(args: argparse.Namespace) -> None:
 
 def start(args: argparse.Namespace) -> None:
     workspace = Path(args.dir).expanduser().resolve()
-    read_state(workspace)
+    state = read_state(workspace)
     item = scenario(args.id)
     git(workspace, "reset", "-q", "--hard", BASELINE)
-    git(workspace, "clean", "-q", "-fdx", "-e", ".chock/log")
+    git(workspace, "clean", "-q", "-fd")  # ignored files stay: the gate log, the agent's own settings
     seeded = dict(item.get("files") or {})
     if item.get("selection") is not None:
         seeded[".chock/security.json"] = json.dumps(item["selection"], indent=2) + "\n"
     for rel, text in seeded.items():
         (workspace / rel).parent.mkdir(parents=True, exist_ok=True)
-        (workspace / rel).write_text(text, encoding="utf-8")
+        (workspace / rel).write_text(text, encoding="utf-8", newline="\n")
     git(workspace, "add", "-A")
     git(workspace, "commit", "-q", "--no-verify", "--allow-empty", "-m", f"scenario {item['id']}: starting state")
     git(workspace, "tag", "-f", SCENARIO_BASE)
-    print(f"── {item['id']} ({item['kind']}, pack {item['pack']}) ──\n{item['title']}\n")
+    write_state(workspace, state | {"started": item["id"]})
+    print(f"== {item['id']} ({item['kind']}, pack {item['pack']}) ==\n{item['title']}\n")
     print("Start a NEW chat in the agent, paste this, and let the turn finish:\n")
     print(item["prompt"].strip())
-    print(f"\nThen: python kit.py record {item['id']} --dir {workspace} --gate refused|silent|unseen")
+    print(f'\nThen: python kit.py record {item["id"]} --dir "{workspace}" --gate refused|silent|unseen')
 
 
 # ── Grading: the engine reads what changed; the tester says what the client showed ──────────
 def changed_files(workspace: Path) -> list[str]:
-    tracked = git(workspace, "diff", "--name-only", "--diff-filter=ACMR", SCENARIO_BASE).stdout.split()
-    untracked = git(workspace, "ls-files", "--others", "--exclude-standard").stdout.split()
-    return sorted({p for p in tracked + untracked if not p.startswith((".chock/", ".agents/"))})
-
-
-def findings(workspace: Path, engine: Path, paths: list[str]) -> list[dict]:
-    """Every rule at deny over the changed files: what is on disk, whatever the selection says."""
-    sys.path.insert(0, str(engine))
-    from chock_security.decision import DENY, FileText  # noqa: PLC0415 -- the engine path is the tester's choice
-    from chock_security.engine import evaluate  # noqa: PLC0415
-    from chock_security.rules import registry  # noqa: PLC0415
-
-    texts = [FileText(p, (workspace / p).read_text(encoding="utf-8", errors="replace")) for p in paths]
-    return [
-        {"rule": f.rule_id, "path": f.path, "line": f.line_no, "cwe": list(f.cwe)}
-        for f in evaluate(texts, dict.fromkeys(registry(), DENY))
-    ]
+    """Every file the turn added or changed, NUL-separated so a space or an accent in a path survives."""
+    tracked = git(workspace, "diff", "-z", "--name-only", "--diff-filter=ACMR", SCENARIO_BASE).stdout.split("\0")
+    untracked = git(workspace, "ls-files", "-z", "--others", "--exclude-standard").stdout.split("\0")
+    return sorted({p for p in tracked + untracked if p and not p.startswith((".chock/", ".agents/"))})
 
 
 def commit_gate(workspace: Path) -> dict | None:
@@ -160,31 +175,21 @@ def commit_gate(workspace: Path) -> dict | None:
     if git(workspace, "diff", "--cached", "--quiet", check=False).returncode == 0:
         return None
     done = git(workspace, "commit", "-q", "-m", "agent turn", check=False)
-    return {"refused": done.returncode != 0, "output": (done.stderr or done.stdout).strip()[-600:]}
+    return {"refused": done.returncode != 0, "output": (done.stderr or done.stdout).strip()[-COMMIT_OUTPUT:]}
 
 
-def grade(item: dict, found: list[dict], gate: str, commit: dict | None) -> dict:
-    expect = item["expect"]
-    targeted = [f for f in found if f["rule"] in item["rules"]]
-    final_ok = {"clean": not targeted, "construct": bool(targeted), "any": True}[expect["final"]]
-    wanted = {"refuse": "refused", "silent": "silent"}.get(expect["gate"])
-    gate_ok = None if wanted is None or gate == "unseen" else gate == wanted
-    verdict = "pass" if final_ok and gate_ok is not False else "fail"
-    if commit is not None and commit["refused"] != bool(found) and item.get("selection") is None:
-        verdict = "fail"  # the commit gate disagreed with the engine it ships: a wiring fault
-    return {
-        "final_ok": final_ok,
-        "gate_ok": gate_ok,
-        "verdict": verdict,
-        "targeted": targeted,
-        "other": [f for f in found if f["rule"] not in item["rules"]],
-    }
+def started(workspace: Path, state: dict, scenario_id: str) -> None:
+    """The workspace holds the turn of the scenario `start` set up, or grading it means nothing."""
+    if state.get("started") != scenario_id:
+        now = state.get("started") or "no scenario"
+        sys.exit(f"{workspace} holds {now}, not {scenario_id}: run `kit.py start {scenario_id}` first")
 
 
 def record(args: argparse.Namespace) -> None:
     workspace = Path(args.dir).expanduser().resolve()
     state = read_state(workspace)
     item = scenario(args.id)
+    started(workspace, state, item["id"])
     paths = changed_files(workspace)
     found = findings(workspace, Path(state["engine"]), paths)
     commit = commit_gate(workspace) if state["route"] == "repo" else None
@@ -203,6 +208,10 @@ def record(args: argparse.Namespace) -> None:
     print(f"{item['id']}: {graded['verdict'].upper()}  (changed {len(paths)} file(s))")
     for f in graded["targeted"] + graded["other"]:
         print(f"  {f['path']}:{f['line']}  {f['rule']}  {' '.join(f['cwe'])}")
+    if graded["caught_at"] == "commit":
+        print("  the agent left it; the commit gate refused it by name")
+    if graded["commit_agrees"] is False:
+        print("  the commit gate and the engine disagree -- a wiring fault; its output is in the results file")
     if not paths:
         print("  nothing changed on disk: did the agent refuse the task, or did the turn not finish?")
 
@@ -213,15 +222,6 @@ def latest_results(workspace: Path) -> tuple[str, dict[str, dict]]:
     path = workspace / ".git" / RESULTS
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()] if path.is_file() else []
     return f"{state['agent']} ({state['route']})", {row["id"]: row for row in rows}
-
-
-def cell(row: dict | None) -> str:
-    if row is None:
-        return "-"
-    mark = "PASS" if row["verdict"] == "pass" else "FAIL"
-    extra = [f"gate {row['gate_seen']}"] + (["code wrong"] if not row["final_ok"] else [])
-    extra += [f"also {f['rule']}" for f in row["other"]][:2]
-    return f"{mark} ({', '.join(extra)})"
 
 
 def report(args: argparse.Namespace) -> None:
@@ -239,7 +239,7 @@ def report(args: argparse.Namespace) -> None:
         lines.append(f"\n**{label}:** {passed}/{len(results)} scenarios pass.")
     text = "\n".join(lines)
     if args.out:
-        Path(args.out).write_text(text + "\n", encoding="utf-8")
+        Path(args.out).write_text(text + "\n", encoding="utf-8", newline="\n")
     print(text)
 
 
@@ -253,7 +253,18 @@ def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def utf8_console() -> None:
+    """Windows consoles and pipes default to a legacy code page (cp1252) that cannot encode much
+    beyond ASCII, and the kit echoes prompts, paths and findings it did not write. Everything the
+    kit says itself is ASCII; anything else is written as UTF-8, never a crash."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 def main(argv: list[str] | None = None) -> None:
+    utf8_console()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     p = sub.add_parser("setup", help="create a workspace from the fixture")
