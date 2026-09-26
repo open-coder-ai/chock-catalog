@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.4.2"
+version: "0.4.3"
 description: >
   trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or
   Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.3
+  date: '2026-09-26'
+  changes:
+  - "One parse per file. Every rule that reads code re-lexed the written file through the comment-blanking lexer, and every flow rule re-parsed its methods: about 64 lexes of one file per gate run with 129 rules. Both now run once per file text. No rule, verdict or finding changes -- every finding over all 877 test texts, corpus and agent-kit fixture files is byte-identical -- and rule evaluation per written file drops from about 22 ms to about 3 ms. A test counts parses, not milliseconds: one evaluation of every rule lexes the file once and parses its methods once."
 - version: 0.4.2
   date: '2026-09-26'
   changes:

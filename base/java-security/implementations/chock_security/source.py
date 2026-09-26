@@ -9,7 +9,14 @@ around blanks: `"a == b"` reads as `"      "`. Columns are preserved too.
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from chock_security.decision import FileText
+
+#: One gate run reads each written file through dozens of rules, and the flow model blanks each body
+#: line it tests. Lexing is pure -- the same text always blanks the same way -- so it runs once per
+#: distinct text. Bounded, so a long test session or a large commit cannot grow it without limit.
+_CACHE_SIZE = 4096
 
 _CODE, _LINE_COMMENT, _BLOCK_COMMENT, _STRING, _TEXT_BLOCK, _CHAR = range(6)
 
@@ -68,8 +75,11 @@ def _step(text: str, i: int, state: int) -> tuple[str, int, int]:
     return step(text, i) if step is not None else _in_literal(text, i, state)
 
 
+@lru_cache(maxsize=_CACHE_SIZE)
 def blank(text: str) -> str:
-    """`text` with comments and literal contents blanked, newlines and columns kept."""
+    """`text` with comments and literal contents blanked, newlines and columns kept.
+
+    Cached: a pure function of its argument, and the hottest call in the engine."""
     out: list[str] = []
     i, state = 0, _CODE
     while i < len(text):
@@ -79,6 +89,13 @@ def blank(text: str) -> str:
     return "".join(out)
 
 
+@lru_cache(maxsize=_CACHE_SIZE)
+def _code_lines(text: str) -> tuple[str, ...]:
+    return tuple(blank(text).splitlines())
+
+
 def code(text: FileText) -> list[str]:
-    """The file's lines as code: `text.lines[n]` and `code(text)[n]` are the same line."""
-    return blank(text.text).splitlines()
+    """The file's lines as code: `text.lines[n]` and `code(text)[n]` are the same line.
+
+    A fresh list each call, over a cached parse, so no rule can change what the next one reads."""
+    return list(_code_lines(text.text))
