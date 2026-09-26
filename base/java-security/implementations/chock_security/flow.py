@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
+from functools import lru_cache
 
 from chock_security.decision import FileText
 from chock_security.pack import facts
@@ -116,8 +117,20 @@ def _body(lines: list[str], after: int) -> tuple[tuple[tuple[int, str], ...], in
 
 
 def methods(text: FileText) -> list[Method]:
-    """Every method in this file that has a body. Anything unclear is left out, never guessed."""
-    lines = list(text.lines)
+    """Every method in this file that has a body. Anything unclear is left out, never guessed.
+
+    A fresh list each call over one cached parse: two dozen rules walk the same file's methods,
+    and a Method is frozen, so sharing them cannot let one rule change what another reads."""
+    return list(_methods(text.text))
+
+
+#: Distinct file texts one run keeps parsed; a gate run sees a handful, a test session a few thousand.
+_METHOD_CACHE_SIZE = 1024
+
+
+@lru_cache(maxsize=_METHOD_CACHE_SIZE)
+def _methods(text: str) -> tuple[Method, ...]:
+    lines = text.splitlines()
     found: list[Method] = []
     offset = 0
     while offset < len(lines):
@@ -128,7 +141,7 @@ def methods(text: FileText) -> list[Method]:
             found.append(Method(name, signature[0], block[0]))
             offset = block[1]
         offset += 1
-    return found
+    return tuple(found)
 
 
 def _mentions(line: str, names: set[str]) -> bool:
