@@ -21,3 +21,9 @@ __pycache__/
 
 # Local gate-outcome evidence log (written by the PreToolUse gate at run time)
 .chock/log/
+# chock: the gate runtime and compiled gates are what every hook runs -- tracked even where
+# a global rule (a `bin/` from a Visual Studio or Java template) would ignore them
+!.chock/bin/
+!.chock/bin/**
+!.chock/compiled/
+!.chock/compiled/**
