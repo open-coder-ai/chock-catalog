@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import shutil
 from pathlib import Path
@@ -118,3 +119,23 @@ def test_work_the_agent_already_committed_is_not_read_as_a_refusal(tmp_path: Pat
     [row] = _results(workspace)
     assert row["commit"] is None
     assert row["verdict"] == "pass"
+
+
+def test_a_legacy_windows_console_does_not_crash_the_kit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """cp1252 is what Python gives stdout on a Windows console or pipe: it cannot encode `─`, and
+    `start` once crashed on its own header after the workspace was already reset."""
+    raw = io.BytesIO()
+    monkeypatch.setattr("sys.stdout", io.TextIOWrapper(raw, encoding="cp1252", write_through=True))
+    workspace = _workspace(tmp_path)
+    kit.main(["start", "smoke-sql-direct", "--dir", str(workspace)])
+    kit.main(["list", "--tier", "smoke"])
+    printed = raw.getvalue().decode("utf-8")
+    assert "== smoke-sql-direct (direct, pack persistence) ==" in printed
+
+
+def test_everything_the_kit_prints_itself_is_ascii() -> None:
+    source = Path(kit.__file__).read_text(encoding="utf-8")
+    printed = [line for line in source.splitlines() if "print(" in line]
+    assert [line for line in printed if not line.isascii()] == []
+    for path in kit.SCENARIOS.glob("*.yaml"):
+        assert path.read_text(encoding="utf-8").isascii(), f"{path.name} would not print on a legacy console"
