@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 from pathlib import Path
 
 import doctor
@@ -40,7 +41,8 @@ def test_a_wired_claude_workspace_passes_every_check(tmp_path: Path, capsys) -> 
     kit.main(["doctor", "--dir", str(workspace)])
     out = capsys.readouterr().out
     assert "FAIL" not in out
-    assert "denies the construct, allows the fix" in out
+    assert "denies the construct, allows the fix (Write)" in out
+    assert "denies the construct, allows the fix (Edit)" in out
     assert git(workspace, "status", "--porcelain").stdout == ""  # the probes leave the tree as they found it
 
 
@@ -94,3 +96,33 @@ def test_an_agent_that_declines_is_not_a_gate_failure_nor_gate_evidence() -> Non
     assert "agent declined, gate not exercised" in grading.cell({**graded, "gate_seen": "silent"})
     wrote_it = [{"rule": "persistence-sql-string-concat", "path": "R.java", "line": 3, "cwe": []}]
     assert grading.grade(item, wrote_it, "silent", None)["verdict"] == "fail"
+
+
+#: A hook that judges only what the call carries, as chock before 0.11.4 did: a Write's whole
+#: file, and an Edit's bare fragment -- which has no imports, so the SQL rule never matched it.
+FRAGMENT_JUDGE = """
+import json, os, sys
+event = json.load(sys.stdin)
+ti = event["tool_input"]
+text = ti.get("content", ti.get("new_string", ""))
+seen = {"tool": event["tool_name"], "on_disk": os.path.exists(ti["file_path"]), "old": ti.get("old_string")}
+with open(os.environ["SEEN"], "a", encoding="utf-8") as out:
+    out.write(json.dumps(seen) + "\\n")
+denied = "import org.springframework" in text and '+ customer +' in text
+print(json.dumps({"hookSpecificOutput": {"permissionDecision": "deny"}}) if denied else "")
+"""
+
+
+def test_an_edit_the_hook_lets_through_is_caught(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The second Windows run: Claude changed OrderRepository with Edit, and nothing refused it
+    until Stop. The Write probe alone passed; the Edit probe is what tells the two apart."""
+    hook = tmp_path / "hook.py"
+    hook.write_text(FRAGMENT_JUDGE, encoding="utf-8")
+    seen = tmp_path / "seen.jsonl"
+    monkeypatch.setenv("SEEN", str(seen))
+    argv = [sys.executable, str(hook)]
+    assert doctor.claude_decides(tmp_path, argv, doctor.BAD, "Write") == "deny"
+    assert doctor.claude_decides(tmp_path, argv, doctor.BAD, "Edit") == "allow"
+    calls = [json.loads(line) for line in seen.read_text(encoding="utf-8").splitlines()]
+    assert calls[1] == {"tool": "Edit", "on_disk": True, "old": doctor.PLACEHOLDER}, "an edit needs a file to edit"
+    assert not (tmp_path / doctor.PROBE).exists(), "the probe file is removed again"

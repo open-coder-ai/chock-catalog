@@ -7,7 +7,9 @@ checks what the agent will execute, with no agent in the loop:
 
 1. every file an agent hook command names exists in the workspace;
 2. Claude Code: the PreToolUse command from `.claude/settings.json`, run exactly as Claude Code
-   runs it, denies a write of the construct and allows its correct form;
+   runs it, denies a write of the construct and allows its correct form -- as a new file (Write)
+   and as an edit to one already there (Edit), which is how Claude changes existing code and
+   which chock before 0.11.4 judged as the bare fragment, letting it through;
 3. repo route: the pre-commit hook refuses a commit of the construct and takes its correct form.
 """
 
@@ -34,6 +36,8 @@ PROBE = "src/main/java/com/acme/shop/order/DoctorProbe.java"
 _QUERY = 'jdbc.query("SELECT * FROM orders WHERE customer = {}", ROWS{});'
 BAD = _QUERY.format("'\" + customer + \"'", "")
 GOOD = _QUERY.format("?", ", customer")
+#: What the Edit probe replaces: a file already on disk, as Claude finds existing code.
+PLACEHOLDER = "return;"
 _REFERENCED = re.compile(r"""["']?((?:\$\{?\w+\}?[/\\]|\.)?[\w./\\-]+\.(?:py|json|sh|ps1))["']?""")
 
 
@@ -87,17 +91,31 @@ def claude_pre_tool_use(workspace: Path) -> list[str] | None:
     return None
 
 
-def claude_decides(workspace: Path, argv: list[str], line: str) -> str:
-    """What Claude Code's own PreToolUse hook answers for a Write of `line`: deny, or allow."""
+def claude_decides(workspace: Path, argv: list[str], line: str, tool: str = "Write") -> str:
+    """What Claude Code's own PreToolUse hook answers for a `tool` call putting `line` in: deny, or allow.
+
+    A Write carries the whole new file. An Edit carries only the text it replaces and puts in,
+    so the file it edits is laid on disk first, as Claude would find it, and removed after.
+    """
+    target = workspace / PROBE
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if tool == "Edit":
+        target.write_text(probe_source(PLACEHOLDER), encoding="utf-8", newline="\n")
+        tool_input = {"file_path": str(target), "old_string": PLACEHOLDER, "new_string": line}
+    else:
+        tool_input = {"file_path": str(target), "content": probe_source(line)}
     payload = {
         "hook_event_name": "PreToolUse",
         "session_id": "kit-doctor",
         "cwd": str(workspace),
-        "tool_name": "Write",
-        "tool_input": {"file_path": str(workspace / PROBE), "content": probe_source(line)},
+        "tool_name": tool,
+        "tool_input": tool_input,
     }
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(workspace)}
-    done = subprocess.run(argv, input=json.dumps(payload), capture_output=True, text=True, env=env, check=False)
+    try:
+        done = subprocess.run(argv, input=json.dumps(payload), capture_output=True, text=True, env=env, check=False)
+    finally:
+        target.unlink(missing_ok=True)
     denied = done.returncode == 2 or '"permissionDecision": "deny"' in done.stdout  # noqa: PLR2004 -- Claude's block exit
     return "deny" if denied else "allow"
 
@@ -129,14 +147,18 @@ def checks(workspace: Path, state: dict, git: Callable) -> list[tuple[str, bool,
         argv = claude_pre_tool_use(workspace)
         results.append(("Claude Code has a java-security PreToolUse hook", argv is not None, "run `chock sync`"))
         if argv is not None:
-            verdicts = (claude_decides(workspace, argv, BAD), claude_decides(workspace, argv, GOOD))
-            results.append(
-                (
-                    "Claude Code's hook denies the construct, allows the fix",
-                    verdicts == ("deny", "allow"),
-                    str(verdicts),
+            for tool, fix in (
+                ("Write", ""),
+                ("Edit", "; an edit let through is chock before 0.11.4: upgrade it and run setup again"),
+            ):
+                verdicts = (claude_decides(workspace, argv, BAD, tool), claude_decides(workspace, argv, GOOD, tool))
+                results.append(
+                    (
+                        f"Claude Code's hook denies the construct, allows the fix ({tool})",
+                        verdicts == ("deny", "allow"),
+                        f"{verdicts}{fix}",
+                    )
                 )
-            )
     verdicts = (commit_decides(workspace, git, BAD), commit_decides(workspace, git, GOOD))
     hint = f"{verdicts}: the pre-commit hook is not running the gate; check .git/hooks/pre-commit"
     results.append(("the commit gate refuses the construct, takes the fix", verdicts == ("deny", "allow"), hint))
