@@ -23,42 +23,38 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import doctor
 from grading import cell, findings, grade
+from workspace import (
+    BASELINE,
+    LOCAL_ONLY,
+    RESULTS,
+    SCENARIO_BASE,
+    changed_files,
+    commit_gate,
+    git,
+    read_state,
+    write_state,
+)
 
 HERE = Path(__file__).resolve().parent
 CATALOG = HERE.parents[1]
 FIXTURE = HERE / "fixture"
 SCENARIOS = HERE / "scenarios"
 DEFAULT_ENGINE = CATALOG / "base" / "java-security" / "implementations"
-STATE = "agent-tests.json"
-RESULTS = "agent-tests-results.jsonl"
-BASELINE = "agent-tests-baseline"
-SCENARIO_BASE = "agent-tests-scenario"
 TIERS = ("smoke", "packs", "full")
 GATE_SEEN = ("refused", "silent", "unseen")
-AGENTS = ("claude", "copilot", "cursor", "codex", "devin")
-#: What an agent, an IDE or a build keeps beside the code: never the turn's work, and never wiped
-#: between scenarios -- a permission granted in .claude/settings.local.json must outlive a reset,
-#: or every scenario re-asks it and the runs stop being comparable.
-LOCAL_ONLY = (
-    ".claude/settings.local.json",
-    ".vscode/",
-    ".idea/",
-    "*.iml",
-    "target/",
-    "build/",
-    ".gradle/",
-    "out/",
-    ".DS_Store",
+AGENTS = tuple(doctor.HOOK_CONFIGS)
+#: What `chock init` and `chock sync` write for the gate and the agents' hooks: always committed.
+GENERATED = (
+    ".chock/bin",
+    ".chock/compiled",
+    ".chock/registry.json",
+    ".claude/settings.json",
+    ".cursor",
+    ".codex",
+    ".devin",
 )
-#: How much of the commit hook's answer is kept: enough to name every rule it refused.
-COMMIT_OUTPUT = 4000
-
-
-def git(workspace: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
-    """git with paths printed as they are: unquoted, UTF-8, whatever the machine's settings."""
-    argv = ["git", "-c", "core.quotePath=false", *args]
-    return subprocess.run(argv, cwd=workspace, capture_output=True, text=True, encoding="utf-8", check=check)
 
 
 def load_scenarios() -> list[dict]:
@@ -85,21 +81,6 @@ def in_tier(item: dict, tier: str) -> bool:
 
 
 # ── The workspace: a git repository the agent works in, and the state the kit keeps in .git ──
-def state_path(workspace: Path) -> Path:
-    return workspace / ".git" / STATE
-
-
-def write_state(workspace: Path, state: dict) -> None:
-    state_path(workspace).write_text(json.dumps(state, indent=2), encoding="utf-8", newline="\n")
-
-
-def read_state(workspace: Path) -> dict:
-    path = state_path(workspace)
-    if not path.is_file():
-        sys.exit(f"{workspace} is not a kit workspace; run `python kit.py setup --dir {workspace}` first")
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
 def install_repo_route(workspace: Path, agent: str) -> None:
     """chock in the repository: the ambient rule, the agent's own hooks where it has them, and the
     gate at every commit -- whatever `chock sync` wires for this agent, which it prints."""
@@ -125,6 +106,11 @@ def setup(args: argparse.Namespace) -> None:
     if args.route == "repo":
         install_repo_route(workspace, args.agent)
     git(workspace, "add", "-A")
+    # chock's own files are the gate: a global ignore (a `bin/` rule is common on Windows) must not
+    # keep .chock/bin/ out of the baseline, where the first reset would lose it.
+    generated = [p for p in GENERATED if (workspace / p).exists()]
+    if generated:
+        git(workspace, "add", "--force", "--", *generated)
     git(workspace, "commit", "-q", "--no-verify", "-m", "baseline: acme-shop")
     git(workspace, "tag", "-f", BASELINE)
     engine = Path(args.engine).expanduser().resolve() if args.engine else DEFAULT_ENGINE
@@ -140,6 +126,8 @@ def start(args: argparse.Namespace) -> None:
     state = read_state(workspace)
     item = scenario(args.id)
     git(workspace, "reset", "-q", "--hard", BASELINE)
+    if state["route"] == "repo" and (missing := doctor.missing_hook_files(workspace, state["agent"])):
+        sys.exit(f"{workspace}: the agent's hooks name files that are not there: {missing}. Run `kit.py doctor`.")
     git(workspace, "clean", "-q", "-fd")  # ignored files stay: the gate log, the agent's own settings
     seeded = dict(item.get("files") or {})
     if item.get("selection") is not None:
@@ -158,26 +146,6 @@ def start(args: argparse.Namespace) -> None:
 
 
 # ── Grading: the engine reads what changed; the tester says what the client showed ──────────
-def changed_files(workspace: Path) -> list[str]:
-    """Every file the turn added or changed, NUL-separated so a space or an accent in a path survives."""
-    tracked = git(workspace, "diff", "-z", "--name-only", "--diff-filter=ACMR", SCENARIO_BASE).stdout.split("\0")
-    untracked = git(workspace, "ls-files", "-z", "--others", "--exclude-standard").stdout.split("\0")
-    return sorted({p for p in tracked + untracked if p and not p.startswith((".chock/", ".agents/"))})
-
-
-def commit_gate(workspace: Path) -> dict | None:
-    """Commit the turn's work as a developer would; the pre-commit hook answers or it does not.
-
-    None when there is nothing to commit -- the agent committed it already, and its own commit
-    went through the same hook -- so git's "nothing to commit" is never read as a refusal.
-    """
-    git(workspace, "add", "-A")
-    if git(workspace, "diff", "--cached", "--quiet", check=False).returncode == 0:
-        return None
-    done = git(workspace, "commit", "-q", "-m", "agent turn", check=False)
-    return {"refused": done.returncode != 0, "output": (done.stderr or done.stdout).strip()[-COMMIT_OUTPUT:]}
-
-
 def started(workspace: Path, state: dict, scenario_id: str) -> None:
     """The workspace holds the turn of the scenario `start` set up, or grading it means nothing."""
     if state.get("started") != scenario_id:
@@ -214,6 +182,18 @@ def record(args: argparse.Namespace) -> None:
         print("  the commit gate and the engine disagree -- a wiring fault; its output is in the results file")
     if not paths:
         print("  nothing changed on disk: did the agent refuse the task, or did the turn not finish?")
+
+
+def run_doctor(args: argparse.Namespace) -> None:
+    workspace = Path(args.dir).expanduser().resolve()
+    state = read_state(workspace)
+    git(workspace, "reset", "-q", "--hard", BASELINE)
+    results = doctor.checks(workspace, state, git)
+    for what, held, fix in results:
+        print(f"  {'ok  ' if held else 'FAIL'}  {what}" + ("" if held else f"\n        {fix}"))
+    if not all(held for _, held, _ in results):
+        sys.exit("the gate is not wired in this workspace: fix the above before running scenarios")
+    print(f"{state['agent']} ({state['route']} route): wired. Scenarios will measure the policy, not a missing hook.")
 
 
 def latest_results(workspace: Path) -> tuple[str, dict[str, dict]]:
@@ -273,6 +253,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--route", choices=("plugin", "repo"), required=True)
     p.add_argument("--engine", help="the chock_security engine to grade with (default: this catalog's)")
     p.set_defaults(run=setup)
+    p = sub.add_parser("doctor", help="prove the gates are wired, before any scenario")
+    p.add_argument("--dir", default=".")
+    p.set_defaults(run=run_doctor)
     p = sub.add_parser("list", help="list scenarios")
     p.add_argument("--tier", choices=TIERS, default="full")
     p.set_defaults(run=list_scenarios)
