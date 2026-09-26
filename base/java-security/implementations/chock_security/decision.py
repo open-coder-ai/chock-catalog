@@ -47,6 +47,12 @@ class FileText:
     path: str
     text: str
 
+    def __post_init__(self) -> None:
+        # A byte-order mark is an encoding artefact, not content: left in, it glues itself to the
+        # first line, and a rule anchored there -- `server.error.include-stacktrace=always` as
+        # line 1 of an application.properties a Windows editor saved -- reads nothing.
+        object.__setattr__(self, "text", self.text.removeprefix("\ufeff"))
+
     @property
     def suffix(self) -> str:
         return PurePosixPath(self.path).suffix.lower()

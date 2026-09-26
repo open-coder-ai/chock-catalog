@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.4.1"
+version: "0.4.2"
 description: >
   trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or
   Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.2
+  date: '2026-09-26'
+  changes:
+  - "A byte-order mark no longer hides a file's first line. Windows editors and tools often save UTF-8 with a BOM, and it glued itself to line 1: an application.properties whose first line was `server.error.include-stacktrace=always`, `management.endpoint.env.show-values=ALWAYS` or any other single-line setting drew no finding. The BOM is dropped before any rule reads the file; line numbers are unchanged. A test replays every rule and flow case with CRLF line endings, with a BOM, and with both, and requires the same findings as on the plain text -- 29 cases differed before this fix, none with CRLF alone."
 - version: 0.4.1
   date: '2026-09-24'
   changes:
