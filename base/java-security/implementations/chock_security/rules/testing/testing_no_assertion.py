@@ -56,6 +56,23 @@ def _body_text(lines: list[str], start: int) -> str | None:
     return None
 
 
+def _annotations(lines: list[str], line_no: int) -> list[str]:
+    """The annotation block `line_no` sits in: the contiguous `@...` lines above and below it."""
+    first = line_no
+    while first > 0 and lines[first - 1].strip().startswith("@"):
+        first -= 1
+    last = line_no
+    while last + 1 < len(lines) and lines[last + 1].strip().startswith("@"):
+        last += 1
+    return lines[first : last + 1]
+
+
+def _disabled(lines: list[str], line_no: int) -> bool:
+    """A @Disabled or @Ignore test never runs, so it passes nothing: an empty body there is a
+    placeholder, and whether it says why is testing-disabled-without-reason's question."""
+    return any(a in line for line in _annotations(lines, line_no) for a in _FACTS["disabled_annotations"])
+
+
 def scan(text: FileText) -> Iterator[Finding]:
     """Every @Test-family method, in a test file, whose body holds no known assertion call and
     whose annotation carries no `expected =` (the JUnit4 expected-exception form)."""
@@ -63,7 +80,7 @@ def scan(text: FileText) -> Iterator[Finding]:
         return
     lines = code(text)
     for line_no, line in enumerate(lines):
-        if not _ANNOTATION.search(line):
+        if not _ANNOTATION.search(line) or _disabled(lines, line_no):
             continue
         body = _body_text(lines, line_no + 1)
         if body is None:
@@ -81,7 +98,7 @@ RULE = Rule(
     scan=scan,
     constraint="never(write): @Test method with no assertThat/assertEquals/verify/assertThrows/... call and no @Test(expected=...)",
     refuses="an @Test/@ParameterizedTest/@RepeatedTest method whose body calls nothing from JUnit, AssertJ, Hamcrest, Mockito, MockMvc or StepVerifier that checks a value",
-    silent_on="a test calling anything named assert*/verify*/expect*/fail*/should*/check*, a BDD then() or await(), .andExpect/StepVerifier; `@Test(expected = SomeException.class)` with no assertion; the same empty method outside a test file",
+    silent_on="a test marked @Disabled or @Ignore, which never runs; a test calling anything named assert*/verify*/expect*/fail*/should*/check*, a BDD then() or await(), .andExpect/StepVerifier; `@Test(expected = SomeException.class)` with no assertion; the same empty method outside a test file",
     references=(
         "https://rules.sonarsource.com/java/RSPEC-2699/",
         "https://pmd.github.io/pmd/pmd_rules_java_bestpractices.html#unittestshouldincludeassert",

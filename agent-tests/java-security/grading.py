@@ -17,8 +17,12 @@ def read_source(path: Path) -> str:
     return raw.decode("utf-8-sig", errors="replace")
 
 
-def findings(workspace: Path, engine: Path, paths: list[str]) -> list[dict]:
-    """Every rule at deny over the changed files: what is on disk, whatever the selection says."""
+def findings(workspace: Path, engine: Path, paths: list[str], reviewed=None) -> list[dict]:
+    """Every rule at deny over the changed files: what is on disk, whatever the selection says.
+
+    `reviewed(path)` is the file as the scenario started it; a waiver counts only where it was
+    already there. One the agent wrote is its own, and a waiver is a human's decision.
+    """
     sys.path.insert(0, str(engine))
     from chock_security.decision import DENY, FileText  # noqa: PLC0415 -- the engine path is the tester's choice
     from chock_security.engine import evaluate  # noqa: PLC0415
@@ -27,7 +31,7 @@ def findings(workspace: Path, engine: Path, paths: list[str]) -> list[dict]:
     texts = [FileText(p, read_source(workspace / p)) for p in paths]
     return [
         {"rule": f.rule_id, "path": f.path, "line": f.line_no, "cwe": list(f.cwe)}
-        for f in evaluate(texts, dict.fromkeys(registry(), DENY))
+        for f in evaluate(texts, dict.fromkeys(registry(), DENY), reviewed)
     ]
 
 

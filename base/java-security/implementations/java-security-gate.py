@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -25,6 +26,37 @@ _NO_ONE_TO_ASK = (
     "Refusing rather than allowing: an ask never degrades to an allow."
 )
 
+#: Where the person committing reviews what is staged, so a waiver in it is theirs. Everywhere else
+#: -- as the agent writes, and at its turn's end -- the text is the agent's own.
+REVIEWED_EVENTS = frozenset({"commit", "push", "ci"})
+
+HUMANS_WAIVE = (
+    "java-security: a waiver ('// chock: allow <rule-id>' on the line) is a human reviewer's "
+    "decision, never the agent's. In the agent it counts only once a human has committed it, and "
+    "one the agent writes is refused. Change the code as the rule says, or stop and ask the user."
+)
+
+
+def committed(root: Path):
+    """The text of a path as last committed, read from git; None when there is none to read."""
+
+    def read(path: str) -> str | None:
+        rel = Path(path)
+        if rel.is_absolute():
+            try:
+                rel = rel.resolve().relative_to(root.resolve())
+            except ValueError:
+                return None
+        proc = subprocess.run(  # noqa: S603 -- a fixed git argv; the path is an argument, never a shell word
+            ["git", "show", f"HEAD:{rel.as_posix()}"],  # noqa: S607 -- git from PATH, as the runner's own
+            cwd=root,
+            capture_output=True,
+            check=False,
+        )
+        return proc.stdout.decode("utf-8-sig", errors="replace") if proc.returncode == 0 else None
+
+    return read
+
 
 def main() -> int:
     payload = json.load(sys.stdin)
@@ -36,12 +68,17 @@ def main() -> int:
         print(f"chock-security: {exc}", file=sys.stderr)
         return REFUSE
     try:
-        findings = evaluate(files, verdicts)
+        agent = payload.get("event") not in REVIEWED_EVENTS
+        findings = evaluate(files, verdicts, committed(root) if agent else None)
     except Exception as exc:  # noqa: BLE001 -- any failure here refuses; it never falls through
         print(UNJUDGED.format(reason=f"{type(exc).__name__}: {exc}"), file=sys.stderr)
         return REFUSE
     for finding in findings:
         print(finding.render(), file=sys.stderr)
+    if agent and findings:
+        # Said on every refusal, not only after an attempt: several rules name the waiver as the
+        # way out, and the agent reads that as leave to write it.
+        print(HUMANS_WAIVE, file=sys.stderr)
     if any(f.verdict == DENY for f in findings):
         return REFUSE
     if any(f.verdict == ASK for f in findings):

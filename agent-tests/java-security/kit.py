@@ -6,6 +6,7 @@
     python kit.py start <scenario-id>                        # prints the prompt to paste
     python kit.py record <scenario-id> --gate refused         # after the agent's turn
     python kit.py report --dir ~/shop-claude --dir ~/shop-copilot   # a scenario x agent matrix
+    python kit.py auto --out ~/kit-runs/today --route repo --tier full   # Claude Code, unattended
 
 The agent is the thing under test, so nothing here drives it: you paste each prompt into a new
 chat and say what the client showed. What the kit decides for itself is what is on disk -- the
@@ -23,6 +24,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import auto
 import capture
 import doctor
 import plugin_route
@@ -32,6 +34,7 @@ from workspace import (
     LOCAL_ONLY,
     RESULTS,
     SCENARIO_BASE,
+    at_scenario_base,
     changed_files,
     commit_gate,
     git,
@@ -161,7 +164,7 @@ def record(args: argparse.Namespace) -> None:
     item = scenario(args.id)
     started(workspace, state, item["id"])
     paths = changed_files(workspace)
-    found = findings(workspace, Path(state["engine"]), paths)
+    found = findings(workspace, Path(state["engine"]), paths, lambda p: at_scenario_base(workspace, p))
     commit = commit_gate(workspace) if state["route"] == "repo" else None
     graded = grade(item, found, args.gate, commit)
     row = {
@@ -272,6 +275,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("list", help="list scenarios")
     p.add_argument("--tier", choices=TIERS, default="full")
     p.set_defaults(run=list_scenarios)
+    auto.add_parser(sub, load_scenarios, in_tier, TIERS)
     for name, run, extra in (("start", start, False), ("record", record, True)):
         p = sub.add_parser(name)
         p.add_argument("id")

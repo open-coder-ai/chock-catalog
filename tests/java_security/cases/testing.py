@@ -16,6 +16,43 @@ ASSERTEQUALS_LITERAL_ACTUAL = "testing-assertequals-literal-actual"
 #: (rule id, path, text, lines)
 CASES: list[tuple[str, str, str, list[int]]] = [
     # testing-no-assertion
+    # A disabled test never runs: an empty placeholder with a reason is what Claude Code wrote in
+    # the agent-kit baseline, and it is testing-disabled-without-reason's to judge, not this rule's.
+    (
+        NO_ASSERTION,
+        "src/test/java/com/acme/OrderServiceTest.java",
+        "class OrderServiceTest {\n"
+        "  @Test\n"
+        '  @Disabled("Refund workflow is not implemented yet")\n'
+        "  void skipReason() {\n"
+        "    // left unimplemented until refunds are supported\n"
+        "  }\n"
+        "}\n",
+        [],
+    ),
+    (
+        NO_ASSERTION,
+        "src/test/java/com/acme/OrderServiceTest.java",
+        'class OrderServiceTest {\n  @Ignore("flaky upstream")\n  @Test\n  public void refunds() {\n  }\n}\n',
+        [],
+    ),
+    # Another annotation between @Test and the method is not a reason to skip it.
+    (
+        NO_ASSERTION,
+        "src/test/java/com/acme/OrderServiceTest.java",
+        'class OrderServiceTest {\n  @Test\n  @DisplayName("refunds")\n  void refunds() {\n  }\n}\n',
+        [2],
+    ),
+    # A @Disabled on a neighbouring test does not excuse this one.
+    (
+        NO_ASSERTION,
+        "src/test/java/com/acme/OrderServiceTest.java",
+        "class OrderServiceTest {\n"
+        '  @Test\n  @Disabled("later")\n  void a() {\n  }\n\n'
+        "  @Test\n  void b() {\n    service.run();\n  }\n"
+        "}\n",
+        [7],
+    ),
     (
         NO_ASSERTION,
         "src/test/java/com/acme/CalculatorTest.java",

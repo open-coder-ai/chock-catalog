@@ -46,7 +46,9 @@
     "matcher_calls": ["requestMatchers", "antMatchers", "mvcMatchers"],
     "permit_all_call": ".permitAll()",
     "kotlin_authorize_permit_all": "authorize\\s*\\(\\s*anyRequest\\s*,\\s*permitAll\\s*\\)",
-    "ignoring_call": "ignoring()"
+    "ignoring_call": "ignoring()",
+    "chain_scope_calls": ["securityMatcher", "securityMatchers", "antMatcher", "mvcMatcher", "regexMatcher"],
+    "chain_start": "SecurityFilterChain\\s+\\w+\\s*\\(|fun\\s+\\w+\\s*\\("
   },
   "password_encoder": {
     "weak_tokens": [

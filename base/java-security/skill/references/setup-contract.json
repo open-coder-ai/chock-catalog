@@ -690,7 +690,7 @@
       "pack": "spring",
       "title": "permitAll() on every request",
       "refuses": "anyRequest()/\"/**\" matchers passed to permitAll() or web.ignoring(), and the Kotlin DSL form",
-      "silent_on": "a specific public path such as \"/public/**\" or \"/actuator/health\"",
+      "silent_on": "a specific public path such as \"/public/**\" or \"/actuator/health\"; anyRequest().permitAll() in a chain scoped by securityMatcher(\"/api/webhooks/**\") to specific paths",
       "constraint": "never(catchall): anyRequest().permitAll()|requestMatchers(\"/**\").permitAll()|web.ignoring().requestMatchers(\"/**\") -- match specific public paths instead",
       "cwe": [
         {
@@ -1794,7 +1794,7 @@
       "pack": "concurrency",
       "title": "Double-checked locking on a non-volatile field",
       "refuses": "the null/synchronized/null-again/assign idiom on a field never declared volatile",
-      "silent_on": "the same idiom when the field is declared volatile; a single null check with no synchronized block",
+      "silent_on": "the same idiom when the field is declared volatile, including Effective Java's form that checks a local copy of the volatile field; a single null check with no synchronized block",
       "constraint": "never(pattern): if (x == null) { synchronized (...) { if (x == null) { x = ...; } } } unless x is volatile -- otherwise a thread can see a non-null, half-constructed x",
       "cwe": [
         {
@@ -2237,7 +2237,7 @@
       "pack": "testing",
       "title": "Test with no assertion",
       "refuses": "an @Test/@ParameterizedTest/@RepeatedTest method whose body calls nothing from JUnit, AssertJ, Hamcrest, Mockito, MockMvc or StepVerifier that checks a value",
-      "silent_on": "a test calling anything named assert*/verify*/expect*/fail*/should*/check*, a BDD then() or await(), .andExpect/StepVerifier; `@Test(expected = SomeException.class)` with no assertion; the same empty method outside a test file",
+      "silent_on": "a test marked @Disabled or @Ignore, which never runs; a test calling anything named assert*/verify*/expect*/fail*/should*/check*, a BDD then() or await(), .andExpect/StepVerifier; `@Test(expected = SomeException.class)` with no assertion; the same empty method outside a test file",
       "constraint": "never(write): @Test method with no assertThat/assertEquals/verify/assertThrows/... call and no @Test(expected=...)",
       "cwe": [],
       "references": [

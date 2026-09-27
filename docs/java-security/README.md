@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to customize java security, which opens this skill's guided page.
+> java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page.
 
 ## Which primitive it becomes
 

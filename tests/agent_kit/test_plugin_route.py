@@ -43,8 +43,9 @@ def _plain(tmp_path: Path) -> Path:
     return workspace
 
 
-def _plugin(root: Path, version: str = "0.4.3", judge: str = WHOLE_FILE_JUDGE, interpreter: str = "") -> Path:
-    """A Claude-format plugin laid out as a marketplace install leaves it."""
+def _plugin(root: Path, version: str = "", judge: str = WHOLE_FILE_JUDGE, interpreter: str = "") -> Path:
+    """A Claude-format plugin laid out as a marketplace install leaves it, at this catalog's version by default."""
+    version = version or ".".join(map(str, plugin_route.catalog_version()))
     (root / ".claude-plugin").mkdir(parents=True)
     (root / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": "java-security", "version": version}))
     (root / "scripts").mkdir()
@@ -112,7 +113,7 @@ def test_the_plugin_is_found_in_claude_codes_store(tmp_path: Path, monkeypatch: 
     home = tmp_path / "home"
     store = home / ".claude" / "plugins" / "marketplaces" / "chock" / "claude"
     _plugin(store / "java-security-old", version="0.3.0")
-    newest = _plugin(store / "java-security", version="0.4.3")
+    newest = _plugin(store / "java-security")
     _plugin(store / "other", version="9.9.9").joinpath(".claude-plugin", "plugin.json").write_text(
         json.dumps({"name": "block-no-verify", "version": "9.9.9"})
     )
