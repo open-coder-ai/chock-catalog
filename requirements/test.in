@@ -3,4 +3,6 @@
 pytest==9.1.1
 # Line and branch coverage of every shipped implementation; `pytest --cov` fails below 100.
 pytest-cov==7.1.0
+# Runs the suite across every core (`pytest -n auto`): CI's longest step, and each test is independent.
+pytest-xdist==3.8.0
 ruff==0.16.8
