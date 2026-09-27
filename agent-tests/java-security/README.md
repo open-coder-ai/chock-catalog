@@ -45,9 +45,10 @@ Two routes put the policy in front of an agent.
 
 - **Repo route**: `chock` installs the policy into the repository. This works today, from this
   catalog.
-- **Plugin route**: install the java-security plugin from the agent's marketplace. This needs
-  the 0.4.0 packages published to the plugin repositories first; until then they carry 0.3.0,
-  which has eight rules.
+- **Plugin route**: a plain repository -- no `chock init`, no hooks, no AGENTS.md -- and the
+  java-security plugin installed from the agent's marketplace. This is how most adopters will
+  meet the policy, so it gets the same scenarios. See
+  [A plain repository and the plugin](#a-plain-repository-and-the-plugin).
 
 What the repo route wires, as `chock sync` reports it:
 
@@ -109,9 +110,11 @@ The doctor checks, with no agent involved, that the gate you are about to measur
 wired:
 
 - every file the agent's hook commands name exists in the workspace;
-- for Claude Code, its own PreToolUse command, run exactly as Claude Code runs it, denies a write
-  of concatenated SQL and allows the bind-parameter version;
-- on the repo route, the pre-commit hook refuses one commit and takes the other.
+- for Claude Code, its own PreToolUse command, run exactly as Claude Code runs it, denies
+  concatenated SQL and allows the bind-parameter version, both as a new file (Write) and as an
+  edit to a file already there (Edit), which is how Claude changes existing code;
+- on the repo route, the pre-commit hook refuses one commit and takes the other;
+- on the plugin route, the checks in the next section.
 
 Run it once per workspace, and again if you ever see a hook error in the agent. `start` refuses to
 begin while the hooks name files that are missing.
@@ -121,6 +124,41 @@ ignore kept `.chock/bin/` out of the workspace. Claude Code reported a `SessionS
 and every other hook failed silently. The agent then declined the SQL on its own, which looked like
 a pass. An agent that declines on its own is graded `agent declined, gate not exercised`: not a
 gate failure, and not evidence for the gate either. The doctor is the evidence.
+
+## A plain repository and the plugin
+
+```bash
+python kit.py setup --dir ~/shop-plain --agent claude --route plugin
+```
+
+This leaves the fixture and its git history and nothing else: no `.chock/`, no `.agents/`, no
+git hook, no AGENTS.md line. In the agent, install the plugin the way an adopter would:
+
+```
+/plugin marketplace add open-coder-ai/chock-claude-plugins
+/plugin install java-security@chock
+```
+
+Then `python kit.py doctor --dir ~/shop-plain` checks, for Claude Code:
+
+- the repository is still plain;
+- the installed plugin is at least this catalog's java-security version -- an older one lacks
+  rules the scenarios test (the plugin repositories carried 0.3.0, with eight rules, until
+  0.4.x was published);
+- the interpreter its hook command names (`python3`) is on PATH -- if it is not, Claude Code
+  cannot start the hook and nothing is gated, which a Windows machine is the likeliest to hit;
+- its PreToolUse hook denies the construct and allows the fix, as a Write and as an Edit.
+
+The doctor finds the plugin under `~/.claude/plugins`; pass `--plugin-dir` if it lives
+elsewhere. For other agents it checks the repository is plain and leaves the plugin to you.
+
+What differs from the repo route when you run scenarios:
+
+- **No commit gate.** A plain repository has no git hook, so `record` grades the in-agent gate
+  and the code left on disk only. A construct the agent leaves behind here reaches the commit.
+- **No ambient line.** The plugin's skill carries the rules' guidance; there is no AGENTS.md.
+- **Config and waivers** still work: `.chock/security.json` and `// chock: allow <rule-id>` are
+  read from the repository the agent is working in, so `smoke-pack-off` and `smoke-waiver` apply.
 
 ## The loop, per scenario
 
