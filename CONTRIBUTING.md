@@ -80,7 +80,7 @@ This project runs its own chock policies plus DCO sign-off on every pull request
 pair — not a human gatekeeper — is the filter for low-effort machine-generated contributions.
 `protect-main-branch`, `scan-secrets`, and the rest run against every PR the same way they run
 against every commit to this repo; a PR that cannot say what it checked, human- or
-agent-authored, will not pass either the gates or `chock check --only evals`.
+agent-authored, will not pass either the gates or `chock check`, which replays every eval.
 
 ## Local loop
 
@@ -89,25 +89,61 @@ git clone https://github.com/open-coder-ai/chock-catalog
 cd chock-catalog
 
 pip install chock                 # or: pip install git+https://github.com/open-coder-ai/chock
-
-chock check                  # conformance
-chock check --only evals               # replay every gate
-chock sync --repo . --check  # compiled artifacts match their manifests
-
-chock plugin build --repo . --policies-dir base --check   # Agent Plugins output is current
-
-python tools/gen_policy_docs.py --check  # docs match the manifests they describe
-python tools/check_readme.py             # README counts match what is in base/
-python tools/check_console.py            # quoted terminal output matches what the tools print
-python tools/check_workflows.py          # no workflow trigger can hand fork code our secrets
-python tools/gen_adoption_transcript.py --check --base origin/main
-                                         # transcripts of touched policies reproduce from empty repos
-python tools/check_effects.py            # a read_only guard does not actually write
-
 pip install --require-hashes -r requirements/test.txt
-ruff check .                             # the framework's own lint rule set, from pyproject.toml
-ruff format --check base/java-security tests tools/gen_java_security_contract.py
-python -m pytest --cov                   # every policy and rule, case by case; 100% line+branch coverage
+
+python tools/regen_all.py         # THE step: regenerate everything derived, then every CI check
+```
+
+That one command is the definition of done. It ends `== CLEAN` or names the step that failed,
+and it leaves every derived file current, so commit what it changed. `--fast` skips the two slow
+checks (pytest and the staged adopter) while you iterate; `--check-only` writes nothing.
+
+What it regenerates, in this order -- the order is load-bearing:
+
+```bash
+chock plugin build --repo . --policies-dir <tree>   # each tree in tools/trees.py: Agent Plugins output
+chock sync --repo .                                 # only on drift; the lockfile hashes packaged files
+python tools/gen_registry.py                        # registry.yaml rows; README badges, ladder, eval cells
+python tools/gen_policy_docs.py                     # docs/<id>/README.md
+python tools/gen_coverage_matrix.py                 # docs/assets/coverage-matrix.svg
+python tools/gen_java_security_contract.py          # the java-security setup page and reference
+python tools/gen_quickstart_sh.py                   # docs/quickstart.sh
+(cd docs/figures && for g in make_*.py; do python "$g"; done)
+(cd docs/assets && python gen_brand_assets.py)      # needs cairosvg==2.9.0; skipped with a note if absent
+python tools/gen_adoption_transcript.py --policy <id>   # each policy changed vs --base, uncommitted work included
+```
+
+`chock sync` rewrites the agents' hook configs with this machine's interpreter path, so
+regen_all puts them back as committed; `tools/adopt_framework.py` regenerates them when the
+framework moves.
+
+What it then checks, as CI does -- fast checks in parallel, then the slow ones:
+
+```bash
+python tools/check_registry.py             # registry facts match the policies on disk
+python tools/gen_registry.py --check       # ... and are what the generator writes
+python tools/check_installed.py            # an installed policy never leads its base/ source (behind: warning)
+python tools/check_readme.py               # README counts match what is in the trees
+python tools/gen_policy_docs.py --check    # docs match the manifests they describe
+python tools/gen_coverage_matrix.py --check
+python tools/gen_java_security_contract.py --check
+python tools/gen_quickstart_sh.py --check
+python tools/check_console.py              # quoted terminal output matches what the tools print
+python tools/check_workflows.py            # no workflow trigger can hand fork code our secrets
+python tools/check_effects.py              # a read_only guard does not actually write
+python tools/check_a11y_rules.py && python tools/check_a11y_table.py
+ruff check .                               # the framework's own lint rule set, from pyproject.toml
+ruff format --check base/java-security tests tools/gen_java_security_contract.py \
+  tools/regen_all.py tools/gen_registry.py tools/check_installed.py
+chock sync --repo . --check                # compiled artifacts match their manifests
+chock plugin build --repo . --policies-dir <tree> --check   # each tree
+# figures and brand card re-rendered and diffed
+
+chock check                                # conformance: validate, lockfile, and every eval replayed
+python tools/gen_adoption_transcript.py --check --base origin/main
+                                           # after the plugin checks pass: touched policies' transcripts reproduce
+# staged adopter: every published policy installed into an empty repo, `chock check`, OWASP ASI claim
+python -m pytest --cov -n auto             # every policy and rule, case by case; 100% line+branch coverage
 ```
 
 **No rule merges without its tests.** A script-backed policy's checks live in `tests/` as pytest,
@@ -134,8 +170,9 @@ MITRE allows for vulnerability mapping; `data/cwe.json` carries their names verb
 documentation, the OWASP cheat sheet, and for a quality rule the Sonar, SpotBugs, PMD, Checkstyle
 or Error Prone rule it mirrors. `tests/java_security/test_evidence.py` holds every rule to it.
 
-The last five matter more than they look. The factual half of every policy page is derived
-from `base/<id>/`, so a stale doc is an overclaim published where adopters read first.
+The docs, README and console checks matter more than they look. The factual half of every
+policy page is derived from `base/<id>/`, so a stale doc is an overclaim published where
+adopters read first.
 
 `check_console.py` is there because quoted terminal output broke twice: a block message that
 read `(main/master)` while the gate it described blocked `main|master`, and a transcript

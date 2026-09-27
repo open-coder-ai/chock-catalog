@@ -1,6 +1,6 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   Keep the development conversation out of git history. Agent-authored commits narrate by
   default -- who asked for what, which discussion decided it, what the plan was -- and on a
@@ -41,6 +41,16 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-09-24'
+  changes:
+  - "Eval cases added so every guard statement is exercised: the leading VAR=value
+    wrapper-prefix skip (a clean `GIT_AUTHOR_NAME=bot git commit`, allowed), the attached
+    `--body=VALUE` form and the combined `-bVALUE` short-flag form on `gh pr create`, both
+    narrating text and refused. The file-reading forms (`--file=`, `--body-file=`, `-FVALUE`)
+    need a readable file, which an eval case cannot provide (chock replays in a fresh, empty
+    repo) -- a direct-invocation test (test_guard_direct.py) covers those instead, both
+    blocking a narrating file and allowing a clean one. Guard unchanged."
 - version: 0.0.4
   date: '2026-09-21'
   changes:

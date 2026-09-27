@@ -13,6 +13,10 @@
 
 __pycache__/
 
+# Coverage data `pytest --cov` writes on every run (committed once by accident)
+.coverage
+.coverage.*
+
 # Editor and IDE local state (an .iml file was committed once already)
 .idea/
 *.iml

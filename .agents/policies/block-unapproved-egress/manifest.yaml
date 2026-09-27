@@ -1,6 +1,6 @@
 id: block-unapproved-egress
 name: "Block Unapproved Egress"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Best-effort guard against exfiltration through the tool channel: a network command
   (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file,
@@ -51,6 +51,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-09-24'
+  changes:
+  - "Coverage: a direct-invocation test (test_guard_direct.py) now exercises the
+    CHOCK_RAW_COMMAND-unset raw=\"$*\" fallback -- the path an older vendored adapter takes,
+    handing the guard only argv -- and proves an unapproved-host upload is still caught by
+    the argv-reconstructed command text. No eval case can drive this branch: chock's own
+    replay always sets CHOCK_RAW_COMMAND. Guard unchanged."
 - version: 0.0.2
   date: '2026-09-21'
   changes:

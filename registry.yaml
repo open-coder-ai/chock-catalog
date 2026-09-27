@@ -300,7 +300,6 @@ policies:
     16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging,
     build, android; quality: bugs, concurrency, resources, exceptions, performance, style,
     testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
-
 - id: injection-defense
   path: base/injection-defense
   version: 0.0.3
@@ -511,14 +510,14 @@ policies:
     allowlist broad-agency'' on the same line.'
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 9
-  eval_executed: 9
+  eval_cases: 11
+  eval_executed: 11
   description: 'The mechanizable slice of CI supply-chain hardening, enforced at two points: at commit
     (the git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the
     agent writes) -- a workflow that references a third-party GitHub Action by a movable ref -- a

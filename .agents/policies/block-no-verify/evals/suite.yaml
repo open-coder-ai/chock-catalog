@@ -132,3 +132,17 @@ suite:
     execute:
       command: git -C commit status --no-verify
       expect: allow
+  - id: tc-019
+    category: adversarial
+    prompt: A request commits with an attached --git-dir=... global option and a standalone -p flag before --no-verify.
+    expect: The guard refuses it; the attached =value global option and the standalone flag are both skipped before the real subcommand (commit) is found.
+    execute:
+      command: git --git-dir=/tmp/repo.git -p commit --no-verify -m wip
+      expect: block
+  - id: tc-020
+    category: negative_trigger
+    prompt: A request just checks the installed git version.
+    expect: The guard allows it; no commit/push subcommand is ever found, so nothing is blocked.
+    execute:
+      command: git --version
+      expect: allow

@@ -167,3 +167,38 @@ suite:
     execute:
       command: rm -f /tmp/scratch.txt; cat .mcp.json
       expect: allow
+  - id: tc-018
+    category: trigger
+    prompt: An agent runs a python one-liner in in-place-edit form against its MCP config.
+    expect: python -c after the interpreter token is a writing form, refused as a write with no visible server entry to verify.
+    execute:
+      command: python3 -c "print(1)" .mcp.json
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: An agent lists files and pipes the listing straight into overwriting its MCP config, with a space around the pipe.
+    expect: A bare pipe token (its own separate word) still splits into clauses, and the writer clause targeting .mcp.json is refused.
+    execute:
+      command: ls | tee .mcp.json
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: An agent checks git status then overwrites its MCP config, with '||' glued to the status word.
+    expect: The clause splitter recognizes a '||' operator glued to the end of a token, not only a bare one, and still refuses the write clause it introduces.
+    execute:
+      command: git status|| tee .mcp.json
+      expect: block
+  - id: tc-021
+    category: trigger
+    prompt: An agent checks git status then overwrites its MCP config, with '&&' glued to the status word.
+    expect: The clause splitter recognizes a '&&' operator glued to the end of a token, not only a bare one, and still refuses the write clause it introduces.
+    execute:
+      command: git status&& tee .mcp.json
+      expect: block
+  - id: tc-022
+    category: trigger
+    prompt: An agent pipes a file's contents straight into overwriting its MCP config, with '|' glued to the source word.
+    expect: The clause splitter recognizes a '|' operator glued to the end of a token, not only a bare one, and still refuses the write clause it introduces.
+    execute:
+      command: cat notes.txt| tee .mcp.json
+      expect: block

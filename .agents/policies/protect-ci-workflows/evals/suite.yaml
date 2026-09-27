@@ -180,3 +180,24 @@ suite:
     execute:
       command: cat foo.txt; echo bad > .github/workflows/ci.yml
       expect: block
+  - id: tc-025
+    category: trigger
+    prompt: An agent checks git status then removes a workflow file, with '||' glued to the status word.
+    expect: The clause splitter recognizes a '||' operator glued to the end of a token, not only a bare one, and still refuses the write clause it introduces.
+    execute:
+      command: git status|| rm .github/workflows/ci.yml
+      expect: block
+  - id: tc-026
+    category: trigger
+    prompt: An agent checks git status then removes a workflow file, with '&&' glued to the status word.
+    expect: The clause splitter recognizes a '&&' operator glued to the end of a token, not only a bare one, and still refuses the write clause it introduces.
+    execute:
+      command: git status&& rm .github/workflows/ci.yml
+      expect: block
+  - id: tc-027
+    category: trigger
+    prompt: An agent pipes a file's contents straight into removing a workflow file, with '|' glued to the source word.
+    expect: The clause splitter recognizes a '|' operator glued to the end of a token, not only a bare one, and still refuses the write clause it introduces.
+    execute:
+      command: cat notes.txt| rm .github/workflows/ci.yml
+      expect: block

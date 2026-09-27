@@ -143,11 +143,15 @@ jobs:
       - name: Fail on drift
         run: git diff --exit-code -- docs/figures
 
-  policies:
+  # What `policies` used to run as one serial job is four jobs that start together: the
+  # generated-file checks answer in about a minute, and the three slow ones -- this repo as an
+  # adopter, the test suite, the staged adopter -- overlap instead of queueing. `policies`
+  # itself is now the gate over all four, because branch protection requires a check of that
+  # name. Locally, `python tools/regen_all.py` runs the same checks in the same order.
+  generated:
     runs-on: ubuntu-latest
     steps:
-      # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
-      # and a shallow clone has no merge base to find.
+      # Full history: the transcript check diffs against the merge base with the PR's base.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           persist-credentials: false
@@ -156,6 +160,10 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            .framework-ref
+            requirements/test.txt
 
       # The framework pin lives in the .framework-ref data file (see the header comment) so
       # adoption PRs never touch this workflow. Read it into the job env for the checkout below.
@@ -171,17 +179,25 @@ jobs:
           ref: ${{ env.FRAMEWORK_REF }}
           path: .framework
 
-      - name: Install Chock
-        run: pip install ./.framework
-
-      # This repo is itself an adopter: `.agents/policies/` holds the subset it is governed
-      # by, committed as a pinned copy. Checking it here proves the adoption flow on a real
-      # repo rather than only in the framework's tests.
-      - name: This repo is a valid adopter
+      - name: Install Chock and the lint tooling
         run: |
-          chock check
-          chock sync --repo . --check
-          chock check --only evals
+          pip install ./.framework
+          pip install --require-hashes -r requirements/test.txt
+
+      # First, not last: it is the cheapest check here and the one most often tripped -- every
+      # version bump and every eval case changes a row. `gen_registry.py --check` fails where
+      # the rows or the README's counts are not what the generator writes.
+      - name: Registry matches the policies on disk
+        run: |
+          python tools/check_registry.py
+          python tools/gen_registry.py --check
+
+      # `.agents/policies/` is what governs this repo; `base/` is what adopters receive. A fix
+      # made only in the installed copy ships to nobody (pin-github-actions 0.0.3 did exactly
+      # that), so an installed policy ahead of its source, or different at the same version,
+      # fails; one behind is printed as a warning.
+      - name: Installed policies trail, never lead, what this catalog publishes
+        run: python tools/check_installed.py
 
       # Docs state what each policy enforces, so a stale one is an overclaim published where
       # adopters read first. The factual half of every page is derived from base/<id>/.
@@ -201,6 +217,32 @@ jobs:
       - name: Console transcripts match what the tools print
         run: python tools/check_console.py
 
+      # This repo distributes executable content, so a compromised workflow does not merely
+      # leak a token -- it can publish a malicious guard script to everyone who runs
+      # `chock add`. `pull_request_target` is the usual way that happens, and the
+      # temptation arrives the first time someone wants a bot to comment on a fork PR.
+      - name: Workflow triggers cannot hand fork code our secrets
+        run: python tools/check_workflows.py
+
+      # This repo's own compiled gates and lockfile match the policies it has installed.
+      - name: Compiled artifacts match their manifests
+        run: chock sync --repo . --check
+
+      # Every base/<id>/ is also an Agent Plugins 1.0.0 package, and `plugin.json` plus
+      # `skills/<id>/SKILL.md` are generated from manifest.yaml. They are committed so the
+      # repo is browsable as a plugin marketplace without a build step -- which means a
+      # manifest edit that skips `plugin build` publishes a package describing the old
+      # policy, to clients we do not control and cannot correct. Before the transcripts,
+      # which adopt the packaged folder.
+      - name: Published policies are current Agent Plugins packages
+        run: |
+          # Every tree in tools/trees.py, not an enumerated list: this check once passed
+          # while a newly added tree shipped no packages at all -- silent under-coverage
+          # that read as "checked everything".
+          for tree in $(python tools/trees.py); do
+            chock plugin build --repo . --policies-dir "$tree" --check
+          done
+
       # A contributor's "the policy works" claim is committed as docs/<id>/adoption.md --
       # the output of adopting that one policy into an empty repository -- and this step
       # re-derives it. Pasted output can be edited and goes stale; a transcript that fails
@@ -215,12 +257,53 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: python tools/gen_adoption_transcript.py --check --base "origin/$BASE_REF"
 
-      # This repo distributes executable content, so a compromised workflow does not merely
-      # leak a token -- it can publish a malicious guard script to everyone who runs
-      # `chock add`. `pull_request_target` is the usual way that happens, and the
-      # temptation arrives the first time someone wants a bot to comment on a fork PR.
-      - name: Workflow triggers cannot hand fork code our secrets
-        run: python tools/check_workflows.py
+      # The framework's merge bar, applied to this repository's own code: the same ruff rule set
+      # and limits (pyproject.toml), and formatting. The format paths are regen_all.FORMATTED.
+      - name: Lint (ruff, the framework's rule set)
+        run: ruff check .
+
+      - name: Formatting (ruff format)
+        run: >-
+          ruff format --check base/java-security tests tools/gen_java_security_contract.py
+          tools/regen_all.py tools/gen_registry.py tools/check_installed.py
+
+  # This repo is itself an adopter: `.agents/policies/` holds the subset it is governed by,
+  # committed as a pinned copy. Checking it here proves the adoption flow on a real repo
+  # rather than only in the framework's tests.
+  adopter:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
+      # and a shallow clone has no merge base to find.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .framework-ref
+
+      - name: Read the framework pin
+        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: Install Chock
+        run: pip install ./.framework
+
+      # `chock check` is every truth check at once: validate, the lockfile, and a replay of
+      # every executable eval case. A separate `chock check --only evals` replayed them twice.
+      - name: This repo is a valid adopter
+        run: chock check
 
       # First of the review criteria (docs/review-criteria/effects-honesty.md). A manifest
       # declaring `read_only` and a guard that writes is a wrong claim running on someone
@@ -228,54 +311,6 @@ jobs:
       # throwaway workspace seeded with canaries and the filesystem is hashed either side.
       - name: Declared effects match what the guards actually do
         run: python tools/check_effects.py
-
-      # check_effects proves a guard does not WRITE; nothing proved it DECIDES correctly. The
-      # a11y guard's verdicts come from 107 JSON entries, and it shipped for a day refusing
-      # `<button>Go</button>` -- a label being ADDED -- because a global minimum name length
-      # applied to a visible label as if it were alt text. A guard wired at `block` that fires
-      # on a correct change is worse than no guard: the markup is right and the commit is
-      # refused anyway. Every rule entry is exercised here, and the commit path itself is run
-      # in a throwaway repo, because `evaluate` can be right while the front end reads the
-      # wrong revision or returns the wrong exit code.
-      - name: The a11y guard agrees with every rule it ships
-        run: python tools/check_a11y_rules.py
-
-      # The rules check covers the ROWS; this covers the decision table over them and the parser
-      # that fills it -- the forty-nine cells, the qualifiers, and the markup this parser cannot
-      # resolve. Every case here was a pytest in the prototype that developed this guard; the
-      # guard now lives here alone, so its tests do too, and there is no second copy to drift
-      # from. Two of them are transitions a live coding agent produced on ordinary refactoring
-      # tasks, not cases anyone thought up.
-      - name: The a11y guard's decision table holds
-        run: python tools/check_a11y_table.py
-
-      # The framework's merge bar, applied to this repository's own code: the same ruff rule set
-      # and limits (pyproject.toml), formatting, and a test suite that must pass. tests/ proves
-      # every java-security rule case by case -- each refusing and silent case is a named test,
-      # and a rule without a case in each direction fails `test_rule_is_proven_both_ways` -- and
-      # drives the shipped gate, the eval suite, the selection file, the flow model and a corpus of
-      # correct enterprise code no rule may fire on. `chock check --only evals` does not replay a
-      # script gate on this engine, so this is where those cases run. Nothing under tests/ is
-      # published: the distribution repos build from base/ alone.
-      - name: Install the lint and test tooling
-        run: pip install --require-hashes -r requirements/test.txt
-
-      - name: Lint (ruff, the framework's rule set)
-        run: ruff check .
-
-      - name: Formatting (ruff format)
-        run: ruff format --check base/java-security tests tools/gen_java_security_contract.py
-
-      # Every policy in every tree is validated and has each executable eval case replayed as a
-      # named test (tests/policies); every statement of every shipped bash guard must be run by one
-      # of those cases (bash's own trace, tests/policies/shellcov.py); and every line and branch of
-      # the shipped Python -- the java-security engine and gate, the a11y guard -- must run under a
-      # test: coverage below 100 fails the step (pyproject.toml [tool.coverage]).
-      - name: Tests (every policy, every rule, 100% line and branch coverage)
-        run: python -m pytest --cov
-
-      - name: The Java security setup contract matches the rules it describes
-        run: python tools/gen_java_security_contract.py --check
 
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before
@@ -324,24 +359,88 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
-      # Every base/<id>/ is also an Agent Plugins 1.0.0 package, and `plugin.json` plus
-      # `skills/<id>/SKILL.md` are generated from manifest.yaml. They are committed so the
-      # repo is browsable as a plugin marketplace without a build step -- which means a
-      # manifest edit that skips `plugin build` publishes a package describing the old
-      # policy, to clients we do not control and cannot correct.
-      - name: Published policies are current Agent Plugins packages
-        run: |
-          # Every tree in tools/trees.py, not an enumerated list: this check once passed
-          # while a newly added tree shipped no packages at all -- silent under-coverage
-          # that read as "checked everything".
-          for tree in $(python tools/trees.py); do
-            chock plugin build --repo . --policies-dir "$tree" --check
-          done
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
 
-      # Everything PUBLISHED is checked separately, in a throwaway repo. Staging into
-      # `.agents/policies/` would overwrite the pinned copies above with `base/`, conflating
-      # what this repo runs with what it ships -- the exact separation that makes editing a
-      # published policy safe.
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            .framework-ref
+            requirements/test.txt
+
+      - name: Read the framework pin
+        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: Install Chock and the test tooling
+        run: |
+          pip install ./.framework
+          pip install --require-hashes -r requirements/test.txt
+
+      # tests/ proves every java-security rule case by case -- each refusing and silent case is a
+      # named test, and a rule without a case in each direction fails `test_rule_is_proven_both_ways`
+      # -- and drives the shipped gate, the eval suite, the selection file, the flow model and a
+      # corpus of correct enterprise code no rule may fire on. `chock check` does not replay a
+      # script gate on this engine, so this is where those cases run. Every policy in every tree is
+      # validated and has each executable eval case replayed as a named test (tests/policies);
+      # every statement of every shipped bash guard must be run by one of those cases (bash's own
+      # trace, tests/policies/shellcov.py); and every line and branch of the shipped Python -- the
+      # java-security engine and gate, the a11y guard, the build tools -- must run under a test:
+      # coverage below 100 fails the step (pyproject.toml [tool.coverage]).
+      #
+      # The a11y guard's two checkers (every rule entry, and the decision table and parser,
+      # tools/check_a11y_rules.py and check_a11y_table.py) and the Java security setup contract
+      # (gen_java_security_contract.py --check) run here, check by check, as
+      # tests/a11y/test_a11y_guard.py and tests/java_security/test_setup_contract.py -- they
+      # were also separate steps, running the same checks a second time. Nothing under tests/ is
+      # published: the distribution repos build from base/ alone.
+      - name: Tests (every policy, every rule, 100% line and branch coverage)
+        run: python -m pytest --cov -n auto
+
+  # Everything PUBLISHED is checked separately, in a throwaway repo. Staging into
+  # `.agents/policies/` would overwrite the pinned copies above with `base/`, conflating
+  # what this repo runs with what it ships -- the exact separation that makes editing a
+  # published policy safe.
+  staged-adopter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .framework-ref
+
+      - name: Read the framework pin
+        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: Install Chock
+        run: pip install ./.framework
+
       - name: Stage every published policy and skill as an adopter would
         run: |
           rm -rf /tmp/catalog-check
@@ -370,13 +469,12 @@ jobs:
           chock sync --repo . --skip-hooks
           ls .agents/policies .agents/skills
 
-      - name: Validate every published policy
+      # Validates every published policy and, as tier 2, replays each policy's own gate or
+      # guard against a throwaway repo: a policy whose declared gate does not do what its eval
+      # suite claims fails here. One run -- `chock check` already replays the evals, so the
+      # `--only evals` step that followed it ran every case a second time.
+      - name: Validate every published policy and replay its evals
         run: chock check --repo /tmp/catalog-check
-
-      # Tier 2: replays each policy's own gate or guard against a throwaway repo. A policy
-      # whose declared gate does not do what its eval suite claims fails here.
-      - name: Policy evals (deterministic)
-        run: chock check --only evals --repo /tmp/catalog-check
 
       # The README's coverage claim, re-derived: the staged adopter (which installs every
       # published policy) must score all ten OWASP ASI controls covered. This repo itself
@@ -392,5 +490,18 @@ jobs:
             exit 1
           fi
 
-      - name: Registry matches the policies on disk
-        run: python tools/check_registry.py
+  # The required check. A job skipped because a job it needs failed would report as passing,
+  # so this one always runs and fails unless every job above succeeded.
+  policies:
+    if: always()
+    needs: [generated, adopter, tests, staged-adopter]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every policies job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "generated, adopter, tests, staged-adopter: $RESULTS"
+          for result in $RESULTS; do
+            [ "$result" = success ] || exit 1
+          done
