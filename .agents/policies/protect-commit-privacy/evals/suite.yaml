@@ -173,3 +173,24 @@ suite:
     execute:
       command: echo git commit -m "the user asked in review"
       expect: allow
+  - id: tc-024
+    category: negative_trigger
+    prompt: An agent sets an environment variable inline before the git commit invocation.
+    expect: The wrapper-prefix scan skips a leading VAR=value token and still finds the real git commit; the message here is clean, so the guard allows it.
+    execute:
+      command: GIT_AUTHOR_NAME=bot git commit -m "add retry to the http client"
+      expect: allow
+  - id: tc-025
+    category: trigger
+    prompt: An agent opens a PR whose body is set with the --body=VALUE attached form and narrates the conversation.
+    expect: The attached --body= form is scanned the same as a separate --body argument, and the guard refuses it.
+    execute:
+      command: gh pr create --title x --body="this conversation went well"
+      expect: block
+  - id: tc-026
+    category: trigger
+    prompt: An agent opens a PR using the combined short flag -bVALUE to set a body that narrates the conversation.
+    expect: The combined -b cluster's attached value is scanned like any other body text, and the guard refuses it.
+    execute:
+      command: gh pr create -b'this conversation went well'
+      expect: block

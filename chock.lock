@@ -14,7 +14,7 @@
       "id": "block-curl-pipe-sh",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "6af3c9bf6ed53198b1ea3c852b4501b545b49c9a214ecd50cc58b61c3585423f",
+      "sha256": "45ed42fcc64ab0b35440d78fd6605c50f5fa49ceb44ceb1f299751d7f04dd07d",
       "source": "local",
       "artifacts_sha256": "a6217f28715ba14d30102abd5f504c63856ab91a7377d798eb9eeffe34e63555"
     },
@@ -22,7 +22,7 @@
       "id": "block-destructive-commands",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "ac46393b18ff6d4287819846fa165124990d7fd2a4e002a35702e2e88572567e",
+      "sha256": "9feac910889ceb757cf4dbf68997e4a65e8f2261e1aafc0b120cfdee5ad96046",
       "source": "local",
       "artifacts_sha256": "952897dab69847549f3a1adabbe58f51daeb7bc93beecfa08fa0f304b928cf8a"
     },
@@ -38,7 +38,7 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "7c70fc5f855eacccc90689b118a3f9cc992ddce8ed5cba8a4d78e059f9067d36",
+      "sha256": "ff7ce9bd063d3f0f180846d28a312b92860bef5ce0052f3185715d679d5b9798",
       "source": "local",
       "artifacts_sha256": "51965dd75e1a5821b8b0946c3756a122a14e454b6d6c122e1fa9f28b2850f107"
     },
@@ -46,7 +46,7 @@
       "id": "block-unapproved-egress",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "06dd3f12560ad517b9b35d0c805455acfbc4a6dda3ad289cd75d06cd4eaeb7bc",
+      "sha256": "44a5390b2d731314e2e9048a4e5a6db659965365ba0de86913240e45bebb25c8",
       "source": "local",
       "artifacts_sha256": "26a9b76c284d50ac8cb41eb8224ce4d7d6755219cd95254006d32ac97862ab03"
     },
@@ -118,7 +118,7 @@
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "44cc7a5307ad4ed3178a4efb202ba1ce9ff463bd241c32c2dc11da0ad3a94e47",
+      "sha256": "2dbe93efeda65206d68af50e58b499a2d4ee41d6f8513ef61ae06bd0a4b6af3d",
       "source": "local",
       "artifacts_sha256": "1cc2918921e5d6d8f4cb2031381c51d7ec22af71ef5ea3187b73e5c58e651fdd"
     },
@@ -126,7 +126,7 @@
       "id": "protect-ci-workflows",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "9b749c9aab064fcdd1b16aafe4aebb7868821c5c7b881bd4c93569e9fa52751a",
+      "sha256": "8030058334358d0a76a5b30335ac06955b747aef9cfc8892cd32cdbbb89dc5e5",
       "source": "local",
       "artifacts_sha256": "796e13d87a8b8d3c240ac6a32eb4d7cb955b4f764d7ce1d1c30f3e0f2fbd21e3"
     },
@@ -134,7 +134,7 @@
       "id": "protect-commit-privacy",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "8c93a98fcd9daac4af043a5dd1c33fe1c4d6d88d09c8f9f59ab43c1f7c43f624",
+      "sha256": "fb90b2149b7350be5d560ae26267dfee828d0b1255689fe3339aa210a7fa7260",
       "source": "local",
       "artifacts_sha256": "e27d75a558ff05e9c5a3858d68ecbbfa4ec7a9d3243b85fa8ce76aa0da7c72ba"
     },
@@ -181,7 +181,7 @@
       "id": "verify-mcp-allowlist",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "921cb52f1adcab92b23f2efb080498247f279e7427ba8001b518bb542a4e8bd4",
+      "sha256": "05bbdb7684a52a086bcd030b1306c24f29d044db66ba3f862ddd90ad7314b156",
       "source": "local",
       "artifacts_sha256": "adfdf14006023dce5212c5e3b0cdf1142ec907ca81caaab0b63ec11074b87290"
     }
