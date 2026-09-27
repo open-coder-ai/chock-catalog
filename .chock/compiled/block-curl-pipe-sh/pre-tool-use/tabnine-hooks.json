@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "@CHOCK_PYTHON@ \".chock/bin/tabnine.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+            "command": "git -c \"alias.chock-hook=!sh .chock/bin/launch.sh\" chock-hook .chock/bin/tabnine.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
             "name": "agentseam"
           }
         ]

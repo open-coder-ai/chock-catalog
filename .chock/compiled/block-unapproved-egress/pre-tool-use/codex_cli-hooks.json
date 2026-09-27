@@ -5,8 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "@CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
-            "commandWindows": "& @CHOCK_PYTHON@ \".chock/bin/codex_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+            "command": "git -c \"alias.chock-hook=!sh .chock/bin/launch.sh\" chock-hook .chock/bin/codex_cli.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
+            "commandWindows": "& git -c \"alias.chock-hook=!sh .chock/bin/launch.sh\" chock-hook .chock/bin/codex_cli.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
           }
         ],
         "matcher": "Bash"
