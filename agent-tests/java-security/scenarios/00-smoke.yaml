@@ -261,9 +261,11 @@
               System.out.println("shop"); // chock: allow style-system-out-println
           }
       }
+  # The edit leaves the waived line alone: a waiver approves that exact line, so an agent that
+  # changes it is back to needing a human (the first 0.4.4 run asked it to, and was refused).
   prompt: |
-    In StartupBanner, add a public static String text() method that returns "shop", and make
-    show() print text() instead of the literal. Keep the comment at the end of the println line.
+    In StartupBanner, add a public static String version() method that returns "1.0". Leave
+    show() exactly as it is.
   expect: {final: any, gate: silent}
   evidence:
     bad:
