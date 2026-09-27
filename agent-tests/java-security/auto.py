@@ -69,19 +69,57 @@ def _refused(event: dict) -> bool:
     return any(decision in said for decision in ('"deny"', '"ask"', '"block"'))
 
 
+#: Headless Claude Code emits `hook_response` only for SessionStart. A PreToolUse refusal reaches
+#: the stream as the blocked tool's error result ("PreToolUse:Edit hook error: ..."), a Stop one as
+#: the feedback the client hands the model ("Stop hook feedback: ...").
+PRE_TOOL_MARK = "PreToolUse:"
+STOP_MARK = "Stop hook feedback"
+
+
+def _text(content: object) -> str:
+    """A message or tool result's text, whether a plain string or a list of text blocks."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "".join(
+            _text(block.get("text", block.get("content", ""))) for block in content if isinstance(block, dict)
+        )
+    return ""
+
+
+def _client_refusals(event: dict) -> set[str]:
+    """Where a user-turn event carries a hook's refusal: a blocked tool's error, or Stop feedback."""
+    places: set[str] = set()
+    content = (event.get("message") or {}).get("content")
+    blocks = content if isinstance(content, list) else [{"type": "text", "text": content}]
+    # Only the client's own text: a tool result (a file the agent read) may say anything.
+    said = _text([b for b in blocks if isinstance(b, dict) and b.get("type") == "text"])
+    if said.lstrip().startswith(STOP_MARK):
+        places.add("at Stop")
+    for block in blocks:
+        is_blocked = isinstance(block, dict) and block.get("type") == "tool_result" and block.get("is_error")
+        if is_blocked and PRE_TOOL_MARK in _text(block.get("content")):
+            places.add("before the write")
+    return places
+
+
 def gate_seen(stream: str) -> tuple[str, str]:
-    """(refused|silent, where): read off the client's own hook events, never off text the agent
-    read -- INDEX.md quotes the refusal message, and an agent reading it is not a refusal."""
+    """(refused|silent, where): read off the client's own hook events and tool errors, never off
+    text the agent read -- INDEX.md quotes the refusal message, and reading it is not a refusal."""
     places: set[str] = set()
     for raw in stream.splitlines():
         try:
             event = json.loads(raw)
         except ValueError:
             continue
+        if not isinstance(event, dict):
+            continue
         if event.get("type") == "system" and event.get("subtype") == "hook_response":
             hook = event.get("hook_event")
             if hook in ("PreToolUse", "Stop") and _refused(event):
                 places.add("before the write" if hook == "PreToolUse" else "at Stop")
+        elif event.get("type") == "user":
+            places |= _client_refusals(event)
     return ("refused", ", ".join(sorted(places))) if places else ("silent", "")
 
 
