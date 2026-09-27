@@ -135,13 +135,12 @@ def commit_decides(workspace: Path, git: Callable, line: str) -> str:
 
 
 def checks(workspace: Path, state: dict, git: Callable) -> list[tuple[str, bool, str]]:
-    """(what was checked, whether it held, what to do when it did not)."""
-    results: list[tuple[str, bool, str]] = []
-    agent, route = state["agent"], state["route"]
-    if route != "repo":
-        import plugin_route  # noqa: PLC0415 -- it imports this module back
+    """The repo route's checks: (what was checked, whether it held, what to do when it did not).
 
-        return plugin_route.checks(workspace, state)
+    The plugin route's are plugin_route.checks; kit.py picks between them by the workspace's route.
+    """
+    results: list[tuple[str, bool, str]] = []
+    agent = state["agent"]
     missing = missing_hook_files(workspace, agent)
     fix = "a global gitignore (often `bin/`) may have kept them out of the baseline; run setup again in a new directory"
     results.append((f"{agent}'s hook commands name files that exist", not missing, f"missing {missing}: {fix}"))

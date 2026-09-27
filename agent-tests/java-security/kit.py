@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import doctor
+import plugin_route
 from grading import cell, findings, grade
 from workspace import (
     BASELINE,
@@ -188,7 +189,10 @@ def run_doctor(args: argparse.Namespace) -> None:
     workspace = Path(args.dir).expanduser().resolve()
     state = {**read_state(workspace), "plugin_dir": args.plugin_dir}
     git(workspace, "reset", "-q", "--hard", BASELINE)
-    results = doctor.checks(workspace, state, git)
+    if state["route"] == "repo":
+        results = doctor.checks(workspace, state, git)
+    else:
+        results = plugin_route.checks(workspace, state)
     for what, held, fix in results:
         print(f"  {'ok  ' if held else 'FAIL'}  {what}" + ("" if held else f"\n        {fix}"))
     if not all(held for _, held, _ in results):
