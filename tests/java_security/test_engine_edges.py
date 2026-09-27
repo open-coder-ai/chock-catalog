@@ -52,7 +52,7 @@ def test_an_engine_that_fails_refuses_instead_of_allowing(
 ) -> None:
     gate = _gate_module()
 
-    def broken(_files: object, _verdicts: object) -> list:
+    def broken(_files: object, _verdicts: object, _reviewed: object = None) -> list:
         msg = "a rule raised"
         raise RuntimeError(msg)
 
