@@ -183,6 +183,33 @@ Compare agents when you are done:
 python kit.py report --dir ~/shop-claude --dir ~/shop-copilot --out results.md
 ```
 
+## Claude Code, unattended: `auto`
+
+Claude Code has a print mode and reports each hook's answer as an event, so its runs need no one
+at the keyboard. `auto` runs the loop above for it: `start`, one `claude -p` turn with the
+scenario's prompt, `record`. The gate it records is read from the client's own hook events (a
+PreToolUse deny, a Stop block), not typed in, and not taken from text the agent read: INDEX.md
+quotes the refusal message, and reading it is not a refusal.
+
+```
+python kit.py auto --out ~/kit-runs/today --route repo --tier full --workers 4
+chock plugin build --repo <catalog> --policies-dir base --format claude --policy java-security --out-dir ~/plugin
+python kit.py auto --out ~/kit-runs/today --route plugin --plugin-dir ~/plugin/claude/java-security --tier full --workers 4
+```
+
+- Each worker gets its own workspace under `--out`. Every turn's stream-json is kept in
+  `transcripts/`, one line per turn goes in `turns-<route>.jsonl`, and `report.md` puts every route
+  run into that `--out` side by side.
+- **A run resumes:** a scenario already recorded under `--out` is not run again. Delete its line
+  from `turns-<route>.jsonl` to run it again.
+- **The turn runs as the workspace sets it up.** It loads project and local settings only, never
+  your user settings, so your own hooks and output style are not under test. Edits are accepted.
+  Any other permission is refused rather than asked, since nobody is there to answer.
+- **Cost:** a turn is one to three minutes and roughly USD 0.20-1.00. The full tier is 170 turns
+  per route.
+- The manual loop remains the reference. It is how every other agent is tested, and how you see
+  what a person sees.
+
 ## Tiers, and how long they take
 
 | Tier | Scenarios | What it covers | Time per agent |
