@@ -69,7 +69,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
-Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
@@ -113,6 +113,7 @@ pin-github-actions  [deterministic]
 .chock/compiled/pin-github-actions/git-hook/git-pre-commit.sh
 .chock/compiled/pin-github-actions/managed-setting/managed-settings.json
 .chock/compiled/pin-github-actions/mcp-gateway/gateway-gate.json
+.chock/compiled/pin-github-actions/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/pin-github-actions/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/pin-github-actions/pre-tool-use/gate.json
 .chock/compiled/pin-github-actions/pre-tool-use/gemini_cli-write-hooks.json
