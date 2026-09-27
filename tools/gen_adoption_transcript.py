@@ -113,21 +113,60 @@ def build_transcript(policy_dir: Path) -> str:
     return "\n".join(parts)
 
 
-def changed_policy_ids(base: str) -> set[str]:
-    proc = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...HEAD"],
-        cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-    )
+def _git_names(root: Path, *args: str) -> list[str]:
+    proc = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8")
     if proc.returncode != 0:
-        raise SystemExit(f"git diff against {base} failed:\n{proc.stderr}")
+        raise SystemExit(f"git {' '.join(args)} failed:\n{proc.stderr}")
+    return proc.stdout.splitlines()
+
+
+def changed_policy_ids(base: str, root: Path = ROOT) -> set[str]:
+    """Policies touched since the merge base with `base`: committed, staged, unstaged or untracked.
+
+    `base...HEAD` alone saw commits only, so a local `--check` passed over the very edit being
+    made; in CI the working tree is HEAD and the answer is the same.
+    """
+    (merge_base,) = _git_names(root, "merge-base", base, "HEAD")
+    names = _git_names(root, "diff", "--name-only", merge_base)
+    names += _git_names(root, "ls-files", "--others", "--exclude-standard")
     changed: set[str] = set()
-    for line in proc.stdout.splitlines():
+    for line in names:
         parts = Path(line.strip()).parts
         if len(parts) >= 2 and parts[0] in TREES:
             changed.add(parts[1])
         elif len(parts) == 3 and parts[0] == "docs" and parts[2] == "adoption.md":
             changed.add(parts[1])
     return changed
+
+
+def stale_packages(trees: set[str]) -> list[str]:
+    """Trees whose Agent Plugins output lags its manifests: a transcript adopts the packaged folder."""
+    return [
+        tree for tree in sorted(trees)
+        if _run(["chock", "plugin", "build", "--repo", ".", "--policies-dir", tree, "--check"], ROOT)[0]
+    ]
+
+
+def drift(policy_id: str, path: Path, fresh: str) -> str | None:
+    """Why the committed transcript is not the fresh one, or None when it is."""
+    if not path.exists():
+        return (
+            f"{policy_id}: no committed transcript. Run "
+            f"`python tools/gen_adoption_transcript.py --policy {policy_id}` and commit docs/{policy_id}/adoption.md"
+        )
+    committed = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+    if committed == fresh:
+        return None
+    import difflib
+
+    diff = "".join(
+        difflib.unified_diff(
+            committed.splitlines(keepends=True), fresh.splitlines(keepends=True),
+            fromfile=f"docs/{policy_id}/adoption.md (committed)",
+            tofile=f"docs/{policy_id}/adoption.md (fresh adoption)",
+        )
+    )
+    return f"{policy_id}: committed transcript does not match a fresh adoption. Regenerate with `--policy {policy_id}`.\n{diff}"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -148,32 +187,23 @@ def main(argv: list[str] | None = None) -> int:
             print(f"No policies changed vs {args.base}; nothing to verify.")
             return 0
 
+    stale = stale_packages({d.parent.name for d in targets})
+    if stale:
+        print(
+            "Plugin packages are stale, and a transcript adopts the packaged folder; run "
+            + " && ".join(f"chock plugin build --repo . --policies-dir {t}" for t in stale)
+            + " first (python tools/regen_all.py runs every step in order).",
+            file=sys.stderr,
+        )
+        return 1
+
     problems: list[str] = []
     for policy_dir in targets:
         path = DOCS / policy_dir.name / "adoption.md"
         fresh = build_transcript(policy_dir)
         if args.check:
-            if not path.exists():
-                problems.append(
-                    f"{policy_dir.name}: no committed transcript. Run "
-                    f"`python tools/gen_adoption_transcript.py --policy {policy_dir.name}` and commit docs/{policy_dir.name}/adoption.md"
-                )
-            else:
-                committed = path.read_text(encoding="utf-8").replace("\r\n", "\n")
-                if committed != fresh:
-                    import difflib
-
-                    diff = "".join(
-                        difflib.unified_diff(
-                            committed.splitlines(keepends=True), fresh.splitlines(keepends=True),
-                            fromfile=f"docs/{policy_dir.name}/adoption.md (committed)",
-                            tofile=f"docs/{policy_dir.name}/adoption.md (fresh adoption)",
-                        )
-                    )
-                    problems.append(
-                        f"{policy_dir.name}: committed transcript does not match a fresh adoption. "
-                        f"Regenerate with `--policy {policy_dir.name}`.\n{diff}"
-                    )
+            if problem := drift(policy_dir.name, path, fresh):
+                problems.append(problem)
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(fresh, encoding="utf-8", newline="\n")
