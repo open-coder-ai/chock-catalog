@@ -87,3 +87,15 @@ def test_at_commit_the_committer_reviews_the_waiver(gate: GateRun) -> None:
 
 def test_outside_a_repository_no_waiver_counts_in_the_agent(gate: GateRun) -> None:
     assert gate({"p.html": f"{WAIVED}\n"}, event="tool_use")[0] == REFUSE
+
+
+def test_an_absolute_path_is_read_against_the_repository(gate: GateRun, repo: Path) -> None:
+    """Some clients hand the gate absolute paths; the committed text is found all the same."""
+    _commit(repo, "p.html", f"{WAIVED}\n")
+    assert gate({str(repo / "p.html"): f"{OTHER}\n{WAIVED}\n"}, event="tool_use")[0] == PASS
+
+
+def test_a_path_outside_the_repository_has_no_committed_waiver(gate: GateRun, repo: Path, tmp_path_factory) -> None:
+    elsewhere = tmp_path_factory.mktemp("elsewhere") / "p.html"
+    _commit(repo, "p.html", f"{WAIVED}\n")
+    assert gate({str(elsewhere): f"{WAIVED}\n"}, event="tool_use")[0] == REFUSE

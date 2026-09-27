@@ -82,6 +82,60 @@ CASES: list[tuple[str, str, str, list[int]]] = [
     ),
     ("spring-csrf-disabled", "Plain.java", ".csrf().disable()\n", []),
     # spring-permit-all-catchall
+    # A chain scoped to one path: its anyRequest() is any request to that path. Claude Code wrote
+    # this for the agent kit's webhook control, and every other request still meets the app's chain.
+    (
+        "spring-permit-all-catchall",
+        "WebhookSecurityConfig.java",
+        _SECURITY_IMPORT + "class WebhookSecurityConfig {\n"
+        "  @Bean @Order(1)\n"
+        "  SecurityFilterChain webhookFilterChain(HttpSecurity http) throws Exception {\n"
+        "    http\n"
+        '        .securityMatcher("/api/webhooks/**")\n'
+        '        .csrf(csrf -> csrf.ignoringRequestMatchers("/api/webhooks/**"))\n'
+        "        .authorizeHttpRequests(auth -> auth\n"
+        "            .anyRequest().permitAll());\n"
+        "    return http.build();\n"
+        "  }\n"
+        "}\n",
+        [],
+    ),
+    # Scoped to "/**" is scoped to everything.
+    (
+        "spring-permit-all-catchall",
+        "Sec.java",
+        _SECURITY_IMPORT + "SecurityFilterChain all(HttpSecurity http) throws Exception {\n"
+        '  http.securityMatcher("/**")\n'
+        "      .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());\n"
+        "}\n",
+        [4],
+    ),
+    # One chain's scope does not carry into the next chain in the same file.
+    (
+        "spring-permit-all-catchall",
+        "Sec.java",
+        _SECURITY_IMPORT + "SecurityFilterChain hooks(HttpSecurity http) throws Exception {\n"
+        '  http.securityMatcher("/api/webhooks/**").authorizeHttpRequests(a -> a.anyRequest().permitAll());\n'
+        "  return http.build();\n"
+        "}\n"
+        "SecurityFilterChain app(HttpSecurity http) throws Exception {\n"
+        "  http.authorizeHttpRequests(a -> a.anyRequest().permitAll());\n"
+        "  return http.build();\n"
+        "}\n",
+        [7],
+    ),
+    # Kotlin DSL, scoped.
+    (
+        "spring-permit-all-catchall",
+        "Sec.kt",
+        _SECURITY_IMPORT + "fun hooks(http: HttpSecurity): SecurityFilterChain {\n"
+        "  http {\n"
+        '    securityMatcher("/api/webhooks/**")\n'
+        "    authorizeHttpRequests { authorize(anyRequest, permitAll) }\n"
+        "  }\n"
+        "}\n",
+        [],
+    ),
     (
         "spring-permit-all-catchall",
         "Sec.java",

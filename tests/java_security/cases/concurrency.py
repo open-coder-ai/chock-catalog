@@ -39,6 +39,50 @@ CASES: list[tuple[str, str, str, list[int]]] = [
         [],
     ),
     # concurrency-double-checked-locking
+    # Effective Java's local-variable form, as Claude Code wrote it in the agent-kit baseline: the
+    # checks read a local copy, every shared read and write goes through the volatile field.
+    (
+        DOUBLE_CHECKED_LOCKING,
+        "OrderSummaryCache.java",
+        "public final class OrderSummaryCache {\n"
+        "  private static final Object LOCK = new Object();\n"
+        "  private static volatile OrderSummaryCache instance;\n"
+        "  public static OrderSummaryCache getInstance() {\n"
+        "    OrderSummaryCache result = instance;\n"
+        "    if (result == null) {\n"
+        "      synchronized (LOCK) {\n"
+        "        result = instance;\n"
+        "        if (result == null) {\n"
+        "          instance = result = new OrderSummaryCache();\n"
+        "        }\n"
+        "      }\n"
+        "    }\n"
+        "    return result;\n"
+        "  }\n"
+        "}\n",
+        [],
+    ),
+    # The same form over a field that is not volatile is still the broken idiom.
+    (
+        DOUBLE_CHECKED_LOCKING,
+        "OrderSummaryCache.java",
+        "public final class OrderSummaryCache {\n"
+        "  private static OrderSummaryCache instance;\n"
+        "  public static OrderSummaryCache getInstance() {\n"
+        "    OrderSummaryCache result = instance;\n"
+        "    if (result == null) {\n"
+        "      synchronized (OrderSummaryCache.class) {\n"
+        "        result = instance;\n"
+        "        if (result == null) {\n"
+        "          instance = result = new OrderSummaryCache();\n"
+        "        }\n"
+        "      }\n"
+        "    }\n"
+        "    return result;\n"
+        "  }\n"
+        "}\n",
+        [8],
+    ),
     (
         DOUBLE_CHECKED_LOCKING,
         "S.java",
