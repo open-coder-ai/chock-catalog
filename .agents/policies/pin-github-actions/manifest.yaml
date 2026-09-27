@@ -92,4 +92,4 @@ changelog:
 - version: 0.0.3
   date: '2026-09-20'
   changes:
-  - "Bound the gate to the files a `uses:` reference can live in (applies_to.paths: .github/workflows/*, .github/actions/*). The engine now runs this policy at the agent's write path and at the end of a turn, where the text under judgement is whatever was written -- unbounded, a README that documents how to pin an action was refused, and a control that fires on a correct change has failed. No pattern change; the commit-time behaviour on workflow files is unchanged."
+  - "Bound the gate to the files a `uses:` reference can live in (applies_to.paths: .github/workflows/*, .github/actions/*). The engine now runs this policy at the agent's write path and at the end of a turn, where the text under judgement is whatever was written -- unbounded, a README that documents how to pin an action was refused, and a control that fires on a correct change has failed. No pattern change; the commit-time behaviour on workflow files is unchanged. Evals tc-010 (a README quoting an unpinned action is allowed) and tc-011 (a composite action under .github/actions/ is blocked) prove the bound both ways."

@@ -95,9 +95,11 @@ pin-github-actions  [deterministic]
   PASS  tc-007                             authored  Unpinned GitHub Action detected: a workflow references an action by…
   PASS  tc-008                             authored  Unpinned GitHub Action detected: a workflow references an action by…
   PASS  tc-009                             authored  gate exit 0
+  PASS  tc-010                             authored  gate exit 0
+  PASS  tc-011                             authored  Unpinned GitHub Action detected: a workflow references an action by…
   score 1.00
 
-5 policies: 9 pass, 41 skipped
+5 policies: 11 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

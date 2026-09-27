@@ -137,10 +137,13 @@ case "${protected_clause//\\//}" in
         ;;
 esac
 
-# Not a write touching the MCP config path either? Nothing to guard.
+# protected_clause was set only by matching *verify-mcp-allowlist.sh* or *"$MCP_CONFIG_PATH"*
+# (in _clause_protected_path / _redirect_target_protected above), and the allowlist-script
+# case just above already exited on the first pattern -- so this always matches. No `*)`
+# default: it would be unreachable dead code, since there is no third pattern that could
+# have set protected_clause in the first place.
 case "${protected_clause//\\//}" in
-    *"$MCP_CONFIG_PATH"*) ;;
-    *) exit 0 ;;
+    *"$MCP_CONFIG_PATH"*) : ;;
 esac
 
 # Look up the allowlisted source for a server name; empty return + failure means unlisted.

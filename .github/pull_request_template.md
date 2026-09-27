@@ -4,11 +4,15 @@
 
 ## Definition of done
 
-- [ ] `chock check` clean
-- [ ] `chock check --only evals` green
-- [ ] `chock sync --repo . --check` clean
-- [ ] `python tools/gen_policy_docs.py --check` and `python tools/check_readme.py` pass
-- [ ] `ruff check .` clean and `python -m pytest --cov` green, at 100% line and branch coverage
+- [ ] `python tools/regen_all.py` ends `== CLEAN`, and everything it regenerated is committed. It
+      runs, in order: plugin build per tree, `chock sync` (on drift), `tools/gen_registry.py`,
+      the policy docs, coverage matrix, java contract, quickstart.sh, figures and brand card,
+      and the transcripts of changed policies; then every CI check -- `chock check` (validate,
+      lockfile, every eval), `chock sync --check`, plugin `--check`, `check_registry.py`,
+      `check_installed.py`, `check_readme.py`, the `--check` of each generator, `check_console.py`,
+      `check_workflows.py`, `check_effects.py`, the a11y checks, `ruff check .`, `ruff format
+      --check`, the transcript check, the staged adopter with its OWASP claim, and
+      `python -m pytest --cov -n auto` at 100% line and branch coverage
 - [ ] Every rule added or changed has pytest cases in both directions: refused, and silent on
       the correct form
 - [ ] Every java-security rule added or changed cites its CWE (where MITRE has one) and a

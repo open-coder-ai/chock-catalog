@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
   unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an
@@ -51,6 +51,20 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-09-24'
+  changes:
+  - "Eval cases added so every guard statement is exercised: the interpreter-write clause
+    (e.g. `python3 -c ... .mcp.json`), and clause-splitter arms for a separator glued to the
+    end of a token (`status|| tee`, `status&& tee`, `cat x| tee`) as well as a bare pipe
+    token. Also: removed the dead `*) exit 0 ;;` default arm from the final protected-path
+    case -- protected_clause can only ever contain .mcp.json or the allowlist script's own
+    filename (the only two patterns _clause_protected_path/_redirect_target_protected match,
+    and the allowlist-script arm already exits above), so that default could never run; the
+    remaining single-arm case's no-op action is now an explicit `:` so it is traceable. A
+    direct-invocation test (test_guard_direct.py) covers the CHOCK_RAW_COMMAND-unset
+    raw=\"$*\" fallback, which no eval case can drive. Guard behavior unchanged for every
+    reachable input."
 - version: 0.0.2
   date: '2026-09-21'
   changes:
