@@ -53,6 +53,12 @@ def read_state(workspace: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def at_scenario_base(workspace: Path, path: str) -> str | None:
+    """A file as the scenario started it, or None when the scenario did not have it."""
+    shown = git(workspace, "show", f"{SCENARIO_BASE}:{path}", check=False)
+    return shown.stdout if shown.returncode == 0 else None
+
+
 def changed_files(workspace: Path) -> list[str]:
     """Every file the turn added or changed, NUL-separated so a space or an accent in a path survives."""
     tracked = git(workspace, "diff", "-z", "--name-only", "--diff-filter=ACMR", SCENARIO_BASE).stdout.split("\0")

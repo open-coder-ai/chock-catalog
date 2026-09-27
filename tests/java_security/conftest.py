@@ -24,13 +24,15 @@ ALL_DENY = dict.fromkeys(registry(), DENY)
 GateRun = Callable[..., tuple[int, str]]
 
 
-def run_gate(repo: Path, writes: dict[str, str], selection: dict | str | None = None) -> tuple[int, str]:
+def run_gate(
+    repo: Path, writes: dict[str, str], selection: dict | str | None = None, event: str = "commit"
+) -> tuple[int, str]:
     """Run the gate as the runner does: the writes on stdin, the repository root beside them."""
     if selection is not None:
         (repo / ".chock").mkdir(exist_ok=True)
         body = selection if isinstance(selection, str) else json.dumps(selection)
         (repo / ".chock" / "security.json").write_text(body, encoding="utf-8")
-    payload = json.dumps({"event": "commit", "repo_root": str(repo), "writes": writes})
+    payload = json.dumps({"event": event, "repo_root": str(repo), "writes": writes})
     proc = subprocess.run(
         [sys.executable, str(GATE)],
         cwd=repo,
@@ -48,7 +50,7 @@ def run_gate(repo: Path, writes: dict[str, str], selection: dict | str | None = 
 def gate(tmp_path: Path) -> GateRun:
     """The shipped gate, run in a throwaway repository of its own."""
 
-    def _run(writes: dict[str, str], selection: dict | str | None = None) -> tuple[int, str]:
-        return run_gate(tmp_path, writes, selection)
+    def _run(writes: dict[str, str], selection: dict | str | None = None, event: str = "commit") -> tuple[int, str]:
+        return run_gate(tmp_path, writes, selection, event)
 
     return _run

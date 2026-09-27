@@ -34,6 +34,7 @@ from workspace import (
     LOCAL_ONLY,
     RESULTS,
     SCENARIO_BASE,
+    at_scenario_base,
     changed_files,
     commit_gate,
     git,
@@ -163,7 +164,7 @@ def record(args: argparse.Namespace) -> None:
     item = scenario(args.id)
     started(workspace, state, item["id"])
     paths = changed_files(workspace)
-    found = findings(workspace, Path(state["engine"]), paths)
+    found = findings(workspace, Path(state["engine"]), paths, lambda p: at_scenario_base(workspace, p))
     commit = commit_gate(workspace) if state["route"] == "repo" else None
     graded = grade(item, found, args.gate, commit)
     row = {
