@@ -28,7 +28,8 @@ def _setup(tmp_path: Path, agent: str = "claude", route: str = "plugin") -> Path
 
 
 def _logger_commands(config: Path) -> list[str]:
-    hooks = json.loads(config.read_text(encoding="utf-8"))["hooks"]
+    # agentseam 0.3.4's uninstall prunes the `hooks` table it emptied; absent means none left.
+    hooks = json.loads(config.read_text(encoding="utf-8")).get("hooks", {})
     entries = [entry for event in hooks.values() for entry in event]
     commands = [hook.get("command", "") for entry in entries for hook in entry.get("hooks", [entry])]
     return [command for command in commands if "capture_hook" in command]
