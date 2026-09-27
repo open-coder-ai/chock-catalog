@@ -208,3 +208,28 @@ python kit.py report --dir ~/shop-claude --dir ~/shop-copilot --out results.md
 A failure you cannot explain: keep the workspace, which holds the turn's diff and
 `.git/agent-tests-results.jsonl`, and the agent's transcript. Together they are the whole
 record.
+
+## Capturing what an agent sends its hooks
+
+chock checks a write *before* it lands only for agents whose write payload is on record. Claude
+Code's is recorded in full, and Cursor's full-file Write was seen once. For every other agent,
+chock has never seen what the agent sends when it edits a file, so it installs no pre-write hook
+there, and the first check is at the end of the turn (and at commit). A capture records that
+evidence from a real agent on your machine:
+
+```bash
+python kit.py capture --dir ~/shop-codex            # wire a logging hook beside chock's own
+#   in the agent: the three edits the command prints (a new file, a one-line change, two
+#   changes in one file), one chat each
+python kit.py capture --dir ~/shop-codex --show     # event, tool and field shapes per call
+python kit.py capture --dir ~/shop-codex --stop     # unwire it; the config returns to its bytes
+```
+
+The logging hook never objects and never fails, so the agent behaves exactly as it would
+without it. It logs every tool event the agent has: before a tool runs, after it runs, and
+Claude's and Cursor's file-change events. `--vendor gemini_cli` (or `grok`, `kimi_code`, ...)
+captures an agent the kit has no setup name for, in the same workspace. The log is kept in
+`.git/agent-tests-capture.jsonl`, outside the turn's diff. It holds this machine's paths and
+session ids, so review it before sharing.
+
+`start` resets the hook configs, so run a capture as its own session, not during a scenario.
