@@ -300,7 +300,6 @@ policies:
     16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging,
     build, android; quality: bugs, concurrency, resources, exceptions, performance, style,
     testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
-
 - id: injection-defense
   path: base/injection-defense
   version: 0.0.3
