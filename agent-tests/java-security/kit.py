@@ -23,7 +23,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import capture
 import doctor
+import plugin_route
 from grading import cell, findings, grade
 from workspace import (
     BASELINE,
@@ -186,9 +188,12 @@ def record(args: argparse.Namespace) -> None:
 
 def run_doctor(args: argparse.Namespace) -> None:
     workspace = Path(args.dir).expanduser().resolve()
-    state = read_state(workspace)
+    state = {**read_state(workspace), "plugin_dir": args.plugin_dir}
     git(workspace, "reset", "-q", "--hard", BASELINE)
-    results = doctor.checks(workspace, state, git)
+    if state["route"] == "repo":
+        results = doctor.checks(workspace, state, git)
+    else:
+        results = plugin_route.checks(workspace, state)
     for what, held, fix in results:
         print(f"  {'ok  ' if held else 'FAIL'}  {what}" + ("" if held else f"\n        {fix}"))
     if not all(held for _, held, _ in results):
@@ -255,7 +260,15 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(run=setup)
     p = sub.add_parser("doctor", help="prove the gates are wired, before any scenario")
     p.add_argument("--dir", default=".")
+    p.add_argument("--plugin-dir", help="plugin route: the installed plugin, when not under ~/.claude/plugins")
     p.set_defaults(run=run_doctor)
+    p = sub.add_parser("capture", help="record what the agent really sends its hooks when it edits")
+    p.add_argument("--dir", default=".")
+    p.add_argument("--vendor", help="agentseam's name for the agent (default: the workspace's): gemini_cli, grok, ...")
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--show", action="store_true", help="summarise what was captured")
+    mode.add_argument("--stop", action="store_true", help="remove the capture hook")
+    p.set_defaults(run=capture.command)
     p = sub.add_parser("list", help="list scenarios")
     p.add_argument("--tier", choices=TIERS, default="full")
     p.set_defaults(run=list_scenarios)
