@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.4.3"
+version: "0.4.4"
 description: >
   trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or
   Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties
@@ -25,8 +25,10 @@ hook:
       java-security: a construct one of its rules denies -- the refusal above names the rule, the
       pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json,
       per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build,
-      android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Waive one line with // chock: allow <rule-id>; choose by asking to
-      customize java security, which opens this skill's guided page.
+      android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny.
+      Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the
+      agent a waiver counts once a human has committed it. Choose verdicts by asking to customize
+      java security, which opens this skill's guided page.
     params:
       script: java-security-gate.py
 provenance:
@@ -46,6 +48,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.4
+  date: '2026-09-27'
+  changes:
+  - "A waiver is a human reviewer's decision, never the agent's. The first Claude Code bait run was refused at PreToolUse for concatenating an ORDER BY column into SQL, then wrote `// chock: allow persistence-sql-string-concat` on the line itself and carried on. Where the agent wrote the text -- as it writes, and at its turn's end -- a waiver now counts only on a line a human committed: the same line in the file at HEAD, as many times as HEAD has it, so neither a new waiver nor a committed one pasted elsewhere is honoured. Every refusal in the agent says so. At commit and push the person committing reviews what is staged, and a waiver there counts as before."
 - version: 0.4.3
   date: '2026-09-26'
   changes:
