@@ -48,7 +48,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
-INDEX.md: ~352 tokens (chars/4, max 2000)
+INDEX.md: ~383 tokens (chars/4, max 2000)
 Recompiled 1 policies
 scan-secrets:
   claude: best-effort (live-run)
@@ -73,7 +73,7 @@ Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-INDEX.md: ~352 tokens (chars/4, max 2000)
+INDEX.md: ~383 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -145,5 +145,5 @@ scan-secrets  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **scan-secrets**: Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
+- **scan-secrets**: Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

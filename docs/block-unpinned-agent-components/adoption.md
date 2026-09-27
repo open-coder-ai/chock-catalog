@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~331 tokens (chars/4, max 2000)
+INDEX.md: ~339 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unpinned-agent-components:
   claude: enforced-at-commit

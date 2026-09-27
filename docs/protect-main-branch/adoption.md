@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 Registered 1 pre-push policy implementation(s)
-INDEX.md: ~307 tokens (chars/4, max 2000)
+INDEX.md: ~314 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-main-branch:
   claude: enforced-at-commit

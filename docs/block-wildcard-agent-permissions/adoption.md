@@ -48,7 +48,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
-INDEX.md: ~366 tokens (chars/4, max 2000)
+INDEX.md: ~397 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-agent-permissions:
   claude: best-effort (live-run)
@@ -73,7 +73,7 @@ Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-INDEX.md: ~366 tokens (chars/4, max 2000)
+INDEX.md: ~397 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -135,5 +135,5 @@ block-wildcard-agent-permissions  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-wildcard-agent-permissions**: Wildcard agent permission grant detected. Scope the grant to specific tools or commands (e.g. Bash(git status:*), a named tool list). At commit, 'pragma: allowlist broad-agency' on the same line marks a reviewed exception; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
+- **block-wildcard-agent-permissions**: Wildcard agent permission grant detected. Scope the grant to specific tools or commands (e.g. Bash(git status:*), a named tool list). At commit, 'pragma: allowlist broad-agency' on the same line marks a reviewed exception; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```
