@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -14,7 +14,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -23,7 +23,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/block-invisible-unicode/pre-tool-use/gate.json\""
+          }
+        ],
+        "matcher": "write_file|replace"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -32,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -41,7 +50,25 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/block-wildcard-agent-permissions/pre-tool-use/gate.json\""
+          }
+        ],
+        "matcher": "write_file|replace"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/pin-github-actions/pre-tool-use/gate.json\""
+          }
+        ],
+        "matcher": "write_file|replace"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -50,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -59,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -68,7 +95,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/scan-secrets/pre-tool-use/gate.json\""
+          }
+        ],
+        "matcher": "write_file|replace"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
           }
         ],
         "matcher": "run_shell_command"
@@ -79,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --gate \".chock/compiled/block-invisible-unicode/stop/gate.json\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/block-invisible-unicode/stop/gate.json\""
           }
         ]
       },
@@ -87,7 +123,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --gate \".chock/compiled/block-wildcard-agent-permissions/stop/gate.json\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/block-wildcard-agent-permissions/stop/gate.json\""
           }
         ]
       },
@@ -95,7 +131,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --gate \".chock/compiled/pin-github-actions/stop/gate.json\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/pin-github-actions/stop/gate.json\""
           }
         ]
       },
@@ -103,7 +139,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"/usr/bin/python3\" \".chock/bin/gemini_cli.py\" --gate \".chock/compiled/scan-secrets/stop/gate.json\""
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --gate \".chock/compiled/scan-secrets/stop/gate.json\""
           }
         ]
       }

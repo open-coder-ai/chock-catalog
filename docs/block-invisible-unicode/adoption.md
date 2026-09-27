@@ -47,8 +47,8 @@ Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
-INDEX.md: ~381 tokens (chars/4, max 2000)
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+INDEX.md: ~412 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-invisible-unicode:
   claude: best-effort (live-run)
@@ -71,9 +71,9 @@ Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-INDEX.md: ~381 tokens (chars/4, max 2000)
+INDEX.md: ~412 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -127,5 +127,5 @@ block-invisible-unicode  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-invisible-unicode**: Invisible or direction-override Unicode detected in this change. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them. At commit, 'pragma: allowlist invisible-unicode' on the same line marks a documented exception (e.g. a test fixture); the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
+- **block-invisible-unicode**: Invisible or direction-override Unicode detected in this change. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them. At commit, 'pragma: allowlist invisible-unicode' on the same line marks a documented exception (e.g. a test fixture); the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

@@ -47,8 +47,8 @@ Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
-INDEX.md: ~429 tokens (chars/4, max 2000)
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+INDEX.md: ~460 tokens (chars/4, max 2000)
 Recompiled 1 policies
 java-security:
   claude: best-effort (live-run)
@@ -71,9 +71,9 @@ Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-INDEX.md: ~429 tokens (chars/4, max 2000)
+INDEX.md: ~460 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -206,5 +206,5 @@ java-security  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page.
+- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

@@ -52,7 +52,10 @@ def test_hooks_naming_missing_files_are_caught_and_block_start(tmp_path: Path, c
     _lose_bin(workspace)
     with pytest.raises(SystemExit, match="gate is not wired"):
         kit.main(["doctor", "--dir", str(workspace)])
-    assert "missing ['.chock/bin/claude_code.py']" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "missing [" in out
+    assert "'.chock/bin/claude_code.py'" in out
+    assert "'.chock/bin/launch.sh'" in out, "the launcher every hook runs is a hook file too"
     with pytest.raises(SystemExit, match="name files that are not there"):
         kit.main(["start", "smoke-sql-direct", "--dir", str(workspace)])
 

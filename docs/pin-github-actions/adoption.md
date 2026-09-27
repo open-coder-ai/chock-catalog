@@ -47,8 +47,8 @@ Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
-INDEX.md: ~405 tokens (chars/4, max 2000)
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+INDEX.md: ~436 tokens (chars/4, max 2000)
 Recompiled 1 policies
 pin-github-actions:
   claude: best-effort (live-run)
@@ -71,9 +71,9 @@ Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-INDEX.md: ~405 tokens (chars/4, max 2000)
+INDEX.md: ~436 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -130,5 +130,5 @@ pin-github-actions  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **pin-github-actions**: Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA. Pin it to the SHA -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. At commit, 'pragma: allowlist unpinned-action' on the same line marks a deliberate exception; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize.
+- **pin-github-actions**: Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA. Pin it to the SHA -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. At commit, 'pragma: allowlist unpinned-action' on the same line marks a deliberate exception; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

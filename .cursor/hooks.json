@@ -2,71 +2,83 @@
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/block-destructive-commands/implementations/block-destructive.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/block-no-verify/implementations/block-no-verify.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/protect-agent-config/implementations/protect-agent-config.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/usr/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --guard \"${CLAUDE_PROJECT_DIR}/.agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\"",
+        "timeout": 30,
+        "failClosed": true
       }
     ],
     "preToolUse": [
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-invisible-unicode/pre-tool-use/gate.json\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/block-invisible-unicode/pre-tool-use/gate.json\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-wildcard-agent-permissions/pre-tool-use/gate.json\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/block-wildcard-agent-permissions/pre-tool-use/gate.json\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/pin-github-actions/pre-tool-use/gate.json\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/pin-github-actions/pre-tool-use/gate.json\"",
+        "timeout": 30,
+        "failClosed": true
       },
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/scan-secrets/pre-tool-use/gate.json\"",
-        "timeout": 30
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/scan-secrets/pre-tool-use/gate.json\"",
+        "timeout": 30,
+        "failClosed": true
       }
     ],
     "stop": [
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-invisible-unicode/stop/gate.json\"",
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/block-invisible-unicode/stop/gate.json\"",
         "timeout": 30
       },
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/block-wildcard-agent-permissions/stop/gate.json\"",
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/block-wildcard-agent-permissions/stop/gate.json\"",
         "timeout": 30
       },
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/pin-github-actions/stop/gate.json\"",
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/pin-github-actions/stop/gate.json\"",
         "timeout": 30
       },
       {
-        "command": "\"/tmp/chock0110/bin/python3\" \"${CLAUDE_PROJECT_DIR}/.chock/bin/cursor.py\" --gate \"${CLAUDE_PROJECT_DIR}/.chock/compiled/scan-secrets/stop/gate.json\"",
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --gate \".chock/compiled/scan-secrets/stop/gate.json\"",
         "timeout": 30
       }
     ]
