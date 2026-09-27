@@ -84,3 +84,19 @@ suite:
       files:
         .github/workflows/ci.yml: "    steps:\n      - uses: \"actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3\"\n"
       expect: allow
+  - id: tc-010
+    category: negative_trigger
+    prompt: A staged README documents an unpinned action as the thing not to write.
+    expect: The gate allows it; applies_to.paths bounds the gate to workflows and composite actions.
+    execute:
+      files:
+        README.md: "Do not write:\n\n    - uses: actions/checkout@v4\n"  # pragma: allowlist unpinned-action
+      expect: allow
+  - id: tc-011
+    category: trigger
+    prompt: A staged composite action references a third-party action by a tag.
+    expect: The gate blocks the commit; .github/actions/ is inside the bound.
+    execute:
+      files:
+        .github/actions/setup/action.yml: "runs:\n  using: composite\n  steps:\n    - uses: actions/setup-python@v5\n"  # pragma: allowlist unpinned-action
+      expect: block
