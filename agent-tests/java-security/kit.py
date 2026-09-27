@@ -186,7 +186,7 @@ def record(args: argparse.Namespace) -> None:
 
 def run_doctor(args: argparse.Namespace) -> None:
     workspace = Path(args.dir).expanduser().resolve()
-    state = read_state(workspace)
+    state = {**read_state(workspace), "plugin_dir": args.plugin_dir}
     git(workspace, "reset", "-q", "--hard", BASELINE)
     results = doctor.checks(workspace, state, git)
     for what, held, fix in results:
@@ -255,6 +255,7 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(run=setup)
     p = sub.add_parser("doctor", help="prove the gates are wired, before any scenario")
     p.add_argument("--dir", default=".")
+    p.add_argument("--plugin-dir", help="plugin route: the installed plugin, when not under ~/.claude/plugins")
     p.set_defaults(run=run_doctor)
     p = sub.add_parser("list", help="list scenarios")
     p.add_argument("--tier", choices=TIERS, default="full")

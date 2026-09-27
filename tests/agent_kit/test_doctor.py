@@ -72,12 +72,6 @@ def test_setup_commits_chocks_files_even_under_a_global_bin_ignore(
     assert (workspace / ".chock" / "bin" / "claude_code.py").is_file()
 
 
-def test_the_plugin_route_is_not_second_guessed(tmp_path: Path, capsys) -> None:
-    workspace = _setup(tmp_path, route="plugin")
-    kit.main(["doctor", "--dir", str(workspace)])
-    assert "plugin route" in capsys.readouterr().out
-
-
 def test_hook_files_are_read_off_a_windows_command(tmp_path: Path) -> None:
     command = '"C:\\\\Python314\\\\python.exe" "${CLAUDE_PROJECT_DIR}/.chock/bin/claude_code.py" --gate "${CLAUDE_PROJECT_DIR}/.chock/compiled/java-security/pre-tool-use/gate.json"'
     settings = tmp_path / ".claude" / "settings.json"

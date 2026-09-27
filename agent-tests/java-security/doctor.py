@@ -139,7 +139,9 @@ def checks(workspace: Path, state: dict, git: Callable) -> list[tuple[str, bool,
     results: list[tuple[str, bool, str]] = []
     agent, route = state["agent"], state["route"]
     if route != "repo":
-        return [("plugin route: install java-security from the agent's marketplace", True, "")]
+        import plugin_route  # noqa: PLC0415 -- it imports this module back
+
+        return plugin_route.checks(workspace, state)
     missing = missing_hook_files(workspace, agent)
     fix = "a global gitignore (often `bin/`) may have kept them out of the baseline; run setup again in a new directory"
     results.append((f"{agent}'s hook commands name files that exist", not missing, f"missing {missing}: {fix}"))
