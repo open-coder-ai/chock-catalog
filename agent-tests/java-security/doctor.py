@@ -113,7 +113,11 @@ def claude_decides(workspace: Path, argv: list[str], line: str, tool: str = "Wri
     }
     env = {**os.environ, "CLAUDE_PROJECT_DIR": str(workspace)}
     try:
-        done = subprocess.run(argv, input=json.dumps(payload), capture_output=True, text=True, env=env, check=False)
+        # From the workspace root, as Claude Code runs a project's hooks: the launcher form
+        # (`git -c alias... chock-hook ...`) resolves its repo-relative paths from there.
+        done = subprocess.run(
+            argv, input=json.dumps(payload), capture_output=True, text=True, env=env, cwd=workspace, check=False
+        )
     finally:
         target.unlink(missing_ok=True)
     denied = done.returncode == 2 or '"permissionDecision": "deny"' in done.stdout  # noqa: PLR2004 -- Claude's block exit
