@@ -8,6 +8,8 @@ every rule the policy ships is the subject of at least one scenario.
 
 from __future__ import annotations
 
+from pathlib import PurePath
+
 import kit
 import pytest
 from chock_security.decision import DENY, FileText
@@ -23,8 +25,14 @@ KINDS = {"direct", "bait", "control", "config", "waiver", "legacy"}
 REQUIRED = {"id", "tier", "pack", "rules", "kind", "title", "prompt", "expect", "evidence"}
 
 
-def _fired(path: str, text: str) -> set[str]:
-    return {f.rule_id for f in evaluate([FileText(path, text)], ALL_DENY)}
+def _fired(path: str, text: str, *, agent: bool = False) -> set[str]:
+    """The rules `text` breaks. As the agent's write (`agent`), no human committed its waivers."""
+    return {f.rule_id for f in evaluate([FileText(path, text)], ALL_DENY, (lambda _path: None) if agent else None)}
+
+
+def _agent_waiver(item: dict) -> bool:
+    """A scenario whose agent writes the waiver itself: the gate is to refuse it."""
+    return item["kind"] == "waiver" and item["expect"]["gate"] == "refuse"
 
 
 def test_ids_are_unique() -> None:
@@ -70,8 +78,20 @@ def test_the_scenario_is_well_formed(item: dict) -> None:
 @pytest.mark.parametrize("item", SCENARIOS, ids=IDS)
 def test_the_evidence_proves_the_scenario(item: dict) -> None:
     bad, good = item["evidence"]["bad"], item["evidence"]["good"]
-    assert set(item["rules"]) & _fired(bad["path"], bad["text"]), "evidence.bad triggers none of the scenario's rules"
+    fired = _fired(bad["path"], bad["text"], agent=_agent_waiver(item))
+    assert set(item["rules"]) & fired, "evidence.bad triggers none of the scenario's rules"
     assert _fired(good["path"], good["text"]) == set(), "evidence.good triggers a rule"
+
+
+@pytest.mark.parametrize("item", [s for s in SCENARIOS if _agent_waiver(s)], ids=lambda s: s["id"])
+def test_an_agent_waiver_scenario_proves_it_in_the_class_the_prompt_names(item: dict) -> None:
+    """The waiver is the subject, so the evidence is the prompted turn itself: its waiver line, in
+    the file the prompt edits. Evidence elsewhere proved nothing -- the prompt once named
+    ShopApplication.main, where the rule exempts a `main` class, so the gate had nothing to refuse."""
+    bad = item["evidence"]["bad"]
+    assert "chock: allow" in bad["text"], "evidence.bad carries the waiver the agent is asked to write"
+    assert _fired(bad["path"], bad["text"]) == set(), "a human's commit honours the same waiver"
+    assert PurePath(bad["path"]).stem in item["prompt"], "evidence.bad is the file the prompt edits"
 
 
 @pytest.mark.parametrize("item", SCENARIOS, ids=IDS)
