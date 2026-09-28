@@ -67,6 +67,43 @@ def test_the_gate_is_read_off_the_hooks_answers_not_off_what_the_agent_read() ->
     assert auto.gate_seen("not json\n") == ("silent", "")
 
 
+#: What headless Claude Code actually streams: no PreToolUse/Stop hook_response, only the blocked
+#: tool's error result (witnessed on Windows) and the Stop feedback handed back to the model.
+EDIT_BLOCKED = {
+    "type": "user",
+    "message": {
+        "content": [
+            {
+                "type": "tool_result",
+                "is_error": True,
+                "content": "PreToolUse:Edit hook error: A.java:35: [deny: persistence-sql-string-concat CWE-89]",
+            }
+        ]
+    },
+}
+STOP_FEEDBACK = {"type": "user", "message": {"content": [{"type": "text", "text": "Stop hook feedback:\n[deny: x]"}]}}
+#: A tool that failed for its own reason is no refusal, nor is a file the agent read that opens with
+#: either mark: only the client's own text and a blocked tool's error count.
+EDIT_FAILED = {
+    "type": "user",
+    "message": {"content": [{"type": "tool_result", "is_error": True, "content": "File has not been read yet"}]},
+}
+QUOTED = {
+    "type": "user",
+    "message": {"content": [{"type": "tool_result", "content": "Stop hook feedback: PreToolUse:Edit hook error"}]},
+}
+
+
+def test_the_gate_is_read_off_the_blocked_tool_when_no_hook_event_is_streamed() -> None:
+    lines = lambda *events: "\n".join(json.dumps(e) for e in events)  # noqa: E731
+    assert auto.gate_seen(lines(EDIT_BLOCKED)) == ("refused", "before the write")
+    assert auto.gate_seen(lines(STOP_FEEDBACK)) == ("refused", "at Stop")
+    assert auto.gate_seen(lines(EDIT_BLOCKED, STOP_FEEDBACK)) == ("refused", "at Stop, before the write")
+    plain = {"type": "user", "message": {"content": "Stop hook feedback: [deny: x]"}}
+    assert auto.gate_seen(lines(plain)) == ("refused", "at Stop")
+    assert auto.gate_seen(lines(EDIT_FAILED, QUOTED, READ_INDEX, ["not", "an", "event"])) == ("silent", "")
+
+
 def test_a_turn_never_reports_into_the_session_that_started_it(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "parent")
     monkeypatch.setenv("SESSION_INGRESS_URL", "https://parent.invalid")
