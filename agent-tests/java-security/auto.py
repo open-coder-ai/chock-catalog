@@ -26,6 +26,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from grading import cell
+from turn import run_turn
 from workspace import RESULTS, read_state
 
 KIT = Path(__file__).resolve().parent / "kit.py"
@@ -134,9 +135,18 @@ def turn_result(stream: str) -> dict:
     return {}
 
 
+#: A kit step (start, record) is git and the engine over a handful of files: minutes means stuck.
+KIT_TIMEOUT = 600
+
+
 def _kit(*args: str) -> subprocess.CompletedProcess:
     argv = [sys.executable, str(KIT), *args]
-    return subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+    try:
+        return subprocess.run(
+            argv, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False, timeout=KIT_TIMEOUT
+        )
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(argv, 1, "", f"kit.py {args[0]} did not finish in {KIT_TIMEOUT}s")
 
 
 def claude_argv(args: argparse.Namespace, prompt: str) -> list[str]:
@@ -159,29 +169,12 @@ def run_one(args: argparse.Namespace, workspace: Path, item: dict) -> dict:
     if started.returncode:
         return {"id": item["id"], "error": (started.stdout + started.stderr).strip()[-800:]}
     t0 = time.monotonic()
-    try:
-        proc = subprocess.run(
-            claude_argv(args, item["prompt"].strip()),
-            cwd=workspace,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=args.timeout,
-            check=False,
-            stdin=subprocess.DEVNULL,
-            env=child_env(),
-        )
-        stream = proc.stdout
-    except subprocess.TimeoutExpired as exc:
-        stream = exc.stdout if isinstance(exc.stdout, str) else ""
-    turns = Path(args.out) / "transcripts"
-    turns.mkdir(parents=True, exist_ok=True)
-    (turns / f"{args.route}-{item['id']}.jsonl").write_text(stream, encoding="utf-8")
+    transcript = Path(args.out) / "transcripts" / f"{args.route}-{item['id']}.jsonl"
+    stream = run_turn(claude_argv(args, item["prompt"].strip()), workspace, child_env(), args.timeout, transcript)
     seen, where = gate_seen(stream)
     recorded = _kit("record", item["id"], "--dir", str(workspace), "--gate", seen, "--note", where)
     result = turn_result(stream)
-    return {
+    row = {
         "id": item["id"],
         "route": args.route,
         "gate": seen,
@@ -191,6 +184,10 @@ def run_one(args: argparse.Namespace, workspace: Path, item: dict) -> dict:
         "turn_error": bool(result.get("is_error")) or not result,
         "record": recorded.stdout.strip() or recorded.stderr.strip()[-400:],
     }
+    if recorded.returncode:
+        # Nothing reached the workspace's results: logged as done, a rerun would skip it for good.
+        row["error"] = "record failed: " + (recorded.stderr.strip() or recorded.stdout.strip())[-400:]
+    return row
 
 
 def _worker(n: int, args: argparse.Namespace, jobs: queue.Queue, log: Path, lock: threading.Lock) -> None:
@@ -209,7 +206,7 @@ def _worker(n: int, args: argparse.Namespace, jobs: queue.Queue, log: Path, lock
         with lock:
             with log.open("a", encoding="utf-8") as out:
                 out.write(json.dumps(row) + "\n")
-            first = (row.get("record") or row.get("error") or "").splitlines()
+            first = (row.get("error") or row.get("record") or "").splitlines()
             print(f"[{args.route}#{n}] {first[0] if first else item['id']}", flush=True)
 
 

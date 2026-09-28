@@ -156,6 +156,29 @@ def test_a_turn_is_started_run_and_recorded(
     assert "0 to run, 1 already recorded" in capsys.readouterr().out, "a recorded scenario is not run again"
 
 
+def test_a_record_that_failed_is_run_again_not_counted_as_done(
+    tmp_path: Path, fake_claude: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    out, plugin = tmp_path / "run", tmp_path / "plugin"
+    plugin.mkdir()
+    real = auto._kit
+
+    def record_fails(*args: str):
+        done = real(*args)
+        if args[0] == "record":
+            return auto.subprocess.CompletedProcess(args, 1, "", "Traceback ...\nKeyboardInterrupt")
+        return done
+
+    monkeypatch.setattr(auto, "_kit", record_fails)
+    _auto(out, fake_claude, plugin, "--only", "smoke-sql-direct")
+    [row] = [json.loads(line) for line in (out / "turns-plugin.jsonl").read_text().splitlines()]
+    assert row["error"].startswith("record failed: ")
+    assert "record failed" in capsys.readouterr().out, "the failure is what the worker prints"
+    monkeypatch.setattr(auto, "_kit", real)
+    _auto(out, fake_claude, plugin, "--only", "smoke-sql-direct")
+    assert "1 to run, 0 already recorded" in capsys.readouterr().out, "nothing reached the results: run it again"
+
+
 def test_the_plugin_route_needs_the_plugin(tmp_path: Path) -> None:
     with pytest.raises(SystemExit, match="--plugin-dir"):
         kit.main(["auto", "--out", str(tmp_path), "--route", "plugin"])
