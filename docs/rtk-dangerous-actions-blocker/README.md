@@ -7,17 +7,17 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `rtk-dangerous-actions-blocker.sh` |
+| **Mechanism** | guard script `rtk-dangerous-actions-blocker.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 78 total, 78 executable |
+| **Eval cases** | 92 total, 92 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Carved out for rtk-ai/rtk#1007: rtk's own decision table as a chock policy (rtk's own hooks may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and '+' refspecs (not --force-with-lease); reads of credential files (.env, *.pem, *.key, id_rsa, ~/.ssh, ~/.aws) and echoes or inline literals of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE through psql, mysql, sqlite3, mongosh, redis-cli, and dropdb; plus the base policy's cloud rows (kubectl delete, terraform destroy, aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume rm). Asks where rtk's table says ask: rm -rf on a relative path off the safe list; git reset --hard, clean -f, checkout ., branch -D; docker prune and docker rm -f over a substitution. File checks are skipped inside docker/kubectl exec, as rtk specifies; rtk is a transparent prefix. Bypasses: aliases, quoting, indirection, sourced files, interpreters, indirect scripts. This is friction, not a security boundary.
+Carved out for rtk-ai/rtk#1007: rtk's own decision table as a chock policy (rtk's own hooks may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and '+' refspecs (not --force-with-lease); reads of credential files (.env, *.pem, *.key, id_rsa, ~/.ssh, ~/.aws) by cat, grep, rg, awk, sed, jq and the like or by `< file`, and echoes or inline literals of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE through psql, mysql, sqlite3, mongosh, redis-cli, and dropdb; plus the base policy's cloud rows (kubectl delete, terraform destroy, aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume rm). Asks where rtk's table says ask: rm -rf on a relative path off the safe list; git reset --hard, clean -f, checkout ., branch -D; docker prune and docker rm -f over a substitution. File checks are skipped inside docker/kubectl exec; rtk is a transparent prefix. Friction, not a security boundary.
 
 ## What it solves
 
@@ -25,7 +25,7 @@ A project asked for exactly this guard and could not merge it: rtk-ai/rtk#1007 w
 
 ## How it works
 
-A guard script, `implementations/rtk-dangerous-actions-blocker.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/rtk-dangerous-actions-blocker.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 

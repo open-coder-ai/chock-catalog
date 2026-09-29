@@ -9,7 +9,7 @@ from pathlib import Path
 
 import yaml
 
-from mechanism import EVENT_SCRIPT, GATE, GUARD, classify, event_scripts
+from mechanism import EVENT_SCRIPT, GATE, GUARD, classify, command_guards, event_scripts
 from trees import policy_dirs
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,7 +97,7 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
     gate = (manifest.get("hook") or {}).get("gate") or {}
     cases = load_cases(policy_dir)
     executed = sum(1 for c in cases if c.get("execute")) if kind != "text" else 0
-    scripts = sorted(p.name for p in (policy_dir / "implementations").glob("*.sh")) if kind == "guard" else []
+    scripts = [p.name for p in command_guards(policy_dir, policy_id)] if kind == "guard" else []
     if kind == "script":
         scripts = [p.name for p in event_scripts(policy_dir, policy_id)]
     disabled = "disabled by default" in (manifest.get("description") or "")

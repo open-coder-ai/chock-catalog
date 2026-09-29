@@ -52,7 +52,9 @@ jobs:
           sudo apt-get update -q && sudo apt-get install -y -q shellcheck
           # Discovery by shebang, not extension, so an extensionless script can never
           # slip the net (the framework's dispatcher did exactly that).
-          git grep -zlE '^#!/(usr/)?bin/(env )?(ba)?sh' -- . | xargs -0 shellcheck --severity=warning
+          # A Python guard opens with an `sh` line that re-execs it under Python (a polyglot);
+          # that line is its only shell, so `*.py` is not a shell script to lint.
+          git grep -zlE '^#!/(usr/)?bin/(env )?(ba)?sh' -- . ':!*.py' | xargs -0 shellcheck --severity=warning
 
   semgrep:
     runs-on: ubuntu-latest

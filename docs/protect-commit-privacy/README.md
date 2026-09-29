@@ -7,17 +7,17 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `protect-commit-privacy.sh` |
+| **Mechanism** | guard script `protect-commit-privacy.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 26 total, 26 executable |
+| **Eval cases** | 35 total, 35 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Keep the development conversation out of git history. Agent-authored commits narrate by default -- who asked for what, which discussion decided it, what the plan was -- and on a public repo that narration is published forever. The guard refuses git commit commands whose message (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent to describe the change, not the conversation, and to propose sensitive messages to the human before committing. A commit or gh pr create|edit wrapped in sh -c/bash -c (hiding it inside one opaque argv token) falls back to scanning the raw command text, scoped to argv[0] actually being a shell interpreter so a command that merely echoes the pattern as documentation still passes. Best-effort: markers are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the marker list in the guard, the content is yours.
+Keep the development conversation out of git history. Agent-authored commits narrate by default -- who asked for what, which discussion decided it, what the plan was -- and on a public repo that narration is published forever. The guard refuses git commit commands whose message (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent to describe the change, not the conversation, and to propose sensitive messages to the human before committing. The command line is parsed, so a commit or gh pr create|edit behind cd, sh -c/bash -c, sudo, env or command is read like a bare one, a message fed on `-F -` from a heredoc is scanned, and a command that merely echoes the pattern as documentation still passes. Best-effort: markers are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the marker list in the guard, the content is yours.
 
 ## What it solves
 
@@ -25,7 +25,7 @@ A threat that did not exist before agents wrote commits: process leakage through
 
 ## How it works
 
-A guard script, `implementations/protect-commit-privacy.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/protect-commit-privacy.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 

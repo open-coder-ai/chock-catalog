@@ -1,0 +1,52 @@
+id: block-unguarded-agent-spawn
+name: "Block Unguarded Agent Spawn"
+version: "0.0.1"
+description: >
+  Best-effort guard against an agent launching a coding agent with its safety checks off: claude
+  --dangerously-skip-permissions or --permission-mode bypassPermissions, codex --full-auto,
+  --yolo, --dangerously-bypass-approvals-and-sandbox or --sandbox danger-full-access, gemini
+  --yolo, -y or --approval-mode yolo, cursor-agent --force. A spawned agent that never asks and
+  never sandboxes is an unsupervised agent (OWASP ASI10, rogue agents). Read as a parsed command,
+  so `cd repo && claude ...`, `bash -c '...'`, sudo/env wrappers and `npx @openai/codex ...` are
+  caught, while a normal invocation, `codex --sandbox workspace-write`, or a command that only
+  mentions the flag (echo, grep, a commit message) is not. Known bypass classes include shell
+  aliases, wrapper scripts, config files that set the mode, and agents this list does not name.
+  Run the agent with its default approvals; a human decides when an unattended run is acceptable.
+artifact: rule
+enforcement: advise
+rule:
+  text: |
+    never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force)
+    if(unattended_run_needed): propose_to_human; await(approval)  # spawn with default approvals and sandbox
+effects:
+- read_only
+approval:
+  required: false
+
+compliance:
+  owasp_asi:
+  - control: ASI10
+    coverage: partial
+    note: "refuses launching a sub-agent with approvals or sandbox switched off from the shell; agent inventory, expiry, monitoring and a kill switch stay with the advisory owasp-asi10-rogue-agents policy"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-09-29'
+  changes:
+  - "Initial baseline: a Python guard (implementations/block-unguarded-agent-spawn.py, stdlib only, beside the shared chock_shellparse package) refuses claude --dangerously-skip-permissions and --permission-mode bypassPermissions, codex --full-auto, --yolo, --dangerously-bypass-approvals-and-sandbox and --sandbox danger-full-access, gemini --yolo, -y and --approval-mode yolo, and cursor-agent --force/-f, on the command actually run: after cd, bash -c, sudo/env wrappers and through npx/bunx package names. Normal invocations, and commands that merely mention a flag, are allowed. Advisory (a PreToolUse guard on the shell only): maps to OWASP ASI10 as partial coverage."

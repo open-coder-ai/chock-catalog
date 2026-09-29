@@ -47,7 +47,7 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 def test_every_bash_guard_is_measured() -> None:
-    assert len(GUARDED) >= 9
+    assert [p.name for p, _ in GUARDED] == ["block-curl-pipe-sh"]
 
 
 @pytest.mark.parametrize(("policy_dir", "guard"), GUARDED, ids=[p.name for p, _ in GUARDED])

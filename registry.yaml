@@ -43,25 +43,24 @@ policies:
     is friction, not a security boundary.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.0.10
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
-  mechanism: guard script
-  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 61
-  eval_executed: 61
-  description: 'Best-effort guard against destructive commands: rm -rf targeting absolute, home
-    ($HOME/~) or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push
-    --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform
-    destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume
-    rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate; wipefs
-    -a. Destructive verbs are matched position-aware, so a bucket, path or object NAMED like a verb
-    (helm list delete) is allowed, and find/shred/truncate apply the same target test as rm, so a
-    relative path in the working tree stays allowed. sudo, doas and pkexec are transparent wrappers:
-    the program they run is graded, escalation itself is not refused. Known bypasses: aliases,
-    quoted arguments, non-standard clients, an unusual value-flag outside the curated set, and
-    indirect invocation via a script or interpreter. This is friction, not a security boundary.'
+  mechanism: commit-time guard script
+  enforces: enforced-at-commit
+  eval_cases: 80
+  eval_executed: 80
+  description: 'Best-effort guard against destructive commands, read as parsed commands (bash -c and
+    cd chains included, echo excluded): rm -rf on absolute, home ($HOME/~) or root-adjacent paths (and
+    PowerShell Remove-Item -Recurse); git push --force (not --force-with-lease), reset --hard, clean
+    -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete;
+    docker volume rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate;
+    wipefs -a. git branch -D asks first. Verbs are matched position-aware, so a bucket or object NAMED
+    like a verb is allowed, and a relative path in the working tree stays allowed. sudo, doas and pkexec
+    are transparent. A pre-push hook refuses any non-fast-forward push -- force, +refspec or lease alike;
+    a human escapes with git push --no-verify. Known bypasses: aliases, an unusual value-flag, interpreters
+    and scripts. Friction, not a security boundary.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
   version: 0.0.3
@@ -83,39 +82,39 @@ policies:
     a source tree, are blocked. Escape: ''pragma: allowlist invisible-unicode'' on the same line.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.0.7
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 19
-  eval_executed: 19
-  description: Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's
-    short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays allowed.
-    Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying
-    hook failure instead of skipping validation.
+  eval_cases: 34
+  eval_executed: 34
+  description: 'Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit''s
+    short -n form, or any way of pointing core.hooksPath elsewhere: -c, --config-env, `git config core.hooksPath
+    <path>` and the GIT_CONFIG_* environment. Read as a parsed command, so `cd repo && git commit --no-verify`,
+    `bash -c ''...''` and sudo/env/xargs wrappers are caught and a message that merely says --no-verify
+    is not. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases,
+    wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.0.3
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 38
-  eval_executed: 38
-  description: 'Best-effort guard against exfiltration through the tool channel: a network command
-    (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file,
-    --post-file -- to a host outside the egress allowlist. The allowlist defaults to package
-    registries and code hosting and is meant to be extended with your org''s own domains; a host
-    matches by exact name or ".<entry>" suffix. Fetch-only traffic is left alone -- the target
-    is upload to an unapproved host, not normal dependency traffic. A schemeless or
-    protocol-relative target is checked too, from the last non-flag token, but only when no
-    explicit http(s):// URL appears anywhere -- once one has, it alone decides. Tool-time FLOOR,
-    not a network sandbox: it stops the obvious reflex, not a determined adversary. Known
-    bypasses: ~/.curlrc, combined short flags, obfuscated payloads, non-standard clients, a
-    language runtime. Escape: ''pragma: allowlist egress''.'
+  eval_cases: 49
+  eval_executed: 49
+  description: 'Best-effort guard against exfiltration through the tool channel: a network command (curl/wget/Invoke-WebRequest)
+    that UPLOADS data -- POST/PUT, --data/--form, --upload-file, --post-file -- to a host outside the
+    egress allowlist. The allowlist defaults to package registries and code hosting and is meant to
+    be extended with your org''s own domains; a host matches by exact name or ".<entry>" suffix. Fetch-only
+    traffic is left alone. A schemeless or protocol-relative target is checked too, from the last non-flag
+    token, but only when no explicit http(s):// URL appears -- once one has, it alone decides. Options
+    are parsed as curl reads them, so -sd @file is an upload. Tool-time FLOOR, not a network sandbox.
+    Known bypasses: ~/.curlrc, obfuscated payloads, non-standard clients, a language runtime. Escape:
+    ''pragma: allowlist egress''.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
   version: 0.0.4
@@ -532,69 +531,63 @@ policies:
     stay out of scope.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.0.7
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 34
-  eval_executed: 34
+  eval_cases: 52
+  eval_executed: 52
   description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
-    and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json) and
-    vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a
-    shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS
-    AML.T0081). The guard refuses shell write-commands targeting those paths; reads pass, and
-    regeneration through `chock sync` passes because the tool writes them itself. Best-effort
-    and deliberately coarse: a write signal (a `>`/`>>` redirect, or a writer verb like
-    rm/cp/sed -i) is scoped to its own clause of the command line, so it must actually target
-    the protected path, not merely appear alongside it; a glued-on separator or a non-redirect
-    writer''s own operand are not resolved that finely. The ''chock: approved-config-change''
-    marker is friction plus an audit trail, not authentication; the check an agent cannot
-    self-approve is the commit-time gate and CI.'
+    and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency
+    allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/)
+    define what the agent may do -- so a shell command that rewrites them is the agent modifying its
+    own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to those paths -- a redirect,
+    rm/mv/tee/sed -i, cp into the path, git checkout/restore, PowerShell Set-Content/Add-Content/Out-File;
+    reads and copies out pass, and `chock sync` passes. Best-effort and deliberately coarse. The ''chock:
+    approved-config-change'' marker is friction plus an audit trail, not authentication; the check an
+    agent cannot self-approve is the commit-time gate and CI.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.0.3
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 27
-  eval_executed: 27
+  eval_cases: 36
+  eval_executed: 36
   description: 'Guard against an agent weakening the automated checks that review its own work. CI/CD
-    workflow files (.github/workflows/), the composite actions they call (.github/actions/) and
-    the dependency-update automation (.github/dependabot.yml) define what must pass before a
-    change lands -- so rewriting or deleting them is the agent removing the gate that would
-    catch it. The guard refuses shell write-commands targeting those paths; reads pass, and
-    tool-driven regeneration (chock sync) passes. Best-effort and deliberately coarse: a write
-    signal (a `>`/`>>` redirect, or a writer verb like rm/cp/sed -i/git checkout) is scoped to
-    its own clause of the command line, so it must actually target the protected path, not
-    merely appear alongside it; a glued-on separator or a non-redirect writer''s own operand are
-    not resolved that finely. The ''chock: approved-config-change'' marker is friction plus an
-    audit trail, not authentication; the check an agent cannot self-approve is server-side
-    branch protection.'
+    workflow files (.github/workflows/), the composite actions they call (.github/actions/) and the
+    dependency-update automation (.github/dependabot.yml) define what must pass before a change lands
+    -- so rewriting or deleting them is the agent removing the gate that would catch it. The guard refuses
+    shell write-commands targeting those paths; reads pass, and tool-driven regeneration (chock sync)
+    passes. Best-effort and deliberately coarse: the command line is parsed, and a write (a `>`/`>>`
+    redirect, a writer verb like rm/mv/tee/sed -i, cp into the path, git checkout/restore, a PowerShell
+    Set-Content/Add-Content/Out-File) must actually target the protected path; reading it passes. The
+    ''chock: approved-config-change'' marker is friction plus an audit trail, not authentication; the
+    check an agent cannot self-approve is server-side branch protection.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.0.5
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 26
-  eval_executed: 26
-  description: 'Keep the development conversation out of git history. Agent-authored commits narrate by
-    default -- who asked for what, which discussion decided it, what the plan was -- and on a
-    public repo that narration is published forever. The guard refuses git commit commands whose
-    message (inline -m/--message or the file behind -F/--file) contains process-leak markers;
-    the rule tells the agent to describe the change, not the conversation, and to propose
-    sensitive messages to the human before committing. A commit or gh pr create|edit wrapped in
-    sh -c/bash -c (hiding it inside one opaque argv token) falls back to scanning the raw
-    command text, scoped to argv[0] actually being a shell interpreter so a command that merely
-    echoes the pattern as documentation still passes. Best-effort: markers are a narrow
-    deny-list, and a message the human explicitly approves can say anything -- edit the marker
-    list in the guard, the content is yours.'
+  eval_cases: 35
+  eval_executed: 35
+  description: 'Keep the development conversation out of git history. Agent-authored commits narrate
+    by default -- who asked for what, which discussion decided it, what the plan was -- and on a public
+    repo that narration is published forever. The guard refuses git commit commands whose message (inline
+    -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent
+    to describe the change, not the conversation, and to propose sensitive messages to the human before
+    committing. The command line is parsed, so a commit or gh pr create|edit behind cd, sh -c/bash -c,
+    sudo, env or command is read like a bare one, a message fed on `-F -` from a heredoc is scanned,
+    and a command that merely echoes the pattern as documentation still passes. Best-effort: markers
+    are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the
+    marker list in the guard, the content is yours.'
 - id: protect-main-branch
   path: base/protect-main-branch
   version: 0.0.1
@@ -609,24 +602,24 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.0.2
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 78
-  eval_executed: 78
-  description: 'Carved out for rtk-ai/rtk#1007: rtk''s own decision table as a chock policy (rtk''s own
-    hooks may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and
-    ''+'' refspecs (not --force-with-lease); reads of credential files (.env, *.pem, *.key, id_rsa, ~/.ssh,
-    ~/.aws) and echoes or inline literals of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE
-    through psql, mysql, sqlite3, mongosh, redis-cli, and dropdb; plus the base policy''s cloud rows (kubectl
-    delete, terraform destroy, aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume rm).
-    Asks where rtk''s table says ask: rm -rf on a relative path off the safe list; git reset --hard, clean
-    -f, checkout ., branch -D; docker prune and docker rm -f over a substitution. File checks are skipped
-    inside docker/kubectl exec, as rtk specifies; rtk is a transparent prefix. Bypasses: aliases, quoting,
-    indirection, sourced files, interpreters, indirect scripts. This is friction, not a security boundary.'
+  eval_cases: 92
+  eval_executed: 92
+  description: 'Carved out for rtk-ai/rtk#1007: rtk''s own decision table as a chock policy (rtk''s
+    own hooks may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force
+    and ''+'' refspecs (not --force-with-lease); reads of credential files (.env, *.pem, *.key, id_rsa,
+    ~/.ssh, ~/.aws) by cat, grep, rg, awk, sed, jq and the like or by `< file`, and echoes or inline
+    literals of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE through psql, mysql, sqlite3,
+    mongosh, redis-cli, and dropdb; plus the base policy''s cloud rows (kubectl delete, terraform destroy,
+    aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume rm). Asks where rtk''s table
+    says ask: rm -rf on a relative path off the safe list; git reset --hard, clean -f, checkout ., branch
+    -D; docker prune and docker rm -f over a substitution. File checks are skipped inside docker/kubectl
+    exec; rtk is a transparent prefix. Friction, not a security boundary.'
 - id: scan-secrets
   path: base/scan-secrets
   version: 0.0.7
@@ -670,25 +663,22 @@ policies:
     with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.0.3
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 22
-  eval_executed: 22
+  eval_cases: 38
+  eval_executed: 38
   description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
-    unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an
-    unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches
-    a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this
-    guard''s own script, protected like every policy''s implementations/ source -- edit only
-    with ''chock: approved-config-change''. Claude Code''s .mcp.json only. Tool-time (Bash)
-    only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard,
-    a write with no visible content fails closed. No commit-time gate. A write signal is scoped
-    to its own clause of the command line, so a writer or redirect elsewhere -- or stderr merely
-    suppressed -- cannot condemn a plain read of .mcp.json. Matching and path checks are
-    otherwise exact-string and substring-coarse. No pragma for .mcp.json.'
+    unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist
+    -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude
+    mcp add|add-json` is checked the same way (add-from-claude-desktop cannot be verified and is refused).
+    The allowlist ships inside this guard''s own script, protected like every policy''s implementations/
+    source -- edit only with ''chock: approved-config-change''. Claude Code''s .mcp.json only. Tool-time
+    (Bash) only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard,
+    a write with no visible content fails closed. No commit-time gate. No pragma for .mcp.json.'
 - id: block-test-skips
   path: base/block-test-skips
   version: 0.0.1
@@ -771,3 +761,23 @@ policies:
     29 rules in 10 packs -- exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code,
     provenance -- each pack or rule allow|deny in .chock/agentic-security.json; bounds, prompt-memory
     and one supply rule start as allow.'
+- id: block-unguarded-agent-spawn
+  path: base/block-unguarded-agent-spawn
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Best-effort guard against an agent launching a coding agent with its safety checks off:
+    claude --dangerously-skip-permissions or --permission-mode bypassPermissions, codex --full-auto,
+    --yolo, --dangerously-bypass-approvals-and-sandbox or --sandbox danger-full-access, gemini --yolo,
+    -y or --approval-mode yolo, cursor-agent --force. A spawned agent that never asks and never sandboxes
+    is an unsupervised agent (OWASP ASI10, rogue agents). Read as a parsed command, so `cd repo && claude
+    ...`, `bash -c ''...''`, sudo/env wrappers and `npx @openai/codex ...` are caught, while a normal
+    invocation, `codex --sandbox workspace-write`, or a command that only mentions the flag (echo, grep,
+    a commit message) is not. Known bypass classes include shell aliases, wrapper scripts, config files
+    that set the mode, and agents this list does not name. Run the agent with its default approvals;
+    a human decides when an unattended run is acceptable.'

@@ -7,17 +7,17 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `block-no-verify.sh` |
+| **Mechanism** | guard script `block-no-verify.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 19 total, 19 executable |
+| **Eval cases** | 34 total, 34 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.
+Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or any way of pointing core.hooksPath elsewhere: -c, --config-env, `git config core.hooksPath <path>` and the GIT_CONFIG_* environment. Read as a parsed command, so `cd repo && git commit --no-verify`, `bash -c '...'` and sudo/env/xargs wrappers are caught and a message that merely says --no-verify is not. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.
 
 ## What it solves
 
@@ -25,12 +25,12 @@ Every other gate in this catalog, bypassed with six characters. `--no-verify` is
 
 ## How it works
 
-A guard script, `implementations/block-no-verify.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/block-no-verify.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-never(commit): --no-verify|-n; never(push): --no-verify
+never(commit): --no-verify|-n; never(push): --no-verify; never(set): core.hooksPath
 if(hook_fails): fix_issue; never(skip_hook)
 ```
 

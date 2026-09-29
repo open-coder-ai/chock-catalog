@@ -7,17 +7,17 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `block-destructive.sh` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 61 total, 61 executable |
+| **Mechanism** | commit-time guard script `block-destructive-commands-pre-push.py` |
+| **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ambient-rule` |
+| **Eval cases** | 80 total, 80 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~) or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate; wipefs -a. Destructive verbs are matched position-aware, so a bucket, path or object NAMED like a verb (helm list delete) is allowed, and find/shred/truncate apply the same target test as rm, so a relative path in the working tree stays allowed. sudo, doas and pkexec are transparent wrappers: the program they run is graded, escalation itself is not refused. Known bypasses: aliases, quoted arguments, non-standard clients, an unusual value-flag outside the curated set, and indirect invocation via a script or interpreter. This is friction, not a security boundary.
+Best-effort guard against destructive commands, read as parsed commands (bash -c and cd chains included, echo excluded): rm -rf on absolute, home ($HOME/~) or root-adjacent paths (and PowerShell Remove-Item -Recurse); git push --force (not --force-with-lease), reset --hard, clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate; wipefs -a. git branch -D asks first. Verbs are matched position-aware, so a bucket or object NAMED like a verb is allowed, and a relative path in the working tree stays allowed. sudo, doas and pkexec are transparent. A pre-push hook refuses any non-fast-forward push -- force, +refspec or lease alike; a human escapes with git push --no-verify. Known bypasses: aliases, an unusual value-flag, interpreters and scripts. Friction, not a security boundary.
 
 ## What it solves
 
@@ -25,18 +25,18 @@ The command that cannot be undone: `rm -rf` against an absolute or home path, a 
 
 ## How it works
 
-A guard script, `implementations/block-destructive.sh`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/block-destructive-commands-pre-push.py`, run by the git hook at every commit with no arguments. It reads the staged revision of each file from git and exits non-zero to refuse the commit.
 
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:
 
 ```text
 block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete, find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
-require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
+require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run; push: refuse_non_ff
 ```
 
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/block-destructive-commands/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+A **commit-time guard script**. `recompile` registers `implementations/block-destructive-commands-pre-push.py` under `.git/hooks/pre-commit.d/`, and the hook runs it with no arguments at every commit. The script reads the staged revision from git itself and exits non-zero to refuse; the rule text compiles to `ambient-rule` beside it, so the agent knows the constraint before the commit is refused.
 
 ## Installing it
 
