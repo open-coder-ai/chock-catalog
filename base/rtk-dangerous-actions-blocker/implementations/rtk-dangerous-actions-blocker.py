@@ -162,11 +162,11 @@ def echo_secret(cmd: Cmd) -> Verdict:
 
 
 def inline_secret(cmd: Cmd) -> Verdict:
-    for name, value in cmd.env.items():
-        if SECRET_NAME.search(name) and value and not value.startswith("$"):
-            return refuse(
-                f"a literal credential is being passed inline as ${name}; export it from a secret store or the environment instead."
-            )
+    # The message names no variable: the name travels with the literal value, so it stays out of logs.
+    if any(SECRET_NAME.search(name) and value and not value.startswith("$") for name, value in cmd.env.items()):
+        return refuse(
+            "a literal credential is being passed inline as an environment variable; export it from a secret store or the environment instead."
+        )
     return None
 
 
