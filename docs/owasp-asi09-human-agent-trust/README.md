@@ -29,7 +29,7 @@ There is no mechanism. The rule text is compiled into the agent's ambient contex
 
 ```text
 at(approval_step): render(raw_action + real_target + real_scope); never(substitute): agent_summary for(the_thing_approved)
-forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
+forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see(agentic-code-security pack approval): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~354 tokens (chars/4, max 2000)
+INDEX.md: ~375 tokens (chars/4, max 2000)
 Recompiled 1 policies
 owasp-asi09-human-agent-trust:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **owasp-asi09-human-agent-trust**:
   at(approval_step): render(raw_action + real_target + real_scope); never(substitute): agent_summary for(the_thing_approved)
-  forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
+  forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see(agentic-code-security pack approval): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
 ```

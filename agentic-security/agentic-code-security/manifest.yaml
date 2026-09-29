@@ -1,0 +1,82 @@
+id: agentic-code-security
+name: "Agentic Code Security"
+version: "0.1.0"
+description: >
+  trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
+  LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client
+  (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml,
+  .gemini/settings.json), docker-compose files for agents. avoid: code execution on the host,
+  unpinned MCP servers and models, shell-reaching tools, approvals switched off, whole-environment
+  and credential-store leaks, TLS verification off, unbounded loops, SQL and eval built from strings,
+  stripped provenance markers. 29 rules in 10 packs -- exec, supply, tools, approval, identity,
+  comms, bounds, prompt-memory, code, provenance -- each pack or rule allow|deny in
+  .chock/agentic-security.json; bounds, prompt-memory and one supply rule start as allow.
+artifact: hook
+enforcement: block
+mandatory: false
+effects: [read_only]
+approval:
+  required: false
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      agentic-code-security: a construct one of its rules denies -- the refusal above names the rule,
+      its CWE and OWASP ASI entry, and the fix. At commit only findings HEAD did not already have are
+      refused; as the agent writes and at its turn's end the whole file is judged. Each rule's verdict
+      is allow|deny in .chock/agentic-security.json, per rule or per pack (exec, supply, tools,
+      approval, identity, comms, bounds, prompt-memory, code, provenance). Only a human reviewer
+      waives a line, with # chock: allow <rule-id> (// in JavaScript), never the agent: in the agent a
+      waiver counts once a human has committed it. JSON configs are waived in the selection file only.
+    params:
+      script: agentic-code-security-gate.py
+
+compliance:
+  owasp_asi:
+  - control: ASI02
+    coverage: partial
+    note: "refuses tools that hand the model's string to a subprocess, shell tools, and approvals switched off; tool scoping stays with owasp-asi02-tool-misuse"
+  - control: ASI03
+    coverage: partial
+    note: "refuses the whole host environment and credential stores handed to agent code; privilege design stays with owasp-asi03-identity-privilege-abuse"
+  - control: ASI04
+    coverage: partial
+    note: "refuses unpinned MCP launch commands, git installs without a commit, plain-HTTP MCP servers and trust_remote_code; signatures and provenance stay with owasp-asi04-agentic-supply-chain"
+  - control: ASI05
+    coverage: partial
+    note: "refuses framework settings that run model-written code on the host; sandbox design stays with owasp-asi05-unexpected-code-execution"
+  - control: ASI07
+    coverage: partial
+    note: "refuses TLS verification switched off; agent authentication and message integrity stay with owasp-asi07-insecure-inter-agent-communication"
+  - control: ASI09
+    coverage: partial
+    note: "refuses human approval removed where an agent acts; trust calibration stays with owasp-asi09-human-agent-trust"
+  eu_ai_act:
+  - control: Art50
+    coverage: partial
+    note: "refuses a change that removes a provenance marker a file carried at HEAD; whether content is marked in the first place stays with eu-ai-act-transparency"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "First release. One script gate, 29 rules in 10 packs, for the constructs the OWASP Top 10 for Agentic Applications names that a static read can decide: exec (ASI05), supply (ASI04), tools (ASI02), approval (ASI02, ASI09), identity (ASI03), comms (ASI07), bounds (ASI08), prompt-memory (ASI01, ASI06), code (eval and SQL built from strings), provenance (EU AI Act Art. 50). It runs at commit and at tool use, where the write is judged as the file would be after it and again at the turn's end, and it refuses only what is new: at commit a finding HEAD already had is not refused; a waiver (# chock: allow <rule-id>, // in JavaScript) is honoured at commit and, for the agent, only on a line a human already committed."
+  - "Read precisely rather than by pattern where the language allows: Python through ast (calls, keywords, dict keys, and a parameter-to-subprocess flow inside a registered tool), JavaScript through a comment- and string-aware scan, MCP and agent client configs (JSON and TOML) parsed structurally so a pretty-printed args array reads like a one-liner; YAML is read line by line, since the standard library has no YAML parser. A file that does not parse draws no finding from the rules that need the parse."
+  - "The selection file is .chock/agentic-security.json, not .chock/security.json: java-security's selection there rejects a pack it does not carry, so one file could not serve both policies. Verdicts are allow or deny per pack or per rule; a rule can differ from its pack. Bounds, prompt-memory and supply-hf-unpinned-revision are noisy heuristics and start as allow; everything else denies until someone speaks. What existing gates already catch stays theirs -- shell=True, os.system, pickle, @latest (block-unsafe-code-execution, block-unpinned-agent-components); only code-dynamic-eval-exec overlaps them by design, and it refuses at tool use as well, where those gates do not run."

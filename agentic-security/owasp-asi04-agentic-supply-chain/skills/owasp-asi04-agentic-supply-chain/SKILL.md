@@ -13,7 +13,7 @@ Verify agent components before loading them, and keep verifying, because runtime
 
 ```
 before(load: tool|mcp_server|framework|model): verify(signature + provenance) + pin(version) + record(AIBOM); apply(SCA) pre_pull
-re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
+re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see(agentic-code-security pack supply): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

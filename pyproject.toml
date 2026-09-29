@@ -6,7 +6,7 @@
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["base/java-security/implementations", "tools", "tests", "agent-tests/java-security"]
+pythonpath = ["base/java-security/implementations", "agentic-security/agentic-code-security/implementations", "tools", "tests", "agent-tests/java-security"]
 addopts = "-q --strict-markers"
 
 # Every line and every branch of the code this catalog ships runs under a test: `pytest --cov`
@@ -19,6 +19,7 @@ branch = true
 source = [
     "base/java-security/implementations",
     "base/no-a11y-regression/implementations",
+    "agentic-security/agentic-code-security/implementations",
     "base/block-test-skips/implementations",
     "base/guard-memory-writes/implementations",
     "base/limit-diff-size/implementations",
@@ -68,6 +69,7 @@ max-statements = 50
 # A gate speaks to its runner through stderr and its exit code: print() is the protocol there,
 # not a stray System.out.
 "base/*/implementations/*.py" = ["T201"]
+"agentic-security/*/implementations/*.py" = ["T201"]
 # Command-line tools report to the terminal, and run git, chock and python by name on purpose.
 "tools/*.py" = ["T201", "S603", "S607"]
 "agent-tests/*/*.py" = ["T201", "S603", "S607"]

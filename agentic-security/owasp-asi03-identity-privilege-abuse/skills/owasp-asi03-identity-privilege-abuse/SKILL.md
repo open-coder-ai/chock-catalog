@@ -13,7 +13,7 @@ Give each agent its own scoped, short-lived identity so a compromise does not in
 
 ```
 identity(per_agent): unique + short_lived + task_scoped; never: reuse(human_credential) | share(service_account) | issue(long_lived_broad_token)
-review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
+review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see(agentic-code-security pack identity): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

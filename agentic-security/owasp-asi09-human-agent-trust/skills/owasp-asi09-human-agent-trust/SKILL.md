@@ -13,7 +13,7 @@ Stop an agent from controlling the information a human approves against. Show th
 
 ```
 at(approval_step): render(raw_action + real_target + real_scope); never(substitute): agent_summary for(the_thing_approved)
-forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
+forbid(persuasive_framing | urgency | false_confidence) in(sensitive_workflow); log(immutable): presented vs executed; see(agentic-code-security pack approval): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi09-human-agent-trust/references/human-trust.md
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

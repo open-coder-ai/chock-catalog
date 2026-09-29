@@ -28,7 +28,7 @@ from trees import ROOT, policy_dirs
 
 POLICIES = policy_dirs()
 #: Replayed by their own suites; chock's replay cannot drive a script gate or an event script.
-OWN_SUITES = {"java-security", "no-a11y-regression"}
+OWN_SUITES = {"java-security", "no-a11y-regression", "agentic-code-security"}
 
 
 def _manifest(policy_dir: Path) -> dict:

@@ -524,3 +524,23 @@ limit-diff-size:
 guard-memory-writes:
   solves: Agent memory rots when it fills with pasted diffs, whole code listings, repeated lines and, worst, credentials that then travel with the repository. This script judges only memory files and only what a change adds, and refuses those four things with a path and line for each.
   customise: The memory paths, the fenced-block limit and the git-history patterns are constants in `implementations/guard-memory-writes-gate.py`; the secret pattern is scan-secrets' verbatim, so update both together. There is no waiver.
+agentic-code-security:
+  solves: |
+    The OWASP Top 10 for Agentic Applications lists what goes wrong when an agent is built carelessly, and most of
+    the entries leave a mark in code or config a static read can see: a code executor that runs on the host, an MCP
+    server launched at whatever version the registry serves today, a tool that hands the model's string to a shell,
+    a human approval switched off, the whole environment passed to a child process, certificate checks disabled.
+    Each is one line, easy to write while wiring an agent and easy to miss in review. This gate reads the code and
+    the MCP and agent client configs an agent writes and refuses those constructs as they are written and again at
+    commit, naming the rule, its CWE and OWASP ASI entry, and the fix. It refuses only what is new, so adopting it in
+    an existing repository does not start by rejecting what is already there. It is a static read: a sandbox that is
+    badly designed but never says `use_docker: False` passes, which is why the advisory OWASP ASI policies stay.
+  customise: |
+    Choose verdicts, not patterns, in `.chock/agentic-security.json` (a different file from java-security's
+    `.chock/security.json`, so a repository can carry both): `{"version": 1, "packs": {"exec": {"verdict": "deny"},
+    "bounds": {"verdict": "deny"}, "supply": {"rules": {"supply-hf-unpinned-revision": "deny"}}}}`. A pack or a rule
+    is `allow` or `deny`; a rule may differ from its pack; a pack or rule the file does not name runs at its default.
+    The noisy heuristics (bounds, prompt-memory, supply-hf-unpinned-revision) start as `allow`. A single line is
+    waived by a human reviewer with `# chock: allow <rule-id>` (`//` in JavaScript); the agent's own waiver is
+    refused, and a JSON config, which has no comments, is waived in the selection file. The rule catalogue in
+    `references/rule-catalogue.md` lists every rule with its weakness, ASI entry and fix.

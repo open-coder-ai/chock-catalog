@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "owasp-asi07-insecure-inter-agent-communication",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Authenticate and integrity-protect the channels agents use to talk to each other, so a peer cannot be impersonated, a message tampered with, or a fake agent registered in discovery. Use when building multi-agent orchestration, agent-to-agent protocols, delegation between agents, message buses, or agent discovery services. Do NOT use for a single agent calling ordinary tools \u2014 that is `owasp-asi02-tool-misuse`.",
   "author": {
     "name": "chock-core"

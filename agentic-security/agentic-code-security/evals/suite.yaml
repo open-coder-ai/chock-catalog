@@ -1,0 +1,1749 @@
+# `tests/agentic_code_security/test_evals.py` replays every case that has an `execute` block through the
+# shipped gate in a throwaway git repository, because `chock check --only evals` does not replay a script
+# gate on this engine. `files` are the writes; `head_files` are committed first (HEAD) and `repo_files` (the selection
+# file) sit in the working tree; `event` is commit, where a person reviews what is staged (the gate treats a
+# push or CI run the same way; tests/agentic_code_security/test_gate.py runs those). Each of the 29 rules has a case it refuses and a case where the correct form draws
+# nothing, from any rule; rules that start as allow are switched on by a selection file in the refusing
+# case. The cases without `execute` are the agent's own events (tool use, and the turn's end), which the
+# schema cannot express: tests/agentic_code_security/test_waiver.py and test_provenance.py run them.
+suite:
+  id: agentic-code-security-tests-v1
+  policy_id: agentic-code-security
+  version_constraint: '>=0.1.0'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A file `agents/proxy.py` runs AutoGen code with use_docker False, judged at commit.
+    expect: The write is refused and the refusal names exec-autogen-local-execution with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        agents/proxy.py: |
+          from autogen import UserProxyAgent
+
+          proxy = UserProxyAgent("u", code_execution_config={"work_dir": "coding", "use_docker": False})
+      event: commit
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A file `agents/executor.py` builds a LocalCommandLineCodeExecutor, judged at commit.
+    expect: The write is refused and the refusal names exec-autogen-local-execution with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        agents/executor.py: |
+          from autogen.coding import LocalCommandLineCodeExecutor
+
+          executor = LocalCommandLineCodeExecutor(work_dir='coding')
+      event: commit
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A file `crew/agents.py` turns on CrewAI code execution in unsafe mode, judged at commit.
+    expect: The write is refused and the refusal names exec-crewai-unsafe-mode with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        crew/agents.py: |
+          from crewai import Agent
+
+          dev = Agent(role="dev", goal="g", backstory="b", allow_code_execution=True, code_execution_mode="unsafe")
+      event: commit
+      expect: block
+  - id: tc-004
+    category: trigger
+    prompt: A file `lc/pandas_agent.py` sets allow_dangerous_code=True on a LangChain agent, judged at commit.
+    expect: The write is refused and the refusal names exec-langchain-dangerous-code with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        lc/pandas_agent.py: |
+          agent = create_pandas_dataframe_agent(llm, df, allow_dangerous_code=True)
+      event: commit
+      expect: block
+  - id: tc-005
+    category: trigger
+    prompt: A file `lc/tools.py` hands the agent a Python REPL tool, judged at commit.
+    expect: The write is refused and the refusal names exec-langchain-dangerous-code with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        lc/tools.py: |
+          tools = [PythonREPLTool(), PythonAstREPLTool(locals={})]
+      event: commit
+      expect: block
+  - id: tc-006
+    category: trigger
+    prompt: A file `lc/math.py` builds an LLMMathChain, judged at commit.
+    expect: The write is refused and the refusal names exec-langchain-dangerous-code with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        lc/math.py: |
+          chain = LLMMathChain.from_llm(llm)
+      event: commit
+      expect: block
+  - id: tc-007
+    category: trigger
+    prompt: A file `lc/requests_toolkit.py` sets allow_dangerous_requests=True, judged at commit.
+    expect: The write is refused and the refusal names exec-langchain-dangerous-requests with its CWE, OWASP ASI
+      entry and fix.
+    execute:
+      files:
+        lc/requests_toolkit.py: |
+          toolkit = RequestsToolkit(requests_wrapper=wrapper, allow_dangerous_requests=True)
+      event: commit
+      expect: block
+  - id: tc-008
+    category: trigger
+    prompt: A file `loop/turns.py` sets max_turns=None, judged at commit.
+    expect: The write is refused and the refusal names bounds-unbounded-turns with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        loop/turns.py: |
+          result = agent.run(task, max_turns=None)
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"bounds": {"rules": {"bounds-unbounded-turns": "deny"}}}}
+  - id: tc-009
+    category: trigger
+    prompt: A file `loop/replies.py` sets max_consecutive_auto_reply=None, judged at commit.
+    expect: The write is refused and the refusal names bounds-unbounded-turns with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        loop/replies.py: |
+          assistant = AssistantAgent("a", max_consecutive_auto_reply=None)
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"bounds": {"rules": {"bounds-unbounded-turns": "deny"}}}}
+  - id: tc-010
+    category: trigger
+    prompt: A file `graph/run.py` sets a recursion_limit of 5000, judged at commit.
+    expect: The write is refused and the refusal names bounds-recursion-limit-high with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        graph/run.py: |
+          out = graph.invoke(state, config={"recursion_limit": 5000})
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"bounds": {"rules": {"bounds-recursion-limit-high": "deny"}}}}
+  - id: tc-011
+    category: trigger
+    prompt: A file `graph/run.ts` sets recursionLimit to 2000 in TypeScript, judged at commit.
+    expect: The write is refused and the refusal names bounds-recursion-limit-high with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        graph/run.ts: |
+          const out = await graph.invoke(state, { recursionLimit: 2000 });
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"bounds": {"rules": {"bounds-recursion-limit-high": "deny"}}}}
+  - id: tc-012
+    category: trigger
+    prompt: A file `crew/limits.py` sets max_iter to 200, judged at commit.
+    expect: The write is refused and the refusal names bounds-crewai-max-iter-high with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        crew/limits.py: |
+          worker = Agent(role="w", goal="g", backstory="b", max_iter=200)
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"bounds": {"rules": {"bounds-crewai-max-iter-high": "deny"}}}}
+  - id: tc-013
+    category: trigger
+    prompt: A file `.mcp.json` launches an npm MCP server with npx and no version, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-unpinned-package with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        .mcp.json: |
+          {
+            "mcpServers": {
+              "filesystem": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "@modelcontextprotocol/server-filesystem",
+                  "/work"
+                ]
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-014
+    category: trigger
+    prompt: A file `.cursor/mcp.json` launches a Python MCP server with uvx and no version, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-unpinned-package with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        .cursor/mcp.json: |
+          {
+            "mcpServers": {
+              "git": {
+                "command": "uvx",
+                "args": [
+                  "mcp-server-git"
+                ]
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-015
+    category: trigger
+    prompt: A file `.codex/config.toml` launches a uvx server from a Codex TOML config, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-unpinned-package with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        .codex/config.toml: |
+          [mcp_servers.git]
+          command = "uvx"
+          args = ["mcp-server-git"]
+      event: commit
+      expect: block
+  - id: tc-016
+    category: trigger
+    prompt: A file `.vscode/mcp.json` launches servers with pipx run and bunx and no version, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-unpinned-package with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        .vscode/mcp.json: |
+          {"servers": {"gh": {"command": "pipx", "args": ["run", "mcp-github"]}, "b": {"command": "bunx", "args": ["mcp-b"]}}}
+      event: commit
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: A file `claude_desktop_config.json` runs uvx --from a git URL with no commit, judged at commit.
+    expect: The write is refused and the refusal names supply-uvx-git-unpinned with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        claude_desktop_config.json: |
+          {
+            "mcpServers": {
+              "tool": {
+                "command": "uvx",
+                "args": [
+                  "--from",
+                  "git+https://github.com/acme/tool",
+                  "tool"
+                ]
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: A file `scripts/serve.sh` runs uvx --from a git URL in a script, judged at commit.
+    expect: The write is refused and the refusal names supply-uvx-git-unpinned with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        scripts/serve.sh: |
+          uvx --from git+https://github.com/acme/tool tool --stdio
+      event: commit
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: A file `.gemini/settings.json` points an MCP server at a remote http:// URL, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-remote-http with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        .gemini/settings.json: |
+          {
+            "mcpServers": {
+              "remote": {
+                "url": "http://mcp.example.com/sse"
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: A file `.codex/config.toml` points a TOML MCP server at a remote http:// URL, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-remote-http with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        .codex/config.toml: |
+          [mcp_servers.remote]
+          url = "http://mcp.example.com/mcp"
+      event: commit
+      expect: block
+  - id: tc-021
+    category: trigger
+    prompt: A file `app/servers.py` builds an MCP client for a remote http:// URL, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-remote-http with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        app/servers.py: |
+          server = MCPServerSse(params={"url": "http://tools.example.com/sse"})
+      event: commit
+      expect: block
+  - id: tc-022
+    category: trigger
+    prompt: A file `deploy/mcp.yaml` lists a remote http:// MCP server in YAML, judged at commit.
+    expect: The write is refused and the refusal names supply-mcp-remote-http with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        deploy/mcp.yaml: |
+          mcp:
+            servers:
+              - name: remote
+                url: http://mcp.example.com/sse
+      event: commit
+      expect: block
+  - id: tc-023
+    category: trigger
+    prompt: A file `models/load.py` loads a model with trust_remote_code=True, judged at commit.
+    expect: The write is refused and the refusal names supply-trust-remote-code with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        models/load.py: |
+          model = AutoModel.from_pretrained("acme/m", revision="abc1234", trust_remote_code=True)
+      event: commit
+      expect: block
+  - id: tc-024
+    category: trigger
+    prompt: A file `models/load.py` downloads from the hub with no revision, judged at commit.
+    expect: The write is refused and the refusal names supply-hf-unpinned-revision with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        models/load.py: |
+          model = AutoModel.from_pretrained("acme/m")
+          path = hf_hub_download("acme/m", "weights.bin")
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"supply": {"rules": {"supply-hf-unpinned-revision": "deny"}}}}
+  - id: tc-025
+    category: trigger
+    prompt: A file `prompts/load.py` pulls a hub prompt with no commit, judged at commit.
+    expect: The write is refused and the refusal names supply-langchain-hub-unpinned with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        prompts/load.py: |
+          prompt = hub.pull("acme/rag-prompt")
+      event: commit
+      expect: block
+  - id: tc-026
+    category: trigger
+    prompt: A file `agent/hosted.py` sets require_approval "never" on a hosted MCP tool, judged at commit.
+    expect: The write is refused and the refusal names approval-hosted-mcp-never with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        agent/hosted.py: |
+          tool = HostedMCPTool(tool_config={"type": "mcp", "server_label": "docs", "server_url": "https://x.example", "require_approval": "never"})
+      event: commit
+      expect: block
+  - id: tc-027
+    category: trigger
+    prompt: A file `agent/hosted.ts` sets requireApproval "never" in TypeScript, judged at commit.
+    expect: The write is refused and the refusal names approval-hosted-mcp-never with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        agent/hosted.ts: |
+          const tool = hostedMcpTool({ serverLabel: "docs", serverUrl: "https://x.example", requireApproval: "never" });
+      event: commit
+      expect: block
+  - id: tc-028
+    category: trigger
+    prompt: A file `agents/proxy.py` runs an AutoGen agent that executes code with human_input_mode "NEVER", judged
+      at commit.
+    expect: The write is refused and the refusal names approval-autogen-no-human-input with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        agents/proxy.py: |
+          proxy = UserProxyAgent("u", human_input_mode="NEVER", code_execution_config={"work_dir": "w", "use_docker": True})
+      event: commit
+      expect: block
+  - id: tc-029
+    category: trigger
+    prompt: A file `src/agent.py` sets permission_mode "bypassPermissions" in product code, judged at commit.
+    expect: The write is refused and the refusal names approval-claude-sdk-bypass-permissions with its CWE, OWASP
+      ASI entry and fix.
+    execute:
+      files:
+        src/agent.py: |
+          options = ClaudeAgentOptions(permission_mode="bypassPermissions")
+      event: commit
+      expect: block
+  - id: tc-030
+    category: trigger
+    prompt: A file `src/agent.ts` sets permissionMode "bypassPermissions" in TypeScript product code, judged at
+      commit.
+    expect: The write is refused and the refusal names approval-claude-sdk-bypass-permissions with its CWE, OWASP
+      ASI entry and fix.
+    execute:
+      files:
+        src/agent.ts: |
+          for await (const m of query({ prompt, options: { permissionMode: "bypassPermissions" } })) {}
+      event: commit
+      expect: block
+  - id: tc-031
+    category: trigger
+    prompt: A file `.mcp.json` auto-approves write, run and deploy tools, judged at commit.
+    expect: The write is refused and the refusal names approval-mcp-autoapprove-write-tools with its CWE, OWASP
+      ASI entry and fix.
+    execute:
+      files:
+        .mcp.json: |
+          {
+            "mcpServers": {
+              "fs": {
+                "command": "node",
+                "args": ["./server.js"],
+                "autoApprove": [
+                  "read_file",
+                  "write_file"
+                ]
+              },
+              "ops": {
+                "command": "node",
+                "args": ["./ops.js"],
+                "alwaysAllow": ["list_pods", "runQuery", "deploy_prod"]
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-032
+    category: trigger
+    prompt: A file `.codex/config.toml` auto-approves a send tool in TOML, judged at commit.
+    expect: The write is refused and the refusal names approval-mcp-autoapprove-write-tools with its CWE, OWASP
+      ASI entry and fix.
+    execute:
+      files:
+        .codex/config.toml: |
+          [mcp_servers.ops]
+          command = "node"
+          autoApprove = ["send_email"]
+      event: commit
+      expect: block
+  - id: tc-033
+    category: trigger
+    prompt: A file `tools/run.py` passes a tool's str parameter to subprocess.run, judged at commit.
+    expect: The write is refused and the refusal names tools-shell-injection-via-tool-param with its CWE, OWASP
+      ASI entry and fix.
+    execute:
+      files:
+        tools/run.py: |
+          import subprocess
+          from langchain_core.tools import tool
+
+
+          @tool
+          def run_command(command: str) -> str:
+              """Run a command."""
+              return subprocess.run(command.split(), capture_output=True, text=True).stdout
+      event: commit
+      expect: block
+  - id: tc-034
+    category: trigger
+    prompt: A file `tools/ops.py` passes tool parameters to check_output and os.system, judged at commit.
+    expect: The write is refused and the refusal names tools-shell-injection-via-tool-param with its CWE, OWASP
+      ASI entry and fix.
+    execute:
+      files:
+        tools/ops.py: |
+          import os
+          from subprocess import check_output
+          from mcp.server.fastmcp import FastMCP
+
+          mcp = FastMCP("ops")
+
+
+          @mcp.tool()
+          async def search_logs(pattern: str, limit: int) -> str:
+              cmd = ["grep", pattern, "app.log"]
+              return check_output(cmd, text=True)
+
+
+          def cleanup(path: str) -> None:
+              os.system(f"rm -rf {path}")
+
+
+          registered = Tool(name="cleanup", func=cleanup)
+      event: commit
+      expect: block
+  - id: tc-035
+    category: trigger
+    prompt: A file `agent/tools.py` gives the agent a shell tool, judged at commit.
+    expect: The write is refused and the refusal names tools-shell-tool-instantiation with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        agent/tools.py: |
+          tools = [ShellTool(), TerminalTool(), BashTool()]
+      event: commit
+      expect: block
+  - id: tc-036
+    category: trigger
+    prompt: A file `agent/tools.ts` instantiates a shell tool in TypeScript, judged at commit.
+    expect: The write is refused and the refusal names tools-shell-tool-instantiation with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        agent/tools.ts: |
+          const shell = new ShellTool();
+      event: commit
+      expect: block
+  - id: tc-037
+    category: trigger
+    prompt: A file `net/client.py` calls requests with verify=False, judged at commit.
+    expect: The write is refused and the refusal names comms-tls-verify-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        net/client.py: |
+          import requests
+
+          r = requests.get(url, verify=False)
+      event: commit
+      expect: block
+  - id: tc-038
+    category: trigger
+    prompt: A file `net/httpx_client.py` builds an httpx client with verify=False, judged at commit.
+    expect: The write is refused and the refusal names comms-tls-verify-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        net/httpx_client.py: |
+          import httpx
+
+          client = httpx.Client(verify=False)
+      event: commit
+      expect: block
+  - id: tc-039
+    category: trigger
+    prompt: A file `net/session.py` turns verification off on a requests session, judged at commit.
+    expect: The write is refused and the refusal names comms-tls-verify-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        net/session.py: |
+          import requests
+
+          session = requests.Session()
+          session.verify = False
+      event: commit
+      expect: block
+  - id: tc-040
+    category: trigger
+    prompt: A file `net/ssl_ctx.py` builds an ssl context that verifies nothing, judged at commit.
+    expect: The write is refused and the refusal names comms-ssl-context-unverified with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        net/ssl_ctx.py: |
+          import ssl
+
+          ctx = ssl._create_unverified_context()
+          ctx.verify_mode = ssl.CERT_NONE
+          ctx.check_hostname = False
+      event: commit
+      expect: block
+  - id: tc-041
+    category: trigger
+    prompt: A file `net/ssl_kw.py` passes check_hostname=False, judged at commit.
+    expect: The write is refused and the refusal names comms-ssl-context-unverified with its CWE, OWASP ASI entry
+      and fix.
+    execute:
+      files:
+        net/ssl_kw.py: |
+          conn = connect(host, check_hostname=False)
+      event: commit
+      expect: block
+  - id: tc-042
+    category: trigger
+    prompt: A file `net/agent.js` turns off Node certificate checks in code, judged at commit.
+    expect: The write is refused and the refusal names comms-node-tls-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        net/agent.js: |
+          const agent = new https.Agent({ rejectUnauthorized: false });
+          process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+      event: commit
+      expect: block
+  - id: tc-043
+    category: trigger
+    prompt: A file `.env` sets NODE_TLS_REJECT_UNAUTHORIZED=0 in an env file, judged at commit.
+    expect: The write is refused and the refusal names comms-node-tls-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        .env: |
+          NODE_TLS_REJECT_UNAUTHORIZED=0
+      event: commit
+      expect: block
+  - id: tc-044
+    category: trigger
+    prompt: A file `Dockerfile` sets NODE_TLS_REJECT_UNAUTHORIZED in a Dockerfile, judged at commit.
+    expect: The write is refused and the refusal names comms-node-tls-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        Dockerfile: |
+          FROM node:22
+          ENV NODE_TLS_REJECT_UNAUTHORIZED 0
+      event: commit
+      expect: block
+  - id: tc-045
+    category: trigger
+    prompt: A file `ci/env.yaml` sets NODE_TLS_REJECT_UNAUTHORIZED in YAML, judged at commit.
+    expect: The write is refused and the refusal names comms-node-tls-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        ci/env.yaml: |
+          env:
+            NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      event: commit
+      expect: block
+  - id: tc-046
+    category: trigger
+    prompt: A file `net/env.py` sets NODE_TLS_REJECT_UNAUTHORIZED from Python, judged at commit.
+    expect: The write is refused and the refusal names comms-node-tls-disabled with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        net/env.py: |
+          import os
+
+          os.environ["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+      event: commit
+      expect: block
+  - id: tc-047
+    category: trigger
+    prompt: A file `sandbox/run.py` passes the whole environment to a subprocess, judged at commit.
+    expect: The write is refused and the refusal names identity-env-passthrough with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        sandbox/run.py: |
+          import os
+          import subprocess
+
+          subprocess.run(cmd, env=os.environ)
+          subprocess.run(cmd, env=dict(os.environ))
+          subprocess.run(cmd, env={**os.environ})
+          subprocess.run(cmd, env={**os.environ, 'X': '1'})
+          subprocess.run(cmd, env=os.environ.copy())
+      event: commit
+      expect: block
+  - id: tc-048
+    category: trigger
+    prompt: A file `sandbox/run.ts` passes process.env whole to a child process, judged at commit.
+    expect: The write is refused and the refusal names identity-env-passthrough with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        sandbox/run.ts: |
+          const child = spawn("node", args, { env: process.env });
+          const other = spawn("node", args, { env: { ...process.env, X: "1" } });
+      event: commit
+      expect: block
+  - id: tc-049
+    category: trigger
+    prompt: A file `docker-compose.yml` mounts ~/.aws, ~/.ssh, gcloud config and the Docker socket into agent containers,
+      judged at commit.
+    expect: The write is refused and the refusal names identity-sensitive-mount with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        docker-compose.yml: |
+          services:
+            agent:
+              image: acme/agent:1.0
+              volumes:
+                - ~/.aws:/root/.aws:ro
+                - ${HOME}/.ssh:/root/.ssh
+                - ~/.config/gcloud:/root/.config/gcloud
+            sandbox:
+              image: acme/sandbox:1.0
+              volumes:
+                - /var/run/docker.sock:/var/run/docker.sock
+      event: commit
+      expect: block
+  - id: tc-050
+    category: trigger
+    prompt: A file `sandbox/launch.py` mounts ~/.ssh into an agent container from Python, judged at commit.
+    expect: The write is refused and the refusal names identity-sensitive-mount with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        sandbox/launch.py: |
+          container = client.containers.run("acme/agent", volumes=["~/.ssh:/root/.ssh:ro"])
+      event: commit
+      expect: block
+  - id: tc-051
+    category: trigger
+    prompt: A file `sandbox/launch.sh` bind-mounts an AWS credentials directory into a sandbox, judged at commit.
+    expect: The write is refused and the refusal names identity-sensitive-mount with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        sandbox/launch.sh: |
+          docker run --mount type=bind,source=/home/dev/.aws,target=/root/.aws acme/sandbox
+      event: commit
+      expect: block
+  - id: tc-052
+    category: trigger
+    prompt: A file `gen/run.py` evals and execs text that is not a literal, judged at commit.
+    expect: The write is refused and the refusal names code-dynamic-eval-exec with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        gen/run.py: |
+          result = eval(expression)
+          exec(compiled_source)
+      event: commit
+      expect: block
+  - id: tc-053
+    category: trigger
+    prompt: A file `db/find.py` builds SQL with f-strings, %, format, + and a variable, judged at commit.
+    expect: The write is refused and the refusal names code-sql-string-built with its CWE, OWASP ASI entry and fix.
+    execute:
+      files:
+        db/find.py: |
+          def find(cur, uid, name, table):
+              cur.execute(f"SELECT * FROM users WHERE id = {uid}")
+              cur.execute("SELECT * FROM users WHERE name = '%s'" % name)
+              cur.executemany("INSERT INTO {} VALUES (?)".format(table), rows)
+              cur.execute("SELECT * FROM " + table)
+              stmt = f"DELETE FROM users WHERE id = {uid}"
+              cur.execute(stmt)
+              conn.raw("SELECT * FROM users WHERE n = " + name)
+              session.query("select * from users where n = " + name)
+      event: commit
+      expect: block
+  - id: tc-054
+    category: trigger
+    prompt: A file `db/find.js` passes a template literal with ${} to query, judged at commit.
+    expect: The write is refused and the refusal names code-sql-string-built with its CWE, OWASP ASI entry and fix.
+    execute:
+      files:
+        db/find.js: |
+          const rows = await db.query(`SELECT * FROM users WHERE id = ${id}`);
+      event: commit
+      expect: block
+  - id: tc-055
+    category: trigger
+    prompt: A file `rag/prompt.py` splices retrieved text into system messages, judged at commit.
+    expect: The write is refused and the refusal names prompt-untrusted-in-system-message with its CWE, OWASP ASI
+      entry and fix.
+    execute:
+      files:
+        rag/prompt.py: |
+          messages = [{"role": "system", "content": f"Answer using {retrieved_docs}"}]
+          note = SystemMessage(content="Page: " + page_html)
+          chat = ChatPromptTemplate.from_messages([("system", "Context: {}".format(chunk))])
+          run(system=f"Follow {email_body}")
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"prompt-memory": {"rules": {"prompt-untrusted-in-system-message": "deny"}}}}
+  - id: tc-056
+    category: trigger
+    prompt: A file `mem/store.py` adds to and searches mem0 with no user_id, agent_id or run_id, judged at commit.
+    expect: The write is refused and the refusal names memory-mem0-unscoped with its CWE, OWASP ASI entry and fix.
+    execute:
+      files:
+        mem/store.py: |
+          from mem0 import Memory
+
+          memory = Memory()
+          memory.add(messages)
+          hits = memory.search(query)
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"prompt-memory": {"rules": {"memory-mem0-unscoped": "deny"}}}}
+  - id: tc-057
+    category: trigger
+    prompt: A file `mem/client.py` adds through a MemoryClient held on self with no scope, judged at commit.
+    expect: The write is refused and the refusal names memory-mem0-unscoped with its CWE, OWASP ASI entry and fix.
+    execute:
+      files:
+        mem/client.py: |
+          from mem0 import MemoryClient
+
+          class Store:
+              def __init__(self):
+                  self.client = MemoryClient(api_key=key)
+
+              def save(self, m):
+                  self.client.add(m)
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"prompt-memory": {"rules": {"memory-mem0-unscoped": "deny"}}}}
+  - id: tc-058
+    category: trigger
+    prompt: A file `assets/manifest.json` drops digitalSourceType from an asset manifest, judged at commit.
+    expect: The write is refused and the refusal names provenance-marker-removed with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        assets/manifest.json: |
+          {"claim_generator": "acme", "title": "cover"}
+      event: commit
+      expect: block
+      head_files:
+        assets/manifest.json: |
+          {"claim_generator": "acme", "digitalSourceType": "trainedAlgorithmicMedia", "title": "cover"}
+  - id: tc-059
+    category: trigger
+    prompt: A file `media/sign.py` stops signing with C2PA, judged at commit.
+    expect: The write is refused and the refusal names provenance-marker-removed with its CWE, OWASP ASI entry and
+      fix.
+    execute:
+      files:
+        media/sign.py: |
+          def sign(image):
+              return image
+      event: commit
+      expect: block
+      head_files:
+        media/sign.py: |
+          from c2pa import Builder
+
+
+          def sign(image):
+              return Builder(manifest).sign(image)
+  - id: tc-060
+    category: negative_trigger
+    prompt: A file `agents/proxy.py` runs code in Docker, or not at all, judged at commit.
+    expect: 'The write proceeds silently: exec-autogen-local-execution and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        agents/proxy.py: |
+          from autogen import UserProxyAgent
+          from autogen.coding import DockerCommandLineCodeExecutor
+
+          a = UserProxyAgent("u", code_execution_config={"work_dir": "coding", "use_docker": True})
+          b = UserProxyAgent("v", code_execution_config=False)
+          c = DockerCommandLineCodeExecutor(image="python:3.12-slim")
+      event: commit
+      expect: allow
+  - id: tc-061
+    category: negative_trigger
+    prompt: A file `crew/agents.py` keeps CrewAI's Docker-backed default or safe mode, judged at commit.
+    expect: 'The write proceeds silently: exec-crewai-unsafe-mode and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        crew/agents.py: |
+          from crewai import Agent
+
+          a = Agent(role="r", goal="g", backstory="b", allow_code_execution=True)
+          b = Agent(role="r", goal="g", backstory="b", allow_code_execution=True, code_execution_mode="safe")
+      event: commit
+      expect: allow
+  - id: tc-062
+    category: negative_trigger
+    prompt: A file `lc/pandas_agent.py` keeps the dangerous flag off and uses a sandbox service, judged at commit.
+    expect: 'The write proceeds silently: exec-langchain-dangerous-code and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        lc/pandas_agent.py: |
+          agent = create_pandas_dataframe_agent(llm, df, allow_dangerous_code=False)
+          tool = SandboxedPythonTool(endpoint)
+      event: commit
+      expect: allow
+  - id: tc-063
+    category: negative_trigger
+    prompt: A file `lc/requests_toolkit.py` keeps allow_dangerous_requests off, judged at commit.
+    expect: 'The write proceeds silently: exec-langchain-dangerous-requests and every other rule stay quiet on the
+      correct form.'
+    execute:
+      files:
+        lc/requests_toolkit.py: |
+          toolkit = RequestsToolkit(requests_wrapper=wrapper, allow_dangerous_requests=False)
+      event: commit
+      expect: allow
+  - id: tc-064
+    category: negative_trigger
+    prompt: A file `loop/turns.py` sets finite turn and reply limits, judged at commit.
+    expect: 'The write proceeds silently: bounds-unbounded-turns and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        loop/turns.py: |
+          result = agent.run(task, max_turns=12)
+          assistant = AssistantAgent("a", max_consecutive_auto_reply=5)
+      event: commit
+      expect: allow
+  - id: tc-065
+    category: negative_trigger
+    prompt: A file `graph/run.py` keeps recursion_limit small or not a literal, judged at commit.
+    expect: 'The write proceeds silently: bounds-recursion-limit-high and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        graph/run.py: |
+          out = graph.invoke(state, config={"recursion_limit": 25})
+          limit = {"recursion_limit": limit_from_env}
+      event: commit
+      expect: allow
+  - id: tc-066
+    category: negative_trigger
+    prompt: A file `graph/run.ts` keeps recursionLimit small, its old value only in a comment, judged at commit.
+    expect: 'The write proceeds silently: bounds-recursion-limit-high and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        graph/run.ts: |
+          // recursionLimit: 5000 was too many
+          const out = await graph.invoke(state, { recursionLimit: 25 });
+      event: commit
+      expect: allow
+  - id: tc-067
+    category: negative_trigger
+    prompt: A file `crew/limits.py` keeps max_iter near the default, judged at commit.
+    expect: 'The write proceeds silently: bounds-crewai-max-iter-high and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        crew/limits.py: |
+          worker = Agent(role="w", goal="g", backstory="b", max_iter=20)
+      event: commit
+      expect: allow
+  - id: tc-068
+    category: negative_trigger
+    prompt: A file `.mcp.json` pins every package, or launches something that is not a package, judged at commit.
+    expect: 'The write proceeds silently: supply-mcp-unpinned-package and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        .mcp.json: |
+          {
+            "mcpServers": {
+              "filesystem": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "@modelcontextprotocol/server-filesystem@2025.1.14",
+                  "/work"
+                ]
+              },
+              "git": {"command": "uvx", "args": ["mcp-server-git==0.6.2"]},
+              "latest": {"command": "npx", "args": ["-y", "some-server@latest"]},
+              "local": {"command": "node", "args": ["./server.js"]},
+              "box": {"command": "docker", "args": ["run", "-i", "acme/mcp:1.0.0"]}
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-069
+    category: negative_trigger
+    prompt: A file `.codex/config.toml` pins TOML-configured servers, judged at commit.
+    expect: 'The write proceeds silently: supply-mcp-unpinned-package and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        .codex/config.toml: |
+          [mcp_servers.git]
+          command = "uvx"
+          args = ["mcp-server-git==0.6.2"]
+          [mcp_servers.other]
+          command = "npx"
+          args = ["-y", "other@1.2.3"]
+      event: commit
+      expect: allow
+  - id: tc-070
+    category: negative_trigger
+    prompt: A file `package.json` is not an MCP client config file, judged at commit.
+    expect: 'The write proceeds silently: supply-mcp-unpinned-package and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        package.json: |
+          {
+            "mcpServers": {
+              "filesystem": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "@modelcontextprotocol/server-filesystem",
+                  "/work"
+                ]
+              }
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-071
+    category: negative_trigger
+    prompt: A file `.mcp.json` pins the git spec to a 40-hex commit, judged at commit.
+    expect: 'The write proceeds silently: supply-uvx-git-unpinned and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        .mcp.json: |
+          {"mcpServers": {"tool": {"command": "uvx", "args": ["--from", "git+https://github.com/acme/tool@0123456789abcdef0123456789abcdef01234567#subdirectory=mcp", "tool"]}}}
+      event: commit
+      expect: allow
+  - id: tc-072
+    category: negative_trigger
+    prompt: A file `scripts/serve.sh` pins the git spec in a script, judged at commit.
+    expect: 'The write proceeds silently: supply-uvx-git-unpinned and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        scripts/serve.sh: |
+          uvx --from git+https://github.com/acme/tool@0123456789abcdef0123456789abcdef01234567 tool --stdio
+          uvx ruff check
+      event: commit
+      expect: allow
+  - id: tc-073
+    category: negative_trigger
+    prompt: A file `.vscode/mcp.json` uses https, or http to localhost, judged at commit.
+    expect: 'The write proceeds silently: supply-mcp-remote-http and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        .vscode/mcp.json: |
+          {
+            "servers": {
+              "remote": {"type": "http", "url": "https://mcp.example.com/mcp"},
+              "dev": {"url": "http://localhost:3000/mcp"},
+              "loop": {"serverUrl": "http://127.0.0.1:8080/sse"},
+              "v6": {"url": "http://[::1]:9000/mcp"}
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-074
+    category: negative_trigger
+    prompt: A file `app/servers.py` connects to an MCP server over https, or to localhost over http, judged at commit.
+    expect: 'The write proceeds silently: supply-mcp-remote-http and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        app/servers.py: |
+          server = MCPServerSse(params={"url": "https://tools.example.com/sse"})
+          local = MCPServerSse(params={"url": "http://localhost:8000/sse"})
+      event: commit
+      expect: allow
+  - id: tc-075
+    category: negative_trigger
+    prompt: A file `deploy/health.yaml` has a plain URL in a YAML file that is not about MCP, judged at commit.
+    expect: 'The write proceeds silently: supply-mcp-remote-http and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        deploy/health.yaml: |
+          check:
+            url: http://example.com/health
+      event: commit
+      expect: allow
+  - id: tc-076
+    category: negative_trigger
+    prompt: A file `models/load.py` loads with trust_remote_code=False, judged at commit.
+    expect: 'The write proceeds silently: supply-trust-remote-code and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        models/load.py: |
+          model = AutoModel.from_pretrained("acme/m", revision="abc1234", trust_remote_code=False)
+      event: commit
+      expect: allow
+  - id: tc-077
+    category: negative_trigger
+    prompt: A file `models/load.py` pins the revision, or loads a local directory, judged at commit.
+    expect: 'The write proceeds silently: supply-hf-unpinned-revision and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        models/load.py: |
+          model = AutoModel.from_pretrained("acme/m", revision="0123abc")
+          local = AutoModel.from_pretrained("./models/m")
+          more = AutoModel.from_pretrained(name, **kwargs)
+          path = hf_hub_download("acme/m", "w.bin", revision="0123abc")
+      event: commit
+      expect: allow
+  - id: tc-078
+    category: negative_trigger
+    prompt: A file `prompts/load.py` pulls a hub prompt at a commit, judged at commit.
+    expect: 'The write proceeds silently: supply-langchain-hub-unpinned and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        prompts/load.py: |
+          prompt = hub.pull("acme/rag-prompt:9a8b7c6d")
+          other = client.pull("acme/x")
+          name = hub.pull(prompt_name)
+      event: commit
+      expect: allow
+  - id: tc-079
+    category: negative_trigger
+    prompt: A file `agent/hosted.py` asks for approval, or excuses only named read-only tools, judged at commit.
+    expect: 'The write proceeds silently: approval-hosted-mcp-never and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        agent/hosted.py: |
+          a = HostedMCPTool(tool_config={"require_approval": "always"})
+          b = HostedMCPTool(tool_config={"require_approval": {"never": {"tool_names": ["search"]}}})
+      event: commit
+      expect: allow
+  - id: tc-080
+    category: negative_trigger
+    prompt: A file `agent/hosted.ts` asks for approval, the demo setting only in a comment, judged at commit.
+    expect: 'The write proceeds silently: approval-hosted-mcp-never and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        agent/hosted.ts: |
+          // requireApproval: "never" was the demo setting
+          const tool = hostedMcpTool({ requireApproval: "always" });
+      event: commit
+      expect: allow
+  - id: tc-081
+    category: negative_trigger
+    prompt: A file `agents/proxy.py` keeps a human in the loop wherever code runs, judged at commit.
+    expect: 'The write proceeds silently: approval-autogen-no-human-input and every other rule stay quiet on the
+      correct form.'
+    execute:
+      files:
+        agents/proxy.py: |
+          a = UserProxyAgent("u", human_input_mode="NEVER", code_execution_config=False)
+          b = UserProxyAgent("v", human_input_mode="ALWAYS", code_execution_config={"work_dir": "w"})
+          c = AssistantAgent("w", human_input_mode="NEVER")
+      event: commit
+      expect: allow
+  - id: tc-082
+    category: negative_trigger
+    prompt: A file `tests/test_agent.py` bypasses permissions only in a test, judged at commit.
+    expect: 'The write proceeds silently: approval-claude-sdk-bypass-permissions and every other rule stay quiet
+      on the correct form.'
+    execute:
+      files:
+        tests/test_agent.py: |
+          options = ClaudeAgentOptions(permission_mode="bypassPermissions")
+      event: commit
+      expect: allow
+  - id: tc-083
+    category: negative_trigger
+    prompt: A file `src/agent.py` uses acceptEdits with an allowed_tools list, judged at commit.
+    expect: 'The write proceeds silently: approval-claude-sdk-bypass-permissions and every other rule stay quiet
+      on the correct form.'
+    execute:
+      files:
+        src/agent.py: |
+          options = ClaudeAgentOptions(permission_mode="acceptEdits", allowed_tools=["Read"])
+      event: commit
+      expect: allow
+  - id: tc-084
+    category: negative_trigger
+    prompt: A file `.mcp.json` auto-approves only read-only tools, judged at commit.
+    expect: 'The write proceeds silently: approval-mcp-autoapprove-write-tools and every other rule stay quiet on
+      the correct form.'
+    execute:
+      files:
+        .mcp.json: |
+          {
+            "mcpServers": {
+              "fs": {
+                "command": "node",
+                "args": ["./server.js"],
+                "autoApprove": ["read_file", "list_directory", "search", "truncate_log"],
+                "alwaysAllow": "read_file"
+              }
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-085
+    category: negative_trigger
+    prompt: A file `tools/git.py` uses a fixed argv, a lookup table, an allowlist or shlex.quote, judged at commit.
+    expect: 'The write proceeds silently: tools-shell-injection-via-tool-param and every other rule stay quiet on
+      the correct form.'
+    execute:
+      files:
+        tools/git.py: |
+          import os
+          import shlex
+          import subprocess
+          from mcp.server.fastmcp import FastMCP
+
+          mcp = FastMCP("ops")
+          COMMANDS = {"status": ["git", "status"], "log": ["git", "log", "-5"]}
+          ALLOWED = {"status", "log"}
+
+
+          @mcp.tool()
+          def git(action: str) -> str:
+              if action not in ALLOWED:
+                  raise ValueError(action)
+              return subprocess.run(COMMANDS[action], capture_output=True, text=True).stdout
+
+
+          @mcp.tool()
+          def tail(path: str) -> str:
+              return os.popen("tail -5 " + shlex.quote(path)).read()
+
+
+          @mcp.tool()
+          def fixed() -> str:
+              return subprocess.run(["git", "status"], capture_output=True, text=True).stdout
+
+
+          @mcp.tool()
+          def count(n: int) -> str:
+              return subprocess.run(["head", f"-{n}", "log"], capture_output=True, text=True).stdout
+
+
+          def helper(command: str) -> str:
+              return subprocess.run(command, capture_output=True, text=True).stdout
+
+
+          @mcp.tool()
+          def untyped(command):
+              label = "static"
+              return subprocess.run(command, capture_output=True, text=True).stdout + label
+
+
+          @mcp.tool()
+          def broken(command: str) -> str:
+              out = helper(command)
+              return out
+      event: commit
+      expect: allow
+  - id: tc-086
+    category: negative_trigger
+    prompt: A file `agent/tools.py` uses typed single-purpose tools, judged at commit.
+    expect: 'The write proceeds silently: tools-shell-tool-instantiation and every other rule stay quiet on the
+      correct form.'
+    execute:
+      files:
+        agent/tools.py: |
+          tools = [ReadFileTool(), ListDirectoryTool()]
+      event: commit
+      expect: allow
+  - id: tc-087
+    category: negative_trigger
+    prompt: A file `agent/tools.ts` mentions a shell tool only in a comment and a string, judged at commit.
+    expect: 'The write proceeds silently: tools-shell-tool-instantiation and every other rule stay quiet on the
+      correct form.'
+    execute:
+      files:
+        agent/tools.ts: |
+          // new ShellTool() was removed
+          const read = new ReadFileTool();
+          const note = "new BashTool()";
+      event: commit
+      expect: allow
+  - id: tc-088
+    category: negative_trigger
+    prompt: A file `net/client.py` keeps verification on, judged at commit.
+    expect: 'The write proceeds silently: comms-tls-verify-disabled and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        net/client.py: |
+          import requests
+
+          a = requests.get(url, verify=True)
+          b = requests.get(url, verify="/etc/ssl/ca.pem")
+          c = requests.get(url)
+      event: commit
+      expect: allow
+  - id: tc-089
+    category: negative_trigger
+    prompt: A file `crypto/sig.py` has verify=False in a file with no HTTP client, judged at commit.
+    expect: 'The write proceeds silently: comms-tls-verify-disabled and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        crypto/sig.py: |
+          ok = key.check(sig, verify=False)
+      event: commit
+      expect: allow
+  - id: tc-090
+    category: negative_trigger
+    prompt: A file `net/ssl_ctx.py` keeps the default verifying context, judged at commit.
+    expect: 'The write proceeds silently: comms-ssl-context-unverified and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        net/ssl_ctx.py: |
+          import ssl
+
+          ctx = ssl.create_default_context()
+          ctx.verify_mode = ssl.CERT_REQUIRED
+          ctx.check_hostname = True
+          conn = connect(host, check_hostname=True)
+      event: commit
+      expect: allow
+  - id: tc-091
+    category: negative_trigger
+    prompt: A file `net/agent.js` keeps verification on, the old setting only in a comment and a string, judged
+      at commit.
+    expect: 'The write proceeds silently: comms-node-tls-disabled and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        net/agent.js: |
+          // rejectUnauthorized: false was here
+          const agent = new https.Agent({ rejectUnauthorized: true });
+          const m = 'rejectUnauthorized: false';
+      event: commit
+      expect: allow
+  - id: tc-092
+    category: negative_trigger
+    prompt: A file `.env` trusts a private CA and keeps checks on, judged at commit.
+    expect: 'The write proceeds silently: comms-node-tls-disabled and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        .env: |
+          NODE_EXTRA_CA_CERTS=/etc/ssl/corp.pem
+          NODE_TLS_REJECT_UNAUTHORIZED=1
+      event: commit
+      expect: allow
+  - id: tc-093
+    category: negative_trigger
+    prompt: A file `sandbox/run.py` passes a named allowlist of variables, judged at commit.
+    expect: 'The write proceeds silently: identity-env-passthrough and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        sandbox/run.py: |
+          import os
+          import subprocess
+
+          subprocess.run(cmd, env={'PATH': os.environ['PATH'], 'LANG': 'C'})
+          subprocess.run(cmd, env=None)
+          subprocess.run(cmd, env={**base})
+          subprocess.run(cmd, cwd=os.environ)
+      event: commit
+      expect: allow
+  - id: tc-094
+    category: negative_trigger
+    prompt: A file `sandbox/run.ts` passes named variables only, judged at commit.
+    expect: 'The write proceeds silently: identity-env-passthrough and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        sandbox/run.ts: |
+          const child = spawn("node", args, { env: { PATH: process.env.PATH } });
+          const mode = { env: process.env.NODE_ENV };
+      event: commit
+      expect: allow
+  - id: tc-095
+    category: negative_trigger
+    prompt: A file `docker-compose.yml` mounts a workspace, and only names .aws on the container side, judged at
+      commit.
+    expect: 'The write proceeds silently: identity-sensitive-mount and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        docker-compose.yml: |
+          services:
+            agent:
+              image: acme/agent:1.0
+              volumes:
+                - ./workspace:/workspace
+                - ./aws-config:/root/.aws:ro
+              environment:
+                - NODE_TLS_REJECT_UNAUTHORIZED=1
+      event: commit
+      expect: allow
+  - id: tc-096
+    category: negative_trigger
+    prompt: A file `web/docker-compose.yml` mounts ~/.ssh in a compose file that is not about an agent or a sandbox,
+      judged at commit.
+    expect: 'The write proceeds silently: identity-sensitive-mount and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        web/docker-compose.yml: |
+          services:
+            web:
+              image: acme/web
+              volumes:
+                - ~/.ssh:/root/.ssh:ro
+      event: commit
+      expect: allow
+  - id: tc-097
+    category: negative_trigger
+    prompt: A file `gen/run.py` uses literal_eval, a method named eval, and string literals, judged at commit.
+    expect: 'The write proceeds silently: code-dynamic-eval-exec and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        gen/run.py: |
+          import ast
+
+          value = ast.literal_eval(text)
+          model.eval()
+          result = eval("1 + 1")
+          exec("x = 1")
+          eval()
+      event: commit
+      expect: allow
+  - id: tc-098
+    category: negative_trigger
+    prompt: A file `db/find.py` binds parameters, runs constant SQL, and queries a non-SQL engine, judged at commit.
+    expect: 'The write proceeds silently: code-sql-string-built and every other rule stay quiet on the correct form.'
+    execute:
+      files:
+        db/find.py: |
+          def find(cur, uid, table, index, topic):
+              cur.execute("SELECT * FROM users WHERE id = %s", (uid,))
+              cur.execute("SELECT 1")
+              cur.execute(query_from_config)
+              session.query(User)
+              index.query(f"summarize {topic}")
+              label = "a" + "b"
+              cur.execute(label + label)
+              stmt = "SELECT * FROM users"
+              cur.execute(stmt)
+      event: commit
+      expect: allow
+  - id: tc-099
+    category: negative_trigger
+    prompt: A file `db/find.js` binds a parameter, the template literal only in a comment, judged at commit.
+    expect: 'The write proceeds silently: code-sql-string-built and every other rule stay quiet on the correct form.'
+    execute:
+      files:
+        db/find.js: |
+          const rows = await db.query("SELECT * FROM users WHERE id = $1", [id]);
+          // db.query(`SELECT ${id}`)
+      event: commit
+      expect: allow
+  - id: tc-100
+    category: negative_trigger
+    prompt: A file `rag/prompt.py` keeps system messages constant, and retrieved text in the user message, judged
+      at commit.
+    expect: 'The write proceeds silently: prompt-untrusted-in-system-message and every other rule stay quiet on
+      the correct form.'
+    execute:
+      files:
+        rag/prompt.py: |
+          messages = [{"role": "system", "content": "You answer from the user message."},
+                      {"role": "user", "content": f"Answer using {retrieved_docs}"},
+                      {"role": "system", "content": f"You are {persona}"}]
+          x = SystemMessage(content=f"Docs: {n}")
+          y = SystemMessage(content=fixed_text)
+          z = SystemMessage()
+      event: commit
+      expect: allow
+  - id: tc-101
+    category: negative_trigger
+    prompt: A file `mem/store.py` scopes every mem0 call, and other add and search calls are not mem0's, judged
+      at commit.
+    expect: 'The write proceeds silently: memory-mem0-unscoped and every other rule stay quiet on the correct form.'
+    execute:
+      files:
+        mem/store.py: |
+          from mem0 import Memory
+
+          memory = Memory()
+          memory.add(messages, user_id=uid)
+          hits = memory.search(query, filters={'agent_id': aid})
+          more = memory.add(messages, **scope)
+          seen = set()
+          seen.add(item)
+          found = re.search(p, s)
+      event: commit
+      expect: allow
+  - id: tc-102
+    category: negative_trigger
+    prompt: A file `assets/manifest.json` edits the manifest and keeps its marker, judged at commit.
+    expect: 'The write proceeds silently: provenance-marker-removed and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        assets/manifest.json: |
+          {"claim_generator": "acme2", "digitalSourceType": "trainedAlgorithmicMedia", "title": "cover"}
+      event: commit
+      expect: allow
+      head_files:
+        assets/manifest.json: |
+          {"claim_generator": "acme", "digitalSourceType": "trainedAlgorithmicMedia", "title": "cover"}
+  - id: tc-103
+    category: negative_trigger
+    prompt: A file `media/sign.py` rewrites a file that never carried a marker, judged at commit.
+    expect: 'The write proceeds silently: provenance-marker-removed and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        media/sign.py: |
+          def sign(image):
+              return image
+      event: commit
+      expect: allow
+      head_files:
+        media/sign.py: |
+          def sign(image):
+              return None
+  - id: tc-104
+    category: negative_trigger
+    prompt: A file `media/new.py` adds a file that has no HEAD version, judged at commit.
+    expect: 'The write proceeds silently: provenance-marker-removed and every other rule stay quiet on the correct
+      form.'
+    execute:
+      files:
+        media/new.py: |
+          def sign(image):
+              return image
+      event: commit
+      expect: allow
+  - id: tc-105
+    category: behavior
+    prompt: A commit touches a file whose HEAD version already had a verify=False finding, adding only an unrelated
+      line.
+    expect: 'The commit proceeds: only findings HEAD did not already have are refused.'
+    execute:
+      files:
+        agent/tls.py: |
+          import requests
+
+          requests.get(u, verify=False)
+          x = 1
+      event: commit
+      expect: allow
+      head_files:
+        agent/tls.py: |
+          import requests
+
+          requests.get(u, verify=False)
+  - id: tc-106
+    category: behavior
+    prompt: A commit adds a second verify=False call to a file whose HEAD version already had one.
+    expect: The commit is refused for the new line only.
+    execute:
+      files:
+        agent/tls.py: |
+          import requests
+
+          requests.get(u, verify=False)
+          requests.post(u, verify=False)
+      event: commit
+      expect: block
+      head_files:
+        agent/tls.py: |
+          import requests
+
+          requests.get(u, verify=False)
+  - id: tc-107
+    category: behavior
+    prompt: The agent edits a file that already carries an unwaived verify=False finding at HEAD, changing an unrelated
+      line.
+    expect: 'The write is refused: as the agent writes, the whole file is judged, not the diff.'
+  - id: tc-108
+    category: behavior
+    prompt: 'A human reviewer''s `# chock: allow comms-tls-verify-disabled` sits on the verify=False line in the
+      staged change.'
+    expect: 'The commit proceeds: a waiver naming the rule is honoured where a person reviews the staged change.'
+    execute:
+      files:
+        agent/tls.py: |
+          import requests
+
+          requests.get(u, verify=False)  # chock: allow comms-tls-verify-disabled
+      event: commit
+      expect: allow
+  - id: tc-109
+    category: behavior
+    prompt: 'The agent writes `# chock: allow comms-tls-verify-disabled` on a verify=False line itself.'
+    expect: The write is refused and the refusal says a waiver is a human's decision, never the agent's.
+  - id: tc-110
+    category: behavior
+    prompt: A file whose committed version already carries the waiver is edited by the agent elsewhere, leaving
+      the waived line as it was.
+    expect: 'The write proceeds: a waiver a human committed is honoured for the agent, on that line only.'
+  - id: tc-111
+    category: behavior
+    prompt: The agent pastes a committed waiver onto a second verify=False line.
+    expect: 'The write is refused: a waiver counts once per committed occurrence, not wherever it is copied.'
+  - id: tc-112
+    category: behavior
+    prompt: 'A remote http:// MCP server in a JSON config carries a `// chock: allow` comment line above it.'
+    expect: 'The commit is refused: JSON has no comment syntax, so it is waived in the selection file only.'
+    execute:
+      files:
+        .mcp.json: |
+          {"mcpServers": {"r": {
+          // chock: allow supply-mcp-remote-http
+          "url": "http://mcp.example.com/sse"}}}
+      event: commit
+      expect: block
+  - id: tc-113
+    category: behavior
+    prompt: The selection file sets the supply pack to allow, and a remote http:// MCP server is staged.
+    expect: 'The commit proceeds: a verdict is a person''s decision the gate honours.'
+    execute:
+      files:
+        .mcp.json: |
+          {"mcpServers": {"r": {"url": "http://mcp.example.com/sse"}}}
+      event: commit
+      expect: allow
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"supply": {"verdict": "allow"}}}
+  - id: tc-114
+    category: behavior
+    prompt: The selection file sets one rule of a pack to allow, and a file trips that rule's neighbour in the same
+      pack.
+    expect: 'The commit is refused for the neighbour: a rule set to allow does not allow its pack.'
+    execute:
+      files:
+        a.py: |
+          import ssl
+
+          c = ssl._create_unverified_context()
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"comms": {"rules": {"comms-tls-verify-disabled": "allow"}}}}
+  - id: tc-115
+    category: behavior
+    prompt: The selection file sets the bounds pack to deny and max_turns=None is staged.
+    expect: 'The commit is refused: a heuristic that starts as allow is switched on per pack.'
+    execute:
+      files:
+        loop/turns.py: |
+          result = agent.run(task, max_turns=None)
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"bounds": {"verdict": "deny"}}}
+  - id: tc-116
+    category: behavior
+    prompt: The selection file carries a pattern in place of a verdict.
+    expect: The commit is refused and the message says a selection carries verdicts only.
+    execute:
+      files:
+        ok.py: |
+          x = 1
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {"version": 1, "packs": {"comms": {"rules": {"comms-tls-verify-disabled": {"pattern": "x"}}}}}
+  - id: tc-117
+    category: behavior
+    prompt: The selection file is not valid JSON.
+    expect: 'The commit is refused: silence on a broken selection would be an allow.'
+    execute:
+      files:
+        ok.py: |
+          x = 1
+      event: commit
+      expect: block
+      repo_files:
+        .chock/agentic-security.json: |
+          {not json
+  - id: tc-118
+    category: behavior
+    prompt: A commit drops the C2PA signing call from a module that carried it at HEAD, and nothing else carries
+      the marker.
+    expect: 'The commit is refused: the change removes every provenance marker the file had.'
+    execute:
+      files:
+        media/sign.py: |
+          def sign(image):
+              return image
+      event: commit
+      expect: block
+      head_files:
+        media/sign.py: |
+          from c2pa import Builder
+
+
+          def sign(image):
+              return Builder(m).sign(image)
+  - id: tc-119
+    category: behavior
+    prompt: A commit moves the C2PA signing call from one module to another written in the same change.
+    expect: 'The commit proceeds: the marker appears in another written file, so it moved and was not removed.'
+    execute:
+      files:
+        media/old.py: |
+          def sign(image):
+              return image
+        media/new.py: |
+          from c2pa import Builder
+
+          Builder(m).sign(image)
+      event: commit
+      expect: allow
+      head_files:
+        media/old.py: |
+          from c2pa import Builder
+
+          Builder(m).sign(image)
+  - id: tc-120
+    category: behavior
+    prompt: An MCP config lists a server whose npx args array is pretty-printed across lines, the package on its
+      own line with no version.
+    expect: 'The commit is refused: the parsed document decides, not the line layout.'
+    execute:
+      files:
+        .vscode/mcp.json: |
+          {
+            "servers": {
+              "fs": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "@scope/server-fs"
+                ]
+              }
+            }
+          }
+      event: commit
+      expect: block
+  - id: tc-121
+    category: behavior
+    prompt: The agent writes a Python file that does not parse and holds text that looks like eval of a variable.
+    expect: 'The write proceeds: a file that does not parse draws no finding from the rules that need the parse.'

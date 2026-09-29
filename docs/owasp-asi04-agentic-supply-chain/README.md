@@ -29,7 +29,7 @@ There is no mechanism. The rule text is compiled into the agent's ambient contex
 
 ```text
 before(load: tool|mcp_server|framework|model): verify(signature + provenance) + pin(version) + record(AIBOM); apply(SCA) pre_pull
-re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
+re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see(agentic-code-security pack supply): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

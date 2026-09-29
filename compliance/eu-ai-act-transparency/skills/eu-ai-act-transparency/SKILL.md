@@ -13,7 +13,7 @@ Keep EU AI Act Article 50 duties in the code: disclose to a person that they are
 
 ```
 when(code emits AI interaction | synthetic text|image|audio|video to a person): disclose(it is AI) + mark(machine_readable: C2PA|watermark|metadata) + label(deepfake) at the emitting boundary
-never(remove|weaken): existing provenance marking; exempt: assistive_editing | no_substantial_alteration; see .agents/policies/eu-ai-act-transparency/references/article-50.md
+never(remove|weaken): existing provenance marking; exempt: assistive_editing | no_substantial_alteration; see(agentic-code-security pack provenance): mechanises part, the rest stays advisory; see .agents/policies/eu-ai-act-transparency/references/article-50.md
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

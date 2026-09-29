@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~361 tokens (chars/4, max 2000)
+INDEX.md: ~381 tokens (chars/4, max 2000)
 Recompiled 1 policies
 owasp-asi08-cascading-failures:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **owasp-asi08-cascading-failures**:
   isolate(blast_radius): per_agent + per_environment; separate(dev, prod) hard; never(chain): agent_output -> agent_input | downstream_automation without(validation)
-  circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
+  circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see(agentic-code-security pack bounds): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
 ```

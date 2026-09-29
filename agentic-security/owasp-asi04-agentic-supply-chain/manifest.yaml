@@ -1,6 +1,6 @@
 id: owasp-asi04-agentic-supply-chain
 name: "OWASP ASI04 — Agentic Supply Chain Vulnerabilities"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Verify agent components before loading them, and keep verifying, because
   runtime tool discovery changes the supply chain after deployment. Use when
@@ -19,7 +19,7 @@ approval:
 rule:
   text: |
     before(load: tool|mcp_server|framework|model): verify(signature + provenance) + pin(version) + record(AIBOM); apply(SCA) pre_pull
-    re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
+    re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see(agentic-code-security pack supply): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
 
 compliance:
   mitre_atlas:
@@ -43,7 +43,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-12T00:00:00Z"
-  updated_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -65,3 +65,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas/nist_ai_rmf); no mechanism change."
+- version: 0.0.3
+  date: '2026-09-29'
+  changes:
+  - "Point at the mechanised slice: the agentic-code-security gate's supply pack refuses MCP servers launched without an exact version or commit, plain-HTTP MCP URLs, trust_remote_code and unpinned prompt pulls, at commit and at tool use. Everything else here stays advisory, and no rule text or claim is raised; the pointer is a see() and a references section."

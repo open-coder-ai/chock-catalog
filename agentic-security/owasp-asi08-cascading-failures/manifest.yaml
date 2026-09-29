@@ -1,6 +1,6 @@
 id: owasp-asi08-cascading-failures
 name: "OWASP ASI08 — Cascading Failures"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Keep one agent's bad output from propagating through everything downstream.
   Isolate blast radius per agent and per environment, separate development from
@@ -20,7 +20,7 @@ approval:
 rule:
   text: |
     isolate(blast_radius): per_agent + per_environment; separate(dev, prod) hard; never(chain): agent_output -> agent_input | downstream_automation without(validation)
-    circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
+    circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see(agentic-code-security pack bounds): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
 
 compliance:
   owasp_asi:
@@ -30,7 +30,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-12T00:00:00Z"
-  updated_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -47,3 +47,7 @@ changelog:
   date: '2026-08-12'
   changes:
   - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI08."
+- version: 0.0.2
+  date: '2026-09-29'
+  changes:
+  - "Point at the mechanised slice: the agentic-code-security gate's bounds pack refuses, once switched on in the selection file, loops with no turn limit or a recursion or iteration limit in the hundreds or thousands, at commit and at tool use. Everything else here stays advisory, and no rule text or claim is raised; the pointer is a see() and a references section."
