@@ -1,0 +1,51 @@
+id: guard-memory-writes
+name: "Guard Memory Writes"
+version: "0.0.1"
+description: >
+  Refuses agent-memory writes that hold what memory must never hold: pasted git history (diff
+  headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines, a
+  line that duplicates another, and secrets (scan-secrets' pattern). Judges only memory files --
+  MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md -- and only the
+  lines the change adds relative to HEAD. Runs at commit and at agent tool-use; no waiver
+  exists. Mechanised slice of memory-discipline's never_persist and chock-mise's never(store):
+  secrets. Structural checks, not a judgement of whether a fact is worth remembering.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      Memory write refused: it pastes git history, a code block over 20 lines, a duplicate
+      line, or a secret. Store the non-derivable fact in one short line; link to the commit or
+      file instead of pasting it. Rotate any secret that was written.
+    params:
+      script: guard-memory-writes-gate.py
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-09-29'
+  changes:
+  - "Initial draft: script gate over agent-memory files, split out of memory-discipline's never_persist (git history) and chock-mise's never(store): secrets. Secret pattern is scan-secrets' content_pattern verbatim; a test fails if the two drift. File contents are not mechanically detectable beyond an oversized fenced block, so that slice of never_persist stays advisory."

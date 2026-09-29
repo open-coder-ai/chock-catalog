@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~313 tokens (chars/4, max 2000)
+INDEX.md: ~341 tokens (chars/4, max 2000)
 Recompiled 1 policies
 agent-discipline:
   claude: advisory
@@ -90,6 +90,6 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 
 ```text
 - **agent-discipline**:
-  before(edit): read(file); before(done): verify(flow) + tests_pass + lint_clean
-  never(fix_test_by): delete_assertion|weaken_check|skip; on_find(dead_code|unused): delete
+  before(edit): read(file); before(done): verify(flow) + tests_pass + lint_clean; on_find(dead_code|unused): delete
+  never(fix_test_by): delete_assertion|weaken_check|skip; see(protect-test-integrity): deleted_test|assertion_loss|vacuous_assert; see(block-test-skips): added_skip|only
 ```

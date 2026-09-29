@@ -1,0 +1,36 @@
+id: limit-diff-size
+name: "Limit Diff Size Rule"
+version: "0.0.1"
+description: >
+  trigger: staging a large change, committing more than a reviewer can read at once.
+  avoid: one commit carrying hundreds of hand-written lines; lockfile and generated churn is not counted.
+artifact: rule
+enforcement: block
+effects: [read_only]
+rule:
+  text: |
+    at(commit): refuse if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
+    on(refused): split into atomic commits (git add -p); override: CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_override), ask(human)
+hook:
+  script:
+    "on": [commit]
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-09-29'
+  changes:
+  - "Initial draft: the mechanised form of git-safety's advisory ask_if(diff > 500_lines). implementations/limit-diff-size-pre-commit.py sums added plus removed lines from the staged numstat, skipping lockfiles, vendored and generated paths and binary files, and refuses above CHOCK_DIFF_LIMIT (default 500). Threshold from an environment variable, not .chock/config.yaml: a script receives no config and the catalog's config keys serve declarative gates. CHOCK_ALLOW_LARGE_DIFF=1 is a human override, ignored when CHOCK_AGENT_COMMIT is set."

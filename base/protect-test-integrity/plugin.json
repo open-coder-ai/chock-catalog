@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "protect-test-integrity",
+  "version": "0.0.1",
+  "description": "Blocks a commit that turns tests green by weakening them instead of fixing the code: a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test layouts. Mechanised slice of agent-discipline's never(fix_test_by) rule; added skips are block-test-skips. Enforced at commit only: chock 0.13.0 does not run this gate kind at agent tool-use. A reviewed exception carries 'chock: allow test-integrity' on an added line of the test file; a waiver is not honoured when CHOCK_AGENT_COMMIT is set.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

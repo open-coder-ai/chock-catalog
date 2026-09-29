@@ -1,0 +1,222 @@
+suite:
+  id: guard-memory-writes-tests-v1
+  policy_id: guard-memory-writes
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # Executable cases stage memory files and run the gate at commit in a throwaway repository. The
+  # same script runs at agent tool-use over the file being written. Negatives include the same
+  # content outside a memory path, a block of exactly twenty lines, and a duplicate already in HEAD.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A memory file gains a pasted git diff header.
+    expect: 'The commit is refused: pasted git history does not belong in memory.'
+    execute:
+      files:
+        MEMORY.md: |
+          - deploys go through the release branch
+          diff --git a/app.py b/app.py
+      event: commit
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A memory note under .claude/memory pastes a hunk header.
+    expect: The commit is refused.
+    execute:
+      files:
+        .claude/memory/notes.md: |
+          Fixed the retry bug:
+          @@ -10,7 +10,8 @@ def run():
+      event: commit
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A memory file pastes a full commit id line.
+    expect: The commit is refused.
+    execute:
+      files:
+        memory/history.md: |
+          commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      event: commit
+      expect: block
+  - id: tc-004
+    category: trigger
+    prompt: A memory file pastes a git index line.
+    expect: The commit is refused.
+    execute:
+      files:
+        MEMORY.md: |
+          index abc1234..def5678 100644
+      event: commit
+      expect: block
+  - id: tc-005
+    category: trigger
+    prompt: A memory file carries a fenced code block of 21 lines.
+    expect: 'The commit is refused: a fenced block over 20 lines is file content, not a memory.'
+    execute:
+      files:
+        MEMORY.md: |
+          - the build script:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          line 10
+          line 11
+          line 12
+          line 13
+          line 14
+          line 15
+          line 16
+          line 17
+          line 18
+          line 19
+          line 20
+          ```
+      event: commit
+      expect: block
+  - id: tc-006
+    category: trigger
+    prompt: The same fact is written twice in a memory file, with different spacing.
+    expect: 'The commit is refused: exact duplicate entries after whitespace normalisation.'
+    execute:
+      files:
+        memory/facts.md: |
+          - prefers  tabs over spaces
+          - uses uv for installs
+          - prefers tabs over spaces
+      event: commit
+      expect: block
+  - id: tc-007
+    category: trigger
+    prompt: A local memory file stores an AWS access key.
+    expect: 'The commit is refused: secrets are never stored.'
+    execute:
+      files:
+        CLAUDE.local.md: |
+          aws key: AKIAIOSFODNN7EXAMPLE  # pragma: allowlist secret
+      event: commit
+      expect: block
+  - id: tc-008
+    category: trigger
+    prompt: A nested MEMORY.md in a package pastes git history.
+    expect: 'The commit is refused: MEMORY.md is judged at any depth.'
+    execute:
+      files:
+        packages/api/MEMORY.md: |
+          commit 0123456789012345678901234567890123456789
+      event: commit
+      expect: block
+  - id: tc-009
+    category: negative_trigger
+    prompt: A memory file holds short non-derivable facts and repeated headings.
+    expect: The commit is allowed.
+    execute:
+      files:
+        MEMORY.md: |
+          # Facts
+
+          - prod db is read-only on Fridays
+
+          # Prefs
+
+          - terse answers
+
+          # Facts
+      event: commit
+      expect: allow
+  - id: tc-010
+    category: negative_trigger
+    prompt: A regular notes file (not memory) pastes a diff header.
+    expect: 'The commit is allowed: only memory paths are judged.'
+    execute:
+      files:
+        notes/review.md: |
+          diff --git a/x b/x
+      event: commit
+      expect: allow
+  - id: tc-011
+    category: negative_trigger
+    prompt: A memory file carries a fenced block of exactly 20 lines.
+    expect: 'The commit is allowed: the limit is more than 20.'
+    execute:
+      files:
+        MEMORY.md: |
+          - snippet:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          line 10
+          line 11
+          line 12
+          line 13
+          line 14
+          line 15
+          line 16
+          line 17
+          line 18
+          line 19
+          ```
+      event: commit
+      expect: allow
+  - id: tc-012
+    category: negative_trigger
+    prompt: A docs page under src/memory/ repeats a line.
+    expect: 'The commit is allowed: memory/**/*.md is anchored at the repository root.'
+    execute:
+      files:
+        src/memory/README.md: |
+          same line
+          same line
+      event: commit
+      expect: allow
+  - id: tc-013
+    category: negative_trigger
+    prompt: A memory file already had a duplicate at HEAD; the change adds an unrelated fact.
+    expect: 'The commit is allowed: only what the change adds is judged.'
+    execute:
+      head_files:
+        MEMORY.md: |
+          - a fact
+          - a fact
+      files:
+        MEMORY.md: |
+          - a fact
+          - a fact
+          - another fact
+      event: commit
+      expect: allow
+  - id: tc-014
+    category: behavior
+    prompt: The agent records the decision with a short commit reference instead of pasting the log.
+    expect: 'The commit is allowed: a link to the commit is the intended form.'
+    execute:
+      files:
+        MEMORY.md: |
+          - chose exponential backoff for retries (see commit 3f2a9c1)
+      event: commit
+      expect: allow
+  - id: tc-015
+    category: edge
+    prompt: The agent is asked to remember the diff of the last commit.
+    expect: 'The agent records the one-line decision and links the commit; it does not paste the diff. (Text case: the implicit form of the same intent.)'

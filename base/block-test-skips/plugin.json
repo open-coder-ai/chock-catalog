@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "block-test-skips",
+  "version": "0.0.1",
+  "description": "Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip, it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip -- in test files, at commit and at agent tool-use. Only lines the change adds are judged (against HEAD), so a skip already committed never blocks an unrelated edit. Companion of protect-test-integrity, which cannot see skips. Waivers: 'chock: allow test-skip' on the line is honoured only at commit in chock 0.13.0, never in the agent, and never when CHOCK_AGENT_COMMIT is set; an agent that needs a skip must ask a person.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

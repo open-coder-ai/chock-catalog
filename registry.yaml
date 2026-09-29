@@ -12,7 +12,7 @@ source: https://github.com/open-coder-ai/chock-catalog
 policies:
 - id: agent-discipline
   path: base/agent-discipline
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -118,7 +118,7 @@ policies:
     language runtime. Escape: ''pragma: allowlist egress''.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -126,11 +126,12 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 6
   eval_executed: 6
-  description: 'Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an
-    unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted
-    "@latest" arguments in agent config, and :latest container images. Language-manifest dependencies
-    are verify-dependency-exists; signature and provenance stay with the advisory owasp-asi04 policy.
-    Escape: ''pragma: allowlist unpinned'' on the same line.'
+  description: 'Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned
+    version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest"
+    arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists;
+    signature and provenance stay with the advisory owasp-asi04 policy. Escape: ''pragma: allowlist
+    unpinned'' on the same line, honoured at commit only. Also runs at agent tool-use, where no waiver
+    applies.'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
   version: 0.0.3
@@ -147,7 +148,7 @@ policies:
     owasp-asi05 policy. Escape hatch for vetted uses: ''pragma: allowlist exec'' on the same line.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   mandatory: false
@@ -159,7 +160,7 @@ policies:
     IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform
     wildcard action/resource lists. An agent''s identity design stays with the advisory owasp-asi03
     policy; this blocks the grants whose blast radius is everything. Escape: ''pragma: allowlist broad-privilege''
-    on the same line.'
+    on the same line, honoured at commit only. Also runs at agent tool-use, where no waiver applies.'
 - id: code-safety
   path: base/code-safety
   version: 0.0.2
@@ -190,7 +191,7 @@ policies:
     avoid: context rot and lost-in-the-middle failures.'
 - id: chock-mise
   path: base/chock-mise
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -264,7 +265,7 @@ policies:
     avoid: reaching for the Firecrawl connector as the default fetch path.'
 - id: git-safety
   path: base/git-safety
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -275,9 +276,9 @@ policies:
   description: 'trigger: force push, hard reset, destructive branch delete, hook bypass, direct main
     commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks.
     Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced counterparts
-    of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution
-    guards on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them
-    plus atomic-commit and diff-size guidance no gate can decide.'
+    of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution guards
+    on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them plus atomic-commit
+    guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.'
 - id: java-security
   path: base/java-security
   version: 0.4.4
@@ -315,7 +316,7 @@ policies:
     by the operator.
 - id: memory-discipline
   path: base/memory-discipline
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -688,3 +689,66 @@ policies:
     to its own clause of the command line, so a writer or redirect elsewhere -- or stderr merely
     suppressed -- cannot condemn a plain read of .mcp.json. Matching and path checks are
     otherwise exact-string and substring-coarse. No pragma for .mcp.json.'
+- id: block-test-skips
+  path: base/block-test-skips
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 12
+  eval_executed: 11
+  description: 'Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip,
+    it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip
+    -- in test files, at commit and at agent tool-use. Only lines the change adds are judged (against
+    HEAD), so a skip already committed never blocks an unrelated edit. Companion of protect-test-integrity,
+    which cannot see skips. Waivers: ''chock: allow test-skip'' on the line is honoured only at commit
+    in chock 0.13.0, never in the agent, and never when CHOCK_AGENT_COMMIT is set; an agent that needs
+    a skip must ask a person.'
+- id: guard-memory-writes
+  path: base/guard-memory-writes
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 15
+  eval_executed: 14
+  description: 'Refuses agent-memory writes that hold what memory must never hold: pasted git history
+    (diff headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines,
+    a line that duplicates another, and secrets (scan-secrets'' pattern). Judges only memory files --
+    MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md -- and only the lines
+    the change adds relative to HEAD. Runs at commit and at agent tool-use; no waiver exists. Mechanised
+    slice of memory-discipline''s never_persist and chock-mise''s never(store): secrets. Structural
+    checks, not a judgement of whether a fact is worth remembering.'
+- id: limit-diff-size
+  path: base/limit-diff-size
+  version: 0.0.1
+  artifact: rule
+  enforcement: block
+  mandatory: false
+  mechanism: commit-time guard script
+  enforces: enforced-at-commit
+  eval_cases: 8
+  eval_executed: 0
+  description: 'trigger: staging a large change, committing more than a reviewer can read at once. avoid:
+    one commit carrying hundreds of hand-written lines; lockfile and generated churn is not counted.'
+- id: protect-test-integrity
+  path: base/protect-test-integrity
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: test_integrity
+  enforces: enforced-at-commit
+  eval_cases: 14
+  eval_executed: 12
+  description: 'Blocks a commit that turns tests green by weakening them instead of fixing the code:
+    a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert
+    True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test
+    layouts. Mechanised slice of agent-discipline''s never(fix_test_by) rule; added skips are block-test-skips.
+    Enforced at commit only: chock 0.13.0 does not run this gate kind at agent tool-use. A reviewed
+    exception carries ''chock: allow test-integrity'' on an added line of the test file; a waiver is
+    not honoured when CHOCK_AGENT_COMMIT is set.'

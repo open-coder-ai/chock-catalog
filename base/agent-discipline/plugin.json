@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "agent-discipline",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "trigger: edits without reading, unverified completion claims, weakened tests, dead code. avoid: skipping verification, deleting assertions, leaving unused code.",
   "author": {
     "name": "chock-core"

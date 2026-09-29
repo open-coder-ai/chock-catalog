@@ -46,12 +46,15 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~339 tokens (chars/4, max 2000)
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~376 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unpinned-agent-components:
-  claude: enforced-at-commit
-  copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  claude: best-effort (live-run)
+  copilot: best-effort (live-run-partial)
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -64,6 +67,15 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~376 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -91,16 +103,33 @@ block-unpinned-agent-components  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/block-unpinned-agent-components/agent-hooks/gate-hooks.json
+.chock/compiled/block-unpinned-agent-components/agent-hooks/gate.json
 .chock/compiled/block-unpinned-agent-components/ambient-rule/ambient.md
 .chock/compiled/block-unpinned-agent-components/ci-gate/gate.json
 .chock/compiled/block-unpinned-agent-components/ci-gate/step.yaml
 .chock/compiled/block-unpinned-agent-components/git-hook/gate.json
 .chock/compiled/block-unpinned-agent-components/git-hook/git-pre-commit.sh
 .chock/compiled/block-unpinned-agent-components/managed-setting/managed-settings.json
+.chock/compiled/block-unpinned-agent-components/mcp-gateway/gateway-gate.json
+.chock/compiled/block-unpinned-agent-components/pre-tool-use/codex_cli-write-hooks.json
+.chock/compiled/block-unpinned-agent-components/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/block-unpinned-agent-components/pre-tool-use/gate.json
+.chock/compiled/block-unpinned-agent-components/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/block-unpinned-agent-components/pre-tool-use/pretooluse-write.json
+.chock/compiled/block-unpinned-agent-components/stop/antigravity-hooks.json
+.chock/compiled/block-unpinned-agent-components/stop/codex_cli-hooks.json
+.chock/compiled/block-unpinned-agent-components/stop/cursor-hooks.json
+.chock/compiled/block-unpinned-agent-components/stop/devin-hooks.json
+.chock/compiled/block-unpinned-agent-components/stop/gate.json
+.chock/compiled/block-unpinned-agent-components/stop/gemini_cli-hooks.json
+.chock/compiled/block-unpinned-agent-components/stop/stop.json
+.chock/compiled/block-unpinned-agent-components/stop/tabnine-hooks.json
+.chock/compiled/block-unpinned-agent-components/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **block-unpinned-agent-components**: Unpinned agent component detected. Pin the version (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception.
+- **block-unpinned-agent-components**: Unpinned agent component detected. Pin the version (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception (a person's, honoured at commit only, not in the agent). Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

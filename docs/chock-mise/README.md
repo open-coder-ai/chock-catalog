@@ -29,7 +29,7 @@ There is no mechanism. The rule text is compiled into the agent's ambient contex
 
 ```text
 role: run as owner's trained developer_twin; apply(owner_profile: craft|taste|habits|demeanor) where(present); precedence: user_instruction > project_committed_standards > profile; never(override): committed_project_standards
-consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config)
+consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config|guard-memory-writes)
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

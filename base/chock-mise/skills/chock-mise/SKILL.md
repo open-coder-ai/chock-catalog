@@ -13,7 +13,7 @@ trigger: personalize the coding agent to its owner -- adopt the owner's dialect,
 
 ```
 role: run as owner's trained developer_twin; apply(owner_profile: craft|taste|habits|demeanor) where(present); precedence: user_instruction > project_committed_standards > profile; never(override): committed_project_standards
-consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config)
+consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config|guard-memory-writes)
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

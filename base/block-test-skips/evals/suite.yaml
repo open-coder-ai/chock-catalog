@@ -1,0 +1,165 @@
+suite:
+  id: block-test-skips-tests-v1
+  policy_id: block-test-skips
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # Every executable case runs at commit through the policy's script gate, staged in a throwaway
+  # repository. The tool_use surface runs the same script; the eval runner replays only commit and
+  # push, so no case is authored for tool_use.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A failing pytest test is marked @pytest.mark.skip.
+    expect: 'The commit is refused: a skip was added to a test file.'
+    execute:
+      head_files:
+        tests/test_a.py: |
+          def test_a():
+              assert f() == 1
+      files:
+        tests/test_a.py: |
+          import pytest
+
+
+          @pytest.mark.skip(reason='flaky')
+          def test_a():
+              assert f() == 1
+      event: commit
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A Jest test is turned into it.skip.
+    expect: The commit is refused.
+    execute:
+      files:
+        src/app.test.ts: |
+          it.skip('works', () => {
+            expect(f()).toBe(1);
+          });
+      event: commit
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A Go test gains t.Skip at the top.
+    expect: The commit is refused.
+    execute:
+      files:
+        app_test.go: "func TestApp(t *testing.T) {\n\tt.Skip(\"later\")\n}\n"
+      event: commit
+      expect: block
+  - id: tc-004
+    category: trigger
+    prompt: A spec is focused with describe.only so the rest of the suite stops running.
+    expect: 'The commit is refused: a focus marker silently skips every other test.'
+    execute:
+      files:
+        web/cart.spec.js: |
+          describe.only('cart', () => {});
+      event: commit
+      expect: block
+  - id: tc-005
+    category: trigger
+    prompt: A JUnit 5 test is annotated @Disabled.
+    expect: The commit is refused.
+    execute:
+      files:
+        src/test/java/AppTest.java: |
+          class AppTest {
+            @Disabled
+            void runs() {}
+          }
+      event: commit
+      expect: block
+  - id: tc-006
+    category: trigger
+    prompt: A test skip is added to a nested test directory under a package.
+    expect: 'The commit is refused: any tests/ directory counts.'
+    execute:
+      files:
+        pkg/tests/unit/test_b.py: |
+          @unittest.skip('x')
+          def test_b():
+              pass
+      event: commit
+      expect: block
+  - id: tc-007
+    category: negative_trigger
+    prompt: A doc page about testing shows @pytest.mark.skip in an example.
+    expect: 'The commit is allowed: only test paths are judged.'
+    execute:
+      files:
+        notes/testing.md: |
+          Use @pytest.mark.skip sparingly.
+      event: commit
+      expect: allow
+  - id: tc-008
+    category: negative_trigger
+    prompt: A test file already carries a committed skip, and an unrelated test is added below it.
+    expect: 'The commit is allowed: only lines this change adds are judged.'
+    execute:
+      head_files:
+        tests/test_c.py: |
+          import pytest
+
+
+          @pytest.mark.skip
+          def test_old():
+              pass
+      files:
+        tests/test_c.py: |
+          import pytest
+
+
+          @pytest.mark.skip
+          def test_old():
+              pass
+
+
+          def test_new():
+              assert 1 + 1 == 2
+      event: commit
+      expect: allow
+  - id: tc-009
+    category: negative_trigger
+    prompt: A test file mentions a skip only in a comment.
+    expect: 'The commit is allowed: a commented-out marker skips nothing.'
+    execute:
+      files:
+        tests/test_d.py: |
+          # was @pytest.mark.skip, now fixed
+          def test_d():
+              assert g() == 2
+      event: commit
+      expect: allow
+  - id: tc-010
+    category: negative_trigger
+    prompt: A new test file with ordinary tests is added.
+    expect: The commit is allowed.
+    execute:
+      files:
+        tests/test_e.py: |
+          def test_e():
+              assert h() == 3
+      event: commit
+      expect: allow
+  - id: tc-011
+    category: behavior
+    prompt: 'A person adds ''chock: allow test-skip'' to a reviewed skip and commits from their own shell.'
+    expect: The commit is allowed at commit time; the waiver is visible in the diff.
+    execute:
+      files:
+        tests/test_f.py: |
+          @pytest.mark.skip  # chock: allow test-skip -- needs GPU
+          def test_f():
+              pass
+      event: commit
+      expect: allow
+  - id: tc-012
+    category: edge
+    prompt: The agent adds a skip pragma to its own new skip in the same write.
+    expect: 'In the agent the waiver is not honoured; the write is refused. (Text case: tool_use has no executable replay.)'

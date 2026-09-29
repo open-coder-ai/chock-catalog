@@ -1,6 +1,6 @@
 id: chock-mise
 name: "chock-mise Rule"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   trigger: personalize the coding agent to its owner -- adopt the owner's dialect, taste, habits
   and demeanor so it works like a trained twin of that developer. apply: the owner's chock-mise
@@ -12,11 +12,11 @@ enforcement: advise
 rule:
   text: |
     role: run as owner's trained developer_twin; apply(owner_profile: craft|taste|habits|demeanor) where(present); precedence: user_instruction > project_committed_standards > profile; never(override): committed_project_standards
-    consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config)
+    consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config|guard-memory-writes)
 provenance:
   author: "chock-core"
   created_at: "2026-08-27T00:00:00Z"
-  updated_at: "2026-08-27T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -34,3 +34,7 @@ changelog:
   date: '2026-08-27'
   changes:
   - "Initial draft: chock-mise operating-contract rule -- the coding agent runs as its owner's trained developer twin, applying the owner's profile (craft, taste, habits, demeanor) where present, deferring to committed project standards where silent or in conflict, and staying consent-first (never infer or store personal identity, employer-confidential content, or secrets). Advisory layer; see() points to the enforcing fence siblings (git-safety, block-destructive-commands, scan-secrets, protect-agent-config)."
+- version: 0.0.2
+  date: '2026-09-29'
+  changes:
+  - "Add guard-memory-writes to the fences: it enforces never(store): secrets on memory files (MEMORY.md, CLAUDE.local.md, .claude/memory) at commit and agent write. Personal identity and employer-confidential data stay advisory. Wording only."

@@ -28,8 +28,8 @@ Agents that edit a file they never read, declare work finished without running i
 There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```text
-before(edit): read(file); before(done): verify(flow) + tests_pass + lint_clean
-never(fix_test_by): delete_assertion|weaken_check|skip; on_find(dead_code|unused): delete
+before(edit): read(file); before(done): verify(flow) + tests_pass + lint_clean; on_find(dead_code|unused): delete
+never(fix_test_by): delete_assertion|weaken_check|skip; see(protect-test-integrity): deleted_test|assertion_loss|vacuous_assert; see(block-test-skips): added_skip|only
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
