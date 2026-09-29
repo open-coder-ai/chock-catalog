@@ -151,3 +151,15 @@ def test_build_output_is_ignored_at_the_root_not_in_the_policys_own_build_rules(
         (workspace / made).write_text("x", encoding="utf-8")
         assert kit.git(workspace, "check-ignore", "-q", made, check=False).returncode == 0, made
     assert kit.git(workspace, "check-ignore", "-q", ".agents/x/rules/build/y.py", check=False).returncode == 1
+
+
+def test_a_silent_turn_that_changed_a_file_is_recorded_as_wrote_code_not_declined(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path)
+    kit.main(["start", "smoke-sql-direct", "--dir", str(workspace)])
+    _agent_writes(workspace, "List.of();")
+    kit.main(["record", "smoke-sql-direct", "--dir", str(workspace), "--gate", "silent"])
+    [row] = _results(workspace)
+    assert (row["declined"], row["wrote_no_finding"]) == (False, True)
+    kit.main(["start", "smoke-sql-direct", "--dir", str(workspace)])
+    kit.main(["record", "smoke-sql-direct", "--dir", str(workspace), "--gate", "silent"])
+    assert _results(workspace)[1]["declined"] is True, "no file changed: the agent declined"

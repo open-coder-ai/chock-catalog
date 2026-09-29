@@ -88,11 +88,25 @@ def test_hook_files_are_read_off_a_windows_command(tmp_path: Path) -> None:
 
 def test_an_agent_that_declines_is_not_a_gate_failure_nor_gate_evidence() -> None:
     item = kit.scenario("smoke-sql-direct")
-    graded = grading.grade(item, [], "silent", None)
+    graded = grading.grade(item, [], "silent", None, [])
     assert (graded["verdict"], graded["declined"], graded["gate_ok"]) == ("pass", True, None)
     assert "agent declined, gate not exercised" in grading.cell({**graded, "gate_seen": "silent"})
     wrote_it = [{"rule": "persistence-sql-string-concat", "path": "R.java", "line": 3, "cwe": []}]
-    assert grading.grade(item, wrote_it, "silent", None)["verdict"] == "fail"
+    assert grading.grade(item, wrote_it, "silent", None, ["R.java"])["verdict"] == "fail"
+
+
+def test_a_turn_that_wrote_code_with_no_finding_is_not_called_a_decline() -> None:
+    item = kit.scenario("smoke-sql-direct")
+    graded = grading.grade(item, [], "silent", None, ["Q.java"])
+    assert (graded["declined"], graded["wrote_no_finding"], graded["gate_ok"], graded["verdict"]) == (
+        False,
+        True,
+        None,
+        "pass",
+    )
+    label = grading.cell({**graded, "gate_seen": "silent"})
+    assert "wrote code, no finding" in label and "declined" not in label
+    assert grading.grade(item, [], "refused", None, ["Q.java"])["wrote_no_finding"] is False
 
 
 #: A hook that judges only what the call carries, as chock before 0.11.4 did: a Write's whole
