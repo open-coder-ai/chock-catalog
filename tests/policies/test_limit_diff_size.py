@@ -14,7 +14,14 @@ mod = scriptkit.load("limit-diff-size", NAME)
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for var in ("CHOCK_DIFF_LIMIT", "CHOCK_ALLOW_LARGE_DIFF", "CHOCK_AGENT_COMMIT"):
+    for var in (
+        "CHOCK_DIFF_LIMIT",
+        "CHOCK_ALLOW_LARGE_DIFF",
+        "CHOCK_AGENT_COMMIT",
+        "CLAUDECODE",
+        "AI_AGENT",
+        "MY_AGENT",
+    ):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -179,6 +186,91 @@ def test_an_agents_commit_cannot_use_the_override(
     assert code == 3
     assert "ignored, this is an agent's commit" in err
     assert "staged diff is 900 lines" in err
+
+
+def overridden(repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> bool:
+    """Whether CHOCK_ALLOW_LARGE_DIFF=1 gets a 900-line commit through in the current environment."""
+    stage(repo, {"a.py": lines(900)})
+    monkeypatch.setenv("CHOCK_ALLOW_LARGE_DIFF", "1")
+    code, _ = verdict(capsys)
+    return code == 0
+
+
+@pytest.mark.parametrize(
+    ("var", "value"),
+    [("CHOCK_AGENT_COMMIT", "1"), ("CHOCK_AGENT_COMMIT", "yes"), ("CLAUDECODE", "1"), ("AI_AGENT", "codex")],
+)
+def test_each_agent_marker_refuses_the_override(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, var: str, value: str
+) -> None:
+    monkeypatch.setenv(var, value)
+    assert not overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize(("var", "value"), [("CLAUDECODE", "0"), ("CLAUDECODE", ""), ("AI_AGENT", "  ")])
+def test_a_marker_that_is_not_set_does_not_refuse_the_override(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, var: str, value: str
+) -> None:
+    monkeypatch.setenv(var, value)
+    assert overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize("person", ["0", "false", "no", "off", "OFF"])
+def test_an_explicit_person_wins_over_every_other_marker(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, person: str
+) -> None:
+    monkeypatch.setenv("CHOCK_AGENT_COMMIT", person)
+    monkeypatch.setenv("CLAUDECODE", "1")
+    monkeypatch.setenv("AI_AGENT", "codex")
+    assert overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        "agent_commit_env: [OTHER, MY_AGENT]\n",
+        "agent_commit_env: MY_AGENT\n",
+        "agent_commit_env: ['MY_AGENT']  # quoted\n",
+        "agent_commit_env:\n  # first\n  - OTHER\n\n  - MY_AGENT\n",
+        "x: 1\nagent_commit_env:\n  - MY_AGENT\ny: 2\n",
+    ],
+)
+def test_a_configured_agent_variable_refuses_the_override(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, config: str
+) -> None:
+    scriptkit.write(repo, {".chock/config.yaml": config})
+    monkeypatch.setenv("MY_AGENT", "1")
+    assert not overridden(repo, capsys, monkeypatch)
+
+
+def test_a_named_variable_that_is_unset_leaves_the_override_working(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scriptkit.write(repo, {".chock/config.yaml": "agent_commit_env: [MY_AGENT]\n"})
+    assert overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        "agent_commit_env:\n  - OTHER\ny: MY_AGENT\n",
+        "agent_commit_env: [not a name, 1BAD]\n",
+        "other: [MY_AGENT]\n",
+    ],
+)
+def test_a_variable_the_config_does_not_name_is_not_a_marker(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, config: str
+) -> None:
+    scriptkit.write(repo, {".chock/config.yaml": config})
+    monkeypatch.setenv("MY_AGENT", "1")
+    assert overridden(repo, capsys, monkeypatch)
+
+
+def test_an_unreadable_config_names_no_marker(tmp_path: Path) -> None:
+    assert mod.configured_agent_env(tmp_path) == []
+    (tmp_path / ".chock").mkdir()
+    (tmp_path / ".chock" / "config.yaml").write_bytes(b"\xff\xfe")
+    assert mod.configured_agent_env(tmp_path) == []
 
 
 def test_outside_a_repository_the_script_refuses_rather_than_allows(
