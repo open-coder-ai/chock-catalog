@@ -46,12 +46,15 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~350 tokens (chars/4, max 2000)
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~387 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-iam:
-  claude: enforced-at-commit
-  copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  claude: best-effort (live-run)
+  copilot: best-effort (live-run-partial)
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -64,6 +67,15 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~387 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -91,16 +103,33 @@ block-wildcard-iam  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/block-wildcard-iam/agent-hooks/gate-hooks.json
+.chock/compiled/block-wildcard-iam/agent-hooks/gate.json
 .chock/compiled/block-wildcard-iam/ambient-rule/ambient.md
 .chock/compiled/block-wildcard-iam/ci-gate/gate.json
 .chock/compiled/block-wildcard-iam/ci-gate/step.yaml
 .chock/compiled/block-wildcard-iam/git-hook/gate.json
 .chock/compiled/block-wildcard-iam/git-hook/git-pre-commit.sh
 .chock/compiled/block-wildcard-iam/managed-setting/managed-settings.json
+.chock/compiled/block-wildcard-iam/mcp-gateway/gateway-gate.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/codex_cli-write-hooks.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/gate.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/pretooluse-write.json
+.chock/compiled/block-wildcard-iam/stop/antigravity-hooks.json
+.chock/compiled/block-wildcard-iam/stop/codex_cli-hooks.json
+.chock/compiled/block-wildcard-iam/stop/cursor-hooks.json
+.chock/compiled/block-wildcard-iam/stop/devin-hooks.json
+.chock/compiled/block-wildcard-iam/stop/gate.json
+.chock/compiled/block-wildcard-iam/stop/gemini_cli-hooks.json
+.chock/compiled/block-wildcard-iam/stop/stop.json
+.chock/compiled/block-wildcard-iam/stop/tabnine-hooks.json
+.chock/compiled/block-wildcard-iam/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **block-wildcard-iam**: Broad privilege grant detected. Scope Action and Resource to what the task needs, or add 'pragma: allowlist broad-privilege' on the same line for a reviewed exception. Strict JSON cannot carry the pragma; narrow the grant or manage that document in Terraform/YAML.
+- **block-wildcard-iam**: Broad privilege grant detected. Scope Action and Resource to what the task needs, or a person adds 'pragma: allowlist broad-privilege' on the same line for a reviewed exception (honoured at commit only, not in the agent). Strict JSON cannot carry the pragma; narrow the grant or manage that document in Terraform/YAML. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

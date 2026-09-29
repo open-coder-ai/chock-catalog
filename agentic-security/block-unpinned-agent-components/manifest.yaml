@@ -1,13 +1,14 @@
 id: block-unpinned-agent-components
 name: "Block Unpinned Agent Components"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at
   an unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP
   server idiom — quoted "@latest" arguments in agent config, and :latest container
   images. Language-manifest dependencies are verify-dependency-exists; signature
   and provenance stay with the advisory owasp-asi04 policy. Escape:
-  'pragma: allowlist unpinned' on the same line.
+  'pragma: allowlist unpinned' on the same line, honoured at commit only. Also runs
+  at agent tool-use, where no waiver applies.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -19,12 +20,13 @@ approval:
 hook:
   gate:
     kind: content_regex
-    "on": [commit]
+    "on": [commit, tool_use]
     action: block
     message: >
       Unpinned agent component detected. Pin the version (name@1.2.3, image:tag)
       so what runs tomorrow is what was reviewed today, or add
-      'pragma: allowlist unpinned' on the same line for a deliberate exception.
+      'pragma: allowlist unpinned' on the same line for a deliberate exception
+      (a person's, honoured at commit only, not in the agent).
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+unpinned'
@@ -56,7 +58,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-13T00:00:00Z"
-  updated_at: "2026-08-13T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -81,3 +83,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas/nist_ai_rmf); no mechanism change."
+- version: 0.0.4
+  date: '2026-09-29'
+  changes:
+  - "Also run in the agent: gate.on is now [commit, tool_use], so an unpinned launcher or image is refused as the agent writes it (the whole written file is scanned at the turn's end). No pattern change. Known cost: a README or doc that shows an npx or uvx launch at the floating tag is refused too, and an already-committed line carrying the pragma still blocks a later agent edit of that file, because the pragma is not honoured in the agent; pin the version in the example, or a person makes the edit. forbidden_path_regex was not used to limit the scan to config paths: on content_regex it denies matching paths outright rather than scoping the pattern."

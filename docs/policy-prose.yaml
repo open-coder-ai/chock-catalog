@@ -512,3 +512,15 @@ rtk-dangerous-actions-blocker:
     call). The container rule is one `if`: remove the `in_container` guard to keep the file
     checks inside `docker exec`, which is what the base `block-destructive-commands` does.
     Read the manifest description first: it names the bypass classes this cannot see.
+protect-test-integrity:
+  solves: 'An agent asked to make a red suite green can do it by weakening the suite: deleting the failing test, cutting assertions, or replacing one with `assert True`. CI then goes green over a bug. This gate refuses those three shapes at commit, where the diff is visible, and points the agent back at the code under test.'
+  customise: 'Edit `test_path_regex` for a test layout it does not know, and `assertion_pattern` for a framework whose assertions it does not recognise. `dummy_assertion_pattern` lists the vacuous forms. A deliberate removal is waived by a person with `chock: allow test-integrity` on an added line of the test file; the waiver is not honoured for an agent''s commit (`CHOCK_AGENT_COMMIT` set).'
+block-test-skips:
+  solves: A quieter way to green a suite than deleting a test is to skip it, or to focus one test with `.only` so the rest never run. protect-test-integrity counts assertions and cannot see that. This gate refuses a newly added skip or focus marker in a test file, at commit and while the agent writes, and ignores skips already committed.
+  customise: 'The skip markers and the test-path regex are constants at the top of `implementations/block-test-skips-gate.py`; add a framework''s marker there. A reviewed skip is waived by a person with `chock: allow test-skip` on the line, honoured at commit only in chock 0.13.0, never in the agent.'
+limit-diff-size:
+  solves: A commit of thousands of hand-written lines cannot be reviewed, and an agent will produce one unless something stops it. git-safety only advised asking. This script counts the staged added plus removed lines, leaves out lockfiles, vendored and generated paths and binaries, and refuses above the limit with the largest files named.
+  customise: Set `CHOCK_DIFF_LIMIT` to change the 500-line default. The exclusion lists are constants in `implementations/limit-diff-size-pre-commit.py`. A person may set `CHOCK_ALLOW_LARGE_DIFF=1` for one commit; it is ignored when `CHOCK_AGENT_COMMIT` is set, and an agent asks rather than setting it.
+guard-memory-writes:
+  solves: Agent memory rots when it fills with pasted diffs, whole code listings, repeated lines and, worst, credentials that then travel with the repository. This script judges only memory files and only what a change adds, and refuses those four things with a path and line for each.
+  customise: The memory paths, the fenced-block limit and the git-history patterns are constants in `implementations/guard-memory-writes-gate.py`; the secret pattern is scan-secrets' verbatim, so update both together. There is no waiver.

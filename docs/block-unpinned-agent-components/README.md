@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest" arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists; signature and provenance stay with the advisory owasp-asi04 policy. Escape: 'pragma: allowlist unpinned' on the same line.
+Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest" arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists; signature and provenance stay with the advisory owasp-asi04 policy. Escape: 'pragma: allowlist unpinned' on the same line, honoured at commit only. Also runs at agent tool-use, where no waiver applies.
 
 ## What it solves
 
@@ -25,7 +25,7 @@ The MCP server added as `npx -y something@latest`, which re-resolves on every st
 
 ## How it works
 
-A declarative `content_regex` gate, evaluated on `commit`, action `block`.
+A declarative `content_regex` gate, evaluated on `commit` and `tool_use`, action `block`.
 
 Parameters, from `manifest.yaml`:
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Unpinned agent component detected. Pin the version (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception.
+> Unpinned agent component detected. Pin the version (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception (a person's, honoured at commit only, not in the agent).
 
 ## Which primitive it becomes
 

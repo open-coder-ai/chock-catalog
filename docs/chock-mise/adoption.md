@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~373 tokens (chars/4, max 2000)
+INDEX.md: ~378 tokens (chars/4, max 2000)
 Recompiled 1 policies
 chock-mise:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **chock-mise**:
   role: run as owner's trained developer_twin; apply(owner_profile: craft|taste|habits|demeanor) where(present); precedence: user_instruction > project_committed_standards > profile; never(override): committed_project_standards
-  consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config)
+  consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config|guard-memory-writes)
 ```

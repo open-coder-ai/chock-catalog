@@ -1,0 +1,52 @@
+id: block-test-skips
+name: "Block Test Skips"
+version: "0.0.1"
+description: >
+  Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip,
+  it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go
+  t.Skip -- in test files, at commit and at agent tool-use. Only lines the change adds are
+  judged (against HEAD), so a skip already committed never blocks an unrelated edit. Companion
+  of protect-test-integrity, which cannot see skips. Waivers: 'chock: allow test-skip' on the
+  line is honoured only at commit in chock 0.13.0, never in the agent, and never when
+  CHOCK_AGENT_COMMIT is set; an agent that needs a skip must ask a person.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      Test skip added. Fix the test or the code instead of skipping it. A person may waive a
+      reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell;
+      in chock 0.13.0 the waiver is honoured only at commit, not in the agent, so an agent asks
+      the person rather than writing the pragma itself.
+    params:
+      script: block-test-skips-gate.py
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-09-29'
+  changes:
+  - "Initial draft: added-skip detection split out of agent-discipline's never(fix_test_by) rule. A script gate rather than content_regex: content_regex's forbidden_path_regex denies the path outright instead of scoping the content scan, so it cannot restrict a content pattern to test files, and a scan of every added line would flag docs and policy text that merely name a skip marker. The script judges test paths only, and only lines added relative to HEAD."

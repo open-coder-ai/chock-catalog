@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="42 policies" src="https://img.shields.io/badge/policies-42-blue">
-<img alt="20 enforced" src="https://img.shields.io/badge/enforced-20-brightgreen">
+<img alt="46 policies" src="https://img.shields.io/badge/policies-46-blue">
+<img alt="24 enforced" src="https://img.shields.io/badge/enforced-24-brightgreen">
 <img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -45,7 +45,7 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 11 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 15 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
 | `advisory` | text an agent reads and may or may not follow | 22 |
 
@@ -77,6 +77,10 @@ throwaway repo on every push.
 | [`block-unsafe-code-execution`](docs/block-unsafe-code-execution/) | bare `eval`/`exec`, shell-mode subprocess calls, `os.system`, `pickle`/`marshal` loads, `yaml.load` without `SafeLoader`, `execSync` and `new Function` -- a best-effort line scan over the mechanizable slice of ASI05 | 7/7 |
 | [`no-a11y-regression`](docs/no-a11y-regression/) | a change that destroys an accessibility assertion the previous revision carried -- a description replaced by `alt=""`, or a flagged element deleted rather than fixed; neither produces a violation, so both pass every violation report | 0/13 |
 | [`java-security`](docs/java-security/) | 129 rules in sixteen packs, each citing its CWE and evidence, as they are written and at the commit -- core Java (command, code, reflection, LDAP and XPath injection, XXE, SSRF, zip slip, unsafe deserialization, unverified JWT), crypto and TLS, Spring (CSRF, catch-all `permitAll`, weak encoders, SpEL, actuator, secrets in config), Jakarta EE, Struts, Quarkus, Micronaut and Vert.x, persistence (SQL/JPQL/HQL built by concatenation, MyBatis `${}`, unsafe JDBC URLs), templates, logging (Log4j lookups, secrets in logs), Maven and Gradle builds (plain-HTTP repositories, Log4Shell- and Spring4Shell-class versions), and Android; and seven quality packs -- bugs, concurrency, resources, exceptions, performance, style, tests -- mirroring SpotBugs, Sonar, PMD and Checkstyle -- each pack or rule `allow\|deny\|ask` in `.chock/security.json`, silence denies; the correct sibling of each (`#{}` and bind parameters, `th:text`, `parseClaimsJws`, AES-GCM) stays silent | 87/95 |
+| [`protect-test-integrity`](docs/protect-test-integrity/) | Blocks a deleted test file, a net loss of assertions across the change, and an added vacuous assertion (`assert True`, `expect(true)`) in Python, JS/TS, Go and Java test layouts -- commit only, waiver `chock: allow test-integrity` | 12/14 |
+| [`block-test-skips`](docs/block-test-skips/) | Blocks newly added test skips and focus markers (`@pytest.mark.skip`, `it.skip`, `.only`, `@Disabled`, `t.Skip`) in test files, at commit and at agent tool-use -- judged against HEAD, waiver `chock: allow test-skip` at commit only | 11/12 |
+| [`limit-diff-size`](docs/limit-diff-size/) | Refuses a commit whose staged added plus removed lines exceed 500 (`CHOCK_DIFF_LIMIT`), not counting lockfiles, vendored or generated paths and binaries -- override `CHOCK_ALLOW_LARGE_DIFF=1` is a person's | 0/8 |
+| [`guard-memory-writes`](docs/guard-memory-writes/) | Refuses memory files (`MEMORY.md`, `CLAUDE.local.md`, `.claude/memory/`) that paste git history, hold a code block over 20 lines, repeat a line or store a secret -- at commit and at agent tool-use, no waiver | 14/15 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,
