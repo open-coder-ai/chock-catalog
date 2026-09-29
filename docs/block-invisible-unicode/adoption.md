@@ -17,6 +17,8 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Installed commit-msg dispatcher to …/.git/hooks/commit-msg
+No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered SessionStart arm hook in .claude/settings.json
 INDEX.md: ~257 tokens (chars/4, max 2000)
 INDEX.md: ~257 tokens (chars/4, max 2000)
@@ -46,6 +48,8 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Installed commit-msg dispatcher to …/.git/hooks/commit-msg
+No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
@@ -67,6 +71,8 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Installed commit-msg dispatcher to …/.git/hooks/commit-msg
+No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
