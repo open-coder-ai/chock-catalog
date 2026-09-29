@@ -60,6 +60,10 @@ def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     """Return (kind, the mechanism label), strongest mechanism first."""
     policy_id = str(manifest.get("id") or Path(policy_dir).name)
     gate = (manifest.get("hook") or {}).get("gate") or {}
+    # A gate that only warns enforces nothing (the engine withholds its enforcing surfaces): it
+    # never lifts a policy above the rule text, though a script or guard it ships still counts.
+    warns = gate.get("action") == "warn"
+    gate = {} if warns else gate
     # A gate that never runs at commit (tool_use only) is enforced in the agent, not at commit.
     if gate.get("kind") and "commit" in (gate.get("on") or []):
         return GATE, str(gate["kind"])
@@ -69,4 +73,4 @@ def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
         return GUARD, "guard script"
     if gate.get("kind"):
         return GUARD, str(gate["kind"])
-    return NONE, "rule text only"
+    return NONE, "warn-only gate" if warns else "rule text only"

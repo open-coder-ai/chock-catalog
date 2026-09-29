@@ -49,13 +49,14 @@ def test_a_change_over_the_limit_is_refused_with_the_five_largest_files(
 ) -> None:
     stage(repo, {f"f{i}.py": lines(100 + i * 10) for i in range(7)})
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "staged diff is 910 lines" in err
     assert "limit is 500" in err
     listed = [ln for ln in err.splitlines() if ln.startswith("  ") and ".py" in ln]
     assert [ln.split()[1] for ln in listed] == ["f6.py", "f5.py", "f4.py", "f3.py", "f2.py"]
     assert "git add -p" in err
-    assert "CHOCK_ALLOW_LARGE_DIFF=1" in err
+    assert "CHOCK_ALLOW=limit-diff-size" in err
+    assert "CHOCK_ALLOW_LARGE_DIFF=1 still works" in err
     assert "ask the person" in err
 
 
@@ -66,7 +67,7 @@ def test_removed_lines_count_as_much_as_added_ones(repo: Path, capsys: pytest.Ca
     assert verdict(capsys)[0] == 0  # 400 removed
     stage(repo, {"big.txt": "x\n"})
     code, err = verdict(capsys)  # 600 removed + 1 added
-    assert code == 1
+    assert code == 3
     assert "601 lines" in err
 
 
@@ -104,7 +105,7 @@ def test_lockfiles_generated_and_vendored_paths_are_not_counted(
 def test_a_file_that_only_looks_generated_is_counted(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     stage(repo, {"src/build.py": lines(300), "src/dist_tools.py": lines(300), "lockfile.txt": lines(300)})
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "900 lines" in err
 
 
@@ -133,7 +134,7 @@ def test_the_limit_comes_from_chock_diff_limit(
     stage(repo, {"a.py": lines(20)})
     monkeypatch.setenv("CHOCK_DIFF_LIMIT", "10")
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "limit is 10" in err
     monkeypatch.setenv("CHOCK_DIFF_LIMIT", "20")
     assert verdict(capsys) == (0, "")
@@ -146,7 +147,7 @@ def test_an_unusable_limit_falls_back_to_500(
     monkeypatch.setenv("CHOCK_DIFF_LIMIT", bad)
     stage(repo, {"a.py": lines(501)})
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "limit is 500" in err
 
 
@@ -165,7 +166,7 @@ def test_a_falsy_override_does_not_override(
 ) -> None:
     stage(repo, {"a.py": lines(900)})
     monkeypatch.setenv("CHOCK_ALLOW_LARGE_DIFF", "0")
-    assert verdict(capsys)[0] == 1
+    assert verdict(capsys)[0] == 3
 
 
 def test_an_agents_commit_cannot_use_the_override(
@@ -175,7 +176,7 @@ def test_an_agents_commit_cannot_use_the_override(
     monkeypatch.setenv("CHOCK_ALLOW_LARGE_DIFF", "1")
     monkeypatch.setenv("CHOCK_AGENT_COMMIT", "1")
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "ignored, this is an agent's commit" in err
     assert "staged diff is 900 lines" in err
 
@@ -195,7 +196,7 @@ def test_the_script_runs_as_a_process_and_speaks_through_its_exit_code(tmp_path:
     stage(repo, {"a.py": lines(600)})
     env = {k: v for k, v in os.environ.items() if not k.startswith("CHOCK_")}
     code, err = scriptkit.run_script("limit-diff-size", NAME, repo, env=env)
-    assert code == 1
+    assert code == 3
     assert "600 lines" in err
     code, _ = scriptkit.run_script("limit-diff-size", NAME, repo, env={**env, "CHOCK_DIFF_LIMIT": "700"})
     assert code == 0

@@ -43,13 +43,16 @@ Verify anytime with:  chock check --only verify
 
 ```text
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
+Registered 1 pre-commit policy implementation(s)
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
-No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
+Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~387 tokens (chars/4, max 2000)
 Recompiled 1 policies
 eu-ai-act-high-risk-triage:
@@ -63,13 +66,22 @@ eu-ai-act-high-risk-triage:
 ```text
 Implementation registered at …/.git/hooks/pre-commit.d/99-chock-validate
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
+Registered 1 pre-commit policy implementation(s)
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
-No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
+Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~387 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -81,15 +93,43 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 48 skipped
+eu-ai-act-high-risk-triage  [deterministic]
+  PASS  tc-008                             authored  Possible EU AI Act Annex III high-risk domain (scoring, ranking or …
+  PASS  tc-009                             authored  gate: warning: Possible EU AI Act Annex III high-risk domain (scori…
+  PASS  tc-010                             authored  Possible EU AI Act Annex III high-risk domain (scoring, ranking or …
+  PASS  tc-011                             authored  gate exit 0
+  score 1.00
+
+5 policies: 4 pass, 48 skipped
 48 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
 
 ```text
+.chock/compiled/eu-ai-act-high-risk-triage/agent-hooks/gate-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/agent-hooks/gate.json
 .chock/compiled/eu-ai-act-high-risk-triage/ambient-rule/ambient.md
+.chock/compiled/eu-ai-act-high-risk-triage/ci-gate/gate.json
+.chock/compiled/eu-ai-act-high-risk-triage/ci-gate/step.yaml
+.chock/compiled/eu-ai-act-high-risk-triage/git-hook/gate.json
+.chock/compiled/eu-ai-act-high-risk-triage/git-hook/git-pre-commit.sh
 .chock/compiled/eu-ai-act-high-risk-triage/managed-setting/managed-settings.json
+.chock/compiled/eu-ai-act-high-risk-triage/mcp-gateway/gateway-gate.json
+.chock/compiled/eu-ai-act-high-risk-triage/pre-tool-use/codex_cli-write-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/pre-tool-use/gate.json
+.chock/compiled/eu-ai-act-high-risk-triage/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/pre-tool-use/pretooluse-write.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/antigravity-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/codex_cli-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/cursor-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/devin-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/gate.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/gemini_cli-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/stop.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/tabnine-hooks.json
+.chock/compiled/eu-ai-act-high-risk-triage/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry

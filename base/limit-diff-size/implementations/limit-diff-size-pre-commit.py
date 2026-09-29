@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a commit whose staged hand-written diff exceeds a line limit."""
+"""Ask about a commit whose staged hand-written diff exceeds a line limit (exit 3)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 DEFAULT_LIMIT = 500
+ASK = 3  # the hook refuses an ask until a person sets CHOCK_ALLOW=limit-diff-size
 TOP_FILES = 5
 FALSY = {"", "0", "false", "no", "off"}
 LOCKFILES = (
@@ -104,11 +105,12 @@ def main() -> int:
         print(f"  {n:6d}  {path}", file=sys.stderr)
     print(
         "Split it: `git reset` then stage one concern at a time with `git add -p`, one commit each. "
-        "To commit it whole, a person sets CHOCK_ALLOW_LARGE_DIFF=1 for that commit (or raises "
-        "CHOCK_DIFF_LIMIT); an agent must ask the person and never sets either itself.",
+        "To commit it whole, a person runs that one commit with CHOCK_ALLOW=limit-diff-size "
+        "(CHOCK_ALLOW_LARGE_DIFF=1 still works) or raises CHOCK_DIFF_LIMIT; "
+        "an agent must ask the person and never sets any of them itself.",
         file=sys.stderr,
     )
-    return 1
+    return ASK
 
 
 if __name__ == "__main__":

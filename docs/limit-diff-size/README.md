@@ -10,7 +10,7 @@
 | **Mechanism** | commit-time guard script `limit-diff-size-pre-commit.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ambient-rule` |
-| **Eval cases** | 8 total, 0 executable |
+| **Eval cases** | 11 total, 3 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -30,8 +30,8 @@ A guard script, `implementations/limit-diff-size-pre-commit.py`, run by the git 
 The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:
 
 ```text
-at(commit): refuse if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
-on(refused): split into atomic commits (git add -p); override: CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_override), ask(human)
+at(commit): ask if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
+on(asked): split into atomic commits (git add -p); answer: CHOCK_ALLOW=limit-diff-size|CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_answer), ask(human)
 ```
 
 ## Which primitive it becomes

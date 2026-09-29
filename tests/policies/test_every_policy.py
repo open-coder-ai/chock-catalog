@@ -10,8 +10,9 @@ found. Three things hold for each one:
   claims. Each case is its own named test, so a failure names the policy and the case.
 
 A policy that ships a mechanism must prove it both ways: at least one case it refuses and one it
-allows. java-security's script gate and the a11y guard have their own suites (tests/java_security,
-tools/check_a11y_*), because chock's replay does not run a script gate.
+allows. A warn-only gate never refuses, so it proves the other pair: no case is refused, at least
+one is flagged and at least one is silent. java-security and the a11y guard also have their own
+suites (tests/java_security, tools/check_a11y_*).
 """
 
 from __future__ import annotations
@@ -27,8 +28,8 @@ from chock.validation.report import Report
 from trees import ROOT, policy_dirs
 
 POLICIES = policy_dirs()
-#: Replayed by their own suites; chock's replay cannot drive a script gate or an event script.
-OWN_SUITES = {"java-security", "no-a11y-regression", "agentic-code-security"}
+#: Replayed by their own suites; chock's replay cannot drive these script gates.
+OWN_SUITES = {"java-security", "agentic-code-security"}
 
 
 def _manifest(policy_dir: Path) -> dict:
@@ -89,7 +90,20 @@ def test_the_case_gets_the_verdict_it_claims(policy_dir: Path, case) -> None:
 MECHANISED = [p for p in POLICIES if p.name not in OWN_SUITES and (_policy(p).guards or _policy(p).gate)]
 
 
+def _warns_only(policy_dir: Path) -> bool:
+    return ((_manifest(policy_dir).get("hook") or {}).get("gate") or {}).get("action") == "warn"
+
+
 @pytest.mark.parametrize("policy_dir", MECHANISED, ids=[p.name for p in MECHANISED])
 def test_a_shipped_mechanism_is_proven_both_ways(policy_dir: Path) -> None:
-    expected = {str(c.execute.get("expect", "block")) for p, c in EXECUTABLE if p == policy_dir}
-    assert {"block", "allow"} <= expected, f"{policy_dir.name} proves only {sorted(expected)}"
+    cases = [c for p, c in EXECUTABLE if p == policy_dir]
+    expected = {str(c.execute.get("expect", "block")) for c in cases}
+    if not _warns_only(policy_dir):
+        assert {"block", "allow"} <= expected, f"{policy_dir.name} proves only {sorted(expected)}"
+        return
+    # A replay reads a warning as an allow, with the reason as its detail; silence is a bare exit 0.
+    assert expected == {"allow"}, f"{policy_dir.name} only warns, yet claims {sorted(expected)}"
+    details = [run_case(c, policy_dir, ROOT, _policy(policy_dir).guards).detail for c in cases]
+    silent = [d for d in details if d.startswith("gate exit 0")]
+    assert silent, f"{policy_dir.name} proves no case the warning stays silent on"
+    assert len(silent) < len(details), f"{policy_dir.name} proves no case the warning fires on"
