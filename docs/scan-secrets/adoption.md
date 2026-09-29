@@ -48,11 +48,12 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~383 tokens (chars/4, max 2000)
 Recompiled 1 policies
 scan-secrets:
   claude: best-effort (live-run)
-  copilot: enforced-at-commit
+  copilot: best-effort (live-run-partial)
   gemini: best-effort (vendor-source)
 ```
 
@@ -73,6 +74,7 @@ Registered 2 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~383 tokens (chars/4, max 2000)
 ```
 
@@ -121,6 +123,8 @@ scan-secrets  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/scan-secrets/agent-hooks/gate-hooks.json
+.chock/compiled/scan-secrets/agent-hooks/gate.json
 .chock/compiled/scan-secrets/ambient-rule/ambient.md
 .chock/compiled/scan-secrets/ci-gate/gate.json
 .chock/compiled/scan-secrets/ci-gate/step.yaml
@@ -141,6 +145,7 @@ scan-secrets  [deterministic]
 .chock/compiled/scan-secrets/stop/gemini_cli-hooks.json
 .chock/compiled/scan-secrets/stop/stop.json
 .chock/compiled/scan-secrets/stop/tabnine-hooks.json
+.chock/compiled/scan-secrets/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry

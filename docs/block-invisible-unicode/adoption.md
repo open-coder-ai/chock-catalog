@@ -48,11 +48,12 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~412 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-invisible-unicode:
   claude: best-effort (live-run)
-  copilot: enforced-at-commit
+  copilot: best-effort (live-run-partial)
   gemini: best-effort (vendor-source)
 ```
 
@@ -73,6 +74,7 @@ Registered 2 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~412 tokens (chars/4, max 2000)
 ```
 
@@ -103,6 +105,8 @@ block-invisible-unicode  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/block-invisible-unicode/agent-hooks/gate-hooks.json
+.chock/compiled/block-invisible-unicode/agent-hooks/gate.json
 .chock/compiled/block-invisible-unicode/ambient-rule/ambient.md
 .chock/compiled/block-invisible-unicode/ci-gate/gate.json
 .chock/compiled/block-invisible-unicode/ci-gate/step.yaml
@@ -123,6 +127,7 @@ block-invisible-unicode  [deterministic]
 .chock/compiled/block-invisible-unicode/stop/gemini_cli-hooks.json
 .chock/compiled/block-invisible-unicode/stop/stop.json
 .chock/compiled/block-invisible-unicode/stop/tabnine-hooks.json
+.chock/compiled/block-invisible-unicode/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry

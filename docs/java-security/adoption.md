@@ -48,11 +48,12 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~460 tokens (chars/4, max 2000)
 Recompiled 1 policies
 java-security:
   claude: best-effort (live-run)
-  copilot: enforced-at-commit
+  copilot: best-effort (live-run-partial)
   gemini: best-effort (vendor-source)
 ```
 
@@ -73,6 +74,7 @@ Registered 2 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~460 tokens (chars/4, max 2000)
 ```
 
@@ -183,6 +185,8 @@ java-security  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/java-security/agent-hooks/gate-hooks.json
+.chock/compiled/java-security/agent-hooks/gate.json
 .chock/compiled/java-security/ambient-rule/ambient.md
 .chock/compiled/java-security/ci-gate/gate.json
 .chock/compiled/java-security/ci-gate/step.yaml
@@ -202,6 +206,7 @@ java-security  [deterministic]
 .chock/compiled/java-security/stop/gemini_cli-hooks.json
 .chock/compiled/java-security/stop/stop.json
 .chock/compiled/java-security/stop/tabnine-hooks.json
+.chock/compiled/java-security/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry

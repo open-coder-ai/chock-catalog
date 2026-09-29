@@ -48,11 +48,12 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~397 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-agent-permissions:
   claude: best-effort (live-run)
-  copilot: enforced-at-commit
+  copilot: best-effort (live-run-partial)
   gemini: best-effort (vendor-source)
 ```
 
@@ -73,6 +74,7 @@ Registered 2 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~397 tokens (chars/4, max 2000)
 ```
 
@@ -111,6 +113,8 @@ block-wildcard-agent-permissions  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/block-wildcard-agent-permissions/agent-hooks/gate-hooks.json
+.chock/compiled/block-wildcard-agent-permissions/agent-hooks/gate.json
 .chock/compiled/block-wildcard-agent-permissions/ambient-rule/ambient.md
 .chock/compiled/block-wildcard-agent-permissions/ci-gate/gate.json
 .chock/compiled/block-wildcard-agent-permissions/ci-gate/step.yaml
@@ -131,6 +135,7 @@ block-wildcard-agent-permissions  [deterministic]
 .chock/compiled/block-wildcard-agent-permissions/stop/gemini_cli-hooks.json
 .chock/compiled/block-wildcard-agent-permissions/stop/stop.json
 .chock/compiled/block-wildcard-agent-permissions/stop/tabnine-hooks.json
+.chock/compiled/block-wildcard-agent-permissions/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
