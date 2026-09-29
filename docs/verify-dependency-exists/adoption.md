@@ -50,12 +50,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~320 tokens (chars/4, max 2000)
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~359 tokens (chars/4, max 2000)
 Recompiled 1 policies
 verify-dependency-exists:
-  claude: enforced-at-commit
-  copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  claude: best-effort (live-run)
+  copilot: best-effort (live-run-partial)
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -70,6 +73,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~359 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -104,16 +116,32 @@ verify-dependency-exists  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/verify-dependency-exists/agent-hooks/gate-hooks.json
+.chock/compiled/verify-dependency-exists/agent-hooks/gate.json
 .chock/compiled/verify-dependency-exists/ambient-rule/ambient.md
 .chock/compiled/verify-dependency-exists/ci-gate/gate.json
 .chock/compiled/verify-dependency-exists/ci-gate/step.yaml
 .chock/compiled/verify-dependency-exists/git-hook/gate.json
 .chock/compiled/verify-dependency-exists/git-hook/git-pre-commit.sh
 .chock/compiled/verify-dependency-exists/managed-setting/managed-settings.json
+.chock/compiled/verify-dependency-exists/pre-tool-use/codex_cli-write-hooks.json
+.chock/compiled/verify-dependency-exists/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/verify-dependency-exists/pre-tool-use/gate.json
+.chock/compiled/verify-dependency-exists/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/verify-dependency-exists/pre-tool-use/pretooluse-write.json
+.chock/compiled/verify-dependency-exists/stop/antigravity-hooks.json
+.chock/compiled/verify-dependency-exists/stop/codex_cli-hooks.json
+.chock/compiled/verify-dependency-exists/stop/cursor-hooks.json
+.chock/compiled/verify-dependency-exists/stop/devin-hooks.json
+.chock/compiled/verify-dependency-exists/stop/gate.json
+.chock/compiled/verify-dependency-exists/stop/gemini_cli-hooks.json
+.chock/compiled/verify-dependency-exists/stop/stop.json
+.chock/compiled/verify-dependency-exists/stop/tabnine-hooks.json
+.chock/compiled/verify-dependency-exists/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **verify-dependency-exists**: Unknown dependency blocked. Verify the package exists in the official registry, then add it to .chock/dependency-allowlist.txt to allow it.
+- **verify-dependency-exists**: Unknown dependency blocked. Verify the package exists in the official registry, then ask a person to add it to .chock/dependency-allowlist.txt -- an agent may not edit that file (protect-agent-config). Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

@@ -42,6 +42,7 @@ Verify anytime with:  chock check --only verify
 ## `$ chock recompile --repo .`
 
 ```text
+Auto-compiled protect-agent-config (drop-in)
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
 No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
@@ -50,8 +51,8 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~352 tokens (chars/4, max 2000)
 Recompiled 1 policies
@@ -65,6 +66,7 @@ protect-agent-config:
 
 ```text
 Implementation registered at …/.git/hooks/pre-commit.d/99-chock-validate
+Auto-compiled protect-agent-config (drop-in)
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
 No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
@@ -73,14 +75,14 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
-Registered 1 hook entr(y/ies) in .agents/hooks.json
-Registered 1 hook entr(y/ies) in .codex/hooks.json
-Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 3 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 2 hook entr(y/ies) in .agents/hooks.json
+Registered 3 hook entr(y/ies) in .codex/hooks.json
+Registered 2 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
-Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~352 tokens (chars/4, max 2000)
@@ -148,9 +150,11 @@ protect-agent-config  [deterministic]
   PASS  tc-050                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
   PASS  tc-051                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
   PASS  tc-052                             authored  guard exit 0
+  PASS  tc-053                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-054                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   score 1.00
 
-5 policies: 52 pass, 41 skipped
+5 policies: 54 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -158,17 +162,34 @@ protect-agent-config  [deterministic]
 
 ```text
 .chock/compiled/protect-agent-config/agent-hooks/agent-hooks.json
+.chock/compiled/protect-agent-config/agent-hooks/gate-hooks.json
+.chock/compiled/protect-agent-config/agent-hooks/gate.json
 .chock/compiled/protect-agent-config/ambient-rule/ambient.md
 .chock/compiled/protect-agent-config/managed-setting/managed-settings.json
+.chock/compiled/protect-agent-config/mcp-gateway/gateway-gate.json
 .chock/compiled/protect-agent-config/pre-tool-use/antigravity-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/codex_cli-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/cursor-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/devin-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/gate.json
 .chock/compiled/protect-agent-config/pre-tool-use/gemini_cli-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/gemini_cli-write-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/grok-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/pretooluse-write.json
 .chock/compiled/protect-agent-config/pre-tool-use/pretooluse.json
 .chock/compiled/protect-agent-config/pre-tool-use/tabnine-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/windsurf-hooks.json
+.chock/compiled/protect-agent-config/stop/antigravity-hooks.json
+.chock/compiled/protect-agent-config/stop/codex_cli-hooks.json
+.chock/compiled/protect-agent-config/stop/cursor-hooks.json
+.chock/compiled/protect-agent-config/stop/devin-hooks.json
+.chock/compiled/protect-agent-config/stop/gate.json
+.chock/compiled/protect-agent-config/stop/gemini_cli-hooks.json
+.chock/compiled/protect-agent-config/stop/stop.json
+.chock/compiled/protect-agent-config/stop/tabnine-hooks.json
+.chock/compiled/protect-agent-config/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry

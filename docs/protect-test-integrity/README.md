@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Blocks a commit that turns tests green by weakening them instead of fixing the code: a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test layouts. Mechanised slice of agent-discipline's never(fix_test_by) rule; added skips are block-test-skips. Enforced at commit only: chock 0.13.0 does not run this gate kind at agent tool-use. A reviewed exception carries 'chock: allow test-integrity' on an added line of the test file; a waiver is not honoured when CHOCK_AGENT_COMMIT is set.
+Blocks a commit that turns tests green by weakening them instead of fixing the code: a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test layouts. Mechanised slice of agent-discipline's never(fix_test_by) rule; added skips are block-test-skips. Enforced at commit and at agent tool-use (an edit that weakens a test is judged against the file on disk, the turn's end against HEAD; Edit and Write cannot delete a file). A reviewed exception carries 'chock: allow test-integrity' on an added line of the test file; a waiver is honoured at commit only, never in the agent.
 
 ## What it solves
 
@@ -25,7 +25,7 @@ An agent asked to make a red suite green can do it by weakening the suite: delet
 
 ## How it works
 
-A declarative `test_integrity` gate, evaluated on `commit`, action `block`.
+A declarative `test_integrity` gate, evaluated on `commit` and `tool_use`, action `block`.
 
 Parameters, from `manifest.yaml`:
 
@@ -36,7 +36,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Test integrity: this change deletes a test file, removes more assertions than it adds, or adds a vacuous assertion. Fix the code under test, not the test. If the removal is deliberate (obsolete behaviour, a test moved elsewhere), a person adds 'chock: allow test-integrity' on an added line of that test file and commits from their own shell; the waiver is not honoured for an agent's commit (CHOCK_AGENT_COMMIT set).
+> Test integrity: this change deletes a test file, removes more assertions than it adds, or adds a vacuous assertion. Fix the code under test, not the test. If the removal is deliberate (obsolete behaviour, a test moved elsewhere), a person adds 'chock: allow test-integrity' on an added line of that test file and commits from their own shell; the waiver is honoured at commit only, never in the agent (tool use, the turn's end, or a commit with CHOCK_AGENT_COMMIT set), so an agent asks a person.
 
 ## Which primitive it becomes
 

@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or Resource in IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform wildcard action/resource lists. An agent's identity design stays with the advisory owasp-asi03 policy; this blocks the grants whose blast radius is everything. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit only. Also runs at agent tool-use, where no waiver applies.
+Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or Resource in IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform wildcard action/resource lists. An agent's identity design stays with the advisory owasp-asi03 policy; this blocks the grants whose blast radius is everything. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit; also runs at agent tool-use, where it counts only when that exact line is already committed in HEAD.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Broad privilege grant detected. Scope Action and Resource to what the task needs, or a person adds 'pragma: allowlist broad-privilege' on the same line for a reviewed exception (honoured at commit only, not in the agent). Strict JSON cannot carry the pragma; narrow the grant or manage that document in Terraform/YAML.
+> Broad privilege grant detected. Scope Action and Resource to what the task needs, or a person adds 'pragma: allowlist broad-privilege' on the same line for a reviewed exception (in the agent it counts only when that exact line is already committed in HEAD, so an agent asks a person). Strict JSON cannot carry the pragma; narrow the grant or manage that document in Terraform/YAML.
 
 ## Which primitive it becomes
 

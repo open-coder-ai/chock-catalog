@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~387 tokens (chars/4, max 2000)
+INDEX.md: ~403 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-iam:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~387 tokens (chars/4, max 2000)
+INDEX.md: ~403 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -137,5 +137,5 @@ block-wildcard-iam  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-wildcard-iam**: Broad privilege grant detected. Scope Action and Resource to what the task needs, or a person adds 'pragma: allowlist broad-privilege' on the same line for a reviewed exception (honoured at commit only, not in the agent). Strict JSON cannot carry the pragma; narrow the grant or manage that document in Terraform/YAML. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **block-wildcard-iam**: Broad privilege grant detected. Scope Action and Resource to what the task needs, or a person adds 'pragma: allowlist broad-privilege' on the same line for a reviewed exception (in the agent it counts only when that exact line is already committed in HEAD, so an agent asks a person). Strict JSON cannot carry the pragma; narrow the grant or manage that document in Terraform/YAML. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

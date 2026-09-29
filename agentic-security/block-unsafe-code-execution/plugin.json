@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-unsafe-code-execution",
-  "version": "0.0.3",
-  "description": "Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05 policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same line.",
+  "version": "0.0.4",
+  "description": "Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05 policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same line, honoured at commit; at agent tool-use it counts only for a line already committed in HEAD.",
   "author": {
     "name": "chock-core"
   },

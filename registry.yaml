@@ -63,7 +63,7 @@ policies:
     and scripts. Friction, not a security boundary.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -117,7 +117,7 @@ policies:
     ''pragma: allowlist egress''.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -129,11 +129,11 @@ policies:
     version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest"
     arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists;
     signature and provenance stay with the advisory owasp-asi04 policy. Escape: ''pragma: allowlist
-    unpinned'' on the same line, honoured at commit only. Also runs at agent tool-use, where no waiver
-    applies.'
+    unpinned'' on the same line, honoured at commit; also runs at agent tool-use, where it counts only
+    when that exact line is already committed in HEAD.'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -142,12 +142,13 @@ policies:
   eval_cases: 7
   eval_executed: 7
   description: 'Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess
-    calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function.
-    Best-effort line scan; sandbox design, egress, and inherited credentials stay with the advisory
-    owasp-asi05 policy. Escape hatch for vetted uses: ''pragma: allowlist exec'' on the same line.'
+    calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort
+    line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05
+    policy. Escape hatch for vetted uses: ''pragma: allowlist exec'' on the same line, honoured at commit;
+    at agent tool-use it counts only for a line already committed in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -159,7 +160,8 @@ policies:
     IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform
     wildcard action/resource lists. An agent''s identity design stays with the advisory owasp-asi03
     policy; this blocks the grants whose blast radius is everything. Escape: ''pragma: allowlist broad-privilege''
-    on the same line, honoured at commit only. Also runs at agent tool-use, where no waiver applies.'
+    on the same line, honoured at commit; also runs at agent tool-use, where it counts only when that
+    exact line is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
   version: 0.0.3
@@ -491,7 +493,7 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.5
+  version: 0.0.6
   artifact: hook
   enforcement: block
   mandatory: false
@@ -510,7 +512,7 @@ policies:
     allowlist broad-agency'' on the same line.'
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -531,14 +533,14 @@ policies:
     stay out of scope.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.1.0
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 52
-  eval_executed: 52
+  eval_cases: 54
+  eval_executed: 54
   description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
     and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency
     allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/)
@@ -546,8 +548,9 @@ policies:
     own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to those paths -- a redirect,
     rm/mv/tee/sed -i, cp into the path, git checkout/restore, PowerShell Set-Content/Add-Content/Out-File;
     reads and copies out pass, and `chock sync` passes. Best-effort and deliberately coarse. The ''chock:
-    approved-config-change'' marker is friction plus an audit trail, not authentication; the check an
-    agent cannot self-approve is the commit-time gate and CI.'
+    approved-config-change'' marker is friction plus an audit trail, not authentication. A second, tool_use-only
+    gate refuses Edit/Write to the same paths; it never runs at commit, so a person stays free to edit
+    them.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
   version: 0.1.0
@@ -570,12 +573,12 @@ policies:
     check an agent cannot self-approve is server-side branch protection.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.1.0
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
-  mechanism: guard script
-  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  mechanism: commit-time guard script
+  enforces: enforced-at-commit
   eval_cases: 35
   eval_executed: 35
   description: 'Keep the development conversation out of git history. Agent-authored commits narrate
@@ -585,9 +588,10 @@ policies:
     to describe the change, not the conversation, and to propose sensitive messages to the human before
     committing. The command line is parsed, so a commit or gh pr create|edit behind cd, sh -c/bash -c,
     sudo, env or command is read like a bare one, a message fed on `-F -` from a heredoc is scanned,
-    and a command that merely echoes the pattern as documentation still passes. Best-effort: markers
-    are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the
-    marker list in the guard, the content is yours.'
+    and a command that merely echoes the pattern as documentation still passes. A commit-msg hook applies
+    the same markers to the message git records. Best-effort: markers are a narrow deny-list, and a
+    message the human explicitly approves can say anything -- edit the marker list in the guard, the
+    content is yours.'
 - id: protect-main-branch
   path: base/protect-main-branch
   version: 0.0.1
@@ -622,7 +626,7 @@ policies:
     exec; rtk is a transparent prefix. Friction, not a security boundary.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.0.7
+  version: 0.0.8
   artifact: hook
   enforcement: block
   mandatory: true
@@ -649,7 +653,7 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -658,30 +662,34 @@ policies:
   eval_cases: 5
   eval_executed: 5
   description: 'Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt,
-    pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in
-    the allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable
-    with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt.'
+    pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in the
+    allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable with
+    `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt. Runs at
+    commit and at agent tool-use (a manifest edit is judged against the file on disk, and at the turn''s
+    end against HEAD).'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.1.0
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
-  mechanism: guard script
-  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 38
-  eval_executed: 38
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 51
+  eval_executed: 51
   description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
     unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist
     -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude
     mcp add|add-json` is checked the same way (add-from-claude-desktop cannot be verified and is refused).
     The allowlist ships inside this guard''s own script, protected like every policy''s implementations/
-    source -- edit only with ''chock: approved-config-change''. Claude Code''s .mcp.json only. Tool-time
-    (Bash) only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard,
-    a write with no visible content fails closed. No commit-time gate. No pragma for .mcp.json.'
+    source -- edit only with ''chock: approved-config-change''. The shell guard reads Claude Code''s
+    .mcp.json, best-effort (PreToolUse fails open on a crash; a write with no visible content fails
+    closed). A script gate at commit and tool use parses every written MCP config (.mcp.json, .cursor/mcp.json,
+    .vscode/mcp.json, claude_desktop_config.json, .gemini/settings.json, .codex/config.toml) against
+    the same allowlist; at commit only servers the change adds or alters are refused. No pragma.'
 - id: block-test-skips
   path: base/block-test-skips
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   mandatory: false
@@ -693,9 +701,9 @@ policies:
     it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip
     -- in test files, at commit and at agent tool-use. Only lines the change adds are judged (against
     HEAD), so a skip already committed never blocks an unrelated edit. Companion of protect-test-integrity,
-    which cannot see skips. Waivers: ''chock: allow test-skip'' on the line is honoured only at commit
-    in chock 0.13.0, never in the agent, and never when CHOCK_AGENT_COMMIT is set; an agent that needs
-    a skip must ask a person.'
+    which cannot see skips. Waivers: ''chock: allow test-skip'' on the line is honoured at commit; in
+    the agent, or for a commit with CHOCK_AGENT_COMMIT set, only a skip already committed in HEAD counts,
+    so an agent that needs a new one must ask a person.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
   version: 0.0.1
@@ -727,7 +735,7 @@ policies:
     one commit carrying hundreds of hand-written lines; lockfile and generated churn is not counted.'
 - id: protect-test-integrity
   path: base/protect-test-integrity
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   mandatory: false
@@ -739,9 +747,10 @@ policies:
     a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert
     True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test
     layouts. Mechanised slice of agent-discipline''s never(fix_test_by) rule; added skips are block-test-skips.
-    Enforced at commit only: chock 0.13.0 does not run this gate kind at agent tool-use. A reviewed
-    exception carries ''chock: allow test-integrity'' on an added line of the test file; a waiver is
-    not honoured when CHOCK_AGENT_COMMIT is set.'
+    Enforced at commit and at agent tool-use (an edit that weakens a test is judged against the file
+    on disk, the turn''s end against HEAD; Edit and Write cannot delete a file). A reviewed exception
+    carries ''chock: allow test-integrity'' on an added line of the test file; a waiver is honoured
+    at commit only, never in the agent.'
 - id: agentic-code-security
   path: agentic-security/agentic-code-security
   version: 0.1.0

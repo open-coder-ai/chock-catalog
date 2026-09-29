@@ -49,7 +49,7 @@ No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
-No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 1 commit-msg policy implementation(s)
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
@@ -72,7 +72,7 @@ No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
-No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 1 commit-msg policy implementation(s)
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
@@ -142,6 +142,7 @@ protect-commit-privacy  [deterministic]
 ```text
 .chock/compiled/protect-commit-privacy/agent-hooks/agent-hooks.json
 .chock/compiled/protect-commit-privacy/ambient-rule/ambient.md
+.chock/compiled/protect-commit-privacy/git-hook/git-commit-msg.sh
 .chock/compiled/protect-commit-privacy/managed-setting/managed-settings.json
 .chock/compiled/protect-commit-privacy/pre-tool-use/antigravity-hooks.json
 .chock/compiled/protect-commit-privacy/pre-tool-use/codex_cli-hooks.json

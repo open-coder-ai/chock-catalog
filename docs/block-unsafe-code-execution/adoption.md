@@ -50,12 +50,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~339 tokens (chars/4, max 2000)
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~386 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unsafe-code-execution:
-  claude: enforced-at-commit
-  copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  claude: best-effort (live-run)
+  copilot: best-effort (live-run-partial)
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -70,6 +73,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~386 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -98,16 +110,33 @@ block-unsafe-code-execution  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/block-unsafe-code-execution/agent-hooks/gate-hooks.json
+.chock/compiled/block-unsafe-code-execution/agent-hooks/gate.json
 .chock/compiled/block-unsafe-code-execution/ambient-rule/ambient.md
 .chock/compiled/block-unsafe-code-execution/ci-gate/gate.json
 .chock/compiled/block-unsafe-code-execution/ci-gate/step.yaml
 .chock/compiled/block-unsafe-code-execution/git-hook/gate.json
 .chock/compiled/block-unsafe-code-execution/git-hook/git-pre-commit.sh
 .chock/compiled/block-unsafe-code-execution/managed-setting/managed-settings.json
+.chock/compiled/block-unsafe-code-execution/mcp-gateway/gateway-gate.json
+.chock/compiled/block-unsafe-code-execution/pre-tool-use/codex_cli-write-hooks.json
+.chock/compiled/block-unsafe-code-execution/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/block-unsafe-code-execution/pre-tool-use/gate.json
+.chock/compiled/block-unsafe-code-execution/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/block-unsafe-code-execution/pre-tool-use/pretooluse-write.json
+.chock/compiled/block-unsafe-code-execution/stop/antigravity-hooks.json
+.chock/compiled/block-unsafe-code-execution/stop/codex_cli-hooks.json
+.chock/compiled/block-unsafe-code-execution/stop/cursor-hooks.json
+.chock/compiled/block-unsafe-code-execution/stop/devin-hooks.json
+.chock/compiled/block-unsafe-code-execution/stop/gate.json
+.chock/compiled/block-unsafe-code-execution/stop/gemini_cli-hooks.json
+.chock/compiled/block-unsafe-code-execution/stop/stop.json
+.chock/compiled/block-unsafe-code-execution/stop/tabnine-hooks.json
+.chock/compiled/block-unsafe-code-execution/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **block-unsafe-code-execution**: Dynamic execution primitive detected. Replace it with a parameterized API (subprocess argument vector, safe_load, a real parser), or add 'pragma: allowlist exec' on the same line for a reviewed, deliberate use.
+- **block-unsafe-code-execution**: Dynamic execution primitive detected. Replace it with a parameterized API (subprocess argument vector, safe_load, a real parser), or have a person add 'pragma: allowlist exec' on the same line for a reviewed, deliberate use (in the agent it counts only when that exact line is already committed in HEAD). Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

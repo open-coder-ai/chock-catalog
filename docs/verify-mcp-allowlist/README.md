@@ -1,23 +1,23 @@
 # Verify MCP Allowlist
 
-`verify-mcp-allowlist` · rule · enforces
+`verify-mcp-allowlist` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `verify-mcp-allowlist.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 38 total, 38 executable |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
+| **Eval cases** | 51 total, 51 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Gate MCP server configuration as protected content. A shell write to .mcp.json is refused unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude mcp add|add-json` is checked the same way (add-from-claude-desktop cannot be verified and is refused). The allowlist ships inside this guard's own script, protected like every policy's implementations/ source -- edit only with 'chock: approved-config-change'. Claude Code's .mcp.json only. Tool-time (Bash) only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard, a write with no visible content fails closed. No commit-time gate. No pragma for .mcp.json.
+Gate MCP server configuration as protected content. A shell write to .mcp.json is refused unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude mcp add|add-json` is checked the same way (add-from-claude-desktop cannot be verified and is refused). The allowlist ships inside this guard's own script, protected like every policy's implementations/ source -- edit only with 'chock: approved-config-change'. The shell guard reads Claude Code's .mcp.json, best-effort (PreToolUse fails open on a crash; a write with no visible content fails closed). A script gate at commit and tool use parses every written MCP config (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .gemini/settings.json, .codex/config.toml) against the same allowlist; at commit only servers the change adds or alters are refused. No pragma.
 
 ## What it solves
 
@@ -25,18 +25,19 @@ Config-as-attack-surface: agents auto-load MCP servers from repo-committed confi
 
 ## How it works
 
-A guard script, `implementations/verify-mcp-allowlist.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `block`.
 
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+Parameters, from `manifest.yaml`:
 
-```text
-mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
-```
+- `script`
+
+On a match it prints:
+
+> An MCP server that is not on the allowlist is configured. Only servers listed, by name and exact command/args/url, in implementations/verify-mcp-allowlist.py may be added. Ask a person to review the server and add it to that list; do not edit the allowlist yourself.
 
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/verify-mcp-allowlist/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+A **git hook**. `recompile` writes `.chock/compiled/verify-mcp-allowlist/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 

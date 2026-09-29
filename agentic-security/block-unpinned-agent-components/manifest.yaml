@@ -1,14 +1,14 @@
 id: block-unpinned-agent-components
 name: "Block Unpinned Agent Components"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at
   an unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP
   server idiom — quoted "@latest" arguments in agent config, and :latest container
   images. Language-manifest dependencies are verify-dependency-exists; signature
   and provenance stay with the advisory owasp-asi04 policy. Escape:
-  'pragma: allowlist unpinned' on the same line, honoured at commit only. Also runs
-  at agent tool-use, where no waiver applies.
+  'pragma: allowlist unpinned' on the same line, honoured at commit; also runs at agent
+  tool-use, where it counts only when that exact line is already committed in HEAD.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -26,7 +26,8 @@ hook:
       Unpinned agent component detected. Pin the version (name@1.2.3, image:tag)
       so what runs tomorrow is what was reviewed today, or add
       'pragma: allowlist unpinned' on the same line for a deliberate exception
-      (a person's, honoured at commit only, not in the agent).
+      (a person's; in the agent it counts only when that exact line is already committed in HEAD, so an
+      agent asks a person).
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+unpinned'
@@ -87,3 +88,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Also run in the agent: gate.on is now [commit, tool_use], so an unpinned launcher or image is refused as the agent writes it (the whole written file is scanned at the turn's end). No pattern change. Known cost: a README or doc that shows an npx or uvx launch at the floating tag is refused too, and an already-committed line carrying the pragma still blocks a later agent edit of that file, because the pragma is not honoured in the agent; pin the version in the example, or a person makes the edit. forbidden_path_regex was not used to limit the scan to config paths: on content_regex it denies matching paths outright rather than scoping the pattern."
+- version: 0.0.5
+  date: '2026-09-29'
+  changes:
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."

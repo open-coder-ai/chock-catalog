@@ -83,8 +83,8 @@ def main() -> int:
         print(f"  {item}", file=sys.stderr)
     print(
         "Fix the test or the code rather than skipping it. A reviewed skip needs a person to add "
-        "'chock: allow test-skip' on the line and commit from their own shell; the waiver is not "
-        "honoured in the agent or for an agent's commit.",
+        "'chock: allow test-skip' on the line and commit from their own shell; in the agent, or for "
+        "an agent's commit, only a skip already committed in HEAD counts.",
         file=sys.stderr,
     )
     return 1

@@ -45,8 +45,9 @@ PRIMITIVE = {
     ),
     "script": (
         "A **commit-time guard script**. `recompile` registers `implementations/{script}` under "
-        "`.git/hooks/pre-commit.d/`, and the hook runs it with no arguments at every commit. The script "
-        "reads the staged revision from git itself and exits non-zero to refuse; the rule text compiles "
+        "`.git/hooks/pre-commit.d/`, and the hook runs it at every commit (a commit-msg script gets git's "
+        "message file as its one argument, any other none). The script reads the change from git itself "
+        "and exits non-zero to refuse; the rule text compiles "
         "to `ambient-rule` beside it, so the agent knows the constraint before the commit is refused."
     ),
     "guard": (

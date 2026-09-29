@@ -43,17 +43,17 @@ Verify anytime with:  chock check --only verify
 
 ```text
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
+Registered 1 pre-commit policy implementation(s)
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
-No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
+Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~357 tokens (chars/4, max 2000)
+INDEX.md: ~375 tokens (chars/4, max 2000)
 Recompiled 1 policies
 verify-mcp-allowlist:
   claude: best-effort (live-run)
@@ -66,24 +66,24 @@ verify-mcp-allowlist:
 ```text
 Implementation registered at …/.git/hooks/pre-commit.d/99-chock-validate
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
-No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
+Registered 1 pre-commit policy implementation(s)
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
-No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
+Registered 1 pre-merge-commit policy implementation(s)
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
-Registered 1 hook entr(y/ies) in .agents/hooks.json
-Registered 1 hook entr(y/ies) in .codex/hooks.json
-Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 3 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 2 hook entr(y/ies) in .agents/hooks.json
+Registered 3 hook entr(y/ies) in .codex/hooks.json
+Registered 2 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
-Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~357 tokens (chars/4, max 2000)
+INDEX.md: ~375 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -134,9 +134,22 @@ verify-mcp-allowlist  [deterministic]
   PASS  tc-036                             authored  guard exit 0
   PASS  tc-037                             authored  BLOCKED: shell write to the MCP server allowlist is not allowed -- …
   PASS  tc-038                             authored  BLOCKED: shell write to the MCP server allowlist is not allowed -- …
+  PASS  tc-039                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'evil' …
+  PASS  tc-040                             authored  gate exit 0
+  PASS  tc-041                             authored  verify-mcp-allowlist: MCP server config refused: .cursor/mcp.json: …
+  PASS  tc-042                             authored  verify-mcp-allowlist: MCP server config refused: .vscode/mcp.json: …
+  PASS  tc-043                             authored  verify-mcp-allowlist: MCP server config refused: claude_desktop_con…
+  PASS  tc-044                             authored  verify-mcp-allowlist: MCP server config refused: .gemini/settings.j…
+  PASS  tc-045                             authored  verify-mcp-allowlist: MCP server config refused: .codex/config.toml…
+  PASS  tc-046                             authored  gate exit 0
+  PASS  tc-047                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'filesy…
+  PASS  tc-048                             authored  gate exit 0
+  PASS  tc-049                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'worse'…
+  PASS  tc-050                             authored  gate exit 0
+  PASS  tc-051                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: not par…
   score 1.00
 
-5 policies: 38 pass, 41 skipped
+5 policies: 51 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -144,17 +157,37 @@ verify-mcp-allowlist  [deterministic]
 
 ```text
 .chock/compiled/verify-mcp-allowlist/agent-hooks/agent-hooks.json
+.chock/compiled/verify-mcp-allowlist/agent-hooks/gate-hooks.json
+.chock/compiled/verify-mcp-allowlist/agent-hooks/gate.json
 .chock/compiled/verify-mcp-allowlist/ambient-rule/ambient.md
+.chock/compiled/verify-mcp-allowlist/ci-gate/gate.json
+.chock/compiled/verify-mcp-allowlist/ci-gate/step.yaml
+.chock/compiled/verify-mcp-allowlist/git-hook/gate.json
+.chock/compiled/verify-mcp-allowlist/git-hook/git-pre-commit.sh
 .chock/compiled/verify-mcp-allowlist/managed-setting/managed-settings.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/antigravity-hooks.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/codex_cli-hooks.json
+.chock/compiled/verify-mcp-allowlist/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/cursor-hooks.json
+.chock/compiled/verify-mcp-allowlist/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/devin-hooks.json
+.chock/compiled/verify-mcp-allowlist/pre-tool-use/gate.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/gemini_cli-hooks.json
+.chock/compiled/verify-mcp-allowlist/pre-tool-use/gemini_cli-write-hooks.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/grok-hooks.json
+.chock/compiled/verify-mcp-allowlist/pre-tool-use/pretooluse-write.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/pretooluse.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/tabnine-hooks.json
 .chock/compiled/verify-mcp-allowlist/pre-tool-use/windsurf-hooks.json
+.chock/compiled/verify-mcp-allowlist/stop/antigravity-hooks.json
+.chock/compiled/verify-mcp-allowlist/stop/codex_cli-hooks.json
+.chock/compiled/verify-mcp-allowlist/stop/cursor-hooks.json
+.chock/compiled/verify-mcp-allowlist/stop/devin-hooks.json
+.chock/compiled/verify-mcp-allowlist/stop/gate.json
+.chock/compiled/verify-mcp-allowlist/stop/gemini_cli-hooks.json
+.chock/compiled/verify-mcp-allowlist/stop/stop.json
+.chock/compiled/verify-mcp-allowlist/stop/tabnine-hooks.json
+.chock/compiled/verify-mcp-allowlist/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
@@ -162,5 +195,5 @@ verify-mcp-allowlist  [deterministic]
 ```text
 - **verify-mcp-allowlist**:
   mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-  allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
+  allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex at commit(added only)+tool_use
 ```

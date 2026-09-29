@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `protect-agent-config.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 52 total, 52 executable |
+| **Eval cases** | 54 total, 54 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to those paths -- a redirect, rm/mv/tee/sed -i, cp into the path, git checkout/restore, PowerShell Set-Content/Add-Content/Out-File; reads and copies out pass, and `chock sync` passes. Best-effort and deliberately coarse. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication; the check an agent cannot self-approve is the commit-time gate and CI.
+Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to those paths -- a redirect, rm/mv/tee/sed -i, cp into the path, git checkout/restore, PowerShell Set-Content/Add-Content/Out-File; reads and copies out pass, and `chock sync` passes. Best-effort and deliberately coarse. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication. A second, tool_use-only gate refuses Edit/Write to the same paths; it never runs at commit, so a person stays free to edit them.
 
 ## What it solves
 

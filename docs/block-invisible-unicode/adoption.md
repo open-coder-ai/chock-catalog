@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~412 tokens (chars/4, max 2000)
+INDEX.md: ~416 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-invisible-unicode:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~412 tokens (chars/4, max 2000)
+INDEX.md: ~416 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -139,5 +139,5 @@ block-invisible-unicode  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-invisible-unicode**: Invisible or direction-override Unicode detected in this change. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them. At commit, 'pragma: allowlist invisible-unicode' on the same line marks a documented exception (e.g. a test fixture); the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **block-invisible-unicode**: Invisible or direction-override Unicode detected in this change. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them. 'pragma: allowlist invisible-unicode' on the same line marks a documented exception; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

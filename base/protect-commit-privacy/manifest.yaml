@@ -1,6 +1,6 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.1.0"
+version: "0.2.0"
 description: >
   Keep the development conversation out of git history. Agent-authored commits narrate by
   default -- who asked for what, which discussion decided it, what the plan was -- and on a
@@ -10,7 +10,8 @@ description: >
   propose sensitive messages to the human before committing. The command line is parsed, so a
   commit or gh pr create|edit behind cd, sh -c/bash -c, sudo, env or command is read like a bare one,
   a message fed on `-F -` from a heredoc is scanned, and a command that merely echoes the pattern
-  as documentation still passes. Best-effort: markers are a
+  as documentation still passes. A commit-msg hook applies the same markers to the message git
+  records. Best-effort: markers are a
   narrow deny-list, and a message the human explicitly approves can say anything -- edit
   the marker list in the guard, the content is yours.
 artifact: rule
@@ -19,6 +20,9 @@ rule:
   text: |
     commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
     if(sensitive_context): propose_message_to_human; await(approval) before(commit)  # history is published forever
+hook:
+  script:
+    "on": [commit-msg]
 effects:
 - read_only
 approval:
@@ -41,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-09-29'
+  changes:
+  - "Second check at the git commit-msg hook: hook.script on [commit-msg] with implementations/protect-commit-privacy-commit-msg.py (stdlib). git passes the message file as argv[1]; the script drops git's comment lines (those starting with '#') and anything below a `commit --verbose` scissors line, then applies the guard's own MARKERS (imported from the file beside it, one list) case-insensitively. A hit prints the marker and exits 1, which aborts the commit; an unreadable message or a missing argument exits 2, never 0. This judges the message git records, not the command line, so a message written by an editor, a script or an API client is checked too. The policy carried no hook before, so hook.script is free. Guard unchanged; chock's eval replay cannot drive an event script, so the cases are pytest with temporary git repositories."
 - version: 0.1.0
   date: '2026-09-29'
   changes:
