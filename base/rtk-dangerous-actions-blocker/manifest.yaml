@@ -1,18 +1,18 @@
 id: rtk-dangerous-actions-blocker
 name: "rtk Dangerous Actions Blocker"
-version: "0.0.2"
+version: "0.1.0"
 description: >
   Carved out for rtk-ai/rtk#1007: rtk's own decision table as a chock policy (rtk's own hooks
-  may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and '+' refspecs (not --force-with-lease); reads of
-  credential files (.env, *.pem, *.key, id_rsa, ~/.ssh, ~/.aws) and echoes or inline literals
-  of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE through psql, mysql, sqlite3,
-  mongosh, redis-cli, and dropdb; plus the base policy's cloud rows (kubectl delete, terraform
-  destroy, aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume rm). Asks where
-  rtk's table says ask: rm -rf on a relative path off the safe list; git reset --hard, clean -f,
-  checkout ., branch -D; docker prune and docker rm -f over a substitution. File checks are
-  skipped inside docker/kubectl exec, as rtk specifies; rtk is a transparent prefix. Bypasses:
-  aliases, quoting, indirection, sourced files, interpreters, indirect scripts. This is
-  friction, not a security boundary.
+  may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force and
+  '+' refspecs (not --force-with-lease); reads of credential files (.env, *.pem, *.key, id_rsa,
+  ~/.ssh, ~/.aws) by cat, grep, rg, awk, sed, jq and the like or by `< file`, and echoes or
+  inline literals of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE through psql,
+  mysql, sqlite3, mongosh, redis-cli, and dropdb; plus the base policy's cloud rows (kubectl
+  delete, terraform destroy, aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume
+  rm). Asks where rtk's table says ask: rm -rf on a relative path off the safe list; git reset
+  --hard, clean -f, checkout ., branch -D; docker prune and docker rm -f over a substitution.
+  File checks are skipped inside docker/kubectl exec; rtk is a transparent prefix. Friction, not
+  a security boundary.
 artifact: rule
 enforcement: advise
 compliance:
@@ -34,7 +34,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-09-13T00:00:00Z"
-  updated_at: "2026-09-13T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -53,6 +53,12 @@ tags:
 - requested-by:rtk-ai/rtk#1007
 
 changelog:
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Ported from bash to Python: implementations/rtk-dangerous-actions-blocker.py replaces the bash script, stdlib only, deterministic, no network. It ships beside the chock_shellparse package (identical in every ported policy; tests pin the copies), which reads the command with a quote-aware lexer instead of scanning text: it splits at unquoted && || ; | & and newlines, drops redirections and comments, keeps heredoc bodies, and looks through bash|sh|zsh -c, pwsh -Command, cmd /c, eval, sudo, doas, env VAR=x, command, exec, nohup, timeout, nice, time, xargs and subshells, so `cd repo && ...` and `bash -c '...'` are judged on the command they run and `echo ...` on none. Unbalanced quotes fall back to a split at separators and whitespace that still sees redirections and reads an unclosed quote as one word; CHOCK_TOOL=powershell|pwsh selects PowerShell reading (backslash paths, cmdlets), and without it the text decides. An unexpected exception exits 2 (a guard fault), never 1 (a block)."
+  - "Secret-file reads now follow the rule text's read(...): besides cat/head/tail/less/more/bat/strings/xxd/hexdump/base64/od/nl/tac, the search and filter tools grep, egrep, fgrep, rg, ag, ack, awk, gawk, sed, cut, sort, uniq, jq, yq and diff are refused on a credential file, and so is a `< .env` input redirect to any of them; `grep KEY .env` was silent before. Example and template copies (.env.example and friends) stay readable."
+  - "The docker/kubectl exec rule is kept by parsing the command that runs inside the container and judging it with the host-path rows skipped, so `docker exec web cat .env` is still allowed while `docker exec ci git push --force` is still refused. `rtk` remains a transparent prefix. Every case in the suite keeps its verdict."
 - version: 0.0.2
   date: '2026-09-24'
   changes:

@@ -445,3 +445,136 @@ suite:
     execute:
       command: aws --profile s3 sts get-caller-identity
       expect: allow
+  - id: tc-062
+    category: adversarial
+    prompt: "A request hides rm -rf / inside bash -c."
+    expect: "The guard refuses the wrapped command."
+    execute:
+      command: "bash -c 'rm -rf /'"
+      expect: block
+  - id: tc-063
+    category: negative_trigger
+    prompt: "A request prints the rm -rf / text."
+    expect: "The guard allows it; echo deletes nothing."
+    execute:
+      command: "echo rm -rf /"
+      expect: allow
+  - id: tc-064
+    category: adversarial
+    prompt: "A request chains a cd before rm -rf on an absolute path."
+    expect: "The guard refuses the command after &&."
+    execute:
+      command: "cd /srv/x && rm -rf /var/lib/app"
+      expect: block
+  - id: tc-065
+    category: adversarial
+    prompt: "A request wraps rm -rf in sudo and bash -c."
+    expect: "The guard refuses it; both wrappers are looked through."
+    execute:
+      command: "sudo bash -c \"rm -rf ~/work\""
+      expect: block
+  - id: tc-066
+    category: adversarial
+    prompt: "A request pipes a file list into xargs rm -rf on an absolute path."
+    expect: "The guard refuses it; xargs is transparent."
+    execute:
+      command: "find . -name '*.tmp' | xargs rm -rf /srv/x"
+      expect: block
+  - id: tc-067
+    category: adversarial
+    prompt: "A request ends the options with -- before the root."
+    expect: "The guard refuses it."
+    execute:
+      command: "rm -rf -- /"
+      expect: block
+  - id: tc-068
+    category: negative_trigger
+    prompt: "A commit message mentions rm -rf /."
+    expect: "The guard allows it; the message is an argument of git commit."
+    execute:
+      command: "git commit -m \"never run rm -rf / in scripts\""
+      expect: allow
+  - id: tc-069
+    category: trigger
+    prompt: "A request deletes a branch even if unmerged."
+    expect: "The guard asks before it runs, as the rule text's require_approval branch_-D says."
+    execute:
+      command: "git branch -D old-feature"
+      expect: ask
+  - id: tc-070
+    category: trigger
+    prompt: "A request deletes a branch with --delete --force."
+    expect: "The guard asks; --delete --force is -D spelled out."
+    execute:
+      command: "git branch --delete --force old-feature"
+      expect: ask
+  - id: tc-071
+    category: negative_trigger
+    prompt: "A request deletes a merged branch with -d."
+    expect: "The guard allows it; -d refuses unmerged branches by itself."
+    execute:
+      command: "git branch -d merged-feature"
+      expect: allow
+  - id: tc-072
+    category: negative_trigger
+    prompt: "A request lists branches."
+    expect: "The guard allows it."
+    execute:
+      command: "git branch -vv"
+      expect: allow
+  - id: tc-073
+    category: adversarial
+    prompt: "A request force-pushes behind env."
+    expect: "The guard refuses it."
+    execute:
+      command: "env GIT_TRACE=1 git push --force origin main"
+      expect: block
+  - id: tc-074
+    category: adversarial
+    prompt: "A request hides -f in a short cluster."
+    expect: "The guard refuses it; -fu carries -f."
+    execute:
+      command: "git push -fu origin main"
+      expect: block
+  - id: tc-075
+    category: negative_trigger
+    prompt: "A request uses --force-if-includes with the lease."
+    expect: "The guard allows it; that is the safe form."
+    execute:
+      command: "git push --force-if-includes --force-with-lease origin feature/work"
+      expect: allow
+  - id: tc-076
+    category: adversarial
+    prompt: "A request removes the home directory through PowerShell -Command."
+    expect: "The guard refuses the wrapped PowerShell."
+    execute:
+      command: "pwsh -Command \"Remove-Item -Recurse -Force $HOME\""
+      expect: block
+  - id: tc-077
+    category: negative_trigger
+    prompt: "A request deletes files under the working tree with find -exec rm."
+    expect: "The guard allows it; the start path is relative."
+    execute:
+      command: "find ./build -name '*.orig' -exec rm {} \\;"
+      expect: allow
+  - id: tc-078
+    category: trigger
+    prompt: "A request removes a docker volume with the long verb."
+    expect: "The guard refuses it."
+    execute:
+      command: "docker volume remove pgdata"
+      expect: block
+  - id: tc-079
+    category: trigger
+    prompt: "A request uses helm's del alias."
+    expect: "The guard refuses it."
+    execute:
+      command: "helm del api"
+      expect: block
+  - id: tc-080
+    category: negative_trigger
+    prompt: "A request reads kubectl pods with a word named delete after the verb."
+    expect: "The guard allows it; the action is the first operand."
+    execute:
+      command: "kubectl get pods delete"
+      expect: allow

@@ -524,6 +524,18 @@ limit-diff-size:
 guard-memory-writes:
   solves: Agent memory rots when it fills with pasted diffs, whole code listings, repeated lines and, worst, credentials that then travel with the repository. This script judges only memory files and only what a change adds, and refuses those four things with a path and line for each.
   customise: The memory paths, the fenced-block limit and the git-history patterns are constants in `implementations/guard-memory-writes-gate.py`; the secret pattern is scan-secrets' verbatim, so update both together. There is no waiver.
+
+block-unguarded-agent-spawn:
+  solves: |
+    An agent that launches another agent with its permission prompts switched off (`claude
+    --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`) hands that child every tool with no
+    human in the loop, and every guard in this repository stops applying to what the child does. That is
+    OWASP ASI10 (rogue agents): the unattended process acts outside the boundary the person set.
+  customise: |
+    Each agent's unsafe flags are one small function in `implementations/block-unguarded-agent-spawn.py`; add
+    a program or a flag there and an eval case beside it. A sandbox you have proven safe is a reason to edit this policy in
+    your own copy, not to run the flag past it.
+
 agentic-code-security:
   solves: |
     The OWASP Top 10 for Agentic Applications lists what goes wrong when an agent is built carelessly, and most of

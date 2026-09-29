@@ -49,7 +49,7 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~344 tokens (chars/4, max 2000)
+INDEX.md: ~352 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-agent-config:
   claude: best-effort (live-run)
@@ -77,7 +77,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~344 tokens (chars/4, max 2000)
+INDEX.md: ~352 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -124,9 +124,27 @@ protect-agent-config  [deterministic]
   PASS  tc-032                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
   PASS  tc-033                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
   PASS  tc-034                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-035                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-036                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-037                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-038                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-039                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-040                             authored  guard exit 0
+  PASS  tc-041                             authored  guard exit 0
+  PASS  tc-042                             authored  guard exit 0
+  PASS  tc-043                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-044                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-045                             authored  guard exit 0
+  PASS  tc-046                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-047                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-048                             authored  guard exit 0
+  PASS  tc-049                             authored  guard exit 0
+  PASS  tc-050                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-051                             authored  BLOCKED: shell write touching agent config is not allowed -- an age…
+  PASS  tc-052                             authored  guard exit 0
   score 1.00
 
-5 policies: 34 pass, 41 skipped
+5 policies: 52 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -151,6 +169,6 @@ protect-agent-config  [deterministic]
 
 ```text
 - **protect-agent-config**:
-  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
+  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
   if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
 ```

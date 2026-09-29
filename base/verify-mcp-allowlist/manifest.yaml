@@ -1,24 +1,22 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.0.3"
+version: "0.1.0"
 description: >
   Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
-  unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an
-  unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches
-  a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this
-  guard's own script, protected like every policy's implementations/ source -- edit only with
-  'chock: approved-config-change'. Claude Code's .mcp.json only. Tool-time (Bash) only,
-  best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard, a
-  write with no visible content fails closed. No commit-time gate. A write signal is scoped
-  to its own clause of the command line, so a writer or redirect elsewhere -- or stderr
-  merely suppressed -- cannot condemn a plain read of .mcp.json. Matching and path checks are
-  otherwise exact-string and substring-coarse. No pragma for .mcp.json.
+  unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the
+  allowlist -- an unlisted name blocks, and an allowed name whose command/args/url changed
+  blocks too. `claude mcp add|add-json` is checked the same way (add-from-claude-desktop cannot
+  be verified and is refused). The allowlist ships inside this guard's own script, protected
+  like every policy's implementations/ source -- edit only with 'chock: approved-config-change'.
+  Claude Code's .mcp.json only. Tool-time (Bash) only, best-effort: PreToolUse fails open on a
+  crash, a file-write tool bypasses this guard, a write with no visible content fails closed. No
+  commit-time gate. No pragma for .mcp.json.
 artifact: rule
 enforcement: advise
 rule:
   text: |
     mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-    allowlist: lives in implementations/verify-mcp-allowlist.sh; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
+    allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
 effects:
 - read_only
 approval:
@@ -37,7 +35,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-07T00:00:00Z"
-  updated_at: "2026-09-07T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -51,6 +49,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Ported from bash to Python: implementations/verify-mcp-allowlist.py replaces the bash script, stdlib only, deterministic, no network. It ships beside the chock_shellparse package (identical in every ported policy; tests pin the copies), which reads the command with a quote-aware lexer instead of scanning text: it splits at unquoted && || ; | & and newlines, drops redirections and comments, keeps heredoc bodies, and looks through bash|sh|zsh -c, pwsh -Command, cmd /c, eval, sudo, doas, env VAR=x, command, exec, nohup, timeout, nice, time, xargs and subshells, so `cd repo && ...` and `bash -c '...'` are judged on the command they run and `echo ...` on none. Unbalanced quotes fall back to a split at separators and whitespace that still sees redirections and reads an unclosed quote as one word; CHOCK_TOOL=powershell|pwsh selects PowerShell reading (backslash paths, cmdlets), and without it the text decides. An unexpected exception exits 2 (a guard fault), never 1 (a block)."
+  - "Bypasses closed, each with eval cases: `claude mcp add evil ...` and `claude mcp add-json evil '{...}'` (name and source are checked against the allowlist; `claude mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem` passes, an allowed name pointed at another command does not, `add-from-claude-desktop` is refused as unverifiable; list, get and remove stay allowed)."
+  - "The JSON in an inline .mcp.json write (echo, printf or a heredoc) is now parsed with a real JSON parser instead of a regex window, so a server entry carrying a nested object (an env map) no longer shifts the boundary and hides the next entry. A write with no parseable mcpServers entry still fails closed. The allowlist moved into the Python guard; the protected-source check covers the guard and its shipped parser package (verify-mcp-allowlist/implementations/), and the existing .sh-named eval cases keep their verdicts."
 - version: 0.0.3
   date: '2026-09-24'
   changes:

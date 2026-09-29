@@ -1,20 +1,18 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.0.10"
+version: "0.1.0"
 description: >
-  Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~)
-  or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push
-  --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform
-  destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume
-  rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate;
-  wipefs -a. Destructive verbs are matched position-aware, so a bucket, path or object NAMED
-  like a verb (helm list delete) is allowed, and find/shred/truncate apply the same target
-  test as rm, so a relative path in the working tree stays allowed. sudo, doas and pkexec are
-  transparent wrappers: the program they run is graded, escalation itself is not refused.
-  Known bypasses: aliases, quoted arguments, non-standard clients, an unusual value-flag
-  outside the curated set, and indirect invocation via a script or interpreter. This is
-  friction, not a security boundary.
-
+  Best-effort guard against destructive commands, read as parsed commands (bash -c and cd chains
+  included, echo excluded): rm -rf on absolute, home ($HOME/~) or root-adjacent paths (and
+  PowerShell Remove-Item -Recurse); git push --force (not --force-with-lease), reset --hard,
+  clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm
+  uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete; find -delete /
+  -exec rm; shred; truncate; wipefs -a. git branch -D asks first. Verbs are matched
+  position-aware, so a bucket or object NAMED like a verb is allowed, and a relative path in the
+  working tree stays allowed. sudo, doas and pkexec are transparent. A pre-push hook refuses any
+  non-fast-forward push -- force, +refspec or lease alike; a human escapes with git push
+  --no-verify. Known bypasses: aliases, an unusual value-flag, interpreters and scripts.
+  Friction, not a security boundary.
 artifact: rule
 enforcement: advise
 compliance:
@@ -27,7 +25,10 @@ compliance:
 rule:
   text: |
     block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete, find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
-    require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run
+    require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run; push: refuse_non_ff
+hook:
+  script:
+    "on": [push]
 effects:
 - read_only
 approval:
@@ -36,7 +37,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-17T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -50,6 +51,13 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Ported from bash to Python: implementations/block-destructive-commands.py replaces the bash script, stdlib only, deterministic, no network. It ships beside the chock_shellparse package (identical in every ported policy; tests pin the copies), which reads the command with a quote-aware lexer instead of scanning text: it splits at unquoted && || ; | & and newlines, drops redirections and comments, keeps heredoc bodies, and looks through bash|sh|zsh -c, pwsh -Command, cmd /c, eval, sudo, doas, env VAR=x, command, exec, nohup, timeout, nice, time, xargs and subshells, so `cd repo && ...` and `bash -c '...'` are judged on the command they run and `echo ...` on none. Unbalanced quotes fall back to a split at separators and whitespace that still sees redirections and reads an unclosed quote as one word; CHOCK_TOOL=powershell|pwsh selects PowerShell reading (backslash paths, cmdlets), and without it the text decides. An unexpected exception exits 2 (a guard fault), never 1 (a block)."
+  - "Bypasses closed, each with eval cases: `bash -c 'rm -rf /'`, `cd x && rm -rf /`, `sudo bash -c 'rm -rf ~/work'`, `xargs rm -rf /abs`, force pushes behind env/sudo, and `git push -fu` (a cluster carrying -f). False block removed: `echo rm -rf /` prints text and is allowed, as is a commit message that mentions it. Actions are read from the first operand after the tool's own global options (helm, docker, kubectl, aws, terraform), so `kubectl get pods delete` is no longer read as a delete; `helm del|un` and `docker volume remove` are recognised as the aliases they are; find checks every start path, not only the first."
+  - "New: `git branch -D` and `git branch --delete --force` (also -df/-fd) ask (exit 3) instead of passing, as the rule text's `require_approval: branch_-D` says. A block still wins over an ask in the same command line."
+  - "New: implementations/block-destructive-commands-pre-push.py, declared as hook.script on push. It reads git's pre-push lines (`<local ref> <local sha> <remote ref> <remote sha>`) and refuses when a remote sha is not an ancestor of the local sha, for any ref including tags. New refs (remote sha all zeros), deletions (local sha all zeros) and no-op updates pass. --force-with-lease looks the same as --force at this point, so both are refused; the escape is a human running `git push --no-verify`. Tests in tests/policies/test_pre_push_guard.py drive it against real repositories."
 - version: 0.0.10
   date: '2026-09-24'
   changes:
