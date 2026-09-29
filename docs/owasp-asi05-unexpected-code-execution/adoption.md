@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~361 tokens (chars/4, max 2000)
+INDEX.md: ~381 tokens (chars/4, max 2000)
 Recompiled 1 policies
 owasp-asi05-unexpected-code-execution:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **owasp-asi05-unexpected-code-execution**:
   run(agent_generated_code): container(least_privilege) + egress(deny_by_default) + filesystem(scoped) + timeout; never(host_execution)
-  never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
+  never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see(agentic-code-security pack exec): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
 ```

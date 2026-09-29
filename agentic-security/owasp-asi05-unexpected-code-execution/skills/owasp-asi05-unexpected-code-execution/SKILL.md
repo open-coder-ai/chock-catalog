@@ -13,7 +13,7 @@ Contain code an agent generates or is induced to run. Execute in a sandboxed con
 
 ```
 run(agent_generated_code): container(least_privilege) + egress(deny_by_default) + filesystem(scoped) + timeout; never(host_execution)
-never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
+never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see(agentic-code-security pack exec): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock

@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="46 policies" src="https://img.shields.io/badge/policies-46-blue">
-<img alt="24 enforced" src="https://img.shields.io/badge/enforced-24-brightgreen">
+<img alt="47 policies" src="https://img.shields.io/badge/policies-47-blue">
+<img alt="25 enforced" src="https://img.shields.io/badge/enforced-25-brightgreen">
 <img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -45,7 +45,7 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 15 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 16 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
 | `advisory` | text an agent reads and may or may not follow | 22 |
 
@@ -81,6 +81,7 @@ throwaway repo on every push.
 | [`block-test-skips`](docs/block-test-skips/) | Blocks newly added test skips and focus markers (`@pytest.mark.skip`, `it.skip`, `.only`, `@Disabled`, `t.Skip`) in test files, at commit and at agent tool-use -- judged against HEAD, waiver `chock: allow test-skip` at commit only | 11/12 |
 | [`limit-diff-size`](docs/limit-diff-size/) | Refuses a commit whose staged added plus removed lines exceed 500 (`CHOCK_DIFF_LIMIT`), not counting lockfiles, vendored or generated paths and binaries -- override `CHOCK_ALLOW_LARGE_DIFF=1` is a person's | 0/8 |
 | [`guard-memory-writes`](docs/guard-memory-writes/) | Refuses memory files (`MEMORY.md`, `CLAUDE.local.md`, `.claude/memory/`) that paste git history, hold a code block over 20 lines, repeat a line or store a secret -- at commit and at agent tool-use, no waiver | 14/15 |
+| [`agentic-code-security`](agentic-security/agentic-code-security) | trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. |  |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,

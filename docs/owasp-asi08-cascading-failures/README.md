@@ -29,7 +29,7 @@ There is no mechanism. The rule text is compiled into the agent's ambient contex
 
 ```text
 isolate(blast_radius): per_agent + per_environment; separate(dev, prod) hard; never(chain): agent_output -> agent_input | downstream_automation without(validation)
-circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
+circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see(agentic-code-security pack bounds): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

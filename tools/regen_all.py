@@ -51,6 +51,7 @@ VENDOR_HOOK_CONFIGS = (
 #: What `ruff format --check` holds to the formatter; ci.yml's lint step lists the same paths.
 FORMATTED = (
     "base/java-security",
+    "agentic-security/agentic-code-security",
     "tests",
     "tools/gen_java_security_contract.py",
     "tools/regen_all.py",

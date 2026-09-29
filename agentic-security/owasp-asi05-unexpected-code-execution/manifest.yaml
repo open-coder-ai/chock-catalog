@@ -1,6 +1,6 @@
 id: owasp-asi05-unexpected-code-execution
 name: "OWASP ASI05 — Unexpected Code Execution"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Contain code an agent generates or is induced to run. Execute in a sandboxed
   container with least privilege and deny-by-default egress, prefer
@@ -19,7 +19,7 @@ approval:
 rule:
   text: |
     run(agent_generated_code): container(least_privilege) + egress(deny_by_default) + filesystem(scoped) + timeout; never(host_execution)
-    never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
+    never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see(agentic-code-security pack exec): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
 
 compliance:
   owasp_asi:
@@ -29,7 +29,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-12T00:00:00Z"
-  updated_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -47,3 +47,7 @@ changelog:
   date: '2026-08-12'
   changes:
   - "Initial draft from OWASP Top 10 for Agentic Applications 2026, ASI05."
+- version: 0.0.2
+  date: '2026-09-29'
+  changes:
+  - "Point at the mechanised slice: the agentic-code-security gate's exec pack refuses framework settings and tools that run model-written code on the host, at commit and at tool use. Everything else here stays advisory, and no rule text or claim is raised; the pointer is a see() and a references section."

@@ -163,7 +163,7 @@ policies:
     on the same line, honoured at commit only. Also runs at agent tool-use, where no waiver applies.'
 - id: code-safety
   path: base/code-safety
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -172,11 +172,11 @@ policies:
   eval_cases: 4
   eval_executed: 0
   description: 'trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing
-    credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the
-    enforced counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for
-    the dependency slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and
-    unsanitized-SQL guidance stays advisory (no diff-time gate can decide whether dynamic execution
-    or a query string is unsafe).'
+    credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the enforced
+    counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for the dependency
+    slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and unsanitized-SQL
+    guidance stays advisory (a gate can decide only the non-literal slice: agentic-code-security''s
+    code pack).'
 - id: context-hygiene
   path: base/context-hygiene
   version: 0.0.1
@@ -238,7 +238,7 @@ policies:
     emotion detection.'
 - id: eu-ai-act-transparency
   path: compliance/eu-ai-act-transparency
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -356,7 +356,7 @@ policies:
     fetched content. Do NOT use for the coding agent's own session hygiene — that is `injection-defense`.
 - id: owasp-asi02-tool-misuse
   path: agentic-security/owasp-asi02-tool-misuse
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -371,7 +371,7 @@ policies:
     loop. Do NOT use for the credentials the tool authenticates with — that is `owasp-asi03-identity-privilege-abuse`.
 - id: owasp-asi03-identity-privilege-abuse
   path: agentic-security/owasp-asi03-identity-privilege-abuse
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -386,7 +386,7 @@ policies:
     and `scan-secrets`.
 - id: owasp-asi04-agentic-supply-chain
   path: agentic-security/owasp-asi04-agentic-supply-chain
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -400,7 +400,7 @@ policies:
     Do NOT use for ordinary application dependencies already covered by `verify-dependency-exists`.
 - id: owasp-asi05-unexpected-code-execution
   path: agentic-security/owasp-asi05-unexpected-code-execution
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -430,7 +430,7 @@ policies:
     or user preference storage. Do NOT use for the coding agent's own memory files — that is `memory-discipline`.
 - id: owasp-asi07-insecure-inter-agent-communication
   path: agentic-security/owasp-asi07-insecure-inter-agent-communication
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -445,7 +445,7 @@ policies:
     — that is `owasp-asi02-tool-misuse`.
 - id: owasp-asi08-cascading-failures
   path: agentic-security/owasp-asi08-cascading-failures
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -461,7 +461,7 @@ policies:
     is `owasp-asi07-insecure-inter-agent-communication`.
 - id: owasp-asi09-human-agent-trust
   path: agentic-security/owasp-asi09-human-agent-trust
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -752,3 +752,22 @@ policies:
     Enforced at commit only: chock 0.13.0 does not run this gate kind at agent tool-use. A reviewed
     exception carries ''chock: allow test-integrity'' on an added line of the test file; a waiver is
     not honoured when CHOCK_AGENT_COMMIT is set.'
+- id: agentic-code-security
+  path: agentic-security/agentic-code-security
+  version: 0.1.0
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 121
+  eval_executed: 116
+  description: 'trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
+    LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json,
+    .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json),
+    docker-compose files for agents. avoid: code execution on the host, unpinned MCP servers and models,
+    shell-reaching tools, approvals switched off, whole-environment and credential-store leaks, TLS
+    verification off, unbounded loops, SQL and eval built from strings, stripped provenance markers.
+    29 rules in 10 packs -- exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code,
+    provenance -- each pack or rule allow|deny in .chock/agentic-security.json; bounds, prompt-memory
+    and one supply rule start as allow.'

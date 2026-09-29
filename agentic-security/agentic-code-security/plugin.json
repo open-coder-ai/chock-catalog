@@ -1,0 +1,31 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agentic-code-security",
+  "version": "0.1.0",
+  "description": "trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. avoid: code execution on the host, unpinned MCP servers and models, shell-reaching tools, approvals switched off, whole-environment and credential-store leaks, TLS verification off, unbounded loops, SQL and eval built from strings, stripped provenance markers. 29 rules in 10 packs -- exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code, provenance -- each pack or rule allow|deny in .chock/agentic-security.json; bounds, prompt-memory and one supply rule start as allow.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block",
+    "{'control': 'asi02', 'coverage': 'partial', 'note': \"refuses tools that hand the model's string to a subprocess, shell tools, and approvals switched off; tool scoping stays with owasp-asi02-tool-misuse\"}",
+    "{'control': 'asi03', 'coverage': 'partial', 'note': 'refuses the whole host environment and credential stores handed to agent code; privilege design stays with owasp-asi03-identity-privilege-abuse'}",
+    "{'control': 'asi04', 'coverage': 'partial', 'note': 'refuses unpinned mcp launch commands, git installs without a commit, plain-http mcp servers and trust_remote_code; signatures and provenance stay with owasp-asi04-agentic-supply-chain'}",
+    "{'control': 'asi05', 'coverage': 'partial', 'note': 'refuses framework settings that run model-written code on the host; sandbox design stays with owasp-asi05-unexpected-code-execution'}",
+    "{'control': 'asi07', 'coverage': 'partial', 'note': 'refuses tls verification switched off; agent authentication and message integrity stay with owasp-asi07-insecure-inter-agent-communication'}",
+    "{'control': 'asi09', 'coverage': 'partial', 'note': 'refuses human approval removed where an agent acts; trust calibration stays with owasp-asi09-human-agent-trust'}"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

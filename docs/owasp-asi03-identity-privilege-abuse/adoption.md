@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~356 tokens (chars/4, max 2000)
+INDEX.md: ~377 tokens (chars/4, max 2000)
 Recompiled 1 policies
 owasp-asi03-identity-privilege-abuse:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **owasp-asi03-identity-privilege-abuse**:
   identity(per_agent): unique + short_lived + task_scoped; never: reuse(human_credential) | share(service_account) | issue(long_lived_broad_token)
-  review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
+  review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see(agentic-code-security pack identity): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
 ```

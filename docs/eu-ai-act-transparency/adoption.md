@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~364 tokens (chars/4, max 2000)
+INDEX.md: ~385 tokens (chars/4, max 2000)
 Recompiled 1 policies
 eu-ai-act-transparency:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **eu-ai-act-transparency**:
   when(code emits AI interaction | synthetic text|image|audio|video to a person): disclose(it is AI) + mark(machine_readable: C2PA|watermark|metadata) + label(deepfake) at the emitting boundary
-  never(remove|weaken): existing provenance marking; exempt: assistive_editing | no_substantial_alteration; see .agents/policies/eu-ai-act-transparency/references/article-50.md
+  never(remove|weaken): existing provenance marking; exempt: assistive_editing | no_substantial_alteration; see(agentic-code-security pack provenance): mechanises part, the rest stays advisory; see .agents/policies/eu-ai-act-transparency/references/article-50.md
 ```

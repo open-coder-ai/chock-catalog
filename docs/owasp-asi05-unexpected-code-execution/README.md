@@ -29,7 +29,7 @@ There is no mechanism. The rule text is compiled into the agent's ambient contex
 
 ```text
 run(agent_generated_code): container(least_privilege) + egress(deny_by_default) + filesystem(scoped) + timeout; never(host_execution)
-never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
+never(pass): untrusted_string -> shell | eval | interpreter | deserializer; prefer(parameterized_api) over(raw_shell); see(agentic-code-security pack exec): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi05-unexpected-code-execution/references/code-execution.md
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

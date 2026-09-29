@@ -29,7 +29,7 @@ There is no mechanism. The rule text is compiled into the agent's ambient contex
 
 ```text
 identity(per_agent): unique + short_lived + task_scoped; never: reuse(human_credential) | share(service_account) | issue(long_lived_broad_token)
-review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
+review(agent_permissions) on(human_access_review_schedule); expire(credentials) automatically; see(agentic-code-security pack identity): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi03-identity-privilege-abuse/references/identity.md
 ```
 
 It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.

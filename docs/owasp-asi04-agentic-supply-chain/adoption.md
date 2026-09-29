@@ -46,7 +46,7 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
-INDEX.md: ~353 tokens (chars/4, max 2000)
+INDEX.md: ~373 tokens (chars/4, max 2000)
 Recompiled 1 policies
 owasp-asi04-agentic-supply-chain:
   claude: advisory
@@ -91,5 +91,5 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 ```text
 - **owasp-asi04-agentic-supply-chain**:
   before(load: tool|mcp_server|framework|model): verify(signature + provenance) + pin(version) + record(AIBOM); apply(SCA) pre_pull
-  re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
+  re_verify(runtime_discovered_components) each_load; never(auto_trust): registry_listing | popularity; see(agentic-code-security pack supply): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi04-agentic-supply-chain/references/supply-chain.md
 ```

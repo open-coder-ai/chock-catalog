@@ -13,7 +13,7 @@ Keep one agent's bad output from propagating through everything downstream. Isol
 
 ```
 isolate(blast_radius): per_agent + per_environment; separate(dev, prod) hard; never(chain): agent_output -> agent_input | downstream_automation without(validation)
-circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
+circuit_breaker(on: behavioral_deviation | error_rate | volume_spike) -> halt + escalate(human); see(agentic-code-security pack bounds): mechanises part, the rest stays advisory; see .agents/policies/owasp-asi08-cascading-failures/references/cascading-failures.md
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock
