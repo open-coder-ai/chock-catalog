@@ -121,3 +121,63 @@ def test_without_agentseam_it_says_what_to_install(monkeypatch: pytest.MonkeyPat
     monkeypatch.setitem(sys.modules, "agentseam", None)
     with pytest.raises(SystemExit, match="pip install chock"):
         capture.wireable("claude_code")
+
+
+def _copilot_entries(workspace: Path) -> list[dict]:
+    hooks = json.loads((workspace / ".github/hooks/agentseam.json").read_text(encoding="utf-8"))["hooks"]
+    return [entry for event in hooks.values() for entry in event]
+
+
+FOREIGN = {"type": "command", "command": "echo mine"}
+
+
+def test_copilot_entries_carry_powershell_and_bash_so_windows_can_run_them(tmp_path: Path) -> None:
+    workspace = _setup(tmp_path, agent="copilot")
+    config = workspace / ".github/hooks/agentseam.json"
+    config.parent.mkdir(parents=True)
+    config.write_text(json.dumps({"hooks": {"PreToolUse": [FOREIGN]}}), encoding="utf-8")
+    kit.main(["capture", "--dir", str(workspace)])
+    kit.main(["capture", "--dir", str(workspace)])
+    ours = [e for e in _copilot_entries(workspace) if e.get("_agentseam") == capture.OWNER]
+    assert len(ours) == 2, "a second start replaces the first, never doubles it"
+    for entry in ours:
+        assert entry["powershell"] == entry["windows"]
+        assert entry["powershell"].startswith('& "') and "exit $LASTEXITCODE" in entry["powershell"]
+        assert entry["bash"] == entry["command"]
+    assert FOREIGN in _copilot_entries(workspace), "an entry the kit does not own is left as it is"
+
+
+def test_stop_removes_only_the_kits_copilot_entries_and_the_file_it_created(tmp_path: Path) -> None:
+    workspace = _setup(tmp_path, agent="copilot")
+    config = workspace / ".github/hooks/agentseam.json"
+    kit.main(["capture", "--dir", str(workspace)])
+    kit.main(["capture", "--dir", str(workspace), "--stop"])
+    assert not config.exists(), "nothing but the kit's entries was in it"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(json.dumps({"hooks": {"PreToolUse": [FOREIGN]}}), encoding="utf-8")
+    kit.main(["capture", "--dir", str(workspace)])
+    kit.main(["capture", "--dir", str(workspace), "--stop"])
+    assert _copilot_entries(workspace) == [FOREIGN]
+
+
+def test_stop_restores_a_tracked_copilot_config_to_its_exact_bytes(tmp_path: Path) -> None:
+    workspace = _setup(tmp_path, agent="copilot")
+    config = workspace / ".github/hooks/agentseam.json"
+    config.parent.mkdir(parents=True)
+    config.write_bytes(b'{\r\n  "hooks": {"PreToolUse": [{"command": "echo mine"}]}\r\n}\r\n')
+    git(workspace, "add", "-f", ".github")
+    git(workspace, "commit", "-q", "-m", "track the config")
+    before = config.read_bytes()
+    kit.main(["capture", "--dir", str(workspace)])
+    assert config.read_bytes() != before
+    kit.main(["capture", "--dir", str(workspace), "--stop"])
+    assert config.read_bytes() == before
+
+
+def test_an_agentseam_that_already_writes_the_keys_is_left_alone(tmp_path: Path) -> None:
+    config = tmp_path / "agentseam.json"
+    full = {"_agentseam": capture.OWNER, "command": "c", "windows": "w", "bash": "b", "powershell": "p"}
+    text = json.dumps({"hooks": {"PreToolUse": [full]}})
+    config.write_text(text, encoding="utf-8")
+    capture._complete_copilot(config)
+    assert config.read_text(encoding="utf-8") == text

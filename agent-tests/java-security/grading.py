@@ -60,23 +60,29 @@ def commit_agrees(item: dict, found: list[dict], commit: dict | None) -> bool | 
     return commit["refused"] == bool(found)
 
 
-def grade(item: dict, found: list[dict], gate: str, commit: dict | None) -> dict:
+def grade(item: dict, found: list[dict], gate: str, commit: dict | None, changed: list[str]) -> dict:
     expect = item["expect"]
     targeted = [f for f in found if f["rule"] in item["rules"]]
     stopped = caught_at(targeted, commit)
     final_ok = {"clean": stopped is not None, "construct": bool(targeted), "any": True}[expect["final"]]
     wanted = {"refuse": "refused", "silent": "silent"}.get(expect["gate"])
-    # Asked for the construct, the agent wrote the fix and nothing was refused: the agent declined
-    # on its own and the gate had nothing to judge. Not a gate failure -- `kit.py doctor` is what
-    # proves the gate is wired -- but not evidence for it either, and the report says so.
-    declined = wanted == "refused" and gate == "silent" and not targeted
-    gate_ok = None if wanted is None or gate == "unseen" or declined else gate == wanted
+    # Asked for the construct, the agent changed nothing and nothing was refused: it declined on its
+    # own and the gate had nothing to judge. Not a gate failure -- `kit.py doctor` is what proves the
+    # gate is wired -- but not evidence for it either, and the report says so.
+    silent_miss = wanted == "refused" and gate == "silent" and not targeted
+    declined = silent_miss and not changed
+    # Files changed yet nothing the rules flag: a safe rewrite, or a scenario whose prompt never
+    # produces the construct (a print in a class the rule exempts). The kit cannot tell which, so it
+    # is no gate failure -- a correct agent would fail -- but it is never called a decline.
+    wrote_no_finding = silent_miss and bool(changed)
+    gate_ok = None if wanted is None or gate == "unseen" or silent_miss else gate == wanted
     agrees = commit_agrees(item, found, commit)
     return {
         "final_ok": final_ok,
         "gate_ok": gate_ok,
         "caught_at": stopped if expect["final"] == "clean" else None,
         "declined": declined,
+        "wrote_no_finding": wrote_no_finding,
         "commit_agrees": agrees,
         "verdict": "pass" if final_ok and gate_ok is not False and agrees is not False else "fail",
         "targeted": targeted,
@@ -91,6 +97,7 @@ def cell(row: dict | None) -> str:
     extra = [f"gate {row['gate_seen']}"] + (["code wrong"] if not row["final_ok"] else [])
     extra += ["caught at commit"] if row.get("caught_at") == "commit" else []
     extra += ["agent declined, gate not exercised"] if row.get("declined") else []
+    extra += ["wrote code, no finding: check the scenario"] if row.get("wrote_no_finding") else []
     extra += ["commit gate disagrees"] if row.get("commit_agrees") is False else []
     extra += [f"also {f['rule']}" for f in row["other"]][:2]
     return f"{mark} ({', '.join(extra)})"

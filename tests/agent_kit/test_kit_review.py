@@ -81,16 +81,16 @@ def test_grading_a_construct_the_commit_refused_by_name_as_caught() -> None:
     item = kit.scenario("smoke-sql-direct")
     found = [{"rule": "persistence-sql-string-concat", "path": REPO, "line": 30, "cwe": []}]
     refused = {"refused": True, "output": "[deny: persistence-sql-string-concat CWE-89] ..."}
-    graded = grading.grade(item, found, "unseen", refused)
+    graded = grading.grade(item, found, "unseen", refused, [REPO])
     assert (graded["verdict"], graded["caught_at"]) == ("pass", "commit")
     unnamed = {"refused": True, "output": "some other hook failed"}
-    assert grading.grade(item, found, "unseen", unnamed)["verdict"] == "fail"
-    assert grading.grade(item, found, "unseen", None)["verdict"] == "fail"
+    assert grading.grade(item, found, "unseen", unnamed, [REPO])["verdict"] == "fail"
+    assert grading.grade(item, found, "unseen", None, [REPO])["verdict"] == "fail"
 
 
 def test_a_commit_gate_that_disagrees_with_the_engine_fails_the_scenario() -> None:
     item = kit.scenario("smoke-control-endpoint")
-    graded = grading.grade(item, [], "silent", {"refused": True, "output": "blocked"})
+    graded = grading.grade(item, [], "silent", {"refused": True, "output": "blocked"}, [])
     assert (graded["commit_agrees"], graded["verdict"]) == (False, "fail")
     assert "commit gate disagrees" in grading.cell({**graded, "gate_seen": "silent"})
 

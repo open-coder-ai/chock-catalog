@@ -13,7 +13,8 @@ each payload's event, tool and field shapes.
     python kit.py capture --dir ~/shop-codex --stop     # unwire it
 
 The log lives in .git/, so it never shows in the turn's diff; `start` resets the hook configs,
-so capture is a session of its own, not part of a scenario.
+so capture is a session of its own, not part of a scenario. `--stop` removes only the entries
+this kit wrote (tagged with its owner); a hook entry without that tag is never touched.
 """
 
 from __future__ import annotations
@@ -71,7 +72,33 @@ def start(workspace: Path, vendor: str) -> str:
     command = f'"{sys.executable}" "{HOOK}" "{log_path(workspace)}" "{vendor}"'
     # One call for all events: a second install under the same owner replaces the first.
     written = seam.install.install(vendor, wireable(vendor), command, str(workspace), owner=OWNER, fail_closed=False)
+    if vendor == "vscode_copilot":
+        _complete_copilot(Path(written))
     return str(Path(written).resolve().relative_to(workspace.resolve()))
+
+
+def _complete_copilot(config: Path) -> None:
+    """Give the kit's Copilot entries the `bash` and `powershell` keys agentseam <= 0.3.4 omits.
+
+    Copilot's Windows runtime runs a bare `command` in PowerShell, which cannot execute a quoted
+    path; `powershell` mirrors `windows` and `bash` mirrors `command`. Only the kit's entries.
+    """
+    data = json.loads(config.read_text(encoding="utf-8"))
+    changed = False
+    for entries in data.get("hooks", {}).values():
+        for entry in entries:
+            if entry.get("_agentseam") != OWNER:
+                continue
+            for key, source in (("bash", "command"), ("powershell", "windows")):
+                if key not in entry and source in entry:
+                    entry[key] = entry[source]
+                    changed = True
+    if changed:
+        config.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
+def _holds_no_hooks(config: Path) -> bool:
+    return not any(json.loads(config.read_text(encoding="utf-8")).get("hooks", {}).values())
 
 
 def stop(workspace: Path, vendor: str) -> None:
@@ -82,6 +109,8 @@ def stop(workspace: Path, vendor: str) -> None:
     rel = str(config.resolve().relative_to(workspace.resolve()))
     if git(workspace, "ls-files", "--", rel).stdout.strip():
         git(workspace, "checkout", "-q", "--", rel)
+    elif vendor == "vscode_copilot" and config.is_file() and _holds_no_hooks(config):  # agentseam.json is ours alone
+        config.unlink()
 
 
 def _shape(value, depth: int = 0):

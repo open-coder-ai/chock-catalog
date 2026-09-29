@@ -166,7 +166,7 @@ def record(args: argparse.Namespace) -> None:
     paths = changed_files(workspace)
     found = findings(workspace, Path(state["engine"]), paths, lambda p: at_scenario_base(workspace, p))
     commit = commit_gate(workspace) if state["route"] == "repo" else None
-    graded = grade(item, found, args.gate, commit)
+    graded = grade(item, found, args.gate, commit, paths)
     row = {
         "id": item["id"],
         "pack": item["pack"],
