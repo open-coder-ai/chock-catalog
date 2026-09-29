@@ -139,3 +139,15 @@ def test_everything_the_kit_prints_itself_is_ascii() -> None:
     assert [line for line in printed if not line.isascii()] == []
     for path in kit.SCENARIOS.glob("*.yaml"):
         assert path.read_text(encoding="utf-8").isascii(), f"{path.name} would not print on a legacy console"
+
+
+@pytest.mark.skipif(shutil.which("chock") is None, reason="the repo route installs with chock")
+def test_build_output_is_ignored_at_the_root_not_in_the_policys_own_build_rules(tmp_path: Path) -> None:
+    workspace = _workspace(tmp_path, route="repo")
+    rules = ".agents/policies/java-security/implementations/chock_security/rules/build/__init__.py"
+    assert rules in kit.git(workspace, "ls-files", "--", rules).stdout.split()
+    for made in ("build/x", "target/x", "out/x", ".gradle/x"):
+        (workspace / made).parent.mkdir(exist_ok=True)
+        (workspace / made).write_text("x", encoding="utf-8")
+        assert kit.git(workspace, "check-ignore", "-q", made, check=False).returncode == 0, made
+    assert kit.git(workspace, "check-ignore", "-q", ".agents/x/rules/build/y.py", check=False).returncode == 1

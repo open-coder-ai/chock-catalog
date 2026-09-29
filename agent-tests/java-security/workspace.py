@@ -16,16 +16,18 @@ BASELINE = "agent-tests-baseline"
 SCENARIO_BASE = "agent-tests-scenario"
 #: What an agent, an IDE or a build keeps beside the code: never the turn's work, and never wiped
 #: between scenarios -- a permission granted in .claude/settings.local.json must outlive a reset,
-#: or every scenario re-asks it and the runs stop being comparable.
+#: or every scenario re-asks it and the runs stop being comparable. Build output is anchored to the
+#: root (the fixture is one Maven module there): an unanchored `build/` also hid the policy's own
+#: rules/build/ package from git and from ignore-aware tools.
 LOCAL_ONLY = (
     ".claude/settings.local.json",
     ".vscode/",
     ".idea/",
     "*.iml",
-    "target/",
-    "build/",
-    ".gradle/",
-    "out/",
+    "/target/",
+    "/build/",
+    "/.gradle/",
+    "/out/",
     ".DS_Store",
 )
 #: How much of the commit hook's answer is kept: enough to name every rule it refused.
