@@ -17,9 +17,7 @@ EXEMPT_PREFIXES = (".chock/bin/", ".agents/")
 # TODO(lint-adoption): code that predates this budget, left whole rather than split under an
 # unrelated change; each goes with the next change to its own policy or tool. Never add to this.
 BASELINE = {
-    "base/block-destructive-commands/implementations/block-destructive.sh",
     "base/no-a11y-regression/implementations/no-a11y-regression-pre-commit.py",
-    "base/rtk-dangerous-actions-blocker/implementations/rtk-dangerous-actions-blocker.sh",
     "tools/check_a11y_rules.py",
 }
 

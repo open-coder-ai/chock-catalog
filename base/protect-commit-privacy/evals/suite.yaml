@@ -80,7 +80,7 @@ suite:
     prompt: An agent commits a message carrying a private session link.
     expect: The guard refuses; a claude.ai/code/session URL publishes a private session id.
     execute:
-      command: git commit -m "closes the bug -- claude.ai/code/session_01ABCDEF"
+      command: git commit -m "closes the bug -- claude.ai/code/session_EXAMPLEDEF"
       expect: block
   - id: tc-011
     category: trigger
@@ -129,7 +129,7 @@ suite:
     prompt: An agent attaches a session link directly to the -am cluster (no space).
     expect: The guard scans the value attached after the cluster's m.
     execute:
-      command: git commit -amclaude.ai/code/session_01ABCDEF
+      command: git commit -amclaude.ai/code/session_EXAMPLEDEF
       expect: block
   - id: tc-018
     category: negative_trigger
@@ -193,4 +193,67 @@ suite:
     expect: The combined -b cluster's attached value is scanned like any other body text, and the guard refuses it.
     execute:
       command: gh pr create -b'this conversation went well'
+      expect: block
+  - id: tc-027
+    category: adversarial
+    prompt: "A request chains a cd before a narrating commit."
+    expect: "The guard refuses it."
+    execute:
+      command: "cd x && git commit -m \"quick fix because the user asked for it\""
+      expect: block
+  - id: tc-028
+    category: adversarial
+    prompt: "A request feeds a narrating message on stdin from a heredoc."
+    expect: "The guard refuses it; -F - reads the heredoc."
+    execute:
+      command: "git commit -F - <<'EOF'\nfix: retry\n\nper our conversation\nEOF"
+      expect: block
+  - id: tc-029
+    category: negative_trigger
+    prompt: "A request feeds a clean message on stdin from a heredoc."
+    expect: "The guard allows it."
+    execute:
+      command: "git commit -F - <<'EOF'\nfix(http): add retry with backoff\nEOF"
+      expect: allow
+  - id: tc-030
+    category: adversarial
+    prompt: "A request builds the message with $(cat <<EOF) and a session link."
+    expect: "The guard refuses it."
+    execute:
+      command: "git commit -m \"$(cat <<'EOF'\nfix: x\n\nclaude.ai/code/session_EXAMPLE\nEOF\n)\""
+      expect: block
+  - id: tc-031
+    category: adversarial
+    prompt: "A request commits through sudo."
+    expect: "The guard refuses it."
+    execute:
+      command: "sudo -u ci git commit -m \"the user asked for it\""
+      expect: block
+  - id: tc-032
+    category: adversarial
+    prompt: "A request commits through env with a git -c option."
+    expect: "The guard refuses it."
+    execute:
+      command: "env GIT_AUTHOR_NAME=x git -c commit.gpgsign=false commit -m \"in this session we changed it\""
+      expect: block
+  - id: tc-033
+    category: adversarial
+    prompt: "A request commits through PowerShell -Command."
+    expect: "The guard refuses it."
+    execute:
+      command: "pwsh -Command \"git commit -m 'the user asked for it'\""
+      expect: block
+  - id: tc-034
+    category: negative_trigger
+    prompt: "A request searches the log for a marker phrase."
+    expect: "The guard allows it; git log is not a commit."
+    execute:
+      command: "git log --grep \"the user asked\""
+      expect: allow
+  - id: tc-035
+    category: adversarial
+    prompt: "A request creates a PR whose body file is a heredoc."
+    expect: "The guard refuses it."
+    execute:
+      command: "gh pr create --title x --body-file - <<'EOF'\nthis conversation went well\nEOF"
       expect: block

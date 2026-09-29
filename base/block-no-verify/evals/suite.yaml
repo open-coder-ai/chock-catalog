@@ -146,3 +146,108 @@ suite:
     execute:
       command: git --version
       expect: allow
+  - id: tc-021
+    category: adversarial
+    prompt: "A request chains a cd before the --no-verify commit."
+    expect: "The guard refuses it; the command after && is what runs."
+    execute:
+      command: "cd repo && git commit --no-verify -m wip"
+      expect: block
+  - id: tc-022
+    category: adversarial
+    prompt: "A request hides the --no-verify commit inside bash -c."
+    expect: "The guard refuses the wrapped command."
+    execute:
+      command: "bash -c 'git commit --no-verify -m wip'"
+      expect: block
+  - id: tc-023
+    category: adversarial
+    prompt: "A request sets core.hooksPath with git config instead of -c."
+    expect: "The guard refuses it; a persistent hooksPath disables every hook."
+    execute:
+      command: "git config core.hooksPath /dev/null"
+      expect: block
+  - id: tc-024
+    category: adversarial
+    prompt: "A request sets core.hooksPath globally."
+    expect: "The guard refuses it in any scope."
+    execute:
+      command: "git config --global core.hooksPath /dev/null"
+      expect: block
+  - id: tc-025
+    category: negative_trigger
+    prompt: "A request reads the current core.hooksPath."
+    expect: "The guard allows it; reading the value changes nothing."
+    execute:
+      command: "git config --get core.hooksPath"
+      expect: allow
+  - id: tc-026
+    category: negative_trigger
+    prompt: "A request sets an unrelated git config key."
+    expect: "The guard allows it; only hooksPath switches hooks off."
+    execute:
+      command: "git config user.name x"
+      expect: allow
+  - id: tc-027
+    category: adversarial
+    prompt: "A request points hooksPath elsewhere through GIT_CONFIG_COUNT/KEY/VALUE in the environment."
+    expect: "The guard refuses it; the environment form sets core.hooksPath exactly as -c does."
+    execute:
+      command: "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null git commit -m x"
+      expect: block
+  - id: tc-028
+    category: adversarial
+    prompt: "A request exports the GIT_CONFIG_* variables on earlier lines, then commits."
+    expect: "The guard refuses it; exported variables carry into the later commit."
+    execute:
+      command: "export GIT_CONFIG_COUNT=1; export GIT_CONFIG_KEY_0=core.hooksPath; export GIT_CONFIG_VALUE_0=/dev/null; git commit -m x"
+      expect: block
+  - id: tc-029
+    category: adversarial
+    prompt: "A request sets core.hooksPath through GIT_CONFIG_PARAMETERS."
+    expect: "The guard refuses it."
+    execute:
+      command: "GIT_CONFIG_PARAMETERS=\"'core.hooksPath=/dev/null'\" git commit -m x"
+      expect: block
+  - id: tc-030
+    category: adversarial
+    prompt: "A request uses git's --config-env to take core.hooksPath from a variable."
+    expect: "The guard refuses it."
+    execute:
+      command: "git --config-env=core.hooksPath=HOOKS_DIR commit -m x"
+      expect: block
+  - id: tc-031
+    category: adversarial
+    prompt: "A request runs the --no-verify commit behind sudo and env."
+    expect: "The guard refuses it; wrappers are looked through."
+    execute:
+      command: "sudo -u ci env A=1 git commit --no-verify -m x"
+      expect: block
+  - id: tc-032
+    category: adversarial
+    prompt: "A request runs the --no-verify commit through PowerShell."
+    expect: "The guard refuses the command inside -Command."
+    execute:
+      command: "pwsh -Command \"git commit --no-verify -m wip\""
+      expect: block
+  - id: tc-033
+    category: adversarial
+    prompt: "A request hides --no-verify after a quoted semicolon."
+    expect: "The guard refuses it; a separator inside quotes does not end the command."
+    execute:
+      command: "git commit -m ';' --no-verify"
+      expect: block
+  - id: tc-034
+    category: negative_trigger
+    prompt: "A commit message starts with -n."
+    expect: "The guard allows it; the value of -m is a message, not a flag."
+    execute:
+      command: "git commit -m \"-n stays in the message\""
+      expect: allow
+  - id: tc-035
+    category: negative_trigger
+    prompt: "A request prints the flag as documentation."
+    expect: "The guard allows it; echo runs nothing."
+    execute:
+      command: "echo git commit --no-verify"
+      expect: allow

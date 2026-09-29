@@ -1,25 +1,22 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.0.7"
+version: "0.1.0"
 description: >
-  Guard against an agent hand-editing its own guardrails. Agent instruction files
-  (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json,
-  .mcp.json) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the
-  agent may do -- so a shell command that rewrites them is the agent modifying its own
-  authority (MITRE ATLAS AML.T0081). The guard refuses shell write-commands targeting
-  those paths; reads pass, and regeneration
-  through `chock sync` passes because the tool writes them itself. Best-effort and
-  deliberately coarse: a write signal (a `>`/`>>` redirect, or a writer verb like
-  rm/cp/sed -i) is scoped to its own clause of the command line, so it must actually
-  target the protected path, not merely appear alongside it; a glued-on separator or a
-  non-redirect writer's own operand are not resolved that finely. The
-  'chock: approved-config-change' marker is friction plus an audit trail, not
-  authentication; the check an agent cannot self-approve is the commit-time gate and CI.
+  Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and
+  the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency
+  allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/,
+  .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the
+  agent modifying its own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to
+  those paths -- a redirect, rm/mv/tee/sed -i, cp into the path, git checkout/restore,
+  PowerShell Set-Content/Add-Content/Out-File; reads and copies out pass, and `chock sync`
+  passes. Best-effort and deliberately coarse. The 'chock: approved-config-change' marker is
+  friction plus an audit trail, not authentication; the check an agent cannot self-approve is
+  the commit-time gate and CI.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
+    agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
     if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
 effects:
 - read_only
@@ -42,7 +39,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-08-24T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -56,6 +53,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Ported from bash to Python: implementations/protect-agent-config.py replaces the bash script, stdlib only, deterministic, no network. It ships beside the chock_shellparse package (identical in every ported policy; tests pin the copies), which reads the command with a quote-aware lexer instead of scanning text: it splits at unquoted && || ; | & and newlines, drops redirections and comments, keeps heredoc bodies, and looks through bash|sh|zsh -c, pwsh -Command, cmd /c, eval, sudo, doas, env VAR=x, command, exec, nohup, timeout, nice, time, xargs and subshells, so `cd repo && ...` and `bash -c '...'` are judged on the command they run and `echo ...` on none. Unbalanced quotes fall back to a split at separators and whitespace that still sees redirections and reads an unclosed quote as one word; CHOCK_TOOL=powershell|pwsh selects PowerShell reading (backslash paths, cmdlets), and without it the text decides. An unexpected exception exits 2 (a guard fault), never 1 (a block)."
+  - "Bypasses closed, each with eval cases: `git checkout HEAD~3 -- AGENTS.md`, `git restore --source=... AGENTS.md` (and git rm/mv of a protected file), PowerShell `Set-Content`, `Add-Content` and `Out-File` on a protected path, and the `sc`/`ac` aliases. `.chock/dependency-allowlist.txt` joins the protected paths; `.chock/bin` and `.chock/compiled` are protected as directories too, not only below a trailing slash."
+  - "False block removed: writes are judged by what they change, so `cp AGENTS.md /srv/backup` (a read of the protected file) and `Get-Content AGENTS.md | Set-Content /srv/copy` are allowed; only the destination of cp/install/ln counts. The 'chock: approved-config-change' marker still passes a command, and every existing case keeps its verdict."
 - version: 0.0.7
   date: '2026-09-24'
   changes:
@@ -72,7 +75,7 @@ changelog:
     detection (rm/mv/cp/tee/sed -i/interpreter write-forms) is now scoped to the same
     command-line clause (split at ';', '&&', '||', '|', including a separator glued to
     the END of a token) as the protected-path mention, so an unrelated write in a
-    different clause (`rm -f /tmp/x; cat .claude/settings.json`, `echo hi > /tmp/x; cat
+    different clause (`rm -f /srv/x; cat .claude/settings.json`, `echo hi > /srv/x; cat
     .claude/settings.json`) no longer refuses the read. A genuine write, alone or beside
     an unrelated read clause, is still refused. Seven eval cases added (tc-025..tc-031)
     covering the false-positive fix and the regression it must not reopen."

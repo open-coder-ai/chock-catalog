@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~348 tokens (chars/4, max 2000)
+INDEX.md: ~357 tokens (chars/4, max 2000)
 Recompiled 1 policies
 verify-mcp-allowlist:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~348 tokens (chars/4, max 2000)
+INDEX.md: ~357 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -118,9 +118,25 @@ verify-mcp-allowlist  [deterministic]
   PASS  tc-020                             authored  BLOCKED: this command writes .mcp.json but no server entry is visib…
   PASS  tc-021                             authored  BLOCKED: this command writes .mcp.json but no server entry is visib…
   PASS  tc-022                             authored  BLOCKED: this command writes .mcp.json but no server entry is visib…
+  PASS  tc-023                             authored  BLOCKED: MCP server config change refused -- 'evil' is not on the a…
+  PASS  tc-024                             authored  BLOCKED: MCP server config change refused -- 'evil' is not on the a…
+  PASS  tc-025                             authored  BLOCKED: MCP server config change refused -- 'evil' is not on the a…
+  PASS  tc-026                             authored  guard exit 0
+  PASS  tc-027                             authored  guard exit 0
+  PASS  tc-028                             authored  BLOCKED: MCP server config change refused -- 'filesystem' is on the…
+  PASS  tc-029                             authored  BLOCKED: MCP server config change refused -- '(opaque)' is not on t…
+  PASS  tc-030                             authored  guard exit 0
+  PASS  tc-031                             authored  guard exit 0
+  PASS  tc-032                             authored  guard exit 0
+  PASS  tc-033                             authored  BLOCKED: MCP server config change refused -- 'evil' is not on the a…
+  PASS  tc-034                             authored  BLOCKED: MCP server config change refused -- 'evil' is not on the a…
+  PASS  tc-035                             authored  guard exit 0
+  PASS  tc-036                             authored  guard exit 0
+  PASS  tc-037                             authored  BLOCKED: shell write to the MCP server allowlist is not allowed -- …
+  PASS  tc-038                             authored  BLOCKED: shell write to the MCP server allowlist is not allowed -- …
   score 1.00
 
-5 policies: 22 pass, 41 skipped
+5 policies: 38 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -146,5 +162,5 @@ verify-mcp-allowlist  [deterministic]
 ```text
 - **verify-mcp-allowlist**:
   mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-  allowlist: lives in implementations/verify-mcp-allowlist.sh; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
+  allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
 ```

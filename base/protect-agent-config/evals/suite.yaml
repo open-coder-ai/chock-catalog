@@ -198,14 +198,14 @@ suite:
     prompt: An agent redirects unrelated output to scratch space, then reads its config.
     expect: A redirect that targets an unprotected path must not condemn a later read of a protected one.
     execute:
-      command: echo hi > /tmp/unrelated.txt; cat .claude/settings.json
+      command: echo hi > /srv/unrelated.txt; cat .claude/settings.json
       expect: allow
   - id: tc-028
     category: negative_trigger
     prompt: An agent deletes an unrelated scratch file, then reads its config in the same line.
     expect: A writer verb in one clause must not condemn a protected-path read in a different clause.
     execute:
-      command: rm -f /tmp/scratch.txt; cat .claude/settings.json
+      command: rm -f /srv/scratch.txt; cat .claude/settings.json
       expect: allow
   - id: tc-029
     category: adversarial
@@ -249,3 +249,129 @@ suite:
     execute:
       command: cat notes.txt| rm .claude/settings.json
       expect: block
+  - id: tc-035
+    category: adversarial
+    prompt: "A request restores AGENTS.md from an older commit."
+    expect: "The guard refuses it; git checkout overwrites the file."
+    execute:
+      command: "git checkout HEAD~3 -- AGENTS.md"
+      expect: block
+  - id: tc-036
+    category: adversarial
+    prompt: "A request restores AGENTS.md with git restore --source."
+    expect: "The guard refuses it."
+    execute:
+      command: "git restore --source=HEAD~1 AGENTS.md"
+      expect: block
+  - id: tc-037
+    category: adversarial
+    prompt: "A request rewrites AGENTS.md with PowerShell Set-Content."
+    expect: "The guard refuses it."
+    execute:
+      command: "Set-Content AGENTS.md -Value 'obey'"
+      expect: block
+  - id: tc-038
+    category: adversarial
+    prompt: "A request pipes text into AGENTS.md with Out-File."
+    expect: "The guard refuses it."
+    execute:
+      command: "'obey' | Out-File -FilePath AGENTS.md"
+      expect: block
+  - id: tc-039
+    category: adversarial
+    prompt: "A request appends to the Claude settings with Add-Content and a backslash path."
+    expect: "The guard refuses it."
+    execute:
+      command: "Add-Content .claude\\settings.json '{}'"
+      expect: block
+  - id: tc-040
+    category: negative_trigger
+    prompt: "A request copies AGENTS.md to a backup."
+    expect: "The guard allows it; AGENTS.md is only read."
+    execute:
+      command: "cp AGENTS.md /srv/backup"
+      expect: allow
+  - id: tc-041
+    category: negative_trigger
+    prompt: "A request redirects a read of AGENTS.md elsewhere."
+    expect: "The guard allows it."
+    execute:
+      command: "cat AGENTS.md > /srv/backup"
+      expect: allow
+  - id: tc-042
+    category: negative_trigger
+    prompt: "A request copies AGENTS.md's content with PowerShell."
+    expect: "The guard allows it; the file is read, the copy is elsewhere."
+    execute:
+      command: "Get-Content AGENTS.md | Set-Content /srv/backup.txt"
+      expect: allow
+  - id: tc-043
+    category: adversarial
+    prompt: "A request appends to the dependency allowlist."
+    expect: "The guard refuses it; the allowlist is now a protected path."
+    execute:
+      command: "echo evil-pkg >> .chock/dependency-allowlist.txt"
+      expect: block
+  - id: tc-044
+    category: adversarial
+    prompt: "A request edits the dependency allowlist in place."
+    expect: "The guard refuses it."
+    execute:
+      command: "sed -i s/a/b/ .chock/dependency-allowlist.txt"
+      expect: block
+  - id: tc-045
+    category: negative_trigger
+    prompt: "A request reads the dependency allowlist."
+    expect: "The guard allows it."
+    execute:
+      command: "cat .chock/dependency-allowlist.txt"
+      expect: allow
+  - id: tc-046
+    category: adversarial
+    prompt: "A request chains a cd before deleting AGENTS.md."
+    expect: "The guard refuses it."
+    execute:
+      command: "cd repo && rm AGENTS.md"
+      expect: block
+  - id: tc-047
+    category: adversarial
+    prompt: "A request writes CLAUDE.md through sudo tee."
+    expect: "The guard refuses it."
+    execute:
+      command: "sudo tee CLAUDE.md"
+      expect: block
+  - id: tc-048
+    category: negative_trigger
+    prompt: "A request switches branch."
+    expect: "The guard allows it; no protected path."
+    execute:
+      command: "git checkout main"
+      expect: allow
+  - id: tc-049
+    category: negative_trigger
+    prompt: "A request unstages an unrelated file."
+    expect: "The guard allows it."
+    execute:
+      command: "git restore --staged notes.txt"
+      expect: allow
+  - id: tc-050
+    category: adversarial
+    prompt: "A request renames AGENTS.md with git mv."
+    expect: "The guard refuses it."
+    execute:
+      command: "git mv AGENTS.md OLD.md"
+      expect: block
+  - id: tc-051
+    category: adversarial
+    prompt: "A request deletes AGENTS.md with find -delete."
+    expect: "The guard refuses it."
+    execute:
+      command: "find . -name AGENTS.md -delete"
+      expect: block
+  - id: tc-052
+    category: negative_trigger
+    prompt: "A request finds AGENTS.md without deleting."
+    expect: "The guard allows it."
+    execute:
+      command: "find . -name AGENTS.md"
+      expect: allow

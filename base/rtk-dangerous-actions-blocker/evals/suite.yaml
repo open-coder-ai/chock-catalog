@@ -564,3 +564,101 @@ suite:
     execute:
       command: gcloud compute instances delete my-vm
       expect: block
+  - id: tc-079
+    category: trigger
+    prompt: "A request greps a credential file."
+    expect: "The guard refuses it; a search reads the file into the transcript as cat does."
+    execute:
+      command: "grep KEY .env"
+      expect: block
+  - id: tc-080
+    category: trigger
+    prompt: "A request searches a production env file with ripgrep."
+    expect: "The guard refuses it."
+    execute:
+      command: "rg -n API_KEY .env.production"
+      expect: block
+  - id: tc-081
+    category: trigger
+    prompt: "A request prints a field of a credential file with awk."
+    expect: "The guard refuses it."
+    execute:
+      command: "awk -F= '{print $2}' .env"
+      expect: block
+  - id: tc-082
+    category: trigger
+    prompt: "A request prints a line of a private key with sed."
+    expect: "The guard refuses it."
+    execute:
+      command: "sed -n 1p server.pem"
+      expect: block
+  - id: tc-083
+    category: adversarial
+    prompt: "A request feeds a credential file to cat on stdin."
+    expect: "The guard refuses it; a < redirect is a read."
+    execute:
+      command: "cat < .env"
+      expect: block
+  - id: tc-084
+    category: negative_trigger
+    prompt: "A request greps the example env file."
+    expect: "The guard allows it; templates stay readable."
+    execute:
+      command: "grep KEY .env.example"
+      expect: allow
+  - id: tc-085
+    category: negative_trigger
+    prompt: "A request greps the source tree."
+    expect: "The guard allows it."
+    execute:
+      command: "grep -rn TODO src"
+      expect: allow
+  - id: tc-086
+    category: negative_trigger
+    prompt: "A request prints the grep command as text."
+    expect: "The guard allows it; echo reads nothing."
+    execute:
+      command: "echo grep KEY .env"
+      expect: allow
+  - id: tc-087
+    category: adversarial
+    prompt: "A request wraps the grep in bash -c."
+    expect: "The guard refuses the wrapped command."
+    execute:
+      command: "bash -c 'grep KEY .env'"
+      expect: block
+  - id: tc-088
+    category: adversarial
+    prompt: "A request chains a cd before reading the credential file."
+    expect: "The guard refuses it."
+    execute:
+      command: "cd app && cat .env"
+      expect: block
+  - id: tc-089
+    category: negative_trigger
+    prompt: "A request reads .env inside a container."
+    expect: "The guard allows it; paths inside docker exec are the container's."
+    execute:
+      command: "docker exec web cat .env"
+      expect: allow
+  - id: tc-090
+    category: adversarial
+    prompt: "A request force-pushes from inside a container."
+    expect: "The guard refuses it; only the host-path rows are skipped in a container."
+    execute:
+      command: "docker exec ci git push --force origin main"
+      expect: block
+  - id: tc-091
+    category: adversarial
+    prompt: "A request removes an absolute path with sudo."
+    expect: "The guard refuses it."
+    execute:
+      command: "sudo -u app rm -rf /var/lib/app"
+      expect: block
+  - id: tc-092
+    category: adversarial
+    prompt: "A request removes a relative path off the safe list inside bash -c."
+    expect: "The guard asks; the wrapped command is judged."
+    execute:
+      command: "bash -c 'rm -rf ./src'"
+      expect: ask

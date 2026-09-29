@@ -1,6 +1,6 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.0.3"
+version: "0.1.0"
 description: >
   Guard against an agent weakening the automated checks that review its own work. CI/CD
   workflow files (.github/workflows/), the composite actions they call (.github/actions/)
@@ -8,11 +8,10 @@ description: >
   before a change lands -- so rewriting or deleting them is the agent removing the gate
   that would catch it. The guard refuses shell write-commands targeting those paths;
   reads pass, and tool-driven regeneration (chock sync) passes. Best-effort and
-  deliberately coarse: a write signal (a
-  `>`/`>>` redirect, or a writer verb like rm/cp/sed -i/git checkout) is scoped to its
-  own clause of the command line, so it must actually target the protected path, not
-  merely appear alongside it; a glued-on separator or a non-redirect writer's own
-  operand are not resolved that finely. The 'chock: approved-config-change' marker is
+  deliberately coarse: the command line is parsed, and a write (a `>`/`>>` redirect, a writer
+  verb like rm/mv/tee/sed -i, cp into the path, git checkout/restore, a PowerShell
+  Set-Content/Add-Content/Out-File) must actually target the protected path; reading it
+  passes. The 'chock: approved-config-change' marker is
   friction plus an audit trail, not authentication; the check an agent cannot
   self-approve is server-side branch protection.
 artifact: rule
@@ -35,7 +34,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-08-26T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -49,6 +48,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Ported from bash to Python: implementations/protect-ci-workflows.py replaces the bash script, stdlib only, deterministic, no network. It ships beside the chock_shellparse package (identical in every ported policy; tests pin the copies), which reads the command with a quote-aware lexer instead of scanning text: it splits at unquoted && || ; | & and newlines, drops redirections and comments, keeps heredoc bodies, and looks through bash|sh|zsh -c, pwsh -Command, cmd /c, eval, sudo, doas, env VAR=x, command, exec, nohup, timeout, nice, time, xargs and subshells, so `cd repo && ...` and `bash -c '...'` are judged on the command they run and `echo ...` on none. Unbalanced quotes fall back to a split at separators and whitespace that still sees redirections and reads an unclosed quote as one word; CHOCK_TOOL=powershell|pwsh selects PowerShell reading (backslash paths, cmdlets), and without it the text decides. An unexpected exception exits 2 (a guard fault), never 1 (a block)."
+  - "Bypasses closed, each with eval cases: PowerShell `Set-Content .github\\workflows\\ci.yml` (and Add-Content, Out-File, Remove-Item and the `sc` alias), `cd repo && rm .github/workflows/ci.yml`, and the directory itself (`rm -r .github/workflows`, no trailing slash). Reading (`Get-Content`, `cat`, `cp` from the workflow) stays allowed. Every existing case keeps its verdict."
 - version: 0.0.3
   date: '2026-09-24'
   changes:

