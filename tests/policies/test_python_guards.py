@@ -234,3 +234,20 @@ def test_a_message_file_is_read_when_it_exists(
     if flag.startswith("-F"):
         assert_case("protect-commit-privacy", f"git commit {flag}", want, capsys)
     monkeypatch.undo()
+
+
+@pytest.mark.parametrize(
+    ("command", "name"),
+    [
+        ("CHOCK_ALLOW=x git push", "CHOCK_ALLOW"),
+        ("export CHOCK_AGENT_COMMIT=0", "CHOCK_AGENT_COMMIT"),
+        ("$env:CHOCK_ALLOW='x'", "CHOCK_ALLOW"),
+    ],
+)
+def test_an_override_refusal_tells_the_agent_to_ask_the_person(
+    command: str, name: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code, err = verdict("block-no-verify", command, capsys)
+    assert code == BLOCK
+    assert "ask the person to run the command themselves" in err
+    assert name in err

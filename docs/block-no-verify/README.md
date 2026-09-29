@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `block-no-verify.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 34 total, 34 executable |
+| **Eval cases** | 55 total, 55 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or any way of pointing core.hooksPath elsewhere: -c, --config-env, `git config core.hooksPath <path>` and the GIT_CONFIG_* environment. Read as a parsed command, so `cd repo && git commit --no-verify`, `bash -c '...'` and sudo/env/xargs wrappers are caught and a message that merely says --no-verify is not. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.
+Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or any way of pointing core.hooksPath elsewhere: -c, --config-env, `git config core.hooksPath <path>` and the GIT_CONFIG_* environment. Read as a parsed command, so `cd repo && git commit --no-verify`, `bash -c '...'` and sudo/env/xargs wrappers are caught and a message that merely says --no-verify is not. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Also refuses an agent command that sets a person-only override (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) by env prefix, env, export, declare, set/setx or $env:, and tells it to ask the person. Fix the underlying hook failure instead of skipping validation.
 
 ## What it solves
 
