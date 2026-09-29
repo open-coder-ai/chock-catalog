@@ -32,11 +32,11 @@ Verdict = tuple[int, str] | None
 # rtk's safe list: build output a developer deletes all day, matched on the last path segment.
 SAFE_DIRS = ("node_modules", "dist", "build", ".next", "__pycache__", ".cache", "tmp", ".tmp")
 SAFE_DIRS += ("coverage", ".nyc_output", "target", ".turbo", ".parcel-cache")
-SECRET_FILES = (".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "*.jks", "*.keystore", "id_rsa*", "id_ed25519*")
-SECRET_FILES += ("id_ecdsa*", "id_dsa*", ".credentials", "credentials", ".netrc", ".pgpass", ".git-credentials")
-SECRET_DIRS = ("*/.ssh/*", "*/.aws/*", "*/.gnupg/*", "*/.kube/config")
+KEY_FILES = (".env", ".env.*", "*.pem", "*.key", "*.p12", "*.pfx", "*.jks", "*.keystore", "id_rsa*", "id_ed25519*")
+KEY_FILES += ("id_ecdsa*", "id_dsa*", ".credentials", "credentials", ".netrc", ".pgpass", ".git-credentials")
+KEY_DIRS = ("*/.ssh/*", "*/.aws/*", "*/.gnupg/*", "*/.kube/config")
 TEMPLATES = (".env.example", ".env.sample", ".env.template", ".env.dist", ".env.local.example")
-SECRET_NAME = re.compile(r"(api_key|apikey|secret|token|password|passwd|private_key|access_key)(_|$)", re.IGNORECASE)
+KEY_VAR = re.compile(r"(api_key|apikey|secret|token|password|passwd|private_key|access_key)(_|$)", re.IGNORECASE)
 READERS = frozenset(
     (
         *("cat", "head", "tail", "less", "more", "bat", "strings", "xxd", "hexdump", "base64", "od", "nl", "tac"),
@@ -78,10 +78,10 @@ def block(reason: str) -> Verdict:
     return refuse(f"{reason} is not allowed without approval.")
 
 
-def is_secret_file(path: str) -> bool:
+def is_protected_file(path: str) -> bool:
     """A file whose contents are a credential; example and template copies stay readable."""
     name, full = path.replace("\\", "/").rsplit("/", 1)[-1], "/" + path.replace("\\", "/")
-    hit = any(fnmatchcase(name, p) for p in SECRET_FILES) or any(fnmatchcase(full, p) for p in SECRET_DIRS)
+    hit = any(fnmatchcase(name, p) for p in KEY_FILES) or any(fnmatchcase(full, p) for p in KEY_DIRS)
     return hit and name not in TEMPLATES
 
 
@@ -139,13 +139,13 @@ def git(cmd: Cmd) -> Verdict:
     return confirm(why) if hit else None
 
 
-def secret_read(cmd: Cmd) -> Verdict:
+def protected_file_read(cmd: Cmd) -> Verdict:
     paths = [
         *operands(cmd.args),
         *cmd.reads,
         *(a.split("=", 1)[1] for a in cmd.args if a.startswith("--") and "=" in a),
     ]
-    hit = next((p for p in paths if is_secret_file(p)), None)
+    hit = next((p for p in paths if is_protected_file(p)), None)
     if hit is None:
         return None
     return refuse(
@@ -153,17 +153,17 @@ def secret_read(cmd: Cmd) -> Verdict:
     )
 
 
-def echo_secret(cmd: Cmd) -> Verdict:
+def echo_env_ref(cmd: Cmd) -> Verdict:
     for arg in cmd.args:
         name = re.sub(r"[^A-Za-z0-9_].*", "", arg.partition("$")[2].lstrip("{"))
-        if "$" in arg and name and SECRET_NAME.search(name):
+        if "$" in arg and name and KEY_VAR.search(name):
             return refuse(f"echoing ${name} would print a credential into the transcript; use it without printing it.")
     return None
 
 
-def inline_secret(cmd: Cmd) -> Verdict:
+def inline_env_literal(cmd: Cmd) -> Verdict:
     # The message names no variable: the name travels with the literal value, so it stays out of logs.
-    if any(SECRET_NAME.search(name) and value and not value.startswith("$") for name, value in cmd.env.items()):
+    if any(KEY_VAR.search(name) and value and not value.startswith("$") for name, value in cmd.env.items()):
         return refuse(
             "a literal credential is being passed inline as an environment variable; export it from a secret store or the environment instead."
         )
@@ -225,9 +225,9 @@ def powershell_remove(cmd: Cmd) -> Verdict:
 
 HOST_FILE_RULES: dict[str, Callable[[Cmd], Verdict]] = {
     "rm": rm,
-    "echo": echo_secret,
-    "printf": echo_secret,
-    **dict.fromkeys(READERS, secret_read),
+    "echo": echo_env_ref,
+    "printf": echo_env_ref,
+    **dict.fromkeys(READERS, protected_file_read),
     **dict.fromkeys(POWERSHELL_REMOVERS, powershell_remove),
 }
 RULES: dict[str, Callable[[Cmd], Verdict]] = {
@@ -259,7 +259,7 @@ def inner_command(cmd: Cmd) -> list[str]:
 
 def judge(cmd: Cmd, raw: str, *, container: bool) -> Verdict:
     """One command's verdict. Inside a container the paths are the container's, so host-path rows are skipped."""
-    if leak := inline_secret(cmd):
+    if leak := inline_env_literal(cmd):
         return leak
     if cmd.name == "docker":
         return docker(cmd, raw)
