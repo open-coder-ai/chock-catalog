@@ -17,6 +17,8 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Installed commit-msg dispatcher to …/.git/hooks/commit-msg
+No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered SessionStart arm hook in .claude/settings.json
 INDEX.md: ~257 tokens (chars/4, max 2000)
 INDEX.md: ~257 tokens (chars/4, max 2000)
@@ -46,6 +48,8 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Installed commit-msg dispatcher to …/.git/hooks/commit-msg
+No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 INDEX.md: ~356 tokens (chars/4, max 2000)
 Recompiled 1 policies
 code-safety:
@@ -64,6 +68,8 @@ Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
 No git-pre-commit.sh policies found; pre-merge-commit dispatcher unchanged
 Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
+Installed commit-msg dispatcher to …/.git/hooks/commit-msg
+No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ```
 
 ## `$ chock validate .`
