@@ -1,13 +1,13 @@
 id: block-unsafe-code-execution
 name: "Block Unsafe Code Execution"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec,
   shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load
   without SafeLoader, execSync, new Function. Best-effort line scan; sandbox
   design, egress, and inherited credentials stay with the advisory owasp-asi05
   policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same
-  line.
+  line, honoured at commit; at agent tool-use it counts only for a line already committed in HEAD.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -19,12 +19,13 @@ approval:
 hook:
   gate:
     kind: content_regex
-    "on": [commit]
+    "on": [commit, tool_use]
     action: block
     message: >
       Dynamic execution primitive detected. Replace it with a parameterized API
-      (subprocess argument vector, safe_load, a real parser), or add
-      'pragma: allowlist exec' on the same line for a reviewed, deliberate use.
+      (subprocess argument vector, safe_load, a real parser), or have a person add
+      'pragma: allowlist exec' on the same line for a reviewed, deliberate use (in the agent it counts
+      only when that exact line is already committed in HEAD).
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+exec'
@@ -70,3 +71,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (mitre_atlas); no mechanism change."
+- version: 0.0.4
+  date: '2026-09-29'
+  changes:
+  - "Also run in the agent: gate.on is now [commit, tool_use], so a dynamic-execution primitive is refused as the agent writes it (an edit's own text at tool use; at the turn's end only lines changed against HEAD). No pattern change. False-positive check: the pattern needs a call paren after eval/exec (a `.exec(` method call is excluded by its lookbehind) and skips nothing by path, so prose that names a primitive with a call paren is refused in the agent as it already was at commit; a line already committed with the pragma is never re-flagged. Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."

@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~383 tokens (chars/4, max 2000)
+INDEX.md: ~391 tokens (chars/4, max 2000)
 Recompiled 1 policies
 scan-secrets:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~383 tokens (chars/4, max 2000)
+INDEX.md: ~391 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -157,5 +157,5 @@ scan-secrets  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **scan-secrets**: Potential secret detected in this change. Remove credentials and rotate any exposed keys. At commit, add '# pragma: allowlist secret' on the same line only for documented test fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool argument an appended token could neutralize. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **scan-secrets**: Potential secret detected in this change. Remove credentials and rotate any exposed keys. '# pragma: allowlist secret' on the same line marks a documented test fixture; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

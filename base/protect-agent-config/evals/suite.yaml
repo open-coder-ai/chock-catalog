@@ -375,3 +375,20 @@ suite:
     execute:
       command: "find . -name AGENTS.md"
       expect: allow
+  - id: tc-053
+    category: negative_trigger
+    prompt: "A person stages an edit to AGENTS.md and commits it from their own shell."
+    expect: "The tool_use gate never runs at commit, so the commit passes."
+    execute:
+      files:
+        AGENTS.md: "# rules\nnew line\n"
+      expect: allow
+  - id: tc-054
+    category: negative_trigger
+    prompt: "A person stages an edit to the permission file and the dependency allowlist."
+    expect: "The tool_use gate never runs at commit, so the commit passes."
+    execute:
+      files:
+        .claude/settings.json: "{}\n"
+        .chock/dependency-allowlist.txt: "requests\n"
+      expect: allow

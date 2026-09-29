@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~376 tokens (chars/4, max 2000)
+INDEX.md: ~392 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unpinned-agent-components:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~376 tokens (chars/4, max 2000)
+INDEX.md: ~392 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -137,5 +137,5 @@ block-unpinned-agent-components  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-unpinned-agent-components**: Unpinned agent component detected. Pin the version (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception (a person's, honoured at commit only, not in the agent). Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **block-unpinned-agent-components**: Unpinned agent component detected. Pin the version (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception (a person's; in the agent it counts only when that exact line is already committed in HEAD, so an agent asks a person). Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

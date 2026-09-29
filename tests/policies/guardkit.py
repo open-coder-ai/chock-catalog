@@ -27,6 +27,11 @@ def _forget() -> dict[str, ModuleType]:
     return {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] == SHELLPARSE}
 
 
+def forget_shellparse() -> None:
+    """Drop any chock_shellparse a script imported, so the next guard load starts clean."""
+    _forget()
+
+
 def load_guard(policy: str, name: str | None = None) -> ModuleType:
     """Import `base/<policy>/implementations/<name or policy>.py`, resolving chock_shellparse beside it."""
     directory = impl_dir(policy)

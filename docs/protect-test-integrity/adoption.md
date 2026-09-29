@@ -50,12 +50,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~389 tokens (chars/4, max 2000)
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~433 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-test-integrity:
-  claude: enforced-at-commit
-  copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  claude: best-effort (live-run)
+  copilot: best-effort (live-run-partial)
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -70,6 +73,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~433 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -103,16 +115,32 @@ protect-test-integrity  [deterministic]
 ## Compiled surfaces
 
 ```text
+.chock/compiled/protect-test-integrity/agent-hooks/gate-hooks.json
+.chock/compiled/protect-test-integrity/agent-hooks/gate.json
 .chock/compiled/protect-test-integrity/ambient-rule/ambient.md
 .chock/compiled/protect-test-integrity/ci-gate/gate.json
 .chock/compiled/protect-test-integrity/ci-gate/step.yaml
 .chock/compiled/protect-test-integrity/git-hook/gate.json
 .chock/compiled/protect-test-integrity/git-hook/git-pre-commit.sh
 .chock/compiled/protect-test-integrity/managed-setting/managed-settings.json
+.chock/compiled/protect-test-integrity/pre-tool-use/codex_cli-write-hooks.json
+.chock/compiled/protect-test-integrity/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/protect-test-integrity/pre-tool-use/gate.json
+.chock/compiled/protect-test-integrity/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/protect-test-integrity/pre-tool-use/pretooluse-write.json
+.chock/compiled/protect-test-integrity/stop/antigravity-hooks.json
+.chock/compiled/protect-test-integrity/stop/codex_cli-hooks.json
+.chock/compiled/protect-test-integrity/stop/cursor-hooks.json
+.chock/compiled/protect-test-integrity/stop/devin-hooks.json
+.chock/compiled/protect-test-integrity/stop/gate.json
+.chock/compiled/protect-test-integrity/stop/gemini_cli-hooks.json
+.chock/compiled/protect-test-integrity/stop/stop.json
+.chock/compiled/protect-test-integrity/stop/tabnine-hooks.json
+.chock/compiled/protect-test-integrity/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
 
 ```text
-- **protect-test-integrity**: Test integrity: this change deletes a test file, removes more assertions than it adds, or adds a vacuous assertion. Fix the code under test, not the test. If the removal is deliberate (obsolete behaviour, a test moved elsewhere), a person adds 'chock: allow test-integrity' on an added line of that test file and commits from their own shell; the waiver is not honoured for an agent's commit (CHOCK_AGENT_COMMIT set).
+- **protect-test-integrity**: Test integrity: this change deletes a test file, removes more assertions than it adds, or adds a vacuous assertion. Fix the code under test, not the test. If the removal is deliberate (obsolete behaviour, a test moved elsewhere), a person adds 'chock: allow test-integrity' on an added line of that test file and commits from their own shell; the waiver is honoured at commit only, never in the agent (tool use, the turn's end, or a commit with CHOCK_AGENT_COMMIT set), so an agent asks a person. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

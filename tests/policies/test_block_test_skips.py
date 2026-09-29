@@ -105,6 +105,12 @@ def test_a_waiver_is_honoured_at_commit_only(repo: Path) -> None:
     assert len(mod.findings(payload(repo, {"tests/test_g.py": waived}, event="tool_use"))) == 1
 
 
+def test_a_waived_skip_already_in_head_passes_in_the_agent(tmp_path: Path) -> None:
+    waived = f"{PYSKIP}  # chock: allow test-skip -- needs a GPU\n"
+    held = scriptkit.init_repo(tmp_path / "h", {"tests/test_g.py": waived})
+    assert mod.findings(payload(held, {"tests/test_g.py": waived + "x = 1\n"}, event="tool_use")) == []
+
+
 def test_a_waiver_is_not_honoured_for_an_agents_commit(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     waived = f"{PYSKIP}  # chock: allow test-skip\n"
     monkeypatch.setenv("CHOCK_AGENT_COMMIT", "1")
@@ -153,4 +159,4 @@ def test_the_manifest_binds_the_script_at_commit_and_tool_use() -> None:
     assert gate["kind"] == "script"
     assert gate["on"] == ["commit", "tool_use"]
     assert gate["params"] == {"script": NAME}
-    assert re.search(r"only at commit", " ".join(gate["message"].split()))
+    assert re.search(r"already committed in HEAD", " ".join(gate["message"].split()))

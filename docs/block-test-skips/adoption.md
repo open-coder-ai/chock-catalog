@@ -141,5 +141,5 @@ block-test-skips  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-test-skips**: Test skip added. Fix the test or the code instead of skipping it. A person may waive a reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell; in chock 0.13.0 the waiver is honoured only at commit, not in the agent, so an agent asks the person rather than writing the pragma itself. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **block-test-skips**: Test skip added. Fix the test or the code instead of skipping it. A person may waive a reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell; in the agent a waiver counts only for a line already committed in HEAD, so an agent asks the person rather than writing the pragma itself. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

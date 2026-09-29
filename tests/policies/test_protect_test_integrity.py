@@ -135,7 +135,7 @@ def test_the_waiver_pragma() -> None:
     assert not PRAGMA.search("# chock: allow test-skip")
 
 
-def test_the_gate_is_bound_at_commit_only() -> None:
+def test_the_gate_is_bound_at_commit_and_tool_use() -> None:
     gate = scriptkit.manifest("protect-test-integrity")["hook"]["gate"]
     assert gate["kind"] == "test_integrity"
-    assert gate["on"] == ["commit"]
+    assert gate["on"] == ["commit", "tool_use"]

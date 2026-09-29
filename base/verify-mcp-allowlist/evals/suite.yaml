@@ -314,3 +314,111 @@ suite:
     execute:
       command: "echo x >> .agents/policies/verify-mcp-allowlist/implementations/chock_shellparse/parse.py"
       expect: block
+  - id: tc-039
+    category: adversarial
+    prompt: "A staged .mcp.json configures a server that is not on the allowlist."
+    expect: "The gate refuses the commit."
+    execute:
+      files:
+        .mcp.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      expect: block
+  - id: tc-040
+    category: negative_trigger
+    prompt: "A staged .mcp.json configures only the allowlisted server."
+    expect: "The gate allows the commit."
+    execute:
+      files:
+        .mcp.json: "{\"mcpServers\":{\"filesystem\":{\"command\":\"npx\",\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"]}}}\n"
+      expect: allow
+  - id: tc-041
+    category: adversarial
+    prompt: "A staged .cursor/mcp.json configures an unlisted server."
+    expect: "The gate refuses the commit."
+    execute:
+      files:
+        .cursor/mcp.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      expect: block
+  - id: tc-042
+    category: adversarial
+    prompt: "A staged .vscode/mcp.json names an unlisted server under servers."
+    expect: "The gate refuses the commit."
+    execute:
+      files:
+        .vscode/mcp.json: "{\"servers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      expect: block
+  - id: tc-043
+    category: adversarial
+    prompt: "A staged claude_desktop_config.json configures an unlisted remote server."
+    expect: "The gate refuses the commit."
+    execute:
+      files:
+        claude_desktop_config.json: "{\"mcpServers\":{\"evil\":{\"url\":\"https://mcp.example.invalid/sse\"}}}\n"
+      expect: block
+  - id: tc-044
+    category: adversarial
+    prompt: "A staged .gemini/settings.json configures an unlisted server."
+    expect: "The gate refuses the commit."
+    execute:
+      files:
+        .gemini/settings.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      expect: block
+  - id: tc-045
+    category: adversarial
+    prompt: "A staged .codex/config.toml declares an unlisted mcp_servers table."
+    expect: "The gate refuses the commit."
+    execute:
+      files:
+        .codex/config.toml: "[mcp_servers.evil]\ncommand = \"npx\"\nargs = [\"-y\", \"evil-mcp\"]\n"
+      expect: block
+  - id: tc-046
+    category: negative_trigger
+    prompt: "A staged .codex/config.toml declares only the allowlisted server."
+    expect: "The gate allows the commit."
+    execute:
+      files:
+        .codex/config.toml: "[mcp_servers.filesystem]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-filesystem\"]\n"
+      expect: allow
+  - id: tc-047
+    category: adversarial
+    prompt: "A staged config points the allowlisted name at another command."
+    expect: "The gate refuses the commit; name and source must both match."
+    execute:
+      files:
+        .mcp.json: "{\"mcpServers\":{\"filesystem\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      expect: block
+  - id: tc-048
+    category: negative_trigger
+    prompt: "A server already committed and not on the allowlist stays while an allowlisted one is added."
+    expect: "Only newly added servers are judged at commit, so the gate allows it."
+    execute:
+      head_files:
+        .mcp.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      files:
+        .mcp.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]},\"filesystem\":{\"command\":\"npx\",\"args\":[\"-y\",\"@modelcontextprotocol/server-filesystem\"]}}}\n"
+      expect: allow
+  - id: tc-049
+    category: adversarial
+    prompt: "A staged config adds a second unlisted server beside a committed one."
+    expect: "The gate refuses the newly added server."
+    execute:
+      head_files:
+        .mcp.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      files:
+        .mcp.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]},\"worse\":{\"command\":\"npx\",\"args\":[\"-y\",\"worse-mcp\"]}}}\n"
+      expect: block
+  - id: tc-050
+    category: negative_trigger
+    prompt: "A staged JSON file that is not an MCP client config carries a server-like key."
+    expect: "The gate reads only MCP client configs, so it allows the commit."
+    execute:
+      files:
+        package.json: "{\"mcpServers\":{\"evil\":{\"command\":\"npx\",\"args\":[\"-y\",\"evil-mcp\"]}}}\n"
+      expect: allow
+  - id: tc-051
+    category: adversarial
+    prompt: "A staged .mcp.json is not valid JSON."
+    expect: "The gate refuses it: its servers cannot be verified."
+    execute:
+      files:
+        .mcp.json: "{\"mcpServers\": {\n"
+      expect: block

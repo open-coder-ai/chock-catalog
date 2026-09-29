@@ -13,7 +13,7 @@ from typing import Any
 
 #: A policy whose check cannot be expressed as a declarative gate ships its own script, named
 #: for the git event that runs it. The hook runs it, so its ceiling is the gate's.
-GIT_EVENTS = ("pre-commit", "pre-push")
+GIT_EVENTS = ("pre-commit", "pre-push", "commit-msg")
 SCRIPT_SUFFIXES = (".py", ".sh")
 
 GATE = "gate"
@@ -53,22 +53,20 @@ def command_guards(policy_dir: Path, policy_id: str) -> list[Path]:
     impl = Path(policy_dir) / "implementations"
     if not impl.is_dir():
         return []
-    return sorted(
-        p
-        for suffix in SCRIPT_SUFFIXES
-        for p in impl.glob(f"*{suffix}")
-        if not is_event_script(p, policy_id)
-    )
+    return sorted(p for suffix in SCRIPT_SUFFIXES for p in impl.glob(f"*{suffix}") if not is_event_script(p, policy_id))
 
 
 def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     """Return (kind, the mechanism label), strongest mechanism first."""
     policy_id = str(manifest.get("id") or Path(policy_dir).name)
     gate = (manifest.get("hook") or {}).get("gate") or {}
-    if gate.get("kind"):
+    # A gate that never runs at commit (tool_use only) is enforced in the agent, not at commit.
+    if gate.get("kind") and "commit" in (gate.get("on") or []):
         return GATE, str(gate["kind"])
     if event_scripts(policy_dir, policy_id):
         return EVENT_SCRIPT, "commit-time guard script"
     if command_guards(policy_dir, policy_id):
         return GUARD, "guard script"
+    if gate.get("kind"):
+        return GUARD, str(gate["kind"])
     return NONE, "rule text only"

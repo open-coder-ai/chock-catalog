@@ -162,4 +162,4 @@ suite:
   - id: tc-012
     category: edge
     prompt: The agent adds a skip pragma to its own new skip in the same write.
-    expect: 'In the agent the waiver is not honoured; the write is refused. (Text case: tool_use has no executable replay.)'
+    expect: 'A waiver the agent writes with its own new skip is not honoured (only a waived line already committed in HEAD counts); the write is refused. (Text case: tool_use has no executable replay.)'

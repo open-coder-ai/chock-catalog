@@ -1,6 +1,6 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.0.7"
+version: "0.0.8"
 description: >
   Blocks known credential patterns -- vendor key prefixes, private-key blocks, and
   key/token/password assignments -- at two enforcement points: at commit (the git hook,
@@ -23,9 +23,7 @@ hook:
     action: block
     message: >
       Potential secret detected in this change. Remove credentials and rotate any exposed keys.
-      At commit, add '# pragma: allowlist secret' on the same line only for documented test
-      fixtures; the pragma is NOT honored at tool-use, where the scanned text is a live tool
-      argument an appended token could neutralize.
+      '# pragma: allowlist secret' on the same line marks a documented test fixture; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself.
     params:
       scan: added_lines
       # .env plus environment-specific variants (.env.production, .env.local, .env.staging)
@@ -59,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.8
+  date: '2026-09-29'
+  changes:
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
 - version: 0.0.7
   date: '2026-09-21'
   changes:

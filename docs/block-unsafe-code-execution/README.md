@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05 policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same line.
+Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05 policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same line, honoured at commit; at agent tool-use it counts only for a line already committed in HEAD.
 
 ## What it solves
 
@@ -25,7 +25,7 @@ The one-line distance between "agent output" and "arbitrary code": a bare `eval(
 
 ## How it works
 
-A declarative `content_regex` gate, evaluated on `commit`, action `block`.
+A declarative `content_regex` gate, evaluated on `commit` and `tool_use`, action `block`.
 
 Parameters, from `manifest.yaml`:
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Dynamic execution primitive detected. Replace it with a parameterized API (subprocess argument vector, safe_load, a real parser), or add 'pragma: allowlist exec' on the same line for a reviewed, deliberate use.
+> Dynamic execution primitive detected. Replace it with a parameterized API (subprocess argument vector, safe_load, a real parser), or have a person add 'pragma: allowlist exec' on the same line for a reviewed, deliberate use (in the agent it counts only when that exact line is already committed in HEAD).
 
 ## Which primitive it becomes
 

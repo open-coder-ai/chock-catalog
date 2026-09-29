@@ -7,9 +7,9 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `protect-commit-privacy.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
+| **Mechanism** | commit-time guard script `protect-commit-privacy-commit-msg.py` |
+| **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ambient-rule` |
 | **Eval cases** | 35 total, 35 executable |
 | **Enabled by default** | yes |
 
@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Keep the development conversation out of git history. Agent-authored commits narrate by default -- who asked for what, which discussion decided it, what the plan was -- and on a public repo that narration is published forever. The guard refuses git commit commands whose message (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent to describe the change, not the conversation, and to propose sensitive messages to the human before committing. The command line is parsed, so a commit or gh pr create|edit behind cd, sh -c/bash -c, sudo, env or command is read like a bare one, a message fed on `-F -` from a heredoc is scanned, and a command that merely echoes the pattern as documentation still passes. Best-effort: markers are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the marker list in the guard, the content is yours.
+Keep the development conversation out of git history. Agent-authored commits narrate by default -- who asked for what, which discussion decided it, what the plan was -- and on a public repo that narration is published forever. The guard refuses git commit commands whose message (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent to describe the change, not the conversation, and to propose sensitive messages to the human before committing. The command line is parsed, so a commit or gh pr create|edit behind cd, sh -c/bash -c, sudo, env or command is read like a bare one, a message fed on `-F -` from a heredoc is scanned, and a command that merely echoes the pattern as documentation still passes. A commit-msg hook applies the same markers to the message git records. Best-effort: markers are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the marker list in the guard, the content is yours.
 
 ## What it solves
 
@@ -25,9 +25,9 @@ A threat that did not exist before agents wrote commits: process leakage through
 
 ## How it works
 
-A guard script, `implementations/protect-commit-privacy.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A guard script, `implementations/protect-commit-privacy-commit-msg.py`, run by the git hook at every commit with no arguments. It reads the staged revision of each file from git and exits non-zero to refuse the commit.
 
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:
 
 ```text
 commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
@@ -36,7 +36,7 @@ if(sensitive_context): propose_message_to_human; await(approval) before(commit) 
 
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/protect-commit-privacy/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+A **commit-time guard script**. `recompile` registers `implementations/protect-commit-privacy-commit-msg.py` under `.git/hooks/pre-commit.d/`, and the hook runs it at every commit (a commit-msg script gets git's message file as its one argument, any other none). The script reads the change from git itself and exits non-zero to refuse; the rule text compiles to `ambient-rule` beside it, so the agent knows the constraint before the commit is refused.
 
 ## Installing it
 
