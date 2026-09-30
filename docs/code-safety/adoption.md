@@ -50,7 +50,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~356 tokens (chars/4, max 2000)
+INDEX.md: ~361 tokens (chars/4, max 2000)
 Recompiled 1 policies
 code-safety:
   claude: advisory
@@ -96,6 +96,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 - **code-safety**:
-  see(scan-secrets): commit(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
-  see(agentic-code-security pack code): refuses eval|exec of non-literal text and SQL built from strings in Python|JS; advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
+  see(scan-secrets): commit|agent_write(secrets|keys|tokens|passwords|.env); see(verify-dependency-exists, opt_in): add(unlisted_dependency)
+  see(agentic-code-security pack code): refuses Python eval|exec of non-literal text and SQL built from strings (Python|JS); advisory: avoid(eval|exec|unsanitized_sql); on_find(secret|hallucinated_pkg): propose_removal_to_human
 ```

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-test-skips",
-  "version": "0.0.3",
-  "description": "Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip, it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip -- in test files, at commit and at agent tool-use. Only skips the change adds are judged (the engine compares findings with the baseline), so a skip already committed never blocks an unrelated edit. Companion of protect-test-integrity, which cannot see skips. Waivers: 'chock: allow test-skip' on the line is honoured at commit; in the agent, or for a commit with CHOCK_AGENT_COMMIT set, only a skip already committed in HEAD counts, so an agent that needs a new one must ask a person.",
+  "version": "0.0.4",
+  "description": "Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip, it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test files. Runs: commit, agent write, turn's end. Only what the change adds is judged. Waiver: 'chock: allow test-skip' same line. Person's commit: honoured. Agent (write, turn's end, an agent's commit: CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already in HEAD; it asks a person.",
   "author": {
     "name": "chock-core"
   },

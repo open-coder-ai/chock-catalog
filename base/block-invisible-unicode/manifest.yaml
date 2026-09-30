@@ -61,11 +61,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.0.5
-  date: '2026-09-30'
-  changes:
-  - "Rename (display name only, id unchanged): 'Block Invisible Unicode' becomes 'Block Bidi and Tag Unicode', since only bidi controls (U+202A-202E, U+2066-2069) and tag characters (U+E0001-E007F) are matched."
-  - "Disclosure, no behaviour change: the description lists what is not matched -- ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ and LRM/RLM. The gate message names what it matches and carries the standard waiver sentence. The description names where each check runs and fits the 500-char budget."
 - version: 0.0.1
   date: '2026-08-16'
   changes:
@@ -82,3 +77,8 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, an agent's commit (CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env)) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+- version: 0.0.5
+  date: '2026-09-30'
+  changes:
+  - "Rename (display name only, id unchanged): 'Block Invisible Unicode' becomes 'Block Bidi and Tag Unicode', since only bidi controls (U+202A-202E, U+2066-2069) and tag characters (U+E0001-E007F) are matched."
+  - "Disclosure, no behaviour change: the description lists what is not matched -- ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ and LRM/RLM. The gate message names what it matches and carries the standard waiver sentence. The description names where each check runs and fits the 500-char budget."

@@ -50,7 +50,7 @@ compliance:
     note: "a committed allowlist is a third-party-risk policy the repo enforces"
   - control: MANAGE-3.1
     coverage: partial
-    note: "new third-party components are checked against a curated control at commit time"
+    note: "new third-party components are checked against a curated control at commit, agent write and the turn's end"
   owasp_asi:
   - control: ASI04
     coverage: partial
@@ -73,11 +73,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.0.5
-  date: '2026-09-30'
-  changes:
-  - "Rename (display name only, id unchanged): 'Verify Dependency Exists' becomes 'Dependency Allowlist', because the gate is an allowlist and never looks a package up in a registry."
-  - "Disclosure, no behaviour change: the description says no registry lookup is made and lists what is not read -- -r/-e lines, requirements-dev.txt, poetry dependency groups and [dependency-groups]. The stale 'commit time' notes are replaced by where each check runs (commit, agent write against disk, turn's end against HEAD). The message is addressed to whoever reads it: an agent asks a person; a person adds the name to the file. source_repo points at chock-catalog; the description fits the 500-char budget."
 - version: 0.0.1
   date: '2026-07-12'
   changes:
@@ -98,3 +93,8 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Also run in the agent: gate.on is now [commit, tool_use], so a dependency the agent adds to a watched manifest is refused as it writes, not only at commit. Only names the write adds against the file on disk (at the turn's end, against HEAD) are checked, so an edit to a manifest that already holds an unlisted package is not refused. The message now tells the agent to ask a person to extend the allowlist, which the agent cannot edit itself."
+- version: 0.0.5
+  date: '2026-09-30'
+  changes:
+  - "Rename (display name only, id unchanged): 'Verify Dependency Exists' becomes 'Dependency Allowlist', because the gate is an allowlist and never looks a package up in a registry."
+  - "Disclosure, no behaviour change: the description says no registry lookup is made and lists what is not read -- -r/-e lines, requirements-dev.txt, poetry dependency groups and [dependency-groups]. The stale 'commit time' notes are replaced by where each check runs (commit, agent write against disk, turn's end against HEAD). The message is addressed to whoever reads it: an agent asks a person; a person adds the name to the file. source_repo points at chock-catalog; the description fits the 500-char budget."

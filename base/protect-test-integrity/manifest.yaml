@@ -50,10 +50,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.0.3
-  date: '2026-09-30'
-  changes:
-  - "Wording fix, no behaviour change: the description and the gate message said a waiver is 'never honoured in the agent'. Since chock 0.14.0 a waiver already committed in HEAD counts in the agent (tool use, the turn's end, an agent's commit), the same as block-test-skips; a waiver on a new line does not. The description, the gate message, the tc-017 expect text and the same sentence in the 0.0.2 entry below are corrected. The description names where each check runs, and fits the 500-char budget."
 - version: 0.0.1
   date: '2026-09-29'
   changes:
@@ -62,3 +58,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Also run in the agent: gate.on is now [commit, tool_use], as chock 0.14.0 runs test_integrity there. A write that removes more assertions than it adds, or adds a vacuous one, is refused as it is made (against the file on disk; at the turn's end against HEAD). A deleted test file is a commit-time check only, since Edit and Write cannot delete. In the agent the pragma counts only when that exact line is already committed in HEAD, as in the content gates (chock 0.14.0). False-positive check: assertions moved between files across two writes can trip the net-loss count on the first write; the message tells the agent to ask a person for the reviewed exception."
+- version: 0.0.3
+  date: '2026-09-30'
+  changes:
+  - "Wording fix, no behaviour change: the description and the gate message said a waiver is 'never honoured in the agent'. Since chock 0.14.0 a waiver already committed in HEAD counts in the agent (tool use, the turn's end, an agent's commit), the same as block-test-skips; a waiver on a new line does not. The description, the gate message, the tc-017 expect text and the same sentence in the 0.0.2 entry below are corrected. The description names where each check runs, and fits the 500-char budget."

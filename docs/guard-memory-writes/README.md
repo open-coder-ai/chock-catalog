@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Refuses agent-memory writes that hold what memory must never hold: pasted git history (diff headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines, a line that duplicates another, and secrets (scan-secrets' pattern). Judges only memory files -- MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, and at agent tool-use the agent's own stores outside the repository (~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md, /memories/**) -- and only what the change adds. No waiver exists. Mechanised slice of memory-discipline's never_persist and chock-mise's never(store): secrets. Structural checks only.
+Refuses agent-memory writes holding what memory must never hold: pasted git history (diff, hunk, commit, index lines), a fenced code block over 20 lines, a duplicate line, or a secret (scan-secrets' pattern). Judges only memory files (MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md; at agent tool-use also ~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md, /memories/**) and only what the change adds. No waiver. Structural checks only.
 
 ## What it solves
 

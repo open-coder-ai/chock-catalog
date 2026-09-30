@@ -1,14 +1,13 @@
 id: guard-memory-writes
 name: "Guard Memory Writes"
-version: "0.0.4"
+version: "0.0.5"
 description: >
-  Refuses agent-memory writes that hold what memory must never hold: pasted git history (diff
-  headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines, a line
-  that duplicates another, and secrets (scan-secrets' pattern). Judges only memory files -- MEMORY.md
-  at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, and at agent tool-use the agent's
-  own stores outside the repository (~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md,
-  /memories/**) -- and only what the change adds. No waiver exists. Mechanised slice of
-  memory-discipline's never_persist and chock-mise's never(store): secrets. Structural checks only.
+  Refuses agent-memory writes holding what memory must never hold: pasted git history (diff, hunk,
+  commit, index lines), a fenced code block over 20 lines, a duplicate line, or a secret
+  (scan-secrets' pattern). Judges only memory files (MEMORY.md at any depth, CLAUDE.local.md,
+  .claude/memory/**, memory/**/*.md; at agent tool-use also ~/.claude/projects/*/memory/**,
+  ~/.claude/CLAUDE.md, /memories/**) and only what the change adds. No waiver. Structural checks
+  only.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -36,7 +35,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-30T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -65,3 +64,7 @@ changelog:
   date: '2026-09-30'
   changes:
   - "A long block's key is now the reason, the fence opener and a hash of the block's normalized body (long-block|```python|<sha256[:16]>). A line added to a committed block that is still over the limit changes the body, so the finding is new and blocks; before, it kept the opener's key and passed as old. An untouched long block is still old, and one shrunk under the limit is no finding."
+- version: 0.0.5
+  date: '2026-09-30'
+  changes:
+  - "Description only, within the 500-char budget; scope, checks and gate unchanged."

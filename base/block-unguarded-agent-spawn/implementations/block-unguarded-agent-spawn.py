@@ -87,7 +87,8 @@ def check(raw: str) -> str | None:
         if unsafe:
             return (
                 f"{unsafe} starts a coding agent with its safety checks off. Run it with its default approvals and "
-                "sandbox, or a scoped allow-list; a human decides when an unattended, unsandboxed run is acceptable."
+                "sandbox, or a scoped allow-list. If an unattended, unsandboxed run is needed, ask the person; they start it "
+                "from their own shell."
             )
     return None
 

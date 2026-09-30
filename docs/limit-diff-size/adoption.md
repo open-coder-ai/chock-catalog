@@ -50,7 +50,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~357 tokens (chars/4, max 2000)
+INDEX.md: ~365 tokens (chars/4, max 2000)
 Recompiled 1 policies
 limit-diff-size:
   claude: enforced-at-commit
@@ -103,6 +103,6 @@ limit-diff-size  [deterministic]
 
 ```text
 - **limit-diff-size**:
-  at(commit): ask if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
-  on(asked): split into atomic commits (git add -p); answer: CHOCK_ALLOW=limit-diff-size|CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_answer), ask(human)
+  at(commit): ask if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary; git_diff_fails: block
+  on(asked): split into atomic commits (git add -p); answer: CHOCK_ALLOW=limit-diff-size|CHOCK_ALLOW_LARGE_DIFF=1|CHOCK_DIFF_LIMIT set by a human only; agent: never(set), ask(human)
 ```

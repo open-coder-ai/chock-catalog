@@ -12,7 +12,7 @@ source: https://github.com/open-coder-ai/chock-catalog
 policies:
 - id: agent-discipline
   path: base/agent-discipline
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -24,7 +24,7 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -74,7 +74,7 @@ policies:
     honoured. Agent: only if that line is already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.3.0
+  version: 0.3.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -82,16 +82,12 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 74
   eval_executed: 74
-  description: 'Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit''s
-    short -n form, or any way of pointing core.hooksPath elsewhere: -c, --config-env, `git config core.hooksPath
-    <path>` and the GIT_CONFIG_* environment. Read as a parsed command, so `cd repo && git commit --no-verify`,
-    `bash -c ''...''` and sudo/env/xargs wrappers are caught and a message that merely says --no-verify
-    is not. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases,
-    wrapper scripts, and non-standard clients. Also refuses an agent command that sets a person-only
-    override (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) by env prefix, env, export, declare,
-    set/setx or $env:, and refuses hiding the agent markers (CLAUDECODE, AI_AGENT, CHOCK_AGENT_COMMIT)
-    by unset, env -u/-i, export -n or Remove-Item Env:; it tells the agent to ask the person. Fix the
-    underlying hook failure instead of skipping validation.'
+  description: 'Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am
+    and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c,
+    --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message
+    text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT,
+    CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says ask the person. Bypasses:
+    aliases, scripts.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
   version: 0.1.1
@@ -156,7 +152,7 @@ policies:
     exact line is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -165,14 +161,13 @@ policies:
   eval_cases: 4
   eval_executed: 0
   description: 'trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing
-    credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the enforced
-    counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for the dependency
-    slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and unsanitized-SQL
-    guidance stays advisory (a gate can decide only the non-literal slice: agentic-code-security''s
-    code pack).'
+    credentials, adding unverified packages, executing dynamic code. Install scan-secrets (commit, agent
+    write) for secrets and verify-dependency-exists (opt-in; needs an allowlist) for dependencies. Advisory:
+    eval/exec and SQL guidance; a gate decides only the non-literal slice (agentic-code-security code
+    pack: Python eval/exec, SQL built from strings in Python and JS).'
 - id: context-hygiene
   path: base/context-hygiene
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -184,7 +179,7 @@ policies:
     avoid: context rot and lost-in-the-middle failures.'
 - id: chock-mise
   path: base/chock-mise
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -246,7 +241,7 @@ policies:
     alter the input, or for internal batch jobs with no human recipient.'
 - id: firecrawl-fallback-only
   path: base/firecrawl-fallback-only
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -258,7 +253,7 @@ policies:
     avoid: reaching for the Firecrawl connector as the default fetch path.'
 - id: git-safety
   path: base/git-safety
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -268,10 +263,9 @@ policies:
   eval_executed: 0
   description: 'trigger: force push, hard reset, destructive branch delete, hook bypass, direct main
     commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks.
-    Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced counterparts
-    of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution guards
-    on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them plus atomic-commit
-    guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.'
+    Enforced counterparts: block-destructive-commands (command guard plus pre-push hook), block-no-verify
+    (command guard), protect-main-branch (commit and push gate), limit-diff-size (asks at commit). This
+    rule is the advisory layer over them plus atomic-commit guidance no gate can decide.'
 - id: java-security
   path: base/java-security
   version: 0.6.0
@@ -296,7 +290,7 @@ policies:
     testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
 - id: injection-defense
   path: base/injection-defense
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -309,7 +303,7 @@ policies:
     by the operator.
 - id: memory-discipline
   path: base/memory-discipline
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -321,7 +315,7 @@ policies:
     avoid: persisting file contents, git history, or task intermediates as memory.'
 - id: no-a11y-regression
   path: base/no-a11y-regression
-  version: 1.1.0
+  version: 1.1.1
   artifact: rule
   enforcement: block
   mandatory: false
@@ -500,7 +494,7 @@ policies:
     commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -508,17 +502,11 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 17
   eval_executed: 17
-  description: 'The mechanizable slice of CI supply-chain hardening, enforced at two points: at commit
-    (the git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the
-    agent writes) -- a workflow that references a third-party GitHub Action by a movable ref -- a
-    branch or a version tag -- instead of a full 40-character commit SHA. A tag like v4 or a branch
-    like main can be re-pointed at new code after review, so the action that runs tomorrow need not
-    be the one that was audited today; a compromised or rug-pulled release rides in on exactly that
-    mutability. The gate blocks an added line that references an action by a non-SHA ref (owner/repo
-    at a tag/branch); a full 40-char SHA pin passes, local actions (no ref) pass, and ''pragma: allowlist
-    unpinned-action'' on the same line is a visible, deliberate exception. This is the OpenSSF Scorecard
-    Pinned-Dependencies control for the slice a diff can show; signature and provenance verification
-    stay out of scope.'
+  description: 'Blocks a workflow that references a GitHub Action by a movable ref (tag or branch) instead
+    of a full 40-char commit SHA. Every owner/repo@non-SHA is blocked, actions/* and reusable workflows
+    included; a SHA pin and a local action (no ref) pass. Bounded to .github/workflows/ and .github/actions/.
+    Runs: commit, agent write, turn''s end. Waiver: ''pragma: allowlist unpinned-action'' same line.
+    Person''s commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: protect-agent-config
   path: base/protect-agent-config
   version: 0.2.1
@@ -568,7 +556,7 @@ policies:
     the person.'
 - id: protect-main-branch
   path: base/protect-main-branch
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   mandatory: true
@@ -612,7 +600,7 @@ policies:
     asks a person.'
 - id: token-efficiency
   path: base/token-efficiency
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -655,7 +643,7 @@ policies:
     refused.'
 - id: block-test-skips
   path: base/block-test-skips
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -663,16 +651,15 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 26
   eval_executed: 25
-  description: 'Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip,
-    it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip
-    -- in test files, at commit and at agent tool-use. Only skips the change adds are judged (the engine
-    compares findings with the baseline), so a skip already committed never blocks an unrelated edit.
-    Companion of protect-test-integrity, which cannot see skips. Waivers: ''chock: allow test-skip''
-    on the line is honoured at commit; in the agent, or for a commit with CHOCK_AGENT_COMMIT set, only
-    a skip already committed in HEAD counts, so an agent that needs a new one must ask a person.'
+  description: 'Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip,
+    it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test files.
+    Runs: commit, agent write, turn''s end. Only what the change adds is judged. Waiver: ''chock: allow
+    test-skip'' same line. Person''s commit: honoured. Agent (write, turn''s end, an agent''s commit:
+    CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already in HEAD; it asks
+    a person.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -680,16 +667,14 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 25
   eval_executed: 24
-  description: 'Refuses agent-memory writes that hold what memory must never hold: pasted git history
-    (diff headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines,
-    a line that duplicates another, and secrets (scan-secrets'' pattern). Judges only memory files --
-    MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, and at agent tool-use
-    the agent''s own stores outside the repository (~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md,
-    /memories/**) -- and only what the change adds. No waiver exists. Mechanised slice of memory-discipline''s
-    never_persist and chock-mise''s never(store): secrets. Structural checks only.'
+  description: 'Refuses agent-memory writes holding what memory must never hold: pasted git history
+    (diff, hunk, commit, index lines), a fenced code block over 20 lines, a duplicate line, or a secret
+    (scan-secrets'' pattern). Judges only memory files (MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**,
+    memory/**/*.md; at agent tool-use also ~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md, /memories/**)
+    and only what the change adds. No waiver. Structural checks only.'
 - id: limit-diff-size
   path: base/limit-diff-size
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: block
   mandatory: false
@@ -736,7 +721,7 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -744,13 +729,9 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 25
   eval_executed: 25
-  description: 'Best-effort guard against an agent launching a coding agent with its safety checks off:
-    claude --dangerously-skip-permissions or --permission-mode bypassPermissions, codex --full-auto,
-    --yolo, --dangerously-bypass-approvals-and-sandbox or --sandbox danger-full-access, gemini --yolo,
-    -y or --approval-mode yolo, cursor-agent --force. A spawned agent that never asks and never sandboxes
-    is an unsupervised agent (OWASP ASI10, rogue agents). Read as a parsed command, so `cd repo && claude
-    ...`, `bash -c ''...''`, sudo/env wrappers and `npx @openai/codex ...` are caught, while a normal
-    invocation, `codex --sandbox workspace-write`, or a command that only mentions the flag (echo, grep,
-    a commit message) is not. Known bypass classes include shell aliases, wrapper scripts, config files
-    that set the mode, and agents this list does not name. Run the agent with its default approvals;
-    a human decides when an unattended run is acceptable.'
+  description: 'Best-effort guard against an agent launching a coding agent with safety checks off:
+    claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
+    --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo,
+    -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
+    wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
+    unlisted agents.'

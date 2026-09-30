@@ -50,7 +50,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~353 tokens (chars/4, max 2000)
+INDEX.md: ~364 tokens (chars/4, max 2000)
 Recompiled 1 policies
 git-safety:
   claude: advisory
@@ -96,6 +96,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 - **git-safety**:
-  see(block-destructive-commands): force_push|reset_hard|rm_-rf; see(block-no-verify): --no-verify|skip_hooks; see(protect-main-branch): direct_commit|push(main|master)
-  advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); see(limit-diff-size): commit_diff > 500_lines (CHOCK_DIFF_LIMIT), human_override_only
+  see(block-destructive-commands): force_push|reset_hard|rm_-rf|non_ff_push(pre_push); see(block-no-verify): --no-verify|skip_hooks; see(protect-main-branch): direct_commit|push(main|master)
+  advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); enforced: see(limit-diff-size) asks at commit if diff > 500_lines (CHOCK_DIFF_LIMIT), person_only_override
 ```

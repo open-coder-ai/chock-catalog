@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Best-effort guard against an agent launching a coding agent with its safety checks off: claude --dangerously-skip-permissions or --permission-mode bypassPermissions, codex --full-auto, --yolo, --dangerously-bypass-approvals-and-sandbox or --sandbox danger-full-access, gemini --yolo, -y or --approval-mode yolo, cursor-agent --force. A spawned agent that never asks and never sandboxes is an unsupervised agent (OWASP ASI10, rogue agents). Read as a parsed command, so `cd repo && claude ...`, `bash -c '...'`, sudo/env wrappers and `npx @openai/codex ...` are caught, while a normal invocation, `codex --sandbox workspace-write`, or a command that only mentions the flag (echo, grep, a commit message) is not. Known bypass classes include shell aliases, wrapper scripts, config files that set the mode, and agents this list does not name. Run the agent with its default approvals; a human decides when an unattended run is acceptable.
+Best-effort guard against an agent launching a coding agent with safety checks off: claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto, --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo, -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes, unlisted agents.
 
 ## What it solves
 
@@ -33,8 +33,8 @@ A guard script, `implementations/block-unguarded-agent-spawn.py`, run before the
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force)
-if(unattended_run_needed): propose_to_human; await(approval)  # spawn with default approvals and sandbox
+never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox|-s_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f)
+if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 ```
 
 ## Which primitive it becomes

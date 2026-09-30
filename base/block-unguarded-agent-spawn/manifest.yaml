@@ -1,23 +1,19 @@
 id: block-unguarded-agent-spawn
 name: "Block Unguarded Agent Spawn"
-version: "0.0.1"
+version: "0.0.2"
 description: >
-  Best-effort guard against an agent launching a coding agent with its safety checks off: claude
-  --dangerously-skip-permissions or --permission-mode bypassPermissions, codex --full-auto,
-  --yolo, --dangerously-bypass-approvals-and-sandbox or --sandbox danger-full-access, gemini
-  --yolo, -y or --approval-mode yolo, cursor-agent --force. A spawned agent that never asks and
-  never sandboxes is an unsupervised agent (OWASP ASI10, rogue agents). Read as a parsed command,
-  so `cd repo && claude ...`, `bash -c '...'`, sudo/env wrappers and `npx @openai/codex ...` are
-  caught, while a normal invocation, `codex --sandbox workspace-write`, or a command that only
-  mentions the flag (echo, grep, a commit message) is not. Known bypass classes include shell
-  aliases, wrapper scripts, config files that set the mode, and agents this list does not name.
-  Run the agent with its default approvals; a human decides when an unattended run is acceptable.
+  Best-effort guard against an agent launching a coding agent with safety checks off: claude
+  --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
+  --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini
+  --yolo, -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env,
+  npx/bunx/pnpx wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts,
+  config-set modes, unlisted agents.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force)
-    if(unattended_run_needed): propose_to_human; await(approval)  # spawn with default approvals and sandbox
+    never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox|-s_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f)
+    if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 effects:
 - read_only
 approval:
@@ -32,7 +28,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-30T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -50,3 +46,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Initial baseline: a Python guard (implementations/block-unguarded-agent-spawn.py, stdlib only, beside the shared chock_shellparse package) refuses claude --dangerously-skip-permissions and --permission-mode bypassPermissions, codex --full-auto, --yolo, --dangerously-bypass-approvals-and-sandbox and --sandbox danger-full-access, gemini --yolo, -y and --approval-mode yolo, and cursor-agent --force/-f, on the command actually run: after cd, bash -c, sudo/env wrappers and through npx/bunx package names. Normal invocations, and commands that merely mention a flag, are allowed. Advisory (a PreToolUse guard on the shell only): maps to OWASP ASI10 as partial coverage."
+- version: 0.0.2
+  date: '2026-09-30'
+  changes:
+  - "Wording only, verdicts unchanged: the description lists what the guard already catches but did not name -- cursor-agent -f, codex -s danger-full-access, and bunx and pnpx as well as npx -- and fits the 500-char budget. The refusal now gives a route forward: run the agent with default approvals, or ask the person to start an unattended run from their own shell. The rule text lists the same flags and says to ask the person."
