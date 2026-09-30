@@ -108,8 +108,10 @@ def run_guard(
             [interpreter(bash, guard), str(guard), *argv],
             cwd=workspace,
             env=env,
-            input=stdin,
-            text=stdin is not None,
+            # Never the checker's own stdin: a pre-push script reads refs from it and would wait
+            # on a terminal or open pipe until the timeout. Empty stdin is a push of nothing.
+            input="" if stdin is None else stdin,
+            text=True,
             capture_output=True,
             timeout=30,
             check=False,
