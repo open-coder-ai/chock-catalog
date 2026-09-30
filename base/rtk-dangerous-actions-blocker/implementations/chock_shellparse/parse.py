@@ -222,16 +222,17 @@ def _resolve(clause: _Clause, env: dict[str, str], *, ps: bool, depth: int) -> t
         return carry, local
     script = _inner(name, words[1:])
     if script is not None and depth < _DEPTH:
-        return _parse(script, local, ps=ps or name in _PS_SHELLS, depth=depth + 1) + carry, env
+        found, after = _parse(script, local, ps=ps or name in _PS_SHELLS, depth=depth + 1)
+        return found + carry, (after if name == "eval" else env)  # eval runs in this shell: its exports stay
     return [Cmd(name, words[1:], local, clause.writes, clause.reads, clause.doc)], env
 
 
-def _parse(text: str, env: dict[str, str], *, ps: bool, depth: int) -> list[Cmd]:
+def _parse(text: str, env: dict[str, str], *, ps: bool, depth: int) -> tuple[list[Cmd], dict[str, str]]:
     out = []
     for clause in _Scan(text).run() or _crude(text):
         cmds, env = _resolve(clause, env, ps=ps, depth=depth)
         out += cmds
-    return out
+    return out, env
 
 
 def is_powershell(raw: str) -> bool:
@@ -244,7 +245,7 @@ def commands(raw: str) -> list[Cmd]:
     """Every simple command in a command line, unwrapped from bash -c, sudo, env, xargs, subshells and cd chains."""
     ps = is_powershell(raw)
     texts = [raw.replace("\\", "/").replace("`", "")] if ps else [raw, _WINPATH.sub("/", raw)]
-    return [cmd for text in dict.fromkeys(texts) for cmd in _parse(text, {}, ps=ps, depth=0)]
+    return [cmd for text in dict.fromkeys(texts) for cmd in _parse(text, {}, ps=ps, depth=0)[0]]
 
 
 def git_parts(args: list[str]) -> tuple[str, list[str], list[str]]:

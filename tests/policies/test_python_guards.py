@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from policies import guard_cases_agent_env as env_cases
 from policies import guard_cases_files as file_cases
 from policies import guard_cases_git as git_cases
 from policies import guardkit
@@ -69,6 +70,7 @@ def assert_case(policy: str, command: str, want: int, capsys: pytest.CaptureFixt
 
 CASES = {**git_cases.CASES, **file_cases.CASES}
 ALL_CASES = [(policy, command, want) for policy, rows in CASES.items() for command, want in rows]
+ALL_CASES += [("block-no-verify", command, want) for command, want in env_cases.ROWS]
 
 
 @pytest.mark.parametrize(("policy", "command", "want"), ALL_CASES, ids=[f"{p}::{c[:60]}" for p, c, _ in ALL_CASES])
@@ -242,6 +244,9 @@ def test_a_message_file_is_read_when_it_exists(
         ("CHOCK_ALLOW=x git push", "CHOCK_ALLOW"),
         ("export CHOCK_AGENT_COMMIT=0", "CHOCK_AGENT_COMMIT"),
         ("$env:CHOCK_ALLOW='x'", "CHOCK_ALLOW"),
+        ("unset CLAUDECODE", "CLAUDECODE"),
+        ("env -u AI_AGENT git commit", "AI_AGENT"),
+        ("env -i git commit", "CLAUDECODE/AI_AGENT"),
     ],
 )
 def test_an_override_refusal_tells_the_agent_to_ask_the_person(

@@ -21,15 +21,33 @@ TAKES_VALUE = frozenset(
 HOOK_SUBS = frozenset(("commit", "push", "merge", "am", "rebase"))
 SHORT_N_SUBS = frozenset(("commit", "am"))
 PREFIX_FLOOR = 9
-# Person-only overrides: the engine reads CHOCK_ALLOW (answers an ask gate) and CHOCK_AGENT_COMMIT (0/false says a person
-# is committing); limit-diff-size reads CHOCK_ALLOW_LARGE_DIFF and CHOCK_DIFF_LIMIT.
-OVERRIDE = re.compile(r"CHOCK_(?:AGENT_COMMIT|DIFF_LIMIT|ALLOW\w*)", re.IGNORECASE)
+# Person-only variables: the engine reads CHOCK_ALLOW (answers an ask gate), CHOCK_AGENT_COMMIT (0/false says a person is
+# committing) and the agent markers CLAUDECODE / AI_AGENT; limit-diff-size reads CHOCK_ALLOW_LARGE_DIFF, CHOCK_DIFF_LIMIT.
+OVERRIDE = re.compile(r"CHOCK_(?:AGENT_COMMIT|DIFF_LIMIT|ALLOW\w*)|CLAUDECODE|AI_AGENT", re.IGNORECASE)
+REMOVAL = frozenset(("CLAUDECODE", "AI_AGENT", "CHOCK_AGENT_COMMIT"))  # hiding these makes an agent's commit a person's
+MARKERS = "(CLAUDECODE|AI_AGENT|CHOCK_AGENT_COMMIT)(?!\\w)"
+WIPED = "CHOCK_ENV_WIPED"
 ASSIGN = re.compile(r"([A-Za-z_]\w*)\+?=")
-# `$env:NAME = v` and `NAME+=v` read as the plain NAME=v the lexer knows (a value with a slash would hide the name).
-PS_ASSIGN = re.compile(r"(?:\$\{?env:(CHOCK_\w+)\}?\s*[+.]?|\b(CHOCK_\w+)\+)=", re.IGNORECASE)
-PS_PATH = re.compile(r"env:/?(CHOCK_\w+)$", re.IGNORECASE)
+# Spellings the lexer drops are rewritten to the plain NAME=v it knows; text inside quotes stays data either way.
+REWRITES = tuple(
+    (re.compile(pattern, re.IGNORECASE), repl)
+    for pattern, repl in (
+        (
+            r"(?:\$\{?env:((?:CHOCK_|CLAUDECODE|AI_AGENT)\w*)\}?\s*[+.]?|\b(CHOCK_\w+|CLAUDECODE|AI_AGENT)\+)=",
+            r"\1\2=",
+        ),  # $env:X = v, X+=v
+        (rf"(?<![\w-])(?:-u\s*|--unset(?:\s+|=)){MARKERS}", r"\1="),  # env -u X, env --unset=X
+        (rf"(?<![\w-])export\s+-[a-z]*n[a-z]*(?:\s+[a-z_]\w*)*?\s+{MARKERS}", r"\1="),  # export -n X
+        (
+            r"(?<![\w./-])env((?:\s+-\S*(?:\s+[^-\s]\S*)?)*?)\s+(?:-[a-z]*i[a-z]*|--ignore-environment|-)(?=\s|$)",
+            rf"env\1 {WIPED}=1",  # env -i wipes the markers
+        ),
+    )
+)
+PS_PATH = re.compile(r"env:/?(\w+)$", re.IGNORECASE)
 DECLARERS = frozenset(("declare", "typeset", "readonly", "local", "make", "gmake"))
 PS_SETTERS = frozenset(("set-item", "si", "new-item", "ni", "set-content", "sc", "add-content", "ac"))
+PS_REMOVERS = frozenset(("remove-item", "ri", "clear-item", "ci", "rm", "del", "erase"))
 # A short cluster starting with one of these carries that option's value: `-mnote` is a message.
 VALUE_CLUSTER = ("-m", "-F", "-u", "-C", "-c", "-S")
 
@@ -86,25 +104,35 @@ def assigned(words: list[str]) -> list[str]:
 
 
 def set_by(cmd: Cmd, after: Cmd | None) -> list[str]:
-    """Override names one command sets: env prefix, env/export (carried in cmd.env), declare, make, set, setx, PowerShell."""
+    """Names one command sets, blanks or removes: env prefix, env/export (carried in cmd.env), declare, make, set, unset, PowerShell."""
     found = [name for name in cmd.env if is_override(name)]
     args, name = cmd.args, cmd.name
+    if name == "git" and WIPED in cmd.env and git_parts(args)[0] in HOOK_SUBS:
+        found.append("CLAUDECODE/AI_AGENT (env -i wipes them)")
     if name in DECLARERS:
         found += assigned(args)
+    elif name == "unset":
+        found += [a for a in args if a.upper() in REMOVAL]
     elif name == "set":
-        found += assigned(args) + [a for a, nxt in pairwise(args) if is_override(a) and not nxt.startswith("-")]
+        erasing = any(re.fullmatch(r"-[a-z]*e[a-z]*|--erase", a, re.IGNORECASE) for a in args)
+        found += [a for a in args if erasing and a.upper() in REMOVAL] + assigned(args)
+        found += [a for a, nxt in pairwise(args) if is_override(a) and not nxt.startswith("-")]
     elif name in ("setx", "setenv"):
         found += [a.split("=", 1)[0] for a in args if is_override(a.split("=", 1)[0])]
     elif name in PS_SETTERS:
         found += [m.group(1) for a in args if (m := PS_PATH.search(a)) and is_override(m.group(1))]
+    elif name in PS_REMOVERS:
+        found += [m.group(1) for a in args if (m := PS_PATH.search(a)) and m.group(1).upper() in REMOVAL]
     elif name.endswith("setenvironmentvariable") and after is not None:
         found += [w for w in re.split(r"[,\s]+", " ".join([after.name, *after.args])) if is_override(w)]
     return found
 
 
 def overrides_set(raw: str) -> list[str]:
-    """Override names the command line sets. A trailing `true` carries a bare `export X=1` out to a command that shows it."""
-    text = PS_ASSIGN.sub(lambda m: f"{m.group(1) or m.group(2)}=", raw)
+    """Names the command line sets, blanks or removes. A trailing `true` carries a bare `export X=1` out to a command that shows it."""
+    text = raw
+    for pattern, repl in REWRITES:
+        text = pattern.sub(repl, text)
     cmds = commands(f"{text}\ntrue")
     return [name.upper() for cmd, after in zip(cmds, [*cmds[1:], None], strict=True) for name in set_by(cmd, after)]
 
@@ -113,8 +141,9 @@ def check(raw: str) -> str | None:
     """The reason a command switches hooks off or sets a person-only override, or None."""
     if named := overrides_set(raw):
         return (
-            f"setting {named[0]} is refused: it answers a gate that only a person may answer. "
-            "Do not set it in any form; ask the person to run the command themselves with it set."
+            f"changing {named[0]} is refused: it decides whether a gate sees an agent's commit, or answers one, "
+            "and only a person may. Do not set, blank or remove it in any form; ask the person to run the command "
+            "themselves with it changed."
         )
     for cmd in commands(raw):
         if cmd.name != "git":
