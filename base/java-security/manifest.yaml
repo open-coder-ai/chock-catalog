@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.6.1"
+version: "0.6.2"
 description: >
   trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
   templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
@@ -44,6 +44,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.2
+  date: '2026-09-30'
+  changes:
+  - "A sanitizer counts only when it is applied to the request data. The flow rules decided \"sanitized\" by finding a sanitizer's name anywhere in the raw source line, so `// TODO sanitize later`, a string literal such as `\"/srv/sanitize/\"`, a block comment, or `sanitize(other)` on an unrelated value turned java-path-traversal-request-data off for that line. The check, now in chock_security/sanitizer.py, reads the file with comments and literals blanked (chock_security/source.py) and requires the sanitizer to be a call taking the request value, or a method called on it (`FilenameUtils.getName(name)`, `validator.isValid(name)`, `Paths.get(base, name).normalize()`, `name.startsWith(base)`, `name.matches(\"[a-z]+\")`). Every rule that shares the helper takes the fix: the 22 flow rules, including the seven with pack sanitizers of their own. Lines whose blanked form cannot be aligned with the file's read as empty, so a check the gate cannot place fails closed. Unchanged: a sanitizer and the request value on the same line still pass together, so `new File(name + sanitize(name))` is still accepted, and `.normalize()` without a `startsWith` check still counts, as before."
 - version: 0.6.1
   date: '2026-09-30'
   changes:

@@ -1419,3 +1419,33 @@ suite:
     prompt: "A new file guards a File sink with an early return on a failed allowlist check."
     expect: "The commit is blocked: an early-return guard is not modelled as a sanitizer, so the flow is still refused; the allowlist ternary is the form the rule names."
     execute: {event: commit, files: {"C.java": "class C {\n  void get(@RequestParam String p) {\n    if (!ALLOWED.contains(p)) return;\n    new File(p);\n  }\n}\n"}, expect: block}
+  - id: tc-116
+    category: trigger
+    prompt: "A request-to-path line carries a comment that says the name will be sanitized later."
+    expect: "The commit is blocked: a comment is not a check, so the flow from the request parameter to the path is still refused."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\" + file)); // TODO sanitize later\n  }\n}\n"}, expect: block}
+  - id: tc-117
+    category: trigger
+    prompt: "A request-to-path line holds a sanitizer's name only inside a string literal."
+    expect: "The commit is blocked: literal text is blanked before the sanitizer is looked for, so nothing on the line checks the parameter."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/sanitize/\" + file));\n  }\n}\n"}, expect: block}
+  - id: tc-118
+    category: trigger
+    prompt: "A request-to-path line carries a block comment naming a validator."
+    expect: "The commit is blocked: block comments are blanked like line comments, and the flow is still refused."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\" + file)); /* validator.isValid(file) */\n  }\n}\n"}, expect: block}
+  - id: tc-119
+    category: trigger
+    prompt: "A request-to-path line calls a sanitizer on a different value than the one the request supplied."
+    expect: "The commit is blocked: a sanitizer counts only when applied to the value the line carries from the request."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    audit(sanitize(other)); return Files.readAllBytes(Paths.get(\"/srv/files/\" + file));\n  }\n}\n"}, expect: block}
+  - id: tc-120
+    category: behavior
+    prompt: "The request parameter is reduced to its file name with FilenameUtils.getName inside the path call."
+    expect: "The commit passes: the sanitizer is a call applied to the request parameter itself."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\", FilenameUtils.getName(file)));\n  }\n}\n"}, expect: allow}
+  - id: tc-121
+    category: behavior
+    prompt: "The request parameter is resolved against a fixed base, normalized, and checked with startsWith before use."
+    expect: "The commit passes: normalize and startsWith are applied to the value built from the request parameter."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files/\", file).normalize();\n    if (!p.startsWith(\"/srv/files/\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}
