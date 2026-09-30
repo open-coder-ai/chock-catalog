@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "agentic-code-security",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. avoid: code execution on the host, unpinned MCP servers and models, shell-reaching tools, approvals switched off, whole-environment and credential-store leaks, TLS verification off, unbounded loops, SQL and eval built from strings, stripped provenance markers. 29 rules in 10 packs -- exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code, provenance -- each pack or rule allow|deny in .chock/agentic-security.json; bounds, prompt-memory and one supply rule start as allow.",
   "author": {
     "name": "chock-core"

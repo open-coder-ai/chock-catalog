@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~474 tokens (chars/4, max 2000)
+INDEX.md: ~478 tokens (chars/4, max 2000)
 Recompiled 1 policies
 agentic-code-security:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~474 tokens (chars/4, max 2000)
+INDEX.md: ~478 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -211,9 +211,22 @@ agentic-code-security  [deterministic]
   PASS  tc-118                             authored  media/sign.py:1: [deny: provenance-marker-removed] this change remo…
   PASS  tc-119                             authored  gate exit 0
   PASS  tc-120                             authored  .vscode/mcp.json:7: [deny: supply-mcp-unpinned-package CWE-829, ASI…
+  PASS  tc-122                             authored  agents/proxy.py:3: [deny: exec-autogen-local-execution CWE-94, ASI0…
+  PASS  tc-123                             authored  gate exit 0
+  PASS  tc-124                             authored  gate exit 0
+  PASS  tc-125                             authored  agents/proxy.py:3: [deny: exec-autogen-local-execution CWE-94, ASI0…
+  PASS  tc-126                             authored  agents/proxy.py:3: [deny: exec-autogen-local-execution CWE-94, ASI0…
+  PASS  tc-127                             authored  gate exit 0
+  PASS  tc-128                             authored  agents/tool.py:8: [deny: tools-shell-injection-via-tool-param CWE-7…
+  PASS  tc-129                             authored  agents/tool.py:9: [deny: tools-shell-injection-via-tool-param CWE-7…
+  PASS  tc-130                             authored  gate exit 0
+  PASS  tc-131                             authored  gate exit 0
+  PASS  tc-132                             authored  agents/tool.py:8: [deny: tools-shell-injection-via-tool-param CWE-7…
+  PASS  tc-133                             authored  .mcp.json:5: [deny: supply-mcp-unpinned-package CWE-829, ASI04] ser…
+  PASS  tc-134                             authored  gate exit 0
   score 1.00
 
-5 policies: 116 pass, 46 skipped
+5 policies: 129 pass, 46 skipped
 46 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -247,5 +260,5 @@ agentic-code-security  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **agentic-code-security**: agentic-code-security: a construct one of its rules denies -- the refusal above names the rule, its CWE and OWASP ASI entry, and the fix. At commit only findings HEAD did not already have are refused; as the agent writes and at its turn's end the whole file is judged. Each rule's verdict is allow|deny in .chock/agentic-security.json, per rule or per pack (exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code, provenance). Only a human reviewer waives a line, with # chock: allow <rule-id> (// in JavaScript), never the agent: in the agent a waiver counts once a human has committed it. JSON configs are waived in the selection file only. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **agentic-code-security**: agentic-code-security: a construct one of its rules denies -- the refusal above names the rule, its CWE and OWASP ASI entry, and the fix. Only what the change adds is refused, at commit, as the agent writes and at its turn's end: an old finding on lines it leaves alone never blocks. Each rule's verdict is allow|deny in .chock/agentic-security.json, per rule or per pack (exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code, provenance). Only a human reviewer waives a line, with # chock: allow <rule-id> (// in JavaScript), never the agent: in the agent a waiver counts once a human has committed it. JSON configs are waived in the selection file only. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

@@ -1747,3 +1747,68 @@ suite:
     category: behavior
     prompt: The agent writes a Python file that does not parse and holds text that looks like eval of a variable.
     expect: 'The write proceeds: a file that does not parse draws no finding from the rules that need the parse.'
+  - id: tc-122
+    category: trigger
+    prompt: "The agent writes an AutoGen proxy with use_docker False into agents/proxy.py."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\n"}, expect: block}
+  - id: tc-123
+    category: negative_trigger
+    prompt: "The agent writes a clean agents/proxy.py."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": True})\n"}, expect: allow}
+  - id: tc-124
+    category: behavior
+    prompt: "agents/proxy.py already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})  # chock: allow exec-autogen-local-execution\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})  # chock: allow exec-autogen-local-execution\nprint('ready')\n"}, expect: allow}
+  - id: tc-125
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in agents/proxy.py."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": True})\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})  # chock: allow exec-autogen-local-execution\n"}, expect: block}
+  - id: tc-126
+    category: trigger
+    prompt: "At the turn's end agents/proxy.py on disk holds an AutoGen proxy with use_docker False that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": True})\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\n"}, expect: block}
+  - id: tc-127
+    category: behavior
+    prompt: "At the turn's end agents/proxy.py adds a clean line but still holds a violation HEAD already had."
+    expect: "The turn ends: the violation is HEAD's and the added line is clean, so nothing the change adds is refused."
+    execute: {event: stop, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\nprint('ready')\n"}, expect: allow}
+  - id: tc-128
+    category: trigger
+    prompt: "At the turn's end a new line makes a variable carry a tool's string parameter into a subprocess call HEAD already had, unchanged."
+    expect: "The turn is blocked: the finding involves the assignment that completes the flow, and that line is new."
+    execute: {event: stop, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = 'ls'\n    return subprocess.run(command, shell=True)\n"}, writes: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n"}, expect: block}
+  - id: tc-129
+    category: trigger
+    prompt: "At the turn's end a new line passes a variable HEAD already filled from a tool's string parameter to a subprocess call."
+    expect: "The turn is blocked: the sink line is new, whatever the age of its source."
+    execute: {event: stop, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    print(command)\n    return 'ok'\n"}, writes: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    print(command)\n    subprocess.run(command, shell=True)\n    return 'ok'\n"}, expect: block}
+  - id: tc-130
+    category: behavior
+    prompt: "At the turn's end agents/tool.py adds an unrelated function and leaves a parameter-to-subprocess flow that HEAD already had."
+    expect: "The turn ends: no line the finding involves changed."
+    execute: {event: stop, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n"}, writes: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n\n\ndef one() -> int:\n    return 1\n"}, expect: allow}
+  - id: tc-131
+    category: behavior
+    prompt: "A commit adds a clean line to a file whose violation HEAD already had."
+    expect: "The commit passes: at commit, as at the turn's end, only what the change adds is judged."
+    execute: {event: commit, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\n"}, files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\nprint('ready')\n"}, expect: allow}
+  - id: tc-132
+    category: trigger
+    prompt: "A commit adds the line that makes a variable carry a tool's string parameter into a subprocess call HEAD already had, unchanged."
+    expect: "The commit is blocked: a finding is new when a line it involves is new, not only when its own line is."
+    execute: {event: commit, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = 'ls'\n    return subprocess.run(command, shell=True)\n"}, files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n"}, expect: block}
+  - id: tc-133
+    category: trigger
+    prompt: "At the turn's end an MCP server entry HEAD held with a package name on the args line changes its command line to npx, so the unchanged args line now runs an unpinned package."
+    expect: "The turn is blocked: the finding involves the server's whole entry, and the command line is new."
+    execute: {event: stop, head_files: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"node\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    }\n  }\n}\n"}, writes: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    }\n  }\n}\n"}, expect: block}
+  - id: tc-134
+    category: behavior
+    prompt: "At the turn's end an MCP config adds a pinned second server beside an unpinned one HEAD already had."
+    expect: "The turn ends: the old server's lines are unchanged (its closing comma aside), and the new server is clean."
+    execute: {event: stop, head_files: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    }\n  }\n}\n"}, writes: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    },\n    \"y\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/other@1.2.3\"]\n    }\n  }\n}\n"}, expect: allow}

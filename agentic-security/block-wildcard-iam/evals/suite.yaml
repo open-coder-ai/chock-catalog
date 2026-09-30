@@ -57,3 +57,33 @@ suite:
       files:
         breakglass.tf: "actions = [\"*\"]  # pragma: allowlist broad-privilege\n"
       expect: allow
+  - id: tc-007
+    category: trigger
+    prompt: "The agent writes a wildcard action grant into iam.tf."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"iam.tf": "actions = [\"*\"]\n"}, expect: block}  # pragma: allowlist broad-privilege
+  - id: tc-008
+    category: negative_trigger
+    prompt: "The agent writes a clean iam.tf."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"iam.tf": "actions = [\"s3:GetObject\"]\n"}, expect: allow}  # pragma: allowlist broad-privilege
+  - id: tc-009
+    category: behavior
+    prompt: "iam.tf already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"iam.tf": "actions = [\"*\"]  # pragma: allowlist broad-privilege\n"}, writes: {"iam.tf": "actions = [\"*\"]  # pragma: allowlist broad-privilege\nresources = [\"arn:aws:s3:::reports\"]\n"}, expect: allow}  # pragma: allowlist broad-privilege
+  - id: tc-010
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in iam.tf."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"iam.tf": "actions = [\"s3:GetObject\"]\n"}, writes: {"iam.tf": "actions = [\"*\"]  # pragma: allowlist broad-privilege\n"}, expect: block}  # pragma: allowlist broad-privilege
+  - id: tc-011
+    category: trigger
+    prompt: "At the turn's end iam.tf on disk holds a wildcard action grant that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"iam.tf": "actions = [\"s3:GetObject\"]\n"}, writes: {"iam.tf": "actions = [\"*\"]\n"}, expect: block}  # pragma: allowlist broad-privilege
+  - id: tc-012
+    category: negative_trigger
+    prompt: "At the turn's end iam.tf differs from HEAD only by a clean line; HEAD already holds an old violation."
+    expect: "The turn is allowed: only the lines the turn added are judged."
+    execute: {event: stop, head_files: {"iam.tf": "actions = [\"*\"]\n"}, writes: {"iam.tf": "actions = [\"*\"]\nresources = [\"arn:aws:s3:::reports\"]\n"}, expect: allow}  # pragma: allowlist broad-privilege

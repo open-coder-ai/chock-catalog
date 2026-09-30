@@ -69,8 +69,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 8
-  eval_executed: 8
+  eval_cases: 14
+  eval_executed: 14
   description: 'The mechanizable slice of prompt-injection defense, enforced at two points: at commit
     (the git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the
     agent writes) -- invisible and direction-override Unicode. Bidi controls make code read differently
@@ -127,8 +127,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 6
-  eval_executed: 6
+  eval_cases: 12
+  eval_executed: 12
   description: 'Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned
     version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest"
     arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists;
@@ -143,8 +143,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 7
-  eval_executed: 7
+  eval_cases: 13
+  eval_executed: 13
   description: 'Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess
     calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort
     line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05
@@ -158,8 +158,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 6
-  eval_executed: 6
+  eval_cases: 12
+  eval_executed: 12
   description: 'Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or Resource in
     IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform
     wildcard action/resource lists. An agent''s identity design stays with the advisory owasp-asi03
@@ -286,14 +286,14 @@ policies:
     guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.'
 - id: java-security
   path: base/java-security
-  version: 0.4.4
+  version: 0.5.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 95
-  eval_executed: 87
+  eval_cases: 107
+  eval_executed: 99
   description: >-
     trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut,
     Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates,
@@ -503,8 +503,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 16
-  eval_executed: 16
+  eval_cases: 17
+  eval_executed: 17
   description: 'The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook,
     over staged changes) and at agent tool-use (over a tool call''s arguments, as the agent
     writes) -- agent permission grants that allow everything. A settings file whose shell grant
@@ -522,8 +522,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 11
-  eval_executed: 11
+  eval_cases: 17
+  eval_executed: 17
   description: 'The mechanizable slice of CI supply-chain hardening, enforced at two points: at commit
     (the git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the
     agent writes) -- a workflow that references a third-party GitHub Action by a movable ref -- a
@@ -543,8 +543,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 73
-  eval_executed: 73
+  eval_cases: 79
+  eval_executed: 79
   description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
     and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency
     allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/)
@@ -636,8 +636,8 @@ policies:
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 26
-  eval_executed: 26
+  eval_cases: 32
+  eval_executed: 32
   description: 'Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password
     assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at
     agent tool-use (the mcp-gateway / agent write guard, over a tool call''s arguments), so a secret
@@ -663,8 +663,8 @@ policies:
   mandatory: false
   mechanism: dependency_allowlist
   enforces: enforced-at-commit
-  eval_cases: 5
-  eval_executed: 5
+  eval_cases: 9
+  eval_executed: 9
   description: 'Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt,
     pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in the
     allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable with
@@ -673,14 +673,14 @@ policies:
     end against HEAD).'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.2.0
+  version: 0.3.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 51
-  eval_executed: 51
+  eval_cases: 58
+  eval_executed: 58
   description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
     unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist
     -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude
@@ -690,7 +690,8 @@ policies:
     .mcp.json, best-effort (PreToolUse fails open on a crash; a write with no visible content fails
     closed). A script gate at commit and tool use parses every written MCP config (.mcp.json, .cursor/mcp.json,
     .vscode/mcp.json, claude_desktop_config.json, .gemini/settings.json, .codex/config.toml) against
-    the same allowlist; at commit only servers the change adds or alters are refused. No pragma.'
+    the same allowlist; only servers the change adds or alters are refused, at commit and tool use.
+    No pragma.'
 - id: block-test-skips
   path: base/block-test-skips
   version: 0.0.2
@@ -699,8 +700,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 12
-  eval_executed: 11
+  eval_cases: 18
+  eval_executed: 17
   description: 'Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip,
     it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip
     -- in test files, at commit and at agent tool-use. Only lines the change adds are judged (against
@@ -710,21 +711,21 @@ policies:
     so an agent that needs a new one must ask a person.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 15
-  eval_executed: 14
+  eval_cases: 22
+  eval_executed: 21
   description: 'Refuses agent-memory writes that hold what memory must never hold: pasted git history
     (diff headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines,
     a line that duplicates another, and secrets (scan-secrets'' pattern). Judges only memory files --
-    MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md -- and only the lines
-    the change adds relative to HEAD. Runs at commit and at agent tool-use; no waiver exists. Mechanised
-    slice of memory-discipline''s never_persist and chock-mise''s never(store): secrets. Structural
-    checks, not a judgement of whether a fact is worth remembering.'
+    MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, and at agent tool-use
+    the agent''s own stores outside the repository (~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md,
+    /memories/**) -- and only the lines the change adds. No waiver exists. Mechanised slice of memory-discipline''s
+    never_persist and chock-mise''s never(store): secrets. Structural checks only.'
 - id: limit-diff-size
   path: base/limit-diff-size
   version: 0.0.2
@@ -745,8 +746,8 @@ policies:
   mandatory: false
   mechanism: test_integrity
   enforces: enforced-at-commit
-  eval_cases: 14
-  eval_executed: 12
+  eval_cases: 19
+  eval_executed: 17
   description: 'Blocks a commit that turns tests green by weakening them instead of fixing the code:
     a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert
     True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test
@@ -757,14 +758,14 @@ policies:
     at commit only, never in the agent.'
 - id: agentic-code-security
   path: agentic-security/agentic-code-security
-  version: 0.1.0
+  version: 0.2.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 121
-  eval_executed: 116
+  eval_cases: 134
+  eval_executed: 129
   description: 'trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
     LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json,
     .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json),

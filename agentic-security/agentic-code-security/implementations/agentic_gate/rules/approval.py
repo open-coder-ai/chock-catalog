@@ -76,6 +76,7 @@ def _autoapprove(text: FileText) -> Iterator[Hit]:
             yield Hit(
                 mcp.line_for(text, server, f'"{tool}"'),
                 f"server {server.name!r} {key} includes {tool!r}, which changes state.",
+                mcp.block(text, server),
             )
 
 

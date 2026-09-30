@@ -69,3 +69,33 @@ suite:
       files:
         settings.py: "cfg = yaml.load(fh, Loader=yaml.SafeLoader)\n"
       expect: allow
+  - id: tc-008
+    category: trigger
+    prompt: "The agent writes the eval builtin over model output into handler.py."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"handler.py": "result = eval(llm_response)\n"}, expect: block}  # pragma: allowlist exec
+  - id: tc-009
+    category: negative_trigger
+    prompt: "The agent writes a clean handler.py."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"handler.py": "result = parse(llm_response)\n"}, expect: allow}  # pragma: allowlist exec
+  - id: tc-010
+    category: behavior
+    prompt: "handler.py already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"handler.py": "result = eval(llm_response)  # pragma: allowlist exec\n"}, writes: {"handler.py": "result = eval(llm_response)  # pragma: allowlist exec\nlog(result)\n"}, expect: allow}  # pragma: allowlist exec
+  - id: tc-011
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in handler.py."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"handler.py": "result = parse(llm_response)\n"}, writes: {"handler.py": "result = eval(llm_response)  # pragma: allowlist exec\n"}, expect: block}  # pragma: allowlist exec
+  - id: tc-012
+    category: trigger
+    prompt: "At the turn's end handler.py on disk holds the eval builtin over model output that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"handler.py": "result = parse(llm_response)\n"}, writes: {"handler.py": "result = eval(llm_response)\n"}, expect: block}  # pragma: allowlist exec
+  - id: tc-013
+    category: negative_trigger
+    prompt: "At the turn's end handler.py differs from HEAD only by a clean line; HEAD already holds an old violation."
+    expect: "The turn is allowed: only the lines the turn added are judged."
+    execute: {event: stop, head_files: {"handler.py": "result = eval(llm_response)\n"}, writes: {"handler.py": "result = eval(llm_response)\nlog(result)\n"}, expect: allow}  # pragma: allowlist exec

@@ -12,14 +12,15 @@ from pathlib import Path
 # copy raises here, and the runner treats an exit it did not ask for as a refusal, never an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from agentic_gate.changed import baseline
 from agentic_gate.engine import evaluate
 from agentic_gate.registry import registry
 from agentic_gate.selection import SelectionError, load
 
 ALLOW, REFUSE = 0, 1
 
-#: Where the person committing reviews what is staged: findings HEAD already had are not theirs to
-#: fix now, and a waiver there is a human's. Everywhere else the text is the agent's own.
+#: Where the person committing reviews what is staged, so a waiver there is a human's. Everywhere else the
+#: text is the agent's own. Every event judges only what the change adds; see agentic_gate.changed.
 HUMAN_EVENTS = frozenset({"commit", "push", "ci"})
 
 UNJUDGED = (
@@ -63,7 +64,15 @@ def main() -> int:
         return REFUSE
     human = payload.get("event") in HUMAN_EVENTS
     try:
-        findings = evaluate(payload.get("writes") or {}, verdicts, committed(root), human=human)
+        head = committed(root)
+        event = payload.get("event")
+        findings = evaluate(
+            payload.get("writes") or {},
+            verdicts,
+            head,
+            human=human,
+            before=lambda path, after: baseline(root, path, after, event, head),
+        )
     except Exception as exc:  # noqa: BLE001 -- any failure here refuses; it never falls through
         print(UNJUDGED.format(reason=f"{type(exc).__name__}: {exc}"), file=sys.stderr)
         return REFUSE

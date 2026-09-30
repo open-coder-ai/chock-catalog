@@ -422,3 +422,38 @@ suite:
       files:
         .mcp.json: "{\"mcpServers\": {\n"
       expect: block
+  - id: tc-052
+    category: trigger
+    prompt: "The agent writes an MCP config naming a server that is not on the allowlist."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, expect: block}
+  - id: tc-053
+    category: negative_trigger
+    prompt: "The agent writes an MCP config whose only server matches the allowlist."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, expect: allow}
+  - id: tc-054
+    category: behavior
+    prompt: "HEAD already holds an unlisted server and the agent rewrites the file, keeping it and adding another unlisted one."
+    expect: "The write is refused for the added server only; the one HEAD already held is not judged again."
+    execute: {event: tool_use, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}, \"other\": {\"command\": \"true\"}}}\n"}, expect: block}
+  - id: tc-055
+    category: trigger
+    prompt: "At the turn's end the MCP config on disk adds an unlisted server HEAD lacks."
+    expect: "The turn is blocked."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, expect: block}
+  - id: tc-056
+    category: behavior
+    prompt: "At the turn's end the MCP config on disk keeps an unlisted server HEAD already had and adds a listed one."
+    expect: "The turn ends: the disk already holds the written text, so HEAD is the baseline and only the added listed server is new."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}, \"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, expect: allow}
+  - id: tc-057
+    category: trigger
+    prompt: "At the turn's end the MCP config on disk keeps an unlisted server HEAD already had and adds another unlisted one."
+    expect: "The turn is blocked: the added server is judged even though an old unlisted one sits beside it."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}, \"worse\": {\"command\": \"npx\", \"args\": [\"-y\", \"worse-mcp-server\"]}}}\n"}, expect: block}
+  - id: tc-058
+    category: behavior
+    prompt: "At the turn's end the MCP config on disk changes the command of an unlisted server HEAD already had."
+    expect: "The turn is blocked: a changed command/args/url makes the server new."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\", \"--extra\"]}}}\n"}, expect: block}

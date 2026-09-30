@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a write that carries a Java construct a rule denies: staged at commit, or as it is written."""
+"""Refuse a write that adds a Java construct a rule denies: staged at commit, or as it is written."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from pathlib import Path
 # never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from chock_security.changed import baseline, only_new
 from chock_security.decision import ASK, DENY, UNJUDGED, FileText
 from chock_security.engine import evaluate
 from chock_security.rules import registry
@@ -69,7 +70,10 @@ def main() -> int:
         return REFUSE
     try:
         agent = payload.get("event") not in REVIEWED_EVENTS
-        findings = evaluate(files, verdicts, committed(root) if agent else None)
+        head = committed(root)
+        findings = evaluate(files, verdicts, head if agent else None)
+        before = {f.path: baseline(root, f.path, f.text, payload.get("event"), head) for f in files}
+        findings = only_new(findings, files, before)
     except Exception as exc:  # noqa: BLE001 -- any failure here refuses; it never falls through
         print(UNJUDGED.format(reason=f"{type(exc).__name__}: {exc}"), file=sys.stderr)
         return REFUSE

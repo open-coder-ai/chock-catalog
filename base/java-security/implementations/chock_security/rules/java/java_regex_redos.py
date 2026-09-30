@@ -27,7 +27,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     """Every Pattern.compile() a method body shows request data reaching as the pattern itself."""
     for flow in flows(text, _FACTS["sinks"], sanitizers=tuple(_FACTS["sanitizers"])):
         message = _MESSAGE.format(source=flow.source)
-        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message)
+        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message, related=flow.related)
 
 
 RULE = Rule(

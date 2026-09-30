@@ -99,6 +99,10 @@ verify-dependency-exists  [deterministic]
   PASS  tc-003                             authored  gate exit 0
   PASS  tc-004                             authored  Unknown dependency blocked. Verify the package exists in the offici…
   PASS  tc-005                             authored  gate exit 0
+  PASS  tc-006                             authored  Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  tc-007                             authored  gate exit 0
+  PASS  tc-008                             authored  Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  tc-009                             authored  gate exit 0
   PASS  derived-dep-block-requirements.txt derived   Unknown dependency blocked. Verify the package exists in the offici…
   PASS  derived-dep-allow-requirements.txt derived   gate exit 0
   PASS  derived-dep-block-pyproject.toml   derived   Unknown dependency blocked. Verify the package exists in the offici…
@@ -109,7 +113,7 @@ verify-dependency-exists  [deterministic]
   PASS  derived-dep-allow-go.mod           derived   gate exit 0
   score 1.00
 
-5 policies: 13 pass, 41 skipped
+5 policies: 17 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

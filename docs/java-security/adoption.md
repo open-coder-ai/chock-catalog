@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~460 tokens (chars/4, max 2000)
+INDEX.md: ~485 tokens (chars/4, max 2000)
 Recompiled 1 policies
 java-security:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~460 tokens (chars/4, max 2000)
+INDEX.md: ~485 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -182,9 +182,21 @@ java-security  [deterministic]
   PASS  tc-093                             authored  src/main/java/com/acme/Importer.java:3: [deny: style-system-out-pri…
   PASS  tc-094                             authored  src/test/java/com/acme/ImporterTest.java:2: [deny: testing-no-asser…
   PASS  tc-095                             authored  gate exit 0
+  PASS  tc-096                             authored  p.html:1: [deny: java-xss-unescaped-template CWE-79] th:utext write…
+  PASS  tc-097                             authored  gate exit 0
+  PASS  tc-098                             authored  gate exit 0
+  PASS  tc-099                             authored  p.html:1: [deny: java-xss-unescaped-template CWE-79] th:utext write…
+  PASS  tc-100                             authored  p.html:1: [deny: java-xss-unescaped-template CWE-79] th:utext write…
+  PASS  tc-101                             authored  gate exit 0
+  PASS  tc-102                             authored  C.java:4: [deny: java-path-traversal-request-data CWE-22, CWE-73] T…
+  PASS  tc-103                             authored  C.java:5: [deny: java-path-traversal-request-data CWE-22, CWE-73] T…
+  PASS  tc-104                             authored  gate exit 0
+  PASS  tc-105                             authored  gate exit 0
+  PASS  tc-106                             authored  p.html:2: [deny: java-xss-unescaped-template CWE-79] th:utext write…
+  PASS  tc-107                             authored  C.java:3: [deny: java-path-traversal-request-data CWE-22, CWE-73] T…
   score 1.00
 
-5 policies: 87 pass, 49 skipped
+5 policies: 99 pass, 49 skipped
 49 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -218,5 +230,5 @@ java-security  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Only what the change adds is refused: a violation on lines the change leaves alone never blocks it. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

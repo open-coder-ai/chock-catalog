@@ -106,6 +106,18 @@ def _is_sink(call: ast.Call, bare: frozenset[str]) -> bool:
     return name.startswith("subprocess.") or name in _OS_SINKS or name in bare
 
 
+def _trail(fn: ast.FunctionDef | ast.AsyncFunctionDef, tainted: set[str]) -> tuple[int, ...]:
+    """The lines the model's string travels through: the tool's signature and each assignment that carries it on."""
+    first = min([fn.lineno, *(d.lineno for d in fn.decorator_list)])
+    lines = set(range(first, max(fn.body[0].lineno, fn.lineno + 1)))
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Assign | ast.AnnAssign | ast.AugAssign) and node.value:
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(isinstance(t, ast.Name) and t.id in tainted for target in targets for t in ast.walk(target)):
+                lines.update(range(node.lineno, (node.end_lineno or node.lineno) + 1))
+    return tuple(sorted(lines))
+
+
 def _shell_flow(text: FileText) -> Iterator[Hit]:
     parsed = tree(text)
     if parsed is None:
@@ -117,7 +129,11 @@ def _shell_flow(text: FileText) -> Iterator[Hit]:
         for call in (n for n in ast.walk(fn) if isinstance(n, ast.Call) and _is_sink(n, bare)):
             values = [*call.args, *(kw.value for kw in call.keywords)]
             if name := next((found for v in values if (found := _flows(v, tainted))), None):
-                yield Hit(call.lineno, f"tool {fn.name!r} passes the model's string {name!r} to {callee(call)}.")
+                yield Hit(
+                    call.lineno,
+                    f"tool {fn.name!r} passes the model's string {name!r} to {callee(call)}.",
+                    _trail(fn, tainted),
+                )
 
 
 def _shell_tool(text: FileText) -> Iterator[Hit]:

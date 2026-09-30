@@ -33,6 +33,8 @@ class Finding:
     verdict: str = DENY
     #: The rule's CWE ids, so the refusal names the weakness it is evidence of.
     cwe: tuple[str, ...] = ()
+    #: Other lines the finding depends on (a flow's source and hops), so a change to one of them is a change to it.
+    related: tuple[int, ...] = ()
 
     def render(self) -> str:
         """One line a human reads in a hook's output. The matched line is never echoed."""

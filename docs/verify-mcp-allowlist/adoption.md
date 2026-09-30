@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~375 tokens (chars/4, max 2000)
+INDEX.md: ~374 tokens (chars/4, max 2000)
 Recompiled 1 policies
 verify-mcp-allowlist:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~375 tokens (chars/4, max 2000)
+INDEX.md: ~374 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -147,9 +147,16 @@ verify-mcp-allowlist  [deterministic]
   PASS  tc-049                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'worse'…
   PASS  tc-050                             authored  gate exit 0
   PASS  tc-051                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: not par…
+  PASS  tc-052                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'evil' …
+  PASS  tc-053                             authored  gate exit 0
+  PASS  tc-054                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'other'…
+  PASS  tc-055                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'evil' …
+  PASS  tc-056                             authored  gate exit 0
+  PASS  tc-057                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'worse'…
+  PASS  tc-058                             authored  verify-mcp-allowlist: MCP server config refused: .mcp.json: 'evil' …
   score 1.00
 
-5 policies: 51 pass, 41 skipped
+5 policies: 58 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -195,5 +202,5 @@ verify-mcp-allowlist  [deterministic]
 ```text
 - **verify-mcp-allowlist**:
   mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-  allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex at commit(added only)+tool_use
+  allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex added-only at commit+tool_use
 ```

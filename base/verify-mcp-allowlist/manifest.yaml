@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.2.0"
+version: "0.3.0"
 description: >
   Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
   unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the
@@ -11,14 +11,14 @@ description: >
   The shell guard reads Claude Code's .mcp.json, best-effort (PreToolUse fails open on a crash; a
   write with no visible content fails closed). A script gate at commit and tool use parses every
   written MCP config (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json,
-  .gemini/settings.json, .codex/config.toml) against the same allowlist; at commit only servers
-  the change adds or alters are refused. No pragma.
+  .gemini/settings.json, .codex/config.toml) against the same allowlist; only servers the change
+  adds or alters are refused, at commit and tool use. No pragma.
 artifact: rule
 enforcement: advise
 rule:
   text: |
     mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-    allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex at commit(added only)+tool_use
+    allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex added-only at commit+tool_use
 hook:
   gate:
     kind: script
@@ -62,6 +62,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.0
+  date: '2026-09-30'
+  changes:
+  - "The script gate judges only what the change adds at tool use too, not just at commit. A server is judged when its name+source pair is absent from the baseline: a new server, or one whose command/args/url changed. Baseline per event: HEAD at commit and push; at PreToolUse the file on disk before the write; at the turn's end (disk already holds the written text) HEAD; a new config file has every server new. A renamed server with unchanged config counts as new, so an unlisted new name is still refused, as the guard's name+source rule has it. A server the turn did not touch no longer blocks the agent at the turn's end. Eval tc-056 (stop, an old unlisted server plus an added listed one) flips block to allow; tc-057 (stop adds an unlisted server) and tc-058 (stop alters an old server) block; tc-054's wording now says the added server is what is refused."
 - version: 0.2.0
   date: '2026-09-29'
   changes:

@@ -8,8 +8,8 @@ suite:
     pass_rate:
       direction: higher_is_better
       threshold: 1.0
-  # Executable cases stage memory files and run the gate at commit in a throwaway repository. The
-  # same script runs at agent tool-use over the file being written. Negatives include the same
+  # Cases stage memory files and run the gate at commit in a throwaway repository; the same script runs at
+  # tool-use (outside paths arrive absolute, via outside_repo) and at stop. Negatives include the same
   # content outside a memory path, a block of exactly twenty lines, and a duplicate already in HEAD.
   cases:
   - id: tc-001
@@ -220,3 +220,72 @@ suite:
     category: edge
     prompt: The agent is asked to remember the diff of the last commit.
     expect: 'The agent records the one-line decision and links the commit; it does not paste the diff. (Text case: the implicit form of the same intent.)'
+  - id: tc-016
+    category: trigger
+    prompt: The agent writes pasted git history into its own project memory store, outside the repository.
+    expect: 'The write is refused before it happens.'
+    execute:
+      writes:
+        /Users/dev/.claude/projects/-work-app/memory/MEMORY.md: |
+          - deploys go through the release branch
+          diff --git a/app.py b/app.py
+      event: tool_use
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: The agent adds a repeated line to the user-level CLAUDE.md.
+    expect: 'The write is refused: a duplicate line.'
+    execute:
+      writes:
+        /Users/dev/.claude/CLAUDE.md: |
+          - prefers uv
+          - prefers uv
+      event: tool_use
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: The agent writes a secret to the memory directory Copilot's memory tool uses.
+    expect: 'The write is refused: secrets are never stored.'
+    execute:
+      writes:
+        /memories/notes.md: "aws key: AKI\u0041IOSFODNN7EXAMPLE\n"
+      event: tool_use
+      expect: block
+  - id: tc-019
+    category: negative_trigger
+    prompt: The agent records one short non-derivable fact in its project memory store.
+    expect: The write is allowed.
+    execute:
+      writes:
+        /Users/dev/.claude/projects/-work-app/memory/prefs.md: |
+          - terse answers, uv not pip
+      event: tool_use
+      expect: allow
+  - id: tc-020
+    category: negative_trigger
+    prompt: The agent writes git-history text to an outside file that is not a memory store.
+    expect: 'The write is allowed: only declared memory paths are judged.'
+    execute:
+      writes:
+        /Users/dev/.claude/settings.json: |
+          diff --git a/app.py b/app.py
+      event: tool_use
+      expect: allow
+  - id: tc-021
+    category: trigger
+    prompt: At the turn's end the worktree's MEMORY.md holds a pasted index line the turn added.
+    expect: 'The turn is blocked: the diff against HEAD adds git history.'
+    execute:
+      head_files: {MEMORY.md: "- a fact\n"}
+      writes: {MEMORY.md: "- a fact\nindex abc1234..def5678 100644\n"}
+      event: stop
+      expect: block
+  - id: tc-022
+    category: negative_trigger
+    prompt: At the turn's end MEMORY.md differs from HEAD only by a clean fact; the duplicate is old.
+    expect: 'The turn is allowed: only the lines the turn added are judged.'
+    execute:
+      head_files: {MEMORY.md: "- a fact\n- a fact\n"}
+      writes: {MEMORY.md: "- a fact\n- a fact\n- another fact\n"}
+      event: stop
+      expect: allow

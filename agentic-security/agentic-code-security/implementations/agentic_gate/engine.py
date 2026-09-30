@@ -1,4 +1,4 @@
-"""Run the rules the selection leaves on, and keep only what is new and not waived by a human."""
+"""Run the rules the selection leaves on, and keep only what the change adds and no human waived."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
 
+from agentic_gate.changed import only_new
 from agentic_gate.model import ALLOW, FileText, Finding, Rule
 from agentic_gate.registry import registry
 
@@ -67,21 +68,10 @@ def _scan(text: FileText, acting: Mapping[str, Rule]) -> list[Finding]:
         for hit in rule.scan(text):
             line = lines[hit.line_no - 1].strip() if 0 < hit.line_no <= len(lines) else ""
             message = f"{hit.detail} Fix: {rule.fix}"
-            findings.append(Finding(rule.id, text.path, hit.line_no, line, message, rule.cwe, rule.asi))
+            findings.append(
+                Finding(rule.id, text.path, hit.line_no, line, message, rule.cwe, rule.asi, hit.related, hit.by_diff)
+            )
     return findings
-
-
-def _new_only(found: list[Finding], committed: list[Finding]) -> list[Finding]:
-    """Drop what HEAD already had: same rule, same line text, as many times as HEAD had it."""
-    left = Counter((f.rule_id, f.line) for f in committed)
-    fresh: list[Finding] = []
-    for finding in found:
-        key = (finding.rule_id, finding.line)
-        if left[key] > 0:
-            left[key] -= 1
-        else:
-            fresh.append(finding)
-    return fresh
 
 
 def evaluate(
@@ -90,13 +80,14 @@ def evaluate(
     head: Reader,
     *,
     human: bool,
+    before: Callable[[str, str], str | None] | None = None,
 ) -> list[Finding]:
-    """Findings from every rule the selection did not set to allow.
+    """Findings from every rule the selection did not set to allow, on what the change adds.
 
-    `human` is the commit, the push and CI, where the person committing reviews what is staged:
-    only what HEAD did not already have is refused, and any waiver counts. Everywhere else (as the
-    agent writes, and at its turn's end) the whole written file is judged and a waiver counts only
-    on a line a human already committed.
+    A finding stays when a line it involves is new against the baseline `before(path, written)` names
+    (HEAD when not given): see `changed`. `human` is the commit, the push and CI, where any waiver
+    counts; everywhere else (as the agent writes, and at its turn's end) a waiver counts only on a line
+    a human already committed.
     """
     acting = {rule_id: rule for rule_id, rule in registry().items() if verdicts.get(rule_id, ALLOW) != ALLOW}
     findings: list[Finding] = []
@@ -105,8 +96,7 @@ def evaluate(
         others = tuple(other for other_path, other in writes.items() if other_path != path)
         text = FileText(path, body, committed, others)
         found = _scan(text, acting)
-        if human and committed is not None:
-            found = _new_only(found, _scan(FileText(path, committed), acting))
+        found = only_new(found, text, before(path, body) if before else committed)
         honoured = None if human else reviewed_lines(text, committed)
         findings.extend(f for f in found if not waived(f, text, honoured))
     return findings
