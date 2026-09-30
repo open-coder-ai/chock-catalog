@@ -11,7 +11,7 @@ found. Three things hold for each one:
 
 A policy that ships a mechanism must prove it both ways: at least one case it refuses and one it
 allows. java-security's script gate and the a11y guard have their own suites (tests/java_security,
-tools/check_a11y_*), because chock's replay does not run a script gate.
+tools/check_a11y_*, and the two tool_call gates' tests/policies/test_*_gate.py), because chock's replay does not run a script gate.
 """
 
 from __future__ import annotations
@@ -28,7 +28,13 @@ from trees import ROOT, policy_dirs
 
 POLICIES = policy_dirs()
 #: Replayed by their own suites; chock's replay cannot drive a script gate or an event script.
-OWN_SUITES = {"java-security", "no-a11y-regression", "agentic-code-security"}
+OWN_SUITES = {
+    "java-security",
+    "no-a11y-regression",
+    "agentic-code-security",
+    "firecrawl-fallback-only",
+    "token-efficiency",
+}
 
 
 def _manifest(policy_dir: Path) -> dict:

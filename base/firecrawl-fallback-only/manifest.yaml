@@ -1,6 +1,6 @@
 id: firecrawl-fallback-only
 name: "Firecrawl Fallback Only"
-version: "0.0.1"
+version: "0.1.0"
 description: >
   trigger: web research where a direct fetch fails, is blocked, or needs JS rendering.
   avoid: reaching for the Firecrawl connector as the default fetch path.
@@ -10,10 +10,26 @@ rule:
   text: |
     web_access: prefer(native: WebFetch|WebSearch|curl); firecrawl_connector: fallback_only
     use_firecrawl_if: research_task & direct_fetch(failed|blocked|js_only|rate_limited); never(default): firecrawl; on_use: note_fallback_reason
+hook:
+  gate:
+    kind: script
+    "on": [tool_call]
+    action: warn
+    message: >
+      Firecrawl is a fallback: no failed WebFetch, WebSearch, curl or wget call is on record in
+      this session. Try a native fetch first, and note why Firecrawl was needed if you go on.
+    params:
+      script: firecrawl-fallback-gate.py
+      tools: ["mcp__*Firecrawl__*"]
+effects:
+- read_only
+approval:
+  required: false
+
 provenance:
   author: "chock-core"
   created_at: "2026-08-31T18:16:54Z"
-  updated_at: "2026-08-31T18:16:54Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -27,6 +43,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Warn gate on the tool_call event (implementations/firecrawl-fallback-gate.py, stdlib) for any mcp__*Firecrawl__* tool. It reads the session log through chock_session and stays silent once a WebFetch or WebSearch call, or a Bash curl or wget, has finished in error earlier in the session; otherwise it warns (exit 4). A missing, empty or unreadable log, or an install without the helper, has no failure on record and so warns too, and the gate's action is warn, so it can never block or stop a run. Warn rather than ask because the log sees only errors a tool reports: a blocked page that returns 200, a JS-only shell or a rate limit is a legitimate fallback it cannot see, and an ask would stall headless runs and vendors that log no post records. Whether the page really needed rendering, and the note of the fallback reason, stay advisory."
 - version: 0.0.1
   date: '2026-08-31'
   changes:

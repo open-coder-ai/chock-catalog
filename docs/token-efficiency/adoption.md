@@ -50,6 +50,9 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~320 tokens (chars/4, max 2000)
 Recompiled 1 policies
 token-efficiency:
@@ -70,6 +73,12 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 3 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~320 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -81,15 +90,26 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 44 skipped
-44 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 48 skipped
+48 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
 
 ```text
+.chock/compiled/token-efficiency/agent-hooks/tool-call-gate.json
+.chock/compiled/token-efficiency/agent-hooks/tool-call-hooks.json
 .chock/compiled/token-efficiency/ambient-rule/ambient.md
 .chock/compiled/token-efficiency/managed-setting/managed-settings.json
+.chock/compiled/token-efficiency/pre-tool-use/codex_cli-tool-call-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/cursor-post-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/cursor-postfailure-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/cursor-tool-call-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/gemini_cli-tool-call-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/posttooluse.json
+.chock/compiled/token-efficiency/pre-tool-use/posttoolusefailure.json
+.chock/compiled/token-efficiency/pre-tool-use/pretooluse-toolcall.json
+.chock/compiled/token-efficiency/pre-tool-use/tool-call-gate.json
 ```
 
 ## INDEX.md entry

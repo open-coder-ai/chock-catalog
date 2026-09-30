@@ -32,6 +32,8 @@ source = [
     "base/block-test-skips/implementations",
     "base/guard-memory-writes/implementations",
     "base/limit-diff-size/implementations",
+    "base/firecrawl-fallback-only/implementations",
+    "base/token-efficiency/implementations",
 ]
 # The build tools written to this bar, by module name (tools/ is on pytest's pythonpath). Older tools
 # join as they are next changed; tests/build_tools/ holds their tests.
