@@ -16,4 +16,4 @@ on(commit|tool_use): block(script) script=agentic-code-security-gate.py
 agentic-code-security: a construct one of its rules denies -- the refusal above names the rule, its CWE and OWASP ASI entry, and the fix. Only what the change adds is refused, at commit, as the agent writes and at its turn's end: an old finding on lines it leaves alone never blocks. Each rule's verdict is allow|deny in .chock/agentic-security.json, per rule or per pack (exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code, provenance). Only a human reviewer waives a line, with # chock: allow <rule-id> (// in JavaScript), never the agent: in the agent a waiver counts once a human has committed it. JSON configs are waived in the selection file only.
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` blocks at commit, on an agent's file writes and at turn end. See https://github.com/open-coder-ai/chock

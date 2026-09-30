@@ -13,7 +13,7 @@
     "policy-as-code",
     "hook",
     "block",
-    "{'control': 'asi04', 'coverage': 'partial', 'note': 'blocks unpinned launches a diff can show; signature verification, provenance, and aibom remain advisory (owasp-asi04-agentic-supply-chain). language manifests are verify-dependency-exists.'}"
+    "asi04"
   ],
   "extensions": {
     "io.github.open-coder-ai": {

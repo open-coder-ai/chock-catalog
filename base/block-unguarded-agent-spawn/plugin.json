@@ -13,7 +13,7 @@
     "policy-as-code",
     "rule",
     "advise",
-    "{'control': 'asi10', 'coverage': 'partial', 'note': 'refuses launching a sub-agent with approvals or sandbox switched off from the shell; agent inventory, expiry, monitoring and a kill switch stay with the advisory owasp-asi10-rogue-agents policy'}"
+    "asi10"
   ],
   "extensions": {
     "io.github.open-coder-ai": {

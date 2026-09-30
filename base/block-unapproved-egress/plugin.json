@@ -13,7 +13,7 @@
     "policy-as-code",
     "rule",
     "advise",
-    "{'control': 'asi02', 'coverage': 'partial', 'note': 'raises the floor against tool-channel data exfiltration to unapproved hosts; a tool-time guard, not a network sandbox -- obfuscated, non-standard-client and runtime egress remain out of reach'}"
+    "asi02"
   ],
   "extensions": {
     "io.github.open-coder-ai": {

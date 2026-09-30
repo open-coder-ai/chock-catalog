@@ -13,7 +13,7 @@
     "policy-as-code",
     "rule",
     "advise",
-    "{'control': 'asi02', 'coverage': 'partial', 'note': 'blocks shell self-modification of ci workflow, action and dependency-automation files; server-side branch protection and required-status-checks remain the backstop an agent cannot self-approve'}"
+    "asi02"
   ],
   "extensions": {
     "io.github.open-coder-ai": {

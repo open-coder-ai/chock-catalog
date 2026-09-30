@@ -13,7 +13,7 @@
     "policy-as-code",
     "hook",
     "block",
-    "{'control': 'asi05', 'coverage': 'partial', 'note': 'blocks the greppable primitives; sandbox containment and egress policy remain advisory (owasp-asi05-unexpected-code-execution)'}"
+    "asi05"
   ],
   "extensions": {
     "io.github.open-coder-ai": {

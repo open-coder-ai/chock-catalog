@@ -14,7 +14,7 @@
       "id": "block-curl-pipe-sh",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "45ed42fcc64ab0b35440d78fd6605c50f5fa49ceb44ceb1f299751d7f04dd07d",
+      "sha256": "1cbd84ae22acdd3cf0e79687179bdc3b214305ae6db77c7fbb28953ed3a45ae6",
       "source": "local",
       "artifacts_sha256": "e484a4f49106bb633ede00e3585abf2044ef3ae1aa3bd07846342e99a9f6804a"
     },
@@ -22,7 +22,7 @@
       "id": "block-destructive-commands",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "7b571e9b8696697355b379d310aa4dd3525a5a230c477c16bb683aba19db71d9",
+      "sha256": "ba1108ffdfce230bf66ee9d83a71c46cddb7d7c995759d4daee987439107afc6",
       "source": "local",
       "artifacts_sha256": "a0e8f4649a534679188e9e5dc465331036352753b9e473c19c6925aa123fe7ce"
     },
@@ -30,7 +30,7 @@
       "id": "block-invisible-unicode",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "983a4528dee8b0c1d2779273f9ef2addc53d12f2729795e4a1ba78e561ac166f",
+      "sha256": "bc91b8805d38ab92649b5eb69cf7a40c311ad86263ba343935ba4a5a4c3a8d3e",
       "source": "local",
       "artifacts_sha256": "c1facf023eedad82a8ba80f1305fe7181fce15118fab0997e1e3c84e3ecdc16d"
     },
@@ -38,7 +38,7 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "775a05cc11450dbf4320fb7a8a8c4f30c856ff969e12b72e00c03e4a5b10f6e9",
+      "sha256": "67c7a06a6676eb0ecc8f929dbdf8fc181ead721c8aa7b6e0f29e1757fdfbb3ff",
       "source": "local",
       "artifacts_sha256": "a7f9f231d90199cfa70f4d7d3bbb867872f7406b5b9728ce3eaf05273f6fa8d8"
     },
@@ -46,7 +46,7 @@
       "id": "block-unapproved-egress",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "0657df827cc57c0a586f12e1392f45d4f06669d196c95b011a5b83ae64e7e08f",
+      "sha256": "053c5ad74e9ce9f3c3dc2e87d42742bebff0b754bad96b09e6ba996144a57e2c",
       "source": "local",
       "artifacts_sha256": "1fdca2a801005f82ccd7b3012c9a6bad233666f5b9dec2b2ca0b5bad9827f5eb"
     },
@@ -54,9 +54,9 @@
       "id": "block-wildcard-agent-permissions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "898d2dd802941d09a775f5f00a2ea56543d85433bfcf3535a5563c06c8cb32e7",
+      "sha256": "123c2f3a5c286c2677f00e0ac93cef75c4604e84a1af2464fb89c91b0575aed4",
       "source": "local",
-      "artifacts_sha256": "393f17ade534f8d7116c6156fc20041d8a514f72f657465ea095359d88d1290d"
+      "artifacts_sha256": "cb2ef666328377d02d295fb8a5febfc10269c4d31888e31a8ca97b15cda6a7e7"
     },
     {
       "id": "code-safety",
@@ -78,7 +78,7 @@
       "id": "firecrawl-fallback-only",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "cfcfbb81384930c046c362b13b5c63f6345d54e434217c472a943aca3950904e",
+      "sha256": "7b3d1cae0c95569ace19d56fad74649e736eebdf46f4fa260b5ab7794f026d1c",
       "source": "local",
       "artifacts_sha256": "b2e494556349b736e81969330aac730a696ea1761a6e83415c2e8eb25097ef79"
     },
@@ -110,15 +110,15 @@
       "id": "pin-github-actions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "70ac075941841e3c8f9b49a99f44b61ca7e7e8fec87b221cf97a46b4a09b599e",
+      "sha256": "53677765d84916220ac717424bbdf9dce4089257bfc873a3ed354cdb38f7865c",
       "source": "local",
-      "artifacts_sha256": "a33f59a73ab35f1f0eea61f83b20aedd01992e740dbc3fdc539a844bd7289a35"
+      "artifacts_sha256": "d06407114c835bf72632fd2258992c8fb2880c02611f067d24c194536d236b8d"
     },
     {
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "1038054491c268d0d29fbb5c0b7ccc65b3922e0f5d075293861112c3d6f6a2aa",
+      "sha256": "29c1a18fa1bd3ee2ab34a0ea1d1c07617a5841b8afbd65ad8704d31093c4fcc9",
       "source": "local",
       "artifacts_sha256": "1c0ff90bc064dec5020334067a1e3d12b0c9863556a4376df4a4e3156a35caea"
     },
@@ -126,7 +126,7 @@
       "id": "protect-ci-workflows",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "3c1d39b17c2c3b5274a394cb139c71b7799a23663affd1045cf2b83545e9fd4e",
+      "sha256": "021ed1f8108978fc95ed1796f681d8aeaeda17783e43ffb75a79b9fe4ebbcf79",
       "source": "local",
       "artifacts_sha256": "2e038349485f56a17b61c44045cfca8aac507ffa08dd52963bfb07c4174bc64c"
     },
@@ -134,7 +134,7 @@
       "id": "protect-commit-privacy",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "3616df348241bb3f780adc15c6ce4f44b3f066cb0bdcc0243013b2b599e60517",
+      "sha256": "22045da796ba466d8043b7d4322b6dbfdcc46e3fd9709221c505acdf24d08119",
       "source": "local",
       "artifacts_sha256": "665406f2237cdaac186f229005504d9611aade4dad8946d124a8d6221601592b"
     },
@@ -142,7 +142,7 @@
       "id": "protect-main-branch",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "316bd80a2fdbeb098f8477503af8c9e0977cf11be4e32572d87014ef062e055d",
+      "sha256": "a0c154b0e2fc31a90f518419d29177a487702f881e7f0158e566271d5a8a61a8",
       "source": "local",
       "artifacts_sha256": "18bb4772936ece0e374fb48e1a09fdbf946fb82381ed30687c0bcc8a10d4643c"
     },
@@ -150,15 +150,15 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "de02e9e9650474a882e264967352038d5100c565c41e97e4b5acef9aef7a0551",
+      "sha256": "c1f1f3bc70dbf5ae6a84c3dc8e6489355afd847ddde204772eb4c5fd3fb3a4f9",
       "source": "local",
-      "artifacts_sha256": "5166c048549ad13fd6b63ef7a65bcf1a1975cc5154a872b242c9fdfaef3b09b4"
+      "artifacts_sha256": "03d7151bae8c6343fb090375426b8d99e65b62728663db9a590bdc876b776fc4"
     },
     {
       "id": "token-efficiency",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "97c72ed40896f500d7f3ff14d94fd8fbdfca796319bc3b2dcbfa35cb95ccb7fc",
+      "sha256": "cea845541e17c74ce0ffe8fd269c1b00d649d96c61a0b504a185b7ed6e247b4e",
       "source": "local",
       "artifacts_sha256": "0a8e53b16fa7170987065591572186a4c9240654edbeca5b6eefb66f820de7bc"
     },
@@ -174,14 +174,14 @@
       "id": "verify-dependency-exists",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "805409b7d5a018fd49a949ee524e3f2706b5c30804b6ad62587e2ecccb48dd87",
+      "sha256": "005680c3df7ab7272edf4e45d3ea1f56dec2fedd8a8f78b75b1555c8ccbe762b",
       "source": "local"
     },
     {
       "id": "verify-mcp-allowlist",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "b4f4f4a6a6e080f452d530b1fd3bf8c2c64be488c496890df30a3b6208024636",
+      "sha256": "94c151a546c3a069dc4fb3dc4a63aebd8bb34893dbbf986cbce4a456271c7774",
       "source": "local",
       "artifacts_sha256": "d430322f92a09d927c2b84693eec196c2001bc7a11e5883cd600f79cf139dfb9"
     }
