@@ -66,7 +66,15 @@ def run_script(
     policy: str, name: str, cwd: Path, stdin: str = "", env: dict[str, str] | None = None
 ) -> tuple[int, str]:
     """Run the script as a process the way a hook runner does; (exit code, stderr)."""
-    proc = subprocess.run(
+    proc = run_script_full(policy, name, cwd, stdin, env)
+    return proc.returncode, proc.stderr
+
+
+def run_script_full(
+    policy: str, name: str, cwd: Path, stdin: str = "", env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    """Run the script as a process the way a hook runner does; the whole result, stdout included."""
+    return subprocess.run(
         [sys.executable, str(script_path(policy, name))],
         cwd=cwd,
         input=stdin,
@@ -75,4 +83,3 @@ def run_script(
         env=env,
         check=False,
     )
-    return proc.returncode, proc.stderr

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -33,7 +34,7 @@ OLD_HTML = '<p th:utext="${bio}"></p>\n'
 
 def stdout_of(text: str, path: str = "C.java", **extra: object) -> dict:
     payload = json.dumps({"event": "commit", "repo_root": ".", "writes": {path: text}, **extra})
-    proc = subprocess.run(  # noqa: S603 -- the shipped gate, run as a hook runner does
+    proc = subprocess.run(
         [sys.executable, str(GATE)], input=payload, capture_output=True, text=True, check=False, timeout=60
     )
     return json.loads(proc.stdout)
@@ -138,3 +139,10 @@ def test_a_new_file_is_judged_whole(tmp_path: Path) -> None:
     repo = repo_at(tmp_path, {"README.txt": "x\n"})
     assert stop(repo, {"p.html": OLD_HTML}) == 1
     assert stop(repo, {"q.html": "<p>x</p>\n"}) == 0
+
+
+def test_a_missing_repository_has_no_committed_text(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location("java_security_gate", GATE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.committed(tmp_path / "absent")("a.py") is None

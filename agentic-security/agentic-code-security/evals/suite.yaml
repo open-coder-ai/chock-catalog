@@ -1576,7 +1576,7 @@ suite:
     category: behavior
     prompt: The agent edits a file that already carries an unwaived verify=False finding at HEAD, changing an unrelated
       line.
-    expect: 'The write is refused: as the agent writes, the whole file is judged, not the diff.'
+    expect: 'The write is allowed: only findings the baseline did not already have are refused.'
   - id: tc-108
     category: behavior
     prompt: 'A human reviewer''s `# chock: allow comms-tls-verify-disabled` sits on the verify=False line in the
@@ -1780,7 +1780,7 @@ suite:
   - id: tc-128
     category: trigger
     prompt: "At the turn's end a new line makes a variable carry a tool's string parameter into a subprocess call HEAD already had, unchanged."
-    expect: "The turn is blocked: the finding involves the assignment that completes the flow, and that line is new."
+    expect: "The turn is blocked: the sink line is the same, but the flow now reaches it, so the file holds a finding HEAD lacked."
     execute: {event: stop, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = 'ls'\n    return subprocess.run(command, shell=True)\n"}, writes: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n"}, expect: block}
   - id: tc-129
     category: trigger
@@ -1790,7 +1790,7 @@ suite:
   - id: tc-130
     category: behavior
     prompt: "At the turn's end agents/tool.py adds an unrelated function and leaves a parameter-to-subprocess flow that HEAD already had."
-    expect: "The turn ends: no line the finding involves changed."
+    expect: "The turn ends: the finding has the key it had at HEAD."
     execute: {event: stop, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n"}, writes: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n\n\ndef one() -> int:\n    return 1\n"}, expect: allow}
   - id: tc-131
     category: behavior
@@ -1800,15 +1800,50 @@ suite:
   - id: tc-132
     category: trigger
     prompt: "A commit adds the line that makes a variable carry a tool's string parameter into a subprocess call HEAD already had, unchanged."
-    expect: "The commit is blocked: a finding is new when a line it involves is new, not only when its own line is."
+    expect: "The commit is blocked: the flow now reaches the untouched sink, so the file holds a finding HEAD lacked."
     execute: {event: commit, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = 'ls'\n    return subprocess.run(command, shell=True)\n"}, files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    command = cmd\n    return subprocess.run(command, shell=True)\n"}, expect: block}
   - id: tc-133
     category: trigger
     prompt: "At the turn's end an MCP server entry HEAD held with a package name on the args line changes its command line to npx, so the unchanged args line now runs an unpinned package."
-    expect: "The turn is blocked: the finding involves the server's whole entry, and the command line is new."
+    expect: "The turn is blocked: with the command changed to npx the unchanged args line is an unpinned launch HEAD did not have."
     execute: {event: stop, head_files: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"node\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    }\n  }\n}\n"}, writes: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    }\n  }\n}\n"}, expect: block}
   - id: tc-134
     category: behavior
     prompt: "At the turn's end an MCP config adds a pinned second server beside an unpinned one HEAD already had."
-    expect: "The turn ends: the old server's lines are unchanged (its closing comma aside), and the new server is clean."
+    expect: "The turn ends: the old server's finding has the key it had at HEAD, and the new server is clean."
     execute: {event: stop, head_files: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    }\n  }\n}\n"}, writes: {".mcp.json": "{\n  \"mcpServers\": {\n    \"x\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/pkg\"]\n    },\n    \"y\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@scope/other@1.2.3\"]\n    }\n  }\n}\n"}, expect: allow}
+  - id: tc-135
+    category: trigger
+    prompt: "At the turn's end a change deletes the fixed SQL line that came first in a cur.execute call, so an f-string moves into first place."
+    expect: "The turn is blocked: the untouched cur.execute( line now receives SQL assembled from a string, a finding HEAD lacked, so a deletion is judged like an addition."
+    execute: {event: stop, head_files: {"db.py": "def f(cur, uid):\n    cur.execute(\n        \"SELECT * FROM t WHERE id = %s\",\n        f\"{uid}\",\n    )\n"}, writes: {"db.py": "def f(cur, uid):\n    cur.execute(\n        f\"{uid}\",\n    )\n"}, expect: block}
+  - id: tc-136
+    category: trigger
+    prompt: "A commit deletes the fixed SQL line that came first in a cur.execute call."
+    expect: "The commit is blocked: the untouched cur.execute( line is a finding the baseline lacked."
+    execute: {event: commit, head_files: {"db.py": "def f(cur, uid):\n    cur.execute(\n        \"SELECT * FROM t WHERE id = %s\",\n        f\"{uid}\",\n    )\n"}, files: {"db.py": "def f(cur, uid):\n    cur.execute(\n        f\"{uid}\",\n    )\n"}, expect: block}
+  - id: tc-137
+    category: behavior
+    prompt: "A commit adds an unrelated function to a file whose tool-parameter-to-subprocess flow HEAD already had, untouched."
+    expect: "The commit passes: the finding has the key it had at HEAD."
+    execute: {event: commit, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    return subprocess.run(cmd, shell=True)\n"}, files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    return subprocess.run(cmd, shell=True)\n\n\ndef one() -> int:\n    return 1\n"}, expect: allow}
+  - id: tc-138
+    category: behavior
+    prompt: "As the agent writes, two comment lines shift a verify=False call the disk already held."
+    expect: "The write is allowed: a key holds no line number, so a violation that only moves is old."
+    execute: {event: tool_use, head_files: {"agent/tls.py": "import requests\n\nrequests.get(u, verify=False)\n"}, writes: {"agent/tls.py": "# a\n# b\nimport requests\n\nrequests.get(u, verify=False)\n"}, expect: allow}
+  - id: tc-139
+    category: trigger
+    prompt: "A commit repeats a verify=False call in a file whose HEAD held that exact call once."
+    expect: "The commit is blocked: the key occurs twice and HEAD held it once, so the second copy is new."
+    execute: {event: commit, head_files: {"agent/tls.py": "import requests\n\nrequests.get(u, verify=False)\n"}, files: {"agent/tls.py": "import requests\n\nrequests.get(u, verify=False)\nrequests.get(u, verify=False)\n"}, expect: block}
+  - id: tc-140
+    category: trigger
+    prompt: "At the turn's end a file that carried a provenance marker at HEAD loses it."
+    expect: "The turn is blocked: the finding compares with HEAD itself and is marked new, so it counts whatever the baseline run finds."
+    execute: {event: stop, head_files: {"agents/meta.py": "C2PA = 'manifest'\nx = 1\n"}, writes: {"agents/meta.py": "x = 1\n"}, expect: block}
+  - id: tc-141
+    category: behavior
+    prompt: "A commit renames the tool function that holds a parameter-to-subprocess flow HEAD already had, changing nothing else."
+    expect: "The commit is blocked: the enclosing function is part of the key, so a rename re-reports the old finding, which errs toward blocking."
+    execute: {event: commit, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    return subprocess.run(cmd, shell=True)\n"}, files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef execute(cmd: str) -> str:\n    return subprocess.run(cmd, shell=True)\n"}, expect: block}

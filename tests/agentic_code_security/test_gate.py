@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from agentic_code_security.conftest import GATE, GateRun, commit, run_gate
+from agentic_code_security.conftest import GATE, GateRun, run_gate
 from agentic_gate.registry import registry
 from agentic_gate.selection import SelectionError, load, parse
 

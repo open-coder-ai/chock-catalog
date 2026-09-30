@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.5.0"
+version: "0.6.0"
 description: >
   trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or
   Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties
@@ -49,6 +49,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.0
+  date: '2026-09-30'
+  changes:
+  - "The gate prints a findings document and the engine (chock 0.15.0) compares it with the baseline, instead of the gate deciding which lines are new. On stdout it prints {\"findings\": [{key, path, line, message}]}, one per refused construct; the runner runs it again on the baseline text -- HEAD at commit and at the turn's end, the file on disk before the write at PreToolUse, `\"baseline\": true` on that run's stdin -- and blocks only a (path, key) the change holds more of than the baseline. The exit code stays the verdict for new findings: 1 refuses, and an ask still refuses, as a gate has no terminal. A key is the rule id, the enclosing method name from the flow model and the flagged line with its whitespace collapsed -- no line number, so a violation that only moves is old, a second copy of one is new, and a line deleted from the file can make a finding new. Verified on the analyser: removing `s = Encode.forHtml(s);` makes the untouched println a finding, and removing the `ALLOWED.contains(p) ? p : \"x\"` ternary makes the untouched `new File` one; both were listed as not caught in 0.5.0 and are now refused."
+  - "Waivers are applied identically in both runs: a `// chock: allow <rule-id>` counts only where a human committed it, and the same HEAD is read for the baseline run, so a copy of a waived line is not new by escaping the waiver. HEAD is read only for that; the gate no longer reads a baseline. Removed: the line-comparison in chock_security/changed.py (new_lines, statement, involved, only_new, baseline, on_disk), the `related` and `header` lines Flow, Method and Finding carried, and the 22 flow rules' `related=flow.related`; chock_security/document.py builds the document. Eval replay now goes through the engine, so tc-101 to tc-107 exercise the real comparison, and cases tc-108 onward add a deleted sanitizer, a deleted allowlist ternary, an old violation untouched, a line shift and a duplicate."
+  - "Remaining gaps, stated rather than implied: a method or function renamed with its body untouched re-reports its old findings, because the enclosing name is part of the key, which errs toward blocking; flows are read within one file, so a value that crosses a file boundary is not followed; and an early-return guard (`if (!ALLOWED.contains(x)) return;`) is not modelled as a sanitizer, so use the ternary or the allowlist form the rules name."
 - version: 0.5.0
   date: '2026-09-30'
   changes:

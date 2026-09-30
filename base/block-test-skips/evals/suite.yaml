@@ -192,3 +192,43 @@ suite:
     prompt: "At the turn's end tests/test_a.py differs from HEAD only by a clean line; HEAD already holds an old violation."
     expect: "The turn is allowed: only the lines the turn added are judged."
     execute: {event: stop, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, writes: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n\n\ndef test_b():\n    assert g() == 2\n"}, expect: allow}
+  - id: tc-019
+    category: trigger
+    prompt: "A commit removes the waiver pragma from a skip HEAD held waived, leaving the skip itself untouched."
+    expect: "The commit is blocked: without the waiver the skip is a finding the baseline did not have, so removing the line that excused it is a change that adds it."
+    execute: {event: commit, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')  # chock: allow test-skip\ndef test_a():\n    assert f() == 1\n"}, files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, expect: block}
+  - id: tc-020
+    category: behavior
+    prompt: "A commit adds two imports above a skip HEAD already held."
+    expect: "The commit passes: the skip moved down two lines but its test and its text are the same, so it is old."
+    execute: {event: commit, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, files: {"tests/test_a.py": "import os\nimport sys\nimport pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, expect: allow}
+  - id: tc-021
+    category: behavior
+    prompt: "As the agent writes, a blank line and a comment shift a skip the disk already held."
+    expect: "The write is allowed: a line shift does not make an old skip new."
+    execute: {event: tool_use, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, writes: {"tests/test_a.py": "# notes\n\nimport pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, expect: allow}
+  - id: tc-022
+    category: trigger
+    prompt: "At the turn's end a second copy of the same skip decorator sits on a test HEAD held with one."
+    expect: "The turn is blocked: the file holds the skip twice and HEAD held it once, so the second copy is new."
+    execute: {event: stop, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, writes: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, expect: block}
+  - id: tc-023
+    category: trigger
+    prompt: "A commit skips a second test in a file whose first test HEAD already skipped."
+    expect: "The commit is blocked: the new skip is on a different test, so it is a new finding beside the old one."
+    execute: {event: commit, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_b():\n    assert g() == 2\n"}, expect: block}
+  - id: tc-024
+    category: behavior
+    prompt: "A commit renames the test under a skip HEAD already held, leaving the decorator untouched."
+    expect: "The commit is blocked: the finding is keyed by its enclosing test, so a renamed test re-reports its old skip, which errs toward blocking."
+    execute: {event: commit, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a_renamed():\n    assert f() == 1\n"}, expect: block}
+  - id: tc-025
+    category: behavior
+    prompt: "As the agent writes, a new passing test is added beside a JavaScript skip the disk already held."
+    expect: "The write is allowed: the old skip keeps its enclosing describe and its text."
+    execute: {event: tool_use, head_files: {"src/a.test.ts": "describe('outer', () => {\n  it.skip('a', () => {\n    expect(f()).toBe(1);\n  });\n});\n"}, writes: {"src/a.test.ts": "describe('outer', () => {\n  it.skip('a', () => {\n    expect(f()).toBe(1);\n  });\n  it('b', () => {\n    expect(1).toBe(1);\n  });\n});\n"}, expect: allow}
+  - id: tc-026
+    category: trigger
+    prompt: "At the turn's end a JavaScript focus marker is added inside a describe whose old skip HEAD held."
+    expect: "The turn is blocked: the focus marker is a different line in the same block, so it is new."
+    execute: {event: stop, head_files: {"src/a.test.ts": "describe('outer', () => {\n  it.skip('a', () => {\n    expect(f()).toBe(1);\n  });\n});\n"}, writes: {"src/a.test.ts": "describe('outer', () => {\n  it.skip('a', () => {\n    expect(f()).toBe(1);\n  });\n  it.only('b', () => {\n    expect(1).toBe(1);\n  });\n});\n"}, expect: block}

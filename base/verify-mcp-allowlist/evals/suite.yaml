@@ -457,3 +457,38 @@ suite:
     prompt: "At the turn's end the MCP config on disk changes the command of an unlisted server HEAD already had."
     expect: "The turn is blocked: a changed command/args/url makes the server new."
     execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\", \"--extra\"]}}}\n"}, expect: block}
+  - id: tc-059
+    category: behavior
+    prompt: "At commit the MCP config keeps an unlisted server HEAD held, reformatted with four-space indentation and reordered beside a listed one."
+    expect: "The commit passes: the server's name and source are unchanged, so it is old wherever it now sits."
+    execute: {event: commit, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}, \"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, files: {".mcp.json": "{\n    \"mcpServers\": {\n        \"filesystem\": {\n            \"command\": \"npx\",\n            \"args\": [\n                \"-y\",\n                \"@modelcontextprotocol/server-filesystem\"\n            ]\n        },\n        \"evil\": {\n            \"command\": \"npx\",\n            \"args\": [\n                \"-y\",\n                \"evil-mcp-server\"\n            ]\n        }\n    }\n}\n"}, expect: allow}
+  - id: tc-060
+    category: trigger
+    prompt: "A commit adds an unlisted server to an MCP config that held only the listed one."
+    expect: "The commit is blocked: the added server is not on the allowlist."
+    execute: {event: commit, head_files: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, files: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}, \"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, expect: block}
+  - id: tc-061
+    category: trigger
+    prompt: "A commit changes the args of an unlisted server HEAD already held."
+    expect: "The commit is blocked: a changed command, args or url makes the server new."
+    execute: {event: commit, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\", \"--flag\"]}}}\n"}, expect: block}
+  - id: tc-062
+    category: trigger
+    prompt: "As the agent writes, the args of the listed filesystem server change from what the disk holds."
+    expect: "The write is refused: the allowlist matches a name with its exact source, so the altered server is new and unlisted."
+    execute: {event: tool_use, head_files: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/\"]}}}\n"}, expect: block}
+  - id: tc-063
+    category: trigger
+    prompt: "At the turn's end an unlisted server HEAD held under mcpServers is declared again under servers in the same file."
+    expect: "The turn is blocked: the config holds the unlisted server twice and HEAD held it once, so the second copy is new."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}, \"servers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, expect: block}
+  - id: tc-064
+    category: behavior
+    prompt: "At the turn's end the MCP config gains a note and a blank first line, shifting an unlisted server HEAD already held."
+    expect: "The turn ends: the server's name and source are unchanged, so it is old at any line."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "\n{\n  \"mcpServers\": {\n    \"evil\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"evil-mcp-server\"\n      ]\n    }\n  },\n  \"note\": \"x\"\n}\n"}, expect: allow}
+  - id: tc-065
+    category: behavior
+    prompt: "A commit keeps an unlisted server HEAD held and adds the listed filesystem server."
+    expect: "The commit passes: only the listed server is new."
+    execute: {event: commit, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}, \"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, expect: allow}

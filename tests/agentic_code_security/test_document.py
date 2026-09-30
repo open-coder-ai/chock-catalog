@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -31,7 +32,7 @@ SWAPPED_SQL = FIXED_SQL.replace('        "SELECT * FROM t WHERE id = %s",\n', ""
 
 def stdout_of(writes: dict[str, str], event: str = "commit", **extra: object) -> dict:
     payload = json.dumps({"event": event, "repo_root": ".", "writes": writes, **extra})
-    proc = subprocess.run(  # noqa: S603 -- the shipped gate, run as a hook runner does
+    proc = subprocess.run(
         [sys.executable, str(GATE)], input=payload, capture_output=True, text=True, check=False, timeout=60
     )
     return json.loads(proc.stdout)
@@ -73,7 +74,7 @@ def test_other_files_have_no_scope() -> None:
 def test_a_finding_that_compares_with_head_is_marked_new(tmp_path: Path) -> None:
     commit(tmp_path, {"a.py": "C2PA = 1\n"})
     payload = json.dumps({"event": "commit", "repo_root": str(tmp_path), "writes": {"a.py": "x = 1\n"}})
-    proc = subprocess.run(  # noqa: S603 -- the shipped gate, run as a hook runner does
+    proc = subprocess.run(
         [sys.executable, str(GATE)], input=payload, capture_output=True, text=True, check=False, timeout=60
     )
     (row,) = json.loads(proc.stdout)["findings"]
@@ -149,3 +150,10 @@ def test_a_new_line_that_binds_the_memory_client_makes_old_calls_findings(tmp_pa
     selection = {"version": 1, "packs": {"prompt-memory": {"verdict": "deny"}}}
     (tmp_path / ".chock" / "agentic-security.json").write_text(json.dumps(selection), encoding="utf-8")
     assert stop(tmp_path, {"m.py": before.replace("build()", "Memory()")}) == 1
+
+
+def test_a_missing_repository_has_no_committed_text(tmp_path: Path) -> None:
+    spec = importlib.util.spec_from_file_location("agentic_code_security_gate", GATE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.committed(tmp_path / "absent")("a.py") is None

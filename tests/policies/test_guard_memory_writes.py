@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 import pytest
-from policies import scriptkit
+from policies import gatekit, scriptkit
 
 NAME = "guard-memory-writes-gate.py"
 mod = scriptkit.load("guard-memory-writes", NAME)
@@ -27,8 +27,22 @@ def repo(tmp_path: Path) -> Path:
     return scriptkit.init_repo(tmp_path / "r", {"MEMORY.md": "- old fact\n- old fact\n" + fence(30)})
 
 
-def check(repo: Path, writes: dict[str, str], event: str = "commit") -> list[str]:
+def rows(repo: Path, writes: dict[str, str], event: str = "commit") -> list[dict]:
     return mod.findings({"event": event, "repo_root": str(repo), "writes": writes})
+
+
+def check(repo: Path, writes: dict[str, str], event: str = "commit") -> list[str]:
+    """Every finding of the written text as `path:line: message`; the engine, not the gate, drops old ones."""
+    return [f"{f['path']}:{f['line']}: {f['message']}" for f in rows(repo, writes, event)]
+
+
+def engine(repo: Path, writes: dict[str, str], event: str = "stop") -> int:
+    """The engine's verdict: `stop` lands the writes on disk first, `pre-commit` stages them."""
+    if event in (gatekit.STOP, gatekit.COMMIT):
+        scriptkit.write(repo, writes)
+    if event == gatekit.COMMIT:
+        scriptkit.git(repo, "add", "-A")
+    return gatekit.judge("guard-memory-writes", repo, event, writes)[0]
 
 
 @pytest.mark.parametrize(
@@ -124,16 +138,6 @@ def test_an_unclosed_fence_runs_to_the_end_of_the_file(repo: Path) -> None:
     assert check(repo, {"memory/a.md": text}) == ["memory/a.md:1: fenced code block of 21 lines (limit 20)"]
 
 
-def test_a_long_block_already_at_head_does_not_block_an_unrelated_edit(repo: Path) -> None:
-    text = "- old fact\n- old fact\n" + fence(30) + "- a new fact\n"
-    assert check(repo, {"MEMORY.md": text}) == []
-
-
-def test_editing_inside_a_long_committed_block_is_judged(repo: Path) -> None:
-    text = "- old fact\n- old fact\n" + fence(30).replace("body 3\n", "body three\n")
-    assert check(repo, {"MEMORY.md": text}) == ["MEMORY.md:3: fenced code block of 30 lines (limit 20)"]
-
-
 def test_duplicates_are_reported_at_the_later_line(repo: Path) -> None:
     text = "- prefers  tabs\n- uses uv\n* prefers tabs\n1. uses uv\n"
     assert check(repo, {"memory/a.md": text}) == [
@@ -147,13 +151,19 @@ def test_headings_blank_lines_rules_and_code_are_not_duplicates(repo: Path) -> N
     assert check(repo, {"memory/a.md": text}) == []
 
 
-def test_a_duplicate_already_at_head_is_not_reported(repo: Path) -> None:
-    assert check(repo, {"MEMORY.md": "- old fact\n- old fact\n" + fence(30) + "- fresh\n"}) == []
+def test_a_secret_is_never_printed_in_the_document(repo: Path) -> None:
+    stdin = json.dumps({"event": "commit", "repo_root": str(repo), "writes": {"memory/a.md": f"- key {AWS}\n"}})
+    proc = scriptkit.run_script_full("guard-memory-writes", NAME, repo, stdin)
+    assert AWS not in proc.stdout + proc.stderr
+    (row,) = json.loads(proc.stdout)["findings"]
+    assert row["key"].startswith("secret|")
 
 
-def test_a_new_copy_of_a_committed_line_is_reported(repo: Path) -> None:
-    text = "- old fact\n- old fact\n- old fact\n" + fence(30)
-    assert check(repo, {"MEMORY.md": text}) == ["MEMORY.md:3: duplicates line 1"]
+def test_the_baseline_run_judges_as_the_change_run_does(repo: Path) -> None:
+    stdin = {"event": "commit", "repo_root": str(repo), "writes": {"memory/a.md": "diff --git a b\n"}}
+    change = scriptkit.run_script_full("guard-memory-writes", NAME, repo, json.dumps(stdin))
+    baseline = scriptkit.run_script_full("guard-memory-writes", NAME, repo, json.dumps({**stdin, "baseline": True}))
+    assert change.stdout == baseline.stdout
 
 
 def test_each_secret_line_is_reported(repo: Path) -> None:
@@ -254,23 +264,6 @@ def test_the_manifest_globs_admit_the_outside_paths_the_script_judges() -> None:
     admitted = [p for p in OUTSIDE if p.startswith((HOME, "/memories"))]
     assert all(any(fnmatch.fnmatchcase(p, g) for g in globs) for p in admitted)
     assert not any(fnmatch.fnmatchcase(p, g) for p in NOT_MEMORY for g in globs)
-
-
-def test_an_outside_file_is_judged_against_the_disk_not_head(repo: Path, tmp_path: Path) -> None:
-    store = tmp_path / ".claude" / "projects" / "p" / "memory"
-    store.mkdir(parents=True)
-    target = store / "MEMORY.md"
-    old = "- old fact\n- old fact\n" + fence(30)
-    target.write_text(old, encoding="utf-8")
-    path = target.as_posix()
-    assert check(repo, {path: old + "- fresh\n"}, event="tool_use") == []
-    lines = len(old.splitlines())
-    assert check(repo, {path: old + "- old fact\n"}, event="tool_use") == [f"{path}:{lines + 1}: duplicates line 1"]
-
-
-def test_a_new_outside_file_is_judged_whole(repo: Path, tmp_path: Path) -> None:
-    path = (tmp_path / ".claude" / "CLAUDE.md").as_posix()
-    assert check(repo, {path: "- a\n- a\n"}, event="tool_use") == [f"{path}:2: duplicates line 1"]
 
 
 def test_the_manifest_declares_the_outside_stores() -> None:
