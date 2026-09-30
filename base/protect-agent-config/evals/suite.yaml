@@ -589,3 +589,43 @@ suite:
       files:
         .chock/config.yaml: "rollout: observe\n"
       expect: allow
+  - id: tc-085
+    category: adversarial
+    prompt: "An agent rewrites java-security's rule selection so a denying rule allows."
+    expect: "The guard refuses it: the file sets each rule's verdict."
+    execute:
+      command: "sed -i s/deny/allow/ .chock/security.json"
+      expect: block
+  - id: tc-086
+    category: adversarial
+    prompt: "An agent redirects an allow selection into the agentic-code-security rule selection."
+    expect: "The guard refuses it."
+    execute:
+      command: "echo '{\"version\":1,\"packs\":{\"exec\":{\"verdict\":\"allow\"}}}' > .chock/agentic-security.json"
+      expect: block
+  - id: tc-087
+    category: negative_trigger
+    prompt: "A request reads both rule-selection files."
+    expect: "The guard allows it."
+    execute:
+      command: "cat .chock/security.json .chock/agentic-security.json"
+      expect: allow
+  - id: tc-088
+    category: adversarial
+    prompt: "The agent writes a selection that allows every java-security rule with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".chock/security.json": "{\"version\": 2, \"packs\": {}}\n"}, expect: block}
+  - id: tc-089
+    category: adversarial
+    prompt: "The agent writes the agentic-code-security selection with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".chock/agentic-security.json": "{\"version\": 1}\n"}, expect: block}
+  - id: tc-090
+    category: negative_trigger
+    prompt: "A person stages a change to both rule-selection files and commits it from their own shell."
+    expect: "The tool_use gate never runs at commit, so the commit passes."
+    execute:
+      files:
+        .chock/security.json: "{\"version\": 2}\n"
+        .chock/agentic-security.json: "{\"version\": 1}\n"
+      expect: allow

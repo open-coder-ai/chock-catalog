@@ -25,6 +25,8 @@ PATHS = [
     ".chock/compiled/scan-secrets/git-hook/gate.json",
     ".chock/dependency-allowlist.txt",
     ".chock/config.yaml",
+    ".chock/security.json",
+    ".chock/agentic-security.json",
     ".git/hooks/pre-commit",
     ".agents/policies/scan-secrets/implementations/scan.py",
     "sub/dir/AGENTS.md",
