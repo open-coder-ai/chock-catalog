@@ -1,6 +1,6 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.5"
+version: "0.0.6"
 description: >
   The mechanizable slice of excessive agency, enforced at two points: at commit (the git
   hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the
@@ -26,10 +26,7 @@ hook:
     action: block
     message: >
       Wildcard agent permission grant detected. Scope the grant to specific tools or
-      commands (e.g. Bash(git status:*), a named tool list). At commit,
-      'pragma: allowlist broad-agency' on the same line marks a reviewed exception; the
-      pragma is NOT honored at tool-use, where the scanned text is a live tool argument
-      an appended token could neutralize.
+      commands (e.g. Bash(git status:*), a named tool list). 'pragma: allowlist broad-agency' on the same line marks a reviewed exception; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself.
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+broad-agency'
@@ -72,6 +69,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.6
+  date: '2026-09-29'
+  changes:
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
 - version: 0.0.5
   date: '2026-09-21'
   changes:

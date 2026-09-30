@@ -1,0 +1,14 @@
+{
+  "kind": "script",
+  "on": [
+    "tool_call"
+  ],
+  "action": "warn",
+  "message": "Firecrawl is a fallback: no failed WebFetch, WebSearch, curl or wget call is on record in this session. Try a native fetch first, and note why Firecrawl was needed if you go on.",
+  "params": {
+    "script": ".agents/policies/firecrawl-fallback-only/implementations/firecrawl-fallback-gate.py",
+    "tools": [
+      "mcp__*Firecrawl__*"
+    ]
+  }
+}

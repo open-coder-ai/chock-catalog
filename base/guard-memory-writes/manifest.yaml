@@ -1,6 +1,6 @@
 id: guard-memory-writes
 name: "Guard Memory Writes"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Refuses agent-memory writes that hold what memory must never hold: pasted git history (diff
   headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines, a line
@@ -61,3 +61,7 @@ changelog:
   date: '2026-09-30'
   changes:
   - "The gate prints a findings document for everything it refuses in a memory file, and the engine (chock 0.15.0) compares it with the baseline -- HEAD in the repository, the file on disk for an outside store -- instead of the gate comparing lines. A key is the reason and the normalized line for git history, a secret and a duplicate, and the reason and the fence opener (```python) for a long block; a secret's line is hashed in its key so the document never carries it. So a finding that only moves is old, and a second copy is new. Removed: new_line_numbers, head_lines and disk_lines; the outside-repo paths are still recognised by the script. A committed long block that grows is still old: it has the opener it had."
+- version: 0.0.4
+  date: '2026-09-30'
+  changes:
+  - "A long block's key is now the reason, the fence opener and a hash of the block's normalized body (long-block|```python|<sha256[:16]>). A line added to a committed block that is still over the limit changes the body, so the finding is new and blocks; before, it kept the opener's key and passed as old. An untouched long block is still old, and one shrunk under the limit is no finding."

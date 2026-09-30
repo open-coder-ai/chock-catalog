@@ -1,16 +1,17 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.0.5"
+version: "0.2.0"
 description: >
   Keep the development conversation out of git history. Agent-authored commits narrate by
   default -- who asked for what, which discussion decided it, what the plan was -- and on a
   public repo that narration is published forever. The guard refuses git commit commands
   whose message (inline -m/--message or the file behind -F/--file) contains process-leak
   markers; the rule tells the agent to describe the change, not the conversation, and to
-  propose sensitive messages to the human before committing. A commit or gh pr create|edit
-  wrapped in sh -c/bash -c (hiding it inside one opaque argv token) falls back to scanning
-  the raw command text, scoped to argv[0] actually being a shell interpreter so a command
-  that merely echoes the pattern as documentation still passes. Best-effort: markers are a
+  propose sensitive messages to the human before committing. The command line is parsed, so a
+  commit or gh pr create|edit behind cd, sh -c/bash -c, sudo, env or command is read like a bare one,
+  a message fed on `-F -` from a heredoc is scanned, and a command that merely echoes the pattern
+  as documentation still passes. A commit-msg hook applies the same markers to the message git
+  records. Best-effort: markers are a
   narrow deny-list, and a message the human explicitly approves can say anything -- edit
   the marker list in the guard, the content is yours.
 artifact: rule
@@ -19,6 +20,9 @@ rule:
   text: |
     commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
     if(sensitive_context): propose_message_to_human; await(approval) before(commit)  # history is published forever
+hook:
+  script:
+    "on": [commit-msg]
 effects:
 - read_only
 approval:
@@ -27,7 +31,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-08-24T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -41,6 +45,15 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-09-29'
+  changes:
+  - "Second check at the git commit-msg hook: hook.script on [commit-msg] with implementations/protect-commit-privacy-commit-msg.py (stdlib). git passes the message file as argv[1]; the script drops git's comment lines (those starting with '#') and anything below a `commit --verbose` scissors line, then applies the guard's own MARKERS (imported from the file beside it, one list) case-insensitively. A hit prints the marker and exits 1, which aborts the commit; an unreadable message or a missing argument exits 2, never 0. This judges the message git records, not the command line, so a message written by an editor, a script or an API client is checked too. The policy carried no hook before, so hook.script is free. Guard unchanged; chock's eval replay cannot drive an event script, so the cases are pytest with temporary git repositories."
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Ported from bash to Python: implementations/protect-commit-privacy.py replaces the bash script, stdlib only, deterministic, no network. It ships beside the chock_shellparse package (identical in every ported policy; tests pin the copies), which reads the command with a quote-aware lexer instead of scanning text: it splits at unquoted && || ; | & and newlines, drops redirections and comments, keeps heredoc bodies, and looks through bash|sh|zsh -c, pwsh -Command, cmd /c, eval, sudo, doas, env VAR=x, command, exec, nohup, timeout, nice, time, xargs and subshells, so `cd repo && ...` and `bash -c '...'` are judged on the command they run and `echo ...` on none. Unbalanced quotes fall back to a split at separators and whitespace that still sees redirections and reads an unclosed quote as one word; CHOCK_TOOL=powershell|pwsh selects PowerShell reading (backslash paths, cmdlets), and without it the text decides. An unexpected exception exits 2 (a guard fault), never 1 (a block)."
+  - "Bypasses closed, each with eval cases: `cd x && git commit -m '...marker...'` and the same behind sudo, env and pwsh -Command; a message or PR body fed by heredoc on `-F -` / `--body-file -`; a `$(cat <<'EOF' ...)` message. The old raw-text fallback for shell wrappers is gone: the wrapped command is parsed and judged as the command it is, so `git log --grep 'the user asked'` and `echo git commit -m ...` remain allowed. The marker list is unchanged."
 - version: 0.0.5
   date: '2026-09-24'
   changes:

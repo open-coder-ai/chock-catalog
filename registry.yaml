@@ -711,14 +711,14 @@ policies:
     a skip already committed in HEAD counts, so an agent that needs a new one must ask a person.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 22
-  eval_executed: 21
+  eval_cases: 25
+  eval_executed: 24
   description: 'Refuses agent-memory writes that hold what memory must never hold: pasted git history
     (diff headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines,
     a line that duplicates another, and secrets (scan-secrets'' pattern). Judges only memory files --

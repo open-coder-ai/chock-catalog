@@ -86,7 +86,10 @@ def judge(path: str, text: str) -> list[dict]:
     for start, length in blocks:
         if length > MAX_BLOCK_LINES:
             message = f"fenced code block of {length} lines (limit {MAX_BLOCK_LINES})"
-            found.setdefault(start, _row("long-block", path, start, normalize(lines[start - 1]), message))
+            body = "\n".join(normalize(line) for line in lines[start : start + length])
+            digest = hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
+            fingerprint = f"{normalize(lines[start - 1])}|{digest}"
+            found.setdefault(start, _row("long-block", path, start, fingerprint, message))
     for number, original in duplicates(lines, inside):
         repeat = _row("duplicate", path, number, normalize(lines[number - 1]), f"duplicates line {original}")
         found.setdefault(number, repeat)

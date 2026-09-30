@@ -5,7 +5,7 @@
       {
         "id": "agent-discipline",
         "artifact": "rule",
-        "version": "0.0.1",
+        "version": "0.0.2",
         "name": "Agent Discipline Rule",
         "description": "trigger: edits without reading, unverified completion claims, weakened tests, dead code. avoid: skipping verification, deleting assertions, leaving unused code.",
         "path": ".agents/policies/agent-discipline",
@@ -35,22 +35,30 @@
       {
         "id": "block-destructive-commands",
         "artifact": "rule",
-        "version": "0.0.10",
+        "version": "0.1.0",
         "name": "Block Destructive Commands",
-        "description": "Best-effort guard against destructive commands: rm -rf targeting absolute, home ($HOME/~) or root-adjacent paths (and the PowerShell Remove-Item -Recurse equivalent); git push --force (not --force-with-lease); git reset --hard; git clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate; wipefs -a. Destructive verbs are matched position-aware, so a bucket, path or object NAMED like a verb (helm list delete) is allowed, and find/shred/truncate apply the same target test as rm, so a relative path in the working tree stays allowed. sudo, doas and pkexec are transparent wrappers: the program they run is graded, escalation itself is not refused. Known bypasses: aliases, quoted arguments, non-standard clients, an unusual value-flag outside the curated set, and indirect invocation via a script or interpreter. This is friction, not a security boundary.",
+        "description": "Best-effort guard against destructive commands, read as parsed commands (bash -c and cd chains included, echo excluded): rm -rf on absolute, home ($HOME/~) or root-adjacent paths (and PowerShell Remove-Item -Recurse); git push --force (not --force-with-lease), reset --hard, clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate; wipefs -a. git branch -D asks first. Verbs are matched position-aware, so a bucket or object NAMED like a verb is allowed, and a relative path in the working tree stays allowed. sudo, doas and pkexec are transparent. A pre-push hook refuses any non-fast-forward push -- force, +refspec or lease alike; a human escapes with git push --no-verify. Known bypasses: aliases, an unusual value-flag, interpreters and scripts. Friction, not a security boundary.",
         "path": ".agents/policies/block-destructive-commands",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
         "lifecycle_status": "draft",
         "dependencies": [],
-        "script_hashes": {}
+        "script_hashes": {
+          "block-destructive-commands-pre-push.py": "bcbc8928bf415112536a3de15ecada1489647aa722cfafb229c2ce293e77c0d7",
+          "block-destructive-commands.py": "6bd23ae31bcb4c952f45cb86bf1238e26566c2271eb615e267d5bc6815f15038",
+          "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
+          "chock_shellparse/args.py": "f21f4a000c2249a091e55424456e7ef1d15fc31a7be53dd57c19ec4b5ecf7d4e",
+          "chock_shellparse/parse.py": "2853d67d9843bfd163543280d3868e9efc5f6013ed467164fe598c4738403cc2",
+          "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83"
+        }
       }
     ],
     "block-invisible-unicode": [
       {
         "id": "block-invisible-unicode",
         "artifact": "hook",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "name": "Block Invisible Unicode",
         "description": "The mechanizable slice of prompt-injection defense, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- invisible and direction-override Unicode. Bidi controls make code read differently than it parses (Trojan Source, CVE-2021-42574); Unicode tag-block characters smuggle instructions that are invisible to a human reviewer but fully legible to the agent reading the file. Zero-width joiners and bidi marks (ZWJ/ZWNJ/LRM/RLM) are deliberately NOT matched -- they are legitimate in emoji sequences and in Persian, Arabic and Indic text -- so ordinary internationalised content passes; only the override/embed/isolate controls and the tag block, which have no honest use in a source tree, are blocked. Escape: 'pragma: allowlist invisible-unicode' on the same line.",
         "path": ".agents/policies/block-invisible-unicode",
@@ -65,9 +73,9 @@
       {
         "id": "block-no-verify",
         "artifact": "rule",
-        "version": "0.0.7",
+        "version": "0.3.0",
         "name": "Block No-Verify",
-        "description": "Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or -c core.hooksPath overrides. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Fix the underlying hook failure instead of skipping validation.",
+        "description": "Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit's short -n form, or any way of pointing core.hooksPath elsewhere: -c, --config-env, `git config core.hooksPath <path>` and the GIT_CONFIG_* environment. Read as a parsed command, so `cd repo && git commit --no-verify`, `bash -c '...'` and sudo/env/xargs wrappers are caught and a message that merely says --no-verify is not. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases, wrapper scripts, and non-standard clients. Also refuses an agent command that sets a person-only override (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) by env prefix, env, export, declare, set/setx or $env:, and refuses hiding the agent markers (CLAUDECODE, AI_AGENT, CHOCK_AGENT_COMMIT) by unset, env -u/-i, export -n or Remove-Item Env:; it tells the agent to ask the person. Fix the underlying hook failure instead of skipping validation.",
         "path": ".agents/policies/block-no-verify",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -80,9 +88,9 @@
       {
         "id": "block-unapproved-egress",
         "artifact": "rule",
-        "version": "0.0.3",
+        "version": "0.1.0",
         "name": "Block Unapproved Egress",
-        "description": "Best-effort guard against exfiltration through the tool channel: a network command (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file, --post-file -- to a host outside the egress allowlist. The allowlist defaults to package registries and code hosting and is meant to be extended with your org's own domains; a host matches by exact name or \".<entry>\" suffix. Fetch-only traffic is left alone -- the target is upload to an unapproved host, not normal dependency traffic. A schemeless or protocol-relative target is checked too, from the last non-flag token, but only when no explicit http(s):// URL appears anywhere -- once one has, it alone decides. Tool-time FLOOR, not a network sandbox: it stops the obvious reflex, not a determined adversary. Known bypasses: ~/.curlrc, combined short flags, obfuscated payloads, non-standard clients, a language runtime. Escape: 'pragma: allowlist egress'.",
+        "description": "Best-effort guard against exfiltration through the tool channel: a network command (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file, --post-file -- to a host outside the egress allowlist. The allowlist defaults to package registries and code hosting and is meant to be extended with your org's own domains; a host matches by exact name or \".<entry>\" suffix. Fetch-only traffic is left alone. A schemeless or protocol-relative target is checked too, from the last non-flag token, but only when no explicit http(s):// URL appears -- once one has, it alone decides. Options are parsed as curl reads them, so -sd @file is an upload. Tool-time FLOOR, not a network sandbox. Known bypasses: ~/.curlrc, obfuscated payloads, non-standard clients, a language runtime. Escape: 'pragma: allowlist egress'.",
         "path": ".agents/policies/block-unapproved-egress",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -95,7 +103,7 @@
       {
         "id": "block-wildcard-agent-permissions",
         "artifact": "hook",
-        "version": "0.0.5",
+        "version": "0.0.6",
         "name": "Block Wildcard Agent Permissions",
         "description": "The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or allow-list is a bare wildcard hands the agent unlimited tool authority for every future session, in a file reviewers rarely read as code. The agent-world twin of block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes them, word-bounded so \"disallow\"/\"allowlist\" are not mistaken for \"allow\". Escape: 'pragma: allowlist broad-agency' on the same line.",
         "path": ".agents/policies/block-wildcard-agent-permissions",
@@ -110,9 +118,9 @@
       {
         "id": "code-safety",
         "artifact": "rule",
-        "version": "0.0.2",
+        "version": "0.0.3",
         "name": "Code Safety Rule",
-        "description": "trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the enforced counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for the dependency slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and unsanitized-SQL guidance stays advisory (no diff-time gate can decide whether dynamic execution or a query string is unsafe).",
+        "description": "trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the enforced counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for the dependency slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and unsanitized-SQL guidance stays advisory (a gate can decide only the non-literal slice: agentic-code-security's code pack).",
         "path": ".agents/policies/code-safety",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -155,7 +163,7 @@
       {
         "id": "firecrawl-fallback-only",
         "artifact": "rule",
-        "version": "0.0.1",
+        "version": "0.1.0",
         "name": "Firecrawl Fallback Only",
         "description": "trigger: web research where a direct fetch fails, is blocked, or needs JS rendering. avoid: reaching for the Firecrawl connector as the default fetch path.",
         "path": ".agents/policies/firecrawl-fallback-only",
@@ -163,16 +171,18 @@
         "trust_tier": "community",
         "lifecycle_status": "draft",
         "dependencies": [],
-        "script_hashes": {}
+        "script_hashes": {
+          "firecrawl-fallback-gate.py": "5897a367b499d90d03aec085eabcfdf760fd77e20093e38b05f06b02c6104ce6"
+        }
       }
     ],
     "git-safety": [
       {
         "id": "git-safety",
         "artifact": "rule",
-        "version": "0.0.2",
+        "version": "0.0.3",
         "name": "Git Safety Rule",
-        "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced counterparts of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution guards on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them plus atomic-commit and diff-size guidance no gate can decide.",
+        "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced counterparts of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution guards on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them plus atomic-commit guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.",
         "path": ".agents/policies/git-safety",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -200,7 +210,7 @@
       {
         "id": "memory-discipline",
         "artifact": "rule",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "name": "Memory Discipline Rule",
         "description": "trigger: repeated mistakes, rediscovered patterns, preferences, non-derivable facts. avoid: persisting file contents, git history, or task intermediates as memory.",
         "path": ".agents/policies/memory-discipline",
@@ -230,7 +240,7 @@
       {
         "id": "pin-github-actions",
         "artifact": "hook",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "name": "Pin GitHub Actions",
         "description": "The mechanizable slice of CI supply-chain hardening, enforced at two points: at commit (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the agent writes) -- a workflow that references a third-party GitHub Action by a movable ref -- a branch or a version tag -- instead of a full 40-character commit SHA. A tag like v4 or a branch like main can be re-pointed at new code after review, so the action that runs tomorrow need not be the one that was audited today; a compromised or rug-pulled release rides in on exactly that mutability. The gate blocks an added line that references an action by a non-SHA ref (owner/repo at a tag/branch); a full 40-char SHA pin passes, local actions (no ref) pass, and 'pragma: allowlist unpinned-action' on the same line is a visible, deliberate exception. This is the OpenSSF Scorecard Pinned-Dependencies control for the slice a diff can show; signature and provenance verification stay out of scope.",
         "path": ".agents/policies/pin-github-actions",
@@ -260,24 +270,31 @@
       {
         "id": "protect-agent-config",
         "artifact": "rule",
-        "version": "0.0.7",
+        "version": "0.2.0",
         "name": "Protect Agent Config",
-        "description": "Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081). The guard refuses shell write-commands targeting those paths; reads pass, and regeneration through `chock sync` passes because the tool writes them itself. Best-effort and deliberately coarse: a write signal (a `>`/`>>` redirect, or a writer verb like rm/cp/sed -i) is scoped to its own clause of the command line, so it must actually target the protected path, not merely appear alongside it; a glued-on separator or a non-redirect writer's own operand are not resolved that finely. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication; the check an agent cannot self-approve is the commit-time gate and CI.",
+        "description": "Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to those paths -- a redirect, rm/mv/tee/sed -i, cp into the path, git checkout/restore, PowerShell Set-Content/Add-Content/Out-File; reads and copies out pass, and `chock sync` passes. Best-effort and deliberately coarse. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication. A second, tool_use-only gate refuses Edit/Write to the same paths; it never runs at commit, so a person stays free to edit them.",
         "path": ".agents/policies/protect-agent-config",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
         "lifecycle_status": "draft",
         "dependencies": [],
-        "script_hashes": {}
+        "script_hashes": {
+          "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
+          "chock_shellparse/args.py": "f21f4a000c2249a091e55424456e7ef1d15fc31a7be53dd57c19ec4b5ecf7d4e",
+          "chock_shellparse/parse.py": "2853d67d9843bfd163543280d3868e9efc5f6013ed467164fe598c4738403cc2",
+          "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
+          "protect-agent-config.py": "e3e3915a9c34c44ecb3be6c79809404826a2647fab5a56f5089bf14396173071"
+        }
       }
     ],
     "protect-ci-workflows": [
       {
         "id": "protect-ci-workflows",
         "artifact": "rule",
-        "version": "0.0.3",
+        "version": "0.1.0",
         "name": "Protect CI Workflows",
-        "description": "Guard against an agent weakening the automated checks that review its own work. CI/CD workflow files (.github/workflows/), the composite actions they call (.github/actions/) and the dependency-update automation (.github/dependabot.yml) define what must pass before a change lands -- so rewriting or deleting them is the agent removing the gate that would catch it. The guard refuses shell write-commands targeting those paths; reads pass, and tool-driven regeneration (chock sync) passes. Best-effort and deliberately coarse: a write signal (a `>`/`>>` redirect, or a writer verb like rm/cp/sed -i/git checkout) is scoped to its own clause of the command line, so it must actually target the protected path, not merely appear alongside it; a glued-on separator or a non-redirect writer's own operand are not resolved that finely. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication; the check an agent cannot self-approve is server-side branch protection.",
+        "description": "Guard against an agent weakening the automated checks that review its own work. CI/CD workflow files (.github/workflows/), the composite actions they call (.github/actions/) and the dependency-update automation (.github/dependabot.yml) define what must pass before a change lands -- so rewriting or deleting them is the agent removing the gate that would catch it. The guard refuses shell write-commands targeting those paths; reads pass, and tool-driven regeneration (chock sync) passes. Best-effort and deliberately coarse: the command line is parsed, and a write (a `>`/`>>` redirect, a writer verb like rm/mv/tee/sed -i, cp into the path, git checkout/restore, a PowerShell Set-Content/Add-Content/Out-File) must actually target the protected path; reading it passes. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication; the check an agent cannot self-approve is server-side branch protection.",
         "path": ".agents/policies/protect-ci-workflows",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -290,15 +307,23 @@
       {
         "id": "protect-commit-privacy",
         "artifact": "rule",
-        "version": "0.0.5",
+        "version": "0.2.0",
         "name": "Protect Commit Privacy",
-        "description": "Keep the development conversation out of git history. Agent-authored commits narrate by default -- who asked for what, which discussion decided it, what the plan was -- and on a public repo that narration is published forever. The guard refuses git commit commands whose message (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent to describe the change, not the conversation, and to propose sensitive messages to the human before committing. A commit or gh pr create|edit wrapped in sh -c/bash -c (hiding it inside one opaque argv token) falls back to scanning the raw command text, scoped to argv[0] actually being a shell interpreter so a command that merely echoes the pattern as documentation still passes. Best-effort: markers are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the marker list in the guard, the content is yours.",
+        "description": "Keep the development conversation out of git history. Agent-authored commits narrate by default -- who asked for what, which discussion decided it, what the plan was -- and on a public repo that narration is published forever. The guard refuses git commit commands whose message (inline -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent to describe the change, not the conversation, and to propose sensitive messages to the human before committing. The command line is parsed, so a commit or gh pr create|edit behind cd, sh -c/bash -c, sudo, env or command is read like a bare one, a message fed on `-F -` from a heredoc is scanned, and a command that merely echoes the pattern as documentation still passes. A commit-msg hook applies the same markers to the message git records. Best-effort: markers are a narrow deny-list, and a message the human explicitly approves can say anything -- edit the marker list in the guard, the content is yours.",
         "path": ".agents/policies/protect-commit-privacy",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
         "lifecycle_status": "draft",
         "dependencies": [],
-        "script_hashes": {}
+        "script_hashes": {
+          "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
+          "chock_shellparse/args.py": "f21f4a000c2249a091e55424456e7ef1d15fc31a7be53dd57c19ec4b5ecf7d4e",
+          "chock_shellparse/parse.py": "2853d67d9843bfd163543280d3868e9efc5f6013ed467164fe598c4738403cc2",
+          "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
+          "protect-commit-privacy-commit-msg.py": "a3f45579826192ba7b0101a904e07c2da3133c53ffb1bdeb4547dc8bf5962b7b",
+          "protect-commit-privacy.py": "b5494e6911b433bbf4ea6ddf07e9cf50e75e9b0753f75753774d457112ad5870"
+        }
       }
     ],
     "protect-main-branch": [
@@ -320,7 +345,7 @@
       {
         "id": "scan-secrets",
         "artifact": "hook",
-        "version": "0.0.7",
+        "version": "0.0.8",
         "name": "Scan Secrets",
         "description": "Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at agent tool-use (the mcp-gateway / agent write guard, over a tool call's arguments), so a secret is caught as the agent writes it, before it ever reaches a commit. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.",
         "path": ".agents/policies/scan-secrets",
@@ -335,7 +360,7 @@
       {
         "id": "token-efficiency",
         "artifact": "rule",
-        "version": "0.0.1",
+        "version": "0.1.0",
         "name": "Token Efficiency Rule",
         "description": "trigger: large command output, broad searches, re-reading unchanged files, front-loading references. avoid: wasting context window on low-signal content.",
         "path": ".agents/policies/token-efficiency",
@@ -343,7 +368,9 @@
         "trust_tier": "community",
         "lifecycle_status": "draft",
         "dependencies": [],
-        "script_hashes": {}
+        "script_hashes": {
+          "token-efficiency-gate.py": "340247776932bc92b9bd62fdd03d24c020f66dfab0dba9d3da3ece11641b11a6"
+        }
       }
     ],
     "validate": [
@@ -380,9 +407,9 @@
       {
         "id": "verify-dependency-exists",
         "artifact": "hook",
-        "version": "0.0.3",
+        "version": "0.0.4",
         "name": "Verify Dependency Exists",
-        "description": "Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt, pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in the allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt.",
+        "description": "Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt, pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in the allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt. Runs at commit and at agent tool-use (a manifest edit is judged against the file on disk, and at the turn's end against HEAD).",
         "path": ".agents/policies/verify-dependency-exists",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -395,15 +422,23 @@
       {
         "id": "verify-mcp-allowlist",
         "artifact": "rule",
-        "version": "0.0.3",
+        "version": "0.4.0",
         "name": "Verify MCP Allowlist",
-        "description": "Gate MCP server configuration as protected content. A shell write to .mcp.json is refused unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this guard's own script, protected like every policy's implementations/ source -- edit only with 'chock: approved-config-change'. Claude Code's .mcp.json only. Tool-time (Bash) only, best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard, a write with no visible content fails closed. No commit-time gate. A write signal is scoped to its own clause of the command line, so a writer or redirect elsewhere -- or stderr merely suppressed -- cannot condemn a plain read of .mcp.json. Matching and path checks are otherwise exact-string and substring-coarse. No pragma for .mcp.json.",
+        "description": "Gate MCP server configuration as protected content. A shell write to .mcp.json is refused unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude mcp add|add-json` is checked the same way (add-from-claude-desktop cannot be verified and is refused). The allowlist ships inside this guard's own script, protected like every policy's implementations/ source -- edit only with 'chock: approved-config-change'. The shell guard reads Claude Code's .mcp.json, best-effort (PreToolUse fails open on a crash; a write with no visible content fails closed). A script gate at commit and tool use parses every written MCP config (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .gemini/settings.json, .codex/config.toml) against the same allowlist; only servers the change adds or alters are refused, at commit and tool use. No pragma.",
         "path": ".agents/policies/verify-mcp-allowlist",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
         "lifecycle_status": "draft",
         "dependencies": [],
-        "script_hashes": {}
+        "script_hashes": {
+          "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
+          "chock_shellparse/args.py": "f21f4a000c2249a091e55424456e7ef1d15fc31a7be53dd57c19ec4b5ecf7d4e",
+          "chock_shellparse/parse.py": "2853d67d9843bfd163543280d3868e9efc5f6013ed467164fe598c4738403cc2",
+          "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
+          "verify-mcp-allowlist.py": "f52b4f9866b012369bba381e682c53c0ef7f7aac1f7d05f6be499198dc591069",
+          "verify-mcp-allowlist_gate.py": "633e5fe988798bf4c6c9a54530f25d52b49a97f2ed3ea05b1b4c16bda8f2454c"
+        }
       }
     ]
   }
