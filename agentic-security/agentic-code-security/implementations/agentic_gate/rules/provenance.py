@@ -38,7 +38,11 @@ def _removed(text: FileText) -> Iterator[Hit]:
         return
     moved = set().union(*(present(other) for other in text.others))
     if lost := sorted(before - moved):
-        yield Hit(1, f"this change removes every provenance marker the file carried at HEAD ({', '.join(lost)}).")
+        yield Hit(
+            1,
+            f"this change removes every provenance marker the file carried at HEAD ({', '.join(lost)}).",
+            by_diff=True,
+        )
 
 
 RULES: tuple[Rule, ...] = (

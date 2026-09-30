@@ -1,6 +1,6 @@
 id: agentic-code-security
 name: "Agentic Code Security"
-version: "0.1.0"
+version: "0.2.0"
 description: >
   trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
   LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client
@@ -24,8 +24,8 @@ hook:
     action: block
     message: >
       agentic-code-security: a construct one of its rules denies -- the refusal above names the rule,
-      its CWE and OWASP ASI entry, and the fix. At commit only findings HEAD did not already have are
-      refused; as the agent writes and at its turn's end the whole file is judged. Each rule's verdict
+      its CWE and OWASP ASI entry, and the fix. Only what the change adds is refused, at commit,
+      as the agent writes and at its turn's end: an old finding on lines it leaves alone never blocks. Each rule's verdict
       is allow|deny in .chock/agentic-security.json, per rule or per pack (exec, supply, tools,
       approval, identity, comms, bounds, prompt-memory, code, provenance). Only a human reviewer
       waives a line, with # chock: allow <rule-id> (// in JavaScript), never the agent: in the agent a
@@ -61,7 +61,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-30T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -74,6 +74,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-09-30'
+  changes:
+  - "The gate judges only what a change adds, at every event, not whole files. A finding is kept when a line it involves is new against the baseline: its reported line, the Python statement that line sits in (a compound statement counts as its header; a statement over 60 lines stands for its one line), and the lines its rule recorded -- a tool's signature and each assignment that carries the model's string on, the assignment that built an executed SQL string, the assignments that bind a mem0 client, an MCP server's whole entry (its braces in JSON, its table in TOML). A line is new when the written text holds more copies of it (indentation and a trailing comma ignored) than the baseline does. Baseline: HEAD at commit; the file on disk before the write at PreToolUse; HEAD at the turn's end, when disk already holds the written text; a new file has every line new, so it is judged whole. Before, commit dropped findings by rule and line text (so a new source line completing a flow into an old sink was dropped too) and the agent's own text was judged whole (so an old violation in a touched file blocked it). Eval tc-127 flips from block to allow; tc-128, tc-129, tc-132, tc-133 block a new line that completes a flow, feeds an old source into a new sink, or changes an old server's command; tc-130, tc-131, tc-134 allow an unrelated new line, function or server beside an old finding. The provenance rule compares with HEAD itself and stays as it was. Not caught, by construction: a violation a change makes by deleting a line (a removed allowlist check), and JavaScript, YAML, shell and env findings beyond their own line. Waivers are unchanged. New module agentic_gate/changed.py; a policy-local copy, java-security has its own."
 - version: 0.1.0
   date: '2026-09-29'
   changes:

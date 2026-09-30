@@ -98,6 +98,34 @@ def line_for(text: FileText, server: Server, needle: str) -> int:
     return next((i + 1 for i in range(start, len(lines)) if needle in lines[i]), start + 1)
 
 
+def _json_end(lines: list[str], start: int) -> int:
+    """The line where the object opened on `start` closes."""
+    depth = 0
+    for index in range(start, len(lines)):
+        depth += lines[index].count("{") - lines[index].count("}")
+        if depth <= 0:
+            return index
+    return len(lines) - 1
+
+
+def _toml_end(lines: list[str], start: int, name: str) -> int:
+    """The line before the next table that is not one of this server's own."""
+    for index in range(start + 1, len(lines)):
+        row = lines[index].lstrip()
+        if row.startswith("[") and name not in row:
+            return index - 1
+    return len(lines) - 1
+
+
+def block(text: FileText, server: Server) -> tuple[int, ...]:
+    """The lines of the server's whole entry: its braces in JSON, its table and sub-tables in TOML."""
+    lines = text.lines
+    named = re.compile(rf"[\"'.\[]{re.escape(server.name)}[\"'\]]")
+    start = next((i for i, line in enumerate(lines) if named.search(line)), 0)
+    end = _toml_end(lines, start, server.name) if text.kind == "toml" else _json_end(lines, start)
+    return tuple(range(start + 1, end + 2))
+
+
 def _split(args: list[str], spec_flags: frozenset[str], value_flags: frozenset[str]) -> tuple[str | None, list[str]]:
     """The package spec a `--from`-style flag names, and the positional arguments."""
     spec: str | None = None

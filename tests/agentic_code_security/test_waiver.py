@@ -102,11 +102,13 @@ def test_a_committed_waiver_on_a_line_the_agent_changed_is_refused(tmp_path: Pat
     assert run_gate(tmp_path, {PATH: moved}, event="tool_use")[0] == REFUSE
 
 
-def test_the_agent_is_judged_on_the_whole_file_not_the_diff(tmp_path: Path) -> None:
+def test_the_agent_is_judged_on_what_it_adds_not_the_whole_file(tmp_path: Path) -> None:
     commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})
     same = f"{PLAIN}{BAD_LINE}\nx = 1\n"
-    assert run_gate(tmp_path, {PATH: same}, event="tool_use")[0] == REFUSE
-    assert run_gate(tmp_path, {PATH: same}, event="stop")[0] == REFUSE
+    assert run_gate(tmp_path, {PATH: same}, event="tool_use")[0] == PASS
+    assert run_gate(tmp_path, {PATH: same}, event="stop")[0] == PASS
+    added = f"{PLAIN}{BAD_LINE}\nrequests.post(u, verify=False)\n"
+    assert run_gate(tmp_path, {PATH: added}, event="tool_use")[0] == REFUSE
 
 
 def test_a_commit_refuses_only_what_is_new(tmp_path: Path) -> None:

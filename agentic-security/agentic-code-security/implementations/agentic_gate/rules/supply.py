@@ -35,6 +35,7 @@ def _unpinned(text: FileText) -> Iterator[Hit]:
             yield Hit(
                 mcp.line_for(text, server, found.spec),
                 f"server {server.name!r} runs {found.tool} {found.spec!r} with no exact version.",
+                mcp.block(text, server),
             )
 
 
@@ -46,7 +47,11 @@ def _uvx_git(text: FileText) -> Iterator[Hit]:
     for server in mcp.servers(text):
         found = mcp.launch(mcp.argv(server))
         if found and found.tool == "uvx" and _git_unpinned(found.spec):
-            yield Hit(mcp.line_for(text, server, found.spec), f"server {server.name!r} runs uvx from {found.spec!r}.")
+            yield Hit(
+                mcp.line_for(text, server, found.spec),
+                f"server {server.name!r} runs uvx from {found.spec!r}.",
+                mcp.block(text, server),
+            )
     if not text.is_mcp_config:
         for line_no, line in code_lines(text):
             found_spec = _GIT_SPEC.search(line)
@@ -66,7 +71,9 @@ def _remote_http(text: FileText) -> Iterator[Hit]:
             url = server.body.get(key)
             if isinstance(url, str) and _is_remote_http(url):
                 yield Hit(
-                    mcp.line_for(text, server, url), f"server {server.name!r} connects to {url!r} over plain HTTP."
+                    mcp.line_for(text, server, url),
+                    f"server {server.name!r} connects to {url!r} over plain HTTP.",
+                    mcp.block(text, server),
                 )
     if text.kind == "python" and text.holds("mcp"):
         for line_no, value in settings(text, "url"):

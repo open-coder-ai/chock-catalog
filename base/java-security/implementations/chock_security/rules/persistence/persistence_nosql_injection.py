@@ -78,7 +78,9 @@ def scan(text: FileText) -> Iterator[Finding]:
     for flow in flows(text, _FACTS["parse_sinks"]):
         if flow.line_no in reported:
             continue
-        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE_PARSE.format(source=flow.source))
+        yield Finding(
+            RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE_PARSE.format(source=flow.source), related=flow.related
+        )
 
 
 RULE = Rule(

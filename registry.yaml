@@ -286,14 +286,14 @@ policies:
     guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.'
 - id: java-security
   path: base/java-security
-  version: 0.4.4
+  version: 0.5.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 101
-  eval_executed: 93
+  eval_cases: 107
+  eval_executed: 99
   description: >-
     trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut,
     Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates,
@@ -758,14 +758,14 @@ policies:
     at commit only, never in the agent.'
 - id: agentic-code-security
   path: agentic-security/agentic-code-security
-  version: 0.1.0
+  version: 0.2.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 127
-  eval_executed: 122
+  eval_cases: 134
+  eval_executed: 129
   description: 'trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
     LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json,
     .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json),

@@ -25,7 +25,9 @@ def scan(text: FileText) -> Iterator[Finding]:
     if not text.holds(*_FACTS["guard_tokens"]):
         return
     for flow in flows(text, _FACTS["sinks"], sanitizers=tuple(_FACTS["sanitizers"])):
-        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE.format(source=flow.source))
+        yield Finding(
+            RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE.format(source=flow.source), related=flow.related
+        )
 
 
 RULE = Rule(

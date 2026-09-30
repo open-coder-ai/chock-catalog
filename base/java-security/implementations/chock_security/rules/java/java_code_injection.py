@@ -34,7 +34,7 @@ def scan(text: FileText) -> Iterator[Finding]:
         return
     for flow in flows(text, _FACTS["sinks"]):
         message = _MESSAGE.format(source=flow.source)
-        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message)
+        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message, related=flow.related)
 
 
 RULE = Rule(

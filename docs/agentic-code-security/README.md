@@ -10,7 +10,7 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 127 total, 122 executable |
+| **Eval cases** | 134 total, 129 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -41,7 +41,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> agentic-code-security: a construct one of its rules denies -- the refusal above names the rule, its CWE and OWASP ASI entry, and the fix. At commit only findings HEAD did not already have are refused; as the agent writes and at its turn's end the whole file is judged. Each rule's verdict is allow|deny in .chock/agentic-security.json, per rule or per pack (exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code, provenance). Only a human reviewer waives a line, with # chock: allow <rule-id> (// in JavaScript), never the agent: in the agent a waiver counts once a human has committed it. JSON configs are waived in the selection file only.
+> agentic-code-security: a construct one of its rules denies -- the refusal above names the rule, its CWE and OWASP ASI entry, and the fix. Only what the change adds is refused, at commit, as the agent writes and at its turn's end: an old finding on lines it leaves alone never blocks. Each rule's verdict is allow|deny in .chock/agentic-security.json, per rule or per pack (exec, supply, tools, approval, identity, comms, bounds, prompt-memory, code, provenance). Only a human reviewer waives a line, with # chock: allow <rule-id> (// in JavaScript), never the agent: in the agent a waiver counts once a human has committed it. JSON configs are waived in the selection file only.
 
 ## Which primitive it becomes
 

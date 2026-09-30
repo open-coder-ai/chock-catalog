@@ -43,7 +43,7 @@ def scan(text: FileText) -> Iterator[Finding]:
         if not _xpath_sink(flow.line):
             continue
         message = _MESSAGE.format(source=flow.source)
-        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message)
+        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message, related=flow.related)
 
 
 RULE = Rule(

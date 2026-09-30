@@ -65,7 +65,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     if text.suffix in {".java", ".kt"} and _guarded_code(text):
         for flow in flows(text, _FACTS["ognl_sinks"]):
             message = _FLOW_MESSAGE.format(source=flow.source)
-            yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message)
+            yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message, related=flow.related)
 
 
 RULE = Rule(

@@ -38,6 +38,10 @@ class Hit(NamedTuple):
 
     line_no: int
     detail: str
+    #: Other lines the finding depends on, so a change to one of them is a change to it.
+    related: tuple[int, ...] = ()
+    #: The finding is itself a comparison with HEAD, so it stands whatever lines the change touched.
+    by_diff: bool = False
 
 
 @dataclass(frozen=True)
@@ -51,6 +55,8 @@ class Finding:
     message: str
     cwe: tuple[str, ...] = ()
     asi: tuple[str, ...] = ()
+    related: tuple[int, ...] = ()
+    by_diff: bool = False
 
     def render(self) -> str:
         """One line a human reads in a hook's output. The matched line is never echoed."""

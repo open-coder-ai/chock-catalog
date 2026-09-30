@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.4.4"
+version: "0.5.0"
 description: >
   trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or
   Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties
@@ -26,6 +26,7 @@ hook:
       pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json,
       per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build,
       android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny.
+      Only what the change adds is refused: a violation on lines the change leaves alone never blocks it.
       Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the
       agent a waiver counts once a human has committed it. Choose verdicts by asking to customize
       java security, which opens this skill's guided page.
@@ -34,7 +35,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-09-24T00:00:00Z"
+  updated_at: "2026-09-30T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -48,6 +49,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.0
+  date: '2026-09-30'
+  changes:
+  - "The gate judges only what a change adds, at every event, not whole files. A finding is kept when a line it involves is new against the baseline: its reported line, the Java statement that line sits in (a multi-line statement counts whole, up to 40 lines), and, for a flow, the lines the analyser recorded for it -- the signature that makes a parameter request data and each assignment that carried the value to the sink. A line is new when the written text holds more copies of it (indentation ignored) than the baseline does. Baseline: HEAD at commit; the file on disk before the write at PreToolUse; HEAD at the turn's end, when disk already holds the written text; a new file has every line new, so it is judged whole. So an old violation in a touched file no longer blocks the agent (eval tc-101 flips from block to allow), a new line that completes a flow into an old sink, or feeds an old source into a new sink, still does (tc-102, tc-103, tc-107), and a commit judges the same way (tc-105, tc-106). Finding gains `related` lines and Flow and Method carry them; the 22 flow rules pass `flow.related`. Not caught, by construction: a violation a change makes by deleting a line (a removed sanitizer, close(), hashCode) or in a file-wide context another line supplies, unless the finding's own or recorded lines change; waivers are unchanged. New module chock_security/changed.py; a policy-local copy, the agentic gate has its own."
 - version: 0.4.4
   date: '2026-09-27'
   changes:
