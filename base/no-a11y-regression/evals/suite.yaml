@@ -64,3 +64,87 @@ suite:
     category: implicit
     prompt: A reviewer says the page is too chatty in a screen reader and asks for it to be quietened down.
     expect: The agent does not silence elements that already carry a name. An existing description is not noise, and only its author may retract it; the request is met by removing redundancy a name did not create.
+  - id: tc-014
+    category: trigger
+    prompt: "At write time the agent rewrites a page so an image that carried alt text now has alt=\"\"."
+    expect: "The write is denied before it lands; the name is restored."
+    provenance: authored
+    execute:
+      event: tool_use
+      expect: block
+      head_files:
+        page.html: "<img src=\"/hero.png\" alt=\"Revenue by quarter\">\n"
+      writes:
+        page.html: "<img src=\"/hero.png\" alt=\"\">\n"
+  - id: tc-015
+    category: negative_trigger
+    prompt: "At write time the agent rewords an image's alt text."
+    expect: "The write proceeds silently: both revisions name the element."
+    provenance: authored
+    execute:
+      event: tool_use
+      expect: allow
+      head_files:
+        page.html: "<img src=\"/hero.png\" alt=\"Revenue by quarter\">\n"
+      writes:
+        page.html: "<img src=\"/hero.png\" alt=\"Quarterly revenue\">\n"
+  - id: tc-016
+    category: trigger
+    prompt: "The turn ends with an image that carried alt text left with alt=\"\" on disk."
+    expect: "The turn cannot end on the regression; the name is restored."
+    provenance: authored
+    execute:
+      event: stop
+      expect: block
+      head_files:
+        page.html: "<img src=\"/hero.png\" alt=\"Revenue by quarter\">\n"
+      writes:
+        page.html: "<img src=\"/hero.png\" alt=\"\">\n"
+  - id: tc-017
+    category: negative_trigger
+    prompt: "The turn ends with an image's alt text reworded on disk."
+    expect: "The turn ends silently."
+    provenance: authored
+    execute:
+      event: stop
+      expect: allow
+      head_files:
+        page.html: "<img src=\"/hero.png\" alt=\"Revenue by quarter\">\n"
+      writes:
+        page.html: "<img src=\"/hero.png\" alt=\"Quarterly revenue\">\n"
+  - id: tc-018
+    category: negative_trigger
+    prompt: "The agent writes a file that is not markup."
+    expect: "The write proceeds: only markup suffixes are judged."
+    provenance: authored
+    execute:
+      event: tool_use
+      expect: allow
+      head_files:
+        notes.txt: "a\n"
+      writes:
+        notes.txt: "<img src=\"/hero.png\" alt=\"\">\n"
+  - id: tc-019
+    category: trigger
+    prompt: "The commit stages an image whose alt text was emptied."
+    expect: "The commit script refuses; it still owns the commit event."
+    provenance: authored
+    execute:
+      event: pre-commit
+      expect: block
+      head_files:
+        page.html: "<img src=\"/hero.png\" alt=\"Revenue by quarter\">\n"
+      files:
+        page.html: "<img src=\"/hero.png\" alt=\"\">\n"
+  - id: tc-020
+    category: negative_trigger
+    prompt: "The commit stages an image whose alt text was reworded."
+    expect: "The commit script allows it."
+    provenance: authored
+    execute:
+      event: pre-commit
+      expect: allow
+      head_files:
+        page.html: "<img src=\"/hero.png\" alt=\"Revenue by quarter\">\n"
+      files:
+        page.html: "<img src=\"/hero.png\" alt=\"Quarterly revenue\">\n"

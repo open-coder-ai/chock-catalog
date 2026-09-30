@@ -14,7 +14,14 @@ mod = scriptkit.load("limit-diff-size", NAME)
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for var in ("CHOCK_DIFF_LIMIT", "CHOCK_ALLOW_LARGE_DIFF", "CHOCK_AGENT_COMMIT"):
+    for var in (
+        "CHOCK_DIFF_LIMIT",
+        "CHOCK_ALLOW_LARGE_DIFF",
+        "CHOCK_AGENT_COMMIT",
+        "CLAUDECODE",
+        "AI_AGENT",
+        "MY_AGENT",
+    ):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -49,13 +56,14 @@ def test_a_change_over_the_limit_is_refused_with_the_five_largest_files(
 ) -> None:
     stage(repo, {f"f{i}.py": lines(100 + i * 10) for i in range(7)})
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "staged diff is 910 lines" in err
     assert "limit is 500" in err
     listed = [ln for ln in err.splitlines() if ln.startswith("  ") and ".py" in ln]
     assert [ln.split()[1] for ln in listed] == ["f6.py", "f5.py", "f4.py", "f3.py", "f2.py"]
     assert "git add -p" in err
-    assert "CHOCK_ALLOW_LARGE_DIFF=1" in err
+    assert "CHOCK_ALLOW=limit-diff-size" in err
+    assert "CHOCK_ALLOW_LARGE_DIFF=1 still works" in err
     assert "ask the person" in err
 
 
@@ -66,7 +74,7 @@ def test_removed_lines_count_as_much_as_added_ones(repo: Path, capsys: pytest.Ca
     assert verdict(capsys)[0] == 0  # 400 removed
     stage(repo, {"big.txt": "x\n"})
     code, err = verdict(capsys)  # 600 removed + 1 added
-    assert code == 1
+    assert code == 3
     assert "601 lines" in err
 
 
@@ -104,7 +112,7 @@ def test_lockfiles_generated_and_vendored_paths_are_not_counted(
 def test_a_file_that_only_looks_generated_is_counted(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     stage(repo, {"src/build.py": lines(300), "src/dist_tools.py": lines(300), "lockfile.txt": lines(300)})
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "900 lines" in err
 
 
@@ -133,7 +141,7 @@ def test_the_limit_comes_from_chock_diff_limit(
     stage(repo, {"a.py": lines(20)})
     monkeypatch.setenv("CHOCK_DIFF_LIMIT", "10")
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "limit is 10" in err
     monkeypatch.setenv("CHOCK_DIFF_LIMIT", "20")
     assert verdict(capsys) == (0, "")
@@ -146,7 +154,7 @@ def test_an_unusable_limit_falls_back_to_500(
     monkeypatch.setenv("CHOCK_DIFF_LIMIT", bad)
     stage(repo, {"a.py": lines(501)})
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "limit is 500" in err
 
 
@@ -165,7 +173,7 @@ def test_a_falsy_override_does_not_override(
 ) -> None:
     stage(repo, {"a.py": lines(900)})
     monkeypatch.setenv("CHOCK_ALLOW_LARGE_DIFF", "0")
-    assert verdict(capsys)[0] == 1
+    assert verdict(capsys)[0] == 3
 
 
 def test_an_agents_commit_cannot_use_the_override(
@@ -175,9 +183,94 @@ def test_an_agents_commit_cannot_use_the_override(
     monkeypatch.setenv("CHOCK_ALLOW_LARGE_DIFF", "1")
     monkeypatch.setenv("CHOCK_AGENT_COMMIT", "1")
     code, err = verdict(capsys)
-    assert code == 1
+    assert code == 3
     assert "ignored, this is an agent's commit" in err
     assert "staged diff is 900 lines" in err
+
+
+def overridden(repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> bool:
+    """Whether CHOCK_ALLOW_LARGE_DIFF=1 gets a 900-line commit through in the current environment."""
+    stage(repo, {"a.py": lines(900)})
+    monkeypatch.setenv("CHOCK_ALLOW_LARGE_DIFF", "1")
+    code, _ = verdict(capsys)
+    return code == 0
+
+
+@pytest.mark.parametrize(
+    ("var", "value"),
+    [("CHOCK_AGENT_COMMIT", "1"), ("CHOCK_AGENT_COMMIT", "yes"), ("CLAUDECODE", "1"), ("AI_AGENT", "codex")],
+)
+def test_each_agent_marker_refuses_the_override(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, var: str, value: str
+) -> None:
+    monkeypatch.setenv(var, value)
+    assert not overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize(("var", "value"), [("CLAUDECODE", "0"), ("CLAUDECODE", ""), ("AI_AGENT", "  ")])
+def test_a_marker_that_is_not_set_does_not_refuse_the_override(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, var: str, value: str
+) -> None:
+    monkeypatch.setenv(var, value)
+    assert overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize("person", ["0", "false", "no", "off", "OFF"])
+def test_an_explicit_person_wins_over_every_other_marker(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, person: str
+) -> None:
+    monkeypatch.setenv("CHOCK_AGENT_COMMIT", person)
+    monkeypatch.setenv("CLAUDECODE", "1")
+    monkeypatch.setenv("AI_AGENT", "codex")
+    assert overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        "agent_commit_env: [OTHER, MY_AGENT]\n",
+        "agent_commit_env: MY_AGENT\n",
+        "agent_commit_env: ['MY_AGENT']  # quoted\n",
+        "agent_commit_env:\n  # first\n  - OTHER\n\n  - MY_AGENT\n",
+        "x: 1\nagent_commit_env:\n  - MY_AGENT\ny: 2\n",
+    ],
+)
+def test_a_configured_agent_variable_refuses_the_override(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, config: str
+) -> None:
+    scriptkit.write(repo, {".chock/config.yaml": config})
+    monkeypatch.setenv("MY_AGENT", "1")
+    assert not overridden(repo, capsys, monkeypatch)
+
+
+def test_a_named_variable_that_is_unset_leaves_the_override_working(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    scriptkit.write(repo, {".chock/config.yaml": "agent_commit_env: [MY_AGENT]\n"})
+    assert overridden(repo, capsys, monkeypatch)
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        "agent_commit_env:\n  - OTHER\ny: MY_AGENT\n",
+        "agent_commit_env: [not a name, 1BAD]\n",
+        "other: [MY_AGENT]\n",
+    ],
+)
+def test_a_variable_the_config_does_not_name_is_not_a_marker(
+    repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, config: str
+) -> None:
+    scriptkit.write(repo, {".chock/config.yaml": config})
+    monkeypatch.setenv("MY_AGENT", "1")
+    assert overridden(repo, capsys, monkeypatch)
+
+
+def test_an_unreadable_config_names_no_marker(tmp_path: Path) -> None:
+    assert mod.configured_agent_env(tmp_path) == []
+    (tmp_path / ".chock").mkdir()
+    (tmp_path / ".chock" / "config.yaml").write_bytes(b"\xff\xfe")
+    assert mod.configured_agent_env(tmp_path) == []
 
 
 def test_outside_a_repository_the_script_refuses_rather_than_allows(
@@ -195,7 +288,7 @@ def test_the_script_runs_as_a_process_and_speaks_through_its_exit_code(tmp_path:
     stage(repo, {"a.py": lines(600)})
     env = {k: v for k, v in os.environ.items() if not k.startswith("CHOCK_")}
     code, err = scriptkit.run_script("limit-diff-size", NAME, repo, env=env)
-    assert code == 1
+    assert code == 3
     assert "600 lines" in err
     code, _ = scriptkit.run_script("limit-diff-size", NAME, repo, env={**env, "CHOCK_DIFF_LIMIT": "700"})
     assert code == 0

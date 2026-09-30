@@ -50,12 +50,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~354 tokens (chars/4, max 2000)
 Recompiled 1 policies
 no-a11y-regression:
-  claude: enforced-at-commit
-  copilot: enforced-at-commit
-  gemini: enforced-at-commit
+  claude: best-effort (live-run)
+  copilot: best-effort (live-run-partial)
+  gemini: best-effort (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
@@ -70,6 +73,15 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
+Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 1 hook entr(y/ies) in .agents/hooks.json
+Registered 2 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 1 agent hook(s) in .github/hooks/chock.json
+INDEX.md: ~354 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -81,16 +93,42 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 54 skipped
+no-a11y-regression  [deterministic]
+  PASS  tc-014                             authored  no-a11y-regression: this write destroys an accessibility assertion …
+  PASS  tc-015                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-016                             authored  no-a11y-regression: this write destroys an accessibility assertion …
+  PASS  tc-017                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-018                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-019                             authored  BLOCKED: this change destroys an accessibility assertion in 1 file(…
+  PASS  tc-020                             authored  script exit 0
+  score 1.00
+
+5 policies: 7 pass, 54 skipped
 54 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
 
 ```text
+.chock/compiled/no-a11y-regression/agent-hooks/gate-hooks.json
+.chock/compiled/no-a11y-regression/agent-hooks/gate.json
 .chock/compiled/no-a11y-regression/ambient-rule/ambient.md
 .chock/compiled/no-a11y-regression/git-hook/git-pre-commit.sh
 .chock/compiled/no-a11y-regression/managed-setting/managed-settings.json
+.chock/compiled/no-a11y-regression/pre-tool-use/codex_cli-write-hooks.json
+.chock/compiled/no-a11y-regression/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/no-a11y-regression/pre-tool-use/gate.json
+.chock/compiled/no-a11y-regression/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/no-a11y-regression/pre-tool-use/pretooluse-write.json
+.chock/compiled/no-a11y-regression/stop/antigravity-hooks.json
+.chock/compiled/no-a11y-regression/stop/codex_cli-hooks.json
+.chock/compiled/no-a11y-regression/stop/cursor-hooks.json
+.chock/compiled/no-a11y-regression/stop/devin-hooks.json
+.chock/compiled/no-a11y-regression/stop/gate.json
+.chock/compiled/no-a11y-regression/stop/gemini_cli-hooks.json
+.chock/compiled/no-a11y-regression/stop/stop.json
+.chock/compiled/no-a11y-regression/stop/tabnine-hooks.json
+.chock/compiled/no-a11y-regression/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry

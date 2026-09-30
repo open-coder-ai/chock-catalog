@@ -1,6 +1,6 @@
 id: limit-diff-size
 name: "Limit Diff Size Rule"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   trigger: staging a large change, committing more than a reviewer can read at once.
   avoid: one commit carrying hundreds of hand-written lines; lockfile and generated churn is not counted.
@@ -9,15 +9,15 @@ enforcement: block
 effects: [read_only]
 rule:
   text: |
-    at(commit): refuse if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
-    on(refused): split into atomic commits (git add -p); override: CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_override), ask(human)
+    at(commit): ask if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
+    on(asked): split into atomic commits (git add -p); answer: CHOCK_ALLOW=limit-diff-size|CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_answer), ask(human)
 hook:
   script:
     "on": [commit]
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-29T12:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -34,3 +34,8 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Initial draft: the mechanised form of git-safety's advisory ask_if(diff > 500_lines). implementations/limit-diff-size-pre-commit.py sums added plus removed lines from the staged numstat, skipping lockfiles, vendored and generated paths and binary files, and refuses above CHOCK_DIFF_LIMIT (default 500). Threshold from an environment variable, not .chock/config.yaml: a script receives no config and the catalog's config keys serve declarative gates. CHOCK_ALLOW_LARGE_DIFF=1 is a human override, ignored when CHOCK_AGENT_COMMIT is set."
+- version: 0.0.2
+  date: '2026-09-29'
+  changes:
+  - "An oversized diff asks instead of blocking. The script exits 3 (ask) rather than 1 when the staged total is over the limit, so the hook refuses until a person runs that one commit with CHOCK_ALLOW=limit-diff-size, the engine's own answer to an ask, which an agent's commit cannot give. CHOCK_ALLOW_LARGE_DIFF=1 and CHOCK_DIFF_LIMIT keep working unchanged, and the refusal names all three. An unmeasurable diff (git diff --cached failing) still exits 1: that is a broken check, not a question."
+  - "The legacy CHOCK_ALLOW_LARGE_DIFF override now refuses an agent's commit by the engine's own detection, not CHOCK_AGENT_COMMIT alone: an explicit CHOCK_AGENT_COMMIT of 0, false, no or off is a person and wins; any other non-empty value, CLAUDECODE=1, a non-empty AI_AGENT, or a non-empty variable named under agent_commit_env in .chock/config.yaml is an agent. The script cannot import chock, so the same test is a small stdlib helper beside it."

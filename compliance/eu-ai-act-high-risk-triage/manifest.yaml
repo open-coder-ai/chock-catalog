@@ -1,6 +1,6 @@
 id: eu-ai-act-high-risk-triage
 name: "EU AI Act — High-Risk Triage"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Flag when code puts an AI system into an EU AI Act Annex III high-risk domain —
   biometrics, critical infrastructure, education, employment, essential services and
@@ -20,6 +20,20 @@ rule:
   text: |
     on_touch(Annex III domain: biometrics|critical_infra|education|employment|essential_services|credit|insurance|law_enforcement|migration|justice|elections): flag + name(domain) + require owner for Art 9-15 (risk_mgmt, data_governance, tech_doc, logging, human_oversight, accuracy_robustness_cybersecurity)
     never(silently add): high_risk capability; decision belongs to the repo owner; see .agents/policies/eu-ai-act-high-risk-triage/references/annex-iii.md
+
+hook:
+  gate:
+    kind: content_regex
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      Possible EU AI Act Annex III high-risk domain (scoring, ranking or screening of people).
+      Name the domain and the provider or deployer role, and get an owner for Articles 9-15
+      before this ships. This only flags: the domain call is the repo owner's.
+    params:
+      scan: added_lines
+      # Case-insensitive; a bracketed first letter keeps the pattern from matching its own text.
+      content_pattern: '(?i)\b(?:[c]redit[_ -]?(?:scor|worth|risk)\w*|loan[_ -]?(?:approv|decision|underwrit)\w*|(?:[r]esume|[c]andidate|applicant)s?[_ -]?(?:rank|scor|screen|filter)\w*|[b]iometric[_ -]?(?:identif|categor|recogni)\w*|face[_ -]?(?:recogni|identif|match)\w*|emotion[_ -]?recogni\w*|[r]ecidivis\w*|predictive[_ -]?polic\w*|proctor\w*|(?:[e]xam|admission)s?[_ -]?(?:scor|rank|grad)\w*|(?:[v]isa|asylum|border)[_ -]?(?:triage|screen|risk|scor)\w*|(?:[i]nsurance|premium)[_ -]?(?:pric|underwrit|scor)\w*|(?:[b]enefit|welfare)s?[_ -]?eligib\w*|(?:[e]mployee|worker)[_ -]?(?:monitor|surveil|scor|rank)\w*)'
 
 compliance:
   eu_ai_act:
@@ -56,7 +70,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-12T00:00:00Z"
-  updated_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -78,3 +92,8 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (eu_ai_act); no mechanism change."
+- version: 0.0.3
+  date: '2026-09-29'
+  changes:
+  - "Make the deterministic part a gate. hook.gate (kind: content_regex, on: [commit, tool_use], action: warn) flags added lines that name an Annex III scoring, ranking or screening of people (credit scoring, loan approval, resume or applicant ranking, biometric identification, recidivism, exam proctoring, visa or asylum triage, insurance pricing, benefit eligibility, employee monitoring). It can only warn: at commit the reason prints and the commit proceeds, in the agent the reason reaches the agent (and the user at Stop) and nothing is denied. The domain call, the provider or deployer role and the Article 6(3) question stay advisory rule text."
+  - "Enforcement stays advise: a warn-only mechanism is not credited as enforcing. Fraud detection and biometric verification, which Annex III excludes, are not named by the pattern."
