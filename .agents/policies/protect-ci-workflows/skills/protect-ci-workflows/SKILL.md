@@ -16,4 +16,4 @@ ci_config(.github/workflows|.github/actions|.github/dependabot.yml): never(shell
 if(ci_change_needed): open PR; await(review)  # an agent must not disarm the checks on its own work
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` can refuse an agent's shell command before it runs. See https://github.com/open-coder-ai/chock

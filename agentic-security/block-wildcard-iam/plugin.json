@@ -13,7 +13,7 @@
     "policy-as-code",
     "hook",
     "block",
-    "{'control': 'asi03', 'coverage': 'partial', 'note': 'blocks wildcard grants a diff can show; identity-per-agent, ttls, and delegation scope remain advisory (owasp-asi03-identity-privilege-abuse)'}"
+    "asi03"
   ],
   "extensions": {
     "io.github.open-coder-ai": {

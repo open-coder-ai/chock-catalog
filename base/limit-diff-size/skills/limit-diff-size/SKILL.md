@@ -16,4 +16,4 @@ at(commit): ask if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); 
 on(asked): split into atomic commits (git add -p); answer: CHOCK_ALLOW=limit-diff-size|CHOCK_ALLOW_LARGE_DIFF=1|CHOCK_DIFF_LIMIT set by a human only; agent: never(set), ask(human)
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` can refuse a change at commit. See https://github.com/open-coder-ai/chock

@@ -16,4 +16,4 @@ never(break): name|lang an element already had -- remove, empty(alt=""), aria-hi
 on(name_added): record, never_ask; alt="" asserts decorative and only its author may retract a description; present -> present (reworded label) is a copy decision, stay silent
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it, and this policy stays advisory even when compiled by `chock` -- it ships rule text, not a blocking hook. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` can refuse a change at commit; blocks on an agent's file writes and at turn end. See https://github.com/open-coder-ai/chock

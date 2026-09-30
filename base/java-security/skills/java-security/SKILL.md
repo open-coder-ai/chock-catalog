@@ -51,4 +51,4 @@ Wiring is not this skill's. Installed as a plugin, the hooks beside this file ju
 write and the turn's end; in a repository, `chock sync` adds the commit hook. Both read the
 same selection file.
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` becomes a git hook that exits non-zero. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` blocks at commit, on an agent's file writes and at turn end. See https://github.com/open-coder-ai/chock

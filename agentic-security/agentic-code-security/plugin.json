@@ -13,12 +13,12 @@
     "policy-as-code",
     "hook",
     "block",
-    "{'control': 'asi02', 'coverage': 'partial', 'note': \"refuses tools that hand the model's string to a subprocess, shell tools, and approvals switched off; tool scoping stays with owasp-asi02-tool-misuse\"}",
-    "{'control': 'asi03', 'coverage': 'partial', 'note': 'refuses the whole host environment and credential stores handed to agent code; privilege design stays with owasp-asi03-identity-privilege-abuse'}",
-    "{'control': 'asi04', 'coverage': 'partial', 'note': 'refuses unpinned mcp launch commands, git installs without a commit, plain-http mcp servers and trust_remote_code; signatures and provenance stay with owasp-asi04-agentic-supply-chain'}",
-    "{'control': 'asi05', 'coverage': 'partial', 'note': 'refuses framework settings that run model-written code on the host; sandbox design stays with owasp-asi05-unexpected-code-execution'}",
-    "{'control': 'asi07', 'coverage': 'partial', 'note': 'refuses tls verification switched off; agent authentication and message integrity stay with owasp-asi07-insecure-inter-agent-communication'}",
-    "{'control': 'asi09', 'coverage': 'partial', 'note': 'refuses human approval removed where an agent acts; trust calibration stays with owasp-asi09-human-agent-trust'}"
+    "asi02",
+    "asi03",
+    "asi04",
+    "asi05",
+    "asi07",
+    "asi09"
   ],
   "extensions": {
     "io.github.open-coder-ai": {

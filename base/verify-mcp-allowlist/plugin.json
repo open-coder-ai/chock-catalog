@@ -13,7 +13,7 @@
     "policy-as-code",
     "rule",
     "advise",
-    "{'control': 'asi04', 'coverage': 'partial', 'note': \"blocks an unverified mcp server entering .mcp.json from the shell -- the mechanizable slice of asi04's 'unverified mcp servers' framing; provenance and signature verification beyond allowlist membership stay with the advisory owasp-asi04-agentic-supply-chain policy\"}"
+    "asi04"
   ],
   "extensions": {
     "io.github.open-coder-ai": {
