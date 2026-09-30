@@ -4,7 +4,7 @@
 
 <h1>chock-catalog</h1>
 
-<p><strong>Security guardrails for coding agents -- refused at commit, in CI, or before the tool runs.</strong></p>
+<p><strong>Application security for the code your AI agents write -- checked as they write it, at commit and in CI.</strong></p>
 
 <p>
 <img alt="48 policies" src="https://img.shields.io/badge/policies-48-D9B45C?labelColor=0D1626">
@@ -21,9 +21,10 @@
 </p>
 
 <p>
-<a href="#why-guardrails">Why</a> ·
+<a href="#why-application-security">Why</a> ·
 <a href="#quick-start">Quick start</a> ·
 <a href="#what-it-stops">What it stops</a> ·
+<a href="#a-normal-day-by-role">By role</a> ·
 <a href="#security-coverage-by-area">By area</a> ·
 <a href="#the-tiers-guardrails-not-guarantees">Tiers</a> ·
 <a href="#how-it-works">How it works</a> ·
@@ -35,26 +36,46 @@
 
 </div>
 
-## Why guardrails
+## Why application security
 
-Your coding agent has a shell, your git history and your cloud credentials. This catalog
-refuses the dangerous action before it lands -- as a git hook, a CI gate, or the agent's own
-pre-tool hook -- so a team can hand an agent real work without handing it the keys.
+Coding agents already ask before they run a shell command. What they don't check is the
+code they write -- SQL injection in a Spring repository, unsafe deserialization, a wildcard
+IAM grant, an MCP server pinned to `@latest`, a stripped `aria-label`, a secret written into
+agent memory. Chock checks that code at the agent's own hook where the client has one, and
+again at commit and in CI, with rules for Java and Kotlin, agent code, cloud IAM, supply
+chain, accessibility and the OWASP Agentic Top 10.
 
-Agents, left alone, do things a reviewer would have caught:
+Agents, left alone, write code a security reviewer would have caught:
+
+| The agent writes… | Refused by |
+| :--- | :--- |
+| SQL built by concatenation or MyBatis `${}`, unsafe deserialization, XXE, trust-all TLS, disabled Spring Security | `java-security` |
+| agent code that runs model output on the host (`allow_dangerous_code=True`, `use_docker: False`), switches tool approvals off, or turns TLS verification off | `agentic-code-security` |
+| bare `eval`/`exec`, `shell=True`, `pickle` loads, `yaml.load` without `SafeLoader` | `block-unsafe-code-execution` |
+| `"Action": "*"` in IAM, `AdministratorAccess`, GCP `roles/owner` | `block-wildcard-iam` |
+| a dependency you have not allowlisted, an MCP server at `@latest`, an Action at a movable tag | `verify-dependency-exists`, `block-unpinned-agent-components`, `verify-mcp-allowlist`, `pin-github-actions` |
+| a "cleanup" that empties an `alt` or drops an `aria-label` | `no-a11y-regression` |
+| a secret, a pasted diff or a 60-line code block into its own memory | `guard-memory-writes` |
+| bidi override controls (Trojan Source) or Unicode tag characters that hide instructions | `block-invisible-unicode` |
+| deleted assertions or new skips, to turn CI green | `protect-test-integrity`, `block-test-skips` |
+
+<details>
+<summary><strong>Also included</strong> -- the shell, git and agent-config guards</summary>
+
+Agents ship their own prompts for these. Chock adds a policy committed to the repo, the same
+for every agent and every developer -- a gate at commit, or a guard before the tool runs.
 
 | The agent… | Refused by |
 | :--- | :--- |
-| hard-codes an API key, or pastes one into its memory file | `scan-secrets`, `guard-memory-writes` |
+| hard-codes an API key | `scan-secrets` |
 | runs `rm -rf`, `git push --force`, `terraform destroy` | `block-destructive-commands`, `rtk-dangerous-actions-blocker` |
 | skips every hook with `--no-verify` | `block-no-verify` |
-| deletes assertions or skips tests to turn CI green | `protect-test-integrity`, `block-test-skips` |
-| adds a hallucinated package, wires an MCP server at `@latest` | `verify-dependency-exists`, `block-unpinned-agent-components`, `verify-mcp-allowlist` |
-| grants `"Action": "*"` in IAM, or an allow-everything tool list to itself | `block-wildcard-iam`, `block-wildcard-agent-permissions` |
-| is prompt-injected through invisible Unicode | `block-invisible-unicode` |
 | edits its own guardrail config or CI workflows | `protect-agent-config`, `protect-ci-workflows` |
+| grants itself an allow-everything tool list | `block-wildcard-agent-permissions` |
 | spawns a sub-agent with `--dangerously-skip-permissions` | `block-unguarded-agent-spawn` |
 | POSTs repo data to an unknown host, or pipes `curl` into `sh` | `block-unapproved-egress`, `block-curl-pipe-sh` |
+
+</details>
 
 A rule in a prompt is forgotten when the context fills; a hook that exits non-zero is not.
 **A rule an agent reads is advice. A hook that exits non-zero is a control.** Every policy
@@ -88,22 +109,142 @@ Add the rest by area: `chock add java-security`, `chock add agentic-code-securit
 
 | Area | What gets refused | Policies | Strongest tier |
 | :--- | :--- | ---: | :--- |
-| [Secrets & data leakage](#secrets--data-leakage) | credentials in a commit, session leaks in commit messages, secrets in agent memory, uploads to unknown hosts | 4 | enforced-at-commit |
+| [Secure code: Java / Kotlin](#secure-code-java--kotlin) | 129 rules in 16 packs: injection, XXE, SSRF, deserialization, weak crypto, Spring misconfig, known-exploited versions | 1 | enforced-at-commit |
+| [Secure code: agent code & cloud privilege](#secure-code-agent-code--cloud-privilege) | 29 rules in 10 packs for agent frameworks, plus `eval`/`shell=True`/`pickle` and wildcard IAM | 3 | enforced-at-commit |
+| [Supply chain](#supply-chain) | dependencies off your allowlist, Actions not pinned to a commit SHA, agent components at `@latest` | 3 | enforced-at-commit |
+| [OWASP Top 10 for Agentic Applications](#owasp-top-10-for-agentic-applications) | a policy for each of ASI01–ASI10; 7 have a slice enforced at commit | 10 | advisory + enforced slices |
+| [Accessibility (ADA / Section 508 / WCAG)](#accessibility-ada--section-508--wcag) | a change that retracts an accessible name an element already had | 1 | enforced-at-commit |
+| [Memory guardrails](#memory-guardrails) | secrets, pasted git history and oversized code blocks written into agent memory | 2 | enforced-at-commit |
+| [Prompt injection](#prompt-injection) | Trojan Source bidi overrides and Unicode tag smuggling | 2 | enforced-at-commit |
+| [Test integrity](#test-integrity) | deleted tests, net assertion loss, `assert True`, new skips and `.only` | 2 | enforced-at-commit |
+| **Also included** | | | |
+| [Secrets & data leakage](#secrets--data-leakage) | credentials in a commit, session leaks in commit messages, uploads to unknown hosts | 3 | enforced-at-commit |
 | [Destructive commands & hook bypass](#destructive-commands--hook-bypass) | `rm -rf /`, force push, hard reset, `DROP`, `--no-verify`, commits to `main`, `curl \| sh` | 5 | enforced-at-commit |
 | [Agent self-protection & excessive agency](#agent-self-protection--excessive-agency) | an agent editing its own guardrails or CI, wildcard grants, unguarded sub-agents, unlisted MCP servers | 5 | enforced-at-commit |
-| [Supply chain](#supply-chain) | hallucinated packages, Actions at a movable tag, agent components at `@latest` | 3 | enforced-at-commit |
-| [Prompt injection](#prompt-injection) | Trojan Source bidi overrides and Unicode tag smuggling | 2 | enforced-at-commit |
-| [Secure code: Java / Kotlin](#secure-code-java--kotlin) | 129 rules: injection, XXE, SSRF, deserialization, weak crypto, Spring misconfig, known-exploited versions | 1 | enforced-at-commit |
-| [Secure code: agent code](#secure-code-agent-code) | 29 rules for agent frameworks, plus `eval`/`shell=True`/`pickle` and wildcard IAM | 3 | enforced-at-commit |
-| [Test integrity](#test-integrity) | deleted tests, net assertion loss, `assert True`, new skips and `.only` | 2 | enforced-at-commit |
-| [OWASP Top 10 for Agentic Applications](#owasp-top-10-for-agentic-applications) | a policy for each of ASI01–ASI10, with enforced slices | 10 | advisory + enforced slices |
-| [Accessibility (ADA / Section 508 / WCAG)](#accessibility-ada--section-508--wcag) | a change that retracts an accessible name an element already had | 1 | enforced-at-commit |
+| [Agent discipline & hygiene](#agent-discipline--hygiene) | oversized diffs, wasted tool calls, sloppy git habits | 8 | enforced-at-commit |
 | [EU AI Act](#eu-ai-act) | Art. 5 prohibited practices, Annex III high-risk triage, Art. 50 transparency | 3 | advisory |
-| [Agent discipline & hygiene](#agent-discipline--hygiene) | oversized diffs, wasted tool calls, sloppy git and memory habits | 9 | enforced-at-commit |
 
 1,182 eval cases back these policies; 1,022 of them are replayed deterministically in CI
 against a throwaway repo on every push. In the tables below, **Evals** is executed/total --
 advisory cases report as *skipped*, never as *passing*, because there is nothing to replay.
+
+---
+
+## A normal day, by role
+
+Your agent already asks before `rm -rf`. That was never the hard part. Built-in permission
+prompts are generic, per-agent and per-laptop: they don't know your Java stack, your
+accessibility baseline, your memory rules or your threat model. Chock makes your team's rules
+part of the repo, the same for every agent and every developer.
+
+| | Agent's built-in defaults | With Chock |
+| :--- | :--- | :--- |
+| **What it knows** | generic shell prompts: "allow this command?" | your stack -- 129 Java rules, agent code, accessibility, IAM, MCP, memory, supply chain |
+| **Where it lives** | one person's settings, in one tool | plain files committed to the repo -- reviewed in PRs, travelling with every clone |
+| **Which agents** | each agent, its own format and gaps | one policy compiled for Claude Code, Cursor, Copilot, Codex, Gemini CLI and the rest of the 15 adapters |
+| **After the agent** | nothing at commit or in CI | gates run again as a git hook and a CI gate (`chock sync --ci`), catching what any agent or person missed |
+| **When it says no** | a yes/no prompt the developer clicks through | a refusal that names the fix, so the agent can correct itself in the same turn |
+| **Proof** | the vendor's word | 1,182 eval cases, 1,022 replayed in CI, and a coverage record for every policy × agent pair |
+
+<details open>
+<summary><strong>Java &amp; Kotlin developers</strong> -- Spring · Jakarta · Quarkus · Micronaut · Android</summary>
+
+| | |
+| :--- | :--- |
+| **Agent writes** | a Spring repository method that puts `${id}` into a MyBatis query, or a controller that deserializes request bodies with Jackson default typing |
+| **Chock** | refuses the write at the agent's own hook where the client has one, and again at commit; the refusal names the rule, its pack and the fix, so the agent can rewrite it with a bound parameter before you review it |
+| **You get** | 129 rules in 16 packs, including 7 quality packs mirroring SpotBugs, Sonar, PMD and Checkstyle -- caught as the code is written, not in a scan a day later; only what the change adds is refused |
+| **Policies** | `java-security` (enforced at commit) -- the team picks `allow` · `deny` · `ask` per pack once, in a guided page ("customize java security"), saved to `.chock/security.json` |
+
+</details>
+
+<details>
+<summary><strong>Web &amp; UX designers</strong> -- ADA · Section 508 · WCAG</summary>
+
+| | |
+| :--- | :--- |
+| **Agent writes** | a "cleanup" of a component that empties an `alt`, drops the `aria-label` on an icon button, hides a wrapper with `aria-hidden`, or deletes a flagged element instead of fixing it |
+| **Chock** | refuses the change: restore the name, or say the element is decorative where a reviewer sees it. Adding a name is recorded and never questioned; rewording a label stays silent -- that is a copy decision |
+| **You get** | accessibility work done for an ADA, Section 508 or WCAG audit can't quietly regress when an agent refactors the UI; markup whose name can't be decided stays silent instead of nagging. It guards the work -- it does not certify compliance |
+| **Policies** | `no-a11y-regression` (enforced at commit, and when the agent writes the file) -- guards `alt`, `aria-label`, `<label>`, `lang`, `aria-hidden`, `role="presentation"` |
+
+</details>
+
+<details>
+<summary><strong>Everyone using agent memory</strong> -- <code>MEMORY.md</code> · <code>CLAUDE.local.md</code> · the agent's own stores</summary>
+
+| | |
+| :--- | :--- |
+| **Agent writes** | a pasted diff, a code block over 20 lines, the same line twice -- or an API key -- into memory that every future session will read |
+| **Chock** | refuses those memory writes at commit and at agent tool-use, including Claude Code's and Copilot's memory stores outside the repo, with no waiver. `memory-discipline` steers what to keep: decisions and facts that can't be re-derived, atomic, de-duplicated, verified before reuse |
+| **You get** | memory that stays small, true and secret-free from session to session. `memory-discipline` maps to MITRE ATLAS AML.T0080 (memory poisoning); OWASP ASI06 has the advisory `owasp-asi06-memory-context-poisoning` policy and the opt-in `prompt-memory` pack of `agentic-code-security`. `guard-memory-writes` keeps the memory files themselves clean but declares no OWASP mapping |
+| **Policies** | `guard-memory-writes` (enforced at commit) · `memory-discipline` (advisory) |
+
+</details>
+
+<details>
+<summary><strong>AppSec &amp; OWASP owners</strong> -- OWASP Top 10 for Agentic Applications</summary>
+
+| | |
+| :--- | :--- |
+| **Today** | your checklist lives in a wiki; whether each agent, on each laptop, followed it is anyone's guess |
+| **Chock** | each of ASI01–ASI10 has a policy in the repo. 7 of the 10 also have a slice enforced at commit (ASI01–ASI05, ASI07, ASI09), ASI10 has an in-agent slice, and ASI06 and ASI08 are advisory only; beyond those slices the rule text steers the agent -- least agency, validated tool parameters, sandboxed execution, the raw action shown at approval |
+| **You get** | the part of your review checklist a diff can show, run on every commit -- plus 29 rules for teams building agents on LangChain, LangGraph, CrewAI, AutoGen, mem0, the OpenAI Agents SDK, the Claude Agent SDK or MCP. The 10/10 coverage claim is re-derived on every build |
+| **Policies** | `owasp-asi01` … `owasp-asi10` (advisory, with enforced slices) · `agentic-code-security` (enforced at commit) |
+
+</details>
+
+<details>
+<summary><strong>Threat modeling</strong> -- MITRE ATLAS, from technique ID to the control that answers it</summary>
+
+11 ATLAS techniques are mapped in the policy manifests. Every mapping is recorded as
+`coverage: partial` -- the slice a diff or a tool call can show.
+
+| ATLAS | Technique, as the manifest scopes it | Answered by |
+| :--- | :--- | :--- |
+| `AML.T0051` | LLM prompt injection | `block-invisible-unicode` (commit) · `injection-defense`, `owasp-asi01-agent-goal-hijack` (advisory) |
+| `AML.T0080` | agent context and memory poisoning | `memory-discipline`, `owasp-asi06-memory-context-poisoning` (advisory) |
+| `AML.T0081` | modify agent configuration | `protect-agent-config` (in-agent) |
+| `AML.T0083` | credentials from agent configuration | `protect-agent-config` (in-agent) · `block-wildcard-agent-permissions` (commit) |
+| `AML.T0010` | supply chain compromise | `verify-mcp-allowlist`, `verify-dependency-exists` (commit) · `owasp-asi04-agentic-supply-chain` (advisory) |
+| `AML.T0109` | rug pull through a re-tagged or floating version | `pin-github-actions`, `block-unpinned-agent-components` (commit) · `owasp-asi04-agentic-supply-chain` (advisory) |
+| `AML.T0110` | poisoned tool or MCP server acquisition | `block-unpinned-agent-components` (commit) · `owasp-asi04-agentic-supply-chain` (advisory) |
+| `AML.T0055` | unsecured credentials | `scan-secrets` (commit) |
+| `AML.T0025` | exfiltration | `block-unapproved-egress` (in-agent) |
+| `AML.T0050` | command and scripting interpreter | `block-unsafe-code-execution` (commit) |
+| `AML.T0101` | data destruction via agent tools | `block-destructive-commands` (commit) · `rtk-dangerous-actions-blocker` (in-agent) |
+
+New entries are scored weekly, by a person, in
+[chock-threat-intel](https://github.com/open-coder-ai/chock-threat-intel): enforced, advisory,
+or `policy wanted`.
+
+</details>
+
+<details>
+<summary><strong>Platform &amp; security governance</strong> -- policy as code, reviewed in PRs</summary>
+
+| | |
+| :--- | :--- |
+| **Today** | every team, agent and laptop configured differently; no record of which control ran where -- and an agent can edit its own settings |
+| **Chock** | one policy compiles to git hooks, a CI gate (`chock sync --ci`) and native agent hooks. Installs are hash-pinned in `chock.lock`, and `--verify-sha` refuses a pack that does not hash to the value you name. Agents are refused when they edit their own guardrails or CI workflows |
+| **You get** | a coverage record per policy × agent (`coverage.json`, `none` where no surface can carry it), policies reviewed like code, deterministic enforcement with no LLM calls and no network access -- plus advisory EU AI Act policies |
+| **Policies** | `protect-agent-config`, `protect-ci-workflows` (in-agent) · `protect-commit-privacy` (enforced at commit) |
+
+</details>
+
+### Guardrails that teach
+
+Every refusal names the safe alternative, so the agent can rewrite in the same turn -- fewer
+review round-trips, not more friction. Quoted from the policies' own block messages:
+
+> **`block-unsafe-code-execution`** -- "Dynamic execution primitive detected. Replace it with a
+> parameterized API (subprocess argument vector, safe_load, a real parser), …"
+
+> **`block-unpinned-agent-components`** -- "Unpinned agent component detected. Pin the version
+> (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, …"
+
+> **`block-wildcard-iam`** -- "Broad privilege grant detected. Scope Action and Resource to
+> what the task needs, …"
 
 ---
 
@@ -112,81 +253,14 @@ advisory cases report as *skipped*, never as *passing*, because there is nothing
 Tiers: `enforced-at-commit` -- the command exits non-zero, the commit does not happen ·
 `in-agent` -- best-effort: the tool call is refused before it runs, if the pre-tool hook
 runs (it fails open if the hook crashes) · `advisory` -- text an agent reads and may or may
-not follow. Most `enforced-at-commit` policies are also consulted in the agent, at tool use
-or the turn's end.
-
-### Secrets & data leakage
-
-<details open>
-<summary>4 policies -- credentials, commit narration, agent memory, egress</summary>
-
-| Policy | Refuses | Evals | Tier |
-| :--- | :--- | ---: | :--- |
-| [`scan-secrets`](docs/scan-secrets/) | credentials, keys, tokens and `.env` content in staged changes | 32/32 | enforced-at-commit |
-| [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and PR bodies that narrate the agent's conversation or leak a session link | 35/35 | enforced-at-commit |
-| [`guard-memory-writes`](docs/guard-memory-writes/) | memory files that paste git history, hold long code blocks, repeat lines or store a secret | 24/25 | enforced-at-commit |
-| [`block-unapproved-egress`](docs/block-unapproved-egress/) | `curl -d`/`-F`/`-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` to a host off the allowlist; fetches pass | 49/49 | in-agent |
-
-</details>
-
-### Destructive commands & hook bypass
-
-<details>
-<summary>5 policies -- rm -rf, force push, --no-verify, main, curl | sh</summary>
-
-| Policy | Refuses | Evals | Tier |
-| :--- | :--- | ---: | :--- |
-| [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `kubectl delete`, `aws s3 rm --recursive`, `gcloud … delete` | 80/80 | enforced-at-commit |
-| [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | `rm -rf /`, force push, credential-file reads, `DROP`/`TRUNCATE`; **asks** before `git reset --hard`, `git clean -f` | 92/92 | in-agent |
-| [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, and an agent setting the overrides meant for a person | 74/74 | in-agent |
-| [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes straight to `main`/`master` | 4/4 | enforced-at-commit |
-| [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | a download piped into an interpreter -- `curl … \| sh`, `bash -c "$(curl …)"`, `iwr … \| iex` | 34/34 | in-agent |
-
-</details>
-
-### Agent self-protection & excessive agency
-
-<details>
-<summary>5 policies -- an agent must not widen or disarm its own guardrails</summary>
-
-| Policy | Refuses | Evals | Tier |
-| :--- | :--- | ---: | :--- |
-| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files, guard sources included | 79/79 | in-agent |
-| [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` | 36/36 | in-agent |
-| [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants: bare-wildcard shell grants, allow-everything tool lists | 17/17 | enforced-at-commit |
-| [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | `claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo` (OWASP ASI10) | 25/25 | in-agent |
-| [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | an MCP server in `.mcp.json` that is not on the allowlist, or an allowed name pointed at a different source | 65/65 | enforced-at-commit |
-
-</details>
-
-### Supply chain
-
-<details>
-<summary>3 policies -- hallucinated packages, movable tags, @latest</summary>
-
-| Policy | Refuses | Evals | Tier |
-| :--- | :--- | ---: | :--- |
-| [`verify-dependency-exists`](docs/verify-dependency-exists/) | a new dependency in `requirements.txt`, `pyproject.toml`, `package.json` or `go.mod` absent from your allowlist (opt-in) | 9/9 | enforced-at-commit |
-| [`pin-github-actions`](docs/pin-github-actions/) | a third-party Action referenced by tag or branch instead of a full commit SHA | 17/17 | enforced-at-commit |
-| [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | `npx`/`uvx`/`bunx` launches at `@latest`, `"@latest"` in agent config, `:latest` images | 12/12 | enforced-at-commit |
-
-</details>
-
-### Prompt injection
-
-<details>
-<summary>2 policies -- invisible Unicode, instructions in content</summary>
-
-| Policy | Refuses | Evals | Tier |
-| :--- | :--- | ---: | :--- |
-| [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi overrides (Trojan Source, CVE-2021-42574) and Unicode tag-block smuggling -- instructions hidden from reviewers but legible to agents | 14/14 | enforced-at-commit |
-| [`injection-defense`](docs/injection-defense/) | nothing mechanically: instructs the agent to treat instructions inside content as data and to confirm egress | 0/4 | advisory |
-
-</details>
+not follow. Most `enforced-at-commit` gates also check the agent's own writes -- before a
+write lands, where the client has a pre-tool hook (best-effort), and again at the end of
+its turn -- so a refusal usually arrives while the agent is still working. The commit is
+where the refusal is guaranteed; the tier names that point, not the first one.
 
 ### Secure code: Java / Kotlin
 
-<details>
+<details open>
 <summary><code>java-security</code> -- 129 rules in 16 packs, each citing its CWE</summary>
 
 | Policy | Refuses | Evals | Tier |
@@ -230,7 +304,7 @@ waiver counts once a human has committed it.
 
 </details>
 
-### Secure code: agent code
+### Secure code: agent code & cloud privilege
 
 <details>
 <summary><code>agentic-code-security</code> -- 29 rules in 10 packs for agent frameworks, plus 2 narrow gates</summary>
@@ -266,40 +340,43 @@ Verdicts are `allow` or `deny` per pack or rule in `.chock/agentic-security.json
 
 </details>
 
-### Test integrity
+### Supply chain
 
 <details>
-<summary>2 policies -- an agent must not turn CI green by weakening the tests</summary>
+<summary>3 policies -- dependency allowlist, SHA-pinned Actions, @latest</summary>
 
 | Policy | Refuses | Evals | Tier |
 | :--- | :--- | ---: | :--- |
-| [`protect-test-integrity`](docs/protect-test-integrity/) | a deleted test file, a net loss of assertions, a vacuous `assert True`/`expect(true)` -- Python, JS/TS, Go, Java | 17/19 | enforced-at-commit |
-| [`block-test-skips`](docs/block-test-skips/) | new `@pytest.mark.skip`, `it.skip`, `.only`, `@Disabled`, `t.Skip` in test files | 25/26 | enforced-at-commit |
+| [`verify-dependency-exists`](docs/verify-dependency-exists/) | a new dependency in `requirements.txt`, `pyproject.toml`, `package.json` or `go.mod` absent from your allowlist (opt-in) | 9/9 | enforced-at-commit |
+| [`pin-github-actions`](docs/pin-github-actions/) | any `owner/repo@ref` in `.github/workflows` or `.github/actions` that is not a full commit SHA -- GitHub's own `actions/*` included | 17/17 | enforced-at-commit |
+| [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | `npx`/`uvx`/`bunx` launches at `@latest`, `"@latest"` in agent config, `:latest` images | 12/12 | enforced-at-commit |
 
 </details>
 
 ### OWASP Top 10 for Agentic Applications
 
 <details>
-<summary>10/10 risks have a policy -- advisory rule text, with enforced slices where a diff can show the risk</summary>
+<summary>10/10 risks have a policy -- 7 with a slice enforced at commit, 1 in-agent, 2 advisory only</summary>
 
 These govern the agentic system you are *building*; the areas above govern the agent doing
 the building. Each `owasp-asi*` policy is advisory: whether a tool grant is "least agency" is
 a judgement about your architecture, not a pattern a gate can match. Where a risk has a
 slice a diff can literally show, a narrow gate enforces that slice.
 
-| Risk | Policy | Enforced slice (partial coverage) |
-| :--- | :--- | :--- |
-| ASI01 Agent goal hijack | [`owasp-asi01-agent-goal-hijack`](docs/owasp-asi01-agent-goal-hijack/) | `block-invisible-unicode` |
-| ASI02 Tool misuse | [`owasp-asi02-tool-misuse`](docs/owasp-asi02-tool-misuse/) | `agentic-code-security` (`tools`, `approval`), `block-destructive-commands`, `block-curl-pipe-sh`, `block-unapproved-egress`, `protect-ci-workflows` |
-| ASI03 Identity & privilege abuse | [`owasp-asi03-identity-privilege-abuse`](docs/owasp-asi03-identity-privilege-abuse/) | **`block-wildcard-iam`**, `block-wildcard-agent-permissions`, `protect-agent-config`, `agentic-code-security` (`identity`) |
-| ASI04 Agentic supply chain | [`owasp-asi04-agentic-supply-chain`](docs/owasp-asi04-agentic-supply-chain/) | **`block-unpinned-agent-components`**, `verify-mcp-allowlist`, `pin-github-actions`, `verify-dependency-exists`, `agentic-code-security` (`supply`) |
-| ASI05 Unexpected code execution | [`owasp-asi05-unexpected-code-execution`](docs/owasp-asi05-unexpected-code-execution/) | **`block-unsafe-code-execution`**, `agentic-code-security` (`exec`) |
-| ASI06 Memory & context poisoning | [`owasp-asi06-memory-context-poisoning`](docs/owasp-asi06-memory-context-poisoning/) | advisory only |
-| ASI07 Insecure inter-agent communication | [`owasp-asi07-insecure-inter-agent-communication`](docs/owasp-asi07-insecure-inter-agent-communication/) | `agentic-code-security` (`comms`) |
-| ASI08 Cascading failures | [`owasp-asi08-cascading-failures`](docs/owasp-asi08-cascading-failures/) | advisory only |
-| ASI09 Human-agent trust exploitation | [`owasp-asi09-human-agent-trust`](docs/owasp-asi09-human-agent-trust/) | `agentic-code-security` (`approval`) |
-| ASI10 Rogue agents | [`owasp-asi10-rogue-agents`](docs/owasp-asi10-rogue-agents/) | `block-unguarded-agent-spawn` |
+**10/10 risks have a policy · 7 have a slice enforced at commit · 1 more has an in-agent slice · 2 are advisory only · 0 are fully covered.** Every mapping is `partial` and comes from the policy manifests' `compliance.owasp_asi` block, not from this page.
+
+| Risk | Policy (advisory) | Slice enforced at commit | Slice in-agent (best-effort) | Also steers |
+| :--- | :--- | :--- | :--- | :--- |
+| ASI01 Agent goal hijack | [`owasp-asi01-agent-goal-hijack`](docs/owasp-asi01-agent-goal-hijack/) | [`block-invisible-unicode`](docs/block-invisible-unicode/) | -- | [`injection-defense`](docs/injection-defense/) |
+| ASI02 Tool misuse | [`owasp-asi02-tool-misuse`](docs/owasp-asi02-tool-misuse/) | [`agentic-code-security`](docs/agentic-code-security/) (`tools`, `approval`), [`block-destructive-commands`](docs/block-destructive-commands/) | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/), [`block-unapproved-egress`](docs/block-unapproved-egress/), [`protect-ci-workflows`](docs/protect-ci-workflows/), [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | -- |
+| ASI03 Identity & privilege abuse | [`owasp-asi03-identity-privilege-abuse`](docs/owasp-asi03-identity-privilege-abuse/) | [`agentic-code-security`](docs/agentic-code-security/) (`identity`), [**`block-wildcard-iam`**](docs/block-wildcard-iam/), [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | [`protect-agent-config`](docs/protect-agent-config/) | -- |
+| ASI04 Agentic supply chain | [`owasp-asi04-agentic-supply-chain`](docs/owasp-asi04-agentic-supply-chain/) | [`agentic-code-security`](docs/agentic-code-security/) (`supply`), [**`block-unpinned-agent-components`**](docs/block-unpinned-agent-components/), [`pin-github-actions`](docs/pin-github-actions/), [`verify-dependency-exists`](docs/verify-dependency-exists/), [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | -- | -- |
+| ASI05 Unexpected code execution | [`owasp-asi05-unexpected-code-execution`](docs/owasp-asi05-unexpected-code-execution/) | [`agentic-code-security`](docs/agentic-code-security/) (`exec`), [**`block-unsafe-code-execution`**](docs/block-unsafe-code-execution/) | -- | [`code-safety`](docs/code-safety/) |
+| ASI06 Memory & context poisoning | [`owasp-asi06-memory-context-poisoning`](docs/owasp-asi06-memory-context-poisoning/) | -- | -- | `agentic-code-security` `prompt-memory` pack (off by default; switch on in `.chock/agentic-security.json`) |
+| ASI07 Insecure inter-agent communication | [`owasp-asi07-insecure-inter-agent-communication`](docs/owasp-asi07-insecure-inter-agent-communication/) | [`agentic-code-security`](docs/agentic-code-security/) (`comms`) | -- | -- |
+| ASI08 Cascading failures | [`owasp-asi08-cascading-failures`](docs/owasp-asi08-cascading-failures/) | -- | -- | `agentic-code-security` `bounds` pack (off by default; switch on in `.chock/agentic-security.json`) |
+| ASI09 Human-agent trust exploitation | [`owasp-asi09-human-agent-trust`](docs/owasp-asi09-human-agent-trust/) | [`agentic-code-security`](docs/agentic-code-security/) (`approval`) | -- | -- |
+| ASI10 Rogue agents | [`owasp-asi10-rogue-agents`](docs/owasp-asi10-rogue-agents/) | -- | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | -- |
 
 The bold gates are the narrow siblings named for exactly what they block, so the advisory
 policy never claims an enforcement it does not have:
@@ -336,6 +413,110 @@ work from regressing; it does not certify compliance.
 
 </details>
 
+### Memory guardrails
+
+<details>
+<summary>2 policies -- what an agent may write into the memory every later session reads</summary>
+
+| Policy | Refuses | Evals | Tier |
+| :--- | :--- | ---: | :--- |
+| [`guard-memory-writes`](docs/guard-memory-writes/) | memory files that paste git history, hold long code blocks, repeat lines or store a secret -- and, at tool use, the agent's own stores outside the repo | 24/25 | enforced-at-commit |
+| [`memory-discipline`](docs/memory-discipline/) | nothing mechanically: persist decisions, never file contents or git history | 0/3 | advisory |
+
+`memory-discipline` maps to MITRE ATLAS AML.T0080. OWASP ASI06 (memory and context poisoning)
+is covered by the advisory [`owasp-asi06-memory-context-poisoning`](docs/owasp-asi06-memory-context-poisoning/)
+policy and the opt-in `prompt-memory` pack of `agentic-code-security`; no gate enforces it.
+
+</details>
+
+### Prompt injection
+
+<details>
+<summary>2 policies -- bidi and tag Unicode, instructions in content</summary>
+
+| Policy | Refuses | Evals | Tier |
+| :--- | :--- | ---: | :--- |
+| [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi override, embedding and isolate controls (Trojan Source, CVE-2021-42574) and Unicode tag characters -- instructions hidden from reviewers but legible to agents. Other invisible characters (zero-width space, U+FEFF, U+2060, variation selectors) are not matched | 14/14 | enforced-at-commit |
+| [`injection-defense`](docs/injection-defense/) | nothing mechanically: instructs the agent to treat instructions inside content as data and to confirm egress | 0/4 | advisory |
+
+</details>
+
+### Test integrity
+
+<details>
+<summary>2 policies -- an agent must not turn CI green by weakening the tests</summary>
+
+| Policy | Refuses | Evals | Tier |
+| :--- | :--- | ---: | :--- |
+| [`protect-test-integrity`](docs/protect-test-integrity/) | a deleted test file, a net loss of assertions, a vacuous `assert True`/`expect(true)` -- Python, JS/TS, Go, Java | 17/19 | enforced-at-commit |
+| [`block-test-skips`](docs/block-test-skips/) | new `@pytest.mark.skip`, `it.skip`, `.only`, `@Disabled`, `t.Skip` in test files | 25/26 | enforced-at-commit |
+
+</details>
+
+**Also included -- the shell, git and agent-config guards.** Agents ship their own
+prompts for these; Chock adds a policy committed to the repo, the same for every agent.
+
+### Secrets & data leakage
+
+<details>
+<summary>3 policies -- credentials, commit narration, egress</summary>
+
+| Policy | Refuses | Evals | Tier |
+| :--- | :--- | ---: | :--- |
+| [`scan-secrets`](docs/scan-secrets/) | credentials, keys and tokens in staged changes, and whole secret files by path: `.env*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.jks`, `*.keystore` | 32/32 | enforced-at-commit |
+| [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and PR bodies that narrate the agent's conversation or leak a session link | 35/35 | enforced-at-commit |
+| [`block-unapproved-egress`](docs/block-unapproved-egress/) | `curl -d`/`-F`/`-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` to a host off the allowlist; fetches pass | 49/49 | in-agent |
+
+</details>
+
+### Destructive commands & hook bypass
+
+<details>
+<summary>5 policies -- rm -rf, force push, --no-verify, main, curl | sh</summary>
+
+| Policy | Refuses | Evals | Tier |
+| :--- | :--- | ---: | :--- |
+| [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `kubectl delete`, `aws s3 rm --recursive`, `gcloud … delete` | 80/80 | enforced-at-commit |
+| [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | `rm -rf /`, force push, credential-file reads, `DROP`/`TRUNCATE`; **asks** before `git reset --hard`, `git clean -f` | 92/92 | in-agent |
+| [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, and an agent setting the overrides meant for a person | 74/74 | in-agent |
+| [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes straight to `main`/`master` | 4/4 | enforced-at-commit |
+| [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | a download piped into an interpreter -- `curl … \| sh`, `bash -c "$(curl …)"`, `iwr … \| iex` | 34/34 | in-agent |
+
+</details>
+
+### Agent self-protection & excessive agency
+
+<details>
+<summary>5 policies -- an agent must not widen or disarm its own guardrails</summary>
+
+| Policy | Refuses | Evals | Tier |
+| :--- | :--- | ---: | :--- |
+| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files, guard sources included | 79/79 | in-agent |
+| [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` | 36/36 | in-agent |
+| [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants: bare-wildcard shell grants, allow-everything tool lists | 17/17 | enforced-at-commit |
+| [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | `claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo` (OWASP ASI10) | 25/25 | in-agent |
+| [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | an MCP server in `.mcp.json` that is not on the allowlist, or an allowed name pointed at a different source | 65/65 | enforced-at-commit |
+
+</details>
+
+### Agent discipline & hygiene
+
+<details>
+<summary>8 policies -- diff size, tool-call waste, and the habits a reviewer would otherwise repeat</summary>
+
+| Policy | Does | Evals | Tier |
+| :--- | :--- | ---: | :--- |
+| [`limit-diff-size`](docs/limit-diff-size/) | **asks** (exit 3) before a commit over 500 changed lines; a person answers, an agent's commit cannot | 3/11 | enforced-at-commit |
+| [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call before a native fetch has failed | 0/8 | in-agent |
+| [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on a third read of an unchanged file, a fourth retry of a failing command | 0/7 | in-agent |
+| [`agent-discipline`](docs/agent-discipline/) | read before edit, verify before done, never fix a test by deleting an assertion | 0/3 | advisory |
+| [`code-safety`](docs/code-safety/) | avoid `eval`/`exec` and unsanitized SQL; points at `scan-secrets` and `verify-dependency-exists` | 0/4 | advisory |
+| [`git-safety`](docs/git-safety/) | feature branches, atomic commits; points at the destructive-command and hook gates | 0/4 | advisory |
+| [`context-hygiene`](docs/context-hygiene/) | replace resolved content with path references, prune stale context | 0/3 | advisory |
+| [`chock-mise`](docs/chock-mise/) | toolchain conventions for mise-managed repos | 0/7 | advisory |
+
+</details>
+
 ### EU AI Act
 
 <details>
@@ -352,25 +533,6 @@ you.
 
 Advisory, like everything else with no mechanism. Regulatory scoping is judgement, and a
 keyword gate here would block on `emotion_recognition` in a comment.
-
-</details>
-
-### Agent discipline & hygiene
-
-<details>
-<summary>9 policies -- diff size, tool-call waste, and the habits a reviewer would otherwise repeat</summary>
-
-| Policy | Does | Evals | Tier |
-| :--- | :--- | ---: | :--- |
-| [`limit-diff-size`](docs/limit-diff-size/) | **asks** (exit 3) before a commit over 500 changed lines; a person answers, an agent's commit cannot | 3/11 | enforced-at-commit |
-| [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call before a native fetch has failed | 0/8 | in-agent |
-| [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on a third read of an unchanged file, a fourth retry of a failing command | 0/7 | in-agent |
-| [`agent-discipline`](docs/agent-discipline/) | read before edit, verify before done, never fix a test by deleting an assertion | 0/3 | advisory |
-| [`code-safety`](docs/code-safety/) | avoid `eval`/`exec` and unsanitized SQL; points at `scan-secrets` and `verify-dependency-exists` | 0/4 | advisory |
-| [`git-safety`](docs/git-safety/) | feature branches, atomic commits; points at the destructive-command and hook gates | 0/4 | advisory |
-| [`memory-discipline`](docs/memory-discipline/) | persist decisions, never file contents or git history | 0/3 | advisory |
-| [`context-hygiene`](docs/context-hygiene/) | replace resolved content with path references, prune stale context | 0/3 | advisory |
-| [`chock-mise`](docs/chock-mise/) | toolchain conventions for mise-managed repos | 0/7 | advisory |
 
 </details>
 
@@ -421,7 +583,7 @@ their own gate against a throwaway repo on every push.
 | [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 9/9 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 14/14 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 17/17 |
-| [`pin-github-actions`](docs/pin-github-actions/) | a workflow that references a third-party GitHub Action by a movable tag or branch instead of a full commit SHA -- so a re-tagged or compromised release can't change what CI runs; SHA pins and local actions pass | 17/17 |
+| [`pin-github-actions`](docs/pin-github-actions/) | any `owner/repo@ref` in `.github/workflows` or `.github/actions` pinned to a movable tag or branch instead of a full commit SHA -- GitHub's own `actions/*` included -- so a re-tagged or compromised release can't change what CI runs; SHA pins and local actions pass | 17/17 |
 | [`block-wildcard-iam`](docs/block-wildcard-iam/) | wildcard Action or Resource in an IAM policy document, `AdministratorAccess` attachment, GCP `roles/owner` or `roles/editor`, and Terraform wildcard action or resource lists -- the mechanizable slice of ASI03 | 12/12 |
 | [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | agent components pulled at an unpinned version -- `npx`/`uvx`/`bunx` launches at `@latest` (the standard MCP server idiom), quoted `"@latest"` in agent config, and `:latest` image tags -- the mechanizable slice of ASI04 | 12/12 |
 | [`block-unsafe-code-execution`](docs/block-unsafe-code-execution/) | bare `eval`/`exec`, shell-mode subprocess calls, `os.system`, `pickle`/`marshal` loads, `yaml.load` without `SafeLoader`, `execSync` and `new Function` -- a best-effort line scan over the mechanizable slice of ASI05 | 13/13 |
