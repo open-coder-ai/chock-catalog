@@ -1449,3 +1449,63 @@ suite:
     prompt: "The request parameter is resolved against a fixed base, normalized, and checked with startsWith before use."
     expect: "The commit passes: normalize and startsWith are applied to the value built from the request parameter."
     execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files/\", file).normalize();\n    if (!p.startsWith(\"/srv/files/\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}
+  - id: tc-122
+    category: trigger
+    prompt: "A request-to-path line calls a sanitizer on the request parameter as a statement of its own and discards the result."
+    expect: "The commit is blocked: the sink still takes the raw parameter, and a sanitizer counts only when the sink takes the value through it."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    sanitize(file); return Files.readAllBytes(Paths.get(\"/srv/files/\" + file));\n  }\n}\n"}, expect: block}
+  - id: tc-123
+    category: trigger
+    prompt: "A request-to-path line logs the sanitized parameter, then passes the raw one to the path call."
+    expect: "The commit is blocked: the sanitized value goes to the logger, not the sink."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    log.info(sanitize(file)); return Files.readAllBytes(Paths.get(\"/srv/files/\" + file));\n  }\n}\n"}, expect: block}
+  - id: tc-124
+    category: trigger
+    prompt: "A path call takes the raw request parameter and, as a second argument, its sanitized form."
+    expect: "The commit is blocked: the raw parameter also reaches the sink outside the sanitizer call."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\" + file, sanitize(file)));\n  }\n}\n"}, expect: block}
+  - id: tc-125
+    category: trigger
+    prompt: "A request-to-path line calls startsWith on the parameter and ignores the answer."
+    expect: "The commit is blocked: startsWith counts only as the condition of an if or a ternary guarding the sink."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    file.startsWith(\"docs/\"); return Files.readAllBytes(Paths.get(\"/srv/files/\" + file));\n  }\n}\n"}, expect: block}
+  - id: tc-126
+    category: trigger
+    prompt: "A path call guards an empty suffix with a startsWith called on a literal, taking the parameter as its argument."
+    expect: "The commit is blocked: startsWith checks the value only when called on it, and the raw parameter still reaches the path."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\" + file + (\"\".startsWith(file) ? \"\" : \"\")));\n  }\n}\n"}, expect: block}
+  - id: tc-127
+    category: trigger
+    prompt: "The request parameter goes through a method whose name only ends in a sanitizer's name."
+    expect: "The commit is blocked: desanitize is not sanitize; a sanitizer's name must start at a word boundary."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\", desanitize(file)));\n  }\n}\n"}, expect: block}
+  - id: tc-128
+    category: trigger
+    prompt: "A path call follows a line comment's escaped line break, which javac reads as the end of the comment."
+    expect: "The commit is blocked: Unicode escapes are decoded before lexing, so the code after the escaped line break is read as code."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    // ok \\u000a return Files.readAllBytes(Paths.get(\"/srv/files/\" + file));\n  }\n}\n"}, expect: block}
+  - id: tc-129
+    category: trigger
+    prompt: "A sanitizer call is closed by an escaped parenthesis, so javac passes the raw parameter to the path call beside it."
+    expect: "The commit is blocked: the escape is decoded before the sanitizer's arguments are read, and the raw parameter sits outside them."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\", sanitize(file\\u0029 + file));\n  }\n}\n"}, expect: block}
+  - id: tc-130
+    category: behavior
+    prompt: "A servlet writes a request parameter encoded with OWASP ESAPI's encoder().encodeForHTML."
+    expect: "The commit passes: the check follows ESAPI.encoder() into the encodeForHTML call that takes the parameter."
+    execute: {event: commit, files: {"C.java": "import javax.servlet.http.*;\npublic class C {\n  public void show(HttpServletRequest request, HttpServletResponse resp) throws Exception {\n    String n = request.getParameter(\"n\");\n    resp.getWriter().println(ESAPI.encoder().encodeForHTML(n));\n  }\n}\n"}, expect: allow}
+  - id: tc-131
+    category: behavior
+    prompt: "A path built from the request parameter is normalized with a space before the chained call."
+    expect: "The commit passes: whitespace before .normalize() does not hide the path it is called on."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\", file) .normalize());\n  }\n}\n"}, expect: allow}
+  - id: tc-132
+    category: behavior
+    prompt: "A sanitized path follows a string literal holding an escaped backslash and the text u0022."
+    expect: "The commit passes: a backslash escaped by another is not a Unicode escape, so the literal stays closed and the sanitizer is read as code."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String note = \"\\\\u0022\"; return Files.readAllBytes(Paths.get(\"/srv/files/\", sanitize(file)));\n  }\n}\n"}, expect: allow}
+  - id: tc-133
+    category: behavior
+    prompt: "The request parameter is sanitized into a variable and the variable is used on the same line."
+    expect: "The commit passes: the variable holds only the sanitized value."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String safe = sanitize(file); return Files.readAllBytes(Paths.get(\"/srv/files/\", safe));\n  }\n}\n"}, expect: allow}
