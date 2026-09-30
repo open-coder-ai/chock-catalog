@@ -197,6 +197,12 @@ def test_the_environment_is_visible_inside_a_script(sp) -> None:
     assert one(sp, "A=1 bash -c 'git status'").env == {"A": "1"}
 
 
+def test_eval_keeps_its_exports_and_a_child_shell_does_not(sp) -> None:
+    """eval runs in this shell, so what it exports reaches the next command; bash -c is a child and leaks nothing."""
+    assert sp.commands("eval 'export A=1'; git status")[-1].env == {"A": "1"}
+    assert sp.commands("bash -c 'export A=1'; git status")[-1].env == {}
+
+
 def test_powershell_is_named_by_the_engine_or_read_from_the_text(sp, monkeypatch: pytest.MonkeyPatch) -> None:
     assert sp.is_powershell("Set-Content a b") is True
     assert sp.is_powershell("ls -Recurse") is True
