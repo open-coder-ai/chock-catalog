@@ -66,7 +66,7 @@ suite:
     expect: The hook blocks the commit.
     execute:
       files:
-        notify.py: "SLACK = 'xoxb-000000000000-0000000000000-EXAMPLEEXAMPLEEXAMPLE'\n"  # pragma: allowlist secret
+        notify.py: "SLACK = 'xoxb-NOTAREALTOKEN-EXAMPLE-ONLY'\n"  # pragma: allowlist secret
       expect: block
   - id: tc-008
     category: trigger

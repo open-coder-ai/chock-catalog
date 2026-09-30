@@ -150,7 +150,7 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "655f0e19f40c2e31997b23fa2687a041c68649a9567178515e9373091e01d570",
+      "sha256": "de02e9e9650474a882e264967352038d5100c565c41e97e4b5acef9aef7a0551",
       "source": "local",
       "artifacts_sha256": "5166c048549ad13fd6b63ef7a65bcf1a1975cc5154a872b242c9fdfaef3b09b4"
     },
