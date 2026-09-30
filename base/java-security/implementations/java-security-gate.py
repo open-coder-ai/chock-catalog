@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a write that adds a Java construct a rule denies: staged at commit, or as it is written."""
+"""Print the findings of a write -- staged at commit, or as it is written -- for the engine to compare."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from pathlib import Path
 # never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from chock_security.changed import baseline, only_new
 from chock_security.decision import ASK, DENY, UNJUDGED, FileText
+from chock_security.document import document
 from chock_security.engine import evaluate
 from chock_security.rules import registry
 from chock_security.selection import SelectionError, load
@@ -39,7 +39,7 @@ HUMANS_WAIVE = (
 
 
 def committed(root: Path):
-    """The text of a path as last committed, read from git; None when there is none to read."""
+    """A path's text at HEAD, read from git in `root` for the waivers a human committed; None when there is none."""
 
     def read(path: str) -> str | None:
         rel = Path(path)
@@ -48,12 +48,15 @@ def committed(root: Path):
                 rel = rel.resolve().relative_to(root.resolve())
             except ValueError:
                 return None
-        proc = subprocess.run(  # noqa: S603 -- a fixed git argv; the path is an argument, never a shell word
-            ["git", "show", f"HEAD:{rel.as_posix()}"],  # noqa: S607 -- git from PATH, as the runner's own
-            cwd=root,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            proc = subprocess.run(  # noqa: S603 -- a fixed git argv; the path is an argument, never a shell word
+                ["git", "show", f"HEAD:{rel.as_posix()}"],  # noqa: S607 -- git from PATH, as the runner's own
+                cwd=root,
+                capture_output=True,
+                check=False,
+            )
+        except OSError:  # no git on PATH, or no such directory: there is no committed text to read
+            return None
         return proc.stdout.decode("utf-8-sig", errors="replace") if proc.returncode == 0 else None
 
     return read
@@ -70,13 +73,13 @@ def main() -> int:
         return REFUSE
     try:
         agent = payload.get("event") not in REVIEWED_EVENTS
-        head = committed(root)
-        findings = evaluate(files, verdicts, head if agent else None)
-        before = {f.path: baseline(root, f.path, f.text, payload.get("event"), head) for f in files}
-        findings = only_new(findings, files, before)
+        findings = evaluate(files, verdicts, committed(root) if agent else None)
     except Exception as exc:  # noqa: BLE001 -- any failure here refuses; it never falls through
         print(UNJUDGED.format(reason=f"{type(exc).__name__}: {exc}"), file=sys.stderr)
         return REFUSE
+    # The engine runs this script again on the baseline text (`"baseline": true`) and keeps the keys the
+    # write holds more of. Both runs judge with the same waivers, so a copy of a waived line is not new.
+    print(json.dumps(document(findings, files)))
     for finding in findings:
         print(finding.render(), file=sys.stderr)
     if agent and findings:

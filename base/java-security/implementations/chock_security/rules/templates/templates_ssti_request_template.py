@@ -27,9 +27,7 @@ def scan(text: FileText) -> Iterator[Finding]:
         if not text.holds(*engine["markers"]):
             continue
         for flow in flows(text, [engine["sink"]]):
-            yield Finding(
-                RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE.format(source=flow.source), related=flow.related
-            )
+            yield Finding(RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE.format(source=flow.source))
 
 
 RULE = Rule(

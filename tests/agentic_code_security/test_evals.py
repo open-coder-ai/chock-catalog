@@ -1,36 +1,18 @@
-"""Every eval case, replayed through the shipped gate.
+"""The suite's shape. Its executable cases are replayed through chock's engine by tests/policies/test_every_policy.py.
 
-`chock check --only evals` does not replay a script gate on this engine, so without this the suite
-would be prose nothing runs. A case's `head_files` are committed first (HEAD), its `repo_files` (the selection file) sit in the
-working tree, its `files` (`writes` at the agent events) are the writes, and `event` says who wrote them.
+A script gate that prints a findings document is judged by the engine (a second run on the baseline
+text), so replaying the gate alone would score old violations as refusals.
 """
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
 import yaml
-from agentic_code_security.conftest import POLICY, commit, run_gate
+from agentic_code_security.conftest import POLICY
 from agentic_gate.registry import registry
 
 SUITE = yaml.safe_load((POLICY / "evals" / "suite.yaml").read_text(encoding="utf-8"))["suite"]
 CASES = SUITE["cases"]
 EXECUTABLE = [c for c in CASES if c.get("execute")]
-EXPECTED_EXIT = {"block": 1, "allow": 0}
-GATE_EVENT = {"commit": "commit", "tool_use": "pre-tool-use", "stop": "stop"}
-
-
-@pytest.mark.parametrize("case", EXECUTABLE, ids=[c["id"] for c in EXECUTABLE])
-def test_eval_case_through_the_gate(case: dict, tmp_path: Path) -> None:
-    execute = case["execute"]
-    if execute.get("head_files"):
-        commit(tmp_path, execute["head_files"])
-    for name, body in (execute.get("repo_files") or {}).items():
-        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
-        (tmp_path / name).write_text(body, encoding="utf-8")
-    code, err = run_gate(tmp_path, execute.get("files") or execute["writes"], event=GATE_EVENT[execute["event"]])
-    assert code == EXPECTED_EXIT[execute["expect"]], err
 
 
 def test_the_suite_ids_are_unique_and_only_the_agents_own_events_go_unreplayed() -> None:

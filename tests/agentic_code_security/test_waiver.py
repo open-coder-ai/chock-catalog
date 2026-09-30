@@ -6,12 +6,32 @@ from pathlib import Path
 
 import pytest
 from agentic_code_security.conftest import commit, run_gate
+from policies import gatekit, scriptkit
 
 TLS = "comms-tls-verify-disabled"
 BAD_LINE = "requests.get(u, verify=False)"
 PLAIN = "import requests\n\n"
 REFUSE, PASS = 1, 0
 PATH = "agent/tls.py"
+NAME = "agentic-code-security"
+
+
+def at_pre_tool_use(repo: Path, writes: dict[str, str]) -> int:
+    """The engine's verdict as the agent writes: the baseline is the file on disk."""
+    return gatekit.judge(NAME, repo, gatekit.PRE_TOOL_USE, writes)[0]
+
+
+def at_stop(repo: Path, writes: dict[str, str]) -> int:
+    """The engine's verdict at the turn's end: disk holds the writes, so the baseline is HEAD."""
+    scriptkit.write(repo, writes)
+    return gatekit.judge(NAME, repo, gatekit.STOP, writes)[0]
+
+
+def at_commit(repo: Path, writes: dict[str, str]) -> tuple[int, str]:
+    """The engine's verdict on the staged writes, against HEAD."""
+    scriptkit.write(repo, writes)
+    scriptkit.git(repo, "add", "-A")
+    return gatekit.judge(NAME, repo, gatekit.COMMIT)
 
 
 def waived_py(rule: str = TLS) -> str:
@@ -105,18 +125,17 @@ def test_a_committed_waiver_on_a_line_the_agent_changed_is_refused(tmp_path: Pat
 def test_the_agent_is_judged_on_what_it_adds_not_the_whole_file(tmp_path: Path) -> None:
     commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})
     same = f"{PLAIN}{BAD_LINE}\nx = 1\n"
-    assert run_gate(tmp_path, {PATH: same}, event="tool_use")[0] == PASS
-    assert run_gate(tmp_path, {PATH: same}, event="stop")[0] == PASS
+    assert at_pre_tool_use(tmp_path, {PATH: same}) == PASS
+    assert at_stop(tmp_path, {PATH: same}) == PASS
     added = f"{PLAIN}{BAD_LINE}\nrequests.post(u, verify=False)\n"
-    assert run_gate(tmp_path, {PATH: added}, event="tool_use")[0] == REFUSE
+    assert at_pre_tool_use(tmp_path, {PATH: added}) == REFUSE
 
 
 def test_a_commit_refuses_only_what_is_new(tmp_path: Path) -> None:
     commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})
-    same = f"{PLAIN}{BAD_LINE}\nx = 1\n"
-    assert run_gate(tmp_path, {PATH: same})[0] == PASS
-    added = f"{PLAIN}{BAD_LINE}\nrequests.post(u, verify=False)\n"
-    code, err = run_gate(tmp_path, {PATH: added})
+    assert at_commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\nx = 1\n"})[0] == PASS
+    added = f"{PLAIN}{BAD_LINE}\nrequests.post(u, verify=False)\nx = 1\n"
+    code, err = at_commit(tmp_path, {PATH: added})
     assert code == REFUSE
     assert f"{PATH}:4:" in err
     assert f"{PATH}:3:" not in err
@@ -124,17 +143,17 @@ def test_a_commit_refuses_only_what_is_new(tmp_path: Path) -> None:
 
 def test_a_finding_moved_to_another_line_is_still_not_new(tmp_path: Path) -> None:
     commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})
-    assert run_gate(tmp_path, {PATH: f"{PLAIN}y = 2\n\n{BAD_LINE}\n"})[0] == PASS
+    assert at_stop(tmp_path, {PATH: f"{PLAIN}y = 2\n\n{BAD_LINE}\n"}) == PASS
 
 
 def test_a_copy_of_a_committed_finding_is_new(tmp_path: Path) -> None:
     commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})
-    assert run_gate(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n{BAD_LINE}\n"})[0] == REFUSE
+    assert at_commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n{BAD_LINE}\n"})[0] == REFUSE
 
 
 def test_a_new_file_is_all_new(tmp_path: Path) -> None:
     commit(tmp_path, {"other.py": "x = 1\n"})
-    assert run_gate(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})[0] == REFUSE
+    assert at_commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})[0] == REFUSE
 
 
 def test_a_path_outside_the_repository_has_no_head(tmp_path: Path) -> None:
@@ -143,10 +162,10 @@ def test_a_path_outside_the_repository_has_no_head(tmp_path: Path) -> None:
     assert run_gate(tmp_path, {outside: f"{PLAIN}{BAD_LINE}\n"})[0] == REFUSE
 
 
-def test_an_absolute_path_inside_the_repository_reads_its_head(tmp_path: Path) -> None:
-    commit(tmp_path, {PATH: f"{PLAIN}{BAD_LINE}\n"})
+def test_an_absolute_path_inside_the_repository_reads_its_head_for_the_waiver(tmp_path: Path) -> None:
+    commit(tmp_path, {PATH: waived_py()})
     inside = str(tmp_path / PATH)
-    assert run_gate(tmp_path, {inside: f"{PLAIN}{BAD_LINE}\nx = 1\n"})[0] == PASS
+    assert run_gate(tmp_path, {inside: waived_py() + "x = 1\n"}, event="tool_use")[0] == PASS
 
 
 @pytest.mark.parametrize("event", ["tool_use", "stop"])

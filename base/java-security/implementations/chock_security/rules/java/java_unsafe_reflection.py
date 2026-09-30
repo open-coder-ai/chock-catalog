@@ -25,7 +25,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     """Every Class.forName/loadClass/getMethod a method body shows request data reaching."""
     for flow in flows(text, _FACTS["sinks"]):
         message = _MESSAGE.format(source=flow.source)
-        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message, related=flow.related)
+        yield Finding(RULE_ID, text.path, flow.line_no, flow.line, message)
 
 
 RULE = Rule(

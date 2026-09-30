@@ -44,9 +44,7 @@ def scan(text: FileText) -> Iterator[Finding]:
         for flow in reaching(method, [_FACTS["sink"]]):
             if "redirect:" in flow.line or "forward:" in flow.line:
                 continue  # a redirect/forward prefix is not a view name; the redirect rule owns it
-            yield Finding(
-                RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE.format(source=flow.source), related=flow.related
-            )
+            yield Finding(RULE_ID, text.path, flow.line_no, flow.line, _MESSAGE.format(source=flow.source))
 
 
 RULE = Rule(

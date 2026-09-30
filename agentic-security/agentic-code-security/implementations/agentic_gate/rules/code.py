@@ -57,11 +57,7 @@ def _sql(text: FileText) -> Iterator[Hit]:
             arg = call.args[0]
             origin = values[arg.id] if isinstance(arg, ast.Name) else arg
             if method in _WHOLE_STATEMENT_METHODS or _SQL_WORDS.search(_literal_text(origin)):
-                yield Hit(
-                    call.lineno,
-                    f"{method}() receives SQL assembled from a string, so values become syntax.",
-                    (origin.lineno,),
-                )
+                yield Hit(call.lineno, f"{method}() receives SQL assembled from a string, so values become syntax.")
     if text.kind == "js":
         yield from find(jsscan.strip_comments(text.text), _JS_SQL, "a template literal with ${} is passed as SQL.")
 

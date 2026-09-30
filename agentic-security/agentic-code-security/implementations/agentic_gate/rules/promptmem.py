@@ -62,13 +62,16 @@ def _system_message(text: FileText) -> Iterator[Hit]:
             yield Hit(expr.lineno, "the system message is assembled from text named like retrieved or user content.")
 
 
-def _receivers(parsed: ast.Module) -> dict[str, set[int]]:
-    """Names bound to a mem0 client in this file, and the lines that bind them."""
-    found: dict[str, set[int]] = {}
+def _receivers(parsed: ast.Module) -> set[str]:
+    """Names bound to a mem0 client in this file."""
+    found: set[str] = set()
     for node in ast.walk(parsed):
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Call) and terminal(node.value) in _MEM_CLASSES:
-            for target in (t for t in node.targets if isinstance(t, ast.Name | ast.Attribute)):
-                found.setdefault(_owner(target), set()).add(node.lineno)
+            found |= {
+                t.id if isinstance(t, ast.Name) else t.attr
+                for t in node.targets
+                if isinstance(t, ast.Name | ast.Attribute)
+            }
     return found
 
 
@@ -88,9 +91,7 @@ def _mem0(text: FileText) -> Iterator[Hit]:
         on_client = isinstance(func, ast.Attribute) and func.attr in _MEM_METHODS and _owner(func.value) in receivers
         if on_client and not _scoped(call):
             yield Hit(
-                call.lineno,
-                f"memory.{terminal(call)}() with no user_id, agent_id or run_id shares one memory pool.",
-                tuple(sorted(receivers[_owner(func.value)])),
+                call.lineno, f"memory.{terminal(call)}() with no user_id, agent_id or run_id shares one memory pool."
             )
 
 
