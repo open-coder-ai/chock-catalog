@@ -1,14 +1,13 @@
 id: block-test-skips
 name: "Block Test Skips"
-version: "0.0.3"
+version: "0.0.4"
 description: >
-  Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip,
-  it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go
-  t.Skip -- in test files, at commit and at agent tool-use. Only skips the change adds are
-  judged (the engine compares findings with the baseline), so a skip already committed never blocks an unrelated edit. Companion
-  of protect-test-integrity, which cannot see skips. Waivers: 'chock: allow test-skip' on the
-  line is honoured at commit; in the agent, or for a commit with CHOCK_AGENT_COMMIT set, only a
-  skip already committed in HEAD counts, so an agent that needs a new one must ask a person.
+  Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip,
+  it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test
+  files. Runs: commit, agent write, turn's end. Only what the change adds is judged. Waiver:
+  'chock: allow test-skip' same line. Person's commit: honoured. Agent (write, turn's end, an
+  agent's commit: CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already
+  in HEAD; it asks a person.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -23,7 +22,7 @@ hook:
     "on": [commit, tool_use]
     action: block
     message: >
-      Test skip added. Fix the test or the code instead of skipping it. A person may waive a
+      Test skip or focus marker (.only) added. Fix the test or the code instead of skipping it. A person may waive a
       reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell;
       in the agent a waiver counts only for a line already committed in HEAD, so an agent asks
       the person rather than writing the pragma itself.
@@ -33,7 +32,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-09-30T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -53,8 +52,12 @@ changelog:
 - version: 0.0.2
   date: '2026-09-29'
   changes:
-  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, an agent's commit (CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env)) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
 - version: 0.0.3
   date: '2026-09-30'
   changes:
   - "The gate prints a findings document for every skip or focus marker in a test file, and the engine (chock 0.15.0) compares it with the baseline, instead of the gate diffing lines against HEAD. A key is `test-skip`, the enclosing test function or class (from the syntax tree for Python, from the enclosing declarations elsewhere; a decorator or annotation names what it marks) and the normalized line, so a skip that only moves is old, a second copy is new, and a skip whose test is renamed is reported again, which errs toward blocking. Removing a waiver from a waived skip makes it new. Waivers apply identically in both runs. Removed: head_lines and added. Eval cases tc-019 onward cover a removed waiver, a line shift, a duplicate, a skip on another test and a renamed test."
+- version: 0.0.4
+  date: '2026-09-30'
+  changes:
+  - "Wording only, verdicts unchanged: the description names the turn's end among where the gate runs (commit, agent write, turn's end), uses the one waiver phrasing and defines an agent's commit as CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env, not CHOCK_AGENT_COMMIT alone (the same fix in the 0.0.2 entry). The gate message names focus markers (.only). The description fits the 500-char budget."

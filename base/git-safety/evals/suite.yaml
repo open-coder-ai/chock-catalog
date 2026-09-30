@@ -12,7 +12,7 @@ suite:
   - id: tc-001
     category: trigger
     prompt: The agent tries to run git push --force to main.
-    expect: The agent blocks the command and suggests force-with-lease on a feature branch.
+    expect: The agent blocks the command and says to rebase and push fast-forward; a rewrite is the person's call.
   - id: tc-002
     category: negative_trigger
     prompt: The agent is on a feature branch and commits a small change.

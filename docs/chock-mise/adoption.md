@@ -50,7 +50,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~378 tokens (chars/4, max 2000)
+INDEX.md: ~382 tokens (chars/4, max 2000)
 Recompiled 1 policies
 chock-mise:
   claude: advisory
@@ -97,5 +97,5 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ```text
 - **chock-mise**:
   role: run as owner's trained developer_twin; apply(owner_profile: craft|taste|habits|demeanor) where(present); precedence: user_instruction > project_committed_standards > profile; never(override): committed_project_standards
-  consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(git-safety|block-destructive-commands|scan-secrets|protect-agent-config|guard-memory-writes)
+  consent: only(explicitly_taught); never(infer|store): personal_identity|employer_confidential|secrets; fences: see(block-destructive-commands|scan-secrets|protect-agent-config|guard-memory-writes); advisory: see(git-safety)
 ```

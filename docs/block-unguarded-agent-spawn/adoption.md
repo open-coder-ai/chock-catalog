@@ -148,6 +148,6 @@ block-unguarded-agent-spawn  [deterministic]
 
 ```text
 - **block-unguarded-agent-spawn**:
-  never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force)
-  if(unattended_run_needed): propose_to_human; await(approval)  # spawn with default approvals and sandbox
+  never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox|-s_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f)
+  if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 ```

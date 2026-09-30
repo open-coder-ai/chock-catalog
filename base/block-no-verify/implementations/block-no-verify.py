@@ -141,9 +141,9 @@ def check(raw: str) -> str | None:
     """The reason a command switches hooks off or sets a person-only override, or None."""
     if named := overrides_set(raw):
         return (
-            f"changing {named[0]} is refused: it decides whether a gate sees an agent's commit, or answers one, "
-            "and only a person may. Do not set, blank or remove it in any form; ask the person to run the command "
-            "themselves with it changed."
+            f"changing {named[0]} is refused: it is a person-only setting (it marks who is committing, answers an ask "
+            "gate, or sets the diff limit). Do not set, blank or remove it in any form; ask the person to run the "
+            "command themselves with it changed."
         )
     for cmd in commands(raw):
         if cmd.name != "git":

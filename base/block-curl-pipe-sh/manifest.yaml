@@ -1,16 +1,12 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.0.3"
+version: "0.0.5"
 description: >
-  Best-effort guard against piping a network download straight into a shell or script
-  interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare, path-qualified,
-  or QUOTED ("sh", 'bash'), including subshell groups and transparent wrappers --
-  sudo/exec/command/env/xargs/nohup/timeout/nice/stdbuf/ionice/setsid -- in front of it,
-  bash -c "$(curl ...)", bash <(curl ...), and the PowerShell iwr ... | iex form.
-  Downloading to a file, or piping a fetch into a
-  non-interpreter tool (jq, tar, grep), stays allowed. Known bypass classes include aliases,
-  variable indirection, base64/obfuscated payloads, env-var-prefixed interpreters, and
-  non-standard fetch clients. This is friction, not a security boundary.
+  Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx,
+  aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node,
+  bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout;
+  also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping
+  into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.
 artifact: rule
 enforcement: advise
 compliance:
@@ -28,8 +24,8 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-08-26T00:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock"
+  updated_at: "2026-09-30T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -42,6 +38,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-09-30'
+  changes:
+  - "Description only, within the 500-char budget: lists the fetchers (curl, wget, lynx, aria2c, iwr/irm) and interpreters (sh, bash, zsh, dash, ksh, fish, python, perl, ruby, node) the guard matches, the wrappers it sees through, and the allowed forms. Guard unchanged."
+- version: 0.0.4
+  date: '2026-09-30'
+  changes:
+  - "Metadata: source_repo points at chock-catalog, where this policy lives, not at chock."
 - version: 0.0.3
   date: '2026-09-24'
   changes:

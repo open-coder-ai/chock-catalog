@@ -229,7 +229,7 @@ suite:
   - id: tc-017
     category: behavior
     prompt: "The agent cuts assertions and writes the test-integrity waiver pragma on a line itself."
-    expect: "The write is refused: this gate kind never honours the waiver in the agent."
+    expect: "The write is refused: in the agent a waiver counts only when that line is already in HEAD, and this one is new."
     execute: {event: tool_use, head_files: {"tests/test_calc.py": "def test_add():\n    assert add(1, 2) == 3\n    assert add(0, 0) == 0\n    assert add(-1, 1) == 0\n"}, writes: {"tests/test_calc.py": "def test_add():\n    assert add(1, 2) == 3\n    # chock: allow test-integrity\n"}, expect: block}
   - id: tc-018
     category: trigger

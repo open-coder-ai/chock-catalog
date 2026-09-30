@@ -1,4 +1,4 @@
-# Verify Dependency Exists
+# Dependency Allowlist
 
 `verify-dependency-exists` · hook · enforces
 
@@ -11,13 +11,13 @@
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
 | **Eval cases** | 9 total, 9 executable |
-| **Enabled by default** | no — opt in |
+| **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt, pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in the allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable with `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt. Runs at commit and at agent tool-use (a manifest edit is judged against the file on disk, and at the turn's end against HEAD).
+Allowlist gate for new dependencies; no registry lookup is made. Watches requirements.txt, pyproject.toml ([project] and poetry dependencies), package.json, go.mod; blocks an added name missing from .chock/dependency-allowlist.txt. Not read: -r/-e lines, requirements-dev.txt, poetry groups, [dependency-groups]. Opt-in: fill the allowlist, then `chock enable verify-dependency-exists`. Runs: commit, agent write (vs disk), turn's end (vs HEAD).
 
 ## What it solves
 
@@ -34,7 +34,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Unknown dependency blocked. Verify the package exists in the official registry, then ask a person to add it to .chock/dependency-allowlist.txt -- an agent may not edit that file (protect-agent-config).
+> Unknown dependency blocked: it is not in .chock/dependency-allowlist.txt. This gate checks the allowlist only and makes no registry lookup, so confirm the package exists in the official registry first. If you are an agent, ask a person to add the name; do not edit that file yourself (protect-agent-config). If you are a person, add the name to the file.
 
 ## Which primitive it becomes
 
@@ -53,8 +53,6 @@ Or copy the folder — it does the same thing, byte for byte:
 cp -r base/verify-dependency-exists  <your-repo>/.agents/policies/verify-dependency-exists
 cd <your-repo> && chock sync --repo .
 ```
-
-This one ships disabled. Enable it with `chock enable verify-dependency-exists` once its prerequisites are in place.
 
 ## Customising it
 

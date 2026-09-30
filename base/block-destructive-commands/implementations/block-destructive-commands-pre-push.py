@@ -50,7 +50,7 @@ def run(stdin: str) -> int:
         return 0
     print(
         f"BLOCKED: push would rewrite history on {', '.join(refs)} (non-fast-forward). "
-        "Pull or rebase and push again; a force push needs a human running `git push --no-verify`.",
+        "Rebase onto the remote and push fast-forward; a rewrite is the person's call.",
         file=sys.stderr,
     )
     return 1

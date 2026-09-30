@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at agent tool-use (the mcp-gateway / agent write guard, over a tool call's arguments), so a secret is caught as the agent writes it, before it ever reaches a commit. Matched by pattern, not by entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.
+Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks, key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore). Runs: commit, agent write, turn's end. Not yet caught: quoted-colon forms ("password": "...", api_key: "..."), access_token=, client_secret=. Waiver: '# pragma: allowlist secret' same line (path hit: anywhere in the file). Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never. Agent asks a person.
 
 ## What it solves
 

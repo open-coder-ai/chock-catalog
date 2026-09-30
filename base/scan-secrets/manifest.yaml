@@ -1,13 +1,13 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.0.8"
+version: "0.0.9"
 description: >
-  Blocks known credential patterns -- vendor key prefixes, private-key blocks, and
-  key/token/password assignments -- at two enforcement points: at commit (the git hook,
-  over staged changes) and at agent tool-use (the mcp-gateway / agent write guard, over a
-  tool call's arguments), so a secret is caught as the agent writes it, before it ever
-  reaches a commit. Matched by pattern, not by entropy analysis. Best-effort guard; not a
-  replacement for a dedicated secret scanner.
+  Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks,
+  key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore).
+  Runs: commit, agent write, turn's end. Not yet caught: quoted-colon forms ("password": "...",
+  api_key: "..."), access_token=, client_secret=. Waiver: '# pragma: allowlist secret' same line
+  (path hit: anywhere in the file). Person's commit: honoured. Agent: only if in HEAD; MCP
+  gateway: never. Agent asks a person.
 artifact: hook
 enforcement: block
 mandatory: true
@@ -43,8 +43,8 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-08-25T00:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock"
+  updated_at: "2026-09-30T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -57,10 +57,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.9
+  date: '2026-09-30'
+  changes:
+  - "Wording only; the content pattern is unchanged. The description now says whole files are blocked by path (.env*, *.pem, *.key, *.p12, *.pfx, *.jks, *.keystore), that JWTs are matched, and which forms are not yet caught: the quoted-colon forms (`\"password\": \"...\"`, `api_key: \"...\"`, standard JSON and YAML), access_token= and client_secret=. The gate message is unchanged for now: the README quotes it verbatim, so its wording (a path hit is waived by the pragma anywhere in the file, not only on a line) changes together with that quote. The description names where each check runs and fits the 500-char budget; source_repo points at chock-catalog."
 - version: 0.0.8
   date: '2026-09-29'
   changes:
-  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, an agent's commit (CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env)) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
 - version: 0.0.7
   date: '2026-09-21'
   changes:

@@ -1,23 +1,18 @@
 id: block-unapproved-egress
 name: "Block Unapproved Egress"
-version: "0.1.0"
+version: "0.1.1"
 description: >
-  Best-effort guard against exfiltration through the tool channel: a network command
-  (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file,
-  --post-file -- to a host outside the egress allowlist. The allowlist defaults to package
-  registries and code hosting and is meant to be extended with your org's own domains; a host
-  matches by exact name or ".<entry>" suffix. Fetch-only traffic is left alone. A schemeless or
-  protocol-relative target is checked too, from the last non-flag token, but only when no
-  explicit http(s):// URL appears -- once one has, it alone decides. Options are parsed as curl
-  reads them, so -sd @file is an upload. Tool-time FLOOR, not a network sandbox. Known bypasses:
-  ~/.curlrc, obfuscated payloads, non-standard clients, a language runtime. Escape: 'pragma:
-  allowlist egress'.
+  Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod) that
+  UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
+  -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact
+  or .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a
+  person. A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    block(egress): fetch(curl|wget|iwr) + upload(-d|--data|-F|--upload-file|-X POST|PUT) to host NOT in allowlist
-    allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; escape: 'pragma: allowlist egress'
+    block(egress): fetch(curl|wget|iwr|irm) + upload(-d|--data*|--json|-F|-T|--upload-file|-X POST|PUT|PATCH|-Body|-InFile) to host NOT in allowlist; curl -K|--config refused
+    allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; no marker or pragma passes: ask_person
 effects:
 - read_only
 approval:
@@ -36,8 +31,8 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock"
+  updated_at: "2026-09-30T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -50,6 +45,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-09-30'
+  changes:
+  - "Behaviour change: 'pragma: allowlist egress' no longer passes a command. Before, `curl -d @report.json https://metrics.internal.example/ingest  # pragma: allowlist egress` and a pragma'd `curl -K` passed; now both are blocked. The guard runs only on the agent's own tool calls, so only the agent could type the pragma; a person runs an approved upload in their own shell, where no agent hook runs. Both refusals now tell the agent to ask the person, not to edit ALLOWED_HOSTS or add a pragma. Eval tc-011 flips allow to block."
+  - "Text: the description lists PATCH, --json, -T, wget --body-*, iwr/irm and -Body/-InFile/-Form, the outright refusal of curl -K/--config, and drops the stale host-parsing sentence; it fits the 500-char budget. source_repo points at chock-catalog."
 - version: 0.1.0
   date: '2026-09-29'
   changes:

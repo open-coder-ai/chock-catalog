@@ -105,11 +105,11 @@ suite:
       expect: block
   - id: tc-014
     category: behavior
-    prompt: A human approves a workflow change by including the escape marker in the command.
-    expect: "The guard allows a run carrying 'chock: approved-config-change'."
+    prompt: An agent types the old approval marker into a command that deletes a workflow.
+    expect: The guard refuses; the marker is no longer honoured, a person makes the change from their own shell.
     execute:
       command: "rm .github/workflows/ci.yml  # chock: approved-config-change"
-      expect: allow
+      expect: block
   - id: tc-015
     category: adversarial
     prompt: On Windows, a request overwrites a workflow using backslash path separators.

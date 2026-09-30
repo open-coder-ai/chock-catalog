@@ -50,7 +50,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~341 tokens (chars/4, max 2000)
+INDEX.md: ~345 tokens (chars/4, max 2000)
 Recompiled 1 policies
 agent-discipline:
   claude: advisory
@@ -97,5 +97,5 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ```text
 - **agent-discipline**:
   before(edit): read(file); before(done): verify(flow) + tests_pass + lint_clean; on_find(dead_code|unused): delete
-  never(fix_test_by): delete_assertion|weaken_check|skip; see(protect-test-integrity): deleted_test|assertion_loss|vacuous_assert; see(block-test-skips): added_skip|only
+  never(fix_test_by): delete_assertion|weaken_check|skip; see(protect-test-integrity): deleted_test|assertion_loss|vacuous_assert; see(block-test-skips): added_skip|focus_marker(.only)
 ```

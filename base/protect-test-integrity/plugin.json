@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "protect-test-integrity",
-  "version": "0.0.2",
-  "description": "Blocks a commit that turns tests green by weakening them instead of fixing the code: a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test layouts. Mechanised slice of agent-discipline's never(fix_test_by) rule; added skips are block-test-skips. Enforced at commit and at agent tool-use (an edit that weakens a test is judged against the file on disk, the turn's end against HEAD; Edit and Write cannot delete a file). A reviewed exception carries 'chock: allow test-integrity' on an added line of the test file; a waiver is honoured at commit only, never in the agent.",
+  "version": "0.0.3",
+  "description": "Blocks weakening tests to turn them green: a deleted test file (commit only), a net loss of assertions, or an added vacuous assertion (assert True, expect(true).toBe(true)). Added skips are block-test-skips. Runs: commit (incl. an agent's commit: CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env), agent write (vs disk), turn's end (vs HEAD). Waiver: 'chock: allow test-integrity' on an added line. Person's commit: honoured. Agent: only if already in HEAD; it asks a person.",
   "author": {
     "name": "chock-core"
   },

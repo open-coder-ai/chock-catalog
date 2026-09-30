@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip, it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip -- in test files, at commit and at agent tool-use. Only skips the change adds are judged (the engine compares findings with the baseline), so a skip already committed never blocks an unrelated edit. Companion of protect-test-integrity, which cannot see skips. Waivers: 'chock: allow test-skip' on the line is honoured at commit; in the agent, or for a commit with CHOCK_AGENT_COMMIT set, only a skip already committed in HEAD counts, so an agent that needs a new one must ask a person.
+Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip, it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test files. Runs: commit, agent write, turn's end. Only what the change adds is judged. Waiver: 'chock: allow test-skip' same line. Person's commit: honoured. Agent (write, turn's end, an agent's commit: CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already in HEAD; it asks a person.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Test skip added. Fix the test or the code instead of skipping it. A person may waive a reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell; in the agent a waiver counts only for a line already committed in HEAD, so an agent asks the person rather than writing the pragma itself.
+> Test skip or focus marker (.only) added. Fix the test or the code instead of skipping it. A person may waive a reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell; in the agent a waiver counts only for a line already committed in HEAD, so an agent asks the person rather than writing the pragma itself.
 
 ## Which primitive it becomes
 

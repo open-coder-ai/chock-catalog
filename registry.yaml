@@ -12,7 +12,7 @@ source: https://github.com/open-coder-ai/chock-catalog
 policies:
 - id: agent-discipline
   path: base/agent-discipline
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -24,7 +24,7 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.0.3
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -32,38 +32,30 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 34
   eval_executed: 34
-  description: 'Best-effort guard against piping a network download straight into a shell or script
-    interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare, path-qualified, or
-    QUOTED ("sh", ''bash''), including subshell groups and transparent wrappers --
-    sudo/exec/command/env/xargs/nohup/timeout/nice/stdbuf/ionice/setsid -- in front of it, bash -c
-    "$(curl ...)", bash <(curl ...), and the PowerShell iwr ... | iex form. Downloading to a file,
-    or piping a fetch into a non-interpreter tool (jq, tar, grep), stays allowed. Known bypass
-    classes include aliases, variable indirection, base64/obfuscated payloads, env-var-prefixed
-    interpreters, and non-standard fetch clients. This
-    is friction, not a security boundary.'
+  description: 'Best-effort guard against piping a download into a shell or interpreter: curl, wget,
+    lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node,
+    bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout;
+    also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping
+    into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: commit-time guard script
   enforces: enforced-at-commit
-  eval_cases: 80
-  eval_executed: 80
-  description: 'Best-effort guard against destructive commands, read as parsed commands (bash -c and
-    cd chains included, echo excluded): rm -rf on absolute, home ($HOME/~) or root-adjacent paths (and
-    PowerShell Remove-Item -Recurse); git push --force (not --force-with-lease), reset --hard, clean
-    -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm uninstall/delete;
-    docker volume rm/prune and system prune; gcloud ... delete; find -delete / -exec rm; shred; truncate;
-    wipefs -a. git branch -D asks first. Verbs are matched position-aware, so a bucket or object NAMED
-    like a verb is allowed, and a relative path in the working tree stays allowed. sudo, doas and pkexec
-    are transparent. A pre-push hook refuses any non-fast-forward push -- force, +refspec or lease alike;
-    a human escapes with git push --no-verify. Known bypasses: aliases, an unusual value-flag, interpreters
-    and scripts. Friction, not a security boundary.'
+  eval_cases: 81
+  eval_executed: 81
+  description: Best-effort, on parsed commands (echo ignored). Blocks rm -rf on absolute, ~, $HOME,
+    . or .. paths; recursive Remove-Item/rd/del on drive paths; git push --force or +refspec, reset
+    --hard, clean -f, checkout .; kubectl delete; terraform destroy; aws s3 rm --recursive/rb --force;
+    dropdb; helm uninstall; docker volume rm/prune, system prune; find -delete/-exec rm; shred; truncate;
+    wipefs -a/-o; gcloud with any `delete` operand. branch -D asks. Pre-push hook refuses non-fast-forward
+    pushes.
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -71,18 +63,14 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 14
   eval_executed: 14
-  description: 'The mechanizable slice of prompt-injection defense, enforced at two points: at commit
-    (the git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the
-    agent writes) -- invisible and direction-override Unicode. Bidi controls make code read differently
-    than it parses (Trojan Source, CVE-2021-42574); Unicode tag-block characters smuggle instructions
-    that are invisible to a human reviewer but fully legible to the agent reading the file. Zero-width
-    joiners and bidi marks (ZWJ/ZWNJ/LRM/RLM) are deliberately NOT matched -- they are legitimate
-    in emoji sequences and in Persian, Arabic and Indic text -- so ordinary internationalised content
-    passes; only the override/embed/isolate controls and the tag block, which have no honest use in
-    a source tree, are blocked. Escape: ''pragma: allowlist invisible-unicode'' on the same line.'
+  description: 'Blocks bidi override/embed/isolate controls (U+202A-202E, U+2066-2069; Trojan Source,
+    CVE-2021-42574) and Unicode tag characters (U+E0001-E007F), which smuggle instructions. NOT matched:
+    ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ, LRM/RLM. Runs: commit, agent
+    write, turn''s end. Waiver: ''pragma: allowlist invisible-unicode'' same line. Person''s commit:
+    honoured. Agent: only if that line is already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.3.0
+  version: 0.3.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -90,19 +78,15 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 74
   eval_executed: 74
-  description: 'Best-effort guard against bypassing git hooks via git commit/push --no-verify, commit''s
-    short -n form, or any way of pointing core.hooksPath elsewhere: -c, --config-env, `git config core.hooksPath
-    <path>` and the GIT_CONFIG_* environment. Read as a parsed command, so `cd repo && git commit --no-verify`,
-    `bash -c ''...''` and sudo/env/xargs wrappers are caught and a message that merely says --no-verify
-    is not. On git push, -n means --dry-run and stays allowed. Known bypass classes include aliases,
-    wrapper scripts, and non-standard clients. Also refuses an agent command that sets a person-only
-    override (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) by env prefix, env, export, declare,
-    set/setx or $env:, and refuses hiding the agent markers (CLAUDECODE, AI_AGENT, CHOCK_AGENT_COMMIT)
-    by unset, env -u/-i, export -n or Remove-Item Env:; it tells the agent to ask the person. Fix the
-    underlying hook failure instead of skipping validation.'
+  description: 'Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am
+    and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c,
+    --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message
+    text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT,
+    CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says ask the person. Bypasses:
+    aliases, scripts.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -110,15 +94,11 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 49
   eval_executed: 49
-  description: 'Best-effort guard against exfiltration through the tool channel: a network command (curl/wget/Invoke-WebRequest)
-    that UPLOADS data -- POST/PUT, --data/--form, --upload-file, --post-file -- to a host outside the
-    egress allowlist. The allowlist defaults to package registries and code hosting and is meant to
-    be extended with your org''s own domains; a host matches by exact name or ".<entry>" suffix. Fetch-only
-    traffic is left alone. A schemeless or protocol-relative target is checked too, from the last non-flag
-    token, but only when no explicit http(s):// URL appears -- once one has, it alone decides. Options
-    are parsed as curl reads them, so -sd @file is an upload. Tool-time FLOOR, not a network sandbox.
-    Known bypasses: ~/.curlrc, obfuscated payloads, non-standard clients, a language runtime. Escape:
-    ''pragma: allowlist egress''.'
+  description: 'Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod)
+    that UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
+    -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact or
+    .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a person.
+    A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
   version: 0.0.5
@@ -168,7 +148,7 @@ policies:
     exact line is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -177,14 +157,13 @@ policies:
   eval_cases: 4
   eval_executed: 0
   description: 'trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing
-    credentials, adding unverified packages, executing dynamic code. Install scan-secrets for the enforced
-    counterpart of the secret slice (a commit-time gate), and verify-dependency-exists for the dependency
-    slice (opt-in: disabled by default, needs a curated allowlist); the eval/exec and unsanitized-SQL
-    guidance stays advisory (a gate can decide only the non-literal slice: agentic-code-security''s
-    code pack).'
+    credentials, adding unverified packages, executing dynamic code. Install scan-secrets (commit, agent
+    write) for secrets and verify-dependency-exists (opt-in; needs an allowlist) for dependencies. Advisory:
+    eval/exec and SQL guidance; a gate decides only the non-literal slice (agentic-code-security code
+    pack: Python eval/exec, SQL built from strings in Python and JS).'
 - id: context-hygiene
   path: base/context-hygiene
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -196,7 +175,7 @@ policies:
     avoid: context rot and lost-in-the-middle failures.'
 - id: chock-mise
   path: base/chock-mise
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -258,7 +237,7 @@ policies:
     alter the input, or for internal batch jobs with no human recipient.'
 - id: firecrawl-fallback-only
   path: base/firecrawl-fallback-only
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -270,7 +249,7 @@ policies:
     avoid: reaching for the Firecrawl connector as the default fetch path.'
 - id: git-safety
   path: base/git-safety
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -280,13 +259,12 @@ policies:
   eval_executed: 0
   description: 'trigger: force push, hard reset, destructive branch delete, hook bypass, direct main
     commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks.
-    Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced counterparts
-    of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution guards
-    on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them plus atomic-commit
-    guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.'
+    Enforced counterparts: block-destructive-commands (command guard plus pre-push hook), block-no-verify
+    (command guard), protect-main-branch (commit and push gate), limit-diff-size (asks at commit). This
+    rule is the advisory layer over them plus atomic-commit guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.6.0
+  version: 0.6.1
   artifact: hook
   enforcement: block
   mandatory: false
@@ -294,21 +272,14 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 115
   eval_executed: 107
-  description: >-
-    trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut,
-    Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates,
-    application.properties or .yml, web.xml, pom.xml or Gradle builds; "customize java
-    security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL,
-    LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip,
-    weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and
-    actuator data, known-exploited dependency versions, exported Android components; and the
-    bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in
-    16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging,
-    build, android; quality: bugs, concurrency, resources, exceptions, performance, style,
-    testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
+  description: 'trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
+    templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
+    opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak
+    crypto, trust-all TLS, disabled Spring Security, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle
+    findings. 129 rules in 16 packs, each allow|deny|ask in .chock/security.json; absent = deny.'
 - id: injection-defense
   path: base/injection-defense
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -321,7 +292,7 @@ policies:
     by the operator.
 - id: memory-discipline
   path: base/memory-discipline
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -333,7 +304,7 @@ policies:
     avoid: persisting file contents, git history, or task intermediates as memory.'
 - id: no-a11y-regression
   path: base/no-a11y-regression
-  version: 1.1.0
+  version: 1.1.1
   artifact: rule
   enforcement: block
   mandatory: false
@@ -497,7 +468,7 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.6
+  version: 0.0.7
   artifact: hook
   enforcement: block
   mandatory: false
@@ -505,18 +476,14 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 17
   eval_executed: 17
-  description: 'The mechanizable slice of excessive agency, enforced at two points: at commit (the git hook,
-    over staged changes) and at agent tool-use (over a tool call''s arguments, as the agent
-    writes) -- agent permission grants that allow everything. A settings file whose shell grant
-    or allow-list is a bare wildcard hands the agent unlimited tool authority for every future
-    session, in a file reviewers rarely read as code. The agent-world twin of
-    block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The
-    allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes them,
-    word-bounded so "disallow"/"allowlist" are not mistaken for "allow". Escape: ''pragma:
-    allowlist broad-agency'' on the same line.'
+  description: 'Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an allow/alwaysAllow/tools
+    array on the same line, or quoted defaultMode bypassPermissions. Any file is judged. Not caught:
+    a multi-line array (`"*"` alone on a line, YAML `- "*"` list), unquoted defaultMode: bypassPermissions.
+    Runs: commit, agent write, turn''s end. Waiver: ''pragma: allowlist broad-agency'' same line. Person''s
+    commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -524,20 +491,14 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 17
   eval_executed: 17
-  description: 'The mechanizable slice of CI supply-chain hardening, enforced at two points: at commit
-    (the git hook, over staged changes) and at agent tool-use (over a tool call''s arguments, as the
-    agent writes) -- a workflow that references a third-party GitHub Action by a movable ref -- a
-    branch or a version tag -- instead of a full 40-character commit SHA. A tag like v4 or a branch
-    like main can be re-pointed at new code after review, so the action that runs tomorrow need not
-    be the one that was audited today; a compromised or rug-pulled release rides in on exactly that
-    mutability. The gate blocks an added line that references an action by a non-SHA ref (owner/repo
-    at a tag/branch); a full 40-char SHA pin passes, local actions (no ref) pass, and ''pragma: allowlist
-    unpinned-action'' on the same line is a visible, deliberate exception. This is the OpenSSF Scorecard
-    Pinned-Dependencies control for the slice a diff can show; signature and provenance verification
-    stay out of scope.'
+  description: 'Blocks a workflow that references a GitHub Action by a movable ref (tag or branch) instead
+    of a full 40-char commit SHA. Every owner/repo@non-SHA is blocked, actions/* and reusable workflows
+    included; a SHA pin and a local action (no ref) pass. Bounded to .github/workflows/ and .github/actions/.
+    Runs: commit, agent write, turn''s end. Waiver: ''pragma: allowlist unpinned-action'' same line.
+    Person''s commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.2.0
+  version: 0.2.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -545,19 +506,15 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 79
   eval_executed: 79
-  description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
-    and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency
-    allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/)
-    define what the agent may do -- so a shell command that rewrites them is the agent modifying its
-    own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to those paths -- a redirect,
-    rm/mv/tee/sed -i, cp into the path, git checkout/restore, PowerShell Set-Content/Add-Content/Out-File;
-    reads and copies out pass, and `chock sync` passes. Best-effort and deliberately coarse. The ''chock:
-    approved-config-change'' marker is friction plus an audit trail, not authentication. A second, tool_use-only
-    gate refuses Edit/Write to the same paths; it never runs at commit, so a person stays free to edit
-    them.'
+  description: 'Stops an agent hand-editing its own guardrails (MITRE ATLAS AML.T0081). Shell guard
+    refuses writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .chock/dependency-allowlist.txt,
+    .chock/bin, .chock/compiled, .git/hooks and policy implementations/: redirect, rm/mv/tee/sed -i,
+    cp into, git checkout/restore, Set-Content/Out-File. Reads, cp out, `chock sync` pass. Coarse. No
+    marker bypass: a person edits from their own shell. Edit/Write: tool_use gate (incl. turn''s end),
+    never at commit.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -565,19 +522,14 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 36
   eval_executed: 36
-  description: 'Guard against an agent weakening the automated checks that review its own work. CI/CD
-    workflow files (.github/workflows/), the composite actions they call (.github/actions/) and the
-    dependency-update automation (.github/dependabot.yml) define what must pass before a change lands
-    -- so rewriting or deleting them is the agent removing the gate that would catch it. The guard refuses
-    shell write-commands targeting those paths; reads pass, and tool-driven regeneration (chock sync)
-    passes. Best-effort and deliberately coarse: the command line is parsed, and a write (a `>`/`>>`
-    redirect, a writer verb like rm/mv/tee/sed -i, cp into the path, git checkout/restore, a PowerShell
-    Set-Content/Add-Content/Out-File) must actually target the protected path; reading it passes. The
-    ''chock: approved-config-change'' marker is friction plus an audit trail, not authentication; the
-    check an agent cannot self-approve is server-side branch protection.'
+  description: 'Stops an agent weakening the checks that review its work. Shell guard refuses writes
+    to .github/workflows/, .github/actions/ and .github/dependabot.yml|yaml: redirect, rm/mv/tee/sed
+    -i, cp into, git checkout/restore, Set-Content/Add-Content/Out-File. Reads and `chock sync` pass.
+    Best-effort, coarse. No marker bypass: a person edits from their own shell. Shell only: Edit/Write
+    to these paths is not checked (no gate). Backstop: server-side branch protection.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.2.0
+  version: 0.2.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -585,20 +537,15 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 35
   eval_executed: 35
-  description: 'Keep the development conversation out of git history. Agent-authored commits narrate
-    by default -- who asked for what, which discussion decided it, what the plan was -- and on a public
-    repo that narration is published forever. The guard refuses git commit commands whose message (inline
-    -m/--message or the file behind -F/--file) contains process-leak markers; the rule tells the agent
-    to describe the change, not the conversation, and to propose sensitive messages to the human before
-    committing. The command line is parsed, so a commit or gh pr create|edit behind cd, sh -c/bash -c,
-    sudo, env or command is read like a bare one, a message fed on `-F -` from a heredoc is scanned,
-    and a command that merely echoes the pattern as documentation still passes. A commit-msg hook applies
-    the same markers to the message git records. Best-effort: markers are a narrow deny-list, and a
-    message the human explicitly approves can say anything -- edit the marker list in the guard, the
-    content is yours.'
+  description: 'Keeps the development conversation out of git history. Guard refuses `git commit` and
+    `gh pr create|edit` whose message or body (inline -m/-b, -F/--file/--body-file, heredoc on -F -)
+    holds a process-leak marker (session link, ''user asked'', ...); commands behind cd, sh -c, sudo,
+    env are read. A commit-msg hook applies the same markers to the recorded message. Narrow deny-list.
+    No waiver: a legitimate phrase needs a person to remove it from MARKERS in the guard; an agent asks
+    the person.'
 - id: protect-main-branch
   path: base/protect-main-branch
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   mandatory: true
@@ -610,7 +557,7 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -618,19 +565,15 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 92
   eval_executed: 92
-  description: 'Carved out for rtk-ai/rtk#1007: rtk''s own decision table as a chock policy (rtk''s
-    own hooks may not block). Refuses rm -rf on root, home, parent or absolute paths; git push --force
-    and ''+'' refspecs (not --force-with-lease); reads of credential files (.env, *.pem, *.key, id_rsa,
-    ~/.ssh, ~/.aws) by cat, grep, rg, awk, sed, jq and the like or by `< file`, and echoes or inline
-    literals of *_API_KEY/*_SECRET/*_TOKEN; DROP/TRUNCATE/unscoped DELETE through psql, mysql, sqlite3,
-    mongosh, redis-cli, and dropdb; plus the base policy''s cloud rows (kubectl delete, terraform destroy,
-    aws s3 rm --recursive, helm uninstall, gcloud delete, docker volume rm). Asks where rtk''s table
-    says ask: rm -rf on a relative path off the safe list; git reset --hard, clean -f, checkout ., branch
-    -D; docker prune and docker rm -f over a substitution. File checks are skipped inside docker/kubectl
-    exec; rtk is a transparent prefix. Friction, not a security boundary.'
+  description: 'rtk#1007. Blocks: rm -rf on /, ~, ., .. or abs paths; PowerShell/cmd drive removal;
+    git push --force/+refspec; credential-file reads (.env, keys, ~/.ssh); echo/inline *_API_KEY/_SECRET/_TOKEN;
+    SQL DROP/TRUNCATE/unscoped DELETE/FLUSHALL; dropdb; kubectl delete, terraform destroy, aws s3 rm
+    --recursive/rb --force, helm uninstall, gcloud delete, docker volume rm. Asks: relative rm -rf off
+    safe list, git reset --hard/clean -f/checkout ./branch -D, docker prune. Skips rm/file/echo in container
+    exec.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.0.8
+  version: 0.0.9
   artifact: hook
   enforcement: block
   mandatory: true
@@ -638,14 +581,15 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 32
   eval_executed: 32
-  description: 'Blocks known credential patterns -- vendor key prefixes, private-key blocks, and key/token/password
-    assignments -- at two enforcement points: at commit (the git hook, over staged changes) and at
-    agent tool-use (the mcp-gateway / agent write guard, over a tool call''s arguments), so a secret
-    is caught as the agent writes it, before it ever reaches a commit. Matched by pattern, not by
-    entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.'
+  description: 'Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks,
+    key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore).
+    Runs: commit, agent write, turn''s end. Not yet caught: quoted-colon forms ("password": "...", api_key:
+    "..."), access_token=, client_secret=. Waiver: ''# pragma: allowlist secret'' same line (path hit:
+    anywhere in the file). Person''s commit: honoured. Agent: only if in HEAD; MCP gateway: never. Agent
+    asks a person.'
 - id: token-efficiency
   path: base/token-efficiency
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -657,7 +601,7 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -665,15 +609,14 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 9
   eval_executed: 9
-  description: 'Block hallucinated or unknown dependencies before they enter the repo. Watches requirements.txt,
-    pyproject.toml, package.json, and go.mod, and blocks any newly added dependency not present in the
-    allowlist file. Opt-in: disabled by default because it requires a curated allowlist. Enable with
-    `chock enable verify-dependency-exists` after populating .chock/dependency-allowlist.txt. Runs at
-    commit and at agent tool-use (a manifest edit is judged against the file on disk, and at the turn''s
-    end against HEAD).'
+  description: 'Allowlist gate for new dependencies; no registry lookup is made. Watches requirements.txt,
+    pyproject.toml ([project] and poetry dependencies), package.json, go.mod; blocks an added name missing
+    from .chock/dependency-allowlist.txt. Not read: -r/-e lines, requirements-dev.txt, poetry groups,
+    [dependency-groups]. Opt-in: fill the allowlist, then `chock enable verify-dependency-exists`. Runs:
+    commit, agent write (vs disk), turn''s end (vs HEAD).'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.4.0
+  version: 0.4.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -681,20 +624,15 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 65
   eval_executed: 65
-  description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
-    unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist
-    -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude
-    mcp add|add-json` is checked the same way (add-from-claude-desktop cannot be verified and is refused).
-    The allowlist ships inside this guard''s own script, protected like every policy''s implementations/
-    source -- edit only with ''chock: approved-config-change''. The shell guard reads Claude Code''s
-    .mcp.json, best-effort (PreToolUse fails open on a crash; a write with no visible content fails
-    closed). A script gate at commit and tool use parses every written MCP config (.mcp.json, .cursor/mcp.json,
-    .vscode/mcp.json, claude_desktop_config.json, .gemini/settings.json, .codex/config.toml) against
-    the same allowlist; only servers the change adds or alters are refused, at commit and tool use.
-    No pragma.'
+  description: 'Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json
+    or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write
+    with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass.
+    Script gate (commit, tool use incl. turn''s end) parses written MCP configs (.mcp.json, .cursor,
+    .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs
+    refused.'
 - id: block-test-skips
   path: base/block-test-skips
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   mandatory: false
@@ -702,16 +640,15 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 26
   eval_executed: 25
-  description: 'Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip,
-    it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go t.Skip
-    -- in test files, at commit and at agent tool-use. Only skips the change adds are judged (the engine
-    compares findings with the baseline), so a skip already committed never blocks an unrelated edit.
-    Companion of protect-test-integrity, which cannot see skips. Waivers: ''chock: allow test-skip''
-    on the line is honoured at commit; in the agent, or for a commit with CHOCK_AGENT_COMMIT set, only
-    a skip already committed in HEAD counts, so an agent that needs a new one must ask a person.'
+  description: 'Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip,
+    it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test files.
+    Runs: commit, agent write, turn''s end. Only what the change adds is judged. Waiver: ''chock: allow
+    test-skip'' same line. Person''s commit: honoured. Agent (write, turn''s end, an agent''s commit:
+    CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already in HEAD; it asks
+    a person.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -719,16 +656,14 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 25
   eval_executed: 24
-  description: 'Refuses agent-memory writes that hold what memory must never hold: pasted git history
-    (diff headers, hunk headers, commit and index lines), a fenced code block longer than 20 lines,
-    a line that duplicates another, and secrets (scan-secrets'' pattern). Judges only memory files --
-    MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, and at agent tool-use
-    the agent''s own stores outside the repository (~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md,
-    /memories/**) -- and only what the change adds. No waiver exists. Mechanised slice of memory-discipline''s
-    never_persist and chock-mise''s never(store): secrets. Structural checks only.'
+  description: 'Refuses agent-memory writes holding what memory must never hold: pasted git history
+    (diff, hunk, commit, index lines), a fenced code block over 20 lines, a duplicate line, or a secret
+    (scan-secrets'' pattern). Judges only memory files (MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**,
+    memory/**/*.md; at agent tool-use also ~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md, /memories/**)
+    and only what the change adds. No waiver. Structural checks only.'
 - id: limit-diff-size
   path: base/limit-diff-size
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: block
   mandatory: false
@@ -740,7 +675,7 @@ policies:
     one commit carrying hundreds of hand-written lines; lockfile and generated churn is not counted.'
 - id: protect-test-integrity
   path: base/protect-test-integrity
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   mandatory: false
@@ -748,14 +683,12 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 19
   eval_executed: 17
-  description: 'Blocks a commit that turns tests green by weakening them instead of fixing the code:
-    a deleted test file, a net loss of assertions across the change, or a vacuous assertion (assert
-    True, expect(true).toBe(true)) added in place of a real one. Covers Python, JS/TS, Go and Java test
-    layouts. Mechanised slice of agent-discipline''s never(fix_test_by) rule; added skips are block-test-skips.
-    Enforced at commit and at agent tool-use (an edit that weakens a test is judged against the file
-    on disk, the turn''s end against HEAD; Edit and Write cannot delete a file). A reviewed exception
-    carries ''chock: allow test-integrity'' on an added line of the test file; a waiver is honoured
-    at commit only, never in the agent.'
+  description: 'Blocks weakening tests to turn them green: a deleted test file (commit only), a net
+    loss of assertions, or an added vacuous assertion (assert True, expect(true).toBe(true)). Added
+    skips are block-test-skips. Runs: commit (incl. an agent''s commit: CHOCK_AGENT_COMMIT, CLAUDECODE=1,
+    AI_AGENT or agent_commit_env), agent write (vs disk), turn''s end (vs HEAD). Waiver: ''chock: allow
+    test-integrity'' on an added line. Person''s commit: honoured. Agent: only if already in HEAD; it
+    asks a person.'
 - id: agentic-code-security
   path: agentic-security/agentic-code-security
   version: 0.3.0
@@ -777,7 +710,7 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -785,13 +718,9 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 25
   eval_executed: 25
-  description: 'Best-effort guard against an agent launching a coding agent with its safety checks off:
-    claude --dangerously-skip-permissions or --permission-mode bypassPermissions, codex --full-auto,
-    --yolo, --dangerously-bypass-approvals-and-sandbox or --sandbox danger-full-access, gemini --yolo,
-    -y or --approval-mode yolo, cursor-agent --force. A spawned agent that never asks and never sandboxes
-    is an unsupervised agent (OWASP ASI10, rogue agents). Read as a parsed command, so `cd repo && claude
-    ...`, `bash -c ''...''`, sudo/env wrappers and `npx @openai/codex ...` are caught, while a normal
-    invocation, `codex --sandbox workspace-write`, or a command that only mentions the flag (echo, grep,
-    a commit message) is not. Known bypass classes include shell aliases, wrapper scripts, config files
-    that set the mode, and agents this list does not name. Run the agent with its default approvals;
-    a human decides when an unattended run is acceptable.'
+  description: 'Best-effort guard against an agent launching a coding agent with safety checks off:
+    claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
+    --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo,
+    -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
+    wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
+    unlisted agents.'
