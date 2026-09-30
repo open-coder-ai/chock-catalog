@@ -25,6 +25,7 @@ PROTECTED = (
     ".chock/bin",
     ".chock/compiled",
     ".chock/dependency-allowlist.txt",
+    ".chock/config.yaml",
     ".git/hooks",
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.

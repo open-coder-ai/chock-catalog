@@ -70,14 +70,14 @@ policies:
     honoured. Agent: only if that line is already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.3.1
+  version: 0.3.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 74
-  eval_executed: 74
+  eval_cases: 78
+  eval_executed: 78
   description: 'Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am
     and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c,
     --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message
@@ -498,20 +498,19 @@ policies:
     Person''s commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.2.1
+  version: 0.2.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 79
-  eval_executed: 79
+  eval_cases: 84
+  eval_executed: 84
   description: 'Stops an agent hand-editing its own guardrails (MITRE ATLAS AML.T0081). Shell guard
-    refuses writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .chock/dependency-allowlist.txt,
-    .chock/bin, .chock/compiled, .git/hooks and policy implementations/: redirect, rm/mv/tee/sed -i,
-    cp into, git checkout/restore, Set-Content/Out-File. Reads, cp out, `chock sync` pass. Coarse. No
-    marker bypass: a person edits from their own shell. Edit/Write: tool_use gate (incl. turn''s end),
-    never at commit.'
+    refuses writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .chock/{config.yaml,dependency-allowlist.txt,bin,compiled},
+    .git/hooks and policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore,
+    Set-Content/Out-File. Reads, cp out, `chock sync` pass. Coarse. No marker bypass: a person edits
+    from their own shell. Edit/Write: tool_use gate (incl. turn''s end), never at commit.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
   version: 0.1.1

@@ -22,8 +22,9 @@ HOOK_SUBS = frozenset(("commit", "push", "merge", "am", "rebase"))
 SHORT_N_SUBS = frozenset(("commit", "am"))
 PREFIX_FLOOR = 9
 # Person-only variables: the engine reads CHOCK_ALLOW (answers an ask gate), CHOCK_AGENT_COMMIT (0/false says a person is
-# committing) and the agent markers CLAUDECODE / AI_AGENT; limit-diff-size reads CHOCK_ALLOW_LARGE_DIFF, CHOCK_DIFF_LIMIT.
-OVERRIDE = re.compile(r"CHOCK_(?:AGENT_COMMIT|DIFF_LIMIT|ALLOW\w*)|CLAUDECODE|AI_AGENT", re.IGNORECASE)
+# committing) and the agent markers CLAUDECODE / AI_AGENT; limit-diff-size reads CHOCK_ALLOW_LARGE_DIFF, CHOCK_DIFF_LIMIT;
+# CHOCK_ROLLOUT lowers the compiled gates to ask or warn, and CHOCK_GATE_LOG=0 switches off the record of what that let through.
+OVERRIDE = re.compile(r"CHOCK_(?:AGENT_COMMIT|DIFF_LIMIT|ROLLOUT|GATE_LOG|ALLOW\w*)|CLAUDECODE|AI_AGENT", re.IGNORECASE)
 REMOVAL = frozenset(("CLAUDECODE", "AI_AGENT", "CHOCK_AGENT_COMMIT"))  # hiding these makes an agent's commit a person's
 MARKERS = "(CLAUDECODE|AI_AGENT|CHOCK_AGENT_COMMIT)(?!\\w)"
 WIPED = "CHOCK_ENV_WIPED"

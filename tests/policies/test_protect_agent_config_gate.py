@@ -24,12 +24,13 @@ PATHS = [
     ".chock/bin/gate.py",
     ".chock/compiled/scan-secrets/git-hook/gate.json",
     ".chock/dependency-allowlist.txt",
+    ".chock/config.yaml",
     ".git/hooks/pre-commit",
     ".agents/policies/scan-secrets/implementations/scan.py",
     "sub/dir/AGENTS.md",
     ".claude\\settings.json",
 ]
-UNRELATED = ["README.md", "src/app.py", ".claude/commands/x.md", ".chock/config.yaml", ".agents/skills/a/SKILL.md"]
+UNRELATED = ["README.md", "src/app.py", ".claude/commands/x.md", ".chock/notes.md", ".agents/skills/a/SKILL.md"]
 
 
 @pytest.fixture

@@ -170,9 +170,13 @@ block-no-verify  [deterministic]
   PASS  tc-073                             authored  guard exit 0
   PASS  tc-074                             authored  guard exit 0
   PASS  tc-075                             authored  guard exit 0
+  PASS  tc-076                             authored  BLOCKED: changing CHOCK_ROLLOUT is refused: it is a person-only set…
+  PASS  tc-077                             authored  BLOCKED: changing CHOCK_ROLLOUT is refused: it is a person-only set…
+  PASS  tc-078                             authored  BLOCKED: changing CHOCK_GATE_LOG is refused: it is a person-only se…
+  PASS  tc-079                             authored  guard exit 0
   score 1.00
 
-5 policies: 74 pass, 41 skipped
+5 policies: 78 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~364 tokens (chars/4, max 2000)
+INDEX.md: ~369 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-agent-config:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~364 tokens (chars/4, max 2000)
+INDEX.md: ~369 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -175,9 +175,14 @@ protect-agent-config  [deterministic]
   PASS  tc-077                             authored  This path is agent configuration or enforcement (instruction files,…
   PASS  tc-078                             authored  This path is agent configuration or enforcement (instruction files,…
   PASS  tc-079                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-080                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-081                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-082                             authored  guard exit 0
+  PASS  tc-083                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-084                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   score 1.00
 
-5 policies: 79 pass, 41 skipped
+5 policies: 84 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -219,6 +224,6 @@ protect-agent-config  [deterministic]
 
 ```text
 - **protect-agent-config**:
-  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
+  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/config.yaml|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
   if(config_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not widen or disarm its own guardrails
 ```
