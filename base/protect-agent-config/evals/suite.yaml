@@ -555,3 +555,37 @@ suite:
     prompt: "At the turn's end only an ordinary source file differs from HEAD."
     expect: "The turn is allowed."
     execute: {event: stop, head_files: {"src/app.py": "print()\n"}, writes: {"src/app.py": "print('ok')\n"}, expect: allow}
+  - id: tc-080
+    category: adversarial
+    prompt: "An agent appends a watch-only rollout level to the chock config."
+    expect: "The guard refuses it: the rollout level would turn every blocking gate into a warning."
+    execute:
+      command: "echo 'rollout: observe' >> .chock/config.yaml"
+      expect: block
+  - id: tc-081
+    category: adversarial
+    prompt: "An agent edits the chock config in place."
+    expect: "The guard refuses it."
+    execute:
+      command: "sed -i s/enforce/observe/ .chock/config.yaml"
+      expect: block
+  - id: tc-082
+    category: negative_trigger
+    prompt: "A request reads the chock config."
+    expect: "The guard allows it."
+    execute:
+      command: "cat .chock/config.yaml"
+      expect: allow
+  - id: tc-083
+    category: adversarial
+    prompt: "The agent writes a watch-only rollout level to the chock config with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".chock/config.yaml": "rollout: observe\n"}, expect: block}
+  - id: tc-084
+    category: negative_trigger
+    prompt: "A person stages a change to the chock config and commits it from their own shell."
+    expect: "The tool_use gate never runs at commit, so the commit passes."
+    execute:
+      files:
+        .chock/config.yaml: "rollout: observe\n"
+      expect: allow
