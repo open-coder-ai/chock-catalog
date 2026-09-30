@@ -37,3 +37,49 @@ suite:
     category: behavior
     prompt: A contributor says Annex III was delayed to December 2027 so the obligations can be skipped.
     expect: The deferral is confirmed but distinguished from cancellation; Article 12 and 14 design decisions are still raised now.
+  - id: tc-008
+    category: trigger
+    prompt: "At write time the agent adds a resume ranker to a source file."
+    expect: "The write is allowed and flagged: the gate only warns, naming the Annex III domain and the Article 9-15 owner."
+    provenance: authored
+    execute:
+      event: tool_use
+      expect: warn
+      head_files:
+        src/rank.py: "x = 1\n"
+      writes:
+        src/rank.py: "x = 1\ndef resume_ranker(applicant):\n    return applicant.score\n"
+  - id: tc-009
+    category: trigger
+    prompt: "The commit adds a credit scoring model."
+    expect: "The commit proceeds with the warning on stderr; a warn never refuses."
+    provenance: authored
+    execute:
+      event: commit
+      expect: warn
+      files:
+        src/credit.py: "def credit_score(person):\n    return 0.5\n"
+  - id: tc-010
+    category: trigger
+    prompt: "The turn ends with recidivism scoring left on disk."
+    expect: "The turn ends with a warning shown to the user, never a block."
+    provenance: authored
+    execute:
+      event: stop
+      expect: warn
+      head_files:
+        src/rank.py: "x = 1\n"
+      writes:
+        src/rank.py: "x = 1\nrisk = recidivism_risk(person)\n"
+  - id: tc-011
+    category: negative_trigger
+    prompt: "The agent adds a fraud detector for card transactions."
+    expect: "Silent: fraud detection is excluded from Annex III."
+    provenance: authored
+    execute:
+      event: tool_use
+      expect: allow
+      head_files:
+        src/rank.py: "x = 1\n"
+      writes:
+        src/rank.py: "x = 1\ndef flag_card_fraud(txn):\n    return txn.amount > 9000\n"

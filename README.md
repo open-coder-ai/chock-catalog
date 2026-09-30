@@ -8,8 +8,8 @@
 
 <p>
 <img alt="48 policies" src="https://img.shields.io/badge/policies-48-blue">
-<img alt="26 enforced" src="https://img.shields.io/badge/enforced-26-brightgreen">
-<img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
+<img alt="28 enforced" src="https://img.shields.io/badge/enforced-28-brightgreen">
+<img alt="20 advisory" src="https://img.shields.io/badge/advisory-20-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -46,8 +46,8 @@ are advisory, and that is the number most catalogs would round up:
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 19 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 7 |
-| `advisory` | text an agent reads and may or may not follow | 22 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
+| `advisory` | text an agent reads and may or may not follow | 20 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -75,11 +75,11 @@ throwaway repo on every push.
 | [`block-wildcard-iam`](docs/block-wildcard-iam/) | wildcard Action or Resource in an IAM policy document, `AdministratorAccess` attachment, GCP `roles/owner` or `roles/editor`, and Terraform wildcard action or resource lists -- the mechanizable slice of ASI03 | 6/6 |
 | [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | agent components pulled at an unpinned version -- `npx`/`uvx`/`bunx` launches at `@latest` (the standard MCP server idiom), quoted `"@latest"` in agent config, and `:latest` image tags -- the mechanizable slice of ASI04 | 6/6 |
 | [`block-unsafe-code-execution`](docs/block-unsafe-code-execution/) | bare `eval`/`exec`, shell-mode subprocess calls, `os.system`, `pickle`/`marshal` loads, `yaml.load` without `SafeLoader`, `execSync` and `new Function` -- a best-effort line scan over the mechanizable slice of ASI05 | 7/7 |
-| [`no-a11y-regression`](docs/no-a11y-regression/) | a change that destroys an accessibility assertion the previous revision carried -- a description replaced by `alt=""`, or a flagged element deleted rather than fixed; neither produces a violation, so both pass every violation report | 0/13 |
+| [`no-a11y-regression`](docs/no-a11y-regression/) | a change that destroys an accessibility assertion the previous revision carried -- a description replaced by `alt=""`, or a flagged element deleted rather than fixed; neither produces a violation, so both pass every violation report; judged at commit and again when the agent writes the file and at turn end | 7/20 |
 | [`java-security`](docs/java-security/) | 129 rules in sixteen packs, each citing its CWE and evidence, as they are written and at the commit -- core Java (command, code, reflection, LDAP and XPath injection, XXE, SSRF, zip slip, unsafe deserialization, unverified JWT), crypto and TLS, Spring (CSRF, catch-all `permitAll`, weak encoders, SpEL, actuator, secrets in config), Jakarta EE, Struts, Quarkus, Micronaut and Vert.x, persistence (SQL/JPQL/HQL built by concatenation, MyBatis `${}`, unsafe JDBC URLs), templates, logging (Log4j lookups, secrets in logs), Maven and Gradle builds (plain-HTTP repositories, Log4Shell- and Spring4Shell-class versions), and Android; and seven quality packs -- bugs, concurrency, resources, exceptions, performance, style, tests -- mirroring SpotBugs, Sonar, PMD and Checkstyle -- each pack or rule `allow\|deny\|ask` in `.chock/security.json`, silence denies; the correct sibling of each (`#{}` and bind parameters, `th:text`, `parseClaimsJws`, AES-GCM) stays silent | 87/95 |
 | [`protect-test-integrity`](docs/protect-test-integrity/) | Blocks a deleted test file, a net loss of assertions across the change, and an added vacuous assertion (`assert True`, `expect(true)`) in Python, JS/TS, Go and Java test layouts -- commit only, waiver `chock: allow test-integrity` | 12/14 |
 | [`block-test-skips`](docs/block-test-skips/) | Blocks newly added test skips and focus markers (`@pytest.mark.skip`, `it.skip`, `.only`, `@Disabled`, `t.Skip`) in test files, at commit and at agent tool-use -- judged against HEAD, waiver `chock: allow test-skip` at commit only | 11/12 |
-| [`limit-diff-size`](docs/limit-diff-size/) | Refuses a commit whose staged added plus removed lines exceed 500 (`CHOCK_DIFF_LIMIT`), not counting lockfiles, vendored or generated paths and binaries -- override `CHOCK_ALLOW_LARGE_DIFF=1` is a person's | 0/8 |
+| [`limit-diff-size`](docs/limit-diff-size/) | **Asks** (exit 3) before a commit whose staged added plus removed lines exceed 500 (`CHOCK_DIFF_LIMIT`), not counting lockfiles, vendored or generated paths and binaries -- a person answers with `CHOCK_ALLOW=limit-diff-size` (or `CHOCK_ALLOW_LARGE_DIFF=1`); an agent's commit cannot | 3/11 |
 | [`guard-memory-writes`](docs/guard-memory-writes/) | Refuses memory files (`MEMORY.md`, `CLAUDE.local.md`, `.claude/memory/`) that paste git history, hold a code block over 20 lines, repeat a line or store a secret -- at commit and at agent tool-use, no waiver | 14/15 |
 | [`agentic-code-security`](agentic-security/agentic-code-security) | trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. |  |
 | [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `docker volume rm`, `aws s3 rm --recursive`, `gcloud … delete` | 80/80 |
@@ -93,25 +93,26 @@ per-hook trust review before its hooks run.
 
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
-| [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, which bypasses every gate above | 34/34 |
+| [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, which bypasses every gate above, and an agent setting or clearing the overrides meant for a person (`CHOCK_ALLOW`, `CHOCK_AGENT_COMMIT`, `CLAUDECODE`, `AI_AGENT`) in its own command | 74/74 |
 | [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 73/73 |
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 34/34 |
 | [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 36/36 |
 | [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 49/49 |
 | [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | **carved out for [rtk-ai/rtk#1007](https://github.com/rtk-ai/rtk/issues/1007)**: rtk's own decision table — refuses `rm -rf /`, force push, credential-file reads (`.env`, `*.pem`, `~/.ssh`), `DROP`/`TRUNCATE` through psql and mysql; **asks** (exit 3) before `rm -rf` on an unlisted relative path, `git reset --hard`, `git clean -f`, `docker system prune`; skips file checks inside `docker exec`, and reads through rtk's own `rtk` prefix. The worked example of carving a policy out for one agent | 92/92 |
 | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 25/25 |
+| [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
+| [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
 
 <details>
-<summary>22 advisory policies — expand</summary>
+<summary>20 advisory policies — expand</summary>
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
 [`agent-discipline`](docs/agent-discipline/) · [`code-safety`](docs/code-safety/) ·
 [`context-hygiene`](docs/context-hygiene/) · [`chock-mise`](docs/chock-mise/) ·
-[`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
-[`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
+[`memory-discipline`](docs/memory-discipline/)
 
 </details>
 
@@ -125,7 +126,7 @@ above applies to any repo; these only earn their place if the regulation reaches
 | :--- | :--- | :--- |
 | [`eu-ai-act-transparency`](docs/eu-ai-act-transparency/) | EU AI Act Art 50 — AI disclosure, machine-readable marking of synthetic output, deepfake labelling | now |
 | [`eu-ai-act-prohibited-practices`](docs/eu-ai-act-prohibited-practices/) | Art 5 — social scoring, face scraping, workplace emotion inference, NCII/CSAM | now |
-| [`eu-ai-act-high-risk-triage`](docs/eu-ai-act-high-risk-triage/) | Annex III domains, Articles 9–15 | 2027-12-02 |
+| [`eu-ai-act-high-risk-triage`](docs/eu-ai-act-high-risk-triage/) | Annex III domains, Articles 9–15; warns (never blocks) on added code that scores, ranks or screens people | 2027-12-02 |
 
 Advisory, like everything else with no mechanism. Regulatory scoping is judgement, and a
 keyword gate here would block on `emotion_recognition` in a comment.
@@ -317,7 +318,8 @@ destructive command on a real install —
 A policy here is not inert data. A declarative policy compiles to a git hook that runs on every
 commit in your repository; a policy shipping an `implementations/` guard becomes a guard script
 consulted before your agent runs a command; `java-security` and `no-a11y-regression` run their
-own program at commit. Either way `chock add` installs executable content over `git clone`. There is no signing key — pin and verify when
+own program at commit and when the agent writes, and `firecrawl-fallback-only` and `token-efficiency`
+run theirs before a matching tool call. Either way `chock add` installs executable content over `git clone`. There is no signing key — pin and verify when
 the catalog is not one you control:
 
 ```bash

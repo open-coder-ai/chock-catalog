@@ -50,7 +50,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~352 tokens (chars/4, max 2000)
+INDEX.md: ~357 tokens (chars/4, max 2000)
 Recompiled 1 policies
 limit-diff-size:
   claude: enforced-at-commit
@@ -81,7 +81,13 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 49 skipped
+limit-diff-size  [deterministic]
+  PASS  tc-009                             authored  limit-diff-size: staged diff is 501 lines (added + removed), limit …
+  PASS  tc-010                             authored  script exit 0
+  PASS  tc-011                             authored  script exit 0
+  score 1.00
+
+5 policies: 3 pass, 49 skipped
 49 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -97,6 +103,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 - **limit-diff-size**:
-  at(commit): refuse if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
-  on(refused): split into atomic commits (git add -p); override: CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_override), ask(human)
+  at(commit): ask if sum(added+removed, staged) > CHOCK_DIFF_LIMIT (default 500); excluded: lockfiles|vendor/|node_modules/|dist/|build/|*.min.js|*.min.css|*.snap|.chock/|binary
+  on(asked): split into atomic commits (git add -p); answer: CHOCK_ALLOW=limit-diff-size|CHOCK_ALLOW_LARGE_DIFF=1 set by a human only; agent: never(set_answer), ask(human)
 ```

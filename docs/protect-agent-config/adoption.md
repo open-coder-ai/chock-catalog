@@ -42,7 +42,6 @@ Verify anytime with:  chock check --only verify
 ## `$ chock recompile --repo .`
 
 ```text
-Auto-compiled protect-agent-config (drop-in)
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
 No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit
@@ -66,7 +65,6 @@ protect-agent-config:
 
 ```text
 Implementation registered at …/.git/hooks/pre-commit.d/99-chock-validate
-Auto-compiled protect-agent-config (drop-in)
 Installed pre-commit dispatcher to …/.git/hooks/pre-commit
 No git-pre-commit.sh policies found; pre-commit dispatcher unchanged
 Installed pre-merge-commit dispatcher to …/.git/hooks/pre-merge-commit

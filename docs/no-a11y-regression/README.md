@@ -10,7 +10,7 @@
 | **Mechanism** | commit-time guard script `no-a11y-regression-pre-commit.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ambient-rule` |
-| **Eval cases** | 13 total, 0 executable |
+| **Eval cases** | 20 total, 7 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
