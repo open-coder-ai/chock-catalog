@@ -543,8 +543,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 54
-  eval_executed: 54
+  eval_cases: 73
+  eval_executed: 73
   description: 'Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md
     and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency
     allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/)
