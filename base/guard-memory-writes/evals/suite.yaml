@@ -289,3 +289,176 @@ suite:
       writes: {MEMORY.md: "- a fact\n- a fact\n- another fact\n"}
       event: stop
       expect: allow
+  - id: tc-023
+    category: negative_trigger
+    prompt: A memory file already held a 22-line fenced block at HEAD; the change adds an unrelated fact.
+    expect: 'The commit is allowed: the long block is untouched, so its finding is old.'
+    execute:
+      head_files:
+        MEMORY.md: |
+          - the build script:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          line 10
+          line 11
+          line 12
+          line 13
+          line 14
+          line 15
+          line 16
+          line 17
+          line 18
+          line 19
+          line 20
+          line 21
+          ```
+      files:
+        MEMORY.md: |
+          - the build script:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          line 10
+          line 11
+          line 12
+          line 13
+          line 14
+          line 15
+          line 16
+          line 17
+          line 18
+          line 19
+          line 20
+          line 21
+          ```
+          - another fact
+      event: commit
+      expect: allow
+  - id: tc-024
+    category: trigger
+    prompt: A memory file already held a 22-line fenced block at HEAD; the change adds a line inside it.
+    expect: 'The commit is refused: the edited block is still over the limit, so its finding is new.'
+    execute:
+      head_files:
+        MEMORY.md: |
+          - the build script:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          line 10
+          line 11
+          line 12
+          line 13
+          line 14
+          line 15
+          line 16
+          line 17
+          line 18
+          line 19
+          line 20
+          line 21
+          ```
+      files:
+        MEMORY.md: |
+          - the build script:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          line 10
+          line 11
+          line 12
+          line 13
+          line 14
+          line 15
+          line 16
+          line 17
+          line 18
+          line 19
+          line 20
+          line 21
+          line 22
+          ```
+      event: commit
+      expect: block
+  - id: tc-025
+    category: negative_trigger
+    prompt: A memory file held a 22-line fenced block at HEAD; the change trims it to 10 lines.
+    expect: 'The commit is allowed: the block is under the limit, so there is no finding.'
+    execute:
+      head_files:
+        MEMORY.md: |
+          - the build script:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          line 10
+          line 11
+          line 12
+          line 13
+          line 14
+          line 15
+          line 16
+          line 17
+          line 18
+          line 19
+          line 20
+          line 21
+          ```
+      files:
+        MEMORY.md: |
+          - the build script:
+          ```
+          line 0
+          line 1
+          line 2
+          line 3
+          line 4
+          line 5
+          line 6
+          line 7
+          line 8
+          line 9
+          ```
+      event: commit
+      expect: allow

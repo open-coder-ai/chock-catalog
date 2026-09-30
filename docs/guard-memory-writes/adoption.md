@@ -115,9 +115,12 @@ guard-memory-writes  [deterministic]
   PASS  tc-020                             authored  gate exit 0
   PASS  tc-021                             authored  Memory write refused: it pastes git history, a code block over 20 l…
   PASS  tc-022                             authored  gate exit 0
+  PASS  tc-023                             authored  gate exit 0
+  PASS  tc-024                             authored  Memory write refused: it pastes git history, a code block over 20 l…
+  PASS  tc-025                             authored  gate exit 0
   score 1.00
 
-5 policies: 21 pass, 42 skipped
+5 policies: 24 pass, 42 skipped
 42 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

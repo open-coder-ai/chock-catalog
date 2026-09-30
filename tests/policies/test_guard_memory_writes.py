@@ -138,6 +138,33 @@ def test_an_unclosed_fence_runs_to_the_end_of_the_file(repo: Path) -> None:
     assert check(repo, {"memory/a.md": text}) == ["memory/a.md:1: fenced code block of 21 lines (limit 20)"]
 
 
+def long_block_key(text: str) -> str:
+    (row,) = [r for r in mod.judge("MEMORY.md", text) if r["key"].startswith("long-block|")]
+    return row["key"]
+
+
+def test_a_long_block_key_carries_the_opener_and_a_body_hash() -> None:
+    key = long_block_key("- how to build:\n```sh\n" + "".join(f"body {i}\n" for i in range(21)) + "```\n")
+    assert key.startswith("long-block|```sh|") and len(key.split("|")[2]) == 16
+
+
+def test_a_long_block_key_follows_the_body_not_the_position() -> None:
+    assert long_block_key(fence(21)) == long_block_key("- a fact\n\n" + fence(21))
+    assert long_block_key(fence(21)) != long_block_key(fence(22))
+
+
+def test_an_untouched_long_block_stays_old(repo: Path) -> None:
+    assert engine(repo, {"MEMORY.md": "- old fact\n- old fact\n" + fence(30) + "- new fact\n"}) == 0
+
+
+def test_a_line_added_inside_an_old_long_block_is_refused(repo: Path) -> None:
+    assert engine(repo, {"MEMORY.md": "- old fact\n- old fact\n" + fence(31)}) != 0
+
+
+def test_an_old_long_block_shrunk_under_the_limit_is_allowed(repo: Path) -> None:
+    assert engine(repo, {"MEMORY.md": "- old fact\n- old fact\n" + fence(20)}) == 0
+
+
 def test_duplicates_are_reported_at_the_later_line(repo: Path) -> None:
     text = "- prefers  tabs\n- uses uv\n* prefers tabs\n1. uses uv\n"
     assert check(repo, {"memory/a.md": text}) == [

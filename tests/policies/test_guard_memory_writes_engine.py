@@ -24,11 +24,11 @@ def test_a_long_block_already_at_head_does_not_block_an_unrelated_edit(repo: Pat
     assert engine(repo, {"MEMORY.md": text}, gatekit.COMMIT) == 0
 
 
-def test_a_long_block_is_keyed_by_its_opener_and_a_grown_one_is_still_old(repo: Path) -> None:
+def test_a_long_block_is_keyed_by_its_opener_and_body_so_a_grown_one_is_new(repo: Path) -> None:
     (row,) = [r for r in rows(repo, {"MEMORY.md": fence(30, "~~~")}) if r["key"].startswith("long-block")]
-    assert row["key"] == "long-block|~~~"
+    assert row["key"].startswith("long-block|~~~|") and len(row["key"].split("|")[2]) == 16
     grown = "- old fact\n- old fact\n" + fence(30).replace("body 3\n", "body three\nbody 3.5\n")
-    assert engine(repo, {"MEMORY.md": grown}) == 0
+    assert engine(repo, {"MEMORY.md": grown}) == 1
 
 
 def test_a_second_long_block_with_the_same_opener_is_new(repo: Path) -> None:
