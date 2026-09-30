@@ -11,8 +11,9 @@ found. Three things hold for each one:
 
 A policy that ships a mechanism must prove it both ways: at least one case it refuses and one it
 allows. A warn-only gate never refuses, so it proves the other pair: no case is refused, at least
-one is flagged and at least one is silent. java-security and the a11y guard also have their own
-suites (tests/java_security, tools/check_a11y_*).
+one is flagged and at least one is silent. java-security, the a11y guard and the two tool_call
+gates also have their own suites (tests/java_security, tools/check_a11y_*,
+tests/policies/test_*_gate.py), because chock's replay does not drive those.
 """
 
 from __future__ import annotations
@@ -28,8 +29,8 @@ from chock.validation.report import Report
 from trees import ROOT, policy_dirs
 
 POLICIES = policy_dirs()
-#: Replayed by their own suites; chock's replay cannot drive these script gates.
-OWN_SUITES = {"java-security", "agentic-code-security"}
+#: Replayed by their own suites; chock's replay cannot drive these script or tool_call gates.
+OWN_SUITES = {"java-security", "agentic-code-security", "firecrawl-fallback-only", "token-efficiency"}
 
 
 def _manifest(policy_dir: Path) -> dict:

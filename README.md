@@ -8,8 +8,8 @@
 
 <p>
 <img alt="48 policies" src="https://img.shields.io/badge/policies-48-blue">
-<img alt="26 enforced" src="https://img.shields.io/badge/enforced-26-brightgreen">
-<img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
+<img alt="28 enforced" src="https://img.shields.io/badge/enforced-28-brightgreen">
+<img alt="20 advisory" src="https://img.shields.io/badge/advisory-20-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -46,8 +46,8 @@ are advisory, and that is the number most catalogs would round up:
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 19 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 7 |
-| `advisory` | text an agent reads and may or may not follow | 22 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
+| `advisory` | text an agent reads and may or may not follow | 20 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -100,18 +100,19 @@ per-hook trust review before its hooks run.
 | [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 49/49 |
 | [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | **carved out for [rtk-ai/rtk#1007](https://github.com/rtk-ai/rtk/issues/1007)**: rtk's own decision table — refuses `rm -rf /`, force push, credential-file reads (`.env`, `*.pem`, `~/.ssh`), `DROP`/`TRUNCATE` through psql and mysql; **asks** (exit 3) before `rm -rf` on an unlisted relative path, `git reset --hard`, `git clean -f`, `docker system prune`; skips file checks inside `docker exec`, and reads through rtk's own `rtk` prefix. The worked example of carving a policy out for one agent | 92/92 |
 | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 25/25 |
+| [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
+| [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
 
 <details>
-<summary>22 advisory policies — expand</summary>
+<summary>20 advisory policies — expand</summary>
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
 [`agent-discipline`](docs/agent-discipline/) · [`code-safety`](docs/code-safety/) ·
 [`context-hygiene`](docs/context-hygiene/) · [`chock-mise`](docs/chock-mise/) ·
-[`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
-[`memory-discipline`](docs/memory-discipline/) · [`token-efficiency`](docs/token-efficiency/)
+[`memory-discipline`](docs/memory-discipline/)
 
 </details>
 

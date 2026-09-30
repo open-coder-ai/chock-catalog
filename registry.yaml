@@ -258,13 +258,13 @@ policies:
     alter the input, or for internal batch jobs with no human recipient.'
 - id: firecrawl-fallback-only
   path: base/firecrawl-fallback-only
-  version: 0.0.1
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
-  mechanism: rule text only
-  enforces: advisory
-  eval_cases: 5
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 8
   eval_executed: 0
   description: 'trigger: web research where a direct fetch fails, is blocked, or needs JS rendering.
     avoid: reaching for the Firecrawl connector as the default fetch path.'
@@ -645,13 +645,13 @@ policies:
     entropy analysis. Best-effort guard; not a replacement for a dedicated secret scanner.'
 - id: token-efficiency
   path: base/token-efficiency
-  version: 0.0.1
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
-  mechanism: rule text only
-  enforces: advisory
-  eval_cases: 3
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 7
   eval_executed: 0
   description: 'trigger: large command output, broad searches, re-reading unchanged files, front-loading
     references. avoid: wasting context window on low-signal content.'

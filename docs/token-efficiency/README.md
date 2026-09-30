@@ -1,16 +1,16 @@
 # Token Efficiency Rule
 
-`token-efficiency` · rule · advises
+`token-efficiency` · rule · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 3 total, 0 executable |
+| **Mechanism** | guard script `token-efficiency-gate.py` |
+| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
+| **Compiles to** | `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 7 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,24 +25,24 @@ Context spent on output nobody reads: full command dumps, broad searches, re-rea
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A guard script, `implementations/token-efficiency-gate.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+
+The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
 cap(tool_output): 4000_bytes; cap(search_results): top_3; cap(retry_loops): max_3_iterations
 prefer: targeted_reads|structured_output|on_demand_refs; never: re-read(unchanged_file)|load_all_upfront
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/token-efficiency/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **PreToolUse guard**. `recompile` writes `.chock/compiled/token-efficiency/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
 
 ## Installing it
 
 ```bash
 chock add token-efficiency
-chock sync --repo .
+chock sync .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:
