@@ -75,11 +75,11 @@ throwaway repo on every push.
 | [`block-wildcard-iam`](docs/block-wildcard-iam/) | wildcard Action or Resource in an IAM policy document, `AdministratorAccess` attachment, GCP `roles/owner` or `roles/editor`, and Terraform wildcard action or resource lists -- the mechanizable slice of ASI03 | 6/6 |
 | [`block-unpinned-agent-components`](docs/block-unpinned-agent-components/) | agent components pulled at an unpinned version -- `npx`/`uvx`/`bunx` launches at `@latest` (the standard MCP server idiom), quoted `"@latest"` in agent config, and `:latest` image tags -- the mechanizable slice of ASI04 | 6/6 |
 | [`block-unsafe-code-execution`](docs/block-unsafe-code-execution/) | bare `eval`/`exec`, shell-mode subprocess calls, `os.system`, `pickle`/`marshal` loads, `yaml.load` without `SafeLoader`, `execSync` and `new Function` -- a best-effort line scan over the mechanizable slice of ASI05 | 7/7 |
-| [`no-a11y-regression`](docs/no-a11y-regression/) | a change that destroys an accessibility assertion the previous revision carried -- a description replaced by `alt=""`, or a flagged element deleted rather than fixed; neither produces a violation, so both pass every violation report | 7/20 |
+| [`no-a11y-regression`](docs/no-a11y-regression/) | a change that destroys an accessibility assertion the previous revision carried -- a description replaced by `alt=""`, or a flagged element deleted rather than fixed; neither produces a violation, so both pass every violation report; judged at commit and again when the agent writes the file and at turn end | 7/20 |
 | [`java-security`](docs/java-security/) | 129 rules in sixteen packs, each citing its CWE and evidence, as they are written and at the commit -- core Java (command, code, reflection, LDAP and XPath injection, XXE, SSRF, zip slip, unsafe deserialization, unverified JWT), crypto and TLS, Spring (CSRF, catch-all `permitAll`, weak encoders, SpEL, actuator, secrets in config), Jakarta EE, Struts, Quarkus, Micronaut and Vert.x, persistence (SQL/JPQL/HQL built by concatenation, MyBatis `${}`, unsafe JDBC URLs), templates, logging (Log4j lookups, secrets in logs), Maven and Gradle builds (plain-HTTP repositories, Log4Shell- and Spring4Shell-class versions), and Android; and seven quality packs -- bugs, concurrency, resources, exceptions, performance, style, tests -- mirroring SpotBugs, Sonar, PMD and Checkstyle -- each pack or rule `allow\|deny\|ask` in `.chock/security.json`, silence denies; the correct sibling of each (`#{}` and bind parameters, `th:text`, `parseClaimsJws`, AES-GCM) stays silent | 87/95 |
 | [`protect-test-integrity`](docs/protect-test-integrity/) | Blocks a deleted test file, a net loss of assertions across the change, and an added vacuous assertion (`assert True`, `expect(true)`) in Python, JS/TS, Go and Java test layouts -- commit only, waiver `chock: allow test-integrity` | 12/14 |
 | [`block-test-skips`](docs/block-test-skips/) | Blocks newly added test skips and focus markers (`@pytest.mark.skip`, `it.skip`, `.only`, `@Disabled`, `t.Skip`) in test files, at commit and at agent tool-use -- judged against HEAD, waiver `chock: allow test-skip` at commit only | 11/12 |
-| [`limit-diff-size`](docs/limit-diff-size/) | Refuses a commit whose staged added plus removed lines exceed 500 (`CHOCK_DIFF_LIMIT`), not counting lockfiles, vendored or generated paths and binaries -- override `CHOCK_ALLOW_LARGE_DIFF=1` is a person's | 3/11 |
+| [`limit-diff-size`](docs/limit-diff-size/) | **Asks** (exit 3) before a commit whose staged added plus removed lines exceed 500 (`CHOCK_DIFF_LIMIT`), not counting lockfiles, vendored or generated paths and binaries -- a person answers with `CHOCK_ALLOW=limit-diff-size` (or `CHOCK_ALLOW_LARGE_DIFF=1`); an agent's commit cannot | 3/11 |
 | [`guard-memory-writes`](docs/guard-memory-writes/) | Refuses memory files (`MEMORY.md`, `CLAUDE.local.md`, `.claude/memory/`) that paste git history, hold a code block over 20 lines, repeat a line or store a secret -- at commit and at agent tool-use, no waiver | 14/15 |
 | [`agentic-code-security`](agentic-security/agentic-code-security) | trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. |  |
 | [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `docker volume rm`, `aws s3 rm --recursive`, `gcloud … delete` | 80/80 |
@@ -93,7 +93,7 @@ per-hook trust review before its hooks run.
 
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
-| [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, which bypasses every gate above | 74/74 |
+| [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, which bypasses every gate above, and an agent setting or clearing the overrides meant for a person (`CHOCK_ALLOW`, `CHOCK_AGENT_COMMIT`, `CLAUDECODE`, `AI_AGENT`) in its own command | 74/74 |
 | [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 73/73 |
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 34/34 |
 | [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 36/36 |
@@ -126,7 +126,7 @@ above applies to any repo; these only earn their place if the regulation reaches
 | :--- | :--- | :--- |
 | [`eu-ai-act-transparency`](docs/eu-ai-act-transparency/) | EU AI Act Art 50 — AI disclosure, machine-readable marking of synthetic output, deepfake labelling | now |
 | [`eu-ai-act-prohibited-practices`](docs/eu-ai-act-prohibited-practices/) | Art 5 — social scoring, face scraping, workplace emotion inference, NCII/CSAM | now |
-| [`eu-ai-act-high-risk-triage`](docs/eu-ai-act-high-risk-triage/) | Annex III domains, Articles 9–15 | 2027-12-02 |
+| [`eu-ai-act-high-risk-triage`](docs/eu-ai-act-high-risk-triage/) | Annex III domains, Articles 9–15; warns (never blocks) on added code that scores, ranks or screens people | 2027-12-02 |
 
 Advisory, like everything else with no mechanism. Regulatory scoping is judgement, and a
 keyword gate here would block on `emotion_recognition` in a comment.
@@ -318,7 +318,8 @@ destructive command on a real install —
 A policy here is not inert data. A declarative policy compiles to a git hook that runs on every
 commit in your repository; a policy shipping an `implementations/` guard becomes a guard script
 consulted before your agent runs a command; `java-security` and `no-a11y-regression` run their
-own program at commit. Either way `chock add` installs executable content over `git clone`. There is no signing key — pin and verify when
+own program at commit and when the agent writes, and `firecrawl-fallback-only` and `token-efficiency`
+run theirs before a matching tool call. Either way `chock add` installs executable content over `git clone`. There is no signing key — pin and verify when
 the catalog is not one you control:
 
 ```bash
