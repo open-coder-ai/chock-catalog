@@ -75,7 +75,7 @@ def confirm(text: str) -> Verdict:
 
 
 def block(reason: str) -> Verdict:
-    return refuse(f"{reason} is not allowed without approval.")
+    return refuse(f"{reason} is refused. Ask the person to run it themselves; prefer a scoped or dry-run form.")
 
 
 def is_protected_file(path: str) -> bool:
@@ -92,7 +92,7 @@ def rm(cmd: Cmd) -> Verdict:
     targets = operands(cmd.args)
     if hit := next((t for t in targets if is_dangerous_target(t)), None):
         return refuse(
-            f"rm -rf targeting '{hit}' (root, home, parent or absolute path) is not allowed; use a relative path."
+            f"rm -rf targeting '{hit}' (absolute path, home, '.' or '..') is refused; use a relative path below the working directory."
         )
     if hit := next((t for t in targets if t.rstrip("/").rsplit("/", 1)[-1] not in SAFE_DIRS), None):
         return confirm(
@@ -104,10 +104,10 @@ def rm(cmd: Cmd) -> Verdict:
 def git_push(flags: set[str], targets: list[str]) -> Verdict:
     forced = min((t for t in targets if t.startswith("+") or ":+" in t), default="")
     if flags & {"-f", "--force"}:
-        return refuse("git push --force is not allowed; use --force-with-lease on a feature branch.")
+        return refuse("git push --force rewrites remote history. Rebase onto the remote and push fast-forward; a rewrite is the person's call.")
     if forced:
         return refuse(
-            f"git push with a '+' force-refspec ('{forced}') overwrites the remote ref; use --force-with-lease on a feature branch."
+            f"git push with a '+' force-refspec ('{forced}') rewrites remote history. Rebase onto the remote and push fast-forward; a rewrite is the person's call."
         )
     return None
 
@@ -219,7 +219,7 @@ def cloud(cmd: Cmd) -> Verdict:
 
 def powershell_remove(cmd: Cmd) -> Verdict:
     if removes_root_recursively(cmd):
-        return block("destructive PowerShell/cmd removal targeting a drive root or home path")
+        return block("recursive PowerShell/cmd removal targeting a drive path (any C:\\...), root, home, '.' or '..'")
     return None
 
 

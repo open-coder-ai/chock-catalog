@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~407 tokens (chars/4, max 2000)
+INDEX.md: ~432 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-agent-permissions:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~407 tokens (chars/4, max 2000)
+INDEX.md: ~432 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -148,5 +148,5 @@ block-wildcard-agent-permissions  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-wildcard-agent-permissions**: Wildcard agent permission grant detected. Scope the grant to specific tools or commands (e.g. Bash(git status:*), a named tool list). 'pragma: allowlist broad-agency' on the same line marks a reviewed exception; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **block-wildcard-agent-permissions**: Wildcard agent permission grant detected. Scope the grant to specific tools or commands (e.g. Bash(git status:*), a named tool list); replace defaultMode bypassPermissions with a mode that asks (default or acceptEdits). Waiver: 'pragma: allowlist broad-agency' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

@@ -54,8 +54,8 @@ def run(argv: list[str]) -> int:
     print(
         f"BLOCKED: commit message narrates the development process ('{marker}'). Describe the change itself; keep "
         "conversations, plans, session links and decision trails out of published history -- on a public repo every "
-        "message is published forever. If this phrase is legitimate here, edit the MARKERS list in "
-        "implementations/protect-commit-privacy.py.",
+        "message is published forever. No waiver exists: a legitimate phrase needs a person to remove it from MARKERS in "
+        "implementations/protect-commit-privacy.py. Agent: ask the person; never edit MARKERS.",
         file=sys.stderr,
     )
     return 1

@@ -53,7 +53,7 @@ Registered 1 commit-msg policy implementation(s)
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~334 tokens (chars/4, max 2000)
+INDEX.md: ~346 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-commit-privacy:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~334 tokens (chars/4, max 2000)
+INDEX.md: ~346 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -160,5 +160,5 @@ protect-commit-privacy  [deterministic]
 ```text
 - **protect-commit-privacy**:
   commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
-  if(sensitive_context): propose_message_to_human; await(approval) before(commit)  # history is published forever
+  if(marker_hit|sensitive_context): ask_person before(commit); no_waiver(person removes phrase from MARKERS); never(edit MARKERS)  # history is published forever
 ```

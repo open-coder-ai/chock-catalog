@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~359 tokens (chars/4, max 2000)
+INDEX.md: ~398 tokens (chars/4, max 2000)
 Recompiled 1 policies
 verify-dependency-exists:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~359 tokens (chars/4, max 2000)
+INDEX.md: ~398 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -94,22 +94,22 @@ INDEX.md: ~359 tokens (chars/4, max 2000)
 
 ```text
 verify-dependency-exists  [deterministic]
-  PASS  tc-001                             authored  Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  tc-001                             authored  Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  tc-002                             authored  gate exit 0
   PASS  tc-003                             authored  gate exit 0
-  PASS  tc-004                             authored  Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  tc-004                             authored  Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  tc-005                             authored  gate exit 0
-  PASS  tc-006                             authored  Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  tc-006                             authored  Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  tc-007                             authored  gate exit 0
-  PASS  tc-008                             authored  Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  tc-008                             authored  Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  tc-009                             authored  gate exit 0
-  PASS  derived-dep-block-requirements.txt derived   Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  derived-dep-block-requirements.txt derived   Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  derived-dep-allow-requirements.txt derived   gate exit 0
-  PASS  derived-dep-block-pyproject.toml   derived   Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  derived-dep-block-pyproject.toml   derived   Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  derived-dep-allow-pyproject.toml   derived   gate exit 0
-  PASS  derived-dep-block-package.json     derived   Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  derived-dep-block-package.json     derived   Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  derived-dep-allow-package.json     derived   gate exit 0
-  PASS  derived-dep-block-go.mod           derived   Unknown dependency blocked. Verify the package exists in the offici…
+  PASS  derived-dep-block-go.mod           derived   Unknown dependency blocked: it is not in .chock/dependency-allowlis…
   PASS  derived-dep-allow-go.mod           derived   gate exit 0
   score 1.00
 
@@ -147,5 +147,5 @@ verify-dependency-exists  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **verify-dependency-exists**: Unknown dependency blocked. Verify the package exists in the official registry, then ask a person to add it to .chock/dependency-allowlist.txt -- an agent may not edit that file (protect-agent-config). Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **verify-dependency-exists**: Unknown dependency blocked: it is not in .chock/dependency-allowlist.txt. This gate checks the allowlist only and makes no registry lookup, so confirm the package exists in the official registry first. If you are an agent, ask a person to add the name; do not edit that file yourself (protect-agent-config). If you are a person, add the name to the file. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

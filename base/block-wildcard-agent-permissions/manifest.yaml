@@ -1,16 +1,13 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.6"
+version: "0.0.7"
 description: >
-  The mechanizable slice of excessive agency, enforced at two points: at commit (the git
-  hook, over staged changes) and at agent tool-use (over a tool call's arguments, as the
-  agent writes) -- agent permission grants that allow everything. A settings file whose shell grant or
-  allow-list is a bare wildcard hands the agent unlimited tool authority for every future
-  session, in a file reviewers rarely read as code. The agent-world twin of
-  block-wildcard-iam: scope grants to what the task needs (e.g. Bash(git status:*)). The
-  allow/alwaysAllow/tools/defaultMode keys match whether or not YAML-style config quotes
-  them, word-bounded so "disallow"/"allowlist" are not mistaken for "allow". Escape:
-  'pragma: allowlist broad-agency' on the same line.
+  Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an
+  allow/alwaysAllow/tools array on the same line, or quoted defaultMode bypassPermissions. Any
+  file is judged. Not caught: a multi-line array (`"*"` alone on a line, YAML `- "*"` list),
+  unquoted defaultMode: bypassPermissions. Runs: commit, agent write, turn's end. Waiver: 'pragma:
+  allowlist broad-agency' same line. Person's commit: honoured. Agent: only if already in HEAD;
+  MCP gateway: never. Agent asks a person.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -26,7 +23,11 @@ hook:
     action: block
     message: >
       Wildcard agent permission grant detected. Scope the grant to specific tools or
-      commands (e.g. Bash(git status:*), a named tool list). 'pragma: allowlist broad-agency' on the same line marks a reviewed exception; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself.
+      commands (e.g. Bash(git status:*), a named tool list); replace defaultMode
+      bypassPermissions with a mode that asks (default or acceptEdits). Waiver:
+      'pragma: allowlist broad-agency' on the same line. A person's commit honours it; in the
+      agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and
+      the MCP gateway never does. An agent asks a person; it never writes the pragma.
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+broad-agency'
@@ -55,7 +56,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-08-24T00:00:00Z"
+  updated_at: "2026-09-30T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -69,10 +70,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.7
+  date: '2026-09-30'
+  changes:
+  - "Disclosure, no behaviour change: the description now lists what the pattern misses -- a multi-line array (`\"*\"` alone on its own line, or a YAML `- \"*\"` list) and an unquoted defaultMode: bypassPermissions -- and says any file is judged, since the policy has no path bound. The gate message gains a fix for bypassPermissions and the standard waiver sentence (person's commit honours it; in the agent only a line already in HEAD counts; the MCP gateway never does). The description names where each check runs and fits the 500-char budget."
 - version: 0.0.6
   date: '2026-09-29'
   changes:
-  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, an agent's commit (CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env)) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
 - version: 0.0.5
   date: '2026-09-21'
   changes:

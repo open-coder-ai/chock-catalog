@@ -1,18 +1,13 @@
 id: block-invisible-unicode
-name: "Block Invisible Unicode"
-version: "0.0.4"
+name: "Block Bidi and Tag Unicode"
+version: "0.0.5"
 description: >
-  The mechanizable slice of prompt-injection defense, enforced at two points: at commit
-  (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments,
-  as the agent writes) -- invisible and direction-override Unicode. Bidi controls make code read
-  differently than it parses (Trojan Source, CVE-2021-42574); Unicode tag-block
-  characters smuggle instructions that are invisible to a human reviewer but fully
-  legible to the agent reading the file. Zero-width joiners and bidi marks
-  (ZWJ/ZWNJ/LRM/RLM) are deliberately NOT matched -- they are legitimate in emoji
-  sequences and in Persian, Arabic and Indic text -- so ordinary internationalised
-  content passes; only the override/embed/isolate controls and the tag block, which
-  have no honest use in a source tree, are blocked. Escape:
-  'pragma: allowlist invisible-unicode' on the same line.
+  Blocks bidi override/embed/isolate controls (U+202A-202E, U+2066-2069; Trojan Source,
+  CVE-2021-42574) and Unicode tag characters (U+E0001-E007F), which smuggle instructions. NOT
+  matched: ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ, LRM/RLM. Runs:
+  commit, agent write, turn's end. Waiver: 'pragma: allowlist invisible-unicode' same line.
+  Person's commit: honoured. Agent: only if that line is already in HEAD; MCP gateway: never.
+  Agent asks a person.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -27,9 +22,11 @@ hook:
     "on": [commit, tool_use]
     action: block
     message: >
-      Invisible or direction-override Unicode detected in this change. These
-      characters change how code reads to a human or hide instructions an agent will
-      still obey. Remove them. 'pragma: allowlist invisible-unicode' on the same line marks a documented exception; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself.
+      Bidi-control or Unicode tag characters detected in this change. They change how code
+      reads to a human or hide instructions an agent will still obey. Remove them. Waiver:
+      'pragma: allowlist invisible-unicode' on the same line. A person's commit honours it; in
+      the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts,
+      and the MCP gateway never does. An agent asks a person; it never writes the pragma.
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+invisible-unicode'
@@ -50,7 +47,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-08-16T00:00:00Z"
+  updated_at: "2026-09-30T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -64,6 +61,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-09-30'
+  changes:
+  - "Rename (display name only, id unchanged): 'Block Invisible Unicode' becomes 'Block Bidi and Tag Unicode', since only bidi controls (U+202A-202E, U+2066-2069) and tag characters (U+E0001-E007F) are matched."
+  - "Disclosure, no behaviour change: the description lists what is not matched -- ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ and LRM/RLM. The gate message names what it matches and carries the standard waiver sentence. The description names where each check runs and fits the 500-char budget."
 - version: 0.0.1
   date: '2026-08-16'
   changes:
@@ -79,4 +81,4 @@ changelog:
 - version: 0.0.4
   date: '2026-09-29'
   changes:
-  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, an agent's commit (CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env)) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."

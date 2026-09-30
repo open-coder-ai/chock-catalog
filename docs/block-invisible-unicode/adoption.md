@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~416 tokens (chars/4, max 2000)
+INDEX.md: ~417 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-invisible-unicode:
   claude: best-effort (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~416 tokens (chars/4, max 2000)
+INDEX.md: ~417 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -94,19 +94,19 @@ INDEX.md: ~416 tokens (chars/4, max 2000)
 
 ```text
 block-invisible-unicode  [deterministic]
-  PASS  tc-001                             authored  Invisible or direction-override Unicode detected in this change. Th…
-  PASS  tc-002                             authored  Invisible or direction-override Unicode detected in this change. Th…
-  PASS  tc-003                             authored  Invisible or direction-override Unicode detected in this change. Th…
+  PASS  tc-001                             authored  Bidi-control or Unicode tag characters detected in this change. The…
+  PASS  tc-002                             authored  Bidi-control or Unicode tag characters detected in this change. The…
+  PASS  tc-003                             authored  Bidi-control or Unicode tag characters detected in this change. The…
   PASS  tc-004                             authored  gate exit 0
   PASS  tc-005                             authored  gate exit 0
   PASS  tc-006                             authored  gate exit 0
-  PASS  tc-007                             authored  Invisible or direction-override Unicode detected in this change. Th…
+  PASS  tc-007                             authored  Bidi-control or Unicode tag characters detected in this change. The…
   PASS  tc-008                             authored  gate exit 0
-  PASS  tc-009                             authored  Invisible or direction-override Unicode detected in this change. Th…
+  PASS  tc-009                             authored  Bidi-control or Unicode tag characters detected in this change. The…
   PASS  tc-010                             authored  gate exit 0
   PASS  tc-011                             authored  gate exit 0
-  PASS  tc-012                             authored  Invisible or direction-override Unicode detected in this change. Th…
-  PASS  tc-013                             authored  Invisible or direction-override Unicode detected in this change. Th…
+  PASS  tc-012                             authored  Bidi-control or Unicode tag characters detected in this change. The…
+  PASS  tc-013                             authored  Bidi-control or Unicode tag characters detected in this change. The…
   PASS  tc-014                             authored  gate exit 0
   score 1.00
 
@@ -145,5 +145,5 @@ block-invisible-unicode  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **block-invisible-unicode**: Invisible or direction-override Unicode detected in this change. These characters change how code reads to a human or hide instructions an agent will still obey. Remove them. 'pragma: allowlist invisible-unicode' on the same line marks a documented exception; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **block-invisible-unicode**: Bidi-control or Unicode tag characters detected in this change. They change how code reads to a human or hide instructions an agent will still obey. Remove them. Waiver: 'pragma: allowlist invisible-unicode' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```
