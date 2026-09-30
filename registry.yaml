@@ -264,7 +264,7 @@ policies:
     rule is the advisory layer over them plus atomic-commit guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.6.1
+  version: 0.6.2
   artifact: hook
   enforcement: block
   mandatory: false
