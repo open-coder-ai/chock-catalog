@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.6.2"
+version: "0.6.3"
 description: >
   trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
   templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
@@ -44,10 +44,18 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.3
+  date: '2026-09-30'
+  changes:
+  - "A sanitizer counts only when it is applied to the request data. The flow rules decided \"sanitized\" by finding a sanitizer's name anywhere in the raw source line, so `// TODO sanitize later`, a string literal such as `\"/srv/sanitize/\"`, a block comment, or `sanitize(other)` on an unrelated value turned java-path-traversal-request-data off for that line. The check, now in chock_security/sanitizer.py, reads the file with comments and literals blanked (chock_security/source.py) and requires the sanitizer to be a call taking the request value, or a method called on it (`FilenameUtils.getName(name)`, `validator.isValid(name)`, `Paths.get(base, name).normalize()`, `name.startsWith(base)`, `name.matches(\"[a-z]+\")`). Every rule that shares the helper takes the fix: the 22 flow rules, including the seven with pack sanitizers of their own. Lines whose blanked form cannot be aligned with the file's read as empty, so a check the gate cannot place fails closed. Unchanged: `.normalize()` without a `startsWith` check still counts, as before."
+  - "A check counts only where the sink takes the value through it: inside the check's call, within the sink's arguments (or what it is called on, or calls chained on its result), or under an `if (...)` or `cond ? a : b` whose condition checks the value. `sanitize(name); new File(name)`, `log.info(sanitize(name)); new File(name)`, `new File(name + sanitize(name))` and `Paths.get(\"/srv/\" + name, sanitize(name))` are refused; an assignment is judged the same way on its right-hand side, and a value assigned earlier on the line counts as carried at the sink. A yes-or-no check (`is*`, `matches`, `startsWith`, `contains`) counts only as such a condition, and as a method only on the value itself, so `\"\".startsWith(name)` checks nothing. Remaining: an `if` guard credits any sink after it on the same line, and a guard on an earlier line counts only through an assignment, as `p = base.resolve(name).normalize()` does."
+  - "A call taking nothing is followed into the call chained on it, so OWASP's `ESAPI.encoder().encodeForHTML(value)` counts again for java-xss-writer. A sanitizer token starts at a word boundary (`desanitize(name)` and `notisValid(name)` are not checks), and whitespace before a chained call is skipped (`Paths.get(base, name) .normalize()`)."
+  - "Unicode escapes are decoded before lexing, as javac does (`\\uXXXX` after an odd run of backslashes, any number of `u`s): `// ok \\u000a new File(name)` is code after the escaped line break and is now refused, and `\\u002f\\u002f sanitize(name)` is a comment. A decoded character keeps its escape's columns and a decoded line break reads as a blank, so every rule reading chock_security/source.py keeps the file's line numbers. Body-line code is aligned from the line's start, so a CRLF file reads the columns an LF one does."
+  - "Dropped sanitizer tokens that could never match: jakarta-open-redirect's `.startsWith(\"/\")` (literal contents are blanked; the shared `.startsWith(` covers it) and java-xpath-injection's `XPathVariableResolver` / `setXPathVariableResolver(` (they configure the XPath object, not the value; a bound expression is a literal and not a flow)."
 - version: 0.6.2
   date: '2026-09-30'
   changes:
-  - "A sanitizer counts only when it is applied to the request data. The flow rules decided \"sanitized\" by finding a sanitizer's name anywhere in the raw source line, so `// TODO sanitize later`, a string literal such as `\"/srv/sanitize/\"`, a block comment, or `sanitize(other)` on an unrelated value turned java-path-traversal-request-data off for that line. The check, now in chock_security/sanitizer.py, reads the file with comments and literals blanked (chock_security/source.py) and requires the sanitizer to be a call taking the request value, or a method called on it (`FilenameUtils.getName(name)`, `validator.isValid(name)`, `Paths.get(base, name).normalize()`, `name.startsWith(base)`, `name.matches(\"[a-z]+\")`). Every rule that shares the helper takes the fix: the 22 flow rules, including the seven with pack sanitizers of their own. Lines whose blanked form cannot be aligned with the file's read as empty, so a check the gate cannot place fails closed. Unchanged: a sanitizer and the request value on the same line still pass together, so `new File(name + sanitize(name))` is still accepted, and `.normalize()` without a `startsWith` check still counts, as before."
+  - "Skill text only: a Plan-time guidance section tells the agent to call chock's read-only `chock_guidance` tool (chock mcp) with its plan and the paths it will touch, where the client has it, and says an empty answer is not a clearance. Gate, rules, verdicts and selection unchanged."
 - version: 0.6.1
   date: '2026-09-30'
   changes:
