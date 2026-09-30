@@ -5,25 +5,25 @@
         "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-destructive-commands/implementations/block-destructive-commands.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-no-verify/implementations/block-no-verify.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.py\""
       }
     ],
     "pre_mcp_tool_use": [
@@ -31,25 +31,25 @@
         "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-destructive-commands/implementations/block-destructive.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-destructive-commands/implementations/block-destructive-commands.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-no-verify/implementations/block-no-verify.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-no-verify/implementations/block-no-verify.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/block-unapproved-egress/implementations/block-unapproved-egress.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/protect-commit-privacy/implementations/protect-commit-privacy.py\""
       },
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.sh\""
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/windsurf.py --guard \".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist.py\""
       }
     ]
   }

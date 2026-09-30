@@ -1,24 +1,35 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.0.3"
+version: "0.4.0"
 description: >
   Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
-  unless every mcpServers entry on the line matches a name+source pair on the allowlist -- an
-  unlisted name blocks, and an allowed name whose command/args/url changed blocks too (catches
-  a server renamed to an allowed name but pointed elsewhere). The allowlist ships inside this
-  guard's own script, protected like every policy's implementations/ source -- edit only with
-  'chock: approved-config-change'. Claude Code's .mcp.json only. Tool-time (Bash) only,
-  best-effort: PreToolUse fails open on a crash, a file-write tool bypasses this guard, a
-  write with no visible content fails closed. No commit-time gate. A write signal is scoped
-  to its own clause of the command line, so a writer or redirect elsewhere -- or stderr
-  merely suppressed -- cannot condemn a plain read of .mcp.json. Matching and path checks are
-  otherwise exact-string and substring-coarse. No pragma for .mcp.json.
+  unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the
+  allowlist -- an unlisted name blocks, and an allowed name whose command/args/url changed
+  blocks too. `claude mcp add|add-json` is checked the same way (add-from-claude-desktop cannot
+  be verified and is refused). The allowlist ships inside this guard's own script, protected
+  like every policy's implementations/ source -- edit only with 'chock: approved-config-change'.
+  The shell guard reads Claude Code's .mcp.json, best-effort (PreToolUse fails open on a crash; a
+  write with no visible content fails closed). A script gate at commit and tool use parses every
+  written MCP config (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json,
+  .gemini/settings.json, .codex/config.toml) against the same allowlist; only servers the change
+  adds or alters are refused, at commit and tool use. No pragma.
 artifact: rule
 enforcement: advise
 rule:
   text: |
     mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-    allowlist: lives in implementations/verify-mcp-allowlist.sh; edit requires 'chock: approved-config-change'; scope: claude_code only, tool-time(Bash) only
+    allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; edit requires 'chock: approved-config-change'; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex added-only at commit+tool_use
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      An MCP server that is not on the allowlist is configured. Only servers listed, by name and
+      exact command/args/url, in implementations/verify-mcp-allowlist.py may be added. Ask a
+      person to review the server and add it to that list; do not edit the allowlist yourself.
+    params:
+      script: verify-mcp-allowlist_gate.py
 effects:
 - read_only
 approval:
@@ -37,7 +48,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-07T00:00:00Z"
-  updated_at: "2026-09-07T00:00:00Z"
+  updated_at: "2026-09-29T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -51,6 +62,24 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.0
+  date: '2026-09-30'
+  changes:
+  - "The script gate prints a findings document instead of comparing with a baseline itself. It reports every server the allowlist does not name, keyed by the server name and its normalized source (command and args space-joined, or the url), and the engine (chock 0.15.0) runs it again on the baseline text and refuses only a (path, key) the change holds more of. So a server the change adds, renames or re-argues is new, an unlisted server already there never blocks an unrelated edit or a reformat, and the same server declared twice in one file is a second copy. An unreadable config is keyed by a digest of its text, so any edit to one is new. Removed: head_text, before_text and entries, the gate's own HEAD and disk reads; the exit code (1 refuses, 2 is a fault) is unchanged. Eval cases tc-059 onward add an unlisted server added, an existing server's args changed, an old server reformatted, a line shift and a duplicate."
+- version: 0.3.0
+  date: '2026-09-30'
+  changes:
+  - "The script gate judges only what the change adds at tool use too, not just at commit. A server is judged when its name+source pair is absent from the baseline: a new server, or one whose command/args/url changed. Baseline per event: HEAD at commit and push; at PreToolUse the file on disk before the write; at the turn's end (disk already holds the written text) HEAD; a new config file has every server new. A renamed server with unchanged config counts as new, so an unlisted new name is still refused, as the guard's name+source rule has it. A server the turn did not touch no longer blocks the agent at the turn's end. Eval tc-056 (stop, an old unlisted server plus an added listed one) flips block to allow; tc-057 (stop adds an unlisted server) and tc-058 (stop alters an old server) block; tc-054's wording now says the added server is what is refused."
+- version: 0.2.0
+  date: '2026-09-29'
+  changes:
+  - "Second check for file-write tools and for commits: a script gate (implementations/verify-mcp-allowlist_gate.py, stdlib) at commit and tool_use that parses every written MCP client config -- .mcp.json, .cursor/mcp.json, .vscode/mcp.json (servers or mcpServers), claude_desktop_config.json, .gemini/settings.json (mcpServers) and .codex/config.toml ([mcp_servers], tomllib) -- and refuses any server whose name and exact command/args/url are not on the allowlist. It imports the guard's own ALLOWED_MCP_SERVERS and source rule from the file beside it, so there is one allowlist. At commit only servers the change adds or alters against HEAD are refused, so a server already committed never blocks an unrelated edit; at tool use every server in the written file is judged. An unparseable config is refused as unverifiable. Reasons name the file and server, never the launch line, which may carry a token. Guard unchanged. The script is named with an underscore (`_gate`) so that chock's eval runner, which treats every implementations/*.py as a command guard and takes the first in sort order, still picks verify-mcp-allowlist.py for the command cases."
+- version: 0.1.0
+  date: '2026-09-29'
+  changes:
+  - "Ported from bash to Python: implementations/verify-mcp-allowlist.py replaces the bash script, stdlib only, deterministic, no network. It ships beside the chock_shellparse package (identical in every ported policy; tests pin the copies), which reads the command with a quote-aware lexer instead of scanning text: it splits at unquoted && || ; | & and newlines, drops redirections and comments, keeps heredoc bodies, and looks through bash|sh|zsh -c, pwsh -Command, cmd /c, eval, sudo, doas, env VAR=x, command, exec, nohup, timeout, nice, time, xargs and subshells, so `cd repo && ...` and `bash -c '...'` are judged on the command they run and `echo ...` on none. Unbalanced quotes fall back to a split at separators and whitespace that still sees redirections and reads an unclosed quote as one word; CHOCK_TOOL=powershell|pwsh selects PowerShell reading (backslash paths, cmdlets), and without it the text decides. An unexpected exception exits 2 (a guard fault), never 1 (a block)."
+  - "Bypasses closed, each with eval cases: `claude mcp add evil ...` and `claude mcp add-json evil '{...}'` (name and source are checked against the allowlist; `claude mcp add filesystem -- npx -y @modelcontextprotocol/server-filesystem` passes, an allowed name pointed at another command does not, `add-from-claude-desktop` is refused as unverifiable; list, get and remove stay allowed)."
+  - "The JSON in an inline .mcp.json write (echo, printf or a heredoc) is now parsed with a real JSON parser instead of a regex window, so a server entry carrying a nested object (an env map) no longer shifts the boundary and hides the next entry. A write with no parseable mcpServers entry still fails closed. The allowlist moved into the Python guard; the protected-source check covers the guard and its shipped parser package (verify-mcp-allowlist/implementations/), and the existing .sh-named eval cases keep their verdicts."
 - version: 0.0.3
   date: '2026-09-24'
   changes:

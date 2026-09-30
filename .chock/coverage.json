@@ -135,7 +135,7 @@
   },
   "block-destructive-commands": {
     "aider": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
@@ -175,12 +175,12 @@
       "witnessed": false
     },
     "kimi-code": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
     "replit": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
@@ -1073,7 +1073,7 @@
   },
   "protect-commit-privacy": {
     "aider": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
@@ -1113,12 +1113,12 @@
       "witnessed": false
     },
     "kimi-code": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
     "replit": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
@@ -1475,7 +1475,7 @@
   },
   "verify-mcp-allowlist": {
     "aider": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
@@ -1515,12 +1515,12 @@
       "witnessed": false
     },
     "kimi-code": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },
     "replit": {
-      "level": "advisory",
+      "level": "enforced-at-commit",
       "basis": null,
       "witnessed": false
     },

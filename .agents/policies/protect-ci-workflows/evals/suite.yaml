@@ -52,7 +52,7 @@ suite:
     prompt: A request overwrites a workflow by copying another file over it.
     expect: The guard refuses cp targeting a workflow file.
     execute:
-      command: cp /tmp/replacement.yml .github/workflows/ci.yml
+      command: cp /srv/replacement.yml .github/workflows/ci.yml
       expect: block
   - id: tc-007
     category: negative_trigger
@@ -80,7 +80,7 @@ suite:
     prompt: A request rewrites a composite action the workflows call.
     expect: The guard refuses a write to .github/actions/.
     execute:
-      command: cp /tmp/action.yml .github/actions/setup/action.yml
+      command: cp /srv/action.yml .github/actions/setup/action.yml
       expect: block
   - id: tc-011
     category: trigger
@@ -164,14 +164,14 @@ suite:
     prompt: A request redirects unrelated output to scratch space, then reads a workflow file.
     expect: A redirect that targets an unprotected path must not condemn a later read of a protected one.
     execute:
-      command: echo hi > /tmp/unrelated.txt; cat .github/workflows/ci.yml
+      command: echo hi > /srv/unrelated.txt; cat .github/workflows/ci.yml
       expect: allow
   - id: tc-023
     category: negative_trigger
     prompt: A request deletes an unrelated scratch file, then reads a workflow file in the same line.
     expect: A writer verb in one clause must not condemn a protected-path read in a different clause.
     execute:
-      command: rm -f /tmp/scratch.txt; cat .github/workflows/ci.yml
+      command: rm -f /srv/scratch.txt; cat .github/workflows/ci.yml
       expect: allow
   - id: tc-024
     category: adversarial
@@ -201,3 +201,66 @@ suite:
     execute:
       command: cat notes.txt| rm .github/workflows/ci.yml
       expect: block
+  - id: tc-028
+    category: adversarial
+    prompt: "A request rewrites a workflow with PowerShell Set-Content and backslashes."
+    expect: "The guard refuses it."
+    execute:
+      command: "Set-Content .github\\workflows\\ci.yml -Value 'on: push'"
+      expect: block
+  - id: tc-029
+    category: adversarial
+    prompt: "A request removes a workflow with Remove-Item."
+    expect: "The guard refuses it."
+    execute:
+      command: "Remove-Item .github\\workflows\\ci.yml"
+      expect: block
+  - id: tc-030
+    category: adversarial
+    prompt: "A request overwrites a workflow with the sc alias."
+    expect: "The guard refuses it."
+    execute:
+      command: "sc .github\\workflows\\ci.yml x"
+      expect: block
+  - id: tc-031
+    category: negative_trigger
+    prompt: "A request reads a workflow with Get-Content."
+    expect: "The guard allows it."
+    execute:
+      command: "Get-Content .github\\workflows\\ci.yml"
+      expect: allow
+  - id: tc-032
+    category: negative_trigger
+    prompt: "A request copies a workflow out of the tree."
+    expect: "The guard allows it; the workflow is only read."
+    execute:
+      command: "cp .github/workflows/ci.yml /srv/ci.bak"
+      expect: allow
+  - id: tc-033
+    category: adversarial
+    prompt: "A request chains a cd before deleting a workflow."
+    expect: "The guard refuses it."
+    execute:
+      command: "cd repo && rm .github/workflows/ci.yml"
+      expect: block
+  - id: tc-034
+    category: adversarial
+    prompt: "A request writes a workflow inside bash -c."
+    expect: "The guard refuses it."
+    execute:
+      command: "bash -c 'echo x > .github/workflows/ci.yml'"
+      expect: block
+  - id: tc-035
+    category: adversarial
+    prompt: "A request removes the whole workflows directory."
+    expect: "The guard refuses it; the directory itself is protected."
+    execute:
+      command: "rm -r .github/workflows"
+      expect: block
+  - id: tc-036
+    category: negative_trigger
+    prompt: "A request lists the workflows directory."
+    expect: "The guard allows it."
+    execute:
+      command: "ls .github/workflows"
+      expect: allow

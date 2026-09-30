@@ -1,6 +1,6 @@
 id: block-invisible-unicode
 name: "Block Invisible Unicode"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   The mechanizable slice of prompt-injection defense, enforced at two points: at commit
   (the git hook, over staged changes) and at agent tool-use (over a tool call's arguments,
@@ -29,10 +29,7 @@ hook:
     message: >
       Invisible or direction-override Unicode detected in this change. These
       characters change how code reads to a human or hide instructions an agent will
-      still obey. Remove them. At commit, 'pragma: allowlist invisible-unicode' on the
-      same line marks a documented exception (e.g. a test fixture); the pragma is NOT
-      honored at tool-use, where the scanned text is a live tool argument an appended
-      token could neutralize.
+      still obey. Remove them. 'pragma: allowlist invisible-unicode' on the same line marks a documented exception; in the agent (tool use, the turn's end) it counts only when that exact line is already committed in HEAD, so an agent asks a person rather than writing the pragma itself.
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+invisible-unicode'
@@ -79,3 +76,7 @@ changelog:
   date: '2026-08-28'
   changes:
   - "Bind at tool-use as well as commit: gate.on now [commit, tool_use], so the same pattern enforces as the agent writes (mcp-gateway / agent guard) and not only over a git diff -- the write-time point matters most here, since tag-block smuggling targets exactly what the agent writes and reads. No pattern change. Message generalized from 'staged changes' to 'this change' and notes the allowlist pragma is a commit-review concept NOT honored at tool-use (live, attacker-controllable tool argument -- a match always blocks, matching the gateway's content_regex semantics)."
+- version: 0.0.4
+  date: '2026-09-29'
+  changes:
+  - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
