@@ -8,9 +8,8 @@ suite:
     pass_rate:
       direction: higher_is_better
       threshold: 1.0
-  # Every executable case runs at commit through the policy's script gate, staged in a throwaway
-  # repository. The tool_use surface runs the same script; the eval runner replays only commit and
-  # push, so no case is authored for tool_use.
+  # Every executable case runs through the policy's script gate, staged in a throwaway repository:
+  # at commit, at tool_use (the write over the file on disk) and at stop (the turn's end against HEAD).
   cases:
   - id: tc-001
     category: trigger
@@ -163,3 +162,33 @@ suite:
     category: edge
     prompt: The agent adds a skip pragma to its own new skip in the same write.
     expect: 'A waiver the agent writes with its own new skip is not honoured (only a waived line already committed in HEAD counts); the write is refused. (Text case: tool_use has no executable replay.)'
+  - id: tc-013
+    category: trigger
+    prompt: "The agent writes a pytest skip marker into tests/test_a.py."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, expect: block}
+  - id: tc-014
+    category: negative_trigger
+    prompt: "The agent writes a clean tests/test_a.py."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"tests/test_a.py": "def test_a():\n    assert f() == 1\n"}, expect: allow}
+  - id: tc-015
+    category: behavior
+    prompt: "tests/test_a.py already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')  # chock: allow test-skip\ndef test_a():\n    assert f() == 1\n"}, writes: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')  # chock: allow test-skip\ndef test_a():\n    assert f() == 1\n\n\ndef test_b():\n    assert g() == 2\n"}, expect: allow}
+  - id: tc-016
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in tests/test_a.py."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"tests/test_a.py": "def test_a():\n    assert f() == 1\n"}, writes: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')  # chock: allow test-skip\ndef test_a():\n    assert f() == 1\n"}, expect: block}
+  - id: tc-017
+    category: trigger
+    prompt: "At the turn's end tests/test_a.py on disk holds a pytest skip marker that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"tests/test_a.py": "def test_a():\n    assert f() == 1\n"}, writes: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, expect: block}
+  - id: tc-018
+    category: negative_trigger
+    prompt: "At the turn's end tests/test_a.py differs from HEAD only by a clean line; HEAD already holds an old violation."
+    expect: "The turn is allowed: only the lines the turn added are judged."
+    execute: {event: stop, head_files: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n"}, writes: {"tests/test_a.py": "import pytest\n\n\n@pytest.mark.skip(reason='flaky')\ndef test_a():\n    assert f() == 1\n\n\ndef test_b():\n    assert g() == 2\n"}, expect: allow}

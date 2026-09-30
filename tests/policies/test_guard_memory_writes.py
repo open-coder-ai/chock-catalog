@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import io
 import json
 from pathlib import Path
@@ -215,3 +216,63 @@ def test_the_manifest_binds_the_script_at_commit_and_tool_use() -> None:
     assert gate["kind"] == "script"
     assert gate["on"] == ["commit", "tool_use"]
     assert gate["params"] == {"script": NAME}
+
+
+HOME = "/Users/dev"
+OUTSIDE = [
+    f"{HOME}/.claude/projects/-work-app/memory/MEMORY.md",
+    f"{HOME}/.claude/projects/-work-app/memory/prefs.md",
+    "/root/.claude/projects/p/memory/deep/topic.txt",
+    "C:/Users/dev/.claude/projects/p/memory/a.md",
+    f"{HOME}/.claude/CLAUDE.md",
+    "/memories/notes.md",
+    "/memories/repo/facts.md",
+]
+NOT_MEMORY = [
+    f"{HOME}/.claude/settings.json",
+    f"{HOME}/.claude/projects/p/session.jsonl",
+    f"{HOME}/.claude/projects/p/memory",
+    f"{HOME}/project/CLAUDE.md",
+    f"{HOME}/.claude/CLAUDE.md.bak",
+    f"{HOME}/memories/a.md",
+]
+
+
+@pytest.mark.parametrize("path", OUTSIDE)
+def test_outside_memory_stores_are_judged(repo: Path, path: str) -> None:
+    assert check(repo, {path: "diff --git a/x b/x\n"}, event="tool_use") == [f"{path}:1: pasted git history"]
+
+
+@pytest.mark.parametrize("path", NOT_MEMORY)
+def test_other_outside_paths_are_never_judged(repo: Path, path: str) -> None:
+    assert check(repo, {path: f"diff --git a/x b/x\n{AWS}\n"}, event="tool_use") == []
+
+
+def test_the_manifest_globs_admit_the_outside_paths_the_script_judges() -> None:
+    declared = scriptkit.manifest("guard-memory-writes")["hook"]["gate"]["outside_repo"]
+    globs = [g.replace("~", HOME, 1) for g in declared]
+    admitted = [p for p in OUTSIDE if p.startswith((HOME, "/memories"))]
+    assert all(any(fnmatch.fnmatchcase(p, g) for g in globs) for p in admitted)
+    assert not any(fnmatch.fnmatchcase(p, g) for p in NOT_MEMORY for g in globs)
+
+
+def test_an_outside_file_is_judged_against_the_disk_not_head(repo: Path, tmp_path: Path) -> None:
+    store = tmp_path / ".claude" / "projects" / "p" / "memory"
+    store.mkdir(parents=True)
+    target = store / "MEMORY.md"
+    old = "- old fact\n- old fact\n" + fence(30)
+    target.write_text(old, encoding="utf-8")
+    path = target.as_posix()
+    assert check(repo, {path: old + "- fresh\n"}, event="tool_use") == []
+    lines = len(old.splitlines())
+    assert check(repo, {path: old + "- old fact\n"}, event="tool_use") == [f"{path}:{lines + 1}: duplicates line 1"]
+
+
+def test_a_new_outside_file_is_judged_whole(repo: Path, tmp_path: Path) -> None:
+    path = (tmp_path / ".claude" / "CLAUDE.md").as_posix()
+    assert check(repo, {path: "- a\n- a\n"}, event="tool_use") == [f"{path}:2: duplicates line 1"]
+
+
+def test_the_manifest_declares_the_outside_stores() -> None:
+    gate = scriptkit.manifest("guard-memory-writes")["hook"]["gate"]
+    assert gate["outside_repo"] == ["~/.claude/projects/*/memory/**", "~/.claude/CLAUDE.md", "/memories/**"]

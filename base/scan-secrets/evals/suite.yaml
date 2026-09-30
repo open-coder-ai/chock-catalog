@@ -220,3 +220,33 @@ suite:
       files:
         notes.md: "sk-learn is a machine learning library; import sklearn to use it.\n"
       expect: allow
+  - id: tc-027
+    category: trigger
+    prompt: "The agent writes an AWS-style access key into creds.py."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'\n"}, expect: block}  # pragma: allowlist secret
+  - id: tc-028
+    category: negative_trigger
+    prompt: "The agent writes a clean creds.py."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"creds.py": "KEY = os.environ['KEY']\n"}, expect: allow}  # pragma: allowlist secret
+  - id: tc-029
+    category: behavior
+    prompt: "creds.py already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'  # pragma: allowlist secret\n"}, writes: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'  # pragma: allowlist secret\nprint('ready')\n"}, expect: allow}  # pragma: allowlist secret
+  - id: tc-030
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in creds.py."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"creds.py": "KEY = os.environ['KEY']\n"}, writes: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'  # pragma: allowlist secret\n"}, expect: block}  # pragma: allowlist secret
+  - id: tc-031
+    category: trigger
+    prompt: "At the turn's end creds.py on disk holds an AWS-style access key that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"creds.py": "KEY = os.environ['KEY']\n"}, writes: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'\n"}, expect: block}  # pragma: allowlist secret
+  - id: tc-032
+    category: negative_trigger
+    prompt: "At the turn's end creds.py differs from HEAD only by a clean line; HEAD already holds an old violation."
+    expect: "The turn is allowed: only the lines the turn added are judged."
+    execute: {event: stop, head_files: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'\n"}, writes: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'\nprint('ready')\n"}, expect: allow}  # pragma: allowlist secret

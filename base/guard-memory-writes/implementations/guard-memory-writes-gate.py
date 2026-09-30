@@ -10,6 +10,10 @@ import sys
 from collections import Counter
 
 MEMORY_PATH = re.compile(r"(^|/)MEMORY\.md$|^CLAUDE\.local\.md$|^\.claude/memory/|^memory/.+\.md$")
+# Absolute paths only: the gate's `outside_repo` globs (the manifest) are what lets one reach this script.
+OUTSIDE_MEMORY = re.compile(
+    r"^(/|[A-Za-z]:/)(.*/)?(\.claude/projects/[^/]+/memory/.|\.claude/CLAUDE\.md$)|^/memories/."
+)
 HISTORY = re.compile(
     r"^diff --git |^@@ -\d+(,\d+)? \+\d+(,\d+)? @@|^commit [0-9a-f]{40}$|^index [0-9a-f]{7,}\.\.[0-9a-f]{7,}"
 )
@@ -22,8 +26,19 @@ BULLET = re.compile(r"^([-*+]|\d+[.)])\s+")
 MAX_BLOCK_LINES = 20
 
 
+def disk_lines(path: str) -> Counter[str]:
+    """The lines of an outside file as it is on disk before the write; empty when unreadable."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            return Counter(handle.read().splitlines())
+    except OSError:
+        return Counter()
+
+
 def head_lines(root: str, path: str) -> Counter[str]:
     """The lines of `path` at HEAD; empty when HEAD or the file does not exist."""
+    if path.startswith("/") or path[1:2] == ":":
+        return disk_lines(path)
     proc = subprocess.run(  # noqa: S603 -- fixed argv, path comes from the runner's own list
         ["git", "show", f"HEAD:{path}"],  # noqa: S607
         cwd=root,
@@ -111,7 +126,7 @@ def findings(payload: dict) -> list[str]:
     found = []
     for path, text in sorted(payload.get("writes", {}).items()):
         norm = path.replace("\\", "/")
-        if MEMORY_PATH.search(norm):
+        if MEMORY_PATH.search(norm) or OUTSIDE_MEMORY.match(norm):
             found += judge(norm, text, head_lines(payload["repo_root"], norm))
     return found
 

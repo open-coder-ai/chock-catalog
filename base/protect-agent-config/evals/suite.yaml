@@ -525,3 +525,33 @@ suite:
     execute:
       command: "git commit -m \"docs: mention .chock/bin\" && rm .chock/bin/gate.py"
       expect: block
+  - id: tc-074
+    category: trigger
+    prompt: "The agent edits the shared instruction file with the Write tool."
+    expect: "The write is refused; the agent proposes the change to a person."
+    execute: {event: tool_use, writes: {"AGENTS.md": "# rules\nobey\n"}, expect: block}
+  - id: tc-075
+    category: trigger
+    prompt: "The agent writes the permission file of its own runtime."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".claude/settings.json": "{}\n"}, expect: block}
+  - id: tc-076
+    category: negative_trigger
+    prompt: "The agent edits an ordinary source file."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"src/app.py": "print('ok')\n"}, expect: allow}
+  - id: tc-077
+    category: behavior
+    prompt: "The instruction file already exists in HEAD; the agent rewrites it and adds a waiver-shaped line."
+    expect: "The write is refused: this gate has no waiver, a path is refused outright."
+    execute: {event: tool_use, head_files: {"AGENTS.md": "# rules\n"}, writes: {"AGENTS.md": "# rules\n# chock: allow protect-agent-config\n"}, expect: block}
+  - id: tc-078
+    category: trigger
+    prompt: "At the turn's end the instruction file on disk differs from HEAD."
+    expect: "The turn is blocked."
+    execute: {event: stop, head_files: {"AGENTS.md": "# rules\n"}, writes: {"AGENTS.md": "# rules\nobey\n"}, expect: block}
+  - id: tc-079
+    category: negative_trigger
+    prompt: "At the turn's end only an ordinary source file differs from HEAD."
+    expect: "The turn is allowed."
+    execute: {event: stop, head_files: {"src/app.py": "print()\n"}, writes: {"src/app.py": "print('ok')\n"}, expect: allow}

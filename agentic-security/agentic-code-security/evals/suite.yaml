@@ -1747,3 +1747,33 @@ suite:
     category: behavior
     prompt: The agent writes a Python file that does not parse and holds text that looks like eval of a variable.
     expect: 'The write proceeds: a file that does not parse draws no finding from the rules that need the parse.'
+  - id: tc-122
+    category: trigger
+    prompt: "The agent writes an AutoGen proxy with use_docker False into agents/proxy.py."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\n"}, expect: block}
+  - id: tc-123
+    category: negative_trigger
+    prompt: "The agent writes a clean agents/proxy.py."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": True})\n"}, expect: allow}
+  - id: tc-124
+    category: behavior
+    prompt: "agents/proxy.py already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})  # chock: allow exec-autogen-local-execution\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})  # chock: allow exec-autogen-local-execution\nprint('ready')\n"}, expect: allow}
+  - id: tc-125
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in agents/proxy.py."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": True})\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})  # chock: allow exec-autogen-local-execution\n"}, expect: block}
+  - id: tc-126
+    category: trigger
+    prompt: "At the turn's end agents/proxy.py on disk holds an AutoGen proxy with use_docker False that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": True})\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\n"}, expect: block}
+  - id: tc-127
+    category: behavior
+    prompt: "At the turn's end agents/proxy.py adds a clean line but still holds a violation HEAD already had."
+    expect: "The turn is blocked: unlike a commit, the agent's own text is judged whole, so an old violation in a file it touched is refused."
+    execute: {event: stop, head_files: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\n"}, writes: {"agents/proxy.py": "from autogen import UserProxyAgent\n\nproxy = UserProxyAgent(\"u\", code_execution_config={\"work_dir\": \"coding\", \"use_docker\": False})\nprint('ready')\n"}, expect: block}

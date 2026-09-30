@@ -101,9 +101,15 @@ block-unsafe-code-execution  [deterministic]
   PASS  tc-005                             authored  gate exit 0
   PASS  tc-006                             authored  gate exit 0
   PASS  tc-007                             authored  gate exit 0
+  PASS  tc-008                             authored  Dynamic execution primitive detected. Replace it with a parameteriz…
+  PASS  tc-009                             authored  gate exit 0
+  PASS  tc-010                             authored  gate exit 0
+  PASS  tc-011                             authored  Dynamic execution primitive detected. Replace it with a parameteriz…
+  PASS  tc-012                             authored  Dynamic execution primitive detected. Replace it with a parameteriz…
+  PASS  tc-013                             authored  gate exit 0
   score 1.00
 
-5 policies: 7 pass, 41 skipped
+5 policies: 13 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

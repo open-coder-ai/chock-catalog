@@ -106,9 +106,14 @@ protect-test-integrity  [deterministic]
   PASS  tc-010                             authored  gate exit 0
   PASS  tc-011                             authored  gate exit 0
   PASS  tc-012                             authored  gate exit 0
+  PASS  tc-015                             authored  Test integrity: this change deletes a test file, removes more asser…
+  PASS  tc-016                             authored  gate exit 0
+  PASS  tc-017                             authored  Test integrity: this change deletes a test file, removes more asser…
+  PASS  tc-018                             authored  Test integrity: this change deletes a test file, removes more asser…
+  PASS  tc-019                             authored  gate exit 0
   score 1.00
 
-5 policies: 12 pass, 43 skipped
+5 policies: 17 pass, 43 skipped
 43 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

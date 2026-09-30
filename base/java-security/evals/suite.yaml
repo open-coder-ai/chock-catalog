@@ -1319,3 +1319,33 @@ suite:
           }
       event: commit
       expect: allow
+  - id: tc-096
+    category: trigger
+    prompt: "The agent writes an unescaped template expression into p.html."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"p.html": "<p th:utext=\"${bio}\"></p>\n"}, expect: block}
+  - id: tc-097
+    category: negative_trigger
+    prompt: "The agent writes a clean p.html."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"p.html": "<p th:text=\"${bio}\"></p>\n"}, expect: allow}
+  - id: tc-098
+    category: behavior
+    prompt: "p.html already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"p.html": "<p th:utext=\"${bio}\"></p> <!-- chock: allow java-xss-unescaped-template -->\n"}, writes: {"p.html": "<p th:utext=\"${bio}\"></p> <!-- chock: allow java-xss-unescaped-template -->\n<p th:text=\"${name}\"></p>\n"}, expect: allow}
+  - id: tc-099
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in p.html."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"p.html": "<p th:text=\"${bio}\"></p>\n"}, writes: {"p.html": "<p th:utext=\"${bio}\"></p> <!-- chock: allow java-xss-unescaped-template -->\n"}, expect: block}
+  - id: tc-100
+    category: trigger
+    prompt: "At the turn's end p.html on disk holds an unescaped template expression that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"p.html": "<p th:text=\"${bio}\"></p>\n"}, writes: {"p.html": "<p th:utext=\"${bio}\"></p>\n"}, expect: block}
+  - id: tc-101
+    category: behavior
+    prompt: "At the turn's end p.html adds a clean line but still holds a violation HEAD already had."
+    expect: "The turn is blocked: unlike a commit, the agent's own text is judged whole, so an old violation in a file it touched is refused."
+    execute: {event: stop, head_files: {"p.html": "<p th:utext=\"${bio}\"></p>\n"}, writes: {"p.html": "<p th:utext=\"${bio}\"></p>\n<p th:text=\"${name}\"></p>\n"}, expect: block}

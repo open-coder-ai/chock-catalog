@@ -422,3 +422,28 @@ suite:
       files:
         .mcp.json: "{\"mcpServers\": {\n"
       expect: block
+  - id: tc-052
+    category: trigger
+    prompt: "The agent writes an MCP config naming a server that is not on the allowlist."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, expect: block}
+  - id: tc-053
+    category: negative_trigger
+    prompt: "The agent writes an MCP config whose only server matches the allowlist."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, expect: allow}
+  - id: tc-054
+    category: behavior
+    prompt: "HEAD already holds an unlisted server and the agent rewrites the file, keeping it."
+    expect: "The write is refused: at tool use every server in the written file is judged, not only new ones."
+    execute: {event: tool_use, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}, \"other\": {\"command\": \"true\"}}}\n"}, expect: block}
+  - id: tc-055
+    category: trigger
+    prompt: "At the turn's end the MCP config on disk adds an unlisted server HEAD lacks."
+    expect: "The turn is blocked."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, expect: block}
+  - id: tc-056
+    category: behavior
+    prompt: "At the turn's end the MCP config on disk keeps an unlisted server HEAD already had and adds a listed one."
+    expect: "The turn is blocked: the script sees the turn's end as tool use, so every server in the file is judged, not only the added ones."
+    execute: {event: stop, head_files: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}}}\n"}, writes: {".mcp.json": "{\"mcpServers\": {\"evil\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp-server\"]}, \"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\"]}}}\n"}, expect: block}

@@ -10,7 +10,7 @@
 | **Mechanism** | dependency_allowlist gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 5 total, 5 executable |
+| **Eval cases** | 9 total, 9 executable |
 | **Enabled by default** | no — opt in |
 
 <!-- generated:end -->

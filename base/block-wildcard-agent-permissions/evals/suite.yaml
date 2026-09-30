@@ -140,3 +140,8 @@ suite:
       files:
         agent.yaml: "allow: [\"Bash(git status:*)\"]\n"
       expect: allow
+  - id: tc-017
+    category: negative_trigger
+    prompt: "The agent writes a clean agent-permissions.json."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"agent-permissions.json": "{\"allow\": [\"Bash(git status)\"]}\n"}, expect: allow}  # pragma: allowlist broad-agency

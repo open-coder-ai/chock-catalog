@@ -108,9 +108,16 @@ guard-memory-writes  [deterministic]
   PASS  tc-012                             authored  gate exit 0
   PASS  tc-013                             authored  gate exit 0
   PASS  tc-014                             authored  gate exit 0
+  PASS  tc-016                             authored  guard-memory-writes: memory must not hold this (path:line): /Users/…
+  PASS  tc-017                             authored  guard-memory-writes: memory must not hold this (path:line): /Users/…
+  PASS  tc-018                             authored  guard-memory-writes: memory must not hold this (path:line): /memori…
+  PASS  tc-019                             authored  gate exit 0
+  PASS  tc-020                             authored  gate exit 0
+  PASS  tc-021                             authored  guard-memory-writes: memory must not hold this (path:line): MEMORY.…
+  PASS  tc-022                             authored  gate exit 0
   score 1.00
 
-5 policies: 14 pass, 42 skipped
+5 policies: 21 pass, 42 skipped
 42 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

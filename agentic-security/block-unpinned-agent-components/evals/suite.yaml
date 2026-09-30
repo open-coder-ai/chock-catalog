@@ -57,3 +57,33 @@ suite:
       files:
         compose.dev.yaml: "  image: localstack/localstack:latest  # pragma: allowlist unpinned\n"
       expect: allow
+  - id: tc-007
+    category: trigger
+    prompt: "The agent writes an unpinned :latest base image into Dockerfile."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"Dockerfile": "FROM python:latest\n"}, expect: block}  # pragma: allowlist unpinned
+  - id: tc-008
+    category: negative_trigger
+    prompt: "The agent writes a clean Dockerfile."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"Dockerfile": "FROM python:3.12\n"}, expect: allow}  # pragma: allowlist unpinned
+  - id: tc-009
+    category: behavior
+    prompt: "Dockerfile already holds a reviewed, waived line in HEAD; the agent edits elsewhere in the file."
+    expect: "The write is allowed: a waiver already in HEAD is honoured in the agent."
+    execute: {event: tool_use, head_files: {"Dockerfile": "FROM python:latest  # pragma: allowlist unpinned\n"}, writes: {"Dockerfile": "FROM python:latest  # pragma: allowlist unpinned\nCOPY agent /app\n"}, expect: allow}  # pragma: allowlist unpinned
+  - id: tc-010
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a line that violates the gate in Dockerfile."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"Dockerfile": "FROM python:3.12\n"}, writes: {"Dockerfile": "FROM python:latest  # pragma: allowlist unpinned\n"}, expect: block}  # pragma: allowlist unpinned
+  - id: tc-011
+    category: trigger
+    prompt: "At the turn's end Dockerfile on disk holds an unpinned :latest base image that HEAD lacks."
+    expect: "The turn is blocked: the diff against HEAD adds it."
+    execute: {event: stop, head_files: {"Dockerfile": "FROM python:3.12\n"}, writes: {"Dockerfile": "FROM python:latest\n"}, expect: block}  # pragma: allowlist unpinned
+  - id: tc-012
+    category: negative_trigger
+    prompt: "At the turn's end Dockerfile differs from HEAD only by a clean line; HEAD already holds an old violation."
+    expect: "The turn is allowed: only the lines the turn added are judged."
+    execute: {event: stop, head_files: {"Dockerfile": "FROM python:latest\n"}, writes: {"Dockerfile": "FROM python:latest\nCOPY agent /app\n"}, expect: allow}  # pragma: allowlist unpinned

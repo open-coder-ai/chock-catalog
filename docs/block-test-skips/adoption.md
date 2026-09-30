@@ -105,9 +105,15 @@ block-test-skips  [deterministic]
   PASS  tc-009                             authored  gate exit 0
   PASS  tc-010                             authored  gate exit 0
   PASS  tc-011                             authored  gate exit 0
+  PASS  tc-013                             authored  block-test-skips: this change adds a test skip or focus marker: tes…
+  PASS  tc-014                             authored  gate exit 0
+  PASS  tc-015                             authored  gate exit 0
+  PASS  tc-016                             authored  block-test-skips: this change adds a test skip or focus marker: tes…
+  PASS  tc-017                             authored  block-test-skips: this change adds a test skip or focus marker: tes…
+  PASS  tc-018                             authored  gate exit 0
   score 1.00
 
-5 policies: 11 pass, 42 skipped
+5 policies: 17 pass, 42 skipped
 42 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
