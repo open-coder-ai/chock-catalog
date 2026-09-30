@@ -1,6 +1,6 @@
 ---
 name: java-security
-description: "trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties or .yml, web.xml, pom.xml or Gradle builds; \"customize java security\" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL, LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip, weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and actuator data, known-exploited dependency versions, exported Android components; and the bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in 16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging, build, android; quality: bugs, concurrency, resources, exceptions, performance, style, testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny."
+description: "trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis, templates, application.properties or .yml, web.xml, pom.xml or Gradle; \"customize java security\" opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto, trust-all TLS, disabled Spring Security, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules in 16 packs, each allow|deny|ask in .chock/security.json; absent = deny."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Java Security Rules
 
-trigger: writing Java or Kotlin -- Spring, Jakarta EE, Struts, Quarkus, Micronaut, Vert.x or Android -- SQL, JPA or MyBatis, Thymeleaf, JSP, JSF or FreeMarker templates, application.properties or .yml, web.xml, pom.xml or Gradle builds; "customize java security" opens this skill's guided page. avoid: injection (SQL, command, code, SpEL, LDAP, XPath, template), XXE, SSRF, unsafe deserialization, path traversal and zip slip, weak crypto and trust-all TLS, disabled Spring Security protections, exposed secrets and actuator data, known-exploited dependency versions, exported Android components; and the bugs, leaks and style breaches SpotBugs, Sonar, PMD and Checkstyle report. 129 rules in 16 packs -- security: java, crypto, spring, jakarta, persistence, templates, logging, build, android; quality: bugs, concurrency, resources, exceptions, performance, style, testing -- each rule or pack allow|deny|ask in .chock/security.json; absent = deny.
+trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis, templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security" opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto, trust-all TLS, disabled Spring Security, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules in 16 packs, each allow|deny|ask in .chock/security.json; absent = deny.
 
 ```
 on(commit|tool_use): block(script) script=java-security-gate.py
