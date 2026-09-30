@@ -1,6 +1,6 @@
 id: memory-discipline
 name: "Memory Discipline Rule"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   trigger: repeated mistakes, rediscovered patterns, preferences, non-derivable facts.
   avoid: persisting file contents, git history, or task intermediates as memory.
@@ -19,8 +19,8 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock"
+  updated_at: "2026-09-30T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -49,3 +49,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Point the mechanisable slice of never_persist at guard-memory-writes, which refuses pasted git history, oversized fenced code blocks, duplicate lines and secrets in memory files. The rule stays advisory: whether a fact is non-derivable or a file's contents were summarised is not decidable by pattern. Wording only."
+- version: 0.0.5
+  date: '2026-09-30'
+  changes:
+  - "Metadata: source_repo points at chock-catalog, where this policy lives, not at chock."

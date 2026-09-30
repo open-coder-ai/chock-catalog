@@ -1,6 +1,6 @@
 id: firecrawl-fallback-only
 name: "Firecrawl Fallback Only"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   trigger: web research where a direct fetch fails, is blocked, or needs JS rendering.
   avoid: reaching for the Firecrawl connector as the default fetch path.
@@ -29,8 +29,8 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-31T18:16:54Z"
-  updated_at: "2026-09-29T00:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock"
+  updated_at: "2026-09-30T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -43,6 +43,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-09-30'
+  changes:
+  - "Metadata: source_repo points at chock-catalog, where this policy lives, not at chock."
 - version: 0.1.0
   date: '2026-09-29'
   changes:

@@ -1,12 +1,12 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "git-safety",
-  "version": "0.0.3",
-  "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced counterparts of these controls (protect-main-branch is a commit-time gate; the other two are pre-execution guards on hook-carrying clients, advisory elsewhere); this rule is the advisory layer over them plus atomic-commit guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.",
+  "version": "0.0.4",
+  "description": "trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Enforced counterparts: block-destructive-commands (command guard plus pre-push hook), block-no-verify (command guard), protect-main-branch (commit and push gate), limit-diff-size (asks at commit). This rule is the advisory layer over them plus atomic-commit guidance no gate can decide.",
   "author": {
     "name": "chock-core"
   },
-  "repository": "https://github.com/open-coder-ai/chock",
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
   "license": "Apache-2.0",
   "keywords": [
     "chock",

@@ -1,6 +1,6 @@
 ---
 name: block-curl-pipe-sh
-description: "Best-effort guard against piping a network download straight into a shell or script interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare, path-qualified, or QUOTED (\"sh\", 'bash'), including subshell groups and transparent wrappers -- sudo/exec/command/env/xargs/nohup/timeout/nice/stdbuf/ionice/setsid -- in front of it, bash -c \"$(curl ...)\", bash <(curl ...), and the PowerShell iwr ... | iex form. Downloading to a file, or piping a fetch into a non-interpreter tool (jq, tar, grep), stays allowed. Known bypass classes include aliases, variable indirection, base64/obfuscated payloads, env-var-prefixed interpreters, and non-standard fetch clients. This is friction, not a security boundary."
+description: "Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node, bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout; also bash -c \"$(curl ...)\", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only."
 metadata:
   chock.artifact: rule
   chock.enforcement: advise
@@ -9,7 +9,7 @@ metadata:
 
 # Block Curl-Pipe-Shell
 
-Best-effort guard against piping a network download straight into a shell or script interpreter: curl|wget|iwr ... | sh/bash/zsh/python/perl/ruby/node (bare, path-qualified, or QUOTED ("sh", 'bash'), including subshell groups and transparent wrappers -- sudo/exec/command/env/xargs/nohup/timeout/nice/stdbuf/ionice/setsid -- in front of it, bash -c "$(curl ...)", bash <(curl ...), and the PowerShell iwr ... | iex form. Downloading to a file, or piping a fetch into a non-interpreter tool (jq, tar, grep), stays allowed. Known bypass classes include aliases, variable indirection, base64/obfuscated payloads, env-var-prefixed interpreters, and non-standard fetch clients. This is friction, not a security boundary.
+Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node, bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout; also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.
 
 ```
 block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(sh|bash|python|perl|node|iex)

@@ -1,12 +1,12 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "context-hygiene",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "trigger: context bloat, stale observations, resolved content inlined, noisy exploration. avoid: context rot and lost-in-the-middle failures.",
   "author": {
     "name": "chock-core"
   },
-  "repository": "https://github.com/open-coder-ai/chock",
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
   "license": "Apache-2.0",
   "keywords": [
     "chock",

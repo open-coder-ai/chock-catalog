@@ -16,7 +16,7 @@ suite:
   - id: tc-001
     category: trigger
     prompt: A request asks the agent to run git push --force to main.
-    expect: The guard refuses the command; force-with-lease on a feature branch is the alternative.
+    expect: The guard refuses the command; rebasing and pushing fast-forward is the alternative, a rewrite is the person's call.
     execute:
       command: git push --force origin main
       expect: block
@@ -44,7 +44,7 @@ suite:
   - id: tc-005
     category: behavior
     prompt: A request asks the agent to run git push --force-with-lease.
-    expect: The guard allows the safer force variant.
+    expect: The command guard allows it; the pre-push hook still refuses a push that is not a fast-forward.
     execute:
       command: git push --force-with-lease origin feature/work
       expect: allow
@@ -578,3 +578,10 @@ suite:
     execute:
       command: "kubectl get pods delete"
       expect: allow
+  - id: tc-081
+    category: adversarial
+    prompt: "A request has a word named delete among the operands of a gcloud read command."
+    expect: "The guard refuses; gcloud is matched on any delete operand, not by position."
+    execute:
+      command: "gcloud compute instances list delete"
+      expect: block

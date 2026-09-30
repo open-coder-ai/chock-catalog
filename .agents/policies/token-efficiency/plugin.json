@@ -1,12 +1,12 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "token-efficiency",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "trigger: large command output, broad searches, re-reading unchanged files, front-loading references. avoid: wasting context window on low-signal content.",
   "author": {
     "name": "chock-core"
   },
-  "repository": "https://github.com/open-coder-ai/chock",
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
   "license": "Apache-2.0",
   "keywords": [
     "chock",
