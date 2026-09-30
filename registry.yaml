@@ -673,14 +673,14 @@ policies:
     end against HEAD).'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.2.0
+  version: 0.3.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 56
-  eval_executed: 56
+  eval_cases: 58
+  eval_executed: 58
   description: 'Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
     unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the allowlist
     -- an unlisted name blocks, and an allowed name whose command/args/url changed blocks too. `claude
@@ -690,7 +690,8 @@ policies:
     .mcp.json, best-effort (PreToolUse fails open on a crash; a write with no visible content fails
     closed). A script gate at commit and tool use parses every written MCP config (.mcp.json, .cursor/mcp.json,
     .vscode/mcp.json, claude_desktop_config.json, .gemini/settings.json, .codex/config.toml) against
-    the same allowlist; at commit only servers the change adds or alters are refused. No pragma.'
+    the same allowlist; only servers the change adds or alters are refused, at commit and tool use.
+    No pragma.'
 - id: block-test-skips
   path: base/block-test-skips
   version: 0.0.2

@@ -3,8 +3,10 @@
 
 Runs as the policy's script gate: stdin is {"event", "repo_root", "writes": {path: text}}; exit 0 allows, 1 refuses
 with the reasons on stderr, 2 is a fault in this check. The allowlist is the one in verify-mcp-allowlist.py, read from
-the file beside this one, never copied. At commit only servers the change adds or alters against HEAD are judged, so a
-server already committed never blocks an unrelated edit; at tool use every server in the written file is judged.
+the file beside this one, never copied. Only servers the change adds or alters are judged, so a server already there
+never blocks an unrelated edit. The baseline is HEAD at commit and push; at PreToolUse the file on disk before the
+write; at the turn's end (disk already holds the written text) HEAD. A renamed server counts as added: the guard
+judges a name and its source together.
 """
 
 from __future__ import annotations
@@ -76,6 +78,18 @@ def head_text(root: str, path: str) -> str:
     return proc.stdout if proc.returncode == 0 else ""
 
 
+def before_text(root: str, path: str, text: str, event: str | None) -> str:
+    """What the write replaces: at tool use the file on disk, or HEAD when disk already holds `text` (turn's end)."""
+    if event == TOOL_USE:
+        try:
+            disk = (Path(root) / path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return head_text(root, path)
+        if disk != text:
+            return disk
+    return head_text(root, path)
+
+
 def entries(guard, kind: str, text: str) -> set[tuple[str, str]]:
     """(name, source) for each server in the text; a text that cannot be read has none."""
     try:
@@ -86,14 +100,13 @@ def entries(guard, kind: str, text: str) -> set[tuple[str, str]]:
 
 def findings(payload: dict, guard) -> list[str]:
     """One reason per refused server or unreadable config, naming the file and the server, never its launch line."""
-    full = payload.get("event") == TOOL_USE
     found = []
     for path, text in sorted(payload.get("writes", {}).items()):
         kind = config_kind(path)
         if kind is None:
             continue
         norm = path.replace("\\", "/")
-        before = "" if full else head_text(payload["repo_root"], norm)
+        before = before_text(payload["repo_root"], norm, text, payload.get("event"))
         if text == before and before:
             continue
         try:
