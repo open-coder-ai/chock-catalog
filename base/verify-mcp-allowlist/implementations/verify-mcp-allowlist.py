@@ -4,8 +4,7 @@
 # fmt: on
 # Gate MCP server configuration as protected content: a shell write to .mcp.json, or `claude mcp add|add-json`, is
 # refused unless every server it names matches a name+source pair on the allowlist below. The allowlist lives in THIS
-# script, so a shell edit to it is refused like any edit to a policy guard -- unless the command carries the
-# 'chock: approved-config-change' marker. Best effort: tool-time (shell) only, Claude Code's .mcp.json only.
+# script, so a shell edit to it is refused like any edit to a policy guard. Best effort: Claude Code's .mcp.json only.
 
 import json
 import os
@@ -19,13 +18,12 @@ from chock_shellparse import Cmd, commands, writes_files
 # its args (space-joined, in order) or the url of a remote server. Matching is exact. Add your own; ships with the
 # official MCP reference filesystem server as a worked example.
 ALLOWED_MCP_SERVERS = {"filesystem": "npx -y @modelcontextprotocol/server-filesystem"}
-MARKER = "chock: approved-config-change"
 CONFIG = ".mcp.json"
 GUARD_SOURCE = re.compile(r"verify-mcp-allowlist(/implementations|\.(sh|py))")
 ADD_VALUE_FLAGS = frozenset(("-s", "--scope", "-t", "--transport", "-e", "--env", "-H", "--header"))
 NO_ENTRY = (
     f"this command writes {CONFIG} but no server entry is visible on the command line to verify against the allowlist. "
-    "Write the full content inline as JSON, or have a human approve with 'chock: approved-config-change'."
+    "Write the full content inline as JSON, or ask the person to make the change from their own shell."
 )
 
 
@@ -114,20 +112,17 @@ def unlisted(found: list[tuple[str, str]]) -> str | None:
 
 REFUSED = (
     "MCP server config change refused -- {why}. Add or fix the entry (name + exact source) in the allowlist at the top "
-    "of implementations/verify-mcp-allowlist.py via a human-approved 'chock: approved-config-change' edit."
+    "of implementations/verify-mcp-allowlist.py. Do not edit the allowlist or add the server yourself; ask the person to review it."
 )
 
 
 def check(raw: str) -> str | None:
     """The reason a command changes MCP configuration outside the allowlist, or None."""
-    if MARKER in raw:
-        return None
     cmds = commands(raw)
     if any(writes_files(cmd, is_guard) for cmd in cmds):
         return (
-            "shell write to the MCP server allowlist is not allowed -- it is protected content, the same way "
-            "protect-agent-config protects every policy's guard source. Have a human approve by including "
-            "'chock: approved-config-change' in the command."
+            "shell write to the MCP server allowlist is refused -- it is protected content, the same way "
+            "protect-agent-config protects every policy's guard source. Ask the person to make the change."
         )
     found = [pair for cmd in cmds for pair in (cli_entries(cmd) or [])]
     if any(writes_files(cmd, is_config) for cmd in cmds):

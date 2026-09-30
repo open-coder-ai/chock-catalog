@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Guard against an agent hand-editing its own guardrails. Agent instruction files (AGENTS.md and the per-agent wrappers), permission files (.claude/settings.json, .mcp.json), the dependency allowlist (.chock/dependency-allowlist.txt) and vendored enforcement (.chock/bin/, .chock/compiled/) define what the agent may do -- so a shell command that rewrites them is the agent modifying its own authority (MITRE ATLAS AML.T0081). The guard refuses shell writes to those paths -- a redirect, rm/mv/tee/sed -i, cp into the path, git checkout/restore, PowerShell Set-Content/Add-Content/Out-File; reads and copies out pass, and `chock sync` passes. Best-effort and deliberately coarse. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication. A second, tool_use-only gate refuses Edit/Write to the same paths; it never runs at commit, so a person stays free to edit them.
+Stops an agent hand-editing its own guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .chock/dependency-allowlist.txt, .chock/bin, .chock/compiled, .git/hooks and policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content/Out-File. Reads, cp out, `chock sync` pass. Coarse. No marker bypass: a person edits from their own shell. Edit/Write: tool_use gate (incl. turn's end), never at commit.
 
 ## What it solves
 
@@ -30,8 +30,8 @@ A guard script, `implementations/protect-agent-config.py`, run before the agent 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
-if(config_change_needed): propose_to_human; await(approval)  # an agent must not widen or disarm its own guardrails
+agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
+if(config_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not widen or disarm its own guardrails
 ```
 
 ## Which primitive it becomes

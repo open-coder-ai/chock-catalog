@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Guard against an agent weakening the automated checks that review its own work. CI/CD workflow files (.github/workflows/), the composite actions they call (.github/actions/) and the dependency-update automation (.github/dependabot.yml) define what must pass before a change lands -- so rewriting or deleting them is the agent removing the gate that would catch it. The guard refuses shell write-commands targeting those paths; reads pass, and tool-driven regeneration (chock sync) passes. Best-effort and deliberately coarse: the command line is parsed, and a write (a `>`/`>>` redirect, a writer verb like rm/mv/tee/sed -i, cp into the path, git checkout/restore, a PowerShell Set-Content/Add-Content/Out-File) must actually target the protected path; reading it passes. The 'chock: approved-config-change' marker is friction plus an audit trail, not authentication; the check an agent cannot self-approve is server-side branch protection.
+Stops an agent weakening the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/ and .github/dependabot.yml|yaml: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content/Add-Content/Out-File. Reads and `chock sync` pass. Best-effort, coarse. No marker bypass: a person edits from their own shell. Shell only: Edit/Write to these paths is not checked (no gate). Backstop: server-side branch protection.
 
 ## What it solves
 
@@ -30,8 +30,8 @@ A guard script, `implementations/protect-ci-workflows.py`, run before the agent 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-ci_config(.github/workflows|.github/actions|.github/dependabot.yml): never(shell_edit|delete); propose_to_human
-if(ci_change_needed): open PR; await(review)  # an agent must not disarm the checks on its own work
+ci_config(.github/workflows|.github/actions|.github/dependabot.yml|yaml): never(shell_edit|delete); ask_person
+if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
 ```
 
 ## Which primitive it becomes

@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~329 tokens (chars/4, max 2000)
+INDEX.md: ~345 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unapproved-egress:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~329 tokens (chars/4, max 2000)
+INDEX.md: ~345 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -106,7 +106,7 @@ block-unapproved-egress  [deterministic]
   PASS  tc-008                             authored  BLOCKED: uploading data to 'evil.com' is outside the egress allowli…
   PASS  tc-009                             authored  BLOCKED: uploading data to 'evil.com' is outside the egress allowli…
   PASS  tc-010                             authored  guard exit 0
-  PASS  tc-011                             authored  guard exit 0
+  PASS  tc-011                             authored  BLOCKED: uploading data to 'metrics.internal.example' is outside th…
   PASS  tc-012                             authored  guard exit 0
   PASS  tc-013                             authored  BLOCKED: uploading data to 'exfil.net' is outside the egress allowl…
   PASS  tc-014                             authored  BLOCKED: uploading data to 'evil.example.com' is outside the egress…
@@ -172,6 +172,6 @@ block-unapproved-egress  [deterministic]
 
 ```text
 - **block-unapproved-egress**:
-  block(egress): fetch(curl|wget|iwr) + upload(-d|--data|-F|--upload-file|-X POST|PUT) to host NOT in allowlist
-  allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; escape: 'pragma: allowlist egress'
+  block(egress): fetch(curl|wget|iwr|irm) + upload(-d|--data*|--json|-F|-T|--upload-file|-X POST|PUT|PATCH|-Body|-InFile) to host NOT in allowlist; curl -K|--config refused
+  allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; no marker or pragma passes: ask_person
 ```

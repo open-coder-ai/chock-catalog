@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Best-effort guard against exfiltration through the tool channel: a network command (curl/wget/Invoke-WebRequest) that UPLOADS data -- POST/PUT, --data/--form, --upload-file, --post-file -- to a host outside the egress allowlist. The allowlist defaults to package registries and code hosting and is meant to be extended with your org's own domains; a host matches by exact name or ".<entry>" suffix. Fetch-only traffic is left alone. A schemeless or protocol-relative target is checked too, from the last non-flag token, but only when no explicit http(s):// URL appears -- once one has, it alone decides. Options are parsed as curl reads them, so -sd @file is an upload. Tool-time FLOOR, not a network sandbox. Known bypasses: ~/.curlrc, obfuscated payloads, non-standard clients, a language runtime. Escape: 'pragma: allowlist egress'.
+Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod) that UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*, -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact or .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a person. A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.
 
 ## What it solves
 
@@ -30,8 +30,8 @@ A guard script, `implementations/block-unapproved-egress.py`, run before the age
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-block(egress): fetch(curl|wget|iwr) + upload(-d|--data|-F|--upload-file|-X POST|PUT) to host NOT in allowlist
-allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; escape: 'pragma: allowlist egress'
+block(egress): fetch(curl|wget|iwr|irm) + upload(-d|--data*|--json|-F|-T|--upload-file|-X POST|PUT|PATCH|-Body|-InFile) to host NOT in allowlist; curl -K|--config refused
+allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; no marker or pragma passes: ask_person
 ```
 
 ## Which primitive it becomes
