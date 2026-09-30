@@ -143,6 +143,11 @@ _NAMED_NOT_APPLIED = {
     "a block comment opened on an earlier line": 'return read(/* sanitize the name\n     normalize() first */ Paths.get("/srv/" + file));',
     "a sanitizer applied to another value": 'audit(sanitize(other));\n    return Files.readAllBytes(Paths.get("/srv/" + file));',
     "a sanitizer in a variable name": 'String unsanitized = file;\n    return Files.readAllBytes(Paths.get("/srv/" + unsanitized));',
+    "a sanitizer whose result is thrown away": 'sanitize(file); return Files.readAllBytes(Paths.get("/srv/" + file));',
+    "the raw value beside its sanitized form": 'return Files.readAllBytes(Paths.get("/srv/" + file, sanitize(file)));',
+    "startsWith on a literal": 'return Files.readAllBytes(Paths.get("/srv/" + file + ("".startsWith(file) ? "" : "")));',
+    "a name ending in a sanitizer's": 'return Files.readAllBytes(Paths.get("/srv/", desanitize(file)));',
+    "a sink after an escaped line break in a comment": '// ok \\u000a return Files.readAllBytes(Paths.get("/srv/" + file));',
 }
 
 #: The forms that really check the value the line carries.
@@ -154,6 +159,9 @@ _APPLIED = {
     "an allowlist consulted with the value": "return Files.readAllBytes(Paths.get(base, allowlist.get(file)));",
     "a pattern the value must match": 'return Files.readAllBytes(Paths.get(base, file.matches("[a-z]+") ? file : "x"));',
     "a named pattern the value must match": 'return Files.readAllBytes(Paths.get(base, file.matches(SAFE_NAME) ? file : "x"));',
+    "normalized after a space": "return Files.readAllBytes(Paths.get(base, file) .normalize());",
+    "a startsWith guard on the value": 'if (file.startsWith("docs/")) return Files.readAllBytes(Paths.get(base, sanitize(file)));',
+    "sanitized, then assigned on the same line": "String safe = sanitize(file); return Files.readAllBytes(Paths.get(base, safe));",
 }
 
 FLOW_CASES += [

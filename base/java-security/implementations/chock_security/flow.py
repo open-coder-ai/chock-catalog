@@ -15,7 +15,7 @@ from functools import lru_cache
 
 from chock_security.decision import FileText
 from chock_security.pack import facts
-from chock_security.sanitizer import holds, mentions, sanitized
+from chock_security.sanitizer import holds, mentions, sanitized, sink_regions, statement_end
 from chock_security.source import blank
 
 _FACTS = facts("java")["flow"]
@@ -124,11 +124,12 @@ def _code_of(clean: list[str], lines: list[str], line_no: int, line: str) -> str
 
     A separator `splitlines` honours but lexing blanks (a form feed) merges two lines into one, so
     the blanked lines no longer match the file's; every line then reads as empty, and nothing in
-    it can count as a sanitizer."""
+    it can count as a sanitizer. Columns count from the line's start: a CR that lexing blanks inside
+    a comment stays on the blanked line as a trailing space, where `splitlines` drops the file's."""
     if len(clean) != len(lines):
         return ""
-    whole = clean[line_no - 1]
-    return whole[len(whole) - len(line) :]
+    start = len(lines[line_no - 1]) - len(line)
+    return clean[line_no - 1][start : start + len(line)]
 
 
 def methods(text: FileText) -> list[Method]:
@@ -198,10 +199,20 @@ def _retaint(line: str, code: str, tainted: set[str], sanitizers: list[str]) -> 
         target = match.group(1)
         right = line[match.end() :]
         carries = holds(right, _FACTS["source_calls"]) or mentions(right, tainted)
-        if carries and not sanitized(code, sanitizers, tainted) and not _guarded(right, tainted):
+        value = [(match.end(), statement_end(code, match.end()))]
+        if carries and not sanitized(code, value, sanitizers, tainted) and not _guarded(right, tainted):
             tainted.add(target)
         else:
             tainted.discard(target)
+
+
+def _unchecked(line: str, code: str, tainted: set[str], sinks: list[str], sanitizers: list[str]) -> bool:
+    """Whether request data reaches a sink on this line other than through a check. A value assigned
+    earlier on the line counts as carried: `String g = f; read(g)` reaches, `read(g); g = f` too."""
+    carried = set(tainted)
+    _retaint(line, code, carried, sanitizers)
+    carried |= tainted
+    return not sanitized(code, sink_regions(line, code, sinks), sanitizers, carried) and not _guarded(line, carried)
 
 
 def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
@@ -215,8 +226,7 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     clean = [*_FACTS["sanitizers"], *sanitizers]
     for (line_no, line), code in zip(method.body, method.code, strict=True):
         direct = holds(line, _FACTS["source_calls"])
-        reached = holds(line, sinks) and (direct or mentions(line, tainted))
-        if reached and not sanitized(code, clean, tainted) and not _guarded(line, tainted):
+        if holds(line, sinks) and (direct or mentions(line, tainted)) and _unchecked(line, code, tainted, sinks, clean):
             yield Flow(line_no, line, "a request parameter" if annotated else "the request")
         _retaint(line, code, tainted, clean)
 
