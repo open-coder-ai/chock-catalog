@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 import pytest
-from policies import scriptkit
+from policies import gatekit, scriptkit
 
 NAME = "block-test-skips-gate.py"
 mod = scriptkit.load("block-test-skips", NAME)
@@ -57,8 +57,7 @@ def repo(tmp_path: Path) -> Path:
 )
 def test_an_added_skip_in_a_test_file_is_refused(repo: Path, path: str, line: str) -> None:
     found = mod.findings(payload(repo, {path: f"first\n{line}\nlast\n"}))
-    assert len(found) == 1
-    assert found[0].startswith(path.replace("\\", "/") + ":2: ")
+    assert [(f["path"], f["line"]) for f in found] == [(path.replace("\\", "/"), 2)]
 
 
 @pytest.mark.parametrize(
@@ -82,21 +81,86 @@ def test_other_lines_and_other_files_are_left_alone(repo: Path, path: str, line:
     assert mod.findings(payload(repo, {path: f"{line}\n"})) == []
 
 
+def engine(repo: Path, writes: dict[str, str], event: str = "stop") -> int:
+    """The engine's verdict: `stop` lands the writes on disk first, `commit` stages them."""
+    if event in (gatekit.STOP, gatekit.COMMIT):
+        scriptkit.write(repo, writes)
+    if event == gatekit.COMMIT:
+        scriptkit.git(repo, "add", "-A")
+    return gatekit.judge("block-test-skips", repo, event, writes)[0]
+
+
+OLD = f"{PYSKIP}\ndef test_old():\n    pass\n"
+
+
+def test_the_document_keys_a_skip_by_rule_test_and_normalized_line(repo: Path) -> None:
+    text = f"class TestA:\n    {PYSKIP}\n    def   test_x(self):\n        pass\n\n{PYSKIP}\ndef test_y():\n    pass\n"
+    keys = [f["key"] for f in mod.findings(payload(repo, {"tests/test_a.py": text}))]
+    assert keys == [f"test-skip|TestA.test_x|{PYSKIP}", f"test-skip|test_y|{PYSKIP}"]
+
+
+def test_a_skip_in_source_that_does_not_parse_is_keyed_without_a_scope(repo: Path) -> None:
+    (found,) = mod.findings(payload(repo, {"tests/test_a.py": f"def (:\n{PYSKIP}\n"}))
+    assert found["key"] == f"test-skip||{PYSKIP}"
+
+
+def test_the_scope_of_other_languages_comes_from_their_declarations(repo: Path) -> None:
+    js = "describe('outer', () => {\n  it('does', () => {\n    it." + "skip('x', () => {});\n  });\n});\n"
+    java = "class AppTest {\n  @" + "Disabled\n  @Test\n  void works() {}\n  @" + "Ignore\n}\n"
+    go = "func (s *Suite) TestA(t *testing.T) {\n\tt." + 'Skip("x")\n}\n'
+    writes = {"src/a.test.ts": js, "src/test/java/AppTest.java": java, "pkg/a_test.go": go}
+    keys = {f["path"]: f["key"] for f in mod.findings(payload(repo, writes))}
+    assert keys["src/a.test.ts"] == "test-skip|outer.does|it." + "skip('x', () => {});"
+    assert keys["src/test/java/AppTest.java"] in {
+        "test-skip|AppTest.works|@" + "Disabled",
+        "test-skip|AppTest|@" + "Ignore",
+    }
+    assert keys["pkg/a_test.go"] == "test-skip|TestA|t." + 'Skip("x")'
+
+
+def test_a_skip_with_no_declaration_below_it_has_the_scope_of_what_holds_it(repo: Path) -> None:
+    (found,) = mod.findings(payload(repo, {"src/test/java/AppTest.java": "class AppTest {\n  @" + "Disabled\n}\n"}))
+    assert found["key"] == "test-skip|AppTest|@" + "Disabled"
+
+
 def test_a_skip_already_at_head_does_not_block_an_unrelated_edit(repo: Path) -> None:
-    edited = f"{PYSKIP}\ndef test_old():\n    pass\n\n\ndef test_new():\n    assert 1\n"
-    assert mod.findings(payload(repo, {"tests/test_old.py": edited})) == []
+    edited = f"{OLD}\n\ndef test_new():\n    assert 1\n"
+    assert engine(repo, {"tests/test_old.py": edited}) == 0
+    assert engine(repo, {"tests/test_old.py": edited}, gatekit.COMMIT) == 0
 
 
-def test_only_the_copies_beyond_head_are_added(repo: Path) -> None:
-    doubled = f"{PYSKIP}\ndef test_old():\n    pass\n{PYSKIP}\ndef test_twin():\n    pass\n"
-    found = mod.findings(payload(repo, {"tests/test_old.py": doubled}))
-    assert [f.split(": ")[0] for f in found] == ["tests/test_old.py:4"]
+def test_an_old_skip_that_moves_is_still_old(repo: Path) -> None:
+    assert engine(repo, {"tests/test_old.py": "import os\nimport sys\n\n" + OLD}) == 0
 
 
-def test_a_new_file_and_a_repository_without_history_are_all_added(tmp_path: Path) -> None:
+def test_a_skip_on_a_different_test_is_new(repo: Path) -> None:
+    other = f"{PYSKIP}\ndef test_other():\n    pass\n"
+    assert engine(repo, {"tests/test_old.py": OLD.replace(PYSKIP + "\n", "") + other}) == 1
+
+
+def test_only_the_copies_beyond_head_are_new(repo: Path) -> None:
+    doubled = f"{OLD}{PYSKIP}\ndef test_twin():\n    pass\n"
+    assert engine(repo, {"tests/test_old.py": doubled}) == 1
+    twice = f"{PYSKIP}\n{PYSKIP}\ndef test_old():\n    pass\n"
+    assert engine(repo, {"tests/test_old.py": twice}, gatekit.COMMIT) == 1
+
+
+def test_the_engine_names_only_the_new_skip(repo: Path) -> None:
+    doubled = f"{OLD}{PYSKIP}\ndef test_twin():\n    pass\n"
+    scriptkit.write(repo, {"tests/test_old.py": doubled})
+    code, err = gatekit.judge("block-test-skips", repo, gatekit.STOP, {"tests/test_old.py": doubled})
+    assert code == 1
+    assert "test_old.py:4" in err
+    assert "test_old.py:1:" not in err
+
+
+def test_a_new_file_and_a_repository_without_history_are_all_new(tmp_path: Path) -> None:
     empty = scriptkit.init_repo(tmp_path / "empty")
     found = mod.findings(payload(empty, {"tests/test_x.py": f"{PYSKIP}\n"}))
-    assert found == [f"tests/test_x.py:1: {PYSKIP}"]
+    assert [(f["path"], f["line"], f["message"]) for f in found] == [
+        ("tests/test_x.py", 1, f"test skip or focus marker: {PYSKIP}")
+    ]
+    assert engine(empty, {"tests/test_x.py": f"{PYSKIP}\n"}) == 1
 
 
 def test_a_waiver_is_honoured_at_commit_only(repo: Path) -> None:
@@ -108,7 +172,14 @@ def test_a_waiver_is_honoured_at_commit_only(repo: Path) -> None:
 def test_a_waived_skip_already_in_head_passes_in_the_agent(tmp_path: Path) -> None:
     waived = f"{PYSKIP}  # chock: allow test-skip -- needs a GPU\n"
     held = scriptkit.init_repo(tmp_path / "h", {"tests/test_g.py": waived})
-    assert mod.findings(payload(held, {"tests/test_g.py": waived + "x = 1\n"}, event="tool_use")) == []
+    assert engine(held, {"tests/test_g.py": waived + "x = 1\n"}) == 0
+    assert engine(held, {"tests/test_g.py": waived + "x = 1\n"}, gatekit.PRE_TOOL_USE) == 0
+
+
+def test_a_copy_of_a_waived_skip_is_new_in_the_agent(tmp_path: Path) -> None:
+    waived = f"{PYSKIP}  # chock: allow test-skip -- needs a GPU\n"
+    held = scriptkit.init_repo(tmp_path / "h", {"tests/test_g.py": waived})
+    assert engine(held, {"tests/test_g.py": waived + waived}) == 1
 
 
 def test_a_waiver_is_not_honoured_for_an_agents_commit(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -121,7 +192,7 @@ def test_a_waiver_is_not_honoured_for_an_agents_commit(repo: Path, monkeypatch: 
 
 def test_a_long_line_is_truncated_in_the_report(repo: Path) -> None:
     found = mod.findings(payload(repo, {"tests/test_l.py": f"{PYSKIP}  # " + "x" * 300 + "\n"}))
-    assert len(found[0]) < 160
+    assert len(found[0]["message"]) < 160
 
 
 def test_main_allows_refuses_and_rejects_bad_input(

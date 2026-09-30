@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Refuse an agent-memory write that pastes git history, a long code block, a duplicate or a secret."""
+"""Report git history, a long code block, a duplicate or a secret in an agent-memory file; the engine keeps the new."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-import subprocess
 import sys
-from collections import Counter
 
 MEMORY_PATH = re.compile(r"(^|/)MEMORY\.md$|^CLAUDE\.local\.md$|^\.claude/memory/|^memory/.+\.md$")
 # Absolute paths only: the gate's `outside_repo` globs (the manifest) are what lets one reach this script.
@@ -24,42 +23,6 @@ SECRET = re.compile(
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 BULLET = re.compile(r"^([-*+]|\d+[.)])\s+")
 MAX_BLOCK_LINES = 20
-
-
-def disk_lines(path: str) -> Counter[str]:
-    """The lines of an outside file as it is on disk before the write; empty when unreadable."""
-    try:
-        with open(path, encoding="utf-8", errors="replace") as handle:
-            return Counter(handle.read().splitlines())
-    except OSError:
-        return Counter()
-
-
-def head_lines(root: str, path: str) -> Counter[str]:
-    """The lines of `path` at HEAD; empty when HEAD or the file does not exist."""
-    if path.startswith("/") or path[1:2] == ":":
-        return disk_lines(path)
-    proc = subprocess.run(  # noqa: S603 -- fixed argv, path comes from the runner's own list
-        ["git", "show", f"HEAD:{path}"],  # noqa: S607
-        cwd=root,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    return Counter(proc.stdout.splitlines()) if proc.returncode == 0 else Counter()
-
-
-def new_line_numbers(lines: list[str], before: Counter[str]) -> set[int]:
-    """1-based numbers of the lines beyond the copies HEAD already had."""
-    seen: Counter[str] = Counter()
-    fresh = set()
-    for number, line in enumerate(lines, 1):
-        seen[line] += 1
-        if seen[line] > before[line]:
-            fresh.add(number)
-    return fresh
 
 
 def fenced_blocks(lines: list[str]) -> tuple[set[int], list[tuple[int, int]]]:
@@ -103,31 +66,39 @@ def duplicates(lines: list[str], skip: set[int]) -> list[tuple[int, int]]:
     return repeats
 
 
-def judge(path: str, text: str, before: Counter[str]) -> list[str]:
+def _row(reason: str, path: str, number: int, fingerprint: str, message: str) -> dict:
+    """One finding; its key is the reason and a fingerprint of what was flagged, never a line number."""
+    return {"key": f"{reason}|{fingerprint}", "path": path, "line": number, "message": message}
+
+
+def judge(path: str, text: str) -> list[dict]:
+    """Every finding in one memory file, in line order; the engine keeps the ones a change adds."""
     lines = text.splitlines()
-    fresh = new_line_numbers(lines, before)
     inside, blocks = fenced_blocks(lines)
-    found: dict[int, str] = {}
-    for number in sorted(fresh):
-        if HISTORY.search(lines[number - 1]):
-            found[number] = "pasted git history"
-        elif SECRET.search(lines[number - 1]):
-            found[number] = "secret"
+    found: dict[int, dict] = {}
+    for number, line in enumerate(lines, 1):
+        if HISTORY.search(line):
+            found[number] = _row("history", path, number, normalize(line), "pasted git history")
+        elif SECRET.search(line):
+            # Hashed: a key is printed and logged, and it must never carry the flagged text itself.
+            digest = hashlib.sha256(normalize(line).encode("utf-8")).hexdigest()[:16]
+            found[number] = _row("secret", path, number, digest, "secret")
     for start, length in blocks:
-        if length > MAX_BLOCK_LINES and any(start <= n <= start + length + 1 for n in fresh):
-            found.setdefault(start, f"fenced code block of {length} lines (limit {MAX_BLOCK_LINES})")
+        if length > MAX_BLOCK_LINES:
+            message = f"fenced code block of {length} lines (limit {MAX_BLOCK_LINES})"
+            found.setdefault(start, _row("long-block", path, start, normalize(lines[start - 1]), message))
     for number, original in duplicates(lines, inside):
-        if number in fresh or original in fresh:
-            found.setdefault(number, f"duplicates line {original}")
-    return [f"{path}:{number}: {reason}" for number, reason in sorted(found.items())]
+        repeat = _row("duplicate", path, number, normalize(lines[number - 1]), f"duplicates line {original}")
+        found.setdefault(number, repeat)
+    return [row for _, row in sorted(found.items())]
 
 
-def findings(payload: dict) -> list[str]:
+def findings(payload: dict) -> list[dict]:
     found = []
     for path, text in sorted(payload.get("writes", {}).items()):
         norm = path.replace("\\", "/")
         if MEMORY_PATH.search(norm) or OUTSIDE_MEMORY.match(norm):
-            found += judge(norm, text, head_lines(payload["repo_root"], norm))
+            found += judge(norm, text)
     return found
 
 
@@ -138,11 +109,12 @@ def main() -> int:
         print("guard-memory-writes: stdin is not the gate JSON", file=sys.stderr)
         return 2
     found = findings(payload)
+    print(json.dumps({"findings": found}))
     if not found:
         return 0
     print("guard-memory-writes: memory must not hold this (path:line):", file=sys.stderr)
     for item in found:
-        print(f"  {item}", file=sys.stderr)
+        print(f"  {item['path']}:{item['line']}: {item['message']}", file=sys.stderr)
     print(
         "Keep memory to short, non-derivable facts: link to a commit or file instead of pasting "
         "it, drop duplicates, never store a secret (rotate any that was written). No waiver exists.",

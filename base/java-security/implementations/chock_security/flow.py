@@ -41,8 +41,6 @@ class Method:
     name: str
     signature: str
     body: tuple[tuple[int, str], ...]
-    #: The lines of the signature, where an annotated parameter takes its request data.
-    header: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -52,8 +50,6 @@ class Flow:
     line_no: int
     line: str
     source: str
-    #: The lines the value came through: its parameter's signature and the assignments that carried it.
-    related: tuple[int, ...] = ()
 
 
 def _declares(line: str) -> str | None:
@@ -142,7 +138,7 @@ def _methods(text: str) -> tuple[Method, ...]:
         signature = _signature(lines, offset, name) if name else None
         block = _body(lines, signature[1]) if signature else None
         if name and signature and block and block[0]:
-            found.append(Method(name, signature[0], block[0], tuple(range(offset + 1, signature[1] + 2))))
+            found.append(Method(name, signature[0], block[0]))
             offset = block[1]
         offset += 1
     return tuple(found)
@@ -199,20 +195,16 @@ def _without_annotations(parameter: str) -> str:
     return re.sub(r"@\w+(?:\s*\([^()]*\))?", " ", parameter)
 
 
-def _retaint(line_no: int, line: str, tainted: set[str], sanitizers: list[str], trail: dict[str, set[int]]) -> None:
-    """Follow one assignment: the target carries what its right-hand side carries, and no more.
-
-    `trail` keeps, per tainted name, the lines the value passed through to get there."""
+def _retaint(line: str, tainted: set[str], sanitizers: list[str]) -> None:
+    """Follow one assignment: the target carries what its right-hand side carries, and no more."""
     for match in _ASSIGNMENT.finditer(line):
         target = match.group(1)
         right = line[match.end() :]
         carries = _holds(right, _FACTS["source_calls"]) or _mentions(right, tainted)
         if carries and not _sanitized(line, sanitizers) and not _guarded(right, tainted):
-            trail[target] = {line_no}.union(*(trail[name] for name in tainted if _mentions(right, {name})))
             tainted.add(target)
         else:
             tainted.discard(target)
-            trail.pop(target, None)
 
 
 def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
@@ -223,15 +215,13 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     """
     tainted = _parameters(method.signature)
     annotated = bool(tainted)
-    trail = {name: set(method.header) for name in tainted}
     clean = [*_FACTS["sanitizers"], *sanitizers]
     for line_no, line in method.body:
         direct = _holds(line, _FACTS["source_calls"])
         reached = _holds(line, sinks) and (direct or _mentions(line, tainted))
         if reached and not _sanitized(line, clean) and not _guarded(line, tainted):
-            through = set().union(*(trail[name] for name in tainted if _mentions(line, {name})))
-            yield Flow(line_no, line, "a request parameter" if annotated else "the request", tuple(sorted(through)))
-        _retaint(line_no, line, tainted, clean, trail)
+            yield Flow(line_no, line, "a request parameter" if annotated else "the request")
+        _retaint(line, tainted, clean)
 
 
 def flows(text: FileText, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:

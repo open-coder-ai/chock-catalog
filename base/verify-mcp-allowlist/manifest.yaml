@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.3.0"
+version: "0.4.0"
 description: >
   Gate MCP server configuration as protected content. A shell write to .mcp.json is refused
   unless every mcpServers entry on the line, parsed as JSON, matches a name+source pair on the
@@ -62,6 +62,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.0
+  date: '2026-09-30'
+  changes:
+  - "The script gate prints a findings document instead of comparing with a baseline itself. It reports every server the allowlist does not name, keyed by the server name and its normalized source (command and args space-joined, or the url), and the engine (chock 0.15.0) runs it again on the baseline text and refuses only a (path, key) the change holds more of. So a server the change adds, renames or re-argues is new, an unlisted server already there never blocks an unrelated edit or a reformat, and the same server declared twice in one file is a second copy. An unreadable config is keyed by a digest of its text, so any edit to one is new. Removed: head_text, before_text and entries, the gate's own HEAD and disk reads; the exit code (1 refuses, 2 is a fault) is unchanged. Eval cases tc-059 onward add an unlisted server added, an existing server's args changed, an old server reformatted, a line shift and a duplicate."
 - version: 0.3.0
   date: '2026-09-30'
   changes:

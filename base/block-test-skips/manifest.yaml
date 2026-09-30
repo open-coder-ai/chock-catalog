@@ -1,11 +1,11 @@
 id: block-test-skips
 name: "Block Test Skips"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Blocks newly added test skips and focus markers -- @pytest.mark.skip/skipif, @unittest.skip,
   it/describe/test.skip, xit/xdescribe, it/describe/test.only, JUnit @Disabled/@Ignore and Go
-  t.Skip -- in test files, at commit and at agent tool-use. Only lines the change adds are
-  judged (against HEAD), so a skip already committed never blocks an unrelated edit. Companion
+  t.Skip -- in test files, at commit and at agent tool-use. Only skips the change adds are
+  judged (the engine compares findings with the baseline), so a skip already committed never blocks an unrelated edit. Companion
   of protect-test-integrity, which cannot see skips. Waivers: 'chock: allow test-skip' on the
   line is honoured at commit; in the agent, or for a commit with CHOCK_AGENT_COMMIT set, only a
   skip already committed in HEAD counts, so an agent that needs a new one must ask a person.
@@ -54,3 +54,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+- version: 0.0.3
+  date: '2026-09-30'
+  changes:
+  - "The gate prints a findings document for every skip or focus marker in a test file, and the engine (chock 0.15.0) compares it with the baseline, instead of the gate diffing lines against HEAD. A key is `test-skip`, the enclosing test function or class (from the syntax tree for Python, from the enclosing declarations elsewhere; a decorator or annotation names what it marks) and the normalized line, so a skip that only moves is old, a second copy is new, and a skip whose test is renamed is reported again, which errs toward blocking. Removing a waiver from a waived skip makes it new. Waivers apply identically in both runs. Removed: head_lines and added. Eval cases tc-019 onward cover a removed waiver, a line shift, a duplicate, a skip on another test and a renamed test."

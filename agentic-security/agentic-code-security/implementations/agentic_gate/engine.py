@@ -1,4 +1,4 @@
-"""Run the rules the selection leaves on, and keep only what the change adds and no human waived."""
+"""Run the rules the selection leaves on, and keep the findings no human waived."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ import re
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
 
-from agentic_gate.changed import only_new
 from agentic_gate.model import ALLOW, FileText, Finding, Rule
 from agentic_gate.registry import registry
 
@@ -68,26 +67,22 @@ def _scan(text: FileText, acting: Mapping[str, Rule]) -> list[Finding]:
         for hit in rule.scan(text):
             line = lines[hit.line_no - 1].strip() if 0 < hit.line_no <= len(lines) else ""
             message = f"{hit.detail} Fix: {rule.fix}"
-            findings.append(
-                Finding(rule.id, text.path, hit.line_no, line, message, rule.cwe, rule.asi, hit.related, hit.by_diff)
-            )
+            findings.append(Finding(rule.id, text.path, hit.line_no, line, message, rule.cwe, rule.asi, hit.by_diff))
     return findings
 
 
-def evaluate(
-    writes: Mapping[str, str],
-    verdicts: Mapping[str, str],
-    head: Reader,
-    *,
-    human: bool,
-    before: Callable[[str, str], str | None] | None = None,
-) -> list[Finding]:
-    """Findings from every rule the selection did not set to allow, on what the change adds.
+def _judge(text: FileText, *, acting: Mapping[str, Rule], human: bool, reviewed: str | None) -> list[Finding]:
+    """The findings of one text that no waiver a human reviewed covers."""
+    honoured = None if human else reviewed_lines(text, reviewed)
+    return [f for f in _scan(text, acting) if not waived(f, text, honoured)]
 
-    A finding stays when a line it involves is new against the baseline `before(path, written)` names
-    (HEAD when not given): see `changed`. `human` is the commit, the push and CI, where any waiver
-    counts; everywhere else (as the agent writes, and at its turn's end) a waiver counts only on a line
-    a human already committed.
+
+def evaluate(writes: Mapping[str, str], verdicts: Mapping[str, str], head: Reader, *, human: bool) -> list[Finding]:
+    """Findings from every rule the selection did not set to allow, that no waiver a human reviewed covers.
+
+    The engine, not this function, keeps the ones a change adds: see `document`. `human` is the commit,
+    the push and CI, where any waiver counts; everywhere else (as the agent writes, and at its turn's
+    end) a waiver counts only on a line a human already committed.
     """
     acting = {rule_id: rule for rule_id, rule in registry().items() if verdicts.get(rule_id, ALLOW) != ALLOW}
     findings: list[Finding] = []
@@ -95,8 +90,5 @@ def evaluate(
         committed = head(path)
         others = tuple(other for other_path, other in writes.items() if other_path != path)
         text = FileText(path, body, committed, others)
-        found = _scan(text, acting)
-        found = only_new(found, text, before(path, body) if before else committed)
-        honoured = None if human else reviewed_lines(text, committed)
-        findings.extend(f for f in found if not waived(f, text, honoured))
+        findings.extend(_judge(text, acting=acting, human=human, reviewed=committed))
     return findings

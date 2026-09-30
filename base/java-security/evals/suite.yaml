@@ -1352,7 +1352,7 @@ suite:
   - id: tc-102
     category: trigger
     prompt: "At the turn's end a new line makes a variable carry request data into a File sink HEAD already had, unchanged."
-    expect: "The turn is blocked: the finding involves the assignment that completes the flow, and that line is new."
+    expect: "The turn is blocked: the sink line is the same, but the flow now reaches it, so the file holds a finding HEAD lacked."
     execute: {event: stop, head_files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    String p = \"fixed\";\n    new File(p);\n  }\n}\n"}, writes: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    String p = name;\n    new File(p);\n  }\n}\n"}, expect: block}
   - id: tc-103
     category: trigger
@@ -1362,7 +1362,7 @@ suite:
   - id: tc-104
     category: behavior
     prompt: "At the turn's end C.java adds an unrelated method and leaves a request-data flow into a File sink that HEAD already had."
-    expect: "The turn ends: no line the finding involves changed."
+    expect: "The turn ends: the finding has the key it had at HEAD, wherever the new method sits."
     execute: {event: stop, head_files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    String p = name;\n    new File(p);\n  }\n}\n"}, writes: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    String p = name;\n    new File(p);\n  }\n\n  int one() {\n    return 1;\n  }\n}\n"}, expect: allow}
   - id: tc-105
     category: behavior
@@ -1377,5 +1377,45 @@ suite:
   - id: tc-107
     category: trigger
     prompt: "At the turn's end a signature gains the annotation that makes a parameter request data, above a File sink HEAD already had."
-    expect: "The turn is blocked: the signature is a line the flow involves, and it is new."
+    expect: "The turn is blocked: with the annotation the parameter is request data, so the untouched sink is a finding HEAD lacked."
     execute: {event: stop, head_files: {"C.java": "class C {\n  void get(String name) {\n    new File(name);\n  }\n}\n"}, writes: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    new File(name);\n  }\n}\n"}, expect: block}
+  - id: tc-108
+    category: trigger
+    prompt: "At the turn's end a change deletes the line that HTML-escaped a request parameter, leaving the println below it untouched."
+    expect: "The turn is blocked: the untouched println now writes request data unescaped, a finding HEAD lacked, so a deletion is judged like an addition."
+    execute: {event: stop, head_files: {"C.java": "class C {\n  void get(@RequestParam String s, HttpServletResponse resp) throws IOException {\n    s = Encode.forHtml(s);\n    resp.getWriter().println(s);\n  }\n}\n"}, writes: {"C.java": "class C {\n  void get(@RequestParam String s, HttpServletResponse resp) throws IOException {\n    resp.getWriter().println(s);\n  }\n}\n"}, expect: block}
+  - id: tc-109
+    category: trigger
+    prompt: "At the turn's end a change replaces the allowlist ternary that fed a File with the raw request parameter, leaving the new File line untouched."
+    expect: "The turn is blocked: the untouched new File now receives request data, a finding HEAD lacked."
+    execute: {event: stop, head_files: {"C.java": "class C {\n  void get(@RequestParam String p) {\n    String q = ALLOWED.contains(p) ? p : \"x\";\n    File f = new File(q);\n  }\n}\n"}, writes: {"C.java": "class C {\n  void get(@RequestParam String p) {\n    String q = p;\n    File f = new File(q);\n  }\n}\n"}, expect: block}
+  - id: tc-110
+    category: trigger
+    prompt: "As the agent writes, a change deletes the line that HTML-escaped a request parameter."
+    expect: "The write is refused: the baseline is the file on disk, and the untouched println is a finding it lacked."
+    execute: {event: tool_use, head_files: {"C.java": "class C {\n  void get(@RequestParam String s, HttpServletResponse resp) throws IOException {\n    s = Encode.forHtml(s);\n    resp.getWriter().println(s);\n  }\n}\n"}, writes: {"C.java": "class C {\n  void get(@RequestParam String s, HttpServletResponse resp) throws IOException {\n    resp.getWriter().println(s);\n  }\n}\n"}, expect: block}
+  - id: tc-111
+    category: behavior
+    prompt: "A commit adds an unrelated method to a file whose request-data flow into a File HEAD already had, untouched."
+    expect: "The commit passes: the finding has the key it had at HEAD."
+    execute: {event: commit, head_files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    new File(name);\n  }\n}\n"}, files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    new File(name);\n  }\n  int one() {\n    return 1;\n  }\n}\n"}, expect: allow}
+  - id: tc-112
+    category: behavior
+    prompt: "As the agent writes, three comment lines shift a File flow the disk already held down the file."
+    expect: "The write is allowed: a key holds no line number, so a violation that only moves is old."
+    execute: {event: tool_use, head_files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    new File(name);\n  }\n}\n"}, writes: {"C.java": "// header\n// header\n// header\nclass C {\n  void get(@RequestParam String name) {\n    new File(name);\n  }\n}\n"}, expect: allow}
+  - id: tc-113
+    category: trigger
+    prompt: "A commit repeats a new File(name) line in a method whose request-data flow into it HEAD already had once."
+    expect: "The commit is blocked: the key occurs twice and HEAD held it once, so the second copy is new."
+    execute: {event: commit, head_files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    new File(name);\n  }\n}\n"}, files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    new File(name);\n    new File(name);\n  }\n}\n"}, expect: block}
+  - id: tc-114
+    category: behavior
+    prompt: "A commit renames the method that holds a request-data flow HEAD already had, changing nothing else."
+    expect: "The commit is blocked: the enclosing method is part of the key, so a rename re-reports the old finding, which errs toward blocking."
+    execute: {event: commit, head_files: {"C.java": "class C {\n  void get(@RequestParam String name) {\n    new File(name);\n  }\n}\n"}, files: {"C.java": "class C {\n  void fetch(@RequestParam String name) {\n    new File(name);\n  }\n}\n"}, expect: block}
+  - id: tc-115
+    category: trigger
+    prompt: "A new file guards a File sink with an early return on a failed allowlist check."
+    expect: "The commit is blocked: an early-return guard is not modelled as a sanitizer, so the flow is still refused; the allowlist ternary is the form the rule names."
+    execute: {event: commit, files: {"C.java": "class C {\n  void get(@RequestParam String p) {\n    if (!ALLOWED.contains(p)) return;\n    new File(p);\n  }\n}\n"}, expect: block}

@@ -11,7 +11,7 @@ found. Three things hold for each one:
 
 A policy that ships a mechanism must prove it both ways: at least one case it refuses (blocks, or
 asks a person) and one it allows. A warn-only gate never refuses, so it proves the other pair: at
-least one case warns, at least one is silent, and none blocks or asks. java-security, the a11y guard and the two tool_call
+least one case warns, at least one is silent, and none blocks or asks. The a11y guard and the two tool_call
 gates also have their own suites (tests/java_security, tools/check_a11y_*,
 tests/policies/test_*_gate.py), because chock's replay does not drive those.
 """
@@ -29,8 +29,8 @@ from chock.validation.report import Report
 from trees import ROOT, policy_dirs
 
 POLICIES = policy_dirs()
-#: Replayed by their own suites; chock's replay cannot drive these script or tool_call gates.
-OWN_SUITES = {"java-security", "agentic-code-security", "firecrawl-fallback-only", "token-efficiency"}
+#: Replayed by their own suites; chock's replay cannot drive these tool_call gates.
+OWN_SUITES = {"firecrawl-fallback-only", "token-efficiency"}
 
 
 def _manifest(policy_dir: Path) -> dict:

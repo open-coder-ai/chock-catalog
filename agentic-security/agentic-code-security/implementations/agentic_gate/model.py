@@ -38,9 +38,7 @@ class Hit(NamedTuple):
 
     line_no: int
     detail: str
-    #: Other lines the finding depends on, so a change to one of them is a change to it.
-    related: tuple[int, ...] = ()
-    #: The finding is itself a comparison with HEAD, so it stands whatever lines the change touched.
+    #: The finding is itself a comparison with HEAD, so the document marks it `new`.
     by_diff: bool = False
 
 
@@ -55,13 +53,16 @@ class Finding:
     message: str
     cwe: tuple[str, ...] = ()
     asi: tuple[str, ...] = ()
-    related: tuple[int, ...] = ()
     by_diff: bool = False
 
-    def render(self) -> str:
-        """One line a human reads in a hook's output. The matched line is never echoed."""
+    def summary(self) -> str:
+        """The rule, its evidence and the fix, without the location. The matched line is never echoed."""
         tags = ", ".join((*self.cwe, *self.asi))
-        return f"{self.path}:{self.line_no}: [deny: {self.rule_id}{' ' + tags if tags else ''}] {self.message}"
+        return f"[deny: {self.rule_id}{' ' + tags if tags else ''}] {self.message}"
+
+    def render(self) -> str:
+        """One line a human reads in a hook's output."""
+        return f"{self.path}:{self.line_no}: {self.summary()}"
 
 
 @dataclass(frozen=True)

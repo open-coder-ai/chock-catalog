@@ -33,13 +33,15 @@ class Finding:
     verdict: str = DENY
     #: The rule's CWE ids, so the refusal names the weakness it is evidence of.
     cwe: tuple[str, ...] = ()
-    #: Other lines the finding depends on (a flow's source and hops), so a change to one of them is a change to it.
-    related: tuple[int, ...] = ()
+
+    def summary(self) -> str:
+        """The verdict, rule, CWEs and fix, without the location. The matched line is never echoed."""
+        tag = f" {', '.join(self.cwe)}" if self.cwe else ""
+        return f"[{self.verdict}: {self.rule_id}{tag}] {self.message}"
 
     def render(self) -> str:
-        """One line a human reads in a hook's output. The matched line is never echoed."""
-        tag = f" {', '.join(self.cwe)}" if self.cwe else ""
-        return f"{self.path}:{self.line_no}: [{self.verdict}: {self.rule_id}{tag}] {self.message}"
+        """One line a human reads in a hook's output."""
+        return f"{self.path}:{self.line_no}: {self.summary()}"
 
 
 @dataclass(frozen=True)

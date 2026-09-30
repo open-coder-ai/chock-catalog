@@ -1,6 +1,6 @@
 id: agentic-code-security
 name: "Agentic Code Security"
-version: "0.2.0"
+version: "0.3.0"
 description: >
   trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
   LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client
@@ -74,6 +74,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.0
+  date: '2026-09-30'
+  changes:
+  - "The gate prints a findings document and the engine (chock 0.15.0) compares it with the baseline, instead of the gate deciding which lines are new. On stdout it prints {\"findings\": [{key, path, line, message, new?}]}; the runner runs it again on the baseline text -- HEAD at commit and at the turn's end, the file on disk before the write at PreToolUse -- and blocks only a (path, key) the change holds more of than the baseline. The exit code stays the verdict: 1 refuses. A key is the rule id, the dotted enclosing class and function names from the syntax tree (empty outside Python) and the flagged line with its whitespace collapsed -- no line number, so a violation that only moves is old, a second copy is new, and a deleted line can make a finding new: a `cur.execute(` whose first argument was a fixed SQL string becomes a finding when that line is deleted and an f-string moves into first place. provenance-marker-removed compares with HEAD itself, so its findings carry `\"new\": true` and always count."
+  - "Waivers are applied identically in both runs (a waiver counts only where a human committed it). Removed: the statement-span and new-line comparison in agentic_gate/changed.py, the MCP entry `block` lines, the `related` lines Hit and Finding carried and every rule that recorded them; agentic_gate/document.py builds the document, and evaluate no longer takes a baseline. Eval replay goes through the engine, and new cases add a deleted first argument, an old violation untouched, a line shift and a duplicate. An MCP server entry is keyed by its flagged line, so editing an argument that carries no finding is old, and a new unpinned package changes that line and is new."
+  - "Remaining gaps, stated rather than implied: a method or function renamed with its body untouched re-reports its old findings, because the enclosing name is part of the key, which errs toward blocking; flows are read within one file, so a value that crosses a file boundary is not followed; and an early-return guard (`if (!ALLOWED.contains(x)) return;`) is not modelled as a sanitizer, so use the ternary or the allowlist form the rules name."
 - version: 0.2.0
   date: '2026-09-30'
   changes:

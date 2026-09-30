@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse a write that adds an agentic-code-security finding: staged at commit, or as the agent writes it."""
+"""Print the agentic-code-security findings of a write -- staged at commit, or as the agent writes it."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from pathlib import Path
 # copy raises here, and the runner treats an exit it did not ask for as a refusal, never an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agentic_gate.changed import baseline
+from agentic_gate.document import document
 from agentic_gate.engine import evaluate
 from agentic_gate.registry import registry
 from agentic_gate.selection import SelectionError, load
@@ -20,7 +20,7 @@ from agentic_gate.selection import SelectionError, load
 ALLOW, REFUSE = 0, 1
 
 #: Where the person committing reviews what is staged, so a waiver there is a human's. Everywhere else the
-#: text is the agent's own. Every event judges only what the change adds; see agentic_gate.changed.
+#: text is the agent's own. The engine keeps the findings a change adds; see agentic_gate.document.
 HUMAN_EVENTS = frozenset({"commit", "push", "ci"})
 
 UNJUDGED = (
@@ -34,7 +34,7 @@ HUMANS_WAIVE = (
 
 
 def committed(root: Path):
-    """The text of a path as last committed, read from git; None when there is none to read."""
+    """A path's text at HEAD, read from git in `root` for waivers and provenance; None when there is none."""
 
     def read(path: str) -> str | None:
         rel = Path(path)
@@ -43,12 +43,15 @@ def committed(root: Path):
                 rel = rel.resolve().relative_to(root.resolve())
             except ValueError:
                 return None
-        proc = subprocess.run(  # noqa: S603 -- a fixed git argv; the path is an argument, never a shell word
-            ["git", "show", f"HEAD:{rel.as_posix()}"],  # noqa: S607 -- git from PATH, as the runner's own
-            cwd=root,
-            capture_output=True,
-            check=False,
-        )
+        try:
+            proc = subprocess.run(  # noqa: S603 -- a fixed git argv; the path is an argument, never a shell word
+                ["git", "show", f"HEAD:{rel.as_posix()}"],  # noqa: S607 -- git from PATH, as the runner's own
+                cwd=root,
+                capture_output=True,
+                check=False,
+            )
+        except OSError:  # no git on PATH, or no such directory: there is no committed text to read
+            return None
         return proc.stdout.decode("utf-8-sig", errors="replace") if proc.returncode == 0 else None
 
     return read
@@ -63,19 +66,15 @@ def main() -> int:
         print(f"agentic-code-security: {exc}", file=sys.stderr)
         return REFUSE
     human = payload.get("event") in HUMAN_EVENTS
+    writes = payload.get("writes") or {}
     try:
-        head = committed(root)
-        event = payload.get("event")
-        findings = evaluate(
-            payload.get("writes") or {},
-            verdicts,
-            head,
-            human=human,
-            before=lambda path, after: baseline(root, path, after, event, head),
-        )
+        findings = evaluate(writes, verdicts, committed(root), human=human)
     except Exception as exc:  # noqa: BLE001 -- any failure here refuses; it never falls through
         print(UNJUDGED.format(reason=f"{type(exc).__name__}: {exc}"), file=sys.stderr)
         return REFUSE
+    # The engine runs this script again on the baseline text (`"baseline": true`) and keeps the keys the
+    # write holds more of. Both runs judge with the same waivers, so a copy of a waived line is not new.
+    print(json.dumps(document(findings, writes)))
     for finding in findings:
         print(finding.render(), file=sys.stderr)
     if findings and not human:

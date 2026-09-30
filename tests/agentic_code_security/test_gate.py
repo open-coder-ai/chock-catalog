@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from agentic_code_security.conftest import GATE, GateRun, commit, run_gate
+from agentic_code_security.conftest import GATE, GateRun, run_gate
 from agentic_gate.registry import registry
 from agentic_gate.selection import SelectionError, load, parse
 
@@ -155,9 +155,10 @@ def test_the_java_security_selection_file_is_not_this_one(tmp_path: Path) -> Non
 
 
 def test_a_push_and_ci_are_reviewed_like_a_commit(tmp_path: Path) -> None:
-    commit(tmp_path, BAD)
+    waived = {"agent/tls.py": BAD["agent/tls.py"].rstrip() + f"  # chock: allow {TLS}\n"}
     for event in ("push", "ci"):
-        assert run_gate(tmp_path, BAD, event=event)[0] == PASS
+        assert run_gate(tmp_path, waived, event=event)[0] == PASS
+    assert run_gate(tmp_path, waived, event="tool_use")[0] == REFUSE
 
 
 def test_the_gate_can_be_imported_without_running() -> None:

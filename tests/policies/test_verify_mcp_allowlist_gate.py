@@ -104,79 +104,125 @@ def test_the_allowlisted_server_passes_in_every_config(repo: Path) -> None:
 def test_an_unlisted_server_is_refused(repo: Path, path: str, text: str, event: str) -> None:
     found = mod.findings(payload(repo, {path: text}, event), guard)
     assert len(found) == 1
-    assert found[0].startswith(f"{path}: ")
+    assert found[0]["path"] == path
 
 
-def test_a_server_already_committed_never_blocks_a_commit(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"evil": EVIL})})
+def engine(repo: Path, writes: dict[str, str], event: str = "stop") -> int:
+    """The engine's verdict; `stop` lands the writes on disk first, as a turn's end finds them."""
+    if event == gatekit.STOP:
+        scriptkit.write(repo, writes)
+    elif event == gatekit.COMMIT:
+        scriptkit.write(repo, writes)
+        scriptkit.git(repo, "add", "-A")
+    return gatekit.judge(POLICY, repo, event, writes)[0]
+
+
+def held_repo(tmp_path: Path, servers: dict) -> Path:
+    return scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp(servers)})
+
+
+WORSE = {"command": "npx", "args": ["-y", "worse-mcp"]}
+FLAGGED = {"command": "npx", "args": ["-y", "evil-mcp", "--flag"]}
+
+
+def test_the_document_keys_a_server_by_name_and_normalized_source(repo: Path) -> None:
+    spaced = {"command": "npx", "args": ["-y", "evil-mcp"]}
+    (found,) = mod.findings(payload(repo, {".mcp.json": mcp({"evil": spaced})}), guard)
+    assert (found["key"], found["path"]) == ("evil|npx -y evil-mcp", ".mcp.json")
+    assert found["line"] == 1
+    assert "evil" in found["message"]
+
+
+def test_the_key_of_a_remote_server_is_its_url(repo: Path) -> None:
+    remote = {"url": "https://mcp.example.invalid/sse"}
+    (found,) = mod.findings(payload(repo, {".mcp.json": mcp({"remote": remote})}), guard)
+    assert found["key"] == "remote|https://mcp.example.invalid/sse"
+
+
+def test_the_line_names_where_the_server_is_declared(repo: Path) -> None:
+    text = json.dumps({"mcpServers": {"evil": EVIL}}, indent=2)
+    (found,) = mod.findings(payload(repo, {".mcp.json": text}), guard)
+    assert found["line"] == 3
+
+
+def test_the_same_server_under_both_keys_is_two_findings(repo: Path) -> None:
+    text = json.dumps({"mcpServers": {"evil": EVIL}, "servers": {"evil": EVIL}})
+    assert len(mod.findings(payload(repo, {".mcp.json": text}), guard)) == 2
+
+
+@pytest.mark.parametrize("event", ["commit", "stop"])
+def test_a_server_already_committed_never_blocks_an_unrelated_edit(tmp_path: Path, event: str) -> None:
+    held = held_repo(tmp_path, {"evil": EVIL})
     both = mcp({"evil": EVIL, "filesystem": FILESYSTEM})
-    assert mod.findings(payload(held, {".mcp.json": both}), guard) == []
-    assert mod.findings(payload(held, {".mcp.json": mcp({"evil": EVIL})}), guard) == []
+    assert engine(held, {".mcp.json": both}, event) == 0
+    assert engine(held, {".mcp.json": mcp({"evil": EVIL})}, event) == 0
 
 
-def test_a_server_already_committed_never_blocks_a_stop_or_an_untouched_rewrite(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"evil": EVIL})})
-    same = {".mcp.json": mcp({"evil": EVIL})}
-    both = {".mcp.json": mcp({"evil": EVIL, "filesystem": FILESYSTEM})}
-    assert mod.findings(payload(held, same, "tool_use"), guard) == []
-    scriptkit.write(held, both)
-    assert mod.findings(payload(held, both, "tool_use"), guard) == []
+def test_an_old_server_survives_a_reformat_and_a_reorder(tmp_path: Path) -> None:
+    held = held_repo(tmp_path, {"evil": EVIL, "filesystem": FILESYSTEM})
+    reordered = json.dumps({"mcpServers": {"filesystem": FILESYSTEM, "evil": EVIL}}, indent=4)
+    assert engine(held, {".mcp.json": reordered}) == 0
 
 
-def test_a_new_unlisted_server_is_refused_at_stop_and_tool_use(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"evil": EVIL})})
-    worse = {"command": "npx", "args": ["-y", "worse-mcp"]}
-    written = {".mcp.json": mcp({"evil": EVIL, "worse": worse})}
-    assert len(mod.findings(payload(held, written, "tool_use"), guard)) == 1
-    scriptkit.write(held, written)
-    found = mod.findings(payload(held, written, "tool_use"), guard)
-    assert len(found) == 1
-    assert "'worse'" in found[0]
+def test_a_new_unlisted_server_is_refused_beside_an_old_one(tmp_path: Path) -> None:
+    held = held_repo(tmp_path, {"evil": EVIL})
+    written = {".mcp.json": mcp({"evil": EVIL, "worse": WORSE})}
+    code, err = gatekit.judge(POLICY, held, gatekit.PRE_TOOL_USE, written)
+    assert code == 1
+    assert "'worse'" in err
+    assert "'evil'" not in err
+    assert engine(held, written) == 1
+    assert engine(held, written, gatekit.COMMIT) == 1
+
+
+def test_a_changed_server_is_refused(tmp_path: Path) -> None:
+    held = held_repo(tmp_path, {"evil": EVIL})
+    changed = {".mcp.json": mcp({"evil": FLAGGED})}
+    assert gatekit.judge(POLICY, held, gatekit.PRE_TOOL_USE, changed)[0] == 1
+    assert engine(held, changed, gatekit.COMMIT) == 1
+
+
+def test_the_same_unlisted_server_declared_twice_is_refused(tmp_path: Path) -> None:
+    held = held_repo(tmp_path, {"evil": EVIL})
+    twice = json.dumps({"mcpServers": {"evil": EVIL}, "servers": {"evil": EVIL}})
+    assert engine(held, {".mcp.json": twice}) == 1
 
 
 def test_the_baseline_at_pretooluse_is_the_file_on_disk_not_head(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"filesystem": FILESYSTEM})})
+    held = held_repo(tmp_path, {"filesystem": FILESYSTEM})
     scriptkit.write(held, {".mcp.json": mcp({"evil": EVIL})})
     both = {".mcp.json": mcp({"evil": EVIL, "filesystem": FILESYSTEM})}
-    assert mod.findings(payload(held, both, "tool_use"), guard) == []
-    assert len(mod.findings(payload(held, both), guard)) == 1
-
-
-def test_a_changed_server_is_refused_at_tool_use(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"evil": EVIL})})
-    changed = {"command": "npx", "args": ["-y", "evil-mcp", "--flag"]}
-    assert len(mod.findings(payload(held, {".mcp.json": mcp({"evil": changed})}, "tool_use"), guard)) == 1
+    assert gatekit.judge(POLICY, held, gatekit.PRE_TOOL_USE, both)[0] == 0
+    assert engine(held, both, gatekit.COMMIT) == 1
 
 
 def test_a_renamed_unchanged_server_is_judged_by_its_new_name(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"evil": EVIL})})
+    held = held_repo(tmp_path, {"evil": EVIL})
     renamed = {".mcp.json": mcp({"evil2": EVIL})}
-    for event in ("commit", "tool_use"):
-        assert len(mod.findings(payload(held, renamed, event), guard)) == 1
+    assert engine(held, renamed, gatekit.COMMIT) == 1
+    assert engine(held, renamed) == 1
 
 
-def test_a_new_config_file_is_judged_whole_at_tool_use(repo: Path) -> None:
-    assert len(mod.findings(payload(repo, {".mcp.json": mcp({"evil": EVIL})}, "tool_use"), guard)) == 1
+def test_a_new_config_file_is_judged_whole(repo: Path) -> None:
+    assert gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {".mcp.json": mcp({"evil": EVIL})})[0] == 1
 
 
 def test_an_edit_to_a_config_with_only_listed_servers_passes(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"filesystem": FILESYSTEM})})
+    held = held_repo(tmp_path, {"filesystem": FILESYSTEM})
     edited = {".mcp.json": json.dumps({"mcpServers": {"filesystem": FILESYSTEM}, "note": "x"})}
-    for event in ("commit", "tool_use"):
-        assert mod.findings(payload(held, edited, event), guard) == []
-
-
-def test_a_second_unlisted_server_and_an_altered_one_are_refused_at_commit(tmp_path: Path) -> None:
-    held = scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp({"evil": EVIL})})
-    worse = {"command": "npx", "args": ["-y", "worse-mcp"]}
-    assert len(mod.findings(payload(held, {".mcp.json": mcp({"evil": EVIL, "worse": worse})}), guard)) == 1
-    changed = {"command": "npx", "args": ["-y", "evil-mcp", "--flag"]}
-    assert len(mod.findings(payload(held, {".mcp.json": mcp({"evil": changed})}), guard)) == 1
+    for event in ("commit", "stop"):
+        assert engine(held, edited, event) == 0
 
 
 def test_a_head_that_cannot_be_read_grandfathers_nothing(tmp_path: Path) -> None:
     broken = scriptkit.init_repo(tmp_path / "b", {".mcp.json": "{"})
-    assert len(mod.findings(payload(broken, {".mcp.json": mcp({"evil": EVIL})}), guard)) == 1
+    assert engine(broken, {".mcp.json": mcp({"evil": EVIL})}) == 1
+
+
+def test_any_edit_to_an_unreadable_config_is_new(tmp_path: Path) -> None:
+    broken = scriptkit.init_repo(tmp_path / "b", {".mcp.json": "{"})
+    assert engine(broken, {".mcp.json": "{"}) == 0
+    assert engine(broken, {".mcp.json": "{ "}) == 1
 
 
 @pytest.mark.parametrize(
@@ -186,7 +232,7 @@ def test_a_head_that_cannot_be_read_grandfathers_nothing(tmp_path: Path) -> None
 def test_a_config_that_cannot_be_parsed_is_refused_as_unverifiable(repo: Path, path: str, text: str) -> None:
     found = mod.findings(payload(repo, {path: text}), guard)
     assert len(found) == 1
-    assert "cannot be verified" in found[0]
+    assert "cannot be verified" in found[0]["message"]
 
 
 def test_files_that_are_not_mcp_configs_and_configs_without_servers_pass(repo: Path) -> None:
