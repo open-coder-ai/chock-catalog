@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "java-security",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis, templates, application.properties or .yml, web.xml, pom.xml or Gradle; \"customize java security\" opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto, trust-all TLS, disabled Spring Security, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules in 16 packs, each allow|deny|ask in .chock/security.json; absent = deny.",
   "author": {
     "name": "chock-core"
