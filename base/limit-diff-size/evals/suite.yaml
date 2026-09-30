@@ -10,7 +10,7 @@ suite:
       threshold: 1.0
   # tc-009..tc-011 replay the shipped pre-commit script in a staged throwaway repository (blank
   # lines are lines to numstat, which keeps the fixture one line wide). A replay reads exit 3 as
-  # block; the ask itself, CHOCK_ALLOW and the override live in tests/policies/test_limit_diff_size.py,
+  # ask; answering it with CHOCK_ALLOW, and the override, live in tests/policies/test_limit_diff_size.py,
   # which also drives the script against temporary git repositories and holds 100% coverage of it.
   # The earlier cases are tier 3.
   cases:
@@ -49,11 +49,11 @@ suite:
   - id: tc-009
     category: trigger
     prompt: "The commit stages 501 hand-written lines, one over the limit."
-    expect: "The script exits 3 (ask). The hook refuses until a person answers with CHOCK_ALLOW=limit-diff-size; an eval replay reads any refusal as block."
+    expect: "The script exits 3 (ask). The hook refuses until a person answers with CHOCK_ALLOW=limit-diff-size."
     provenance: authored
     execute:
       event: pre-commit
-      expect: block
+      expect: ask
       files:
         src/big.txt: "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
   - id: tc-010

@@ -9,9 +9,9 @@ found. Three things hold for each one:
   guard script for a command, the compiled gate for a change -- and must give the verdict it
   claims. Each case is its own named test, so a failure names the policy and the case.
 
-A policy that ships a mechanism must prove it both ways: at least one case it refuses and one it
-allows. A warn-only gate never refuses, so it proves the other pair: no case is refused, at least
-one is flagged and at least one is silent. java-security, the a11y guard and the two tool_call
+A policy that ships a mechanism must prove it both ways: at least one case it refuses (blocks, or
+asks a person) and one it allows. A warn-only gate never refuses, so it proves the other pair: at
+least one case warns, at least one is silent, and none blocks or asks. java-security, the a11y guard and the two tool_call
 gates also have their own suites (tests/java_security, tools/check_a11y_*,
 tests/policies/test_*_gate.py), because chock's replay does not drive those.
 """
@@ -99,12 +99,8 @@ def _warns_only(policy_dir: Path) -> bool:
 def test_a_shipped_mechanism_is_proven_both_ways(policy_dir: Path) -> None:
     cases = [c for p, c in EXECUTABLE if p == policy_dir]
     expected = {str(c.execute.get("expect", "block")) for c in cases}
-    if not _warns_only(policy_dir):
-        assert {"block", "allow"} <= expected, f"{policy_dir.name} proves only {sorted(expected)}"
+    if _warns_only(policy_dir):
+        assert expected == {"warn", "allow"}, f"{policy_dir.name} only warns, yet proves {sorted(expected)}"
         return
-    # A replay reads a warning as an allow, with the reason as its detail; silence is a bare exit 0.
-    assert expected == {"allow"}, f"{policy_dir.name} only warns, yet claims {sorted(expected)}"
-    details = [run_case(c, policy_dir, ROOT, _policy(policy_dir).guards).detail for c in cases]
-    silent = [d for d in details if d.startswith("gate exit 0")]
-    assert silent, f"{policy_dir.name} proves no case the warning stays silent on"
-    assert len(silent) < len(details), f"{policy_dir.name} proves no case the warning fires on"
+    assert "allow" in expected, f"{policy_dir.name} proves no case it allows"
+    assert expected & {"block", "ask"}, f"{policy_dir.name} proves no case it refuses: {sorted(expected)}"
