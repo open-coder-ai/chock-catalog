@@ -35,7 +35,6 @@ ALLOWED_HOSTS = (
     "localhost",
     "127.0.0.1",
 )
-PRAGMA = "pragma: allowlist egress"
 METHODS = ("POST", "PUT", "PATCH")
 # curl short options that take a value (the rest of the cluster, or the next argument): -sd @f is -s and -d @f.
 CURL_SHORT_VALUE = frozenset("AbcCdDeEFHKmoPQrtTuUwxXyYz")
@@ -166,20 +165,17 @@ def upload_target(cmd: Cmd) -> tuple[bool, str]:
 
 def check(raw: str) -> str | None:
     """The reason a command uploads data to an unapproved host, or None."""
-    if PRAGMA in raw:
-        return None
     for cmd in commands(raw):
         config, host = upload_target(cmd)
         if config:
             return (
                 "'curl -K/--config' reads the request URL and data from a file this guard cannot inspect, so the upload "
-                "destination is not visible on the line. Inline the request, or mark a reviewed exception with "
-                f"'{PRAGMA}' on the line."
+                "destination is not visible on the line. Inline the request, or ask the person to run it."
             )
         if host:
             return (
-                f"uploading data to '{host}' is outside the egress allowlist. Send it only to an approved host, or add "
-                f"the host to ALLOWED_HOSTS, or mark a reviewed exception with '{PRAGMA}' on the line."
+                f"uploading data to '{host}' is outside the egress allowlist. Send it only to an approved host; for "
+                "any other destination, ask the person (they extend the allowlist or run it themselves)."
             )
     return None
 

@@ -1,24 +1,24 @@
 id: git-safety
 name: "Git Safety Rule"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits.
   avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks.
-  Install block-destructive-commands, block-no-verify and protect-main-branch for the enforced
-  counterparts of these controls (protect-main-branch is a commit-time gate; the other two are
-  pre-execution guards on hook-carrying clients, advisory elsewhere); this rule is the advisory
-  layer over them plus atomic-commit guidance no gate can decide; limit-diff-size is the commit-time gate for diff size.
+  Enforced counterparts: block-destructive-commands (command guard plus pre-push hook),
+  block-no-verify (command guard), protect-main-branch (commit and push gate), limit-diff-size
+  (asks at commit). This rule is the advisory layer over them plus atomic-commit guidance no gate
+  can decide.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    see(block-destructive-commands): force_push|reset_hard|rm_-rf; see(block-no-verify): --no-verify|skip_hooks; see(protect-main-branch): direct_commit|push(main|master)
-    advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); see(limit-diff-size): commit_diff > 500_lines (CHOCK_DIFF_LIMIT), human_override_only
+    see(block-destructive-commands): force_push|reset_hard|rm_-rf|non_ff_push(pre_push); see(block-no-verify): --no-verify|skip_hooks; see(protect-main-branch): direct_commit|push(main|master)
+    advisory: avoid(branch_-D) without_approval; prefer(feature_branch|atomic_commits); enforced: see(limit-diff-size) asks at commit if diff > 500_lines (CHOCK_DIFF_LIMIT), person_only_override
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock"
+  updated_at: "2026-09-30T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -43,3 +43,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Diff size is mechanised: ask_if(diff > 500_lines) becomes see(limit-diff-size), the commit-time script gate that counts staged added plus removed lines outside lockfiles, vendored and generated paths. The override is a human's (CHOCK_ALLOW_LARGE_DIFF=1); an agent asks. atomic_commits and branch_-D stay advisory."
+- version: 0.0.4
+  date: '2026-09-30'
+  changes:
+  - "Wording only: limit-diff-size is listed as an enforced counterpart (it asks at commit), not as advisory; protect-main-branch is named as a commit and push gate and block-destructive-commands as a command guard plus pre-push hook. The eval no longer expects a force-with-lease suggestion, since that hook refuses it. The description fits the 500-char budget. source_repo points at chock-catalog."

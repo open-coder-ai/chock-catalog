@@ -11,9 +11,8 @@ import sys
 
 from chock_shellparse import commands, writes_files
 
-MARKER = "chock: approved-config-change"
 PROTECTED = (".github/workflows", ".github/actions", ".github/dependabot.yml", ".github/dependabot.yaml")
-REASON = "shell write touching CI/CD workflow config is not allowed -- an agent must not weaken the automated checks that review its own work. Propose the change for human review, or approve by including 'chock: approved-config-change' in the command."
+REASON = "shell write touching CI/CD workflow config is refused -- an agent must not weaken the automated checks that review its own work. Ask the person to make the change from their own shell."
 
 
 def hit(path: str) -> bool:
@@ -23,9 +22,7 @@ def hit(path: str) -> bool:
 
 
 def check(raw: str) -> str | None:
-    """The reason a command edits protected files, or None; a human's marker in the command line passes."""
-    if MARKER in raw:
-        return None
+    """The reason a command edits protected files, or None."""
     if any(writes_files(cmd, hit) for cmd in commands(raw)):
         return REASON
     return None

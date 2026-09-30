@@ -5,7 +5,7 @@
     "tool_use"
   ],
   "action": "block",
-  "message": "An MCP server that is not on the allowlist is configured. Only servers listed, by name and exact command/args/url, in implementations/verify-mcp-allowlist.py may be added. Ask a person to review the server and add it to that list; do not edit the allowlist yourself.",
+  "message": "An MCP server that is not on the allowlist is configured, or an MCP config cannot be parsed. Only servers listed, by name and exact command/args/url, in implementations/verify-mcp-allowlist.py may be added. Ask a person to review the server and add it to that list; do not edit the allowlist yourself. Make the config valid JSON (TOML for .codex) before writing it.",
   "params": {
     "script": ".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist_gate.py"
   }

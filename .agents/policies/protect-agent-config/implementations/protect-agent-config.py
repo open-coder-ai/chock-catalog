@@ -12,7 +12,6 @@ import sys
 
 from chock_shellparse import commands, writes_files
 
-MARKER = "chock: approved-config-change"
 PROTECTED = (
     "AGENTS.md",
     "CLAUDE.md",
@@ -30,7 +29,7 @@ PROTECTED = (
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
 GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
-REASON = "shell write touching agent config is not allowed -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`, or have a human approve by including 'chock: approved-config-change' in the command."
+REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
 
 def hit(path: str) -> bool:
@@ -40,9 +39,7 @@ def hit(path: str) -> bool:
 
 
 def check(raw: str) -> str | None:
-    """The reason a command edits protected files, or None; a human's marker in the command line passes."""
-    if MARKER in raw:
-        return None
+    """The reason a command edits protected files, or None."""
     if any(writes_files(cmd, hit) for cmd in commands(raw)):
         return REASON
     return None

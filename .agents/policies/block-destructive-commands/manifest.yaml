@@ -1,18 +1,13 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.1.0"
+version: "0.1.1"
 description: >
-  Best-effort guard against destructive commands, read as parsed commands (bash -c and cd chains
-  included, echo excluded): rm -rf on absolute, home ($HOME/~) or root-adjacent paths (and
-  PowerShell Remove-Item -Recurse); git push --force (not --force-with-lease), reset --hard,
-  clean -f; kubectl delete; terraform destroy; aws s3 rm --recursive / rb --force; dropdb; helm
-  uninstall/delete; docker volume rm/prune and system prune; gcloud ... delete; find -delete /
-  -exec rm; shred; truncate; wipefs -a. git branch -D asks first. Verbs are matched
-  position-aware, so a bucket or object NAMED like a verb is allowed, and a relative path in the
-  working tree stays allowed. sudo, doas and pkexec are transparent. A pre-push hook refuses any
-  non-fast-forward push -- force, +refspec or lease alike; a human escapes with git push
-  --no-verify. Known bypasses: aliases, an unusual value-flag, interpreters and scripts.
-  Friction, not a security boundary.
+  Best-effort, on parsed commands (echo ignored). Blocks rm -rf on absolute, ~, $HOME, . or ..
+  paths; recursive Remove-Item/rd/del on drive paths; git push --force or +refspec, reset --hard,
+  clean -f, checkout .; kubectl delete; terraform destroy; aws s3 rm --recursive/rb --force;
+  dropdb; helm uninstall; docker volume rm/prune, system prune; find -delete/-exec rm; shred;
+  truncate; wipefs -a/-o; gcloud with any `delete` operand. branch -D asks. Pre-push hook refuses
+  non-fast-forward pushes.
 artifact: rule
 enforcement: advise
 compliance:
@@ -24,8 +19,8 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(destructive_command @position-aware): rm_-rf(/|~|$HOME|.)|Remove-Item_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete, find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
-    require_approval: reset_hard|rm_-rf|branch_-D; prefer: stash|soft_reset|force-with-lease|dry-run; push: refuse_non_ff
+    block(destructive_command @position-aware): rm_-rf(abs|~|$HOME|.|..)|Remove-Item|rd|del_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete(any_operand), find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
+    require_approval: branch_-D; prefer: stash|soft_reset|dry-run; push: refuse_non_ff
 hook:
   script:
     "on": [push]
@@ -37,8 +32,8 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
-  source_repo: "https://github.com/open-coder-ai/chock"
+  updated_at: "2026-09-30T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
@@ -51,6 +46,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-09-30'
+  changes:
+  - "Message fixes: a force push (and a '+' refspec) now says 'git push --force rewrites remote history. Rebase onto the remote and push fast-forward; a rewrite is the person's call.' The old text advised --force-with-lease, which the policy's own pre-push hook refuses too. The pre-push message gives the same route. Every block reads 'BLOCKED: <what> is refused. Ask the person to run it themselves; prefer a scoped or dry-run form.' in place of 'is not allowed without approval', since no approval path exists. The PowerShell message names what is blocked: any drive path (C:\\...), root, home, '.' or '..'. Guard verdicts unchanged."
+  - "Rule text: require_approval lists only branch -D (reset --hard and rm -rf are blocked, not asked); prefer drops force-with-lease; rm targets are abs, ~, $HOME, '.' and '..'; Remove-Item/rd/del and gcloud delete (any operand) are named."
+  - "Description (within the 500-char budget): adds checkout ., Remove-Item/rd/del, wipefs -o, '.' and '..', drops the claim that every verb is position-aware (gcloud is matched on any 'delete' operand, so `gcloud compute instances list delete` blocks; eval tc-081 pins it) and notes the pre-push hook. source_repo points at chock-catalog."
 - version: 0.1.0
   date: '2026-09-29'
   changes:
