@@ -304,11 +304,11 @@ policies:
     avoid: persisting file contents, git history, or task intermediates as memory.'
 - id: no-a11y-regression
   path: base/no-a11y-regression
-  version: 1.1.1
+  version: 1.1.2
   artifact: rule
   enforcement: block
   mandatory: false
-  mechanism: commit-time guard script
+  mechanism: commit-time guard script + tool-use script gate
   enforces: enforced-at-commit
   eval_cases: 20
   eval_executed: 7
