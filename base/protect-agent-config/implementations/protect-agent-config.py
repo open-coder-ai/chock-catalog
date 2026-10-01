@@ -3,7 +3,7 @@
 "exec" "$(command -v python3 || command -v python)" "$0" "$@"
 # fmt: on
 # Refuse shell commands that write to agent-config or vendored enforcement paths; reads and `chock sync` pass.
-# Best effort and coarse: a write must target a protected path (redirect, writer verb, in-place edit, git checkout/restore, PowerShell cmdlet).
+# Best effort: a write must target a protected path or a directory holding one, as the command resolves it (cd, `..`, variables, globs; see pathguard.py).
 
 import os
 import re
@@ -11,6 +11,7 @@ import shlex
 import sys
 
 from chock_shellparse import commands, writes_files
+from pathguard import refuses
 
 PROTECTED = (
     "AGENTS.md",
@@ -75,7 +76,7 @@ def hit(path: str) -> bool:
 
 def check(raw: str) -> str | None:
     """The reason a command edits protected files, or None."""
-    if any(writes_files(cmd, hit) for cmd in commands(raw)):
+    if any(writes_files(cmd, hit) for cmd in commands(raw)) or refuses(raw, PROTECTED, hit, normalise):
         return REASON
     return None
 

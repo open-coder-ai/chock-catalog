@@ -1104,3 +1104,463 @@ suite:
     prompt: "The agent writes the ordinary file .windsurf/rules/chock.md with the Write tool."
     expect: "The write is allowed."
     execute: {event: tool_use, writes: {".windsurf/rules/chock.md": "x\n"}, expect: allow}
+  - id: tc-182
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd .cursor && echo x > mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd .cursor && echo x > mcp.json", expect: "block"}
+  - id: tc-183
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd .claude; tee settings.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd .claude; tee settings.json", expect: "block"}
+  - id: tc-184
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: pushd .chock; echo x > config.yaml"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "pushd .chock; echo x > config.yaml", expect: "block"}
+  - id: tc-185
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd .cursor && sed -i s/a/b/ mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd .cursor && sed -i s/a/b/ mcp.json", expect: "block"}
+  - id: tc-186
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd src && cd ../.cursor && echo x > mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd src && cd ../.cursor && echo x > mcp.json", expect: "block"}
+  - id: tc-187
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd .. && echo x > AGENTS.md"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd .. && echo x > AGENTS.md", expect: "block"}
+  - id: tc-188
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: D=.cursor; echo x > $D/mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "D=.cursor; echo x > $D/mcp.json", expect: "block"}
+  - id: tc-189
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: D=.claude; echo x > \"${D}/settings.json\""
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "D=.claude; echo x > \"${D}/settings.json\"", expect: "block"}
+  - id: tc-190
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > $(echo .cursor/mcp.json)"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > $(echo .cursor/mcp.json)", expect: "block"}
+  - id: tc-191
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > `echo .claude/settings.json`"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > `echo .claude/settings.json`", expect: "block"}
+  - id: tc-192
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > .cursor/x/../mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > .cursor/x/../mcp.json", expect: "block"}
+  - id: tc-193
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > x/../.mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > x/../.mcp.json", expect: "block"}
+  - id: tc-194
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > src/../.chock/config.yaml"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > src/../.chock/config.yaml", expect: "block"}
+  - id: tc-195
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > .cursor/mcp.jso[n]"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > .cursor/mcp.jso[n]", expect: "block"}
+  - id: tc-196
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > .cursor/mcp.*"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > .cursor/mcp.*", expect: "block"}
+  - id: tc-197
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: tee .claude/sett*"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "tee .claude/sett*", expect: "block"}
+  - id: tc-198
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x > AGENT?.md"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x > AGENT?.md", expect: "block"}
+  - id: tc-199
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: mv .cursor /tmp/old"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "mv .cursor /tmp/old", expect: "block"}
+  - id: tc-200
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: ln -s /tmp/x .cursor"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "ln -s /tmp/x .cursor", expect: "block"}
+  - id: tc-201
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: rm -r .cursor"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "rm -r .cursor", expect: "block"}
+  - id: tc-202
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: rm -r .claude"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "rm -r .claude", expect: "block"}
+  - id: tc-203
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: rm -r .chock"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "rm -r .chock", expect: "block"}
+  - id: tc-204
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cp -r evil/ .cursor"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cp -r evil/ .cursor", expect: "block"}
+  - id: tc-205
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cp -r evil/* .cursor/"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cp -r evil/* .cursor/", expect: "block"}
+  - id: tc-206
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cp evil/mcp.json .cursor/"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cp evil/mcp.json .cursor/", expect: "block"}
+  - id: tc-207
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cp -t .cursor evil/mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cp -t .cursor evil/mcp.json", expect: "block"}
+  - id: tc-208
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd $DIR && echo x > mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd $DIR && echo x > mcp.json", expect: "block"}
+  - id: tc-209
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd - && echo x > mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd - && echo x > mcp.json", expect: "block"}
+  - id: tc-210
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: X='echo y > .cursor/mcp.json'; eval \"$X\""
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "X='echo y > .cursor/mcp.json'; eval \"$X\"", expect: "block"}
+  - id: tc-211
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: bash -c \"$CMD\" > .mcp.json"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "bash -c \"$CMD\" > .mcp.json", expect: "block"}
+  - id: tc-212
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: echo x | tee $OUT"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "echo x | tee $OUT", expect: "block"}
+  - id: tc-213
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: python3 -c \"open('.cursor/x/../mcp.json','w')\""
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "python3 -c \"open('.cursor/x/../mcp.json','w')\"", expect: "block"}
+  - id: tc-214
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: cd .cursor && python3 -c \"open('mcp.json','w')\""
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "cd .cursor && python3 -c \"open('mcp.json','w')\"", expect: "block"}
+  - id: tc-215
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: find .cursor -delete"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "find .cursor -delete", expect: "block"}
+  - id: tc-216
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: git rm -r .cursor"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "git rm -r .cursor", expect: "block"}
+  - id: tc-217
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: rm .cursor/*"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "rm .cursor/*", expect: "block"}
+  - id: tc-218
+    category: trigger
+    prompt: "An agent reaches a protected path by a spelling the text does not name: rm -rf .cur*"
+    expect: "The guard resolves the command against the working directory, `..`, variables, globs and directories, and refuses it."
+    execute: {command: "rm -rf .cur*", expect: "block"}
+  - id: tc-219
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cd src && make"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cd src && make", expect: "allow"}
+  - id: tc-220
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cd src; ls -la"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cd src; ls -la", expect: "allow"}
+  - id: tc-221
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: pushd src && popd"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "pushd src && popd", expect: "allow"}
+  - id: tc-222
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: echo $HOME"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "echo $HOME", expect: "allow"}
+  - id: tc-223
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: echo \"$HOME/.config\" > notes.txt"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "echo \"$HOME/.config\" > notes.txt", expect: "allow"}
+  - id: tc-224
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cp a b"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cp a b", expect: "allow"}
+  - id: tc-225
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cp -r src build"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cp -r src build", expect: "allow"}
+  - id: tc-226
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: ls .cursor"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "ls .cursor", expect: "allow"}
+  - id: tc-227
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: ls -la .claude"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "ls -la .claude", expect: "allow"}
+  - id: tc-228
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cat .mcp.json"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cat .mcp.json", expect: "allow"}
+  - id: tc-229
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cat .chock/config.yaml | head"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cat .chock/config.yaml | head", expect: "allow"}
+  - id: tc-230
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git diff"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git diff", expect: "allow"}
+  - id: tc-231
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git status --short"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git status --short", expect: "allow"}
+  - id: tc-232
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git log --oneline -5"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git log --oneline -5", expect: "allow"}
+  - id: tc-233
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git add -A"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git add -A", expect: "allow"}
+  - id: tc-234
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git commit -m 'docs: mention .cursor/mcp.json and rm -r .cursor'"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git commit -m 'docs: mention .cursor/mcp.json and rm -r .cursor'", expect: "allow"}
+  - id: tc-235
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git checkout -b feature/x"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git checkout -b feature/x", expect: "allow"}
+  - id: tc-236
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git checkout $BRANCH"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git checkout $BRANCH", expect: "allow"}
+  - id: tc-237
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git restore --staged ."
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git restore --staged .", expect: "allow"}
+  - id: tc-238
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: git rm --cached build.log"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "git rm --cached build.log", expect: "allow"}
+  - id: tc-239
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: echo x > .vscode/launch.json"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "echo x > .vscode/launch.json", expect: "allow"}
+  - id: tc-240
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: echo x > .cursor/rules/a.mdc"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "echo x > .cursor/rules/a.mdc", expect: "allow"}
+  - id: tc-241
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cd .cursor/rules && echo x > a.mdc"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cd .cursor/rules && echo x > a.mdc", expect: "allow"}
+  - id: tc-242
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: echo x > .github/workflows/ci.yml"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "echo x > .github/workflows/ci.yml", expect: "allow"}
+  - id: tc-243
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: D=.cursor; echo x > $D/rules/a.mdc"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "D=.cursor; echo x > $D/rules/a.mdc", expect: "allow"}
+  - id: tc-244
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: python -m chock sync --repo ."
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "python -m chock sync --repo .", expect: "allow"}
+  - id: tc-245
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: python -m pytest tests -q"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "python -m pytest tests -q", expect: "allow"}
+  - id: tc-246
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: make test && make lint"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "make test && make lint", expect: "allow"}
+  - id: tc-247
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: npm install && npm test"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "npm install && npm test", expect: "allow"}
+  - id: tc-248
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: ruff check . && ruff format --check ."
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "ruff check . && ruff format --check .", expect: "allow"}
+  - id: tc-249
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cat $X"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cat $X", expect: "allow"}
+  - id: tc-250
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: grep -rn TODO src/*.py"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "grep -rn TODO src/*.py", expect: "allow"}
+  - id: tc-251
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: mkdir -p build/out && cp dist/*.whl build/out/"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "mkdir -p build/out && cp dist/*.whl build/out/", expect: "allow"}
+  - id: tc-252
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: rm -rf build/* dist/*"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "rm -rf build/* dist/*", expect: "allow"}
+  - id: tc-253
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: rm -rf $TMPDIR/build"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "rm -rf $TMPDIR/build", expect: "allow"}
+  - id: tc-254
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: rm *.pyc"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "rm *.pyc", expect: "allow"}
+  - id: tc-255
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: mv *.log logs/"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "mv *.log logs/", expect: "allow"}
+  - id: tc-256
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: chmod +x scripts/*.sh"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "chmod +x scripts/*.sh", expect: "allow"}
+  - id: tc-257
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: find . -name '*.pyc' -delete"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "find . -name '*.pyc' -delete", expect: "allow"}
+  - id: tc-258
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: find src -type f -name '*.orig' -exec rm {} +"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "find src -type f -name '*.orig' -exec rm {} +", expect: "allow"}
+  - id: tc-259
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: sed -i '$d' notes.txt"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "sed -i '$d' notes.txt", expect: "allow"}
+  - id: tc-260
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: sed -i -e 's/a/b/' src/app.py"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "sed -i -e 's/a/b/' src/app.py", expect: "allow"}
+  - id: tc-261
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: eval \"$(ssh-agent -s)\""
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "eval \"$(ssh-agent -s)\"", expect: "allow"}
+  - id: tc-262
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: echo \"$(date)\" > log.txt"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "echo \"$(date)\" > log.txt", expect: "allow"}
+  - id: tc-263
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cd /tmp && echo x > mcp.json"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cd /tmp && echo x > mcp.json", expect: "allow"}
+  - id: tc-264
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cd - && ls"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cd - && ls", expect: "allow"}
+  - id: tc-265
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cp .mcp.json /tmp/backup"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cp .mcp.json /tmp/backup", expect: "allow"}
+  - id: tc-266
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cp -r .cursor /tmp/backup"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cp -r .cursor /tmp/backup", expect: "allow"}
+  - id: tc-267
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: cat > notes.md <<'EOF'"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "cat > notes.md <<'EOF'\na note on `rm .mcp.json`\nEOF", expect: "allow"}
+  - id: tc-268
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: python3 -c \"print(open('README.md').read())\""
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "python3 -c \"print(open('README.md').read())\"", expect: "allow"}
+  - id: tc-269
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: curl -s https://example.com -o out.html"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "curl -s https://example.com -o out.html", expect: "allow"}
+  - id: tc-270
+    category: negative_trigger
+    prompt: "An agent runs an ordinary development command: docker compose up -d"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "docker compose up -d", expect: "allow"}
+  - id: tc-271
+    category: trigger
+    prompt: "The agent writes the MCP config through a path with a `..` segment."
+    expect: "The tool_use gate refuses it."
+    execute: {event: "tool_use", writes: {".cursor/x/../mcp.json": "x\n"}, expect: "block"}
+  - id: tc-272
+    category: trigger
+    prompt: "The agent writes the chock config through `..` segments."
+    expect: "The tool_use gate refuses it."
+    execute: {event: "tool_use", writes: {"src/../.chock/x/../config.yaml": "x\n"}, expect: "block"}
+  - id: tc-273
+    category: negative_trigger
+    prompt: "The agent writes an ordinary rules file through a `..` segment."
+    expect: "The write is allowed."
+    execute: {event: "tool_use", writes: {".cursor/x/../rules/a.mdc": "x\n"}, expect: "allow"}
