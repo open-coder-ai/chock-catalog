@@ -15,6 +15,7 @@ from functools import lru_cache
 
 from chock_security.decision import FileText
 from chock_security.pack import facts
+from chock_security.sanitizer import holds, mentions, sanitized, sink_regions, statement_end
 from chock_security.source import blank
 
 _FACTS = facts("java")["flow"]
@@ -41,6 +42,8 @@ class Method:
     name: str
     signature: str
     body: tuple[tuple[int, str], ...]
+    #: `body` line for line, from the whole file's lexing: comments and literal contents blanked.
+    code: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -116,6 +119,19 @@ def _body(lines: list[str], after: int) -> tuple[tuple[tuple[int, str], ...], in
     return None
 
 
+def _code_of(clean: list[str], lines: list[str], line_no: int, line: str) -> str:
+    """The blanked text of a body line, which may be the tail of its file line (`{ return y; }`).
+
+    A separator `splitlines` honours but lexing blanks (a form feed) merges two lines into one, so
+    the blanked lines no longer match the file's; every line then reads as empty, and nothing in
+    it can count as a sanitizer. Columns count from the line's start: a CR that lexing blanks inside
+    a comment stays on the blanked line as a trailing space, where `splitlines` drops the file's."""
+    if len(clean) != len(lines):
+        return ""
+    start = len(lines[line_no - 1]) - len(line)
+    return clean[line_no - 1][start : start + len(line)]
+
+
 def methods(text: FileText) -> list[Method]:
     """Every method in this file that has a body. Anything unclear is left out, never guessed.
 
@@ -131,6 +147,7 @@ _METHOD_CACHE_SIZE = 1024
 @lru_cache(maxsize=_METHOD_CACHE_SIZE)
 def _methods(text: str) -> tuple[Method, ...]:
     lines = text.splitlines()
+    clean = blank(text).splitlines()
     found: list[Method] = []
     offset = 0
     while offset < len(lines):
@@ -138,17 +155,11 @@ def _methods(text: str) -> tuple[Method, ...]:
         signature = _signature(lines, offset, name) if name else None
         block = _body(lines, signature[1]) if signature else None
         if name and signature and block and block[0]:
-            found.append(Method(name, signature[0], block[0]))
+            code = tuple(_code_of(clean, lines, number, line) for number, line in block[0])
+            found.append(Method(name, signature[0], block[0], code))
             offset = block[1]
         offset += 1
     return tuple(found)
-
-
-def _mentions(line: str, names: set[str]) -> bool:
-    """Whether the line USES one of these names: in its code, never inside a string literal or a
-    comment -- `"//item[@sku=$sku]"` names an XPath variable, not the `sku` parameter."""
-    code_only = blank(line)
-    return any(re.search(rf"\b{re.escape(name)}\b", code_only) for name in names)
 
 
 #: `ALLOWED.contains(v) ? v : fallback` -- membership decides whether `v` is used at all, however the
@@ -156,21 +167,8 @@ def _mentions(line: str, names: set[str]) -> bool:
 _MEMBERSHIP = re.compile(r"\.(?:contains|containsKey)\(\s*(\w+)\s*\)\s*\?\s*(\w+)\s*:")
 
 
-#: `value.matches(SAFE_NAME)`: validation against a named pattern. `Matcher.matches()`, with nothing
-#: between its parentheses, is the match itself -- often the very sink being judged -- never a check.
-_VALIDATED = re.compile(r"\.matches\(\s*[A-Z][A-Z0-9_]*\s*\)")
-
-
-def _sanitized(line: str, sanitizers: list[str]) -> bool:
-    return _holds(line, sanitizers) or _VALIDATED.search(line) is not None
-
-
 def _guarded(line: str, tainted: set[str]) -> bool:
     return any(m.group(1) == m.group(2) and m.group(1) in tainted for m in _MEMBERSHIP.finditer(blank(line)))
-
-
-def _holds(line: str, tokens: list[str]) -> bool:
-    return any(token in line for token in tokens)
 
 
 def _parameters(signature: str) -> set[str]:
@@ -178,7 +176,7 @@ def _parameters(signature: str) -> set[str]:
     inside = signature[signature.find("(") + 1 : signature.rfind(")")]
     tainted = set()
     for parameter in inside.split(","):
-        if not _holds(parameter, _FACTS["source_annotations"]):
+        if not holds(parameter, _FACTS["source_annotations"]):
             continue
         words = re.findall(r"\w+", _without_annotations(parameter))
         # A number, a boolean, a UUID or a date is parsed before the method sees it: it cannot
@@ -195,16 +193,26 @@ def _without_annotations(parameter: str) -> str:
     return re.sub(r"@\w+(?:\s*\([^()]*\))?", " ", parameter)
 
 
-def _retaint(line: str, tainted: set[str], sanitizers: list[str]) -> None:
+def _retaint(line: str, code: str, tainted: set[str], sanitizers: list[str]) -> None:
     """Follow one assignment: the target carries what its right-hand side carries, and no more."""
     for match in _ASSIGNMENT.finditer(line):
         target = match.group(1)
         right = line[match.end() :]
-        carries = _holds(right, _FACTS["source_calls"]) or _mentions(right, tainted)
-        if carries and not _sanitized(line, sanitizers) and not _guarded(right, tainted):
+        carries = holds(right, _FACTS["source_calls"]) or mentions(right, tainted)
+        value = [(match.end(), statement_end(code, match.end()))]
+        if carries and not sanitized(code, value, sanitizers, tainted) and not _guarded(right, tainted):
             tainted.add(target)
         else:
             tainted.discard(target)
+
+
+def _unchecked(line: str, code: str, tainted: set[str], sinks: list[str], sanitizers: list[str]) -> bool:
+    """Whether request data reaches a sink on this line other than through a check. A value assigned
+    earlier on the line counts as carried: `String g = f; read(g)` reaches, `read(g); g = f` too."""
+    carried = set(tainted)
+    _retaint(line, code, carried, sanitizers)
+    carried |= tainted
+    return not sanitized(code, sink_regions(line, code, sinks), sanitizers, carried) and not _guarded(line, carried)
 
 
 def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
@@ -216,12 +224,11 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     tainted = _parameters(method.signature)
     annotated = bool(tainted)
     clean = [*_FACTS["sanitizers"], *sanitizers]
-    for line_no, line in method.body:
-        direct = _holds(line, _FACTS["source_calls"])
-        reached = _holds(line, sinks) and (direct or _mentions(line, tainted))
-        if reached and not _sanitized(line, clean) and not _guarded(line, tainted):
+    for (line_no, line), code in zip(method.body, method.code, strict=True):
+        direct = holds(line, _FACTS["source_calls"])
+        if holds(line, sinks) and (direct or mentions(line, tainted)) and _unchecked(line, code, tainted, sinks, clean):
             yield Flow(line_no, line, "a request parameter" if annotated else "the request")
-        _retaint(line, tainted, clean)
+        _retaint(line, code, tainted, clean)
 
 
 def flows(text: FileText, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:

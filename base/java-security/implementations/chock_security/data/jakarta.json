@@ -18,7 +18,6 @@
       "allowList",
       "whitelist",
       "isValid",
-      ".startsWith(\"/\")",
       "URI.create("
     ],
     "guard_imports": [
