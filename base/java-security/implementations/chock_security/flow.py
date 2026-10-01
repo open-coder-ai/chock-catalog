@@ -13,8 +13,10 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 
+from chock_security.blocks import Frames
+from chock_security.constants import immutable_constants
 from chock_security.decision import FileText
-from chock_security.guards import ASSIGNMENT, Around, Frames, Scope, analyse, deferred_to, immutable_constants
+from chock_security.guards import ASSIGNMENT, Around, Scope, analyse, deferred_to
 from chock_security.pack import facts
 from chock_security.sanitizer import holds, mentions, receiver_start, sanitized, sink_regions, statement_end
 from chock_security.source import blank
@@ -266,7 +268,7 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
         scope.track(code)
         effect = analyse(code, line, tainted, scope, Around(_following(method.code[index + 1 :]), frames.in_switch))
         pending = [(name, flow) for name, flow in pending if name not in effect.held]
-        frames.settle(code, effect, tainted)
+        frames.settle(code, tainted, effect.cleared, effect.delayed, effect.scoped)
     yield from sorted(found + [flow for _, flow in pending], key=lambda flow: flow.line_no)
 
 
