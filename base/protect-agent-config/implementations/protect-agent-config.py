@@ -22,6 +22,27 @@ PROTECTED = (
     ".aider.conf.yml",
     ".claude/settings",
     ".mcp.json",
+    # Project-level MCP (and hook) config a supported client reads: a server an agent registers there runs with its authority.
+    ".cursor/mcp.json",  # Cursor, and Grok
+    ".vscode/mcp.json",  # VS Code Copilot
+    ".gemini/settings.json",  # Gemini CLI
+    ".codex/config.toml",  # Codex CLI
+    ".junie/mcp/mcp.json",  # Junie
+    ".devin/mcp_config.json",  # Devin
+    ".devin/mcp_config.local.json",
+    ".devin/config.json",  # Devin before v3000.3 keeps mcpServers here; it also holds permissions and hooks
+    ".devin/config.local.json",
+    ".grok/config.toml",  # Grok
+    ".agents/mcp_config.json",  # Antigravity
+    ".tabnine/agent/settings.json",  # Tabnine
+    # The hook files `chock sync` writes for each client: an agent that deleted its entries would disarm the gates.
+    ".cursor/hooks.json",
+    ".codex/hooks.json",
+    ".windsurf/hooks.json",
+    ".github/hooks/",  # VS Code Copilot: chock.json, agentseam.json
+    ".grok/hooks/",
+    ".devin/hooks.v1.json",
+    ".agents/hooks.json",  # Antigravity
     ".chock/bin",
     ".chock/compiled",
     ".chock/dependency-allowlist.txt",

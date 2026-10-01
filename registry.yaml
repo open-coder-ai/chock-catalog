@@ -498,20 +498,19 @@ policies:
     Person''s commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.2.3
+  version: 0.2.4
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 104
-  eval_executed: 104
+  eval_cases: 181
+  eval_executed: 181
   description: 'Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes
-    to AGENTS.md and wrappers, .claude/settings, .mcp.json, .git/hooks, policy implementations/ and
-    .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}:
-    redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content. Reads and `chock sync` pass.
-    No marker bypass: a person edits in their shell. Edit/Write: tool_use gate (incl. turn''s end),
-    never at commit.'
+    to AGENTS.md and wrappers, .claude/settings, MCP and hook client configs (.mcp.json, .cursor/mcp.json,
+    .gemini/settings.json, .codex/hooks.json, more), .git/hooks, policy implementations/ and .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}:
+    redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Reads and `chock sync` pass. Edit/Write:
+    tool_use gate.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
   version: 0.1.1

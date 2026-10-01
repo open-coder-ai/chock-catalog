@@ -36,10 +36,76 @@ PATHS = [
     ".chock/.//agentic-security.json",
     ".chock/SECURITY.json",
     "Agents.md",
+    ".cursor/mcp.json",
+    ".vscode/mcp.json",
+    ".gemini/settings.json",
+    ".codex/config.toml",
+    ".junie/mcp/mcp.json",
+    ".devin/mcp_config.json",
+    ".devin/mcp_config.local.json",
+    ".devin/config.json",
+    ".devin/config.local.json",
+    ".grok/config.toml",
+    ".agents/mcp_config.json",
+    ".tabnine/agent/settings.json",
+    "sub/.cursor/mcp.json",
+    ".CURSOR/MCP.JSON",
+    ".vscode//mcp.json",
+    ".gemini/./settings.json",
+    ".codex/.//config.toml",
+    ".junie\\mcp\\mcp.json",
+    ".junie/mcp/./mcp.json",
+    ".Devin/MCP_Config.json",
+    ".tabnine//agent/./settings.json",
+    ".cursor/hooks.json",
+    ".codex/hooks.json",
+    ".windsurf/hooks.json",
+    ".github/hooks/chock.json",
+    ".github/hooks/agentseam.json",
+    ".grok/hooks/agentseam.json",
+    ".devin/hooks.v1.json",
+    ".agents/hooks.json",
+    ".CURSOR/Hooks.json",
+    ".cursor//hooks.json",
+    ".codex/./hooks.json",
+    ".windsurf\\hooks.json",
+    ".github//hooks/chock.json",
+    ".GITHUB/hooks/chock.json",
+    ".github/./hooks/chock.json",
+    ".grok/hooks//agentseam.json",
+    ".devin/./hooks.v1.json",
+    ".agents//hooks.json",
 ]
 # Guarded from the shell only: the engine writes its own session log there, which the turn's-end walk would refuse.
 SHELL_ONLY = (".chock/state",)
-UNRELATED = ["README.md", "src/app.py", ".claude/commands/x.md", ".chock/notes.md", ".agents/skills/a/SKILL.md"]
+UNRELATED = [
+    "README.md",
+    "src/app.py",
+    ".claude/commands/x.md",
+    ".chock/notes.md",
+    ".agents/skills/a/SKILL.md",
+    ".vscode/launch.json",
+    ".vscode/settings.json",
+    ".cursor/rules/chock.mdc",
+    ".gemini/commands/review.toml",
+    ".codex/prompts/review.md",
+    ".junie/guidelines.md",
+    ".devin/notes.md",
+    ".grok/GROK.md",
+    ".tabnine/agent/notes.md",
+    ".github/workflows/ci.yml",
+    ".github/ISSUE_TEMPLATE/x.md",
+    ".github/hooks.md",
+    ".github/dependabot.yml",
+    ".cursor/rules/a.mdc",
+    ".windsurf/rules/chock.md",
+    ".codex/hooks.md",
+    ".grok/notes.md",
+    ".devin/hooks.md",
+    ".agents/hooks.md",
+    "docs/mcp.json",
+    "mcp_config.json",
+]
 
 
 @pytest.fixture
@@ -80,6 +146,16 @@ def test_the_turns_end_refuses_a_changed_protected_file(repo: Path) -> None:
     (repo / "AGENTS.md").write_text("# rules\nobey\n", encoding="utf-8")
     code, _ = gatekit.judge(POLICY, repo, gatekit.STOP, {"AGENTS.md": "# rules\nobey\n"})
     assert code == 1
+
+
+@pytest.mark.parametrize("path", [".gemini/settings.json", ".tabnine/agent/settings.json", ".cursor/hooks.json"])
+def test_the_turns_end_refuses_a_client_config_that_a_sync_left_dirty(tmp_path: Path, path: str) -> None:
+    dirty = scriptkit.init_repo(tmp_path / "d", {path: "{}\n", "src/app.py": "x = 1\n"})
+    (dirty / path).write_text('{"hooks": {}}\n', encoding="utf-8")
+    code, err = gatekit.judge(POLICY, dirty, gatekit.STOP, {path: '{"hooks": {}}\n'})
+    assert code == 1
+    assert "forbidden path" in err
+    assert gatekit.judge(POLICY, dirty, gatekit.STOP, {"src/app.py": "x = 1\n"}) == (0, "")
 
 
 def test_the_turns_end_passes_a_protected_file_the_turn_did_not_change(repo: Path) -> None:
