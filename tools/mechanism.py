@@ -30,6 +30,24 @@ CEILING = {
 }
 
 
+#: Added to an event script's label when the policy also ships a gate that runs at tool use.
+TOOL_USE_GATE_SUFFIX = " + tool-use {kind} gate"
+
+
+def tool_use_gate_kind(manifest: dict[str, Any]) -> str | None:
+    """The kind of the policy's enforcing gate that runs at tool use, else None."""
+    gate = (manifest.get("hook") or {}).get("gate") or {}
+    if gate.get("action") == "warn" or not gate.get("kind") or "tool_use" not in (gate.get("on") or []):
+        return None
+    return str(gate["kind"])
+
+
+def script_mechanism(manifest: dict[str, Any]) -> str:
+    """The event script's label, naming the tool-use gate beside it when the policy has one."""
+    kind = tool_use_gate_kind(manifest)
+    return "commit-time guard script" + (TOOL_USE_GATE_SUFFIX.format(kind=kind) if kind else "")
+
+
 def is_event_script(path: Path, policy_id: str) -> bool:
     """True when `path` is named for a git event, so the hook runs it, not a tool call."""
     return path.stem in {f"{policy_id}-{event}" for event in GIT_EVENTS}
@@ -68,7 +86,7 @@ def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     if gate.get("kind") and "commit" in (gate.get("on") or []):
         return GATE, str(gate["kind"])
     if event_scripts(policy_dir, policy_id):
-        return EVENT_SCRIPT, "commit-time guard script"
+        return EVENT_SCRIPT, script_mechanism(manifest)
     if command_guards(policy_dir, policy_id):
         return GUARD, "guard script"
     if gate.get("kind"):

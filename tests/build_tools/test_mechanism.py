@@ -37,3 +37,24 @@ def test_a_tool_use_gate_is_enforced_in_the_agent(tmp_path: Path) -> None:
 
 def test_no_gate_and_no_script_is_rule_text(tmp_path: Path) -> None:
     assert mechanism.classify(tmp_path, {"id": "p"}) == (mechanism.NONE, "rule text only")
+
+
+def _with_event_script(tmp_path: Path) -> None:
+    impl = tmp_path / "implementations"
+    impl.mkdir()
+    (impl / "p-pre-commit.py").write_text("", encoding="utf-8")
+
+
+def test_an_event_script_beside_a_tool_use_gate_names_both(tmp_path: Path) -> None:
+    _with_event_script(tmp_path)
+    assert mechanism.classify(tmp_path, gate("block", ["tool_use"])) == (
+        mechanism.EVENT_SCRIPT,
+        "commit-time guard script + tool-use content_regex gate",
+    )
+
+
+def test_an_event_script_alone_or_beside_a_warn_gate_names_only_the_commit(tmp_path: Path) -> None:
+    _with_event_script(tmp_path)
+    assert mechanism.classify(tmp_path, {"id": "p"})[1] == "commit-time guard script"
+    assert mechanism.classify(tmp_path, gate("warn", ["tool_use"]))[1] == "commit-time guard script"
+    assert mechanism.classify(tmp_path, gate("block", ["commit"]))[1] == "content_regex"
