@@ -39,7 +39,7 @@ def scan(text: FileText) -> Iterator[Finding]:
     """Every XPath compile/evaluate a method body shows request data reaching unbound."""
     if not _uses_xpath(text):
         return
-    for flow in flows(text, _FACTS["sinks"], sanitizers=tuple(_FACTS["sanitizers"])):
+    for flow in flows(text, _FACTS["sinks"]):
         if not _xpath_sink(flow.line):
             continue
         message = _MESSAGE.format(source=flow.source)

@@ -31,3 +31,27 @@ def test_code_lines_align_with_the_file_lines() -> None:
     text = FileText("A.java", 'int a = 1; /* one\n two */ String s = "x";\n')
     assert code(text) == ["int a = 1;       ", '        String s = " ";']
     assert len(code(text)) == len(text.lines)
+
+
+ESCAPES = [
+    ("a; \\u002f\\u002f b\n", "a;" + " " * 15 + "\n"),
+    ("// a \\u000a b; // c\n", " " * 12 + "b;     \n"),
+    ("// a \\u000d b\n", " " * 12 + "b\n"),
+    ('s = "\\u0022; x;\n', 's = ""     ; x;\n'),
+    ('s = "\\\\u0022"; x;\n', 's = "       "; x;\n'),
+    ("f\\uuu0028x);\n", "f(       x);\n"),
+    ("f(\\u2028);\n", "f(      );\n"),
+    ("s = '\\u005c''; x;\n", "s = '       '; x;\n"),
+    ("\\uZZZZ;\n", "\\uZZZZ;\n"),
+]
+
+
+@pytest.mark.parametrize(("raw", "expected"), ESCAPES)
+def test_unicode_escapes_are_decoded_before_lexing_and_keep_their_columns(raw: str, expected: str) -> None:
+    assert blank(raw) == expected
+    assert len(blank(raw)) == len(raw)
+
+
+def test_an_escaped_line_break_keeps_the_file_line_count() -> None:
+    text = FileText("A.java", "// a \\u000a int b;\nint c;\n")
+    assert code(text) == [" " * 12 + "int b;", "int c;"]
