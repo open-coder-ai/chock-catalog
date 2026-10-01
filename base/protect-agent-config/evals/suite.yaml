@@ -719,3 +719,258 @@ suite:
     prompt: "At the turn's end chock's own session log sits untracked under .chock/state."
     expect: "The turn is allowed: .chock/state is the shell guard's alone, so the engine's own writes never refuse a turn end."
     execute: {event: stop, head_files: {"src/app.py": "print()\n"}, writes: {".chock/state/s.jsonl": "{}\n"}, expect: allow}
+  - id: tc-105
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .cursor/mcp.json, the file Cursor reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .cursor/mcp.json", expect: block}
+  - id: tc-106
+    category: adversarial
+    prompt: "The agent writes .cursor/mcp.json (Cursor) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".cursor/mcp.json": "{}\n"}, expect: block}
+  - id: tc-107
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .vscode/mcp.json, the file VS Code Copilot reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .vscode//mcp.json", expect: block}
+  - id: tc-108
+    category: adversarial
+    prompt: "The agent writes .vscode/mcp.json (VS Code Copilot) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".vscode//mcp.json": "{}\n"}, expect: block}
+  - id: tc-109
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .gemini/settings.json, the file Gemini CLI reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .gemini/./settings.json", expect: block}
+  - id: tc-110
+    category: adversarial
+    prompt: "The agent writes .gemini/settings.json (Gemini CLI) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".gemini/./settings.json": "{}\n"}, expect: block}
+  - id: tc-111
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .codex/config.toml, the file Codex CLI reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .CODEX/config.toml", expect: block}
+  - id: tc-112
+    category: adversarial
+    prompt: "The agent writes .codex/config.toml (Codex CLI) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".CODEX/config.toml": "{}\n"}, expect: block}
+  - id: tc-113
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .junie/mcp/mcp.json, the file Junie reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .junie/mcp//mcp.json", expect: block}
+  - id: tc-114
+    category: adversarial
+    prompt: "The agent writes .junie/mcp/mcp.json (Junie) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".junie/mcp/./mcp.json": "{}\n"}, expect: block}
+  - id: tc-115
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .devin/mcp_config.json, the file Devin reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .devin/mcp_config.json", expect: block}
+  - id: tc-116
+    category: adversarial
+    prompt: "The agent writes .devin/mcp_config.json (Devin) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".devin/MCP_CONFIG.json": "{}\n"}, expect: block}
+  - id: tc-117
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .devin/mcp_config.local.json, the file Devin reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .devin/./mcp_config.local.json", expect: block}
+  - id: tc-118
+    category: adversarial
+    prompt: "The agent writes .devin/mcp_config.local.json (Devin) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".devin/mcp_config.local.json": "{}\n"}, expect: block}
+  - id: tc-119
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .devin/config.json, the file Devin before v3000.3 reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .devin\\config.json", expect: block}
+  - id: tc-120
+    category: adversarial
+    prompt: "The agent writes .devin/config.json (Devin before v3000.3) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".devin\\config.json": "{}\n"}, expect: block}
+  - id: tc-121
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .devin/config.local.json, the file Devin before v3000.3 reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .devin/config.local.json", expect: block}
+  - id: tc-122
+    category: adversarial
+    prompt: "The agent writes .devin/config.local.json (Devin before v3000.3) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".devin//config.local.json": "{}\n"}, expect: block}
+  - id: tc-123
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .grok/config.toml, the file Grok reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .grok/config.toml", expect: block}
+  - id: tc-124
+    category: adversarial
+    prompt: "The agent writes .grok/config.toml (Grok) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".grok/./config.toml": "{}\n"}, expect: block}
+  - id: tc-125
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .agents/mcp_config.json, the file Antigravity reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .agents//mcp_config.json", expect: block}
+  - id: tc-126
+    category: adversarial
+    prompt: "The agent writes .agents/mcp_config.json (Antigravity) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".agents/mcp_config.json": "{}\n"}, expect: block}
+  - id: tc-127
+    category: adversarial
+    prompt: "An agent registers its own MCP server in .tabnine/agent/settings.json, the file Tabnine reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .tabnine/agent/settings.json", expect: block}
+  - id: tc-128
+    category: adversarial
+    prompt: "The agent writes .tabnine/agent/settings.json (Tabnine) with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".TABNINE/agent/settings.json": "{}\n"}, expect: block}
+  - id: tc-129
+    category: adversarial
+    prompt: "An agent removes chock's entry from a client MCP config with an in-place edit."
+    expect: "The guard refuses it."
+    execute: {command: "sed -i /chock/d .cursor/mcp.json", expect: block}
+  - id: tc-130
+    category: adversarial
+    prompt: "An agent copies its own MCP config over the Codex project config."
+    expect: "The guard refuses it."
+    execute: {command: "cp /srv/evil.toml .codex/config.toml", expect: block}
+  - id: tc-131
+    category: negative_trigger
+    prompt: "A request reads each client MCP config, in several spellings."
+    expect: "The guard allows it."
+    execute: {command: "cat .cursor/mcp.json .vscode//mcp.json .gemini/./settings.json .CODEX/config.toml .devin/mcp_config.json .tabnine/agent/settings.json", expect: allow}
+  - id: tc-132
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .vscode/launch.json from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .vscode/launch.json", expect: allow}
+  - id: tc-133
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .vscode/launch.json with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".vscode/launch.json": "x\n"}, expect: allow}
+  - id: tc-134
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .vscode/settings.json from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .vscode/settings.json", expect: allow}
+  - id: tc-135
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .vscode/settings.json with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".vscode/settings.json": "x\n"}, expect: allow}
+  - id: tc-136
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .cursor/rules/chock.mdc from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .cursor/rules/chock.mdc", expect: allow}
+  - id: tc-137
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .cursor/rules/chock.mdc with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".cursor/rules/chock.mdc": "x\n"}, expect: allow}
+  - id: tc-138
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .gemini/commands/review.toml from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .gemini/commands/review.toml", expect: allow}
+  - id: tc-139
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .gemini/commands/review.toml with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".gemini/commands/review.toml": "x\n"}, expect: allow}
+  - id: tc-140
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .codex/prompts/review.md from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .codex/prompts/review.md", expect: allow}
+  - id: tc-141
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .codex/prompts/review.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".codex/prompts/review.md": "x\n"}, expect: allow}
+  - id: tc-142
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .junie/guidelines.md from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .junie/guidelines.md", expect: allow}
+  - id: tc-143
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .junie/guidelines.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".junie/guidelines.md": "x\n"}, expect: allow}
+  - id: tc-144
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .devin/notes.md from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .devin/notes.md", expect: allow}
+  - id: tc-145
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .devin/notes.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".devin/notes.md": "x\n"}, expect: allow}
+  - id: tc-146
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .grok/GROK.md from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .grok/GROK.md", expect: allow}
+  - id: tc-147
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .grok/GROK.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".grok/GROK.md": "x\n"}, expect: allow}
+  - id: tc-148
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .agents/skills/a/SKILL.md from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .agents/skills/a/SKILL.md", expect: allow}
+  - id: tc-149
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .agents/skills/a/SKILL.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".agents/skills/a/SKILL.md": "x\n"}, expect: allow}
+  - id: tc-150
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .tabnine/agent/notes.md from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > .tabnine/agent/notes.md", expect: allow}
+  - id: tc-151
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .tabnine/agent/notes.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".tabnine/agent/notes.md": "x\n"}, expect: allow}
+  - id: tc-152
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file docs/mcp.json from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > docs/mcp.json", expect: allow}
+  - id: tc-153
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file docs/mcp.json with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"docs/mcp.json": "x\n"}, expect: allow}
+  - id: tc-154
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file mcp_config.json from the shell."
+    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
+    execute: {command: "echo x > mcp_config.json", expect: allow}
+  - id: tc-155
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file mcp_config.json with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"mcp_config.json": "x\n"}, expect: allow}

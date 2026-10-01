@@ -36,10 +36,48 @@ PATHS = [
     ".chock/.//agentic-security.json",
     ".chock/SECURITY.json",
     "Agents.md",
+    ".cursor/mcp.json",
+    ".vscode/mcp.json",
+    ".gemini/settings.json",
+    ".codex/config.toml",
+    ".junie/mcp/mcp.json",
+    ".devin/mcp_config.json",
+    ".devin/mcp_config.local.json",
+    ".devin/config.json",
+    ".devin/config.local.json",
+    ".grok/config.toml",
+    ".agents/mcp_config.json",
+    ".tabnine/agent/settings.json",
+    "sub/.cursor/mcp.json",
+    ".CURSOR/MCP.JSON",
+    ".vscode//mcp.json",
+    ".gemini/./settings.json",
+    ".codex/.//config.toml",
+    ".junie\\mcp\\mcp.json",
+    ".junie/mcp/./mcp.json",
+    ".Devin/MCP_Config.json",
+    ".tabnine//agent/./settings.json",
 ]
 # Guarded from the shell only: the engine writes its own session log there, which the turn's-end walk would refuse.
 SHELL_ONLY = (".chock/state",)
-UNRELATED = ["README.md", "src/app.py", ".claude/commands/x.md", ".chock/notes.md", ".agents/skills/a/SKILL.md"]
+UNRELATED = [
+    "README.md",
+    "src/app.py",
+    ".claude/commands/x.md",
+    ".chock/notes.md",
+    ".agents/skills/a/SKILL.md",
+    ".vscode/launch.json",
+    ".vscode/settings.json",
+    ".cursor/rules/chock.mdc",
+    ".gemini/commands/review.toml",
+    ".codex/prompts/review.md",
+    ".junie/guidelines.md",
+    ".devin/notes.md",
+    ".grok/GROK.md",
+    ".tabnine/agent/notes.md",
+    "docs/mcp.json",
+    "mcp_config.json",
+]
 
 
 @pytest.fixture
