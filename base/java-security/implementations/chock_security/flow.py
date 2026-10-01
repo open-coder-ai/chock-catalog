@@ -9,13 +9,16 @@ correct code, which is the one failure this pack does not accept.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 
+from chock_security.blocks import Frames
+from chock_security.constants import immutable_constants
 from chock_security.decision import FileText
+from chock_security.guards import ASSIGNMENT, Around, Scope, analyse, deferred_to
 from chock_security.pack import facts
-from chock_security.sanitizer import holds, mentions, sanitized, sink_regions, statement_end
+from chock_security.sanitizer import holds, mentions, receiver_start, sanitized, sink_regions, statement_end
 from chock_security.source import blank
 
 _FACTS = facts("java")["flow"]
@@ -29,7 +32,6 @@ _NOT_A_DECLARATION = frozenset(
 #: A typed declaration is at least a type and a name: `Long id`.
 _TYPE_AND_NAME = 2
 
-_ASSIGNMENT = re.compile(r"(?:^|[^=!<>+\-*/%&|^])(\w+)\s*=(?!=)")
 _NAME_BEFORE_PAREN = re.compile(r"(\w+)\s*\($")
 #: An annotation can sit on its own line or in front of the declaration on the same one.
 _LEADING_ANNOTATION = re.compile(r"^@\w+(?:\s*\([^()]*\))?\s*")
@@ -44,6 +46,8 @@ class Method:
     body: tuple[tuple[int, str], ...]
     #: `body` line for line, from the whole file's lexing: comments and literal contents blanked.
     code: tuple[str, ...]
+    #: Constants the file declares as immutable collections: the allowlists a lookup can be made in.
+    constants: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -88,31 +92,34 @@ def _signature(lines: list[str], start: int, name: str) -> tuple[str, int] | Non
     return None
 
 
-def _body(lines: list[str], after: int) -> tuple[tuple[tuple[int, str], ...], int] | None:
+def _body(lines: list[str], clean: list[str], after: int) -> tuple[tuple[tuple[int, str], ...], int] | None:
     """The braced block following a signature and the line it closes on, or None with no body.
 
     What follows the opening brace on its own line is body too, so a one-line method
     (`x(...) { return y; }`) has one, and the text before the brace is never mistaken for it.
+    Braces are counted in the blanked code: a `}` in a string, a char literal or a comment closes nothing.
     """
     depth = 0
     opened = False
     collected: list[tuple[int, str]] = []
     for offset in range(after, len(lines)):
         line = lines[offset]
+        code = clean[offset] if len(clean) == len(lines) and len(clean[offset]) == len(line) else line
         if not opened:
-            if ";" in line.split("{")[0] and "{" not in line:
+            if ";" in code.split("{")[0] and "{" not in code:
                 return None
-            if "{" not in line:
+            if "{" not in code:
                 continue
             opened = True
-            rest = line.split("{", 1)[1]
-            depth = 1 + rest.count("{") - rest.count("}")
-            if rest.strip() and rest.strip() != "}":
+            at = code.index("{") + 1
+            rest, rest_code = line[at:], code[at:]
+            depth = 1 + rest_code.count("{") - rest_code.count("}")
+            if rest.strip() and rest_code.strip() != "}":
                 collected.append((offset + 1, rest))
             if depth <= 0:
                 return tuple(collected), offset
             continue
-        depth += line.count("{") - line.count("}")
+        depth += code.count("{") - code.count("}")
         if depth <= 0:
             return tuple(collected), offset
         collected.append((offset + 1, line))
@@ -148,15 +155,16 @@ _METHOD_CACHE_SIZE = 1024
 def _methods(text: str) -> tuple[Method, ...]:
     lines = text.splitlines()
     clean = blank(text).splitlines()
+    constants = immutable_constants(blank(text))
     found: list[Method] = []
     offset = 0
     while offset < len(lines):
         name = _declares(lines[offset])
         signature = _signature(lines, offset, name) if name else None
-        block = _body(lines, signature[1]) if signature else None
+        block = _body(lines, clean, signature[1]) if signature else None
         if name and signature and block and block[0]:
             code = tuple(_code_of(clean, lines, number, line) for number, line in block[0])
-            found.append(Method(name, signature[0], block[0], code))
+            found.append(Method(name, signature[0], block[0], code, constants))
             offset = block[1]
         offset += 1
     return tuple(found)
@@ -168,7 +176,14 @@ _MEMBERSHIP = re.compile(r"\.(?:contains|containsKey)\(\s*(\w+)\s*\)\s*\?\s*(\w+
 
 
 def _guarded(line: str, tainted: set[str]) -> bool:
-    return any(m.group(1) == m.group(2) and m.group(1) in tainted for m in _MEMBERSHIP.finditer(blank(line)))
+    """Whether `v` reaches only as a member: `ALLOWED.contains(v) ? v : x`, never `!ALLOWED.contains(v) ? v : x`."""
+    code = blank(line)
+    return any(
+        m.group(1) == m.group(2)
+        and m.group(1) in tainted
+        and not code[: receiver_start(code, m.start())].rstrip(" \t(").endswith("!")
+        for m in _MEMBERSHIP.finditer(code)
+    )
 
 
 def _parameters(signature: str) -> set[str]:
@@ -193,26 +208,33 @@ def _without_annotations(parameter: str) -> str:
     return re.sub(r"@\w+(?:\s*\([^()]*\))?", " ", parameter)
 
 
-def _retaint(line: str, code: str, tainted: set[str], sanitizers: list[str]) -> None:
+Guard = Callable[[set[str]], list[tuple[int, int]]]
+
+
+def _retaint(line: str, code: str, tainted: set[str], sanitizers: list[str], guard: Guard | None = None) -> None:
     """Follow one assignment: the target carries what its right-hand side carries, and no more."""
-    for match in _ASSIGNMENT.finditer(line):
+    for match in ASSIGNMENT.finditer(line):
         target = match.group(1)
         right = line[match.end() :]
         carries = holds(right, _FACTS["source_calls"]) or mentions(right, tainted)
         value = [(match.end(), statement_end(code, match.end()))]
-        if carries and not sanitized(code, value, sanitizers, tainted) and not _guarded(right, tainted):
+        if carries and not sanitized(code, value, sanitizers, tainted, guard) and not _guarded(right, tainted):
             tainted.add(target)
         else:
             tainted.discard(target)
 
 
-def _unchecked(line: str, code: str, tainted: set[str], sinks: list[str], sanitizers: list[str]) -> bool:
+def _unchecked(
+    line: str, code: str, tainted: set[str], rules: tuple[list[str], list[str]], guard: Guard | None = None
+) -> bool:
     """Whether request data reaches a sink on this line other than through a check. A value assigned
     earlier on the line counts as carried: `String g = f; read(g)` reaches, `read(g); g = f` too."""
+    sinks, sanitizers = rules
     carried = set(tainted)
-    _retaint(line, code, carried, sanitizers)
+    _retaint(line, code, carried, sanitizers, guard)
     carried |= tainted
-    return not sanitized(code, sink_regions(line, code, sinks), sanitizers, carried) and not _guarded(line, carried)
+    regions = sink_regions(line, code, sinks)
+    return not sanitized(code, regions, sanitizers, carried, guard) and not _guarded(line, carried)
 
 
 def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
@@ -224,11 +246,38 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     tainted = _parameters(method.signature)
     annotated = bool(tainted)
     clean = [*_FACTS["sanitizers"], *sanitizers]
-    for (line_no, line), code in zip(method.body, method.code, strict=True):
+    scope = Scope(method.constants)
+    found: list[Flow] = []
+    pending: list[tuple[str, Flow]] = []
+    frames = Frames()
+    for index, ((line_no, line), code) in enumerate(zip(method.body, method.code, strict=True)):
+
+        def guard(names: set[str], line: str = line, code: str = code) -> list[tuple[int, int]]:
+            return list(analyse(code, line, names, scope, Around(inside_switch=frames.in_switch)).spans)
+
         direct = holds(line, _FACTS["source_calls"])
-        if holds(line, sinks) and (direct or mentions(line, tainted)) and _unchecked(line, code, tainted, sinks, clean):
-            yield Flow(line_no, line, "a request parameter" if annotated else "the request")
-        _retaint(line, code, tainted, clean)
+        if (
+            holds(line, sinks)
+            and (direct or mentions(line, tainted))
+            and _unchecked(line, code, tainted, (sinks, clean), guard)
+        ):
+            flow = Flow(line_no, line, "a request parameter" if annotated else "the request")
+            held = deferred_to(line, code, sinks)
+            if held:
+                pending.append((held, flow))
+            else:
+                found.append(flow)
+        _retaint(line, code, tainted, clean, guard)
+        scope.track(code)
+        effect = analyse(code, line, tainted, scope, Around(_following(method.code[index + 1 :]), frames.in_switch))
+        pending = [(name, flow) for name, flow in pending if name not in effect.held]
+        frames.settle(code, tainted, effect.cleared, effect.delayed, effect.scoped)
+    yield from sorted(found + [flow for _, flow in pending], key=lambda flow: flow.line_no)
+
+
+def _following(codes: Sequence[str]) -> str:
+    """The next two lines of code with anything on them, without their indentation."""
+    return " ".join([code.strip() for code in codes if code.strip()][:2])
 
 
 def flows(text: FileText, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
