@@ -1632,3 +1632,48 @@ suite:
     prompt: "The allowlist is a constant of another class."
     expect: "The commit is refused: its declaration is not in this file, so it cannot be seen to be immutable."
     execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", Config.ALLOWED.get(file)));\n  }\n}\n"}, expect: block}
+  - id: tc-158
+    category: adversarial
+    prompt: "The containment check sits inside a lambda that returns, and the normalized path is read after it."
+    expect: "The commit is refused: return leaves only the lambda, so the read is not behind the check."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    paths.forEach(x -> {\n      if (!p.startsWith(\"/srv/files\")) return;\n    });\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-159
+    category: adversarial
+    prompt: "The containment check throws inside a try whose catch swallows the exception, and the path is read after it."
+    expect: "The commit is refused: the exception is swallowed and the read still runs."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    try {\n      if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    } catch (Exception e) {\n    }\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-160
+    category: adversarial
+    prompt: "The containment check is inside an if on a flag, and the path is read after the if."
+    expect: "The commit is refused: with the flag off the check never runs."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (strict) {\n      if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    }\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-161
+    category: adversarial
+    prompt: "The containment check is the else-if of a chain, and the path is read after the chain."
+    expect: "The commit is refused: an earlier branch can be taken without running the check."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (trusted) {\n      audit();\n    } else if (!p.startsWith(\"/srv/files\")) {\n      throw new IllegalArgumentException();\n    }\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-162
+    category: adversarial
+    prompt: "The containment check does continue inside a loop, and the path is read after the loop."
+    expect: "The commit is refused: continue skips only the rest of the iteration, and the read after the loop is not behind the check."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    for (String q : names) {\n      if (!p.startsWith(\"/srv/files\")) continue;\n    }\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-163
+    category: adversarial
+    prompt: "The containment check does break inside a switch case, and the path is read after the switch."
+    expect: "The commit is refused: break leaves the switch and the read follows it unchecked."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    switch (mode) {\n      case 1:\n        if (!p.startsWith(\"/srv/files\")) break;\n    }\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-164
+    category: adversarial
+    prompt: "The exit of the failing containment check is itself the read of the path."
+    expect: "The commit is refused: the path is read exactly when it is outside the base."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\")) {\n      return Files.readAllBytes(p);\n    } else {\n      return null;\n    }\n  }\n}\n"}, expect: block}
+  - id: tc-165
+    category: negative_trigger
+    prompt: "The containment check does continue inside a loop, and the path is read later in the same loop body."
+    expect: "The commit passes: the read is in the same loop body, after a check that skips the iteration when the path is outside the base."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    for (String q : names) {\n      if (!p.startsWith(\"/srv/files\")) continue;\n      Files.readAllBytes(p);\n    }\n    return null;\n  }\n}\n"}, expect: allow}
+  - id: tc-166
+    category: negative_trigger
+    prompt: "The containment check throws, at the top level of the method, and the normalized path is read after it."
+    expect: "The commit passes: the check runs on every path to the read."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}

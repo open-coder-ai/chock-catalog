@@ -72,6 +72,33 @@ REFUSED_CONTAINMENT = [
     "File c = new File(base, f).getCanonicalFile();\n    if (!c.startsWith(base)) return null;\n    return Files.readAllBytes(c.toPath());",
     # a variable derived from a canonical file is not tracked
     "File c = new File(base, f).getCanonicalFile();\n    Path p = c.toPath();\n    if (!p.startsWith(base)) return null;\n    return Files.readAllBytes(p);",
+    # an exit that is not on every path to the sink
+    _guarded("list.forEach(x -> { if (!p.startsWith(base)) return; });"),
+    _guarded("list.forEach(x -> {\n      if (!p.startsWith(base)) return;\n    });"),
+    _guarded("try { if (!p.startsWith(base)) throw new IllegalStateException(); } catch (Exception e) { }"),
+    _guarded(
+        "try {\n      if (!p.startsWith(base)) throw new IllegalStateException();\n    } catch (Exception e) {\n    }"
+    ),
+    _guarded("if (flag) { if (!p.startsWith(base)) throw new IllegalStateException(); }"),
+    _guarded("if (flag) {\n      if (!p.startsWith(base)) throw new IllegalStateException();\n    }"),
+    _guarded(
+        "if (a) {\n      x();\n    } else if (!p.startsWith(base)) {\n      throw new IllegalStateException();\n    }"
+    ),
+    _guarded("if (a) { x(); } else if (!p.startsWith(base)) throw new IllegalStateException();"),
+    _guarded("for (String q : xs) {\n      if (!p.startsWith(base)) continue;\n    }"),
+    _guarded("for (String q : xs) { if (!p.startsWith(base)) continue; }"),
+    _guarded("while (more()) {\n      if (!p.startsWith(base)) break;\n    }"),
+    _guarded("switch (k) {\n      case 1:\n        if (!p.startsWith(base)) break;\n    }"),
+    _guarded(
+        "switch (k) {\n      case 1:\n        if (!p.startsWith(base)) break;\n      default:\n        read(p);\n    }"
+    ),
+    _guarded("switch (k) { case 1: if (!p.startsWith(base)) break; }"),
+    _guarded("new Runnable() {\n      public void run() {\n        if (!p.startsWith(base)) return;\n      }\n    };"),
+    _guarded("if (flag) {\n      Preconditions.checkArgument(p.startsWith(base));\n    }"),
+    # the exit is the read
+    "Path p = Paths.get(base, f).normalize();\n    if (!p.startsWith(base)) {\n      return Files.readAllBytes(p);\n    } else {\n      return null;\n    }",
+    "Path p = Paths.get(base, f).normalize();\n    if (!p.startsWith(base)) return Files.readAllBytes(p);\n    return null;",
+    "Path p = Paths.get(base, f).normalize();\n    if (!p.startsWith(base))\n      return Files.readAllBytes(p);\n    return null;",
     # a ternary whose branches the line does not hold
     P + "return Files.readAllBytes(p.startsWith(base) ?\n      p : null);",
     # the check ends where its block does
@@ -86,6 +113,18 @@ def test_a_normalized_path_that_is_not_held_to_its_base_is_refused(body: str) ->
 
 
 ALLOWED_CONTAINMENT = [
+    # an exit on every path to the sink: in the same block, or the same loop body
+    P
+    + "for (String q : xs) {\n      if (!p.startsWith(base)) continue;\n      Files.readAllBytes(p);\n    }\n    return null;",
+    P
+    + "for (String q : xs) {\n      if (!p.startsWith(base)) break;\n      Files.readAllBytes(p);\n    }\n    return null;",
+    P
+    + "if (flag) {\n      if (!p.startsWith(base)) throw new IllegalStateException();\n      return Files.readAllBytes(p);\n    }\n    return null;",
+    P
+    + "try {\n      if (!p.startsWith(base)) throw new IllegalStateException();\n      return Files.readAllBytes(p);\n    } catch (Exception e) {\n      return null;\n    }",
+    P
+    + "list.forEach(x -> {\n      if (!p.startsWith(base)) return;\n      Files.readAllBytes(p);\n    });\n    return null;",
+    P + 'if (!p.startsWith(base)) throw new IllegalStateException("outside " + p);' + READ,
     _guarded("if (!p.startsWith(base)) throw new IllegalStateException();"),
     _guarded('if (!p.startsWith("/srv/files")) throw new IllegalStateException();'),
     _guarded("if (!p.startsWith(base)) return null;"),
@@ -96,7 +135,6 @@ ALLOWED_CONTAINMENT = [
     _guarded("if (!p.startsWith(base))\n    {\n      throw new IllegalStateException();\n    }"),
     _guarded("if (!(p.startsWith(base))) throw new IllegalStateException();"),
     _guarded("if (p == null)\n      return null;\n    if (!p.startsWith(base)) continue;"),
-    _guarded("while (more()) {\n      if (!p.startsWith(base)) break;\n    }"),
     "Path p = Paths.get(base, f).normalize(); if (!p.startsWith(base)) return null; return Files.readAllBytes(p);",
     P + "if (p.startsWith(base)) {\n      return Files.readAllBytes(p);\n    }\n    return null;",
     P + "if (p.startsWith(base)) return Files.readAllBytes(p);\n    return null;",

@@ -32,7 +32,7 @@ _NORMALIZED = re.compile(
 )
 _CALL = re.compile(r"\.\s*(startsWith|contains|containsKey|get)\s*\(")
 _INLINE = re.compile(r"(?:Map|Set|List)\s*\.\s*(?:of|ofEntries|copyOf)\s*\(.*\)")
-_IDENTIFIER = re.compile(r"[\w$]+")
+_SWITCH = re.compile(r"(?<![\w$])switch\s*\([^;{}]*\)\s*$")
 _IF = re.compile(r"(?<![\w$])if\s*\(")
 _EXIT = re.compile(r"(?:throw|return|continue|break)\b")
 _ALWAYS_ON = re.compile(
@@ -100,13 +100,73 @@ class Atom:
 @dataclass(frozen=True)
 class Effect:
     """What a line's checks cover: spans of this line, the variables a check decides something for
-    (a normalized path built before it is no longer refused for it), names cleared from here to the
-    method's end, and names cleared only until the block this line opens is closed."""
+    (a normalized path built before it is no longer refused for it), names cleared from this line
+    on, names cleared once the exiting body of the check has ended, and names cleared only until the
+    block this line opens is closed. A clear ends with the block it sits in."""
 
     spans: tuple[tuple[int, int], ...] = ()
     held: frozenset[str] = frozenset()
     cleared: frozenset[str] = frozenset()
+    delayed: frozenset[str] = frozenset()
     scoped: frozenset[str] = frozenset()
+
+
+@dataclass(eq=False)
+class Frame:
+    """An open block, and what to carry again when it closes."""
+
+    switch: bool
+    restore: set[str] = field(default_factory=set)
+
+
+@dataclass
+class _Delay:
+    names: set[str]
+    base: int
+    host: Frame | None
+
+
+class Frames:
+    """The blocks a method's lines have opened and not yet closed, and the clears that end with them."""
+
+    def __init__(self) -> None:
+        self.stack: list[Frame] = []
+        self._segment = ""
+        self._delays: list[_Delay] = []
+
+    @property
+    def in_switch(self) -> bool:
+        return any(frame.switch for frame in self.stack)
+
+    def _feed(self, code: str) -> list[Frame]:
+        closed: list[Frame] = []
+        for char in code:
+            if char == "{":
+                self.stack.append(Frame(_SWITCH.search(self._segment) is not None))
+            elif char == "}" and self.stack:
+                closed.append(self.stack.pop())
+            self._segment = "" if char in "{};}" else self._segment + char
+        return closed
+
+    def _clear(self, names: set[str] | frozenset[str], host: Frame | None, tainted: set[str]) -> None:
+        if host in self.stack:
+            host.restore |= names & tainted
+        tainted -= names
+
+    def settle(self, code: str, effect: Effect, tainted: set[str]) -> None:
+        """Take one line of code and what its checks decided: a name cleared stays cleared to the end
+        of the block the check sits in, and a block's clears are undone when it closes."""
+        host, base = (self.stack[-1] if self.stack else None), len(self.stack)
+        for frame in self._feed(code):
+            tainted |= frame.restore
+        for delay in [d for d in self._delays if len(self.stack) <= d.base]:
+            self._delays.remove(delay)
+            self._clear(delay.names, delay.host, tainted)
+        self._clear(effect.cleared, host, tainted)
+        if effect.delayed:
+            self._delays.append(_Delay(set(effect.delayed), base, host))
+        if effect.scoped and len(self.stack) > base:
+            self._clear(effect.scoped, self.stack[-1], tainted)
 
 
 def _constant(receiver: str, tainted: set[str], scope: Scope) -> bool:
@@ -193,15 +253,41 @@ def _exits(rest: str, following: str) -> bool:
 
 @dataclass(frozen=True)
 class Cover:
-    """Code a check decides, and whether the variable stays cleared after it (`after`) or only while
-    the block it opens runs (`block`)."""
+    """Code a check decides, and whether the variable stays cleared after it (`after`, from the end of
+    the body if that runs on past this line: `delayed`) or only while the block it opens runs (`block`)."""
 
     span: tuple[int, int]
     after: bool = False
     block: bool = False
+    delayed: bool = False
 
 
-def _if_covers(code: str, atom: Atom, following: str) -> Iterator[Cover]:
+def _enclosing_end(code: str, start: int) -> int:
+    """Where the block that holds `start` closes on this line, or the line's end."""
+    depth = 0
+    for index in range(start, len(code)):
+        depth += (code[index] == "{") - (code[index] == "}")
+        if depth < 0:
+            return index
+    return len(code)
+
+
+def _opens_before(code: str, index: int) -> bool:
+    """Whether a block opened earlier on this line is still open at `index`."""
+    return code.count("{", 0, index) > code.count("}", 0, index)
+
+
+def _exit_cover(code: str, body: int, rest: str, start: int) -> Cover:
+    """The code after an exiting body, which is covered only once the body has run its course. A
+    guard inside a block that opened on this line covers what is left of that block and no more."""
+    finished = _block_end(code, body) is not None if rest[:1] == "{" else statement_end(code, body) < len(code)
+    end = _body_end(code, body)
+    span = (end, _enclosing_end(code, end)) if finished else (len(code), len(code))
+    nested = _opens_before(code, start)
+    return Cover(span, after=not nested, delayed=not finished and not nested)
+
+
+def _if_covers(code: str, atom: Atom, following: str, *, inside_switch: bool) -> Iterator[Cover]:
     for match in _IF.finditer(code):
         opening = match.end() - 1
         close = closing(code, opening)
@@ -211,9 +297,11 @@ def _if_covers(code: str, atom: Atom, following: str) -> Iterator[Cover]:
             continue
         rest = code[close + 1 :].strip()
         body = len(code) - len(code[close + 1 :].lstrip())
-        if atom.negated and _exits(rest, following):
-            yield Cover((_body_end(code, body), len(code)), after=True)
-        elif not atom.negated and rest:
+        if atom.negated:
+            # Only a guard every path runs counts: not one in an `else if`, nor inside a switch.
+            if _exits(rest, following) and not inside_switch and not code[: match.start()].rstrip().endswith("else"):
+                yield _exit_cover(code, body, rest, match.start())
+        elif rest:
             yield Cover((body, _body_end(code, body)), block=rest[0] == "{" and _block_end(code, body) is None)
 
 
@@ -229,7 +317,7 @@ def _ternary_covers(code: str, atom: Atom) -> Iterator[Cover]:
             yield Cover((colon + 1, end) if atom.negated else (question + 1, colon))
 
 
-def _always_on_covers(code: str, atom: Atom) -> Iterator[Cover]:
+def _always_on_covers(code: str, atom: Atom, *, inside_switch: bool) -> Iterator[Cover]:
     """`Preconditions.checkArgument(p.startsWith(base), "message")`: the check is the first argument."""
     for match in _ALWAYS_ON.finditer(code):
         opening = match.end() - 1
@@ -238,25 +326,40 @@ def _always_on_covers(code: str, atom: Atom) -> Iterator[Cover]:
             "",
             ",",
         )
-        if first and not atom.negated and opening < atom.start:
-            yield Cover((close + 1, len(code)), after=True)
+        if first and not atom.negated and opening < atom.start and not inside_switch:
+            yield Cover((close + 1, _enclosing_end(code, close + 1)), after=not _opens_before(code, match.start()))
 
 
-def analyse(code: str, raw: str, tainted: set[str], scope: Scope, following: str = "") -> Effect:
+@dataclass(frozen=True)
+class Around:
+    """What surrounds a line: the code after it, and whether a switch is open."""
+
+    following: str = ""
+    inside_switch: bool = False
+
+
+def analyse(code: str, raw: str, tainted: set[str], scope: Scope, around: Around | None = None) -> Effect:
     """The checks on this line that decide something: where, and for which variables."""
+    around = around or Around()
     atoms = _atoms(code, raw, tainted, scope)
     spans: list[tuple[int, int]] = [(a.start, a.end) for a in atoms if a.lookup]
     cleared: set[str] = set()
+    delayed: set[str] = set()
     scoped: set[str] = set()
     held: set[str] = set()
     for atom in (a for a in atoms if not a.lookup):
         names = {atom.name} if atom.name else set()
-        covers = [*_if_covers(code, atom, following), *_ternary_covers(code, atom), *_always_on_covers(code, atom)]
+        covers = [
+            *_if_covers(code, atom, around.following, inside_switch=around.inside_switch),
+            *_ternary_covers(code, atom),
+            *_always_on_covers(code, atom, inside_switch=around.inside_switch),
+        ]
         spans += [cover.span for cover in covers] + [(atom.start, atom.end)] * bool(covers)
         held |= names if covers else set()
-        cleared |= names if any(cover.after for cover in covers) else set()
+        cleared |= names if any(cover.after and not cover.delayed for cover in covers) else set()
+        delayed |= names if any(cover.delayed for cover in covers) else set()
         scoped |= names if any(cover.block for cover in covers) else set()
-    return Effect(tuple(spans), frozenset(held), frozenset(cleared), frozenset(scoped))
+    return Effect(tuple(spans), frozenset(held), frozenset(cleared), frozenset(delayed), frozenset(scoped))
 
 
 def deferred_to(line: str, code: str, sinks: list[str]) -> str | None:

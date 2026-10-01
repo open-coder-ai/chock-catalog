@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from chock_security.decision import FileText
-from chock_security.guards import ASSIGNMENT, Scope, analyse, deferred_to, immutable_constants
+from chock_security.guards import ASSIGNMENT, Around, Frames, Scope, analyse, deferred_to, immutable_constants
 from chock_security.pack import facts
 from chock_security.sanitizer import holds, mentions, receiver_start, sanitized, sink_regions, statement_end
 from chock_security.source import blank
@@ -244,12 +244,11 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     scope = Scope(method.constants)
     found: list[Flow] = []
     pending: list[tuple[str, Flow]] = []
-    restores: list[tuple[int, set[str]]] = []
-    depth = 0
+    frames = Frames()
     for index, ((line_no, line), code) in enumerate(zip(method.body, method.code, strict=True)):
 
         def guard(names: set[str], line: str = line, code: str = code) -> list[tuple[int, int]]:
-            return list(analyse(code, line, names, scope).spans)
+            return list(analyse(code, line, names, scope, Around(inside_switch=frames.in_switch)).spans)
 
         direct = holds(line, _FACTS["source_calls"])
         if (
@@ -265,15 +264,9 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
                 found.append(flow)
         _retaint(line, code, tainted, clean, guard)
         scope.track(code)
-        effect = analyse(code, line, tainted, scope, _following(method.code[index + 1 :]))
-        restore = tainted & effect.scoped
-        tainted -= effect.cleared | effect.scoped
+        effect = analyse(code, line, tainted, scope, Around(_following(method.code[index + 1 :]), frames.in_switch))
         pending = [(name, flow) for name, flow in pending if name not in effect.held]
-        depth += code.count("{") - code.count("}")
-        while restores and depth < restores[-1][0]:
-            tainted |= restores.pop()[1]
-        if restore:
-            restores.append((depth, restore))
+        frames.settle(code, effect, tainted)
     yield from sorted(found + [flow for _, flow in pending], key=lambda flow: flow.line_no)
 
 
