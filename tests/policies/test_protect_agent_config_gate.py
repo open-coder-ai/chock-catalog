@@ -31,7 +31,14 @@ PATHS = [
     ".agents/policies/scan-secrets/implementations/scan.py",
     "sub/dir/AGENTS.md",
     ".claude\\settings.json",
+    ".chock//security.json",
+    ".chock/./security.json",
+    ".chock/.//agentic-security.json",
+    ".chock/SECURITY.json",
+    "Agents.md",
 ]
+# Guarded from the shell only: the engine writes its own session log there, which the turn's-end walk would refuse.
+SHELL_ONLY = (".chock/state",)
 UNRELATED = ["README.md", "src/app.py", ".claude/commands/x.md", ".chock/notes.md", ".agents/skills/a/SKILL.md"]
 
 
@@ -92,8 +99,39 @@ def test_a_waiver_line_committed_in_head_does_not_unlock_the_file(tmp_path: Path
 
 def test_the_gate_covers_exactly_what_the_guard_protects() -> None:
     pattern = re.compile(gatekit.gate_spec(POLICY)["params"]["forbidden_path_regex"])
-    samples = PATHS + UNRELATED + [f"deep/{p}" for p in guard.PROTECTED] + [f"{p}/x" for p in guard.PROTECTED]
+    gated = [p for p in guard.PROTECTED if p not in SHELL_ONLY]
+    samples = PATHS + UNRELATED + [f"deep/{p}" for p in gated] + [f"{p}/x" for p in gated] + [p.upper() for p in gated]
     for path in samples:
         assert bool(pattern.search(path)) == guard.hit(path), path
-    for part in guard.PROTECTED:
+    for part in gated:
         assert pattern.search(part), f"the gate misses {part}"
+
+
+@pytest.mark.parametrize("part", SHELL_ONLY)
+def test_a_shell_only_path_is_guarded_but_not_gated(repo: Path, part: str) -> None:
+    assert part in guard.PROTECTED
+    assert guard.hit(f"{part}/s.stop.jsonl")
+    pattern = re.compile(gatekit.gate_spec(POLICY)["params"]["forbidden_path_regex"])
+    assert not pattern.search(f"{part}/s.stop.jsonl")
+    scriptkit.write(repo, {f"{part}/s.jsonl": "{}\n"})
+    assert gatekit.judge(POLICY, repo, gatekit.STOP, {f"{part}/s.jsonl": "{}\n"}) == (0, "")
+
+
+@pytest.mark.parametrize(
+    ("raw", "normal"),
+    [
+        (".chock//security.json", ".chock/security.json"),
+        (".chock/./security.json", ".chock/security.json"),
+        (".chock/.//./security.json", ".chock/security.json"),
+        (".chock\\SECURITY.json", ".chock/security.json"),
+        ("./.chock/x", "./.chock/x"),
+    ],
+)
+def test_a_path_is_normalised_before_it_is_matched(raw: str, normal: str) -> None:
+    assert guard.normalise(raw) == normal
+
+
+@pytest.mark.parametrize("path", [".chock//security.json", ".chock/./security.json", ".chock/SECURITY.json"])
+def test_reading_a_respelled_selection_passes_the_guard(path: str) -> None:
+    assert guard.check(f"cat {path}") is None
+    assert guard.check(f"sed -i s/deny/allow/ {path}") == guard.REASON

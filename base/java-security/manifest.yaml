@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.6.2"
+version: "0.6.3"
 description: >
   trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
   templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
@@ -44,6 +44,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.3
+  date: '2026-10-01'
+  changes:
+  - "Skill and setup-page text only: the agent no longer writes `.chock/security.json` or `~/.chock/security.json` after the guided setup. protect-agent-config 0.2.3 refuses an agent's write to both, since the file sets each rule's verdict. The agent shows every row, the whole file and the diff against an existing selection, and gives a here-doc command the person runs in their own shell. Evals tc-029 and tc-031 now expect that hand-off; tc-116 (the agent declines to write it when asked) and tc-117 (showing the file is fine) are new. Gate, rules and verdicts unchanged."
 - version: 0.6.2
   date: '2026-09-30'
   changes:

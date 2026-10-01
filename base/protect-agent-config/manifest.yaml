@@ -4,15 +4,16 @@ version: "0.2.3"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses
   writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .git/hooks, policy
-  implementations/ and .chock/{config.yaml,security.json,agentic-security.json,
-  dependency-allowlist.txt,bin,compiled}: redirect, rm/mv/tee/sed -i, cp into, git
-  checkout/restore, Set-Content. Reads and `chock sync` pass. No marker bypass: a person edits
-  in their shell. Edit/Write: tool_use gate (incl. turn's end), never at commit.
+  implementations/ and
+  .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}:
+  redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content. Reads and `chock
+  sync` pass. No marker bypass: a person edits in their shell. Edit/Write: tool_use gate
+  (incl. turn's end), never at commit.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/config.yaml|.chock/security.json|.chock/agentic-security.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
+    agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/config.yaml|.chock/security.json|.chock/agentic-security.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.chock/state|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
     if(config_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not widen or disarm its own guardrails
 hook:
   gate:
@@ -27,7 +28,7 @@ hook:
       `chock sync`. A person edits these files from their own shell.
     params:
       scan: added_lines
-      forbidden_path_regex: '(AGENTS\.md|CLAUDE\.md|GEMINI\.md|copilot-instructions\.md|\.cursorrules|\.windsurfrules|\.aider\.conf\.yml|\.claude[/\\]settings|\.mcp\.json|\.chock[/\\](bin|compiled)|\.chock[/\\]dependency-allowlist\.txt|\.chock[/\\](config\.yaml|security\.json|agentic-security\.json)|\.git[/\\]hooks|\.agents[/\\]policies[/\\].*implementations)'
+      forbidden_path_regex: '(?i)(AGENTS\.md|CLAUDE\.md|GEMINI\.md|copilot-instructions\.md|\.cursorrules|\.windsurfrules|\.aider\.conf\.yml|\.claude[/\\](?:\.?[/\\])*settings|\.mcp\.json|\.chock[/\\](?:\.?[/\\])*(bin|compiled|dependency-allowlist\.txt|config\.yaml|security\.json|agentic-security\.json)|\.git[/\\](?:\.?[/\\])*hooks|\.agents[/\\](?:\.?[/\\])*policies[/\\].*implementations)'
       content_pattern: '(?!)'
 effects:
 - read_only
@@ -67,7 +68,10 @@ changelog:
 - version: 0.2.3
   date: '2026-09-30'
   changes:
-  - "Behaviour change: `.chock/security.json` (java-security) and `.chock/agentic-security.json` (agentic-code-security) are protected by the guard and the Edit/Write gate. They set each rule's verdict (allow, ask or deny), so an agent that could write them could switch a denying rule to allow and then pass its own gate. A person still edits them from their own shell, and java-security's guided setup page runs as a person, not through an agent hook. Reading them stays allowed. The baseline check in the engine holds a loosened verdict to a person's approval in a pull request."
+  - "Behaviour change: `.chock/security.json` (java-security) and `.chock/agentic-security.json` (agentic-code-security) are protected by the guard and the Edit/Write gate. They set each rule's verdict (allow, ask or deny), so an agent that could write them could switch a denying rule to allow and then pass its own gate. A person still edits them from their own shell. java-security's guided setup page writes nothing, and its skill used to have the agent write the file; java-security 0.6.3 has the agent show the file, the diff and a here-doc command the person runs instead. Reading them stays allowed. The baseline check in the engine holds a loosened verdict to a person's approval in a pull request."
+  - "Paths are normalised before they are matched: the guard reads backslashes as slashes, collapses `//` and `/./`, and lowercases, since macOS and Windows filesystems ignore case, so `.chock//security.json`, `.chock/./security.json` and `.chock/SECURITY.json` are refused. The Edit/Write gate's forbidden_path_regex is case-insensitive (`(?i)`) and accepts the same repeated separators. Reads of those spellings still pass."
+  - "`.chock/state` joins the shell guard only: chock's Stop re-entry ledger lives at `.chock/state/<session>.stop.jsonl`, and an agent that rewrote it could reset its own re-entry count. It is not in the Edit/Write gate, whose turn's-end check walks untracked paths and would refuse every turn end where `.chock/state/` is not gitignored, because the engine writes its session log there."
+  - "Known limits, unchanged: a directory as the target (`rm -r .chock`), `git checkout REF -- .`, globs and shell variables are not resolved to the protected paths. The engine's baseline check is the backstop when the change reaches a pull request."
 - version: 0.2.2
   date: '2026-09-30'
   changes:

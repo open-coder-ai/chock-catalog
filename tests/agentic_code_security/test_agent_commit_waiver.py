@@ -52,7 +52,9 @@ def test_an_agent_commit_refuses_a_waiver_it_adds(tmp_path: Path) -> None:
 @pytest.mark.usefixtures("as_agent")
 def test_an_agent_commit_refuses_a_waiver_added_to_an_old_finding(tmp_path: Path) -> None:
     commit(tmp_path, {PATH: f"{PLAIN}{BAD}\n"})
-    assert staged_commit(tmp_path, {PATH: waived()})[0] == REFUSE
+    code, err = staged_commit(tmp_path, {PATH: waived()})
+    assert code == REFUSE
+    assert TLS in err
 
 
 @pytest.mark.usefixtures("as_agent")
@@ -65,7 +67,9 @@ def test_an_agent_commit_honours_a_waiver_a_person_committed(tmp_path: Path) -> 
 def test_an_agent_commit_refuses_a_committed_waiver_pasted_onto_a_new_line(tmp_path: Path) -> None:
     commit(tmp_path, {PATH: waived()})
     twice = waived() + f"requests.post(u, verify=False)  # chock: allow {TLS}\n"
-    assert staged_commit(tmp_path, {PATH: twice})[0] == REFUSE
+    code, err = staged_commit(tmp_path, {PATH: twice})
+    assert code == REFUSE
+    assert TLS in err
 
 
 @pytest.mark.usefixtures("as_person")
