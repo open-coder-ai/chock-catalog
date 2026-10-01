@@ -270,8 +270,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 146
-  eval_executed: 136
+  eval_cases: 157
+  eval_executed: 147
   description: 'trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
     templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
     opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak
