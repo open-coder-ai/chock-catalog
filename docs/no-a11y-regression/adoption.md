@@ -56,9 +56,9 @@ Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~354 tokens (chars/4, max 2000)
 Recompiled 1 policies
 no-a11y-regression:
-  claude: best-effort (live-run)
-  copilot: best-effort (live-run-partial)
-  gemini: best-effort (vendor-source)
+  claude: enforced-at-commit + best-effort at tool use (live-run)
+  copilot: enforced-at-commit + best-effort at tool use (live-run-partial)
+  gemini: enforced-at-commit + best-effort at tool use (vendor-source)
 ```
 
 ## `$ chock install-hooks .`
