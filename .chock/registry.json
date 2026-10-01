@@ -73,7 +73,7 @@
       {
         "id": "block-no-verify",
         "artifact": "rule",
-        "version": "0.3.1",
+        "version": "0.3.2",
         "name": "Block No-Verify",
         "description": "Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c, --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says ask the person. Bypasses: aliases, scripts.",
         "path": ".agents/policies/block-no-verify",
@@ -270,9 +270,9 @@
       {
         "id": "protect-agent-config",
         "artifact": "rule",
-        "version": "0.2.1",
+        "version": "0.2.4",
         "name": "Protect Agent Config",
-        "description": "Stops an agent hand-editing its own guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .chock/dependency-allowlist.txt, .chock/bin, .chock/compiled, .git/hooks and policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content/Out-File. Reads, cp out, `chock sync` pass. Coarse. No marker bypass: a person edits from their own shell. Edit/Write: tool_use gate (incl. turn's end), never at commit.",
+        "description": "Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md and wrappers, .claude/settings, MCP and hook client configs (.mcp.json, .cursor/mcp.json, .gemini/settings.json, .codex/hooks.json, more), .git/hooks, policy implementations/ and .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Reads and `chock sync` pass. Edit/Write: tool_use gate.",
         "path": ".agents/policies/protect-agent-config",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -284,7 +284,7 @@
           "chock_shellparse/parse.py": "2853d67d9843bfd163543280d3868e9efc5f6013ed467164fe598c4738403cc2",
           "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
           "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
-          "protect-agent-config.py": "4de54e967b5ad0c5736773820a50a93f45bbc32f50041cbd77e0d6e86a453f8b"
+          "protect-agent-config.py": "2ff2d096e227de78ae02404f48626e19a4ee22eb636e2f4a94f1b0a8e065ac13"
         }
       }
     ],

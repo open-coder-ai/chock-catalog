@@ -22,9 +22,34 @@ PROTECTED = (
     ".aider.conf.yml",
     ".claude/settings",
     ".mcp.json",
+    # Project-level MCP (and hook) config a supported client reads: a server an agent registers there runs with its authority.
+    ".cursor/mcp.json",  # Cursor, and Grok
+    ".vscode/mcp.json",  # VS Code Copilot
+    ".gemini/settings.json",  # Gemini CLI
+    ".codex/config.toml",  # Codex CLI
+    ".junie/mcp/mcp.json",  # Junie
+    ".devin/mcp_config.json",  # Devin
+    ".devin/mcp_config.local.json",
+    ".devin/config.json",  # Devin before v3000.3 keeps mcpServers here; it also holds permissions and hooks
+    ".devin/config.local.json",
+    ".grok/config.toml",  # Grok
+    ".agents/mcp_config.json",  # Antigravity
+    ".tabnine/agent/settings.json",  # Tabnine
+    # The hook files `chock sync` writes for each client: an agent that deleted its entries would disarm the gates.
+    ".cursor/hooks.json",
+    ".codex/hooks.json",
+    ".windsurf/hooks.json",
+    ".github/hooks/",  # VS Code Copilot: chock.json, agentseam.json
+    ".grok/hooks/",
+    ".devin/hooks.v1.json",
+    ".agents/hooks.json",  # Antigravity
     ".chock/bin",
     ".chock/compiled",
     ".chock/dependency-allowlist.txt",
+    ".chock/config.yaml",
+    ".chock/security.json",
+    ".chock/agentic-security.json",
+    ".chock/state",  # shell only: the engine's own session log there would fail the Edit/Write gate's turn's-end walk
     ".git/hooks",
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
@@ -32,10 +57,20 @@ GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
 
-def hit(path: str) -> bool:
-    """Whether a path names something this guard protects (backslashes read as slashes)."""
+def normalise(path: str) -> str:
+    """The path as matched: backslashes as slashes, `//` and `/./` collapsed, lowercase (macOS and Windows ignore case)."""
     normal = path.replace("\\", "/")
-    return any(part in normal for part in PROTECTED) or GUARD_SOURCES.search(normal) is not None
+    previous = None
+    while previous != normal:
+        previous = normal
+        normal = normal.replace("//", "/").replace("/./", "/")
+    return normal.lower()
+
+
+def hit(path: str) -> bool:
+    """Whether a path names something this guard protects."""
+    normal = normalise(path)
+    return any(part.lower() in normal for part in PROTECTED) or GUARD_SOURCES.search(normal) is not None
 
 
 def check(raw: str) -> str | None:
