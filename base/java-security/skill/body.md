@@ -29,6 +29,13 @@ carries verdicts only, and the gate refuses anything else at the next write. Rea
 text walk -- `references/setup-contract.json`, one rule at a time, deny unless told
 otherwise -- only where the page cannot be shown at all.
 
+## Plan-time guidance
+
+Before writing Java, call `chock_guidance` with your plan and the repo-relative paths you will
+touch, where this client has that tool (`chock mcp`, served by chock, read-only, local). It
+names the rules this repo's selection sets to deny or ask that the plan touches, each with its
+constraint text. An empty answer is not a clearance: the gate still judges the code.
+
 Wiring is not this skill's. Installed as a plugin, the hooks beside this file judge each
 write and the turn's end; in a repository, `chock sync` adds the commit hook. Both read the
 same selection file.

@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.6.1"
+version: "0.6.2"
 description: >
   trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
   templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
@@ -44,6 +44,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.2
+  date: '2026-09-30'
+  changes:
+  - "Skill text only: a Plan-time guidance section tells the agent to call chock's read-only `chock_guidance` tool (chock mcp) with its plan and the paths it will touch, where the client has it, and says an empty answer is not a clearance. Gate, rules, verdicts and selection unchanged."
 - version: 0.6.1
   date: '2026-09-30'
   changes:
