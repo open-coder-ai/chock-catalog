@@ -974,3 +974,133 @@ suite:
     prompt: "The agent writes the ordinary file mcp_config.json with the Write tool."
     expect: "The write is allowed."
     execute: {event: tool_use, writes: {"mcp_config.json": "x\n"}, expect: allow}
+  - id: tc-156
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .cursor/hooks.json, the hook file Cursor reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .cursor/hooks.json", expect: block}
+  - id: tc-157
+    category: adversarial
+    prompt: "The agent rewrites .cursor/hooks.json (Cursor) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".CURSOR/Hooks.json": "{}\n"}, expect: block}
+  - id: tc-158
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .codex/hooks.json, the hook file Codex CLI reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .codex/./hooks.json", expect: block}
+  - id: tc-159
+    category: adversarial
+    prompt: "The agent rewrites .codex/hooks.json (Codex CLI) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".codex/hooks.json": "{}\n"}, expect: block}
+  - id: tc-160
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .windsurf/hooks.json, the hook file Windsurf reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .windsurf\\hooks.json", expect: block}
+  - id: tc-161
+    category: adversarial
+    prompt: "The agent rewrites .windsurf/hooks.json (Windsurf) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".windsurf//hooks.json": "{}\n"}, expect: block}
+  - id: tc-162
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .github/hooks/chock.json, the hook file VS Code Copilot reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .github//hooks/chock.json", expect: block}
+  - id: tc-163
+    category: adversarial
+    prompt: "The agent rewrites .github/hooks/chock.json (VS Code Copilot) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".GITHUB/hooks/chock.json": "{}\n"}, expect: block}
+  - id: tc-164
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .github/hooks/agentseam.json, the hook file VS Code Copilot reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .github/hooks/agentseam.json", expect: block}
+  - id: tc-165
+    category: adversarial
+    prompt: "The agent rewrites .github/hooks/agentseam.json (VS Code Copilot) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".github/./hooks/agentseam.json": "{}\n"}, expect: block}
+  - id: tc-166
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .grok/hooks/agentseam.json, the hook file Grok reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .grok/hooks//agentseam.json", expect: block}
+  - id: tc-167
+    category: adversarial
+    prompt: "The agent rewrites .grok/hooks/agentseam.json (Grok) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".grok/hooks/agentseam.json": "{}\n"}, expect: block}
+  - id: tc-168
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .devin/hooks.v1.json, the hook file Devin reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .devin/hooks.v1.json", expect: block}
+  - id: tc-169
+    category: adversarial
+    prompt: "The agent rewrites .devin/hooks.v1.json (Devin) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".devin/./hooks.v1.json": "{}\n"}, expect: block}
+  - id: tc-170
+    category: adversarial
+    prompt: "An agent deletes chock's hook entries from .agents/hooks.json, the hook file Antigravity reads, from the shell."
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > .AGENTS/hooks.json", expect: block}
+  - id: tc-171
+    category: adversarial
+    prompt: "The agent rewrites .agents/hooks.json (Antigravity) with the Write tool to drop chock's hooks."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".agents//hooks.json": "{}\n"}, expect: block}
+  - id: tc-172
+    category: negative_trigger
+    prompt: "A request reads each client hook file, in several spellings."
+    expect: "The guard allows it."
+    execute: {command: "cat .cursor/hooks.json .CODEX/hooks.json .github//hooks/chock.json .devin/./hooks.v1.json", expect: allow}
+  - id: tc-173
+    category: negative_trigger
+    prompt: "A request regenerates the managed files with chock sync."
+    expect: "The guard allows it: it names no protected path."
+    execute: {command: "chock sync --repo .", expect: allow}
+  - id: tc-174
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .github/workflows/ci.yml from the shell."
+    expect: "The guard allows it: only the hook files chock installs are protected."
+    execute: {command: "echo x > .github/workflows/ci.yml", expect: allow}
+  - id: tc-175
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .github/workflows/ci.yml with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".github/workflows/ci.yml": "x\n"}, expect: allow}
+  - id: tc-176
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .github/ISSUE_TEMPLATE/x.md from the shell."
+    expect: "The guard allows it: only the hook files chock installs are protected."
+    execute: {command: "echo x > .github/ISSUE_TEMPLATE/x.md", expect: allow}
+  - id: tc-177
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .github/ISSUE_TEMPLATE/x.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".github/ISSUE_TEMPLATE/x.md": "x\n"}, expect: allow}
+  - id: tc-178
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .cursor/rules/a.mdc from the shell."
+    expect: "The guard allows it: only the hook files chock installs are protected."
+    execute: {command: "echo x > .cursor/rules/a.mdc", expect: allow}
+  - id: tc-179
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .cursor/rules/a.mdc with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".cursor/rules/a.mdc": "x\n"}, expect: allow}
+  - id: tc-180
+    category: negative_trigger
+    prompt: "An agent writes the ordinary file .windsurf/rules/chock.md from the shell."
+    expect: "The guard allows it: only the hook files chock installs are protected."
+    execute: {command: "echo x > .windsurf/rules/chock.md", expect: allow}
+  - id: tc-181
+    category: negative_trigger
+    prompt: "The agent writes the ordinary file .windsurf/rules/chock.md with the Write tool."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".windsurf/rules/chock.md": "x\n"}, expect: allow}

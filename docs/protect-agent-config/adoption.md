@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~396 tokens (chars/4, max 2000)
+INDEX.md: ~394 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-agent-config:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~396 tokens (chars/4, max 2000)
+INDEX.md: ~394 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -251,9 +251,35 @@ protect-agent-config  [deterministic]
   PASS  tc-153                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   PASS  tc-154                             authored  guard exit 0
   PASS  tc-155                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-156                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-157                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-158                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-159                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-160                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-161                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-162                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-163                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-164                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-165                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-166                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-167                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-168                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-169                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-170                             authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-171                             authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-172                             authored  guard exit 0
+  PASS  tc-173                             authored  guard exit 0
+  PASS  tc-174                             authored  guard exit 0
+  PASS  tc-175                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-176                             authored  guard exit 0
+  PASS  tc-177                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-178                             authored  guard exit 0
+  PASS  tc-179                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-180                             authored  guard exit 0
+  PASS  tc-181                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   score 1.00
 
-5 policies: 155 pass, 41 skipped
+5 policies: 181 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -295,6 +321,6 @@ protect-agent-config  [deterministic]
 
 ```text
 - **protect-agent-config**:
-  agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|mcp_files(.cursor|.vscode|.gemini|.codex|.junie|.devin|.grok|.agents|.tabnine)|.chock/config.yaml|.chock/security.json|.chock/agentic-security.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.chock/state|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
-  if(config_change_needed): ask_person; person edits from own shell; no marker passes  # an agent must not disarm itself
+  agent_config(AGENTS.md+wrappers|.claude/settings|.mcp.json|.chock/{config.yaml,*security.json,*allowlist.txt,bin,compiled,state}|.git/hooks|.agents/policies/*/implementations|.{cursor,codex,windsurf}/hooks.json|.{cursor,vscode}/mcp.json|.{codex,grok}/config.toml|.gemini/settings.json|.junie/mcp/mcp.json|.devin/{mcp_config,config,hooks.v1}.json|.grok/hooks/|.agents/{mcp_config,hooks}.json|.tabnine/agent/settings.json|.github/hooks/): never(edit|delete)
+  else ask_person; no marker passes
 ```

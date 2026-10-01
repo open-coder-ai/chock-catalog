@@ -35,6 +35,14 @@ PROTECTED = (
     ".grok/config.toml",  # Grok
     ".agents/mcp_config.json",  # Antigravity
     ".tabnine/agent/settings.json",  # Tabnine
+    # The hook files `chock sync` writes for each client: an agent that deleted its entries would disarm the gates.
+    ".cursor/hooks.json",
+    ".codex/hooks.json",
+    ".windsurf/hooks.json",
+    ".github/hooks/",  # VS Code Copilot: chock.json, agentseam.json
+    ".grok/hooks/",
+    ".devin/hooks.v1.json",
+    ".agents/hooks.json",  # Antigravity
     ".chock/bin",
     ".chock/compiled",
     ".chock/dependency-allowlist.txt",
