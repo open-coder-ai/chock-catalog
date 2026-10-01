@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.6.4"
+version: "0.6.5"
 description: >
   trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
   templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
@@ -30,7 +30,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-01T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -44,6 +44,13 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.5
+  date: '2026-10-01'
+  changes:
+  - "`.normalize()` is no longer a path-traversal sanitizer by itself: `base.resolve(name).normalize()` still starts with whatever `name` climbed out to. A path built from request data and normalized (or resolved with `toRealPath(` or `getCanonicalPath()`) is refused where it is built, unless a later line holds that same variable to its base with `startsWith` in an `if`, a loop, an `assert` or a `check*`/`require*`/`verify*` call (`if (!p.startsWith(base)) throw ...`). `startsWith(\"\")`, a different variable, a call whose result is discarded and a reassigned variable do not count. `Files.readAllBytes(Paths.get(base, name).normalize())` was allowed and is now refused; `Path p = ...normalize(); if (!p.startsWith(base)) throw ...; read(p)` still passes, and so does the canonical-path form. A `startsWith` on the normalized value inside one `if` on the sink's own line counted before and still does."
+  - "A lookup keyed by the request value in a constant collection is a check: `.get(` on an UPPER_CASE constant (`ALLOWED.get(name)`, `Config.ALLOWED.get(name)`) or on `Map.of(...)`, `Map.ofEntries(...)`, `Set.of(...)`, `List.of(...)`, and `.contains(` / `.containsKey(` as the condition of an `if` or ternary. `get` counts only where its result, not the key, reaches the sink: `new File(base, ALLOWED.get(name))` passes, `new File(base, ALLOWED.get(name) + name)`, `ALLOWED.get(name); new File(name)`, `getOrDefault(name, name)` and a collection built from the value are refused. A lowercase local such as `allowed.get(name)` is not a constant and is unchanged."
+  - "U+2028, U+2029 and the other separators `str.splitlines` honours (vertical tab, form feed, 0x1c to 0x1e, NEL) in a comment or literal crashed resources-finalize-override, which pairs `FileText.lines` with the blanked lines and failed closed. Blanking now keeps each such separator, so both views split the file alike; a `//` comment still runs past them, as javac's does, and ends at a lone CR as well as LF. Verdicts for files without these characters are unchanged. The flow rules' fail-closed read of lines that cannot be aligned is kept for anything else that misaligns them."
+  - "Evals tc-136 to tc-146 hold each of the three in both directions."
 - version: 0.6.4
   date: '2026-10-01'
   changes:

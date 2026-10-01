@@ -45,6 +45,11 @@ _IF = re.compile(r"(?<![\w$])if\s*\(")
 _ASSIGN = re.compile(r"[^=!<>]=(?!=)")
 
 
+#: A lookup in a constant collection: `ALLOWED.get(name)`, `Config.NAMES.contains(name)`, `Set.of(...)`.
+_LOOKUP = re.compile(r"\.\s*(get|contains|containsKey)\s*\(")
+_CONSTANT = re.compile(r"(?:[\w$]+\s*\.\s*)*[A-Z][A-Z0-9_]*|(?:Map|Set|List)\s*\.\s*(?:of|ofEntries|copyOf)\s*\(.*\)")
+
+
 @dataclass(frozen=True)
 class Check:
     """A check applied to request data: the code it spans, and whether it only answers yes or no."""
@@ -64,7 +69,7 @@ def _opening(code: str, close: int) -> int:
     return 0
 
 
-def _closing(code: str, opening: int) -> int:
+def closing(code: str, opening: int) -> int:
     """Where the parenthesis at `opening` is closed, or the line's end when it is not."""
     depth = 0
     for index in range(opening, len(code)):
@@ -100,8 +105,8 @@ def _carries(expression: str, tainted: set[str]) -> bool:
 
 def _follow_chain(code: str, opening: int) -> int:
     """`ESAPI.encoder().encodeForHTML(v)`: past calls taking nothing, to the one taking the value."""
-    while not code[opening + 1 : _closing(code, opening)].strip():
-        chained = _CHAINED_CALL.match(code, _closing(code, opening) + 1)
+    while not code[opening + 1 : closing(code, opening)].strip():
+        chained = _CHAINED_CALL.match(code, closing(code, opening) + 1)
         if chained is None:
             break
         opening = chained.end() - 1
@@ -144,7 +149,7 @@ def _check(code: str, token: str, match: re.Match[str], tainted: set[str]) -> Ch
         return None
     if not on_value:
         opening = _follow_chain(code, opening)
-    close = _closing(code, opening)
+    close = closing(code, opening)
     end = min(close + 1, len(code))
     predicate = bool(_PREDICATE.fullmatch(_callee(code, opening)))
     receiver = _receiver_start(code, match.start())
@@ -155,6 +160,22 @@ def _check(code: str, token: str, match: re.Match[str], tainted: set[str]) -> Ch
     return None
 
 
+def _lookups(code: str, tainted: set[str]) -> Iterator[Check]:
+    """The request value used as the key into a constant collection. `get` hands the sink the
+    collection's own value, never the key, so it replaces the value; `contains` only answers yes or no.
+    A collection built from the value (`Map.of(name, name)`) is not constant."""
+    for match in _LOOKUP.finditer(code):
+        receiver = _receiver_start(code, match.start())
+        constant = _CONSTANT.fullmatch(code[receiver : match.start()].strip())
+        close = closing(code, match.end() - 1)
+        if (
+            constant
+            and not _carries(code[receiver : match.start()], tainted)
+            and _carries(code[match.end() : close], tainted)
+        ):
+            yield Check(receiver, min(close + 1, len(code)), predicate=match.group(1) != "get")
+
+
 def checks(code: str, sanitizers: list[str], tainted: set[str]) -> list[Check]:
     """Every check in this line's code that is applied to request data it carries."""
     found = [
@@ -163,6 +184,7 @@ def checks(code: str, sanitizers: list[str], tainted: set[str]) -> list[Check]:
         for match in _occurrences(code, token)
         if (check := _check(code, token, match, tainted)) is not None
     ]
+    found.extend(_lookups(code, tainted))
     for match in _VALIDATED.finditer(code):
         receiver = _receiver_start(code, match.start())
         if _carries(code[receiver : match.start()], tainted):
@@ -221,7 +243,7 @@ def _masked(code: str, found: list[Check]) -> str:
 def _under_if(code: str, start: int, found: list[Check]) -> bool:
     """Whether an `if (...)` earlier on this line has a check on the request value as condition."""
     for match in _IF.finditer(code, 0, start):
-        close = _closing(code, match.end() - 1)
+        close = closing(code, match.end() - 1)
         if close < start and _within(found, match.end(), close):
             return True
     return False
@@ -239,9 +261,9 @@ def sink_regions(line: str, code: str, sinks: list[str]) -> list[tuple[int, int]
             if "(" not in sink:
                 regions.append((match.start(), statement_end(code, match.start())))
                 continue
-            end = _closing(code, match.start() + sink.rindex("("))
+            end = closing(code, match.start() + sink.rindex("("))
             while chained := _CHAINED_CALL.match(code, end + 1):
-                end = _closing(code, chained.end() - 1)
+                end = closing(code, chained.end() - 1)
             start = _receiver_start(code, match.start()) if sink.startswith(".") else match.start()
             regions.append((start, end))
     return [r for r in regions if not any(o != r and o[0] <= r[0] and r[1] <= o[1] for o in regions)]

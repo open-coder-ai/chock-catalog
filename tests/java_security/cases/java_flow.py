@@ -154,12 +154,11 @@ _NAMED_NOT_APPLIED = {
 _APPLIED = {
     "the name taken with FilenameUtils": 'return Files.readAllBytes(Paths.get("/srv/", FilenameUtils.getName(file)));',
     "resolved, normalized and checked against the base": "Path p = Paths.get(base, file).normalize();\n    if (!p.startsWith(base)) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);",
-    "normalized inside the call": "return Files.readAllBytes(Paths.get(base, file).normalize());",
     "a validator called on the value": "if (!validator.isValid(file)) throw new IllegalArgumentException();\n    return Files.readAllBytes(Paths.get(base, sanitize(file)));",
     "an allowlist consulted with the value": "return Files.readAllBytes(Paths.get(base, allowlist.get(file)));",
     "a pattern the value must match": 'return Files.readAllBytes(Paths.get(base, file.matches("[a-z]+") ? file : "x"));',
     "a named pattern the value must match": 'return Files.readAllBytes(Paths.get(base, file.matches(SAFE_NAME) ? file : "x"));',
-    "normalized after a space": "return Files.readAllBytes(Paths.get(base, file) .normalize());",
+    "the file name taken after a space": "return Files.readAllBytes(Paths.get(base, file) .getFileName());",
     "a startsWith guard on the value": 'if (file.startsWith("docs/")) return Files.readAllBytes(Paths.get(base, sanitize(file)));',
     "sanitized, then assigned on the same line": "String safe = sanitize(file); return Files.readAllBytes(Paths.get(base, safe));",
 }

@@ -1498,9 +1498,9 @@ suite:
     execute: {event: commit, files: {"C.java": "import javax.servlet.http.*;\npublic class C {\n  public void show(HttpServletRequest request, HttpServletResponse resp) throws Exception {\n    String n = request.getParameter(\"n\");\n    resp.getWriter().println(ESAPI.encoder().encodeForHTML(n));\n  }\n}\n"}, expect: allow}
   - id: tc-131
     category: behavior
-    prompt: "A path built from the request parameter is normalized with a space before the chained call."
-    expect: "The commit passes: whitespace before .normalize() does not hide the path it is called on."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\", file) .normalize());\n  }\n}\n"}, expect: allow}
+    prompt: "A path built from the request parameter is reduced to its file name with a space before the chained call."
+    expect: "The commit passes: whitespace before .getFileName() does not hide the path it is called on."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files/\", file) .getFileName());\n  }\n}\n"}, expect: allow}
   - id: tc-132
     category: behavior
     prompt: "A sanitized path follows a string literal holding an escaped backslash and the text u0022."
@@ -1522,3 +1522,58 @@ suite:
     prompt: The setup page's result is in hand and a selection already exists.
     expect: The agent shows the person the resulting file and its diff against the current selection, and
       prints the here-doc command for them to run; showing the content is allowed and nothing refuses it.
+  - id: tc-136
+    category: adversarial
+    prompt: "A download path is normalized inside the read, with no check that the result stays under the base."
+    expect: "The commit is refused: normalize() alone leaves a leading ../ that climbs out of /srv/files; it needs a startsWith check on the normalized value."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file).normalize());\n  }\n}\n"}, expect: block}
+  - id: tc-137
+    category: adversarial
+    prompt: "The normalized path is kept in a variable and read with no containment check."
+    expect: "The commit is refused: the variable still carries the request data, since nothing holds it to the base."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-138
+    category: adversarial
+    prompt: "The normalized path is checked with startsWith(\"\"), which every path satisfies."
+    expect: "The commit is refused: an empty prefix holds the path to nothing."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-139
+    category: negative_trigger
+    prompt: "The path is normalized, then held to the base with startsWith before it is read."
+    expect: "The commit passes: the check is on the same normalized value that is read."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}
+  - id: tc-140
+    category: negative_trigger
+    prompt: "The path is resolved to its canonical form and held to the base with startsWith before it is read."
+    expect: "The commit passes: canonical path plus startsWith is a containment check."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String c = new File(\"/srv/files\", file).getCanonicalPath();\n    if (!c.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(Paths.get(c));\n  }\n}\n"}, expect: allow}
+  - id: tc-141
+    category: negative_trigger
+    prompt: "The request value picks a file from a constant allowlist map, and the lookup's result is opened."
+    expect: "The commit passes: ALLOWED.get(name) hands the sink the map's own value, never the request value."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String known = ALLOWED.get(file);\n    return Files.readAllBytes(Paths.get(\"/srv/files\", known));\n  }\n}\n"}, expect: allow}
+  - id: tc-142
+    category: negative_trigger
+    prompt: "The request value picks a file from a Map.of lookup written inline."
+    expect: "The commit passes: the lookup is in a constant map and its result replaces the request value."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", Map.of(\"a\", \"a.txt\", \"b\", \"b.txt\").get(file)));\n  }\n}\n"}, expect: allow}
+  - id: tc-143
+    category: adversarial
+    prompt: "The allowlist lookup's result is opened beside the raw request value."
+    expect: "The commit is refused: the raw value still reaches the sink next to the looked-up one."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", ALLOWED.get(file) + file));\n  }\n}\n"}, expect: block}
+  - id: tc-144
+    category: adversarial
+    prompt: "An allowlist lookup is made and thrown away, and the raw request value is opened."
+    expect: "The commit is refused: the lookup's result never reaches the sink."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    ALLOWED.get(file);\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n}\n"}, expect: block}
+  - id: tc-145
+    category: negative_trigger
+    prompt: "A comment holds a Unicode line separator (U+2028), in a class with no finalize method."
+    expect: "The commit passes: the file is read with the separator as a line break, and nothing in it is refused."
+    execute: {event: commit, files: {"C.java": "public class C {\n  // note \u2028 more of the note\n  public void close() {}\n}\n"}, expect: allow}
+  - id: tc-146
+    category: adversarial
+    prompt: "A class overrides finalize() and a comment above holds a Unicode line separator (U+2028)."
+    expect: "The commit is refused by resources-finalize-override: the separator does not hide the declaration."
+    execute: {event: commit, files: {"C.java": "public class C {\n  // note \u2028 more of the note\n  protected void finalize() {}\n}\n"}, expect: block}

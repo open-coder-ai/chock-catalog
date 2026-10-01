@@ -55,3 +55,19 @@ def test_unicode_escapes_are_decoded_before_lexing_and_keep_their_columns(raw: s
 def test_an_escaped_line_break_keeps_the_file_line_count() -> None:
     text = FileText("A.java", "// a \\u000a int b;\nint c;\n")
     assert code(text) == [" " * 12 + "int b;", "int c;"]
+
+
+@pytest.mark.parametrize("separator", [chr(0x2028), chr(0x2029), "\x0b", "\x0c", "\x1c", "\x85", "\r"])
+def test_every_separator_splitlines_honours_keeps_the_file_line_count(separator: str) -> None:
+    for raw in (
+        f"a;{separator}// b{separator}c;",
+        f'a; /* x{separator}y */ b;{separator}s = "p{separator}q";',
+        f'"""{separator}\\{separator}"""',
+    ):
+        text = FileText("A.java", raw)
+        assert len(code(text)) == len(text.lines), repr(raw)
+        assert len(blank(raw)) == len(raw)
+
+
+def test_a_line_comment_ends_at_a_lone_carriage_return() -> None:
+    assert blank("// c\rcode();\n") == "    \rcode();\n"

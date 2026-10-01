@@ -13,6 +13,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 
+from chock_security.containment import ASSIGNMENT, deferred_to, hold_to_base
 from chock_security.decision import FileText
 from chock_security.pack import facts
 from chock_security.sanitizer import holds, mentions, sanitized, sink_regions, statement_end
@@ -29,7 +30,6 @@ _NOT_A_DECLARATION = frozenset(
 #: A typed declaration is at least a type and a name: `Long id`.
 _TYPE_AND_NAME = 2
 
-_ASSIGNMENT = re.compile(r"(?:^|[^=!<>+\-*/%&|^])(\w+)\s*=(?!=)")
 _NAME_BEFORE_PAREN = re.compile(r"(\w+)\s*\($")
 #: An annotation can sit on its own line or in front of the declaration on the same one.
 _LEADING_ANNOTATION = re.compile(r"^@\w+(?:\s*\([^()]*\))?\s*")
@@ -195,7 +195,7 @@ def _without_annotations(parameter: str) -> str:
 
 def _retaint(line: str, code: str, tainted: set[str], sanitizers: list[str]) -> None:
     """Follow one assignment: the target carries what its right-hand side carries, and no more."""
-    for match in _ASSIGNMENT.finditer(line):
+    for match in ASSIGNMENT.finditer(line):
         target = match.group(1)
         right = line[match.end() :]
         carries = holds(right, _FACTS["source_calls"]) or mentions(right, tainted)
@@ -224,11 +224,22 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     tainted = _parameters(method.signature)
     annotated = bool(tainted)
     clean = [*_FACTS["sanitizers"], *sanitizers]
+    normalized: set[str] = set()
+    found: list[Flow] = []
+    pending: list[tuple[str, Flow]] = []
     for (line_no, line), code in zip(method.body, method.code, strict=True):
         direct = holds(line, _FACTS["source_calls"])
         if holds(line, sinks) and (direct or mentions(line, tainted)) and _unchecked(line, code, tainted, sinks, clean):
-            yield Flow(line_no, line, "a request parameter" if annotated else "the request")
+            flow = Flow(line_no, line, "a request parameter" if annotated else "the request")
+            held = deferred_to(line, code, sinks)
+            if held:
+                pending.append((held, flow))
+            else:
+                found.append(flow)
         _retaint(line, code, tainted, clean)
+        held_to_base = hold_to_base(code, tainted, normalized)
+        pending = [(name, flow) for name, flow in pending if name not in held_to_base]
+    yield from sorted(found + [flow for _, flow in pending], key=lambda flow: flow.line_no)
 
 
 def flows(text: FileText, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:

@@ -220,9 +220,20 @@ java-security  [deterministic]
   PASS  tc-131                             authored  gate exit 0
   PASS  tc-132                             authored  gate exit 0
   PASS  tc-133                             authored  gate exit 0
+  PASS  tc-136                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-137                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-138                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-139                             authored  gate exit 0
+  PASS  tc-140                             authored  gate exit 0
+  PASS  tc-141                             authored  gate exit 0
+  PASS  tc-142                             authored  gate exit 0
+  PASS  tc-143                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-144                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-145                             authored  gate exit 0
+  PASS  tc-146                             authored  java-security: a construct one of its rules denies -- the refusal a…
   score 1.00
 
-5 policies: 125 pass, 51 skipped
+5 policies: 136 pass, 51 skipped
 51 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

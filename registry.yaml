@@ -264,14 +264,14 @@ policies:
     rule is the advisory layer over them plus atomic-commit guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.6.4
+  version: 0.6.5
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 135
-  eval_executed: 125
+  eval_cases: 146
+  eval_executed: 136
   description: 'trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
     templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
     opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+from chock_security import flow
 from chock_security.decision import FileText
 from chock_security.engine import evaluate
 from chock_security.flow import flows, methods
@@ -146,7 +148,7 @@ def test_a_sanitizer_must_be_applied_to_the_value_the_line_carries() -> None:
     assert _flow_lines("@RequestParam String f", 'return read(Paths.get(sanitize(g) + "/" + f));') == [4]
     assert _flow_lines("@RequestParam String f", 'return read(Paths.get("/srv/" + sanitize(f)));') == []
     assert _flow_lines("@RequestParam String f", 'if (valid.isValid(f)) return read(Paths.get("/srv/" + f));') == []
-    assert _flow_lines("@RequestParam String f", 'return read(Paths.get(f.normalize() + "/srv"));') == []
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get(f.getFileName() + "/srv"));') == []
 
 
 def test_a_name_that_only_contains_a_sanitizer_word_is_not_a_call_to_it() -> None:
@@ -162,12 +164,12 @@ def test_a_check_on_a_request_read_counts_and_a_comment_beside_it_does_not() -> 
 
 
 def test_a_method_on_an_indexed_receiver_is_read() -> None:
-    assert _flow_lines("@RequestParam String[] f", 'return read(Paths.get(f[0].normalize() + "/x"));') == []
-    assert _flow_lines("@RequestParam String[] f", "return read(Paths.get(g[0].normalize() + f[0]));") == [4]
+    assert _flow_lines("@RequestParam String[] f", 'return read(Paths.get(f[0].getFileName() + "/x"));') == []
+    assert _flow_lines("@RequestParam String[] f", "return read(Paths.get(g[0].getFileName() + f[0]));") == [4]
 
 
 def test_a_call_continued_from_an_earlier_line_is_not_credited_with_the_value() -> None:
-    body = 'a).normalize(); return read(Paths.get("/srv/" + f));'
+    body = 'a).getFileName(); return read(Paths.get("/srv/" + f));'
     assert _flow_lines("@RequestParam String f", body) == [4]
 
 
@@ -192,7 +194,17 @@ def test_a_pack_sanitizer_must_be_applied_to_the_value() -> None:
     assert _flow_lines(param, builder, sinks)
 
 
-def test_lines_the_lexer_merges_are_never_credited_with_a_sanitizer() -> None:
-    body = 'String a = "x"; // note\x0c\n    return read(Paths.get("/srv/" + sanitize(f)));'
-    assert _flow_lines("@RequestParam String f", body) == [6]
-    assert _flow_lines("@RequestParam String f", 'return read(Paths.get("/srv/" + sanitize(f)));') == []
+def test_a_separator_splitlines_honours_keeps_the_lines_aligned_and_the_sanitizer_credited() -> None:
+    clean = 'return read(Paths.get("/srv/" + sanitize(f)));'
+    for separator in ("\x0c", "\u2028", "\u2029", "\x85", "\x1c"):
+        assert _flow_lines("@RequestParam String f", f'String a = "x"; // note{separator}\n    {clean}') == [], (
+            separator
+        )
+        raw = f'String a = "x"; // note{separator}\n    return read(Paths.get("/srv/" + f));'
+        assert _flow_lines("@RequestParam String f", raw) == [6], separator
+
+
+def test_lines_that_cannot_be_aligned_are_never_credited_with_a_sanitizer(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(flow, "blank", lambda text: text.replace("\n", " "))
+    body = 'return read(Paths.get("/srv/misaligned/" + sanitize(f)));'
+    assert _flow_lines("@RequestParam String f", body) == [4]

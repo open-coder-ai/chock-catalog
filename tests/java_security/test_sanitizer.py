@@ -84,7 +84,7 @@ def test_a_sanitizer_is_a_whole_name_never_the_tail_of_one() -> None:
 
 
 def test_space_before_a_chained_sanitizer_is_skipped() -> None:
-    assert _flow_lines(F, "return read(Paths.get(base, f) .normalize());") == []
+    assert _flow_lines(F, "return read(Paths.get(base, f) .getFileName());") == []
     assert _flow_lines(F, "return read(Paths.get(base, f) .toString());") == [4]
 
 
