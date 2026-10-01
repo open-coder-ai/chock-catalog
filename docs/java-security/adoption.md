@@ -251,9 +251,15 @@ java-security  [deterministic]
   PASS  tc-164                             authored  java-security: a construct one of its rules denies -- the refusal a…
   PASS  tc-165                             authored  gate exit 0
   PASS  tc-166                             authored  gate exit 0
+  PASS  tc-167                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-168                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-169                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-170                             authored  java-security: a construct one of its rules denies -- the refusal a…
+  PASS  tc-171                             authored  gate exit 0
+  PASS  tc-172                             authored  gate exit 0
   score 1.00
 
-5 policies: 156 pass, 51 skipped
+5 policies: 162 pass, 51 skipped
 51 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
