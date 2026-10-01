@@ -38,7 +38,7 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "639d25af670b8f332894becd908885f8023d7abeba94b8b194097fa8895657bc",
+      "sha256": "24ac37b6364496fe77c99cdc4952bc077f266d3982b1a1d5f245ecc7fe827c88",
       "source": "local",
       "artifacts_sha256": "132300f0eaa647b0b3bcb66aa61cb8e4f06207828edc86f8ef917217df0aab19"
     },
@@ -118,9 +118,10 @@
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "be9f2abc26bf2fc8df705cdd3c22bf6ef3880942959dd4296d28d37688df7ce9",
-      "source": "local",
-      "artifacts_sha256": "71d90267b875685ce3a9a12c6ee53bd0299bb71bbca1796be6f655c2279b52f4"
+      "sha256": "e2616ab80403087fd4d50581cc9934509428c63180d7cdfcd90fc0eb93625584",
+      "source": ".",
+      "artifacts_sha256": "2dce4330f9a44f6ac4f47f6375114cd11aa9c35a9e7a926817624a25c5c8b54c",
+      "source_commit": null
     },
     {
       "id": "protect-ci-workflows",
