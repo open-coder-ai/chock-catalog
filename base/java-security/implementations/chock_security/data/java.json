@@ -57,7 +57,6 @@
     "sanitizers": [
       "FilenameUtils.getName(",
       ".getFileName()",
-      ".startsWith(",
       "UUID.fromString(",
       "Pattern.matches(",
       ".matches(\"",

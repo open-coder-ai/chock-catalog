@@ -1526,47 +1526,47 @@ suite:
     category: adversarial
     prompt: "A download path is normalized inside the read, with no check that the result stays under the base."
     expect: "The commit is refused: normalize() alone leaves a leading ../ that climbs out of /srv/files; it needs a startsWith check on the normalized value."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file).normalize());\n  }\n}\n"}, expect: block}
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file).normalize());\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
   - id: tc-137
     category: adversarial
     prompt: "The normalized path is kept in a variable and read with no containment check."
     expect: "The commit is refused: the variable still carries the request data, since nothing holds it to the base."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    return Files.readAllBytes(p);\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
   - id: tc-138
     category: adversarial
     prompt: "The normalized path is checked with startsWith(\"\"), which every path satisfies."
     expect: "The commit is refused: an empty prefix holds the path to nothing."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
   - id: tc-139
     category: negative_trigger
-    prompt: "The path is normalized, then held to the base with startsWith before it is read."
-    expect: "The commit passes: the check is on the same normalized value that is read."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}
+    prompt: "The path is normalized, then held to the base with startsWith and the request is refused when it is outside."
+    expect: "The commit passes: the check is on the same normalized value that is read, and its failing branch throws."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: allow}
   - id: tc-140
     category: negative_trigger
-    prompt: "The path is resolved to its canonical form and held to the base with startsWith before it is read."
-    expect: "The commit passes: canonical path plus startsWith is a containment check."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String c = new File(\"/srv/files\", file).getCanonicalPath();\n    if (!c.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(Paths.get(c));\n  }\n}\n"}, expect: allow}
+    prompt: "The path is resolved to its canonical string and held to a base that ends in a separator."
+    expect: "The commit passes: a base ending in a separator cannot match a sibling directory such as /srv/files-evil."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String c = new File(\"/srv/files\", file).getCanonicalPath();\n    if (!c.startsWith(\"/srv/files/\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(Paths.get(c));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: allow}
   - id: tc-141
     category: negative_trigger
     prompt: "The request value picks a file from a constant allowlist map, and the lookup's result is opened."
-    expect: "The commit passes: ALLOWED.get(name) hands the sink the map's own value, never the request value."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String known = ALLOWED.get(file);\n    return Files.readAllBytes(Paths.get(\"/srv/files\", known));\n  }\n}\n"}, expect: allow}
+    expect: "The commit passes: ALLOWED is a static final Map.of in this file, and ALLOWED.get(name) hands the sink the map's own value, never the request value."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String known = ALLOWED.get(file);\n    return Files.readAllBytes(Paths.get(\"/srv/files\", known));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: allow}
   - id: tc-142
     category: negative_trigger
     prompt: "The request value picks a file from a Map.of lookup written inline."
     expect: "The commit passes: the lookup is in a constant map and its result replaces the request value."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", Map.of(\"a\", \"a.txt\", \"b\", \"b.txt\").get(file)));\n  }\n}\n"}, expect: allow}
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", Map.of(\"a\", \"a.txt\", \"b\", \"b.txt\").get(file)));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: allow}
   - id: tc-143
     category: adversarial
     prompt: "The allowlist lookup's result is opened beside the raw request value."
     expect: "The commit is refused: the raw value still reaches the sink next to the looked-up one."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", ALLOWED.get(file) + file));\n  }\n}\n"}, expect: block}
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", ALLOWED.get(file) + file));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
   - id: tc-144
     category: adversarial
     prompt: "An allowlist lookup is made and thrown away, and the raw request value is opened."
     expect: "The commit is refused: the lookup's result never reaches the sink."
-    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    ALLOWED.get(file);\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n}\n"}, expect: block}
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    ALLOWED.get(file);\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
   - id: tc-145
     category: negative_trigger
     prompt: "A comment holds a Unicode line separator (U+2028), in a class with no finalize method."
@@ -1577,3 +1577,58 @@ suite:
     prompt: "A class overrides finalize() and a comment above holds a Unicode line separator (U+2028)."
     expect: "The commit is refused by resources-finalize-override: the separator does not hide the declaration."
     execute: {event: commit, files: {"C.java": "public class C {\n  // note \u2028 more of the note\n  protected void finalize() {}\n}\n"}, expect: block}
+  - id: tc-147
+    category: adversarial
+    prompt: "The containment check is a Java assert, then the normalized path is read."
+    expect: "The commit is refused: assertions are off by default, so the check does not run in production."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    assert p.startsWith(\"/srv/files\");\n    return Files.readAllBytes(p);\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
+  - id: tc-148
+    category: adversarial
+    prompt: "The containment check only logs when the path is outside the base, then the path is read."
+    expect: "The commit is refused: the failing branch does not leave, so the path is read anyway."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\")) log.warn(\"outside\");\n    return Files.readAllBytes(p);\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
+  - id: tc-149
+    category: adversarial
+    prompt: "The containment check can be bypassed: the condition is joined with || and another test."
+    expect: "The commit is refused: the throw is skipped whenever the other test is true."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\") || admin) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
+  - id: tc-150
+    category: adversarial
+    prompt: "The canonical string is held to a base with no trailing separator."
+    expect: "The commit is refused: /srv/files-evil starts with /srv/files, so a String compare needs a base ending in a separator."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String c = new File(\"/srv/files\", file).getCanonicalPath();\n    if (!c.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(Paths.get(c));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
+  - id: tc-151
+    category: negative_trigger
+    prompt: "The containment check is a Guava precondition, then the normalized path is read."
+    expect: "The commit passes: Preconditions.checkArgument is always on and throws when the path is outside the base."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    Preconditions.checkArgument(p.startsWith(\"/srv/files\"));\n    return Files.readAllBytes(p);\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: allow}
+  - id: tc-152
+    category: negative_trigger
+    prompt: "The normalized path is read only inside the block that checks it against the base."
+    expect: "The commit passes: the path is read where the check holds."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (p.startsWith(\"/srv/files\")) {\n      return Files.readAllBytes(p);\n    }\n    return null;\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: allow}
+  - id: tc-153
+    category: adversarial
+    prompt: "The allowlist test is the wrong way round: the request value is used when it is not a member."
+    expect: "The commit is refused: only the true branch of a positive membership test holds an allowed value."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    String q = NAMES.contains(file) ? \"a\" : file;\n    return Files.readAllBytes(Paths.get(\"/srv/files\", q));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
+  - id: tc-154
+    category: adversarial
+    prompt: "The allowlist test only logs when the value is not a member, then the value is opened."
+    expect: "The commit is refused: a negated membership test protects what follows only when its body leaves."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    if (!NAMES.contains(file)) log.warn(\"unknown\");\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
+  - id: tc-155
+    category: negative_trigger
+    prompt: "The request is refused when the value is not in the allowlist set, then the value is opened."
+    expect: "The commit passes: NAMES is a static final Set.of in this file and the negated test throws."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    if (!NAMES.contains(file)) throw new IllegalArgumentException();\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: allow}
+  - id: tc-156
+    category: adversarial
+    prompt: "The allowlist is a static final HashMap that the class adds to."
+    expect: "The commit is refused: a map the code can change is not a constant allowlist."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", ALLOWED.get(file)));\n  }\n  private static final Map<String, String> ALLOWED = new HashMap<>();\n  static { ALLOWED.put(\"a\", \"a.txt\"); }\n}\n"}, expect: block}
+  - id: tc-157
+    category: adversarial
+    prompt: "The allowlist is a constant of another class."
+    expect: "The commit is refused: its declaration is not in this file, so it cannot be seen to be immutable."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    return Files.readAllBytes(Paths.get(\"/srv/files\", Config.ALLOWED.get(file)));\n  }\n}\n"}, expect: block}

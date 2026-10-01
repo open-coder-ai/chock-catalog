@@ -52,6 +52,23 @@ def test_starts_with_counts_only_as_a_guard_on_the_value_itself() -> None:
         assert _flow_lines(F, body) == [], body
 
 
+def test_a_prefix_test_on_a_request_value_counts_only_on_the_side_it_decides() -> None:
+    for body in (
+        'if (!f.startsWith("docs")) log(); return read(Paths.get("/srv/" + f));',
+        'return read(Paths.get(f.startsWith("docs") ? "index" : f));',
+        'if (f.startsWith("docs") || ok) return read(Paths.get("/srv/" + f));',
+        'if (f.startsWith(f)) return read(Paths.get("/srv/" + f));',
+        'if (f.startsWith("/")) return read(Paths.get("/srv/" + f));',
+    ):
+        assert _flow_lines(F, body), body
+    assert (
+        _flow_lines(
+            F, 'if (!f.startsWith("docs")) throw new IllegalStateException(); return read(Paths.get("/srv/" + f));'
+        )
+        == []
+    )
+
+
 def test_a_normalized_path_checked_with_starts_with_on_later_lines_still_passes() -> None:
     body = (
         "Path p = base.resolve(f).normalize();\n"

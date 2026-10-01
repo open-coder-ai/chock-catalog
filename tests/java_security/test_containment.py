@@ -1,4 +1,4 @@
-"""A normalized path is a check only once held to its base; a constant allowlist lookup replaces the value."""
+"""Checks that hold on one side of a branch: containment of a normalized path, allowlist membership and lookups."""
 
 from __future__ import annotations
 
@@ -9,97 +9,225 @@ from chock_security.rules import registry
 
 SINKS = ["new File(", "Paths.get(", "Files.readAllBytes("]
 F = "@RequestParam String f"
-
-
-def _lines(body: str, sinks: list[str] = SINKS) -> list[int]:
-    text = f'public class C {{\n  @GetMapping("/x")\n  public Object x({F}) throws Exception {{\n    {body}\n  }}\n}}\n'
-    return [flow.line_no for flow in flows(FileText("C.java", text), sinks)]
-
-
-NORMALIZED = "Path p = Paths.get(base, f).normalize();\n    "
-
-
-@pytest.mark.parametrize(
-    "body",
-    [
-        "return Files.readAllBytes(Paths.get(base, f).normalize());",
-        "return new File(Paths.get(base, f).normalize().toString());",
-        NORMALIZED + "return Files.readAllBytes(p);",
-        NORMALIZED + 'if (!p.startsWith("")) throw new IllegalStateException();\n    return Files.readAllBytes(p);',
-        NORMALIZED + "if (!q.startsWith(base)) throw new IllegalStateException();\n    return Files.readAllBytes(p);",
-        NORMALIZED + "p.startsWith(base);\n    return Files.readAllBytes(p);",
-        NORMALIZED + "log(base.startsWith(p));\n    return Files.readAllBytes(p);",
-        NORMALIZED + "if (!base.startsWith(p)) throw new IllegalStateException();\n    return Files.readAllBytes(p);",
-        NORMALIZED
-        + "p = p.resolve(f);\n    if (!p.startsWith(base)) throw new IllegalStateException();\n    return Files.readAllBytes(p);",
-        "Path p = Paths.get(base, f).normalize().resolve(f);\n    if (!p.startsWith(base)) return null;\n    return Files.readAllBytes(p);",
-    ],
+CONSTANTS = (
+    '  private static final Map<String, String> ALLOWED = Map.of("a", "a.txt");\n'
+    '  private static final Set<String> NAMES = Set.of("a", "b");\n'
 )
-def test_normalize_without_a_containment_check_on_that_value_is_refused(body: str) -> None:
+
+
+def _lines(body: str, fields: str = CONSTANTS) -> list[int]:
+    """The body's lines that a sink takes request data on; the fields follow the method."""
+    text = f'public class C {{\n  @GetMapping("/x")\n  public Object x({F}) throws Exception {{\n    {body}\n  }}\n{fields}}}\n'
+    return [flow.line_no for flow in flows(FileText("C.java", text), SINKS)]
+
+
+P = "Path p = Paths.get(base, f).normalize();\n    "
+READ = "\n    return Files.readAllBytes(p);"
+THROW = " throw new IllegalStateException();"
+
+
+def _guarded(guard: str) -> str:
+    return P + guard + READ
+
+
+REFUSED_CONTAINMENT = [
+    "return Files.readAllBytes(Paths.get(base, f).normalize());",
+    "return new File(Paths.get(base, f).normalize().toString());",
+    P + "return Files.readAllBytes(p);",
+    _guarded('if (!p.startsWith("")) throw new IllegalStateException();'),
+    _guarded("if (!q.startsWith(base)) throw new IllegalStateException();"),
+    _guarded("p.startsWith(base);"),
+    _guarded("log(base.startsWith(p));"),
+    _guarded("if (!base.startsWith(p)) throw new IllegalStateException();"),
+    P + "p = p.resolve(f);\n    if (!p.startsWith(base)) throw new IllegalStateException();" + READ,
+    "Path p = Paths.get(base, f).normalize().resolve(f);\n    if (!p.startsWith(base)) return null;" + READ,
+    # a Java assert is off by default
+    _guarded("assert p.startsWith(base);"),
+    # a check whose failing branch does not leave
+    _guarded('if (!p.startsWith(base)) log.warn("outside");'),
+    _guarded("if (!p.startsWith(base)) {\n      log();\n    }"),
+    _guarded("if (!p.startsWith(base)) log();\n    else cleanup();"),
+    "Path p = Paths.get(base, f).normalize(); if (!p.startsWith(base)) log(); return Files.readAllBytes(p);",
+    # a condition that can pass whatever the path is, or holds it to nothing
+    _guarded("if (!p.startsWith(base) || ok) throw new IllegalStateException();"),
+    _guarded("if (!p.startsWith(base) && ok) throw new IllegalStateException();"),
+    _guarded('if (!p.startsWith("/")) throw new IllegalStateException();'),
+    _guarded('if (!p.startsWith("./")) throw new IllegalStateException();'),
+    _guarded("if (!p.startsWith(f)) throw new IllegalStateException();"),
+    _guarded("if (!p.startsWith(base.resolve(f))) throw new IllegalStateException();"),
+    _guarded("if (!(p.startsWith(base) && ok)) throw new IllegalStateException();"),
+    # the wrong way round, or the check is not always on
+    _guarded("if (p.startsWith(base)) log();"),
+    _guarded("if (p.startsWith(base))\n      log();"),
+    _guarded("if (p.startsWith(base)) {\n      log();\n    }"),
+    _guarded("checkpoint(p.startsWith(base));"),
+    _guarded("verifyAndLog(p.startsWith(base));"),
+    _guarded("Objects.requireNonNull(p.startsWith(base));"),
+    _guarded("Preconditions.checkArgument(!p.startsWith(base));"),
+    _guarded("Preconditions.checkArgument(ok, p.startsWith(base));"),
+    # a String path compared without a separator: /srv-evil starts with /srv
+    "String c = new File(base, f).getCanonicalPath();\n    if (!c.startsWith(base)) return null;\n    return Files.readAllBytes(Paths.get(c));",
+    'String c = Paths.get(base, f).normalize().toString();\n    if (!c.startsWith("/srv")) return null;\n    return Files.readAllBytes(Paths.get(c));',
+    "String c = new File(base, f).getCanonicalPath();\n    if (!c.startsWith(File.separatorX)) return null;\n    return Files.readAllBytes(Paths.get(c));",
+    "File c = new File(base, f).getCanonicalFile();\n    if (!c.startsWith(base)) return null;\n    return Files.readAllBytes(c.toPath());",
+    # a variable derived from a canonical file is not tracked
+    "File c = new File(base, f).getCanonicalFile();\n    Path p = c.toPath();\n    if (!p.startsWith(base)) return null;\n    return Files.readAllBytes(p);",
+    # a ternary whose branches the line does not hold
+    P + "return Files.readAllBytes(p.startsWith(base) ?\n      p : null);",
+    # the check ends where its block does
+    "Path p = Paths.get(base, f).normalize();\n    if (p.startsWith(base)) {\n      log();\n    }\n    return Files.readAllBytes(p);",
+    "Path p = Paths.get(base, f).normalize();\n    if (p.startsWith(base)) {\n      log();\n    } else {\n      cleanup();\n    }\n    return Files.readAllBytes(p);",
+]
+
+
+@pytest.mark.parametrize("body", REFUSED_CONTAINMENT)
+def test_a_normalized_path_that_is_not_held_to_its_base_is_refused(body: str) -> None:
     assert _lines(body), body
 
 
-@pytest.mark.parametrize(
-    "body",
-    [
-        NORMALIZED + "if (!p.startsWith(base)) throw new IllegalStateException();\n    return Files.readAllBytes(p);",
-        NORMALIZED + "if (p.startsWith(base)) {\n      return Files.readAllBytes(p);\n    }\n    return null;",
-        NORMALIZED
-        + 'if (!p.startsWith("/srv/files/")) throw new IllegalStateException();\n    return Files.readAllBytes(p);',
-        NORMALIZED + "assert p.startsWith(base);\n    return Files.readAllBytes(p);",
-        NORMALIZED + "Preconditions.checkArgument(p.startsWith(base));\n    return Files.readAllBytes(p);",
-        "Path p = Paths.get(base, f).toRealPath();\n    if (!p.startsWith(base)) return null;\n    return Files.readAllBytes(p);",
-        "String c = new File(base, f).getCanonicalPath();\n    if (!c.startsWith(base)) return null;\n    return Files.readAllBytes(Paths.get(c));",
-        "if (Paths.get(base, f).normalize().startsWith(base)) return Files.readAllBytes(Paths.get(base, f));",
-        "return Files.readAllBytes(Paths.get(base, FilenameUtils.getName(f)).normalize());",
-    ],
-)
-def test_normalize_then_a_containment_check_on_the_same_value_passes(body: str) -> None:
+ALLOWED_CONTAINMENT = [
+    _guarded("if (!p.startsWith(base)) throw new IllegalStateException();"),
+    _guarded('if (!p.startsWith("/srv/files")) throw new IllegalStateException();'),
+    _guarded("if (!p.startsWith(base)) return null;"),
+    _guarded("if (!p.startsWith(base)) {\n      throw new IllegalStateException();\n    }"),
+    _guarded("if (!p.startsWith(base)) {\n      return null;\n    }"),
+    _guarded("if (!p.startsWith(base))\n      throw new IllegalStateException();"),
+    _guarded("if (!p.startsWith(base)) {\n      throw new IllegalStateException();\n    }"),
+    _guarded("if (!p.startsWith(base))\n    {\n      throw new IllegalStateException();\n    }"),
+    _guarded("if (!(p.startsWith(base))) throw new IllegalStateException();"),
+    _guarded("if (p == null)\n      return null;\n    if (!p.startsWith(base)) continue;"),
+    _guarded("while (more()) {\n      if (!p.startsWith(base)) break;\n    }"),
+    "Path p = Paths.get(base, f).normalize(); if (!p.startsWith(base)) return null; return Files.readAllBytes(p);",
+    P + "if (p.startsWith(base)) {\n      return Files.readAllBytes(p);\n    }\n    return null;",
+    P + "if (p.startsWith(base)) return Files.readAllBytes(p);\n    return null;",
+    P + "if (p.startsWith(base)) { return Files.readAllBytes(p); }\n    return null;",
+    _guarded("if (!p.startsWith(base)) { throw new IllegalStateException(); }"),
+    P + "if (ok && p.startsWith(base)) {\n      return Files.readAllBytes(p);\n    }\n    return null;",
+    P + "if (p.startsWith(base)) {\n      return Files.readAllBytes(p);\n    } else {\n      return null;\n    }",
+    P + "return p.startsWith(base) ? Files.readAllBytes(p) : null;",
+    _guarded("Preconditions.checkArgument(p.startsWith(base));"),
+    _guarded('Preconditions.checkArgument(p.startsWith(base), "outside");'),
+    _guarded("Preconditions.checkState(p.startsWith(base));"),
+    _guarded("Validate.isTrue(p.startsWith(base));"),
+    _guarded('Assert.isTrue(p.startsWith(base), "x");'),
+    "Path p = Paths.get(base, f).toRealPath();\n    if (!p.startsWith(base)) return null;" + READ,
+    'String c = new File(base, f).getCanonicalPath();\n    if (!c.startsWith("/srv/files/")) return null;\n    return Files.readAllBytes(Paths.get(c));',
+    'String c = new File(base, f).getCanonicalPath();\n    if (!c.startsWith("\\\\srv\\\\")) return null;\n    return Files.readAllBytes(Paths.get(c));',
+    "String c = new File(base, f).getCanonicalPath();\n    if (!c.startsWith(base + File.separator)) return null;\n    return Files.readAllBytes(Paths.get(c));",
+    'String c = new File(base, f).getCanonicalPath();\n    if (!c.startsWith(base + "/")) return null;\n    return Files.readAllBytes(Paths.get(c));',
+    "if (Paths.get(base, f).normalize().startsWith(base)) return Files.readAllBytes(Paths.get(base, f));",
+    "return Files.readAllBytes(Paths.get(base, FilenameUtils.getName(f)).normalize());",
+]
+
+
+@pytest.mark.parametrize("body", ALLOWED_CONTAINMENT)
+def test_a_normalized_path_held_to_its_base_passes(body: str) -> None:
     assert _lines(body) == [], body
 
 
 def test_a_refused_normalized_path_is_reported_where_it_is_built() -> None:
-    assert _lines(NORMALIZED + "return null;") == [4]
-    assert _lines(NORMALIZED + "return Files.readAllBytes(p);") == [4, 5]
-    held = NORMALIZED + "if (!p.startsWith(base)) throw new IllegalStateException();\n    return Files.readAllBytes(p);"
-    assert _lines(held) == []
+    assert _lines(P + "return null;") == [4]
+    assert _lines(P + "return Files.readAllBytes(p);") == [4, 5]
+    assert _lines(_guarded("if (!p.startsWith(base)) throw new IllegalStateException();")) == []
 
 
-@pytest.mark.parametrize(
-    "body",
-    [
-        "return new File(base, ALLOWED.get(f));",
-        "String s = ALLOWED.get(f);\n    return new File(base, s);",
-        "return new File(base, Config.ALLOWED_NAMES.get(f));",
-        'return new File(base, Map.of("a", "a.txt", "b", "b.txt").get(f));',
-        "if (ALLOWED.contains(f)) return new File(base, f);",
-        'return new File(base, Set.of("a", "b").contains(f) ? f : "a");',
-        "if (NAMES.containsKey(f)) return new File(base, f);",
-    ],
-)
-def test_a_lookup_in_a_constant_allowlist_is_a_check(body: str) -> None:
+def test_a_path_cleared_inside_a_block_is_carried_again_after_it() -> None:
+    body = P + "if (p.startsWith(base)) {\n      read(p);\n    }\n    return Files.readAllBytes(p);"
+    assert _lines(body) == [8]
+
+
+LOOKUP_REFUSED = [
+    "return new File(base, ALLOWED.get(g) + f);",
+    "ALLOWED.get(f);\n    return new File(base, f);",
+    "return new File(base, f + ALLOWED.get(f));",
+    "if (ALLOWED.get(f) != null) return new File(base, f);",
+    "return new File(base, allowed.get(f));",
+    "return new File(base, names.get(f));",
+    "return new File(base, ALLOWED.getOrDefault(f, f));",
+    'return new File(base, Map.of(f, "a").get("k"));',
+    "return new File(base, Map.of(f, f).get(f));",
+    "return new File(base, SOURCE.get(0).concat(f));",
+    "return new File(base, f.contains(ALLOWED) ? f : null);",
+    "return new File(base, ALLOWED.get(f.trim()) + f);",
+    # membership the wrong way round
+    "return new File(base, ALLOWED.containsKey(f) ? x : f);",
+    "return new File(base, !ALLOWED.containsKey(f) ? f : x);",
+    "if (!ALLOWED.containsKey(f)) log();\n    return new File(base, f);",
+    "if (!ALLOWED.containsKey(f)) log(); return new File(base, f);",
+    "if (!NAMES.contains(f) || ok) throw new IllegalStateException();\n    return new File(base, f);",
+    "if (!NAMES.contains(f) && ok) throw new IllegalStateException();\n    return new File(base, f);",
+    "if (NAMES.contains(f)) log();\n    return new File(base, f);",
+    "if (NAMES.contains(f)) {\n      log();\n    }\n    return new File(base, f);",
+    "if (NAMES.contains(f) || ok) return new File(base, f);\n    return null;",
+    "Preconditions.checkArgument(!NAMES.contains(f));\n    return new File(base, f);",
+    "if (!NAMES.contains(f.trim())) throw new IllegalStateException();\n    return new File(base, f);",
+]
+
+
+@pytest.mark.parametrize("body", LOOKUP_REFUSED)
+def test_a_lookup_that_does_not_replace_the_raw_value_is_not_a_check(body: str) -> None:
+    assert _lines(body), body
+
+
+LOOKUP_ALLOWED = [
+    "return new File(base, ALLOWED.get(f));",
+    "String s = ALLOWED.get(f);\n    return new File(base, s);",
+    'return new File(base, Map.of("a", "a.txt", "b", "b.txt").get(f));',
+    "if (NAMES.contains(f)) return new File(base, f);",
+    "if (ALLOWED.containsKey(f)) {\n      return new File(base, f);\n    }\n    return null;",
+    'return new File(base, Set.of("a", "b").contains(f) ? f : "a");',
+    'return new File(base, !NAMES.contains(f) ? "a" : f);',
+    "return new File(base, NAMES.contains(f) ? f : null);",
+    "if (!NAMES.contains(f)) throw new IllegalStateException();\n    return new File(base, f);",
+    "if (!NAMES.contains(f)) {\n      return null;\n    }\n    return new File(base, f);",
+    "if (!ALLOWED.containsKey(f))\n      throw new IllegalStateException();\n    return new File(base, f);",
+    "Preconditions.checkArgument(NAMES.contains(f));\n    return new File(base, f);",
+    "if (ok && NAMES.contains(f)) return new File(base, f);",
+    "String q = NAMES.contains(f) ? (ok ? f : x) : y;\n    return new File(base, q);",
+]
+
+
+@pytest.mark.parametrize("body", LOOKUP_ALLOWED)
+def test_a_lookup_in_an_immutable_constant_is_a_check(body: str) -> None:
     assert _lines(body) == [], body
 
 
 @pytest.mark.parametrize(
-    "body",
+    "fields",
     [
-        "return new File(base, ALLOWED.get(g) + f);",
-        "ALLOWED.get(f);\n    return new File(base, f);",
-        "return new File(base, f + ALLOWED.get(f));",
-        "if (ALLOWED.get(f) != null) return new File(base, f);",
-        "return new File(base, allowed.get(f));",
-        "return new File(base, names.get(f));",
-        "return new File(base, ALLOWED.getOrDefault(f, f));",
-        'return new File(base, Map.of(f, "a").get("k"));',
-        "return new File(base, Map.of(f, f).get(f));",
-        "return new File(base, SOURCE.get(0).concat(f));",
-        "return new File(base, f.contains(ALLOWED) ? f : null);",
-        "return new File(base, ALLOWED.get(f.trim()) + f);",
+        "  private static final Map<String, String> ALLOWED = new HashMap<>();\n",
+        '  private static Map<String, String> ALLOWED = Map.of("a", "a");\n',
+        '  private final Map<String, String> ALLOWED = Map.of("a", "a");\n',
+        '  private static final Map<String, String> ALLOWED = Map.of("a", "a");\n  static { ALLOWED.put("b", "b"); }\n',
+        '  private static final Map<String, String> ALLOWED = Map.of("a", "a");\n  void add(String k) { ALLOWED.putAll(other); }\n',
+        "  private static final Map<String, String> ALLOWED = Collections.unmodifiableMap(BACKING);\n",
+        "",
     ],
 )
-def test_a_lookup_that_does_not_replace_the_raw_value_is_not_a_check(body: str) -> None:
-    assert _lines(body) == [4] or _lines(body) == [5], body
+def test_a_constant_that_is_not_visibly_immutable_is_not_an_allowlist(fields: str) -> None:
+    assert _lines("return new File(base, ALLOWED.get(f));", fields)
+    assert _lines("if (ALLOWED.containsKey(f)) return new File(base, f);", fields)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        '  private static final Map<String, String> ALLOWED = Map.of("a", "a");\n',
+        '  static final Map<String, String> ALLOWED = ImmutableMap.of("a", "a");\n',
+        '  public final static Map<String, String> ALLOWED = Map.ofEntries(Map.entry("a", "a"));\n',
+        "  private static final Map<String, String> ALLOWED = Map.copyOf(other());\n",
+        '  private static final Map<String, String> ALLOWED = Collections.unmodifiableMap(new HashMap<>(Map.of("a", "a")));\n',
+        '  private static final Map<String, String> ALLOWED = Map.of("a", "a");\n  String x = other.put("b", "b");\n',
+    ],
+)
+def test_a_constant_declared_immutable_and_never_changed_is_an_allowlist(fields: str) -> None:
+    assert _lines("return new File(base, ALLOWED.get(f));", fields) == []
+    assert _lines("if (ALLOWED.containsKey(f)) return new File(base, f);", fields) == []
+
+
+def test_a_constant_of_another_class_is_not_an_allowlist() -> None:
+    assert _lines("return new File(base, Config.ALLOWED.get(f));")
+    assert _lines("if (Config.NAMES.contains(f)) return new File(base, f);")
 
 
 SEPARATORS = [chr(0x2028), chr(0x2029), "\x0b", "\x0c", "\x1c", "\x1d", "\x1e", "\x85"]

@@ -10,7 +10,7 @@ the sink's argument, or under an `if (...)` or `cond ? a : b` whose condition is
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from chock_security.pack import facts
@@ -36,18 +36,13 @@ _VALIDATED = re.compile(r"\.matches\(\s*[A-Z][A-Z0-9_]*\s*\)")
 
 #: A call answering yes or no about its value. It keeps nothing out of what the sink receives, so it
 #: counts only as the condition of an `if` or a ternary -- and, as a method, only on the value itself.
-_PREDICATE = re.compile(r"is[A-Z_$][\w$]*|matches|startsWith|contains|containsKey")
+_PREDICATE = re.compile(r"is[A-Z_$][\w$]*|matches|contains|containsKey")
 
 _IDENTIFIER = re.compile(r"[\w$]*")
 _CALL_AFTER = re.compile(r"\s*(?:\.\s*[\w$]+\s*)?\(")
 _CHAINED_CALL = re.compile(r"\s*\.\s*[\w$]+\s*\(")
 _IF = re.compile(r"(?<![\w$])if\s*\(")
 _ASSIGN = re.compile(r"[^=!<>]=(?!=)")
-
-
-#: A lookup in a constant collection: `ALLOWED.get(name)`, `Config.NAMES.contains(name)`, `Set.of(...)`.
-_LOOKUP = re.compile(r"\.\s*(get|contains|containsKey)\s*\(")
-_CONSTANT = re.compile(r"(?:[\w$]+\s*\.\s*)*[A-Z][A-Z0-9_]*|(?:Map|Set|List)\s*\.\s*(?:of|ofEntries|copyOf)\s*\(.*\)")
 
 
 @dataclass(frozen=True)
@@ -85,7 +80,7 @@ def _left(code: str, index: int) -> int:
     return index
 
 
-def _receiver_start(code: str, dot: int) -> int:
+def receiver_start(code: str, dot: int) -> int:
     """Where the expression a call is made on starts: `Paths.get(base, name)` for `.normalize()`."""
     start = _left(code, dot)
     while True:
@@ -99,7 +94,7 @@ def _receiver_start(code: str, dot: int) -> int:
         start = _left(code, dot - 1)
 
 
-def _carries(expression: str, tainted: set[str]) -> bool:
+def carries(expression: str, tainted: set[str]) -> bool:
     return holds(expression, _FACTS["source_calls"]) or mentions(expression, tainted)
 
 
@@ -152,28 +147,12 @@ def _check(code: str, token: str, match: re.Match[str], tainted: set[str]) -> Ch
     close = closing(code, opening)
     end = min(close + 1, len(code))
     predicate = bool(_PREDICATE.fullmatch(_callee(code, opening)))
-    receiver = _receiver_start(code, match.start())
-    if on_value and _carries(code[receiver : match.start()], tainted):
+    receiver = receiver_start(code, match.start())
+    if on_value and carries(code[receiver : match.start()], tainted):
         return Check(receiver, end, predicate)
-    if (not on_value or not predicate) and _carries(code[opening + 1 : close], tainted):
+    if (not on_value or not predicate) and carries(code[opening + 1 : close], tainted):
         return Check(match.start(), end, predicate)
     return None
-
-
-def _lookups(code: str, tainted: set[str]) -> Iterator[Check]:
-    """The request value used as the key into a constant collection. `get` hands the sink the
-    collection's own value, never the key, so it replaces the value; `contains` only answers yes or no.
-    A collection built from the value (`Map.of(name, name)`) is not constant."""
-    for match in _LOOKUP.finditer(code):
-        receiver = _receiver_start(code, match.start())
-        constant = _CONSTANT.fullmatch(code[receiver : match.start()].strip())
-        close = closing(code, match.end() - 1)
-        if (
-            constant
-            and not _carries(code[receiver : match.start()], tainted)
-            and _carries(code[match.end() : close], tainted)
-        ):
-            yield Check(receiver, min(close + 1, len(code)), predicate=match.group(1) != "get")
 
 
 def checks(code: str, sanitizers: list[str], tainted: set[str]) -> list[Check]:
@@ -184,10 +163,9 @@ def checks(code: str, sanitizers: list[str], tainted: set[str]) -> list[Check]:
         for match in _occurrences(code, token)
         if (check := _check(code, token, match, tainted)) is not None
     ]
-    found.extend(_lookups(code, tainted))
     for match in _VALIDATED.finditer(code):
-        receiver = _receiver_start(code, match.start())
-        if _carries(code[receiver : match.start()], tainted):
+        receiver = receiver_start(code, match.start())
+        if carries(code[receiver : match.start()], tainted):
             found.append(Check(receiver, match.end(), predicate=True))
     return found
 
@@ -217,7 +195,7 @@ def _separates(code: str, index: int) -> bool:
     return code[index] in ",;?:" or (index > 0 and _ASSIGN.match(code, index - 1) is not None)
 
 
-def _ternaries(code: str) -> Iterator[tuple[int, int, int]]:
+def ternaries(code: str) -> Iterator[tuple[int, int, int]]:
     """(condition start, `?`, end) of each ternary: never a generic `<?>` or Kotlin's `?.` and `?:`."""
     for question in (i for i, ch in enumerate(code) if ch == "?"):
         before = code[:question].rstrip()[-1:]
@@ -234,7 +212,7 @@ def _masked(code: str, found: list[Check]) -> str:
     """The code with every check blanked, and every ternary branch a check decides between."""
     chars = list(code)
     spans = [(c.start, c.end) for c in found]
-    spans += [(start, end) for start, question, end in _ternaries(code) if _within(found, start, question)]
+    spans += [(start, end) for start, question, end in ternaries(code) if _within(found, start, question)]
     for start, end in spans:
         chars[start:end] = " " * (end - start)
     return "".join(chars)
@@ -264,17 +242,26 @@ def sink_regions(line: str, code: str, sinks: list[str]) -> list[tuple[int, int]
             end = closing(code, match.start() + sink.rindex("("))
             while chained := _CHAINED_CALL.match(code, end + 1):
                 end = closing(code, chained.end() - 1)
-            start = _receiver_start(code, match.start()) if sink.startswith(".") else match.start()
+            start = receiver_start(code, match.start()) if sink.startswith(".") else match.start()
             regions.append((start, end))
     return [r for r in regions if not any(o != r and o[0] <= r[0] and r[1] <= o[1] for o in regions)]
 
 
-def sanitized(code: str, regions: list[tuple[int, int]], sanitizers: list[str], tainted: set[str]) -> bool:
+def sanitized(
+    code: str,
+    regions: list[tuple[int, int]],
+    sanitizers: list[str],
+    tainted: set[str],
+    guard: Callable[[set[str]], list[tuple[int, int]]] | None = None,
+) -> bool:
     """Whether every region of this line's code takes request data only through a check: inside the
-    check's call, or under an `if` or ternary a check decides. Code that could not be aligned with
-    the file's line reads as empty, and is never sanitized."""
+    check's call, or under an `if` or ternary a check decides. `guard` names more spans the check
+    covers (see guards.py). Code that could not be aligned with the file's line reads as empty, and
+    is never sanitized."""
     if not code:
         return False
     found = checks(code, sanitizers, tainted)
     masked = _masked(code, found)
-    return all(not _carries(masked[start:end], tainted) or _under_if(code, start, found) for start, end in regions)
+    for start, end in guard(tainted) if guard else ():
+        masked = masked[:start] + " " * (end - start) + masked[end:]
+    return all(not carries(masked[start:end], tainted) or _under_if(code, start, found) for start, end in regions)

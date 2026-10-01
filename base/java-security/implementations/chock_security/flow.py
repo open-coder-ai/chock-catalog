@@ -9,14 +9,14 @@ correct code, which is the one failure this pack does not accept.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 
-from chock_security.containment import ASSIGNMENT, deferred_to, hold_to_base
 from chock_security.decision import FileText
+from chock_security.guards import ASSIGNMENT, Scope, analyse, deferred_to, immutable_constants
 from chock_security.pack import facts
-from chock_security.sanitizer import holds, mentions, sanitized, sink_regions, statement_end
+from chock_security.sanitizer import holds, mentions, receiver_start, sanitized, sink_regions, statement_end
 from chock_security.source import blank
 
 _FACTS = facts("java")["flow"]
@@ -44,6 +44,8 @@ class Method:
     body: tuple[tuple[int, str], ...]
     #: `body` line for line, from the whole file's lexing: comments and literal contents blanked.
     code: tuple[str, ...]
+    #: Constants the file declares as immutable collections: the allowlists a lookup can be made in.
+    constants: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -148,6 +150,7 @@ _METHOD_CACHE_SIZE = 1024
 def _methods(text: str) -> tuple[Method, ...]:
     lines = text.splitlines()
     clean = blank(text).splitlines()
+    constants = immutable_constants(blank(text))
     found: list[Method] = []
     offset = 0
     while offset < len(lines):
@@ -156,7 +159,7 @@ def _methods(text: str) -> tuple[Method, ...]:
         block = _body(lines, signature[1]) if signature else None
         if name and signature and block and block[0]:
             code = tuple(_code_of(clean, lines, number, line) for number, line in block[0])
-            found.append(Method(name, signature[0], block[0], code))
+            found.append(Method(name, signature[0], block[0], code, constants))
             offset = block[1]
         offset += 1
     return tuple(found)
@@ -168,7 +171,14 @@ _MEMBERSHIP = re.compile(r"\.(?:contains|containsKey)\(\s*(\w+)\s*\)\s*\?\s*(\w+
 
 
 def _guarded(line: str, tainted: set[str]) -> bool:
-    return any(m.group(1) == m.group(2) and m.group(1) in tainted for m in _MEMBERSHIP.finditer(blank(line)))
+    """Whether `v` reaches only as a member: `ALLOWED.contains(v) ? v : x`, never `!ALLOWED.contains(v) ? v : x`."""
+    code = blank(line)
+    return any(
+        m.group(1) == m.group(2)
+        and m.group(1) in tainted
+        and not code[: receiver_start(code, m.start())].rstrip(" \t(").endswith("!")
+        for m in _MEMBERSHIP.finditer(code)
+    )
 
 
 def _parameters(signature: str) -> set[str]:
@@ -193,26 +203,33 @@ def _without_annotations(parameter: str) -> str:
     return re.sub(r"@\w+(?:\s*\([^()]*\))?", " ", parameter)
 
 
-def _retaint(line: str, code: str, tainted: set[str], sanitizers: list[str]) -> None:
+Guard = Callable[[set[str]], list[tuple[int, int]]]
+
+
+def _retaint(line: str, code: str, tainted: set[str], sanitizers: list[str], guard: Guard | None = None) -> None:
     """Follow one assignment: the target carries what its right-hand side carries, and no more."""
     for match in ASSIGNMENT.finditer(line):
         target = match.group(1)
         right = line[match.end() :]
         carries = holds(right, _FACTS["source_calls"]) or mentions(right, tainted)
         value = [(match.end(), statement_end(code, match.end()))]
-        if carries and not sanitized(code, value, sanitizers, tainted) and not _guarded(right, tainted):
+        if carries and not sanitized(code, value, sanitizers, tainted, guard) and not _guarded(right, tainted):
             tainted.add(target)
         else:
             tainted.discard(target)
 
 
-def _unchecked(line: str, code: str, tainted: set[str], sinks: list[str], sanitizers: list[str]) -> bool:
+def _unchecked(
+    line: str, code: str, tainted: set[str], rules: tuple[list[str], list[str]], guard: Guard | None = None
+) -> bool:
     """Whether request data reaches a sink on this line other than through a check. A value assigned
     earlier on the line counts as carried: `String g = f; read(g)` reaches, `read(g); g = f` too."""
+    sinks, sanitizers = rules
     carried = set(tainted)
-    _retaint(line, code, carried, sanitizers)
+    _retaint(line, code, carried, sanitizers, guard)
     carried |= tainted
-    return not sanitized(code, sink_regions(line, code, sinks), sanitizers, carried) and not _guarded(line, carried)
+    regions = sink_regions(line, code, sinks)
+    return not sanitized(code, regions, sanitizers, carried, guard) and not _guarded(line, carried)
 
 
 def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
@@ -224,22 +241,45 @@ def reaching(method: Method, sinks: list[str], sanitizers: tuple[str, ...] = ())
     tainted = _parameters(method.signature)
     annotated = bool(tainted)
     clean = [*_FACTS["sanitizers"], *sanitizers]
-    normalized: set[str] = set()
+    scope = Scope(method.constants)
     found: list[Flow] = []
     pending: list[tuple[str, Flow]] = []
-    for (line_no, line), code in zip(method.body, method.code, strict=True):
+    restores: list[tuple[int, set[str]]] = []
+    depth = 0
+    for index, ((line_no, line), code) in enumerate(zip(method.body, method.code, strict=True)):
+
+        def guard(names: set[str], line: str = line, code: str = code) -> list[tuple[int, int]]:
+            return list(analyse(code, line, names, scope).spans)
+
         direct = holds(line, _FACTS["source_calls"])
-        if holds(line, sinks) and (direct or mentions(line, tainted)) and _unchecked(line, code, tainted, sinks, clean):
+        if (
+            holds(line, sinks)
+            and (direct or mentions(line, tainted))
+            and _unchecked(line, code, tainted, (sinks, clean), guard)
+        ):
             flow = Flow(line_no, line, "a request parameter" if annotated else "the request")
             held = deferred_to(line, code, sinks)
             if held:
                 pending.append((held, flow))
             else:
                 found.append(flow)
-        _retaint(line, code, tainted, clean)
-        held_to_base = hold_to_base(code, tainted, normalized)
-        pending = [(name, flow) for name, flow in pending if name not in held_to_base]
+        _retaint(line, code, tainted, clean, guard)
+        scope.track(code)
+        effect = analyse(code, line, tainted, scope, _following(method.code[index + 1 :]))
+        restore = tainted & effect.scoped
+        tainted -= effect.cleared | effect.scoped
+        pending = [(name, flow) for name, flow in pending if name not in effect.held]
+        depth += code.count("{") - code.count("}")
+        while restores and depth < restores[-1][0]:
+            tainted |= restores.pop()[1]
+        if restore:
+            restores.append((depth, restore))
     yield from sorted(found + [flow for _, flow in pending], key=lambda flow: flow.line_no)
+
+
+def _following(codes: Sequence[str]) -> str:
+    """The next two lines of code with anything on them, without their indentation."""
+    return " ".join([code.strip() for code in codes if code.strip()][:2])
 
 
 def flows(text: FileText, sinks: list[str], sanitizers: tuple[str, ...] = ()) -> Iterator[Flow]:
