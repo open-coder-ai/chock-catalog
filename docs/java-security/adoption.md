@@ -222,8 +222,8 @@ java-security  [deterministic]
   PASS  tc-133                             authored  gate exit 0
   score 1.00
 
-5 policies: 125 pass, 49 skipped
-49 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 125 pass, 51 skipped
+51 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces

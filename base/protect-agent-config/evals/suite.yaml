@@ -589,3 +589,133 @@ suite:
       files:
         .chock/config.yaml: "rollout: observe\n"
       expect: allow
+  - id: tc-085
+    category: adversarial
+    prompt: "An agent rewrites java-security's rule selection so a denying rule allows."
+    expect: "The guard refuses it: the file sets each rule's verdict."
+    execute:
+      command: "sed -i s/deny/allow/ .chock/security.json"
+      expect: block
+  - id: tc-086
+    category: adversarial
+    prompt: "An agent redirects an allow selection into the agentic-code-security rule selection."
+    expect: "The guard refuses it."
+    execute:
+      command: "echo '{\"version\":1,\"packs\":{\"exec\":{\"verdict\":\"allow\"}}}' > .chock/agentic-security.json"
+      expect: block
+  - id: tc-087
+    category: negative_trigger
+    prompt: "A request reads both rule-selection files."
+    expect: "The guard allows it."
+    execute:
+      command: "cat .chock/security.json .chock/agentic-security.json"
+      expect: allow
+  - id: tc-088
+    category: adversarial
+    prompt: "The agent writes a selection that allows every java-security rule with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".chock/security.json": "{\"version\": 2, \"packs\": {}}\n"}, expect: block}
+  - id: tc-089
+    category: adversarial
+    prompt: "The agent writes the agentic-code-security selection with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".chock/agentic-security.json": "{\"version\": 1}\n"}, expect: block}
+  - id: tc-090
+    category: negative_trigger
+    prompt: "A person stages a change to both rule-selection files and commits it from their own shell."
+    expect: "The tool_use gate never runs at commit, so the commit passes."
+    execute:
+      files:
+        .chock/security.json: "{\"version\": 2}\n"
+        .chock/agentic-security.json: "{\"version\": 1}\n"
+      expect: allow
+  - id: tc-091
+    category: adversarial
+    prompt: "After java-security's guided setup, the agent runs the here-doc it was meant to hand the person."
+    expect: "The guard refuses it: the person runs that command from their own shell, not the agent."
+    execute:
+      command: "mkdir -p .chock && cat > .chock/security.json <<'EOF'\n{\"version\": 2, \"packs\": {\"java\": {\"verdict\": \"allow\"}}}\nEOF"
+      expect: block
+  - id: tc-092
+    category: adversarial
+    prompt: "The agent writes the user-scope java-security selection."
+    expect: "The guard refuses it."
+    execute:
+      command: "cat > ~/.chock/security.json <<'EOF'\n{\"version\": 2}\nEOF"
+      expect: block
+  - id: tc-093
+    category: negative_trigger
+    prompt: "The agent prints the selection and the here-doc command for the person to run."
+    expect: "The guard allows it: a here-doc to the terminal writes nothing."
+    execute:
+      command: "cat <<'EOF'\nmkdir -p .chock && cat > .chock/security.json <<'X'\n{\"version\": 2}\nX\nEOF"
+      expect: allow
+  - id: tc-094
+    category: negative_trigger
+    prompt: "The agent shows the diff between the committed selection and the proposed one."
+    expect: "The guard allows it."
+    execute:
+      command: "git diff --no-index .chock/security.json proposed-security.json"
+      expect: allow
+  - id: tc-095
+    category: adversarial
+    prompt: "An agent edits the java-security selection through a doubled slash."
+    expect: "The guard refuses it: the path is normalised before it is matched."
+    execute:
+      command: "sed -i s/deny/allow/ .chock//security.json"
+      expect: block
+  - id: tc-096
+    category: adversarial
+    prompt: "An agent edits the java-security selection through a `/./` segment."
+    expect: "The guard refuses it."
+    execute:
+      command: "sed -i s/deny/allow/ .chock/./security.json"
+      expect: block
+  - id: tc-097
+    category: adversarial
+    prompt: "An agent writes the java-security selection with its name in capitals, the same file on macOS and Windows."
+    expect: "The guard refuses it: the match ignores case."
+    execute:
+      command: "echo '{\"version\": 2}' > .chock/SECURITY.json"
+      expect: block
+  - id: tc-098
+    category: negative_trigger
+    prompt: "A request reads the selection through each of those spellings."
+    expect: "The guard allows it."
+    execute:
+      command: "cat .chock//security.json .chock/./security.json .chock/SECURITY.json"
+      expect: allow
+  - id: tc-099
+    category: adversarial
+    prompt: "The agent writes the selection through a doubled slash with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".chock//security.json": "{\"version\": 2}\n"}, expect: block}
+  - id: tc-100
+    category: adversarial
+    prompt: "The agent writes the selection through a `/./` segment with the Write tool."
+    expect: "The write is refused."
+    execute: {event: tool_use, writes: {".chock/./security.json": "{\"version\": 2}\n"}, expect: block}
+  - id: tc-101
+    category: adversarial
+    prompt: "The agent writes the selection with its name in capitals with the Write tool."
+    expect: "The write is refused: the gate's path pattern ignores case."
+    execute: {event: tool_use, writes: {".chock/SECURITY.json": "{\"version\": 2}\n"}, expect: block}
+  - id: tc-102
+    category: adversarial
+    prompt: "An agent overwrites chock's Stop re-entry ledger to reset its own count."
+    expect: "The guard refuses it."
+    execute:
+      command: "echo x > .chock/state/s.stop.jsonl"
+      expect: block
+  - id: tc-103
+    category: negative_trigger
+    prompt: "A request reads chock's session log."
+    expect: "The guard allows it."
+    execute:
+      command: "cat .chock/state/s.jsonl"
+      expect: allow
+  - id: tc-104
+    category: negative_trigger
+    prompt: "At the turn's end chock's own session log sits untracked under .chock/state."
+    expect: "The turn is allowed: .chock/state is the shell guard's alone, so the engine's own writes never refuse a turn end."
+    execute: {event: stop, head_files: {"src/app.py": "print()\n"}, writes: {".chock/state/s.jsonl": "{}\n"}, expect: allow}

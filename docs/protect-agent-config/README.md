@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `protect-agent-config.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 84 total, 84 executable |
+| **Eval cases** | 104 total, 104 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Stops an agent hand-editing its own guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .chock/{config.yaml,dependency-allowlist.txt,bin,compiled}, .git/hooks and policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content/Out-File. Reads, cp out, `chock sync` pass. Coarse. No marker bypass: a person edits from their own shell. Edit/Write: tool_use gate (incl. turn's end), never at commit.
+Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .git/hooks, policy implementations/ and .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content. Reads and `chock sync` pass. No marker bypass: a person edits in their shell. Edit/Write: tool_use gate (incl. turn's end), never at commit.
 
 ## What it solves
 
@@ -30,7 +30,7 @@ A guard script, `implementations/protect-agent-config.py`, run before the agent 
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/config.yaml|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
+agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/config.yaml|.chock/security.json|.chock/agentic-security.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.chock/state|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
 if(config_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not widen or disarm its own guardrails
 ```
 

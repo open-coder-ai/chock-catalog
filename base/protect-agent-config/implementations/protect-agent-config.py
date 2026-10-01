@@ -26,6 +26,9 @@ PROTECTED = (
     ".chock/compiled",
     ".chock/dependency-allowlist.txt",
     ".chock/config.yaml",
+    ".chock/security.json",
+    ".chock/agentic-security.json",
+    ".chock/state",  # shell only: the engine's own session log there would fail the Edit/Write gate's turn's-end walk
     ".git/hooks",
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
@@ -33,10 +36,20 @@ GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
 
-def hit(path: str) -> bool:
-    """Whether a path names something this guard protects (backslashes read as slashes)."""
+def normalise(path: str) -> str:
+    """The path as matched: backslashes as slashes, `//` and `/./` collapsed, lowercase (macOS and Windows ignore case)."""
     normal = path.replace("\\", "/")
-    return any(part in normal for part in PROTECTED) or GUARD_SOURCES.search(normal) is not None
+    previous = None
+    while previous != normal:
+        previous = normal
+        normal = normal.replace("//", "/").replace("/./", "/")
+    return normal.lower()
+
+
+def hit(path: str) -> bool:
+    """Whether a path names something this guard protects."""
+    normal = normalise(path)
+    return any(part.lower() in normal for part in PROTECTED) or GUARD_SOURCES.search(normal) is not None
 
 
 def check(raw: str) -> str | None:
