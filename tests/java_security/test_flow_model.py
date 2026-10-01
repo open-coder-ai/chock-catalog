@@ -119,3 +119,80 @@ def test_matches_with_no_pattern_is_the_match_not_a_validation() -> None:
         ),
     )
     assert list(flows(checked, SINKS)) == []
+
+
+def _flow_lines(param: str, body: str, sinks: list[str] = SINKS, **kwargs: tuple[str, ...]) -> list[int]:
+    return [f.line_no for f in flows(FileText("C.java", _controller(param, body)), sinks, **kwargs)]
+
+
+def test_a_sanitizer_named_in_a_comment_or_literal_is_not_a_sanitizer() -> None:
+    for line in (
+        'return read(Paths.get("/srv/" + f)); // TODO sanitize later',
+        'return read(Paths.get("/srv/" + f)); /* f.normalize() */',
+        'return read(Paths.get("/srv/sanitize(f)/" + f));',
+        "return read(Paths.get(\"/srv/\" + f)); char c = 'x'; // isValid(f)",
+        'return read(Paths.get("/srv/" + f)); String t = """\n    sanitize(f)\n    """;',
+    ):
+        assert _flow_lines("@RequestParam String f", line) == [4], line
+
+
+def test_a_block_comment_that_opens_on_an_earlier_line_hides_its_text() -> None:
+    body = '/*\n    sanitize(f)\n    */ return read(Paths.get("/srv/" + f));'
+    assert _flow_lines("@RequestParam String f", body) == [6]
+
+
+def test_a_sanitizer_must_be_applied_to_the_value_the_line_carries() -> None:
+    assert _flow_lines("@RequestParam String f", 'sanitize(g); return read(Paths.get("/srv/" + f));') == [4]
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get(sanitize(g) + "/" + f));') == [4]
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get("/srv/" + sanitize(f)));') == []
+    assert _flow_lines("@RequestParam String f", 'if (valid.isValid(f)) return read(Paths.get("/srv/" + f));') == []
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get(f.normalize() + "/srv"));') == []
+
+
+def test_a_name_that_only_contains_a_sanitizer_word_is_not_a_call_to_it() -> None:
+    body = 'String unsanitized = f;\n    return read(Paths.get("/srv/" + unsanitized));'
+    assert _flow_lines("@RequestParam String f", body) == [5]
+
+
+def test_a_check_on_a_request_read_counts_and_a_comment_beside_it_does_not() -> None:
+    clean = 'return read(Paths.get("/srv", FilenameUtils.getName(request.getParameter("f"))));'
+    assert _flow_lines("HttpServletRequest request", clean) == []
+    commented = 'return read(Paths.get("/srv", request.getParameter("f"))); // sanitize'
+    assert _flow_lines("HttpServletRequest request", commented) == [4]
+
+
+def test_a_method_on_an_indexed_receiver_is_read() -> None:
+    assert _flow_lines("@RequestParam String[] f", 'return read(Paths.get(f[0].normalize() + "/x"));') == []
+    assert _flow_lines("@RequestParam String[] f", "return read(Paths.get(g[0].normalize() + f[0]));") == [4]
+
+
+def test_a_call_continued_from_an_earlier_line_is_not_credited_with_the_value() -> None:
+    body = 'a).normalize(); return read(Paths.get("/srv/" + f));'
+    assert _flow_lines("@RequestParam String f", body) == [4]
+
+
+def test_a_call_whose_arguments_are_still_open_is_read_to_the_line_end() -> None:
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get(sanitize(f + "/x"') == []
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get("/srv/" + f, sanitize(') == [4]
+
+
+def test_a_pack_sanitizer_must_be_applied_to_the_value() -> None:
+    param = "@RequestParam String q"
+    sinks = [".search("]
+    applied = "String safe = LdapEncoder.filterEncode(q);\n    ctx.search(base, safe, controls);"
+    assert _flow_lines(param, applied, sinks, sanitizers=("LdapEncoder",)) == []
+    for body in (
+        "String safe = LdapEncoder.filterEncode(other);\n    ctx.search(base, q, controls);",
+        "// LdapEncoder.filterEncode(q)\n    ctx.search(base, q, controls);",
+        'ctx.search(base, q, controls); String n = "LdapEncoder";',
+    ):
+        assert _flow_lines(param, body, sinks, sanitizers=("LdapEncoder",)), body
+    builder = 'ctx.search(base, query().where("uid").is(q), controls);'
+    assert _flow_lines(param, builder, sinks, sanitizers=(".is(",)) == []
+    assert _flow_lines(param, builder, sinks)
+
+
+def test_lines_the_lexer_merges_are_never_credited_with_a_sanitizer() -> None:
+    body = 'String a = "x"; // note\x0c\n    return read(Paths.get("/srv/" + sanitize(f)));'
+    assert _flow_lines("@RequestParam String f", body) == [6]
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get("/srv/" + sanitize(f)));') == []

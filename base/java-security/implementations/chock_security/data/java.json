@@ -250,10 +250,6 @@
       ".compile(",
       ".evaluate("
     ],
-    "sanitizers": [
-      "XPathVariableResolver",
-      "setXPathVariableResolver("
-    ],
     "not_xpath": [
       "Pattern.compile("
     ]

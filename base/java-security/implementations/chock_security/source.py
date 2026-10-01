@@ -5,10 +5,15 @@ example or a string literal, and a guard that refuses a comment is noise. `code(
 file line for line -- the same count, so a finding's line number is the author's -- with every
 comment replaced by spaces and every string, text block and char literal kept as its quotes
 around blanks: `"a == b"` reads as `"      "`. Columns are preserved too.
+
+javac decodes `\\uXXXX` escapes before it tokenizes, so the lexer does too: `\\u002f\\u002f` opens a
+comment and `\\u000a` ends one. A decoded character keeps its escape's columns (the character, then
+blanks), and a decoded line break or other space reads as a blank, so the line count is unchanged.
 """
 
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 
 from chock_security.decision import FileText
@@ -75,17 +80,51 @@ def _step(text: str, i: int, state: int) -> tuple[str, int, int]:
     return step(text, i) if step is not None else _in_literal(text, i, state)
 
 
-@lru_cache(maxsize=_CACHE_SIZE)
-def blank(text: str) -> str:
-    """`text` with comments and literal contents blanked, newlines and columns kept.
-
-    Cached: a pure function of its argument, and the hottest call in the engine."""
+def _lex(text: str) -> str:
     out: list[str] = []
     i, state = 0, _CODE
     while i < len(text):
         emitted, width, state = _step(text, i, state)
         out.append(emitted)
         i += width
+    return "".join(out)
+
+
+#: A run of backslashes, then `u`s and four hex digits: an escape when the run's length is odd.
+_ESCAPE = re.compile(r"(\\+)u+([0-9A-Fa-f]{4})")
+
+
+def _decoded(text: str) -> tuple[str, list[int]]:
+    """`text` with its Unicode escapes decoded, and the width in `text` of each decoded character."""
+    chars: list[str] = []
+    widths: list[int] = []
+    last = 0
+    for match in _ESCAPE.finditer(text):
+        if len(match.group(1)) % 2 == 0:
+            continue
+        start = match.end(1) - 1
+        chars.extend(text[last:start])
+        widths.extend([1] * (start - last))
+        char = chr(int(match.group(2), 16))
+        chars.append("\n" if char == "\r" else char)
+        widths.append(match.end() - start)
+        last = match.end()
+    chars.extend(text[last:])
+    widths.extend([1] * (len(text) - last))
+    return "".join(chars), widths
+
+
+@lru_cache(maxsize=_CACHE_SIZE)
+def blank(text: str) -> str:
+    """`text` with comments and literal contents blanked, newlines and columns kept.
+
+    Cached: a pure function of its argument, and the hottest call in the engine."""
+    if "\\u" not in text:
+        return _lex(text)
+    decoded, widths = _decoded(text)
+    out: list[str] = []
+    for emitted, width in zip(_lex(decoded), widths, strict=True):
+        out.append(emitted if width == 1 else (" " if emitted.isspace() else emitted) + " " * (width - 1))
     return "".join(out)
 
 
