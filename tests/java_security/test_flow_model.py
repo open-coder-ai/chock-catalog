@@ -208,3 +208,12 @@ def test_lines_that_cannot_be_aligned_are_never_credited_with_a_sanitizer(monkey
     monkeypatch.setattr(flow, "blank", lambda text: text.replace("\n", " "))
     body = 'return read(Paths.get("/srv/misaligned/" + sanitize(f)));'
     assert _flow_lines("@RequestParam String f", body) == [4]
+
+
+def test_a_brace_in_a_string_comment_or_char_literal_does_not_end_the_method() -> None:
+    sink = 'return read(Paths.get("/srv/" + f));'
+    for before in ('log("}");', "char c = '}';", "/* } */", 'String t = """\n    }\n    """;', "// }"):
+        assert _flow_lines("@RequestParam String f", f"{before}\n    {sink}"), before
+    assert _flow_lines("@RequestParam String f", f'log("}} {{"); {sink}'), "same line"
+    assert _flow_lines("@RequestParam String f", 'log("{"); ' + sink)
+    assert _flow_lines("@RequestParam String f", 'return read(Paths.get("/srv/" + sanitize(f))); // }') == []

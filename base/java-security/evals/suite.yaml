@@ -1677,3 +1677,33 @@ suite:
     prompt: "The containment check throws, at the top level of the method, and the normalized path is read after it."
     expect: "The commit passes: the check runs on every path to the read."
     execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}
+  - id: tc-167
+    category: adversarial
+    prompt: "A string literal holding a closing brace comes before a path read built from the request parameter."
+    expect: "The commit is refused: a brace inside a string closes nothing, so the read is still inside the method and is scanned."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    log(\"}\");\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n}\n"}, expect: block}
+  - id: tc-168
+    category: adversarial
+    prompt: "A comment holding a closing brace comes before a path read built from the request parameter."
+    expect: "The commit is refused: a brace in a comment closes nothing."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    // }\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n}\n"}, expect: block}
+  - id: tc-169
+    category: adversarial
+    prompt: "A char literal holding a closing brace comes before a path read built from the request parameter."
+    expect: "The commit is refused: a brace in a char literal closes nothing."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    char c = '}';\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n}\n"}, expect: block}
+  - id: tc-170
+    category: adversarial
+    prompt: "The containment check is inside an if on a flag, after a string holding a closing brace, and the path is read after the if."
+    expect: "The commit is refused: the brace in the string does not close the if, and the check does not run when the flag is off."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    if (strict) {\n      log(\"}\");\n      if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    }\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: block}
+  - id: tc-171
+    category: negative_trigger
+    prompt: "A char literal holding a closing brace comes before a top-level containment check, then the normalized path is read."
+    expect: "The commit passes: the brace in the char literal opens or closes no block, and the check runs on every path to the read."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    char c = '}';\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}
+  - id: tc-172
+    category: negative_trigger
+    prompt: "A block comment holding a closing brace comes before a top-level containment check, then the normalized path is read."
+    expect: "The commit passes: the brace in the comment opens or closes no block."
+    execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    /* } */\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}

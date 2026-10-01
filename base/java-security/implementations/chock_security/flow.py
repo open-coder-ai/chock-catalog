@@ -92,31 +92,34 @@ def _signature(lines: list[str], start: int, name: str) -> tuple[str, int] | Non
     return None
 
 
-def _body(lines: list[str], after: int) -> tuple[tuple[tuple[int, str], ...], int] | None:
+def _body(lines: list[str], clean: list[str], after: int) -> tuple[tuple[tuple[int, str], ...], int] | None:
     """The braced block following a signature and the line it closes on, or None with no body.
 
     What follows the opening brace on its own line is body too, so a one-line method
     (`x(...) { return y; }`) has one, and the text before the brace is never mistaken for it.
+    Braces are counted in the blanked code: a `}` in a string, a char literal or a comment closes nothing.
     """
     depth = 0
     opened = False
     collected: list[tuple[int, str]] = []
     for offset in range(after, len(lines)):
         line = lines[offset]
+        code = clean[offset] if len(clean) == len(lines) and len(clean[offset]) == len(line) else line
         if not opened:
-            if ";" in line.split("{")[0] and "{" not in line:
+            if ";" in code.split("{")[0] and "{" not in code:
                 return None
-            if "{" not in line:
+            if "{" not in code:
                 continue
             opened = True
-            rest = line.split("{", 1)[1]
-            depth = 1 + rest.count("{") - rest.count("}")
-            if rest.strip() and rest.strip() != "}":
+            at = code.index("{") + 1
+            rest, rest_code = line[at:], code[at:]
+            depth = 1 + rest_code.count("{") - rest_code.count("}")
+            if rest.strip() and rest_code.strip() != "}":
                 collected.append((offset + 1, rest))
             if depth <= 0:
                 return tuple(collected), offset
             continue
-        depth += line.count("{") - line.count("}")
+        depth += code.count("{") - code.count("}")
         if depth <= 0:
             return tuple(collected), offset
         collected.append((offset + 1, line))
@@ -158,7 +161,7 @@ def _methods(text: str) -> tuple[Method, ...]:
     while offset < len(lines):
         name = _declares(lines[offset])
         signature = _signature(lines, offset, name) if name else None
-        block = _body(lines, signature[1]) if signature else None
+        block = _body(lines, clean, signature[1]) if signature else None
         if name and signature and block and block[0]:
             code = tuple(_code_of(clean, lines, number, line) for number, line in block[0])
             found.append(Method(name, signature[0], block[0], code, constants))

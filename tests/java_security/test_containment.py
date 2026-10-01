@@ -95,6 +95,13 @@ REFUSED_CONTAINMENT = [
     _guarded("switch (k) { case 1: if (!p.startsWith(base)) break; }"),
     _guarded("new Runnable() {\n      public void run() {\n        if (!p.startsWith(base)) return;\n      }\n    };"),
     _guarded("if (flag) {\n      Preconditions.checkArgument(p.startsWith(base));\n    }"),
+    # a brace in a string, comment or char literal opens or closes no block
+    _guarded('if (flag) { log("}"); if (!p.startsWith(base)) throw new IllegalStateException(); }'),
+    _guarded('if (flag) {\n      log("}");\n      if (!p.startsWith(base)) throw new IllegalStateException();\n    }'),
+    _guarded(
+        "if (flag) {\n      char c = '}';\n      if (!p.startsWith(base)) throw new IllegalStateException();\n    }"
+    ),
+    _guarded("if (flag) {\n      /* } */\n      if (!p.startsWith(base)) throw new IllegalStateException();\n    }"),
     # the exit is the read
     "Path p = Paths.get(base, f).normalize();\n    if (!p.startsWith(base)) {\n      return Files.readAllBytes(p);\n    } else {\n      return null;\n    }",
     "Path p = Paths.get(base, f).normalize();\n    if (!p.startsWith(base)) return Files.readAllBytes(p);\n    return null;",
@@ -113,6 +120,12 @@ def test_a_normalized_path_that_is_not_held_to_its_base_is_refused(body: str) ->
 
 
 ALLOWED_CONTAINMENT = [
+    # a brace in a string, comment or char literal before a top-level guard changes nothing
+    P + "char c = '}';\n    if (!p.startsWith(base)) throw new IllegalStateException();" + READ,
+    P + "/* } */\n    if (!p.startsWith(base)) throw new IllegalStateException();" + READ,
+    P + 'log("}");\n    if (!p.startsWith(base)) throw new IllegalStateException();' + READ,
+    P + 'String t = """\n      }\n      """;\n    if (!p.startsWith(base)) throw new IllegalStateException();' + READ,
+    P + "// }\n    if (!p.startsWith(base)) throw new IllegalStateException();" + READ,
     # an exit on every path to the sink: in the same block, or the same loop body
     P
     + "for (String q : xs) {\n      if (!p.startsWith(base)) continue;\n      Files.readAllBytes(p);\n    }\n    return null;",
