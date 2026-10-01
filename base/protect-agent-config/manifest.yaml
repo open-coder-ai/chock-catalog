@@ -1,20 +1,18 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.2.3"
+version: "0.2.4"
 description: >
-  Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses
-  writes to AGENTS.md and wrappers, .claude/settings, .mcp.json, .git/hooks, policy
-  implementations/ and
+  Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
+  AGENTS.md and wrappers, .claude/settings, MCP and hook client configs (.mcp.json, .cursor/mcp.json,
+  .gemini/settings.json, .codex/hooks.json, more), .git/hooks, policy implementations/ and
   .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}:
-  redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content. Reads and `chock
-  sync` pass. No marker bypass: a person edits in their shell. Edit/Write: tool_use gate
-  (incl. turn's end), never at commit.
+  redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Reads and `chock sync` pass. Edit/Write: tool_use gate.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    agent_config(AGENTS.md|wrappers|.claude/settings|.mcp.json|.chock/config.yaml|.chock/security.json|.chock/agentic-security.json|.chock/dependency-allowlist.txt|.chock/bin|.chock/compiled|.chock/state|.git/hooks|.agents/policies/*/implementations): never(hand_edit|delete); regenerate_via(chock sync)
-    if(config_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not widen or disarm its own guardrails
+    agent_config(AGENTS.md+wrappers|.claude/settings|.mcp.json|.chock/{config.yaml,*security.json,*allowlist.txt,bin,compiled,state}|.git/hooks|.agents/policies/*/implementations|.{cursor,codex,windsurf}/hooks.json|.{cursor,vscode}/mcp.json|.{codex,grok}/config.toml|.gemini/settings.json|.junie/mcp/mcp.json|.devin/{mcp_config,config,hooks.v1}.json|.grok/hooks/|.agents/{mcp_config,hooks}.json|.tabnine/agent/settings.json|.github/hooks/): never(edit|delete)
+    else ask_person; no marker passes
 hook:
   gate:
     kind: content_regex
@@ -28,7 +26,7 @@ hook:
       `chock sync`. A person edits these files from their own shell.
     params:
       scan: added_lines
-      forbidden_path_regex: '(?i)(AGENTS\.md|CLAUDE\.md|GEMINI\.md|copilot-instructions\.md|\.cursorrules|\.windsurfrules|\.aider\.conf\.yml|\.claude[/\\](?:\.?[/\\])*settings|\.mcp\.json|\.chock[/\\](?:\.?[/\\])*(bin|compiled|dependency-allowlist\.txt|config\.yaml|security\.json|agentic-security\.json)|\.git[/\\](?:\.?[/\\])*hooks|\.agents[/\\](?:\.?[/\\])*policies[/\\].*implementations)'
+      forbidden_path_regex: '(?i)(AGENTS\.md|CLAUDE\.md|GEMINI\.md|copilot-instructions\.md|\.cursorrules|\.windsurfrules|\.aider\.conf\.yml|\.claude[/\\](?:\.?[/\\])*settings|\.mcp\.json|\.cursor[/\\](?:\.?[/\\])*mcp\.json|\.vscode[/\\](?:\.?[/\\])*mcp\.json|\.gemini[/\\](?:\.?[/\\])*settings\.json|\.codex[/\\](?:\.?[/\\])*config\.toml|\.junie[/\\](?:\.?[/\\])*mcp[/\\](?:\.?[/\\])*mcp\.json|\.devin[/\\](?:\.?[/\\])*(?:mcp_)?config(?:\.local)?\.json|\.grok[/\\](?:\.?[/\\])*config\.toml|\.agents[/\\](?:\.?[/\\])*mcp_config\.json|\.tabnine[/\\](?:\.?[/\\])*agent[/\\](?:\.?[/\\])*settings\.json|\.(?:cursor|codex|windsurf)[/\\](?:\.?[/\\])*hooks\.json|\.devin[/\\](?:\.?[/\\])*hooks\.v1\.json|\.agents[/\\](?:\.?[/\\])*hooks\.json|\.(?:github|grok)[/\\](?:\.?[/\\])*hooks[/\\](?:\.?[/\\])*|\.chock[/\\](?:\.?[/\\])*(bin|compiled|dependency-allowlist\.txt|config\.yaml|security\.json|agentic-security\.json)|\.git[/\\](?:\.?[/\\])*hooks|\.agents[/\\](?:\.?[/\\])*policies[/\\].*implementations)'
       content_pattern: '(?!)'
 effects:
 - read_only
@@ -51,7 +49,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-01T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -65,6 +63,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.4
+  date: '2026-10-01'
+  changes:
+  - "Behaviour change: the project-level MCP config files and the hook files that a supported client reads are protected by the guard and the Edit/Write gate, beside the root `.mcp.json`. A server an agent registers in an MCP config runs with the client's authority the next time the client starts, and an agent that deletes chock's PreToolUse and Stop entries from a hook file disarms its own gates; both lower its own enforcement. MCP configs added: `.cursor/mcp.json` (Cursor; Grok also reads it), `.vscode/mcp.json` (VS Code Copilot), `.gemini/settings.json` (Gemini CLI; the whole file is client config: mcpServers, hooks, tool permissions), `.codex/config.toml` (Codex CLI: `[mcp_servers.*]`), `.junie/mcp/mcp.json` (Junie), `.devin/mcp_config.json` and `.devin/mcp_config.local.json` (Devin since v3000.3) with `.devin/config.json` and `.devin/config.local.json` (older Devin keeps mcpServers there; they also hold permissions and hooks), `.grok/config.toml` (Grok), `.agents/mcp_config.json` (Antigravity) and `.tabnine/agent/settings.json` (Tabnine). Hook files added, the ones `chock sync` merges chock's entries into: `.cursor/hooks.json` (Cursor), `.codex/hooks.json` (Codex CLI), `.windsurf/hooks.json` (Windsurf), `.github/hooks/` (VS Code Copilot: `chock.json`, agentseam's default `agentseam.json`), `.grok/hooks/` (Grok), `.devin/hooks.v1.json` (Devin) and `.agents/hooks.json` (Antigravity). Ordinary neighbours stay writable: `.vscode/launch.json` and `settings.json`, `.cursor/rules/*`, `.windsurf/rules/*`, `.codex/prompts/*`, `.gemini/commands/*`, `.github/workflows/*` and `.github/ISSUE_TEMPLATE/*`, `.devin/notes.md`, `.agents/skills/*`. (`.gemini/GEMINI.md` was already protected as an instruction file and still is.) The same path normalisation applies (backslashes, `//`, `/./`, case)."
+  - "A person still edits these files from their own shell, and `chock sync` passes the guard (it names no protected path), so regeneration works. `chock sync` merges hook entries into `.gemini/settings.json`, `.tabnine/agent/settings.json` and the hook files above; a run that changes one leaves it dirty until it is committed, and the Edit/Write gate's turn's-end check refuses an agent's turn while a protected file is dirty (tested for `.gemini/settings.json`, `.tabnine/agent/settings.json` and `.cursor/hooks.json`), as it does for `.claude/settings.json`. Commit the regenerated files before an agent's turn ends."
+  - "Left out: Windsurf's MCP config (global `~/.codeium/windsurf/mcp_config.json` only), Kimi Code and Junie's user files (outside the repository), the `mcp` key in `.vscode/settings.json` (an editor settings file with unrelated content), and clients chock does not support (`.roo/mcp.json`, `.amazonq/mcp.json`). Known limits, the same as for `.claude/settings.json` and every other protected path and not specific to these: `..` segments are not resolved, a write by bare file name after a `cd` into the directory is not joined to it, and shell variables, command substitution and globs are not resolved to the protected path. The engine's baseline check is the backstop when a change reaches a pull request."
 - version: 0.2.3
   date: '2026-09-30'
   changes:
