@@ -45,17 +45,21 @@ def scan(
 
 
 def unknown(nodes: list[Node], path: tuple[str | int, ...]) -> bool:
-    """Whether a loader may see more at `path` than the nodes show: an alias or a merged mapping on its way.
+    """Whether a loader may see something else at `path` than the nodes show.
 
-    True when an alias sits at, above or below `path`, or a `<<` key belongs to a mapping at, above or
-    below it (the merge adds keys to that mapping). A gate refuses or asks then; it never reads absence.
+    True when an alias sits at, above or below `path`; when a `<<` key belongs to a mapping at, above or
+    below it (the merge adds keys to that mapping); or when a key there occurs twice in one document
+    (loaders keep the last, or refuse). A gate refuses or asks then; it never reads absence. Tags are
+    not judged here: one a tool expands (GitLab's `!reference`, `!!omap`) is the gate's to check.
     """
+    seen: set[tuple[int, tuple[str | int, ...]]] = set()
     for node in nodes:
         if MERGE in node.path:
             holder = node.path[: node.path.index(MERGE)]
-        elif node.kind == "alias":
+        elif node.kind == "alias" or (node.doc, node.path) in seen:
             holder = node.path
         else:
+            seen.add((node.doc, node.path))
             continue
         if _related(holder, path):
             return True

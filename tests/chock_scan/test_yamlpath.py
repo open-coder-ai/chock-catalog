@@ -181,6 +181,8 @@ def test_anchors_aliases_and_merge_keys_are_reported_never_expanded(yp: ModuleTy
         ("<<: *all\nb: 1\n", ("b",)),
         ("j:\n  '<<': {p: w}\n", ("j", "p")),
         ("a:\n  <<: [*x, *y]\n", ("a",)),
+        ("p: read\np: write\n", ("p",)),
+        ("j:\n  p: {a: 1}\n  p: {b: 2}\n", ("j", "p", "b")),
     ],
 )
 def test_a_merge_or_alias_on_the_way_makes_a_path_unknown(yp: ModuleType, text: str, path: tuple) -> None:
@@ -194,6 +196,8 @@ def test_a_merge_or_alias_on_the_way_makes_a_path_unknown(yp: ModuleType, text: 
         ("a: *x\nb:\n  c: 1\n", ("b", "c")),
         ("a:\n  <<: *x\nb:\n  c: 1\n", ("b", "c")),
         ("a: [b, *x]\n", ("a", 0)),
+        ("p: 1\nq: 2\n---\np: 3\n", ("p",)),
+        ("p: read\np: write\nq: 1\n", ("q",)),
     ],
 )
 def test_a_path_away_from_every_merge_and_alias_is_known(yp: ModuleType, text: str, path: tuple) -> None:
