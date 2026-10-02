@@ -37,7 +37,7 @@ CASES: dict[str, list[tuple[str, int]]] = {
         ("git status -- commit -c core.hooksPath=/tmp", OK),
         ("git config --get core.hooksPath", OK),
         ("git config core.hooksPath", OK),
-        ("git config --unset core.hooksPath", OK),
+        ("git config --unset core.hooksPath", ASK),  # husky and others install through hooksPath (0.4.0)
         ("git config user.name x", OK),
         ("git -c user.name=x commit -m y", OK),
         ("GIT_CONFIG_COUNT=abc git commit -m y", OK),
