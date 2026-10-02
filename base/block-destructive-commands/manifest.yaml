@@ -1,13 +1,13 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.1.1"
+version: "0.2.0"
 description: >
-  Best-effort, on parsed commands (echo ignored). Blocks rm -rf on absolute, ~, $HOME, . or ..
-  paths; recursive Remove-Item/rd/del on drive paths; git push --force or +refspec, reset --hard,
-  clean -f, checkout .; kubectl delete; terraform destroy; aws s3 rm --recursive/rb --force;
-  dropdb; helm uninstall; docker volume rm/prune, system prune; find -delete/-exec rm; shred;
-  truncate; wipefs -a/-o; gcloud with any `delete` operand. branch -D asks. Pre-push hook refuses
-  non-fast-forward pushes.
+  Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table
+  shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths;
+  mv/chmod/chown -R of system dirs; dd to devices, mkfs, wipefs; account lockouts; force, delete
+  and mirror pushes; history rewrites; IaC destroy; cloud and platform deletes; DB drops. Asks: rm
+  -rf off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre-
+  push: no non-ff.
 artifact: rule
 enforcement: advise
 compliance:
@@ -19,8 +19,8 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(destructive_command @position-aware): rm_-rf(abs|~|$HOME|.|..)|Remove-Item|rd|del_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete(any_operand), find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
-    require_approval: branch_-D; prefer: stash|soft_reset|dry-run; push: refuse_non_ff
+    block(shared table): rm|rmdir|mv|chmod|chown_-R(root|home|/etc..), rm_-rf(abs|.|$PWD), dd_of=/dev|mkfs|wipefs|shred, lock(authorized_keys|usermod_-L|passwd_-l|chattr_+i|kill_-1|crontab_-r), git(push_-f|+ref|-d|:ref|--mirror, reset_--hard, clean_-f, checkout|restore_., reflog|gc|filter), iac_destroy, cloud|k8s|helm|paas_delete, sql_drop|dropdb
+    ask: rm_-rf(off safe_list), lease_bare, stash_drop, branch_-D, -auto-approve, drain, prune, pkill_-f, systemctl_disable, api_DELETE; push: refuse_non_ff
 hook:
   script:
     "on": [push]
@@ -32,7 +32,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -46,6 +46,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-10-02'
+  changes:
+  - "Verdicts move into chock_destructive (table 1.0.0), a package shipped byte for byte in this policy and rtk-dangerous-actions-blocker; tests/policies/test_destructive_table.py pins the copies, the version and the table, and replays every case against both guards, so the two can no longer disagree on a destructive command. Where they disagreed the stricter verdict wins (an agent may not lower enforcement), so nothing this policy blocked now asks. From rtk's side this adds asks for rm -rf on a relative path off rtk's safe list (rm -rf src; node_modules, dist, build, target and the like stay allowed), docker container/image/network/builder prune and docker rm -f over a substitution, and blocks for DROP/TRUNCATE/unscoped DELETE/FLUSHALL through database clients and for git, cloud and SQL rows inside docker exec / kubectl exec (file rows are skipped there, as the paths are the container's)."
+  - "New verbs (roadmap HP02, verbs only; the parser is unchanged). Blocks: rm -r without -f on root, a system directory or home; rm -rf of ./ or $PWD; rmdir/unlink, mv (as a source), chmod -R 777/000/a+rwx and chown/chgrp -R on root, a system directory or home; dd of=/dev/* (null, zero, stdout, stderr, tty and fd stay allowed); mkfs, mkfs.*, mke2fs, mkswap; overwriting or deleting authorized_keys (an append is allowed); usermod -L, passwd -l, chattr +i, kill aimed at pid -1, crontab -r; git push --delete/-d/:ref/--prune/--mirror, git checkout or restore of the whole tree (restore --staged alone is allowed), reflog expire/delete, gc --prune=now, filter-branch, filter-repo, update-ref -d; terraform/tofu/terragrunt destroy and apply -destroy, pulumi destroy/down; aws s3 sync --delete, s3api delete-bucket/delete-object(s), ec2 terminate-instances, cloudformation delete-stack, rds delete-db-*, iam delete-*; az group delete, eksctl delete, doctl ... delete, fly destroy, heroku apps:destroy/pg:reset, vercel rm/remove, supabase db reset/projects delete, gh repo delete; docker compose down -v; mysqladmin drop; MongoDB drop()/dropDatabase(). Asks: rm -rf * or $(pwd), git push --force-with-lease with no =<ref>:<sha> (tc-005 now names the lease; tc-075 flips allow to ask), git stash drop/clear, terraform apply -auto-approve, kubectl drain, pkill -f, killall, systemctl disable/mask, and a curl or gh api DELETE or GraphQL delete/destroy mutation sent with credentials to a listed provider API host. 85 eval cases added (tc-082 to tc-166)."
+  - "The engine's C3 fallback is honoured fail-closed: when the command cannot be split (CHOCK_ARGV_FALLBACK=1, or shlex fails here), the guard also reads it with every quote and backslash dropped and the stricter reading wins, so an unclosed quote or a trailing backslash cannot hide a verb; with no CHOCK_RAW_COMMAND under the fallback, argv is re-joined as typed. Limits: ssh, su -c and sudo -s bodies, aliases, variables, scripts and interpreters are not read; API deletes are judged for curl and gh only, to the listed hosts; file rows are skipped inside container exec."
 - version: 0.1.1
   date: '2026-09-30'
   changes:
