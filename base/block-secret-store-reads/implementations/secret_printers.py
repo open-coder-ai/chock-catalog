@@ -122,14 +122,18 @@ def body(name: str, rest: list[str]) -> str:
     return rest[flag + 1] if name in SHELLS and flag is not None and flag + 1 < len(rest) else ""
 
 
-def _mask(text: str) -> str:
-    """The text with single-quoted spans and backslash-escaped characters blanked: the shell runs nothing there."""
+def _mask(text: str) -> str | None:
+    """The text with single-quoted spans and backslash-escaped characters blanked: the shell runs nothing there.
+    None when a single-quoted span is unterminated or crosses a line: a comment or heredoc apostrophe may have
+    opened it, so no span can be trusted."""
     out, quote, double, i = list(text), False, False, 0
     while i < len(text):
         char = text[i]
         if quote:
             quote = char != "'"
             out[i] = " "
+            if char == "\n":
+                return None
         elif char == "\\":
             out[i : i + 2] = " " * len(out[i : i + 2])
             i += 1
@@ -138,12 +142,12 @@ def _mask(text: str) -> str:
         else:
             double = double != (char == '"')
         i += 1
-    return "".join(out)
+    return None if quote else "".join(out)
 
 
 def substitutions(text: str) -> list[str]:
     """Bodies of `$(...)` and backtick substitutions the shell would run, quoted or not, nested ones included."""
-    masked = _mask(text)
+    masked = _mask(text) or text
     found = [text[m.start(1) : m.end(1)] for m in re.finditer(r"`([^`]*)`", masked)]
     for start in re.finditer(r"\$\(", masked):
         depth, end = 1, start.end()

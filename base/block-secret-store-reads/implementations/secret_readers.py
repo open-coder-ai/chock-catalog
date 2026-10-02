@@ -35,7 +35,10 @@ FILE_VALUES = ("--file", "--from-file", "--input", "--in", "--files-from", "--po
 REMOTE = re.compile(r"^(?:[\w.-]+@)?[\w.-]{2,}:")
 WRAPPED = re.compile(r"^(?:[\w-]+=)?@|^file://")
 ATTACHED = re.compile(r"^(?:-[A-Za-z]|--[\w-]+=)?(?:[\w-]+=)?(?:[\w-]+@|[@<])?(?:file://)?")
-FETCHERS = frozenset(("curl", "wget"))
+FETCHERS = {
+    "curl": frozenset(("-o", "--output")),
+    "wget": frozenset(("-O", "-o", "-P", "--output-document", "--output-file", "--directory-prefix")),
+}
 
 
 def values(args: list[str], flags: tuple[str, ...]) -> list[str]:
@@ -76,6 +79,17 @@ def _archive(cmd: Cmd) -> list[str]:
     return [op if op.startswith(("/", "~", "$")) else f"{base}/{op}" for op in ops] if base else ops
 
 
+def _fetch_inputs(cmd: Cmd) -> list[str]:
+    """What curl and wget read from disk: attached `@file` values, not output files or URLs."""
+    outputs, found, skip = FETCHERS[cmd.name], [], False
+    for arg in cmd.args:
+        url = "://" in arg and not arg.startswith("file://")
+        if not skip and arg not in outputs and arg.split("=", 1)[0] not in outputs and not url:
+            found.append(ATTACHED.sub("", arg))
+        skip = not skip and arg in outputs
+    return found
+
+
 def candidates(cmd: Cmd, mode: str) -> list[str]:
     """Paths a command in `mode` reads, as written. Long `--file=X` style values count; pattern text does not."""
     given = [arg.split("=", 1)[1] for arg in cmd.args if arg.startswith(tuple(f"{f}=" for f in FILE_VALUES))]
@@ -84,6 +98,6 @@ def candidates(cmd: Cmd, mode: str) -> list[str]:
     if mode == "dd":
         return [arg[3:] for arg in cmd.args if arg.startswith("if=")]
     if cmd.name in FETCHERS:
-        return [ATTACHED.sub("", arg) for arg in cmd.args] + given
+        return _fetch_inputs(cmd) + given
     handlers = {"sources": _sources, "archive": _archive}
     return [WRAPPED.sub("", p) for p in (handlers[mode](cmd) if mode in handlers else operands(cmd.args)) + given]
