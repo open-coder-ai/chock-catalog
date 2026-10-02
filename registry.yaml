@@ -736,8 +736,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 42
-  eval_executed: 42
+  eval_cases: 43
+  eval_executed: 43
   description: 'Blocks adding a known-malicious package version (npm, PyPI, crates, Go, RubyGems, Packagist
     manifests and lockfiles), a re-pointed action ref, or an IOC file name, from a dated, sourced list
     (data/ioc.json, CI fails 120 days after as_of). Runs: commit, agent write, turn''s end; only additions

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from collections.abc import Callable, Iterator
 from functools import partial
 from pathlib import PurePosixPath
@@ -39,7 +40,10 @@ WORKFLOW = re.compile(r"(?:^|/)\.github/workflows/[^/]+\.ya?ml$")
 USES = re.compile(r"""[ \t]*(?:-[ \t]*)?['"]?uses['"]?[ \t]*:(.*)""")
 PLAIN = re.compile(r"[A-Za-z0-9_./-]+(?:@[A-Za-z0-9_./+-]*)?")
 BLOCK_SCALAR = re.compile(r"[>|][-+]?")
-ANCHOR = re.compile(r"&([^\s\[\]{},]+)[ \t]+([^\s#][^\n]*)")
+#: Every `&name` in the text, comments and scalars included: an alias resolves only when its name occurs once.
+ANCHOR_TOKEN = re.compile(r"&([^\s\[\]{},]+)")
+#: An anchor in value position (`key: &name value` or `- &name value`) with its value on the same line.
+VALUE_ANCHOR = re.compile(r"[ \t]*(?:-[ \t]+)?(?:[^#\s'\"][^#'\"]*?:[ \t]+)?&([^\s\[\]{},]+)[ \t]+([^\s#][^\n]*)")
 
 
 def reader(path: str) -> Reader | None:
@@ -71,19 +75,18 @@ def _value(raw: str) -> str:
 
 def uses(text: str) -> Iterator[tuple[str | None, str, int]]:
     """(owner/repo, ref, line) for every remote `uses:`, or (None, value, line) for one written in a form not read
-    here (an alias with no inline anchor value, an escaped string); local `./` paths and `docker://` images are not actions."""
+    here (an alias whose name is not one value-position anchor with its value inline, an escaped string); local `./` paths and `docker://` images are not actions."""
     lines = text.splitlines()
-    anchors: dict[str, set[str]] = {}
-    for anchor in ANCHOR.finditer(text):
-        anchors.setdefault(anchor.group(1), set()).add(_value(anchor.group(2)))
+    seen = Counter(ANCHOR_TOKEN.findall(text))
+    anchors = {m.group(1): _value(m.group(2)) for line in lines if (m := VALUE_ANCHOR.fullmatch(line))}
     for number, line in enumerate(lines, 1):
         if not (found := USES.fullmatch(line)):
             continue
         value = _value(found.group(1))
         if not value or BLOCK_SCALAR.fullmatch(value):
             value = next((_value(rest) for rest in lines[number:] if rest.strip()), "")
-        if len(defined := anchors.get(value[1:], ())) == 1 and value.startswith("*"):
-            value = next(iter(defined))  # an alias runs what its one anchor names; a redefined name is not read
+        if value.startswith("*") and seen[value[1:]] == 1 and value[1:] in anchors:
+            value = anchors[value[1:]]  # an alias runs what its one anchor names; any other `&name` is not read
         if value.startswith(("./", "docker://")):
             continue
         if not PLAIN.fullmatch(value):

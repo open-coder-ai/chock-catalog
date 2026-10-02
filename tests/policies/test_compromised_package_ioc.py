@@ -154,6 +154,9 @@ def test_an_alias_is_judged_by_what_its_anchor_names() -> None:
     [
         "x: &a tj-actions/changed-files@v45\ny: &a actions/checkout@v4\nsteps:\n  - uses: *a\n",
         "x: &a\n  tj-actions/changed-files@v45\nsteps:\n  - uses: *a\n",
+        "# &a actions/checkout@v4\nX: &a\n  tj-actions/changed-files@v45\nsteps:\n  - uses: *a\n",
+        "D: see &a actions/checkout@v4\nsteps:\n  - uses: *a\n",
+        "steps:\n  - run: |\n      echo &a actions/checkout@v4\n  - uses: *a\n",
     ],
 )
 def test_an_alias_this_gate_cannot_resolve_is_keyed_by_the_whole_file(text: str) -> None:

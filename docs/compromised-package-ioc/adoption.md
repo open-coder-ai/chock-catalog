@@ -137,9 +137,10 @@ compromised-package-ioc  [deterministic]
   PASS  tc-040                             authored  .github/workflows/ci.yml:7: uses tj-actions/changed-files@v45: a li…
   PASS  tc-041                             authored  gate exit 0
   PASS  tc-042                             authored  .github/workflows/ci.yml:6: `uses:` written in a form this gate doe…
+  PASS  tc-043                             authored  .github/workflows/ci.yml:6: `uses:` written in a form this gate doe…
   score 1.00
 
-5 policies: 42 pass, 41 skipped
+5 policies: 43 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
