@@ -1,0 +1,51 @@
+id: scan-secrets-entropy
+name: "Scan Secrets Entropy"
+version: "0.0.1"
+description: >
+  Friction, not a security boundary: flags secrets scan-secrets' patterns miss -- high-entropy
+  values of 16-150 characters assigned to secret-like keys, GitHub and npm tokens whose checksum
+  verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid card numbers. Warns only
+  (observe). Misses: values split across lines, over 150 characters, under other key names, or
+  written like code (a.b(), ALL_CAPS, word names, URLs, paths).
+artifact: hook
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose
+      structure checks out, or a card number. Move it to an environment variable or a secret store
+      and reference it; rotate it if it was ever real. A person who has checked a test value keeps
+      it with 'pragma: allowlist secret' on the same line (a person's commit honours it; in the
+      agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
+    params:
+      script: scan-secrets-entropy-gate.py
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap 5.1 HP01 (3), the entropy tier; Wave 3 secret-bearing-files bundle). A script gate on chock_scan's entropy, keyword_values and checksums (EP10), judging every text file a commit or an agent's write touches; the engine keeps only findings the change adds. Ships as action: warn, the per-policy form of rollout observe (D15); the script itself exits ask, the verdict roadmap HP01 gives the entropy tier and Stripe test keys, so the promotion PR only raises the declared action."
