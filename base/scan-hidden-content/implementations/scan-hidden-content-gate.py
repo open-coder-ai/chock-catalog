@@ -16,12 +16,14 @@ from pathlib import Path, PurePosixPath
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from hiddenscan import inline as hidden_inline  # noqa: E402
 from hiddenscan import liberal as hidden_code  # noqa: E402
 from hiddenscan import links as hidden_urls  # noqa: E402
 from hiddenscan import markdown as hidden_text  # noqa: E402
 from hiddenscan import markup as hidden_html  # noqa: E402
 from hiddenscan import spans  # noqa: E402 -- after the path and cache setup
 from hiddenscan import word as hidden_docx  # noqa: E402
+from hiddenscan.htmlspec import RAW_TEXT_ELEMENTS  # noqa: E402
 from hiddenscan.vocab import normalized, vocab  # noqa: E402
 
 ALLOW, BLOCK, UNREADABLE, ASK, WARN = 0, 1, 2, 3, 4
@@ -38,7 +40,7 @@ DEADLINE = 10.0
 #: Would block once promoted: a secret-bearing beacon, a URL dictionary, and a file the run had no time to
 #: read (it may hold either, so running out of time never softens the verdict).
 #: Elements whose content this Python's HTML parser reads as raw text (the list varies by release).
-RAW_TEXT = re.compile(rf"<(?:{'|'.join(hidden_html.RAW_TEXT_ELEMENTS)})(?![A-Za-z0-9-])", re.IGNORECASE)
+RAW_TEXT = re.compile(rf"<(?:{'|'.join(RAW_TEXT_ELEMENTS)})(?![A-Za-z0-9-])", re.IGNORECASE)
 BLOCKING = hidden_urls.BLOCKING | {"not-judged"}
 SHOWN = 50
 MARKDOWN = {".md", ".mdx", ".markdown", ".mdc"}
@@ -142,6 +144,8 @@ def text_findings(path: str, text: str, kind: str) -> list[dict]:
         flat = spans.flat_view(tags)
         if flat != tags or RAW_TEXT.search(tags):  # otherwise the flat reading is the first one
             views += [(tags, html, True) for html in dict.fromkeys([flat, spans.closed_view(text, flat)])]
+        if (written := hidden_inline.view(text, tags)) != tags:  # paragraphs as a renderer writes them
+            views += [(written, html, False) for html in dict.fromkeys([written, spans.closed_view(text, written)])]
         if (code := hidden_code.view(text, tags)) != tags:  # what may be code read as code, nothing swallowing
             flat = spans.flat_view(code)
             views += [(code, html, True) for html in dict.fromkeys([flat, spans.closed_view(text, flat)])]

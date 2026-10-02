@@ -11,6 +11,7 @@ from html.parser import HTMLParser
 from typing import Any
 
 from hiddenscan import css as hidden_css
+from hiddenscan.htmlspec import COMMENT_END, FOREIGN, SCOPE, SPECIAL, TABLE_PARTS, VOID
 from hiddenscan.vocab import visible
 
 #: Attributes whose URL the renderer fetches by itself: loading the page is the request.
@@ -29,31 +30,6 @@ EMBED_ATTRS = {
 #: Tags whose href (or xlink:href) is fetched too; an anchor's is not.
 EMBED_HREF_TAGS = {"link", "image", "use", "feimage", "base", "script"}
 URL_ATTRS = EMBED_ATTRS | {"href", "xlink:href", "cite", "longdesc", "ping"}
-VOID = set(
-    [
-        "area",
-        "base",
-        "br",
-        "col",
-        "embed",
-        "hr",
-        "img",
-        "input",
-        "link",
-        "meta",
-        "source",
-        "track",
-        "wbr",
-        "param",
-        "keygen",
-    ]
-)
-#: An end tag does not close an element outside these: the browser ignores it (table scope).
-SCOPE = {"td", "th", "table", "caption", "template", "html", "select", "object", "marquee", "applet"}
-SCOPE |= {"foreignobject", "desc", "title", "mi", "mo", "mn", "ms", "mtext", "annotation-xml"}
-#: Table parts a browser drops when no table is open.
-TABLE_PARTS = {"td", "th", "tr", "caption", "thead", "tbody", "tfoot", "col", "colgroup"}
-FOREIGN = {"svg", "math"}
 ARIA = "aria-hidden wrapping long text"
 NOT_DRAWN = "SVG metadata, defs, symbol, clipPath or mask (not drawn as text)"
 #: desc and title are not here: screen readers present them, so they are not hidden from a person.
@@ -109,12 +85,6 @@ def hidden_selectors(sheets: list[str]) -> dict[str, str]:
             if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None)):
                 out.update(dict.fromkeys(hidden_css.selector_targets(selector), reason))
     return out
-
-
-#: Elements whose content html.parser reads as raw text in this Python release.
-RAW_TEXT_ELEMENTS = (*HTMLParser.CDATA_CONTENT_ELEMENTS, *getattr(HTMLParser, "RCDATA_CONTENT_ELEMENTS", ()))
-#: Where a browser ends a comment.
-COMMENT_END = re.compile(r"--!?>")
 
 
 class Collector(HTMLParser):
@@ -231,6 +201,9 @@ class Collector(HTMLParser):
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._open(tag, attrs, push=False)
 
+    def _special(self) -> int:
+        return max((self.where[t][-1] for t in SPECIAL if self.where.get(t)), default=-1)
+
     def handle_endtag(self, tag: str) -> None:
         if not self.where.get(tag):
             return
@@ -238,6 +211,8 @@ class Collector(HTMLParser):
         barrier = max((self.where[t][-1] for t in SCOPE if self.where.get(t) and t != tag), default=-1)
         if not self.xml and tag not in SCOPE and barrier > cut:
             return  # an end tag outside the open table cell is ignored, as browsers ignore it
+        if not self.xml and tag not in SPECIAL and self._special() > cut:
+            return  # nor does one close an element under a special one (a <pre>, a <div>) still open
         while len(self.stack) > cut:
             frame = self.stack.pop()
             self.where[frame.tag].pop()
@@ -286,7 +261,7 @@ class Collector(HTMLParser):
 
 
 def collect(text: str, *, xml: bool = False, flat: bool = False) -> Collected:
-    """Flat: no element holds its content as raw text (RAW_TEXT_ELEMENTS), a reading in which nothing
+    """Flat: no element holds its content as raw text (htmlspec.RAW_TEXT_ELEMENTS), a reading in which nothing
     swallows the markup after it."""
     sheets = [sheet for _, sheet in style_blocks(text)]
     parser = Collector(xml=xml, rules=hidden_selectors(sheets))

@@ -98,12 +98,13 @@ def closed_view(text: str, view: str) -> str:
     """The view with a '>' opening each line a renderer may open with its own tag: every line outside an HTML
     block, each block's first line, and each line after a blank one (where an HTML block of type 6-7 ends).
     There a renderer writes </p>, <li> and the like, and raw HTML in a paragraph must close within it, so a
-    bogus comment, declaration or tag left open above ends there. Which lines those are is not certain, so
-    the gate reads this view beside the view as written."""
+    bogus comment, declaration or tag left open above ends there, and the quotes in its own attributes
+    (class="language-x") end an attribute value left open: each such line is opened with "'> here. Which
+    lines those are is not certain, so the gate reads this view beside the view as written."""
     raw = text.split("\n")
     lines, kinds = view.split("\n"), classify(raw)
     return "\n".join(
-        line if kind == HTML and at and kinds[at - 1] == HTML and raw[at - 1].strip() else ">" + line
+        line if kind == HTML and at and kinds[at - 1] == HTML and raw[at - 1].strip() else "\"'>" + line
         for at, (line, kind) in enumerate(zip(lines, kinds, strict=True))
     )
 

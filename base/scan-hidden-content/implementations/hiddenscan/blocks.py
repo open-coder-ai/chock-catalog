@@ -117,6 +117,16 @@ def _ends(line: str, ends: tuple[str, ...], start: int = 0) -> bool:
     return any(lower.find(end, start) != -1 for end in ends)
 
 
+def _column(line: str) -> int:
+    """Where a line's content starts after its list and block quote markers."""
+    rest = line[MARKERS.match(line).end() :]
+    return len(line) - len(rest) + _indent(rest)
+
+
+def _quotes(line: str) -> int:
+    return MARKERS.match(line).group(0).count(">")
+
+
 def _indent(line: str) -> int:
     width = 0
     for char in line[: len(line) - len(line.lstrip(" \t"))]:
@@ -165,8 +175,17 @@ def _certain_fence(line: str, at: int, closers: list[dict[str, int]]) -> str | N
     return fence.group(1) if closers[at + 1].get(fence.group(1)[0], 0) >= len(fence.group(1)) else None
 
 
-def classify(lines: list[str]) -> list[str]:
+def _in_paragraph(*, paragraph: bool, doubtful: bool, least_html: bool) -> bool:
+    """Whether a type 7 line continues a paragraph: by default only in a certain one, with least_html in any
+    paragraph that may be open."""
+    return paragraph or doubtful if least_html else paragraph and not doubtful
+
+
+def classify(lines: list[str], *, least_html: bool = False) -> list[str]:
     """The kind of each line: code (certainly code), html (inside an HTML block), text or break.
+
+    Where it is not certain whether a line is in an HTML block, it is html (so its code is not blanked), or
+    with least_html text (so a renderer may escape it), as the reading of paragraphs needs.
 
     A fence is certain only when a later line closes it and no fence-like line before it was left unread
     (inside a container, or unclosed): after one, which lines pair as fences is no longer certain, so no
@@ -176,13 +195,16 @@ def classify(lines: list[str]) -> list[str]:
     after: str | None = None  # what is still open when a block opened inside a type 6-7 block ends
     contained = paragraph = indented = doubtful = piped = False
     closers = _closers(lines)
+    column = quotes = 0  # with least_html, where the open HTML block's first line starts, and in how many quotes
     for at, line in enumerate(lines):
         previous = kinds[-1] if kinds else BREAK
+        if least_html and inside is not None and line.strip() and (_column(line) < column or _quotes(line) < quotes):
+            inside = after = None  # a line left of a list item's HTML block, or outside its quote, may end it
         if inside is not None:
             fence = isinstance(inside, str) and inside[0] in "`~"
             # If the line that opened a type 6-7 block was text after all, a type 1-5 block may open here and
             # run past blank lines: the block is read to its end, then to a blank line.
-            if inside == "blank" and isinstance(nested := _html(line, paragraph=False), tuple):
+            if not least_html and inside == "blank" and isinstance(nested := _html(line, paragraph=False), tuple):
                 inside, after = nested, inside
             elif (inside := _continues(inside, line)) is None:
                 inside, after = after, None
@@ -202,12 +224,16 @@ def classify(lines: list[str]) -> list[str]:
         if indented:
             kinds.append(CODE)
         elif fence:
-            inside, paragraph = fence, False
+            inside, paragraph, column, quotes = fence, False, 0, 0
             kinds.append(CODE)
         # A type 7 line continues a paragraph only when the paragraph is certain: in a container its lines may be
         # code, and whether a tag ends a GFM table is up to the renderer.
-        elif (ends := _html(line, paragraph=paragraph and not contained and not piped)) is not None:
-            inside, paragraph = ends or None, False
+        elif (
+            ends := _html(
+                line, paragraph=_in_paragraph(paragraph=paragraph, doubtful=contained or piped, least_html=least_html)
+            )
+        ) is not None:
+            inside, paragraph, column, quotes = ends or None, False, _column(line), _quotes(line)
             kinds.append(HTML)
         else:
             piped = (paragraph and piped) or "|" in line

@@ -86,6 +86,21 @@ SPAN = f"<span hidden>{RUN}</span>"
         ("a.md", f"<div>\n{OPEN}\n</div>\n\n    {CLOSE}\n\n{RUN}\n", "hidden-comment"),
         ("a.md", f'- a\n\n  ```\n  <a title="\n  ```\n\n{SPAN}\n\n" >\n', "hidden-style"),
         ("a.md", f'a `x\n<a title="` y\n\n{SPAN}\n\n" >\n', "hidden-style"),
+        # Round 10: in a paragraph a renderer escapes every '<' and '>' outside complete inline HTML, so a
+        # closer there closes nothing. Also the renderer's own quotes, and the HTML standard's end-tag rule
+        # for special elements.
+        ("a.md", f"<div>\n{OPEN}\n</div>\n\n{CLOSE} {RUN}\n", "hidden-comment"),
+        ("a.md", f"<div>\n{OPEN}\n</div>\n\nend {CLOSE}\n\n{RUN}\n", "hidden-comment"),
+        ("a.md", f"<div>\n{OPEN}\n</div>\n\n- {CLOSE}\n\n{RUN}\n", "hidden-comment"),
+        ("a.md", f"<div>\n{OPEN}\n</div>\n\n--!> {RUN}\n", "hidden-comment"),
+        ("a.md", f"<div title=\"\n\n~~~ x`y\n'>\n~~~\n\n{SPAN}\n", "hidden-style"),
+        ("a.md", f"<span hidden>\n<pre>\n</span>\n</pre>\n- {RUN}\n", "hidden-style"),
+        ("docs/x.html", f"<span hidden><pre></span></pre>{RUN}\n", "hidden-style"),
+        ("a.md", f"> <div>\n> {OPEN}\n\\`{CLOSE}\\`\n\n# {RUN}\n", "hidden-comment"),
+        ("a.md", f"- <div>\n  {OPEN}\n\\`--!>\\`\n> {RUN}\n", "hidden-comment"),
+        ("a.md", f"> <div>\n> {OPEN}\n    {CLOSE}\n- {RUN}\n", "hidden-comment"),
+        ("a.md", f"<div>\n{OPEN}\n```\n?>\n\n```\n{CLOSE}\n```\n\n{RUN}\n", "hidden-comment"),
+        ("a.md", f"- <div>\n  {OPEN}\n\n```\n--!>\n```\n{CLOSE}\n```\n- {RUN}\n", "hidden-comment"),
     ],
 )
 def test_review_bypass_is_reported(path: str, text: str, rule: str) -> None:
@@ -118,3 +133,30 @@ def test_what_may_be_code_is_read_as_code() -> None:
     assert view("x\n    <b>\n") == "x\n    <b>\n"
     # Spans pair across a paragraph's lines; an escaped backtick pairs with nothing.
     assert view("a `x\n<b>` \\`<i>\\` `` <s> ``\n") == "a `x\n b ` \\`<i>\\` ``  s  ``\n"
+
+
+def test_paragraphs_are_read_as_a_renderer_writes_them() -> None:
+    def view(text: str) -> str:
+        return readers["inline"].view(text, text)
+
+    line = "a <b> c > d <!-- x --> e \\<f ?> <?p ?> <!X y> <![CDATA[ z ]]> <!--> <!- q <?x <![CDATA[ w"
+    kept = "a <b> c   d <!-- x --> e \\ f ?  <?p ?> <!X y> <![CDATA[ z ]]> <!-->  !- q  ?x  ![CDATA[ w"
+    assert view(f"{line}\n# h -->\n<div>\n-->\n") == f"{kept}\n# h -- \n<div>\n-->\n"
+    assert view("x <!-- a\nb --> y\n- c >\n") == "x <!-- a\nb --> y\n- c  \n"
+
+
+def test_where_html_is_not_certain_least_html_reads_text() -> None:
+    classify = readers["blocks"].classify
+    assert classify(["<div>", "<!--", "", "-->"]) == ["html", "html", "html", "html"]
+    assert classify(["<div>", "<!--", "", "-->"], least_html=True) == ["html", "html", "break", "text"]
+    assert classify(["- a", "<span>"]) == ["text", "html"]
+    assert classify(["- a", "<span>"], least_html=True) == ["text", "text"]
+    # A line left of the content of a list item's or quote's HTML block may end the container: text.
+    assert classify(["> <div>", "> <!--", "-->"], least_html=True) == ["html", "html", "text"]
+    assert classify(["- <div>", "  <!--", "  -->", "x"], least_html=True) == ["html", "html", "html", "text"]
+    assert classify(["> <div>", "> x", "    y"], least_html=True) == ["html", "html", "text"]
+    assert classify(["- <div>", "", "```", "x", "```"], least_html=True) == ["html", "break", "code", "code", "code"]
+
+
+def test_a_block_start_closes_an_open_tag_and_attribute_value() -> None:
+    assert readers["spans"].closed_view("a\n", "a\n") == "\"'>a\n\"'>"
