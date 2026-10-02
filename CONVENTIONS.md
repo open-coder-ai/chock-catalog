@@ -20,6 +20,7 @@ packages: chock_shellparse (command guards), chock_scan (file scanning; import m
 data_tables: chock_scan.data_table.load(path, kind=, schema=, keys=, check=)  # D7 envelope {schema, kind, as_of, source}
              kinds: ioc 120d | top-n 365d | curated 365d; freshness: tools/check_data_tables.py (via check_registry.py)
              place: <any>/data/<name>.json, no symlink (load refuses elsewhere, so CI sees every table; tests/ unscanned)
+chock_scan: safe_read (bounded reader), entropy + keyword_values (secret entropy tier), checksums (token validators)
 tests: run against every shipped copy (byte-equal to lib/): tests/chock_scan/ (also lib/), tests/policies/test_shellparse*.py
 runtime: stdlib only, like every guard
 ```
