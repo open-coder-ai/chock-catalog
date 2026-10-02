@@ -31,7 +31,7 @@ def test_round_nine_variants_are_caught(text: str, rule: str) -> None:
 
 def test_a_list_fence_indented_four_spaces_is_still_a_fence() -> None:
     sts = text_mod.statements(f"- Run:\n\n    {FENCE}sh\n    make test\n    {FENCE}\n")
-    assert [st.code for st in sts] == [False, True]
+    assert [(st.code, st.norm) for st in sts] == [(False, "- run:"), (False, "sh"), (True, "make test")]
 
 
 def test_a_sentence_that_crosses_no_hard_break_is_emitted_once() -> None:

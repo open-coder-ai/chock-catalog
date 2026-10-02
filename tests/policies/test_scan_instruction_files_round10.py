@@ -34,7 +34,7 @@ def test_round_ten_variants_are_caught(text: str, rule: str) -> None:
 
 def test_a_list_marker_fence_holds_its_code() -> None:
     sts = text_mod.statements(f"- {FENCE}sh\n  make test\n  {FENCE}\n\nDone.\n")
-    assert [(st.code, st.norm) for st in sts] == [(True, "make test"), (False, "done.")]
+    assert [(st.code, st.norm) for st in sts] == [(False, "sh"), (True, "make test"), (False, "done.")]
 
 
 def test_a_top_level_fence_keeps_margin_content() -> None:

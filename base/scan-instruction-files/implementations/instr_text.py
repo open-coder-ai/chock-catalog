@@ -8,7 +8,7 @@ import re
 import unicodedata
 from typing import NamedTuple
 
-from instr_blocks import FENCE, Fence, listing, open_fence, table_rows
+from instr_blocks import FENCE, Fence, nest, open_fence, table_rows
 
 #: A statement longer than this is judged in overlapping pieces: any phrase up to OVERLAP characters long
 #: lies whole inside one piece, and no rule is ever run over an unbounded string.
@@ -34,7 +34,8 @@ WRAPPED_WORD = re.compile(r"(?<![\w$])[\"'(\[](?!(?:inst|system|sys)[\"')\]])([\
 BREAK_TAG = re.compile(r"<br\s*/?>", re.IGNORECASE)
 #: A markdown hard line break (two trailing spaces, a trailing backslash, <br>) ends a part of a paragraph;
 #: the paragraph is also judged whole.
-HARD_BREAK = re.compile(r"(?: {2,}|\\|<br\s*/?>)$", re.IGNORECASE)
+HARD_BREAK = ("  ", "\\")
+BREAK_END = re.compile(r"<br\s*/?>$", re.IGNORECASE)
 #: A sentence ends at . ! or ? followed by space and a capital, quote, bracket or markup character.
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'(\[<`*_~#\u00c0-\u024f])")
 #: Characters folded before matching: typographic quotes and dashes become their ASCII forms.
@@ -170,30 +171,32 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     inner = [line[m.end() :] if m else line for line, m in zip(lines[skip:], quoted, strict=True)]
     depths = [m.group(1).count(">") if m else 0 for m in quoted]
     tables = table_rows(inner)
-    depth, in_list = 0, False
+    depth, items = 0, []  # the content indents of the open list items
     for k, line in enumerate(inner):
         number = skip + 1 + k
         if fence is not None:
             if fence.holds(line, depths[k]):
-                fence = fence if _fenced(line, number, fence.mark, code, out) else None
+                fence = _fenced(line, number, fence, code, out)
                 continue
             _flush_code(code, out)
             fence = None
-        in_list = listing(line, in_list=in_list)
+        nest(items, line, lazy=_lazy(0, whole, line))
         if depths[k] != depth and not _lazy(depths[k], parts, line):
             _end(parts, whole, out)
             depth = depths[k]
-        opened = open_fence(line, depths[k], in_list=in_list)
+        opened = open_fence(line, depths[k], items)
         if opened or not line.strip() or BLOCK_START.match(line) or k in tables:
             _end(parts, whole, out)
             fence = opened
+            if opened and opened.info:  # the info string is text a reader sees
+                _flush([(number, opened.info)], out)
             if opened or not line.strip():
                 continue
         parts.append((number, line))
         whole.append((number, line))
         if line.lstrip().startswith("#"):
             _end(parts, whole, out)
-        elif HARD_BREAK.search(line):
+        elif hard_break(line):
             _flush(parts, out)
     _end(parts, whole, out)
     _flush_code(code, out)
@@ -204,7 +207,7 @@ def _end(parts: list[tuple[int, str]], whole: list[tuple[int, str]], out: list[S
     """End a paragraph: its last part and, where a hard break split it, the sentences that span the break,
     so a hard break cuts a negation's reach in one reading and cannot split a phrase or a command in the
     other. A sentence that crosses no break is emitted once (a second copy would count twice)."""
-    breaks = [n for n, line in whole if HARD_BREAK.search(line)]  # line numbers, ascending
+    breaks = [n for n, line in whole if hard_break(line)]  # line numbers, ascending
     _flush(parts, out)
     if breaks:
         out.extend(st for st in _sentences(whole) if _spans(breaks, st))
@@ -222,9 +225,15 @@ def _lazy(depth: int, parts: list[tuple[int, str]], line: str) -> bool:
     return depth == 0 and bool(parts) and bool(line.strip()) and not (FENCE.match(line) or BLOCK_START.match(line))
 
 
-def _fenced(line: str, number: int, fence: str, code: list[tuple[int, str]], out: list[Statement]) -> str | None:
+def hard_break(line: str) -> bool:
+    """Whether `line` ends in a markdown hard break: two spaces, a backslash, or <br> (looked for near the end,
+    so a long run of spaces costs one pass)."""
+    return line.endswith(HARD_BREAK) or bool(BREAK_END.search(line[-64:]))
+
+
+def _fenced(line: str, number: int, fence: Fence, code: list[tuple[int, str]], out: list[Statement]) -> Fence | None:
     """Take one line inside a fence; the fence that stays open, or None when this line closes it."""
-    if line.strip().startswith(fence) and not line.strip().strip(fence[0]):
+    if fence.closes(line):
         _flush_code(code, out)
         return None
     if line.strip():

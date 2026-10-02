@@ -1,63 +1,89 @@
-"""Markdown block structure for instr_text: fence openers (also inside list items) and table runs."""
+"""Markdown block structure for instr_text: list item nesting, fence openers and closers, and table runs.
+Indents are columns with tabs expanded to the next multiple of four, as CommonMark counts them."""
 
 from __future__ import annotations
 
 import re
 from typing import NamedTuple
 
-#: A fence opener: up to three spaces, then three or more backticks or tildes.
-FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
-#: A fence indented more than this is a fence only inside a list item (else it is indented text or code).
-MAX_FENCE_INDENT = 3
-LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d{1,9}[.)])\s")
-#: A table's delimiter row; `|` lines start their own statements only in a run that has one (a soft-wrapped
-#: line that happens to start with `|` continues its paragraph, as an autolink `<https://...>` does).
-TABLE_DELIMITER = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$")
+#: A fence opener: three or more backticks or tildes, and its info string.
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)")
+#: A fence or closer indented this much or more past its container's content is indented code or text.
+CODE_INDENT = 4
+#: A list item's marker and the whitespace after it.
+LIST_ITEM = re.compile(r"^([ \t]*(?:[-*+]|\d{1,9}[.)]))[ \t]+")
+#: A table's delimiter row, matched on the stripped line; possessive, so a long run of spaces is linear.
+TABLE_DELIMITER = re.compile(r"\|?[ \t]*+:?-{3,}+:?[ \t]*+(?:\|[ \t]*+:?-{3,}+:?[ \t]*+)*+\|?")
 
 
 class Fence(NamedTuple):
-    """An open fence: its marker, and the quote depth and indent of its opener (a container that ends closes it)."""
+    """An open fence: its marker, its opener's quote depth, the content indent of the list item holding it
+    (0 at top level), whether a list item holds it, and its info string."""
 
     mark: str
     depth: int
-    indent: int
+    base: int
     in_list: bool
+    info: str
 
     def holds(self, line: str, depth: int) -> bool:
-        """Whether `line` (at quote depth `depth`) is still inside this fence's container."""
-        return depth >= self.depth and not (self.in_list and line.strip() and indent(line) < self.indent)
+        """Whether `line` (at quote depth `depth`) is still inside this fence's container: a quote that ends
+        closes it, and so does a non-blank line below the content indent of the list item that holds it."""
+        return depth >= self.depth and not (self.in_list and line.strip() and indent(line) < self.base)
+
+    def closes(self, line: str) -> bool:
+        """A closing fence: the marker alone, indented less than CODE_INDENT past the container's content."""
+        bare = line.strip()
+        return bare.startswith(self.mark) and not bare.strip(self.mark[0]) and indent(line) - self.base < CODE_INDENT
 
 
-def opener(line: str, *, in_list: bool) -> re.Match[str] | None:
-    """A fence opener: indented 4+ spaces only inside a list item, and a backtick fence's info string holding
-    no backtick (else it is a code span)."""
-    m = FENCE.match(line)
-    if m is None or (indent(line) > MAX_FENCE_INDENT and not in_list):
-        return None
-    return None if m.group(1)[0] == "`" and "`" in line.strip()[len(m.group(1)) :] else m
-
-
-def open_fence(line: str, depth: int, *, in_list: bool) -> Fence | None:
-    """The fence `line` opens, if any: also one right after a list marker (- ```sh), whose content indent is
-    the marker's width. A fence opened in a list item also closes when a line falls below that indent."""
-    marker = LIST_ITEM.match(line)
-    rest = line[marker.end() :] if marker else line
-    m = opener(rest, in_list=in_list or marker is not None)
-    if m is None:
-        return None
-    return Fence(m.group(1), depth, marker.end() if marker else indent(line), in_list or marker is not None)
-
-
-def listing(line: str, *, in_list: bool) -> bool:
-    """Whether a list item's content goes on after `line`: a list marker starts one, a non-blank line back at
-    the margin ends it, and a blank or indented line keeps the current state."""
-    if not line.strip():
-        return in_list
-    return bool(LIST_ITEM.match(line)) or (in_list and indent(line) > 0)
+def columns(text: str) -> int:
+    return len(text.expandtabs(4))
 
 
 def indent(line: str) -> int:
-    return len(line) - len(line.lstrip())
+    return columns(line[: len(line) - len(line.lstrip())])
+
+
+def item_indent(line: str) -> int | None:
+    """The content indent of the list item `line` starts, else None: the marker and the 1-4 columns after
+    it; with five or more (indented code) or nothing after the marker, the marker and one column."""
+    m = LIST_ITEM.match(line)
+    if m is None:
+        return None
+    width, gap = columns(m.group(1)), columns(m.group()) - columns(m.group(1))
+    return width + 1 if gap > CODE_INDENT or not line[m.end() :].strip() else width + gap
+
+
+def nest(items: list[int], line: str, *, lazy: bool) -> None:
+    """Track the content indents of the open list items: a non-blank line closes every item it is indented
+    less than (a lazy continuation of a paragraph closes none), and a list marker opens a new one."""
+    if lazy or not line.strip():
+        return
+    col = indent(line)
+    while items and items[-1] > col:
+        items.pop()
+    if (content := item_indent(line)) is not None:
+        items.append(content)
+
+
+def open_fence(line: str, depth: int, items: list[int]) -> Fence | None:
+    """The fence `line` opens, if any, after nest() has seen it: right after a list marker (- ```sh), or
+    indented less than CODE_INDENT past the innermost open item's content (the margin at top level). A
+    backtick fence whose info string holds a backtick is a code span, not a fence."""
+    m = LIST_ITEM.match(line)
+    if m is not None:
+        if items[-1] != columns(m.group()):  # five or more columns after the marker: indented code
+            return None
+        line, base = line[m.end() :], items[-1]
+    else:
+        base = items[-1] if items else 0
+        if indent(line) - base >= CODE_INDENT:
+            return None
+    found = FENCE.match(line)
+    if found is None or (found.group(1)[0] == "`" and "`" in found.group(2)):
+        return None
+    return Fence(found.group(1), depth, base, bool(items), found.group(2).strip())
 
 
 def table_rows(lines: list[str]) -> set[int]:
@@ -68,7 +94,7 @@ def table_rows(lines: list[str]) -> set[int]:
         end = n
         while end < len(lines) and lines[end].lstrip().startswith("|"):
             end += 1
-        if any(TABLE_DELIMITER.match(lines[k]) for k in range(n, end)):
+        if any(TABLE_DELIMITER.fullmatch(lines[k].strip()) for k in range(n, end)):
             rows.update(range(n, end))
         n = max(end, n + 1)
     return rows
