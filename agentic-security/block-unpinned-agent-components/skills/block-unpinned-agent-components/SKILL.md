@@ -1,6 +1,6 @@
 ---
 name: block-unpinned-agent-components
-description: "Gate for the line-visible slice of ASI04: agent components fetched at a floating version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo installs; git+ and github: refs without a commit SHA. Per line: friction, not a boundary (limits in references). Waiver 'pragma: allowlist unpinned'."
+description: "Gate for the line-visible slice of ASI04: agent components fetched at a floating version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo installs; git+ installs and requirements, and github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references)."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Block Unpinned Agent Components
 
-Gate for the line-visible slice of ASI04: agent components fetched at a floating version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo installs; git+ and github: refs without a commit SHA. Per line: friction, not a boundary (limits in references). Waiver 'pragma: allowlist unpinned'.
+Gate for the line-visible slice of ASI04: agent components fetched at a floating version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo installs; git+ installs and requirements, and github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).
 
 ```
 on(commit|tool_use): block(content_regex) scan=added_lines allowlist_pragma=pragma:\s*allowlist\s+unpinned content_pattern(regex)

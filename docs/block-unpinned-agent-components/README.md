@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 35 total, 35 executable |
+| **Eval cases** | 46 total, 46 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Gate for the line-visible slice of ASI04: agent components fetched at a floating version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo installs; git+ and github: refs without a commit SHA. Per line: friction, not a boundary (limits in references). Waiver 'pragma: allowlist unpinned'.
+Gate for the line-visible slice of ASI04: agent components fetched at a floating version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo installs; git+ installs and requirements, and github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).
 
 ## What it solves
 

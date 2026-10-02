@@ -107,13 +107,13 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 35
-  eval_executed: 35
+  eval_cases: 46
+  eval_executed: 46
   description: 'Gate for the line-visible slice of ASI04: agent components fetched at a floating version.
     Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and
     pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs;
-    pip --pre; go install at latest; unversioned cargo installs; git+ and github: refs without a commit
-    SHA. Per line: friction, not a boundary (limits in references). Waiver ''pragma: allowlist unpinned''.'
+    pip --pre; go install at latest; unversioned cargo installs; git+ installs and requirements, and
+    github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
   version: 0.0.4
