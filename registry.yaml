@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: ci-github-actions-security
+  path: base/ci-github-actions-security
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Friction, not a security boundary: warns (observe) on GitHub Actions weaknesses a change
+    adds to workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout
+    under pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets
+    inherit or inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning,
+    agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.'

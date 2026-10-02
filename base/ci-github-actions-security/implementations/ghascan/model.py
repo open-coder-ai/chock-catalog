@@ -1,0 +1,145 @@
+"""What a rule reads from a workflow, composite action or Dependabot file: triggers, jobs, steps, env and hits."""
+
+from __future__ import annotations
+
+from typing import NamedTuple
+
+from ghascan.tree import Tree
+
+Path = tuple[str | int, ...]
+WORKFLOW, ACTION, DEPENDABOT = "workflow", "action", "dependabot"
+FALSY = frozenset({"", "false", "0", "no", "off", "${{ false }}", "${{false}}"})
+#: Triggers that run the base repository's workflow, with its secrets and a token that can write,
+#: on an event someone outside the repository can cause (zizmor dangerous-triggers).
+DANGEROUS = ("pull_request_target", "workflow_run", "issue_comment")
+#: Also run in the base repository's context on text an outsider writes.
+RISKY = frozenset({*DANGEROUS, "issues", "discussion", "discussion_comment"})
+#: Carry text from a pull request or its review into a workflow.
+PR_EVENTS = frozenset({"pull_request", "pull_request_target", "pull_request_review", "pull_request_review_comment"})
+
+
+class Hit(NamedTuple):
+    """One finding before keying: rule id, line, scope (job or file), detail (the stable flagged text), words."""
+
+    rule: str
+    line: int
+    scope: str
+    detail: str
+    message: str
+
+
+class Ctx(NamedTuple):
+    """What every rule receives: the document, the file kind, its raw lines, its triggers, the data tables."""
+
+    tree: Tree
+    kind: str
+    lines: list[str]
+    on: set[str]
+    tables: dict
+
+
+class Step(NamedTuple):
+    job: str
+    path: Path
+    uses: str
+    run: str | None
+
+
+def falsy(text: str | None) -> bool:
+    return text is not None and " ".join(text.split()).lower() in FALSY
+
+
+def action_name(uses: str) -> str:
+    """`owner/repo[/path]` of a `uses:` value, lower-cased, with the ref dropped."""
+    return uses.strip().split("@", 1)[0].strip().lower()
+
+
+def is_action(uses: str, *names: str) -> bool:
+    """Whether `uses` names one of these actions (a sub-path such as actions/cache/restore counts)."""
+    name = action_name(uses)
+    return any(name == n or name.startswith(n + "/") for n in names)
+
+
+def triggers(tree: Tree) -> set[str]:
+    """Event names under `on:` (a string, a list, or a mapping), lower-cased."""
+    found = {n.value.strip().lower() for n in tree.values(("on",))}
+    found |= {
+        n.value.strip().lower() for key in tree.keys(("on",)) if isinstance(key, int) for n in tree.values(("on", key))
+    }
+    found |= {str(key).lower() for key in tree.keys(("on",)) if isinstance(key, str)}
+    return found - {""}
+
+
+def jobs(tree: Tree) -> list[str]:
+    return [str(k) for k in tree.keys(("jobs",))]
+
+
+def steps(tree: Tree, kind: str) -> list[Step]:
+    """Every step: each job's in a workflow, `runs.steps` in a composite action."""
+    holders = [("(action)", ("runs", "steps"))] if kind == ACTION else [(j, ("jobs", j, "steps")) for j in jobs(tree)]
+    out = []
+    for job, base in holders:
+        for index in tree.keys(base):
+            path = (*base, index)
+            uses = " ".join(n.value for n in tree.values((*path, "uses")))
+            runs = tree.values((*path, "run"))
+            out.append(Step(job, path, uses, "\n".join(n.value for n in runs) if runs else None))
+    return out
+
+
+def job_path(step: Step) -> Path:
+    return step.path[:-2]
+
+
+def env_maps(step: Step) -> list[Path]:
+    """The env mappings in force for a workflow step: the workflow's, the job's and the step's own."""
+    return [("env",), ("jobs", step.job, "env"), (*step.path, "env")]
+
+
+def env_text(tree: Tree, paths: list[Path]) -> dict[str, str]:
+    """Name (upper-cased) to every value written for it across the given env maps, joined."""
+    out: dict[str, str] = {}
+    for base in paths:
+        for key in tree.keys(base):
+            text = "\n".join(n.value for n in tree.values((*base, key)))
+            name = str(key).upper()
+            out[name] = f"{out[name]}\n{text}" if name in out else text
+    return out
+
+
+def all_env_maps(tree: Tree, kind: str) -> list[Path]:
+    """Every env mapping in the file, for rules that judge an env setting wherever it is."""
+    found = [("env",)] if kind == WORKFLOW else []
+    found += [("jobs", j, "env") for j in jobs(tree)]
+    found += [(*s.path, "env") for s in steps(tree, kind)]
+    found += [("jobs", j, "container", "env") for j in jobs(tree)]
+    return found
+
+
+def with_text(tree: Tree, step: Step, name: str) -> str | None:
+    """The step's `with.<name>` as a loader keeps it, or None."""
+    return tree.text((*step.path, "with", name))
+
+
+def with_values(tree: Tree, step: Step, name: str) -> list[str]:
+    """Every value written for `with.<name>`, for rules that look for a value."""
+    return [n.value for n in tree.values((*step.path, "with", name))]
+
+
+def conditions(tree: Tree, step: Step) -> str:
+    """The job's and the step's `if:` text, joined."""
+    texts = [n.value for n in tree.values((*job_path(step), "if"))] + [n.value for n in tree.values((*step.path, "if"))]
+    return "\n".join(texts)
+
+
+def first_line(tree: Tree, lines: list[str], path: Path, needle: str) -> int:
+    """The line of `needle` inside the value at `path` (a block scalar spans lines), else where it starts."""
+    start = tree.line(path)
+    for number in range(start, min(len(lines), start + 2000) + 1):
+        if needle and needle in lines[number - 1]:
+            return number
+    return start
+
+
+def normalize(text: str) -> str:
+    return " ".join(text.split())

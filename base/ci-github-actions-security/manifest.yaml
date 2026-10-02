@@ -1,0 +1,55 @@
+id: ci-github-actions-security
+name: "CI GitHub Actions Security"
+version: "0.0.1"
+description: >
+  Friction, not a security boundary: warns (observe) on GitHub Actions weaknesses a change adds to
+  workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout under
+  pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets inherit or
+  inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning, agent steps on
+  untrusted text. Misses: step outputs, composite internals, custom runner labels.
+artifact: hook
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    # Rollout observe (D15) for one policy: rollout is set per repository, so a new pack warns until
+    # its false-positive rate is measured; a separate change raises this to block.
+    action: warn
+    message: >
+      A GitHub Actions workflow, composite action or Dependabot file gained a weakness (each finding
+      names its rule, CWE and fix). Fix it as the finding says. A person who has reviewed one may keep it
+      with '# chock: allow <rule id>' on that line and commit from their own shell; in the agent only a
+      line already committed in HEAD counts, so an agent asks the person rather than writing the comment.
+    params:
+      script: ci-github-actions-security-gate.py
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap 6.4 ci-github-actions-security, rank 7; plan Wave 3 #1): the in-agent equivalent of the planned zizmor/actionlint CI step. A script gate on the shared EP01 YAML key-path scanner (lib/chock_scan/yamlpath, copied by tools/gen_lib_copies.py), judging `.github/workflows/*.y(a)ml`, any `action.y(a)ml` and `.github/dependabot.y(a)ml` at commit and on the agent's writes; the engine re-runs it on the baseline so only findings a change adds count. Aliases are expanded as GitHub does; merge keys (`<<`) are applied for rules that look for a value and ignored for rules that rely on a setting (persist-credentials, permissions, cooldown), since a loader without merge keys would not see it. A file the scanner refuses (tabs, `?` keys, %TAG, past the size limit, an alias with no anchor) is one gha-unreadable finding, never a silent pass. Ships as action: warn, the per-policy form of rollout observe (D15); the rule tiers (block or ask) are what the gate exits with once a separate change raises the action."
+  - "Rules (pack, CWE, OWASP CI/CD, what it mirrors): injection: gha-template-injection (CWE-94, CICD-SEC-4; zizmor template-injection, actionlint expression), gha-github-env-injection (CWE-94; zizmor github-env), gha-insecure-commands (CWE-94; zizmor insecure-commands, CKV_GHA_1); triggers: gha-dangerous-trigger (ask; CWE-829; zizmor dangerous-triggers), gha-prt-head-checkout (CWE-829; Scorecard Dangerous-Workflow), gha-workflow-run-artifact (CWE-829, CICD-SEC-9), gha-self-hosted-pr (CWE-250, CICD-SEC-7; zizmor self-hosted-runner), gha-bot-conditions (CWE-290; zizmor bot-conditions); permissions: gha-excessive-permissions (CWE-250, CICD-SEC-5; zizmor excessive-permissions, CKV2_GHA_1); agents: gha-agent-step-untrusted (CWE-94; roadmap I04); secrets: gha-secrets-inherit (CWE-269), gha-overprovisioned-secrets (CWE-200), gha-secret-echo (CWE-532), gha-artipacked (ask; CWE-522), gha-checkout-token-pat (ask; CWE-522), gha-container-credentials (CWE-798), gha-trusted-publishing (ask; CWE-522), gha-static-cloud-keys (ask; CWE-522); supply: gha-cache-poisoning (CWE-349, CICD-SEC-9), gha-dependabot-weaken (CWE-829, CICD-SEC-3; zizmor dependabot-execution), gha-dependabot-cooldown (ask; zizmor dependabot-cooldown); hygiene: gha-unsound-condition, gha-security-step-weakened, gha-obfuscation, gha-auto-merge-bot (all ask), gha-unreadable. The table with every reference is in implementations/ghascan/rules.py."
+  - "Not here, to avoid double reporting: unpinned `uses:`, `docker://` and container image digests stay pin-github-actions (HP14); fetch-and-execute in `run:` stays block-fetch-exec-in-files (HP03); who may edit CI files stays protect-ci-workflows (HP08). Deferred: gha-known-bad-actions and typosquat owners (need the NP08 IOC and NP07 popular-action tables, not built), gha-unpinned-docker (HP14). Selection packs in `.chock/security.json` v2 are not read yet: every rule is on, the stricter choice, until that UX exists."
+  - "Limits (not caught): attacker text that reaches a script through a step or job output (`steps.*.outputs`, `needs.*.outputs`), `matrix`, or an env value set by an earlier step through GITHUB_ENV; only env names a workflow, job or step env map sets from an untrusted expression are followed. A composite action's own steps are judged where the action file is, not in the calling workflow's trigger context, so a GITHUB_ENV write inside a composite action is not tied to the caller's trigger. A self-hosted runner targeted only by custom labels or a runner group, without the `self-hosted` label. A checkout of pull request code through an arbitrary script (`git fetch` of a computed ref without an expression, a custom checkout action). An agent action not in the curated table (implementations/ghascan/data/actions.json), and an author-association condition that does not actually restrict (`... || true`). Pseudo-ternaries (`a && '' || 'b'`). Unknown `github.event` fields count as untrusted (fail closed), so a field GitHub writes itself but this table does not list is reported; `github.event.ref`, base refs, ids, numbers, hashes, timestamps, URLs, logins and repository names are trusted. A private repository using self-hosted runners on pull_request is reported; a person waives it. Once raised to block, an old block-tier finding in the same write makes a new ask-tier finding block, since the gate exits once per write."
