@@ -19,6 +19,7 @@ from policies import guard_cases_agent_env as env_cases
 from policies import guard_cases_files as file_cases
 from policies import guard_cases_git as git_cases
 from policies import guard_cases_persistence as persistence_cases
+from policies import guard_cases_persistence_limits as persistence_limits
 from policies import guardkit
 from trees import ROOT
 
@@ -71,6 +72,9 @@ def assert_case(policy: str, command: str, want: int, capsys: pytest.CaptureFixt
 
 
 CASES = {**git_cases.CASES, **file_cases.CASES, **persistence_cases.CASES}
+CASES["block-persistence-shapes"] = (
+    persistence_cases.CASES["block-persistence-shapes"] + persistence_limits.CASES["block-persistence-shapes"]
+)
 ALL_CASES = [(policy, command, want) for policy, rows in CASES.items() for command, want in rows]
 ALL_CASES += [("block-no-verify", command, want) for command, want in env_cases.ROWS]
 

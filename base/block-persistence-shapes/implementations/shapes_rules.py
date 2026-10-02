@@ -2,9 +2,9 @@
 
 import re
 
-from chock_shellparse import Cmd, flags_of, positionals
+from chock_shellparse import Cmd, flags_of
 
-PINNED = re.compile(r"(?<=.)@[^/@]*$")
+PINNED = re.compile(r"(?<=.)(?:@|==)[^/@=]*$")
 
 SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh"))
 HOPS = 3
@@ -47,8 +47,11 @@ def hop(name: str, args: list[str], tab: dict) -> tuple[str, list[str]] | None:
         at = args.index("-m")
         return args[at + 1].lower(), args[at + 2 :]
     where = indexes(args, frozenset(tab["value_flags"].get(name, ())))
-    if name in tab["runners"] and where and args[where[0]] in tab["runners"][name]:
-        where = where[1:]
+    loose = bool(where) and where[0] > 0 and args[where[0] - 1].startswith("-")
+    runner = [] if loose else tab["runners"].get(name, ())
+    words = next((w.split() for w in runner if [args[i] for i in where[: len(w.split())]] == w.split()), [])
+    if words:
+        where = where[len(words) :]
     elif name not in SHELLS and name not in tab["launchers"]:
         return None
     return (program(args[where[0]]), args[where[0] + 1 :]) if where else None
@@ -89,9 +92,14 @@ def dry_run(args: list[str]) -> bool:
     return state
 
 
-def verb_at(rule: dict, pos: list[str], heads: set[str]) -> tuple[list[str], int] | None:
-    """(phrase of `rule`, where it ends in `pos`) once leading unknown words are skipped, or None."""
-    start = next((i for i, word in enumerate(pos) if word in heads), len(pos))
+def verb_at(rule: dict, pos: list[str], heads: set[str], loose: list[bool]) -> tuple[list[str], int] | None:
+    """(phrase of `rule`, where it ends in `pos`) once leading unknown words are skipped, or None.
+
+    A word right after an option the table does not know may be that option's value, so only the
+    rule's own verbs (not the table's stop words) anchor there.
+    """
+    own = {phrase[0] for phrase in rule["verbs"] if phrase}
+    start = next((i for i, word in enumerate(pos) if word in own or (word in heads and not loose[i])), len(pos))
     for phrase in rule["verbs"]:
         if not phrase or pos[start : start + len(phrase)] == phrase:
             return phrase, start + len(phrase)
@@ -102,14 +110,16 @@ def judge(cmd: Cmd, tab: dict) -> tuple[str, str] | None:
     """(level, reason) of the first rule this command matches, or None."""
     name, args = resolve(cmd, tab)
     bare = name.removesuffix(".cmd").removesuffix(".bat")
-    pos = [word.lower() for word in positionals(args, frozenset(tab["value_flags"].get(bare, ())))]
+    where = indexes(args, frozenset(tab["value_flags"].get(bare, ())))
+    pos = [args[i].lower() for i in where]
+    loose = [i > 0 and args[i - 1].startswith("-") for i in where]
     if "--help" in args or "-h" in args:
         return None
     for rule in tab["rules"]:
         if name not in rule["prog"] and bare not in rule["prog"]:
             continue
         heads = {phrase[0] for phrase in rule["verbs"] if phrase} | set(tab["stops"])
-        found = verb_at(rule, pos, heads)
+        found = verb_at(rule, pos, heads, loose)
         if found is None or not holds(rule.get("when", {}), args):
             continue
         phrase, end = found

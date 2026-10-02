@@ -78,7 +78,11 @@
       "--access",
       "--loglevel",
       "--scope",
-      "--location"
+      "--location",
+      "-p",
+      "--package",
+      "-c",
+      "--call"
     ],
     "pnpm": [
       "--registry",
@@ -91,7 +95,11 @@
       "--tag",
       "--access",
       "--loglevel",
-      "--location"
+      "--location",
+      "-p",
+      "--package",
+      "-c",
+      "--call"
     ],
     "yarn": [
       "--cwd",
@@ -99,7 +107,11 @@
       "--otp",
       "--tag",
       "--access",
-      "--loglevel"
+      "--loglevel",
+      "-p",
+      "--package",
+      "-c",
+      "--call"
     ],
     "bun": [
       "--registry",
@@ -108,7 +120,10 @@
       "--tag",
       "--access",
       "--config",
-      "-c"
+      "-c",
+      "-p",
+      "--package",
+      "--call"
     ],
     "docker": [
       "--context",
@@ -127,7 +142,10 @@
       "-p",
       "--project-name",
       "--env-file",
-      "--project-directory"
+      "--project-directory",
+      "--progress",
+      "--parallel",
+      "--ansi"
     ],
     "podman": [
       "--connection",
@@ -145,7 +163,10 @@
       "-p",
       "--project-name",
       "--env-file",
-      "--project-directory"
+      "--project-directory",
+      "--progress",
+      "--parallel",
+      "--ansi"
     ],
     "gh": [
       "-R",
@@ -248,7 +269,34 @@
       "-p",
       "--project-name",
       "--env-file",
-      "--project-directory"
+      "--project-directory",
+      "--progress",
+      "--parallel",
+      "--ansi"
+    ],
+    "npx": [
+      "-p",
+      "--package",
+      "-c",
+      "--call"
+    ],
+    "bunx": [
+      "-p",
+      "--package",
+      "-c",
+      "--call"
+    ],
+    "pnpx": [
+      "-p",
+      "--package",
+      "-c",
+      "--call"
+    ],
+    "corepack": [
+      "-p",
+      "--package",
+      "-c",
+      "--call"
     ]
   },
   "launchers": [
@@ -739,7 +787,8 @@
       "x"
     ],
     "uv": [
-      "run"
+      "run",
+      "tool run"
     ],
     "poetry": [
       "run"

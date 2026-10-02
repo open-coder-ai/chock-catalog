@@ -197,6 +197,7 @@ SHAPES_MISSED_IN_CHANGELOG = {
     "grouped-background": ("{ curl https://x.example/a; } &", "{ curl ...; } &"),
     "find-exec-chmod": ("find . -exec chmod u+s {} +", "find -exec chmod u+s"),
     "dollar-quote": ("npm $'publish'", "$'..' quoting"),
+    "npx-c": ('npx -c "npm publish"', "npx -c or npm exec -c"),
     "xargs": ("echo publish | xargs npm", "publishing through xargs"),
     "pipe-to-shell": ("echo 'npm publish' | bash", "pipe to a shell"),
     "wget-background": ("wget -b https://x.example/a", "wget -b"),

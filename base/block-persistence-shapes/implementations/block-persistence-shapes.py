@@ -54,12 +54,22 @@ def git_verdict(cmd: Cmd, tab: dict) -> Verdict | None:
     return None
 
 
+def install_modes(args: list[str]) -> list[str]:
+    """The modes of `install -m 4755`, `-m4755`, `-Dm4755` and `--mode=u+s`."""
+    found = []
+    for i, arg in enumerate(args):
+        match = re.fullmatch(r"(?:-[A-Za-z]*m|--mode)(?:=?(.+))?", arg)
+        if match:
+            found.append(match.group(1) or (args[i + 1] if i + 1 < len(args) else ""))
+    return found
+
+
 def setid_verdict(cmd: Cmd, tab: dict) -> Verdict | None:
     """chmod or install -m with a setuid or setgid bit plants a privilege-escalation file."""
     if cmd.name == "chmod":
         modes = operands(cmd.args)[:1]
     elif cmd.name == "install":
-        modes = [shapes_rules.value_of(cmd.args, "-m", "--mode")]
+        modes = install_modes(cmd.args)
     else:
         return None
     for mode in modes:
