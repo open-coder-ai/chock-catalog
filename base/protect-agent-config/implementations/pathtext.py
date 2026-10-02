@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import NamedTuple
 
 from chock_shellparse.parse import _QUOTED, _unquote
@@ -36,9 +37,14 @@ class Scanned(NamedTuple):
     docs: dict[str, str]
 
 
-def _holder(body: str) -> str:
-    """The word a substitution is replaced by: a fresh path for a plain mktemp, otherwise an unknown."""
-    return FRESH if _MKTEMP.fullmatch(body) or _MKTEMP_T.fullmatch(body) else SUBST
+Resolve = Callable[[str], "str | None"]
+
+
+def _holder(body: str, resolve: Resolve | None) -> str:
+    """The word a substitution is replaced by: a fresh path for a plain mktemp, what the line shows it prints, or an unknown."""
+    if _MKTEMP.fullmatch(body) or _MKTEMP_T.fullmatch(body):
+        return FRESH
+    return (resolve(body) if resolve else None) or SUBST
 
 
 def _matching(text: str, start: int) -> int:
@@ -69,8 +75,8 @@ def ansi_c(body: str) -> str:
 class _Text:
     """One left-to-right pass that knows quotes, so a `<<` or `$(` inside one is left alone."""
 
-    def __init__(self, text: str) -> None:
-        self.text, self.at, self.quote, self.clause = text, 0, "", 0
+    def __init__(self, text: str, resolve: Resolve | None = None) -> None:
+        self.text, self.at, self.quote, self.clause, self.resolve = text, 0, "", 0, resolve
         self.out: list[str] = []
         self.bodies: list[str] = []
         self.docs: dict[str, str] = {}
@@ -112,10 +118,10 @@ class _Text:
         elif self.starts("$("):
             end = _matching(self.text, self.at + 1)
             self.bodies.append(self.text[self.at + 2 : end].removesuffix(")"))
-            self.emit(_holder(self.bodies[-1]), end - self.at)
+            self.emit(_holder(self.bodies[-1], self.resolve), end - self.at)
         elif char == "`" and (found := _BACKTICKS.match(self.text, self.at)):
             self.bodies.append(found[1])
-            self.emit(_holder(found[1]), found.end() - self.at)
+            self.emit(_holder(found[1], self.resolve), found.end() - self.at)
         elif not self.quote:
             self.bare(char)
         else:
@@ -196,9 +202,9 @@ class _Text:
         self.waiting = []
 
 
-def scan(text: str) -> Scanned:
-    """`$'..'` decoded, `>&word` read as a file redirection, each `$(..)` and backtick replaced by a placeholder word."""
-    return _Text(text).run()
+def scan(text: str, resolve: Resolve | None = None) -> Scanned:
+    """`$'..'` decoded, `>&word` read as a file redirection, each `$(..)` and backtick replaced by what it prints or a placeholder."""
+    return _Text(text, resolve).run()
 
 
 def _alternatives(inner: str) -> list[str]:

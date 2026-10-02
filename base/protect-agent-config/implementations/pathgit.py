@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from chock_shellparse import git_parts
+from pathconf import code_key, config
 from pathmatch import DYNAMIC, values
 
 
@@ -12,7 +13,12 @@ def git(w: Any, args: list[str], env: dict[str, str]) -> bool:
     """checkout, restore, rm, mv overwrite or delete worktree files; `restore` and `rm` always take paths."""
     if any("core.hookspath" in a.lower() for a in args) and not {"--get", "--list", "-l"} & set(args):
         return True
-    sub, _, rest = git_parts(args)
+    sub, conf, rest = git_parts(args)
+    fused = [a[2:] for a in args[: len(args) - len(rest)] if a.startswith("-c") and "=" in a]  # `-ckey=value`
+    if any(code_key(c.split("=", 1)[0]) for c in (*conf, *fused)):
+        return True
+    if sub == "config":
+        return config(w, rest, env)
     if sub == "clean":
         return clean(w, rest, env)
     if sub not in ("checkout", "restore", "rm", "mv") or ("--staged" in rest and sub == "restore"):

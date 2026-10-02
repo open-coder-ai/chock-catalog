@@ -22,6 +22,7 @@ _EXEC = frozenset(("-exec", "-execdir", "-ok", "-okdir"))
 _FPRINT = frozenset(("-fprint", "-fprint0", "-fprintf", "-fls"))
 _NO_FILTER = frozenset(("!", "-not", "-o", "-or", "-regex", "-iregex"))
 _NAMED = {"-name": False, "-iname": False, "-path": True, "-ipath": True, "-wholename": True, "-iwholename": True}
+_ENTRY = "found-entry"  # what `{}` stands for when the body is judged without a found path
 _STRING = re.compile(r"""['"]([^'"\s]+)['"]""")
 # Programs `find -exec` may run on a protected file without changing it; any other program there is judged as a writer.
 READERS = frozenset(
@@ -205,7 +206,10 @@ def find(w: Any, args: list[str], env: dict[str, str]) -> bool:
         if program in READERS:
             continue
         alone = not any("{}" in a for a in body)
-        texts = [shlex.join(body)] if alone else [shlex.join(a.replace("{}", c) for a in body) for c in found]
+        # The body is judged once with `{}` as a plain unknown name too: a filter that finds nothing leaves it unread otherwise.
+        texts = (
+            [shlex.join(body)] if alone else [shlex.join(a.replace("{}", c) for a in body) for c in (_ENTRY, *found)]
+        )
         if any(w.sub(text) for text in texts) or (found and not alone and not _known(w, program)):
             return True
     return False

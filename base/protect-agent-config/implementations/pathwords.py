@@ -33,6 +33,8 @@ CHILDREN = frozenset(
         *("pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "prepare-commit-msg", "post-commit"),
         *("post-checkout", "post-merge", "post-rewrite", "pre-rebase", "pre-auto-gc", "update", "applypatch-msg"),
         *("pre-applypatch", "post-update", "push-to-checkout", "reference-transaction", "fsmonitor-watchman"),
+        *("post-applypatch", "pre-receive", "proc-receive", "post-receive", "sendemail-validate", "post-index-change"),
+        *("p4-changelist", "p4-prepare-changelist", "p4-post-changelist", "p4-pre-submit"),
     )
 )
 PRODUCERS = frozenset(("echo", "printf", "cat"))

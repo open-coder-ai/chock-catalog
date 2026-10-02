@@ -9,14 +9,20 @@ DYNAMIC = re.compile(r"[*?\[$]")
 # What `$(mktemp ...)` becomes: a fresh, randomly named path, which cannot be a protected one.
 FRESH = "$__mktemp__"
 _VARIABLE = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
+_NESTING = 4
 _PIECE = re.compile(r"\$(?:\{[^}]*\}|\w+|[@*#?!$-])")
 
 
-def expand(token: str, env: dict[str, str]) -> str:
+def expand(token: str, env: dict[str, str], _depth: int = 0) -> str:
     """Replace `$X` and `${X}` that an earlier assignment in the same command line set to a plain value."""
 
     def value(found: re.Match[str]) -> str:
-        known = env.get(found[1] or found[2])
+        name = found[1] or found[2]
+        known = env.get(name)
+        if known is not None and "$" in known and not known.startswith(FRESH) and _depth < _NESTING:
+            known = expand(
+                known, {k: v for k, v in env.items() if k != name}, _depth + 1
+            )  # `H=$PWD/hooks`: the value too
         fresh = known is not None and known.startswith(FRESH) and not DYNAMIC.search(known[len(FRESH) :])
         return found[0] if known is None or (DYNAMIC.search(known) and not fresh) else known
 

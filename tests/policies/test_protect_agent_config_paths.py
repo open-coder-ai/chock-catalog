@@ -51,8 +51,7 @@ def _forms(target: str) -> list[str]:
         f"cd src; tee ../{target}",
         f"cd $UNKNOWN; echo x > {leaf}",
     ]
-    if name != "x":  # a file inside a hooks folder is judged by its folder: a substitution cannot name it
-        forms.append(f"D=$(echo {folder or '.'}); echo x > ${{D}}/{name}")
+    forms.append(f"D=$(echo {folder or '.'}); echo x > ${{D}}/{name}")
     if folder:
         forms += [
             f"cd {folder} && echo x > {name}",
