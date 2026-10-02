@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="56 policies" src="https://img.shields.io/badge/policies-56-blue">
-<img alt="30 enforced" src="https://img.shields.io/badge/enforced-30-brightgreen">
+<img alt="58 policies" src="https://img.shields.io/badge/policies-58-blue">
+<img alt="32 enforced" src="https://img.shields.io/badge/enforced-32-brightgreen">
 <img alt="26 advisory" src="https://img.shields.io/badge/advisory-26-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -45,8 +45,8 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 21 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 22 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 10 |
 | `advisory` | text an agent reads and may or may not follow | 26 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
