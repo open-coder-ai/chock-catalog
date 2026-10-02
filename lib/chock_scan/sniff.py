@@ -123,7 +123,7 @@ def sniff(data: bytes, limit: int = LIMIT) -> Sniff:
     texts = [text] if encoding == "utf-8" else [text, data.decode("utf-8", "replace")]
     best: dict[str, Candidate] = {}
     for found in texts:
-        for candidate in _candidates(found):
+        for candidate in _candidates(found, data):
             held = best.get(candidate.kind)
             if held is None or RANK[candidate.confidence] > RANK[held.confidence]:
                 best[candidate.kind] = candidate
@@ -149,7 +149,7 @@ def _encoding(data: bytes) -> tuple[str, int]:
     return "utf-8", 0
 
 
-def _candidates(text: str) -> list[Candidate]:
+def _candidates(text: str, data: bytes) -> list[Candidate]:
     found = _mapped(text, list(dict.fromkeys(units(text))))  # distinct, in order: a file of `- ` lines holds one
     instructions = _instructions(text)
     if _first_is_from(instructions):
@@ -159,7 +159,7 @@ def _candidates(text: str) -> list[Candidate]:
     if text.startswith("#!"):
         command = interpreter(text)
         found.append(Candidate("script", HIGH, f"#! {command[0] if command else '(no interpreter)'}"))
-        if verdict := shell(text, command):
+        if verdict := shell(data, command):
             found.append(Candidate("shell", HIGH if verdict[0] else LOW, verdict[1]))
     return found
 

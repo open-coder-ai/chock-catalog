@@ -233,6 +233,25 @@ def test_when_a_shell_runs_the_file(sn: ModuleType, text: str, shell: str | None
         assert (found["shell"].confidence, found["shell"].signal) == (shell, signal)
 
 
+@pytest.mark.parametrize(
+    ("data", "shell"),
+    [
+        (b"\xef\xbb\xbf#!/usr/bin/python3\necho x\n", "low"),
+        (b"#!/bin/sh\0x\necho hi\n", "high"),
+        (b"#!\0/bin/sh\n", "low"),
+        (b"#!/usr/bin/env -S -u '\\c' sh\necho x\n", "high"),
+        (b"#!/usr/bin/env -S sh \\c bash\n", "high"),
+        (b"#!/" + b"a" * 200 + b"\0" + b"x" * 100 + b"\n", None),
+        (b"#!/" + b"a" * 300 + b"\0 x\n", "low"),
+    ],
+)
+def test_the_kernel_reads_the_bytes(sn: ModuleType, data: bytes, shell: str | None) -> None:
+    """A BOM stops the kernel (a shell then runs the file); a NUL ends the name; a quoted env `\\c` is literal."""
+    found = {c.kind: c.confidence for c in sn.sniff(data).candidates}
+    assert found.get("shell") == shell
+    assert found["script"] == "high"
+
+
 @pytest.mark.parametrize("line", ["#!/usr/bin/sudo bash", "#!/usr/bin/nice -n 5 sh", "#!/usr/bin/env doas zsh"])
 def test_a_shell_behind_a_wrapper_is_a_low_shell(sn: ModuleType, line: str) -> None:
     result = sn.sniff(f"{line}\n".encode())

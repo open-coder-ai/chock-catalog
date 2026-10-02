@@ -14,14 +14,18 @@ KERNEL_MAX = 256
 SHEBANG_MAX = 4096
 
 
-def shell(text: str, command: tuple[str, ...]) -> tuple[bool, str] | None:
-    """(True, signal) when the #! command is a shell; (False, signal) when a shell may run the file; else None."""
+def shell(data: bytes, command: tuple[str, ...]) -> tuple[bool, str] | None:
+    """(True, signal) when the #! command is a shell; (False, signal) when a shell may run the file; else None.
+
+    `data` is the file's bytes: the kernel reads them, BOM and all, so a #! it cannot run falls to a shell.
+    """
     if command and _is_shell(command):
         return True, f"#! {' '.join(command[:2])}"
-    window = text[:KERNEL_MAX].encode("utf-8", "replace")[:KERNEL_MAX]
+    window = data[:KERNEL_MAX]
     line, newline, _ = window.partition(b"\n")
     name = line[2:].lstrip(b" \t")
-    if not name or (not newline and len(window) == KERNEL_MAX and not set(name) & {0x20, 0x09}):
+    full = not newline and len(window) == KERNEL_MAX
+    if not line.startswith(b"#!") or not name or name[0] == 0 or (full and not set(name) & {0x20, 0x09, 0x00}):
         return False, "the kernel cannot run this #! line, so a shell runs the file"
     if any(SHELL.fullmatch(_base(word).lower()) for word in command[1:]):
         return False, "a shell named later in the #! line"
@@ -32,7 +36,7 @@ def shell(text: str, command: tuple[str, ...]) -> tuple[bool, str] | None:
 
 def interpreter(text: str) -> tuple[str, ...]:
     """The command a `#!` first line runs, through `env` and its options (`-S` included), and its words."""
-    first = text[:SHEBANG_MAX].split("\n", 1)[0].rstrip("\r")
+    first = text[:SHEBANG_MAX].split("\n", 1)[0].split("\0", 1)[0].rstrip("\r")
     if not first.startswith("#!"):
         return ()
     words = first[2:].split()
@@ -44,11 +48,8 @@ def interpreter(text: str) -> tuple[str, ...]:
 
 
 def _after_env(words: list[str]) -> tuple[str, ...]:
-    """The command env runs: options, their values and NAME=VALUE pairs skipped; `-S` splits on.
-
-    Quotes and `\\_` are dropped and `\\c` ends the line first, as `env -S` would.
-    """
-    line = " ".join(words).split("\\c", 1)[0]
+    """The command env runs: options and NAME=VALUE skipped, `-S` split on, quotes and `\\_` dropped, `\\c` ending it."""
+    line = _cut_at_c(" ".join(words))
     queue = deque(ENV_QUOTES.sub("", line).replace("\\_", " ").split())
     while queue:
         word = queue.popleft()
@@ -61,6 +62,17 @@ def _after_env(words: list[str]) -> tuple[str, ...]:
         elif "=" not in word:
             return (_base(word), *queue)
     return (_base(queue.popleft()), *queue) if queue else ("env",)
+
+
+def _cut_at_c(line: str) -> str:
+    """The line up to env's `\\c` outside single quotes (inside them it is two literal characters)."""
+    quoted = False
+    for at, char in enumerate(line):
+        if char == "'":
+            quoted = not quoted
+        elif not quoted and line.startswith("\\c", at):
+            return line[:at]
+    return line
 
 
 def _long_option(word: str, queue: deque[str]) -> None:
