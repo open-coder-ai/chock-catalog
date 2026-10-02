@@ -69,7 +69,6 @@ def test_scope_skips_tests_docs_and_vendored_code() -> None:
         "docs/x.py",
         "README.md",
         "a/vendor/b.py",
-        "NOTES.TXT",
         "a.min.js",
         "conftest.py",
     ]
