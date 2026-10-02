@@ -11,6 +11,7 @@ import os
 import re
 import shlex
 import sys
+import warnings
 from collections.abc import Iterator
 from itertools import takewhile
 
@@ -51,7 +52,9 @@ def verdict(found: store.Hit) -> Verdict:
 def decode(match: re.Match[str]) -> str:
     """`$'a\\x2eb'` as the shell reads it (escapes decoded), `$"text"` as plain text, both re-quoted."""
     ansi, plain = match.group(1), match.group(2)
-    text = codecs.decode(ansi, "unicode_escape", "ignore") if ansi is not None else plain
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        text = codecs.decode(ansi, "unicode_escape", "ignore") if ansi is not None else plain
     return shlex.quote(text)
 
 
@@ -90,9 +93,12 @@ class Guard:
             paths = [p for p in paths if store.resolve(p, cmd.env, self.cwd) != ("~",)]
         return self.first(cmd.reads, cmd) or self.first(paths, cmd, walk=walk)
 
+    def interpreter(self, name: str) -> bool:
+        return name.rstrip("0123456789.") in self.table.interpreters
+
     def script(self, cmd: Cmd) -> store.Hit | None:
         """A store named in interpreter code, a heredoc fed to one, or a sed or awk program."""
-        if cmd.name.rstrip("0123456789.") in self.table.interpreters:
+        if self.interpreter(cmd.name):
             return store.scan_text("\n".join([*cmd.args, cmd.doc]), cmd.env, self.table, strict=False)
         if self.table.readers.get(cmd.name) == "program-first":
             return store.scan_text(readers.program(cmd), cmd.env, self.table, strict=True)
@@ -109,11 +115,14 @@ class Guard:
     def find_exec(self, cmd: Cmd) -> store.Hit | None:
         """`find ~/.ssh -exec cat {} ;` reads everything under the start paths, `find . -name .env -exec ...` the file."""
         runs = [cmd.args[i + 1].rsplit("/", 1)[-1] for i, arg in enumerate(cmd.args[:-1]) if arg in FIND_EXEC]
-        wide = {*self.table.readers, *printers.SHELLS, *self.table.interpreters}
-        if cmd.name != "find" or not any(run.rstrip("0123456789.") in wide for run in runs):
+        wide = {*self.table.readers, *printers.SHELLS}
+        if cmd.name != "find" or not any(run in wide or self.interpreter(run) for run in runs):
             return None
         roots = list(takewhile(lambda arg: arg[:1] not in ("-", "(", "!"), cmd.args)) or ["."]
-        return self.first(roots, cmd, walk=True) or self.first(readers.values(cmd.args, tuple(FIND_NAMES)), cmd)
+        names = readers.values(cmd.args, tuple(FIND_NAMES))
+        return self.first(roots, cmd, walk=True) or next(
+            filter(None, (store.find_name(n, self.table) for n in names)), None
+        )
 
     def chdir(self, cmd: Cmd) -> None:
         there = store.resolve((operands(cmd.args) or ["~"])[0], cmd.env, self.cwd)
@@ -162,8 +171,10 @@ def check(raw: str) -> Verdict:
     `$'..'` quoting decoded; each `$(...)` and backtick body is judged as a command line of its own."""
     table = store.load()
     texts = dict.fromkeys((raw, raw.replace("\\", "/"), ANSI_C.sub(decode, raw)))
-    lines = [line for text in texts for line in (text, *printers.substitutions(text))]
-    found = [Guard(table).judge_all(line) for line in dict.fromkeys(lines)]
+    found = []
+    for text in texts:
+        guard = Guard(table)
+        found += [guard.judge_all(line) for line in dict.fromkeys((text, *printers.substitutions(text)))]
     return strongest([*found, confirm(printers.DUMP) if printers.dump(raw) else None])
 
 

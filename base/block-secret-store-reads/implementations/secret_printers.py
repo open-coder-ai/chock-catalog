@@ -122,13 +122,33 @@ def body(name: str, rest: list[str]) -> str:
     return rest[flag + 1] if name in SHELLS and flag is not None and flag + 1 < len(rest) else ""
 
 
+def _mask(text: str) -> str:
+    """The text with single-quoted spans and backslash-escaped characters blanked: the shell runs nothing there."""
+    out, quote, double, i = list(text), False, False, 0
+    while i < len(text):
+        char = text[i]
+        if quote:
+            quote = char != "'"
+            out[i] = " "
+        elif char == "\\":
+            out[i : i + 2] = " " * len(out[i : i + 2])
+            i += 1
+        elif char == "'" and not double:
+            quote, out[i] = True, " "
+        else:
+            double = double != (char == '"')
+        i += 1
+    return "".join(out)
+
+
 def substitutions(text: str) -> list[str]:
-    """Bodies of `$(...)` and backtick substitutions in a command line, quoted or not, nested ones included."""
-    found = re.findall(r"`([^`]*)`", text)
-    for start in re.finditer(r"\$\(", text):
+    """Bodies of `$(...)` and backtick substitutions the shell would run, quoted or not, nested ones included."""
+    masked = _mask(text)
+    found = [text[m.start(1) : m.end(1)] for m in re.finditer(r"`([^`]*)`", masked)]
+    for start in re.finditer(r"\$\(", masked):
         depth, end = 1, start.end()
-        while end < len(text) and depth:
-            depth += {"(": 1, ")": -1}.get(text[end], 0)
+        while end < len(masked) and depth:
+            depth += {"(": 1, ")": -1}.get(masked[end], 0)
             end += 1
         found.append(text[start.end() : end - 1 if depth == 0 else end])
     return found

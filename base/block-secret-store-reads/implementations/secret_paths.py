@@ -23,6 +23,7 @@ _DRIVE = re.compile(r"^[A-Za-z]:(?=/)")
 _ANCHOR = re.compile(
     r"^/(?:(?:mnt|cygdrive)/)?(?:[A-Za-z]/)?(?:(?:(?:usr|export)/)?(?:home|Users)/[^/]+|(?:private/)?(?:var/)?root)(?=/|$)"
 )
+_PROC_CWD = re.compile(r"^/proc/[^/]+/cwd/?")
 _PROC_ROOT = re.compile(r"^/proc/[^/]+/(?:root|cwd)(?=/|$)")
 ANCESTORS = frozenset((("/",), ("/", "home"), ("/", "Users"), ("/", "users")))
 _GLOB = re.compile(r"[*?\[]")
@@ -145,7 +146,7 @@ def render(parts: tuple[str, ...]) -> str:
 
 def resolve(path: str, env: dict[str, str], cwd: tuple[str, ...] | None = None) -> tuple[str, ...]:
     """Components of a path: first `~` (home, however spelled), `/` (other absolute) or the first relative part."""
-    text = _DRIVE.sub("", expand(path.replace("\\", "/"), env))
+    text = _PROC_CWD.sub("", _DRIVE.sub("", expand(path.replace("\\", "/"), env)))
     if cwd and not text.startswith("/"):
         text = f"{render(cwd)}/{text}"
     parts = collapse(text)
@@ -191,7 +192,7 @@ def _public(name: str, allow: tuple[str, ...]) -> bool:
 def _inside(rest: tuple[str, ...], entry: Entry, *, walk: bool) -> bool:
     """Whether `rest` is the entry, below it, or (for a verb that walks trees) a parent of it."""
     pairs = enumerate(zip(rest, entry.path, strict=False))
-    if not all(comp_match(op, store, MIN_LITERAL if len(rest) == 1 else 0) for i, (op, store) in pairs):
+    if not all(comp_match(op, store, MIN_LITERAL if len(rest) == 1 and not walk else 0) for i, (op, store) in pairs):
         return False
     if len(rest) < len(entry.path):
         return walk
@@ -242,4 +243,16 @@ def scan_text(text: str, env: dict[str, str], table: Table, *, strict: bool) -> 
             continue
         if found := next(filter(None, (find(opt, table, code=not strict) for opt in options)), None):
             return found
+    return None
+
+
+def find_name(pattern: str, table: Table) -> Hit | None:
+    """A `find -name` pattern (which, unlike a shell glob, also matches dotfiles) that could select a named store."""
+    low = pattern.casefold()
+    if low.endswith(table.templates) or len(_GLOB.sub("", low)) < MIN_LITERAL:
+        return None
+    for entry in table.names:
+        probe = entry.path[0].replace("*", "x").replace("?", "x")
+        if fnmatchcase(probe, low) or fnmatchcase(low, entry.path[0]):
+            return entry.label, entry.action
     return None

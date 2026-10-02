@@ -206,6 +206,10 @@ MISSES = {
     "an interpreter dumping the environment": ("python3 -c 'import os; print(os.environ)'", "environment"),
     "a token printer outside the table": ("op read op://vault/item/field", "other token printers"),
     "kubectl printing a secret": ("kubectl get secret db -o yaml", "other token printers"),
+    "a case statement inside a substitution": (
+        'echo "$(case x in x) cat ~/.aws/credentials;; esac)"',
+        "case statement",
+    ),
     "a here-string fed to a shell": ("bash <<< 'cat ~/.npmrc'", "here-string"),
 }
 

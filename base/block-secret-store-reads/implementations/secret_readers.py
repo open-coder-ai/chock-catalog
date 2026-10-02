@@ -34,6 +34,8 @@ TRANSPORT_VALUES = {
 FILE_VALUES = ("--file", "--from-file", "--input", "--in", "--files-from", "--post-file", "--body-file")
 REMOTE = re.compile(r"^(?:[\w.-]+@)?[\w.-]{2,}:")
 WRAPPED = re.compile(r"^(?:[\w-]+=)?@|^file://")
+ATTACHED = re.compile(r"^(?:-[A-Za-z]|--[\w-]+=)?(?:[\w-]+=)?(?:[\w-]+@|[@<])?(?:file://)?")
+FETCHERS = frozenset(("curl", "wget"))
 
 
 def values(args: list[str], flags: tuple[str, ...]) -> list[str]:
@@ -81,5 +83,7 @@ def candidates(cmd: Cmd, mode: str) -> list[str]:
         return [*_files_of(cmd), *given]
     if mode == "dd":
         return [arg[3:] for arg in cmd.args if arg.startswith("if=")]
+    if cmd.name in FETCHERS:
+        return [ATTACHED.sub("", arg) for arg in cmd.args] + given
     handlers = {"sources": _sources, "archive": _archive}
     return [WRAPPED.sub("", p) for p in (handlers[mode](cmd) if mode in handlers else operands(cmd.args)) + given]

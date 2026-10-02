@@ -18,6 +18,7 @@ import pytest
 from policies import guard_cases_agent_env as env_cases
 from policies import guard_cases_files as file_cases
 from policies import guard_cases_git as git_cases
+from policies import guard_cases_secret_more as secret_more
 from policies import guard_cases_secret_prints as secret_prints
 from policies import guard_cases_secret_reads as secret_reads
 from policies import guardkit
@@ -74,6 +75,7 @@ def assert_case(policy: str, command: str, want: int, capsys: pytest.CaptureFixt
 CASES = {**git_cases.CASES, **file_cases.CASES}
 CASES["block-secret-store-reads"] = [
     *secret_reads.CASES["block-secret-store-reads"],
+    *secret_more.CASES["block-secret-store-reads"],
     *secret_prints.CASES["block-secret-store-reads"],
 ]
 ALL_CASES = [(policy, command, want) for policy, rows in CASES.items() for command, want in rows]
