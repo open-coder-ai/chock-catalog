@@ -12,20 +12,27 @@ from itertools import pairwise
 #: A reference the line lexer cut at its closing bracket (`${VAR`, `$(cat f`, `{{ x`, Ruby `#{x`).
 _REFERENCE_START = re.compile(r"\$?\$\(|\$\{|\{\{|\{%|%\(|#\{")
 _SPACE = re.compile(r"\s")
-#: A regular expression: an escaped class or metacharacter, a group construct or a character range.
+#: A regular expression: two or more escaped classes or metacharacters, group constructs or ranges.
+_REGEX_SIGNS = 2
 _REGEX = re.compile(r"\\[sdwbSDWB.{}()\[\]|^$*+?]|\(\?[:=!<P]|\[\^?[A-Za-z0-9]-[A-Za-z0-9]")
 #: A two-character escape inside a quoted value ends what the value can be (`"x\\ny"` is two lines).
 _ESCAPE = re.compile(r"\\[nrt]")
 _OPENERS = "{[(!*&."
-#: A dotted, arrowed or scoped name, or any name followed by a call, index or type argument.
-_CALL_OR_DOTTED = re.compile(
-    r"[$@]?[A-Za-z_][\w$-]*(?:(?:\.|->|::|\?\.)[$@]?[A-Za-z_][\w$-]*)+(?:[(\[<].*)?|[$@]?[A-Za-z_][\w$]*[(\[<].*"
+#: A dotted, arrowed or scoped name, or a name followed by a call, index or type argument whose
+#: text holds only identifier punctuation; each name segment must read as code (see _readable).
+_CODE = re.compile(
+    r"(?P<name>[$@]?[A-Za-z_][\w$-]*(?:(?:\.|->|::|\?\.)[$@]?[A-Za-z_][\w$-]*)*)"
+    r"(?P<tail>[(\[<][\w$.,:'\"\[\]<>(){} -]*)?;?"
 )
+_SEGMENT = re.compile(r"\.|->|::|\?\.")
+_SHORT = 5
+_SNAKE = re.compile(r"[$@_]*[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
+_LOWER_WORD = re.compile(r"[a-z]{1,12}[0-9]{0,3}")
 _ENV_NAME = re.compile(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+")
 _ETH = re.compile(r"0x[0-9a-fA-F]{40}")
 _URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s@]*")
 #: A name or path of words: letters split on case changes, digits and / _ . : @ - separators. Each
-#: word of four or more letters has a vowel in at least a fifth of its letters and no run of four
+#: word of four or more letters has a vowel in at least a sixth of its letters and no run of four
 #: consonants, such words hold most of the letters, and digits are at most a quarter of the value in
 #: runs of at most four. Random base62/base64 values pass about 3 in 10,000 draws, random
 #: lowercase-and-digit ones about 1 in 100 (tests/policies measure both).
@@ -36,6 +43,8 @@ _PARTS = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|[0-9]+")
 _VOWEL = re.compile(r"[aeiouyAEIOUY]")
 _CONSONANTS = re.compile(r"[^aeiouyAEIOUY]{4}")
 _LONG = 4
+#: A long word has at least one vowel in every _VOWELS letters (`String`, `struts` pass).
+_VOWELS = 6
 _MAX_DIGITS = 4
 #: The share of letters long words must hold: three quarters in a name, three fifths in a path (a
 #: value with a slash and no + or =, which a random base64 value has about half the time).
@@ -46,7 +55,7 @@ _BASE64_ONLY = re.compile(r"[+=]")
 _KEY_TAILS = frozenset({
     "address", "addr", "url", "uri", "endpoint", "host", "hostname", "name", "names", "type", "path",
     "file", "filename", "dir", "length", "size", "expiry", "expires", "ttl", "timeout", "field",
-    "header", "prefix", "pattern", "regex", "format", "label", "count", "version",
+    "prefix", "pattern", "regex", "format", "label", "count", "version",
 })  # fmt: skip
 _KEY_WORDS = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])")
 #: A key naming a file (`app.py`, `index.json`) whose value is a hex digest: a checksum manifest row.
@@ -69,12 +78,12 @@ def explain(value: str, key: str) -> str | None:
     checks = (
         ("reference", _REFERENCE_START.match(value)),
         ("text", _SPACE.search(value)),
-        ("regex", _REGEX.search(value)),
+        ("regex", len(_REGEX.findall(value)) >= _REGEX_SIGNS),
         ("filler", len(value) - _run_chars(value) < MIN_LEN),
-        ("code-name", not bare.startswith("eyJ") and _CALL_OR_DOTTED.fullmatch(bare)),
+        ("code-name", _code(bare)),
         ("variable-name", _ENV_NAME.fullmatch(value)),
         ("url", _URL.fullmatch(value)),
-        ("words", _WORDS.fullmatch(value) and _JOINED.search(value) and _wordy(value)),
+        ("words", _WORDS.fullmatch(value) and _JOINED.search(value) and _wordy(value, 2)),
         ("eth-address", _ETH.fullmatch(value)),
         ("non-ascii", not value.isascii()),
         ("file-digest", _FILE_KEY.fullmatch(key) and _HEX_DIGEST.fullmatch(value)),
@@ -83,17 +92,33 @@ def explain(value: str, key: str) -> str | None:
     return next((name for name, hit in checks if hit), None)
 
 
-def _wordy(value: str) -> bool:
+def _code(value: str) -> bool:
+    """True for a dotted name or a name with a call, index or type argument, every segment readable."""
+    match = _CODE.fullmatch(value)
+    if match is None or value.startswith("eyJ"):
+        return False
+    segments = _SEGMENT.split(match["name"])
+    return (len(segments) > 1 or match["tail"] is not None) and all(_readable(s) for s in segments)
+
+
+def _readable(segment: str) -> bool:
+    """True for a name segment as code writes it: short, snake or ALL_CAPS words, or words (_wordy)."""
+    bare = segment.strip("$@_-")
+    simple = _SNAKE.fullmatch(bare) or _ENV_NAME.fullmatch(bare) or _LOWER_WORD.fullmatch(bare)
+    return len(bare) <= _SHORT or bool(simple) or _wordy(bare, 1)
+
+
+def _wordy(value: str, min_parts: int) -> bool:
     """True when value reads as words (see _WORDS); random credentials almost never do."""
     parts = _PARTS.findall(value)
     words = [p for p in parts if not p.isdigit()]
     digits = [p for p in parts if p.isdigit()]
-    if len(parts) < 2 or not words or 4 * sum(map(len, digits)) > len(value):  # noqa: PLR2004 -- a quarter
+    if len(parts) < min_parts or not words or 4 * sum(map(len, digits)) > len(value):
         return False
     if any(len(d) > _MAX_DIGITS for d in digits):
         return False
     long_words = [w for w in words if len(w) >= _LONG]
-    if not all(5 * len(_VOWEL.findall(w)) >= len(w) and not _CONSONANTS.search(w) for w in long_words):
+    if not all(_VOWELS * len(_VOWEL.findall(w)) >= len(w) and not _CONSONANTS.search(w) for w in long_words):
         return False
     share = _PATH_SHARE if "/" in value and not _BASE64_ONLY.search(value) else _NAME_SHARE
     return sum(map(len, long_words)) >= share * sum(map(len, words))

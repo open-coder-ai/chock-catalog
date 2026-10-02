@@ -8,7 +8,7 @@ overstated policy is worse here than a missing one.
 All are mechanical, and all are checked by CI rather than by a reviewer's memory.
 
 **1. A policy claims only what it can do.** If it does not exit non-zero, it is advisory,
-and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->20<!-- /gen --> of the <!-- gen:policies -->49<!-- /gen -->
+and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->21<!-- /gen --> of the <!-- gen:policies -->49<!-- /gen -->
 policies here are advisory, and the README says so in its third paragraph rather than its
 appendix. Do not raise a claim your mechanism cannot support.
 
@@ -38,7 +38,7 @@ earns triage rights; see [The ladder](#the-ladder) below.
 
 Or, without waiting for an issue to be filed, roughly in order of usefulness:
 
-1. **Turn an advisory policy into an enforced one.** Any of the <!-- gen:advisory -->20<!-- /gen --> that can be expressed
+1. **Turn an advisory policy into an enforced one.** Any of the <!-- gen:advisory -->21<!-- /gen --> that can be expressed
    as a `content_regex`, `forbidden_ref` or `dependency_allowlist` gate is a strict upgrade —
    and the eval suite already describes the behaviour you would need to satisfy. Where only a
    slice is greppable, add a narrow sibling gate instead of promoting the rule: the

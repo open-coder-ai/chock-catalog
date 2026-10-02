@@ -18,6 +18,7 @@ PROBES = {
     "split across lines": ("conf.yaml", f"client_secret: |\n  {V}\n"),
     "over 150 characters": (".env", f"CLIENT_SECRET={kit.secret(32, 151)}\n"),
     "under other key names": ("conf.json", f'{{"x": "{V}"}}\n'),
+    "cut short by # or & when unquoted": (".env", f"CLIENT_SECRET={V[:10]}#{V[10:]}\n"),
     "written like code": ("conf.yaml", "client_secret: CorrectHorseBatteryStaple\n"),
 }
 

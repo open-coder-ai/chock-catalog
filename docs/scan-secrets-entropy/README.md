@@ -1,23 +1,23 @@
 # Scan Secrets Entropy
 
-`scan-secrets-entropy` · rule · enforces
+`scan-secrets-entropy` · rule · advises
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
 | **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | guard script `scan-secrets-entropy-gate.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 23 total, 23 executable |
+| **Mechanism** | rule text |
+| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
+| **Compiles to** | `ambient-rule` |
+| **Eval cases** | 25 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Friction, not a security boundary: flags secrets scan-secrets' patterns miss -- high-entropy values of 16-150 characters assigned to secret-like keys, GitHub and npm tokens whose checksum verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid card numbers. Warns only (observe). Misses: values split across lines, over 150 characters, under other key names, or written like code (a.b(), ALL_CAPS, word names, URLs, paths).
+Friction, not a security boundary: flags secrets scan-secrets' patterns miss -- high-entropy values of 16-150 characters assigned to secret-like keys, GitHub and npm tokens whose checksum verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid card numbers. Warns only (observe). Misses: values split across lines, over 150 characters, cut short by # or & when unquoted, under other key names, or written like code (a.b(), ALL_CAPS, word names, URLs, paths).
 
 ## What it solves
 
@@ -25,23 +25,23 @@ scan-secrets refuses vendor prefixes and a fixed set of assignment patterns, so 
 
 ## How it works
 
-A guard script, `implementations/scan-secrets-entropy-gate.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
-
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```text
 
 ```
 
+It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/scan-secrets-entropy/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+An **ambient rule**. `recompile` writes `.chock/compiled/scan-secrets-entropy/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
 
 ## Installing it
 
 ```bash
 chock add scan-secrets-entropy
-chock sync .
+chock sync --repo .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:

@@ -58,3 +58,25 @@ def test_an_event_script_alone_or_beside_a_warn_gate_names_only_the_commit(tmp_p
     assert mechanism.classify(tmp_path, {"id": "p"})[1] == "commit-time guard script"
     assert mechanism.classify(tmp_path, gate("warn", ["tool_use"]))[1] == "commit-time guard script"
     assert mechanism.classify(tmp_path, gate("block", ["commit"]))[1] == "content_regex"
+
+
+def _script_gate(tmp_path: Path, on: list[str], action: str = "warn") -> dict:
+    impl = tmp_path / "implementations"
+    impl.mkdir()
+    (impl / "p-gate.py").write_text("", encoding="utf-8")
+    return {"id": "p", "hook": {"gate": {"kind": "script", "on": on, "action": action, "params": {"script": "p-gate.py"}}}}
+
+
+def test_a_warn_script_gate_over_writes_is_not_a_command_guard(tmp_path: Path) -> None:
+    manifest = _script_gate(tmp_path, ["commit", "tool_use"])
+    assert mechanism.classify(tmp_path, manifest) == (mechanism.NONE, "warn-only gate")
+    (tmp_path / "implementations" / "p-guard.sh").write_text("", encoding="utf-8")
+    assert mechanism.classify(tmp_path, manifest) == (mechanism.GUARD, "guard script")
+
+
+def test_a_tool_call_script_gate_keeps_its_script_as_a_guard(tmp_path: Path) -> None:
+    assert mechanism.classify(tmp_path, _script_gate(tmp_path, ["tool_call"])) == (mechanism.GUARD, "guard script")
+
+
+def test_a_blocking_script_gate_at_commit_is_still_enforced_at_commit(tmp_path: Path) -> None:
+    assert mechanism.classify(tmp_path, _script_gate(tmp_path, ["commit"], "block")) == (mechanism.GATE, "script")

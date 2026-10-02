@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1290" width="1600" height="1290" role="img" aria-label="49 policies: 19 enforced-at-commit, 10 in-agent, 20 advisory">
-<rect width="1600" height="1290" fill="#0f1420"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320" role="img" aria-label="49 policies: 19 enforced-at-commit, 9 in-agent, 21 advisory">
+<rect width="1600" height="1320" fill="#0f1420"/>
 <line x1="0" y1="0" x2="1600" y2="0" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="96" x2="1600" y2="96" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="192" x2="1600" y2="192" stroke="#1a2130" stroke-width="1"/>
@@ -60,8 +60,8 @@
 <text x="98" y="910" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">verify-dependency-exists</text>
 <rect x="80" y="929" width="6" height="6" fill="#3fd0b6"/>
 <text x="98" y="940" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">verify-mcp-allowlist</text>
-<line x1="548" y1="220" x2="548" y2="1000" stroke="#5c6577" stroke-width="1"/>
-<text x="576" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">10</text>
+<line x1="548" y1="220" x2="548" y2="1030" stroke="#5c6577" stroke-width="1"/>
+<text x="576" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">9</text>
 <text x="634" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">IN-AGENT</text>
 <text x="576" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">the tool call is refused before it runs, if</text>
 <text x="576" y="354" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">the hook itself runs</text>
@@ -83,11 +83,9 @@
 <rect x="576" y="599" width="6" height="6" fill="#3fd0b6"/>
 <text x="594" y="610" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">rtk-dangerous-actions-blocker</text>
 <rect x="576" y="629" width="6" height="6" fill="#3fd0b6"/>
-<text x="594" y="640" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">scan-secrets-entropy</text>
-<rect x="576" y="659" width="6" height="6" fill="#3fd0b6"/>
-<text x="594" y="670" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">token-efficiency</text>
-<line x1="1044" y1="220" x2="1044" y2="1000" stroke="#5c6577" stroke-width="1"/>
-<text x="1072" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#e0b34c">20</text>
+<text x="594" y="640" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">token-efficiency</text>
+<line x1="1044" y1="220" x2="1044" y2="1030" stroke="#5c6577" stroke-width="1"/>
+<text x="1072" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#e0b34c">21</text>
 <text x="1130" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">ADVISORY</text>
 <text x="1072" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">text an agent reads and may or may not follow</text>
 <line x1="1072" y1="378" x2="1488" y2="378" stroke="#5c6577" stroke-width="1"/>
@@ -131,8 +129,10 @@
 <text x="1090" y="940" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi09-human-agent-trust</text>
 <rect x="1072" y="959" width="6" height="6" fill="#e0b34c"/>
 <text x="1090" y="970" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi10-rogue-agents</text>
-<text x="80" y="1090" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">&#8220;A rule an agent reads is advice.</text>
-<text x="80" y="1134" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">A hook that exits non-zero is a control.&#8221;</text>
-<text x="80" y="1236" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="2" fill="#5c6577">APACHE-2.0</text>
-<text x="1520" y="1236" text-anchor="end" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="1" fill="#5c6577">github.com/open-coder-ai/chock-catalog</text>
+<rect x="1072" y="989" width="6" height="6" fill="#e0b34c"/>
+<text x="1090" y="1000" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">scan-secrets-entropy</text>
+<text x="80" y="1120" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">&#8220;A rule an agent reads is advice.</text>
+<text x="80" y="1164" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">A hook that exits non-zero is a control.&#8221;</text>
+<text x="80" y="1266" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="2" fill="#5c6577">APACHE-2.0</text>
+<text x="1520" y="1266" text-anchor="end" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="1" fill="#5c6577">github.com/open-coder-ai/chock-catalog</text>
 </svg>

@@ -8,8 +8,8 @@
 
 <p>
 <img alt="49 policies" src="https://img.shields.io/badge/policies-49-blue">
-<img alt="29 enforced" src="https://img.shields.io/badge/enforced-29-brightgreen">
-<img alt="20 advisory" src="https://img.shields.io/badge/advisory-20-orange">
+<img alt="28 enforced" src="https://img.shields.io/badge/enforced-28-brightgreen">
+<img alt="21 advisory" src="https://img.shields.io/badge/advisory-21-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -46,8 +46,8 @@ are advisory, and that is the number most catalogs would round up:
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 19 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 10 |
-| `advisory` | text an agent reads and may or may not follow | 20 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
+| `advisory` | text an agent reads and may or may not follow | 21 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -102,7 +102,6 @@ per-hook trust review before its hooks run.
 | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 25/25 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
-| [`scan-secrets-entropy`](docs/scan-secrets-entropy/) | warns (never blocks, observe) on a high-entropy value assigned to a secret-like key, a GitHub or npm token whose checksum verifies, a Stripe test key, a Slack or AWS key-id shape, or a Luhn-valid card number -- at commit and on agent writes | 23/23 |
 
 <details>
 <summary>20 advisory policies — expand</summary>
@@ -113,7 +112,8 @@ per-hook trust review before its hooks run.
 [`context-hygiene`](docs/context-hygiene/) · [`chock-mise`](docs/chock-mise/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
-[`memory-discipline`](docs/memory-discipline/)
+[`memory-discipline`](docs/memory-discipline/) ·
+[`scan-secrets-entropy`](docs/scan-secrets-entropy/)
 
 </details>
 

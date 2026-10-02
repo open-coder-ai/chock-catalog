@@ -5,8 +5,8 @@ description: >
   Friction, not a security boundary: flags secrets scan-secrets' patterns miss -- high-entropy
   values of 16-150 characters assigned to secret-like keys, GitHub and npm tokens whose checksum
   verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid card numbers. Warns only
-  (observe). Misses: values split across lines, over 150 characters, under other key names, or
-  written like code (a.b(), ALL_CAPS, word names, URLs, paths).
+  (observe). Misses: values split across lines, over 150 characters, cut short by # or & when
+  unquoted, under other key names, or written like code (a.b(), ALL_CAPS, word names, URLs, paths).
 artifact: hook
 enforcement: advise
 mandatory: false
@@ -24,8 +24,8 @@ hook:
       Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose
       structure checks out, or a card number. Move it to an environment variable or a secret store
       and reference it; rotate it if it was ever real. A person who has checked a test value keeps
-      it with 'pragma: allowlist secret' on the same line (a person's commit honours it; in the
-      agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
+      it with 'pragma: allowlist secret' on the same line (a person's commit, push or CI honours it;
+      in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
     params:
       script: scan-secrets-entropy-gate.py
 
@@ -49,3 +49,4 @@ changelog:
   date: '2026-10-02'
   changes:
   - "Initial draft (roadmap 5.1 HP01 (3), the entropy tier; Wave 3 secret-bearing-files bundle). A script gate on chock_scan's entropy, keyword_values and checksums (EP10), judging every text file a commit or an agent's write touches; the engine keeps only findings the change adds. Ships as action: warn, the per-policy form of rollout observe (D15); the script itself exits ask, the verdict roadmap HP01 gives the entropy tier and Stripe test keys, so the promotion PR only raises the declared action."
+  - "Separate adversarial review, fixed on this branch: a key ending in header (AUTH_HEADER) is judged; a dotted value is code only when every segment reads as code, so dotted tokens (SendGrid, Doppler, Discord-bot styles) are reported; a call or index tail holds identifier punctuation only and a regex needs two signs, so symbol passwords are judged; in source code a value inside any open string literal is judged (connection strings, URL queries, JSON in a string), and string prefixes (f, b, r, @, $), type annotations (TS, Rust, Kotlin, Python, Go var) and #define are read; escaped quotes are unescaped (notebook cells); an auth scheme word (SSWS, OAuth) or a parameter name (token=) before the value is skipped; NUL characters are dropped instead of skipping the file (UTF-16 text is read); an entropy finding is absorbed only by a vendor token equal to its value. tools/mechanism.py no longer counts a warn-only write gate's own script as a command guard, so the policy is listed as advisory (warn-only gate). Stated, not fixed: an unquoted value is cut at # or & (keyword_values), so a dotenv value with those symbols is judged only if its first part is 16+ characters; at 16-23 characters entropy's floor misses some random values (about 5% of base62, more for hex or lowercase); a card number's key is a plain digest a BIN can brute-force."

@@ -119,6 +119,22 @@ suite:
       event: tool_use
       expect: warn
   - id: tc-014
+    category: adversarial
+    prompt: "A dotenv file holds a dotted token whose segments are random."
+    expect: "Flagged: a dotted value is code only when every segment reads as code."
+    execute:
+      files:
+        svc/.env: "CLIENT_SEC\x52ET=VicN7y7lMTSz.QLCyKj0MF7L8.fbadpRazqI7JxYAlmtPF28nr\n"
+      expect: warn
+  - id: tc-015
+    category: adversarial
+    prompt: "C# source builds a connection string whose password sits inside the string literal."
+    expect: "Flagged: in source code a key inside an open string literal is judged."
+    execute:
+      files:
+        src/Db.cs: "var cs = \"Server=db;User Id=app;Pass\x77ord=fA6lGZfED39xxHxiB4yROVnlJ6R5VOtp;\";\n"
+      expect: warn
+  - id: tc-016
     category: negative_trigger
     prompt: "A config assigns a UUID to a service key."
     expect: "Allowed: UUIDs are identifiers."
@@ -126,7 +142,7 @@ suite:
       files:
         conf/ids.yaml: "servi\x63e_key: 123e4567-e89b-12d3-a456-426614174000\n"
       expect: allow
-  - id: tc-015
+  - id: tc-017
     category: negative_trigger
     prompt: "A config references the secret through an environment variable."
     expect: "Allowed: a reference holds no secret."
@@ -134,7 +150,7 @@ suite:
       files:
         conf/ref.yaml: "client_sec\x72et: ${CLIENT_SECRET}\nsigni\x6eg_key: '{{ vault_signi\x6eg_key }}'\n"
       expect: allow
-  - id: tc-016
+  - id: tc-018
     category: negative_trigger
     prompt: "An example file carries a placeholder."
     expect: "Allowed: placeholder words are not secrets."
@@ -142,7 +158,7 @@ suite:
       files:
         conf/example.env: "CLIENT_SEC\x52ET=your-client-secret-here-replace-me\n"
       expect: allow
-  - id: tc-017
+  - id: tc-019
     category: negative_trigger
     prompt: "A lockfile entry carries an integrity digest."
     expect: "Allowed: digests of the algorithm's exact length are not secrets."
@@ -150,7 +166,7 @@ suite:
       files:
         package-lock.json: "{\"node_modules/x\": {\"integrity\": \"sha512-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==\"}}\n"
       expect: allow
-  - id: tc-018
+  - id: tc-020
     category: negative_trigger
     prompt: "Code and config name a secret without holding one."
     expect: "Allowed: dotted names, calls, variable names, paths and URLs are not secrets."
@@ -158,7 +174,7 @@ suite:
       files:
         conf/app.yaml: "client_sec\x72et: settings.oauth.client_sec\x72et_value\ntoken\x5ffile: /run/sec\x72ets/api-token\napi\x5fkey: PAYMENTS_API_KEY_NAME\ntoke\x6e_uri: https://oauth2.googleapis.com/token\n"
       expect: allow
-  - id: tc-019
+  - id: tc-021
     category: negative_trigger
     prompt: "Payment tests use the processors' published test card."
     expect: "Allowed: documented test card numbers are not personal data."
@@ -166,7 +182,7 @@ suite:
       files:
         tests/test_pay.py: "CARD = \"4242\x204242\x204242\x204242\"\n"
       expect: allow
-  - id: tc-020
+  - id: tc-022
     category: negative_trigger
     prompt: "Frontend code carries a Stripe publishable key, which is public by design."
     expect: "Allowed."
@@ -174,7 +190,7 @@ suite:
       files:
         web/stripe.js: "const stripe = Stripe(\"pk_t\x65st_QYdWYkvcpqDPaEcIqzebGtqQ\")\n"
       expect: allow
-  - id: tc-021
+  - id: tc-023
     category: negative_trigger
     prompt: "Python assigns an identifier, not a string literal, to a secret-named variable."
     expect: "Allowed: in source code only quoted values are string literals."
@@ -182,7 +198,7 @@ suite:
       files:
         app/auth.py: "client_sec\x72et = load_client_sec\x72et_from_vault\nsec\x72et = uRGBDjItVqMGanext1oCZfKttgmceKCH\n"
       expect: allow
-  - id: tc-022
+  - id: tc-024
     category: behavior
     prompt: "A YAML block scalar puts the secret on the line after its key."
     expect: "Not flagged: a key and value split across lines is a stated miss."
@@ -190,7 +206,7 @@ suite:
       files:
         conf/block.yaml: "client_sec\x72et: |\n  1FTPKh1uzmfrU1S4j8CjvYijrlpctoYj\n"
       expect: allow
-  - id: tc-023
+  - id: tc-025
     category: behavior
     prompt: "A secret longer than 150 characters is assigned to a secret key."
     expect: "Not flagged: values over 150 characters are a stated miss."

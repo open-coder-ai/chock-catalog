@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~423 tokens (chars/4, max 2000)
+INDEX.md: ~426 tokens (chars/4, max 2000)
 Recompiled 1 policies
 scan-secrets-entropy:
   claude: advisory
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~423 tokens (chars/4, max 2000)
+INDEX.md: ~426 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -107,8 +107,8 @@ scan-secrets-entropy  [deterministic]
   PASS  tc-011                             authored  gate: warning: ci/notify.sh:1: high-entropy value (4.4 bits/char, a…
   PASS  tc-012                             authored  gate: warning: conf/win.ini:2: high-entropy value (4.4 bits/char, a…
   PASS  tc-013                             authored  conf/agent.env:1: high-entropy value (4.7 bits/char, alnum) assigne…
-  PASS  tc-014                             authored  gate exit 0
-  PASS  tc-015                             authored  gate exit 0
+  PASS  tc-014                             authored  gate: warning: svc/.env:1: high-entropy value (4.9 bits/char, other…
+  PASS  tc-015                             authored  gate: warning: src/Db.cs:1: high-entropy value (4.5 bits/char, alnu…
   PASS  tc-016                             authored  gate exit 0
   PASS  tc-017                             authored  gate exit 0
   PASS  tc-018                             authored  gate exit 0
@@ -117,9 +117,11 @@ scan-secrets-entropy  [deterministic]
   PASS  tc-021                             authored  gate exit 0
   PASS  tc-022                             authored  gate exit 0
   PASS  tc-023                             authored  gate exit 0
+  PASS  tc-024                             authored  gate exit 0
+  PASS  tc-025                             authored  gate exit 0
   score 1.00
 
-5 policies: 23 pass, 41 skipped
+5 policies: 25 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -153,5 +155,5 @@ scan-secrets-entropy  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **scan-secrets-entropy**: Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose structure checks out, or a card number. Move it to an environment variable or a secret store and reference it; rotate it if it was ever real. A person who has checked a test value keeps it with 'pragma: allowlist secret' on the same line (a person's commit honours it; in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **scan-secrets-entropy**: Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose structure checks out, or a card number. Move it to an environment variable or a secret store and reference it; rotate it if it was ever real. A person who has checked a test value keeps it with 'pragma: allowlist secret' on the same line (a person's commit, push or CI honours it; in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

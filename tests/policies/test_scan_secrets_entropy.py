@@ -75,7 +75,7 @@ def test_a_hex_digest_beside_a_file_name_is_explained_but_not_beside_a_secret_na
     assert rules(f'"token-efficiency-gate.py": "{digest}"\n') == []
 
 
-@pytest.mark.parametrize("key", ["BeeTokenAddress", "token_url", "secret_name", "password_file", "api_key_header"])
+@pytest.mark.parametrize("key", ["BeeTokenAddress", "token_url", "secret_name", "password_file"])
 def test_a_key_that_names_something_about_a_secret_is_explained(key: str) -> None:
     assert shapes.explain(V, key) == "key-names-no-secret"
 

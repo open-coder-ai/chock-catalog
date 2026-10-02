@@ -36,7 +36,9 @@ MESSAGES = {
 
 
 def _digest(value: str) -> str:
-    """A fingerprint of the flagged value: a key is printed and logged, so it never carries the value."""
+    """A fingerprint of the flagged value: a key reaches the engine and may be logged, so it never carries
+    the value. It is a plain digest: a guessable value (a card number from its issuer prefix) can be
+    recovered from it by trying candidates, so the findings document is not a place to keep secrets."""
     return hashlib.sha256(value.encode("utf-8", "surrogatepass")).hexdigest()[:16]
 
 
@@ -45,10 +47,12 @@ def _row(path: str, line: int, rule: str, value: str, message: str) -> dict:
 
 
 def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
-    """Every finding in one file, in line order; a NUL byte marks a binary file, which is not judged."""
-    if "\x00" in text:
-        return []
-    lines = values.split_lines(text)
+    """Every finding in one file, in line order.
+
+    NUL characters are dropped before judging, so UTF-16 text reads as its characters and a stray
+    NUL does not hide a file; a binary file is judged as whatever text it holds.
+    """
+    lines = values.split_lines(text.replace("\x00", ""))
     rows: list[tuple[int, dict]] = []
     taken: dict[int, list[str]] = {}
     for token in tokens.found(lines):
@@ -56,7 +60,7 @@ def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
         rows.append((token.line, _row(path, token.line, token.rule, token.value, message)))
         taken.setdefault(token.line, []).append(token.value)
     for hit in values.hits(lines, source_code=SOURCE_CODE.search(path) is not None):
-        if any(t in hit.value or hit.value in t for t in taken.get(hit.line, [])):
+        if hit.value in taken.get(hit.line, []):
             continue
         how = f"{hit.assessment.bits:.1f} bits/char, {hit.assessment.charset}"
         message = f"high-entropy value ({how}) assigned to '{hit.key}'"

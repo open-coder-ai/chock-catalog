@@ -12,7 +12,7 @@ from typing import NamedTuple
 
 from chock_scan import entropy, keyword_values
 
-from entropyscan import shapes
+from entropyscan import shapes, source
 
 #: keyword_values refuses text over MAX_CHARS, so text is fed in chunks of whole lines under it; a
 #: longer line is fed in windows overlapping by OVERLAP. An assignment spans at most about 530
@@ -23,8 +23,8 @@ CHUNK = keyword_values.MAX_CHARS
 OVERLAP = 1024
 HANDOFF = 600
 LINES = re.compile(r"\r\n|\r|\n")
-#: What opens a string literal in source code, up to a value keyword_values reads after an auth word.
-_OPENED = re.compile(r"[\"'`](?:(?i:bearer|basic|token|bot)[ \t]{1,16})?\Z")
+#: An auth scheme keyword_values does not skip, or a parameter name (`SSWS v`, `token=v`): the token is judged.
+_SCHEME = re.compile(r"(?:[A-Za-z][\w-]{1,15}[ \t]+)?(?:[A-Za-z]\w{0,15}=)?(?P<token>[^\s]{16,})")
 
 
 class Hit(NamedTuple):
@@ -72,20 +72,31 @@ def chunks(lines: list[str]) -> Iterator[tuple[int, str, int | None, int]]:
 def hits(lines: list[str], *, source_code: bool = False) -> Iterator[Hit]:
     """Each keyword-adjacent value entropy calls suspicious and no shape explains, once per value.
 
-    In source code (`source_code`) a value not opened by a quote is never a string literal (an
-    identifier, a number, a comment's text), so only quoted values are judged there.
+    Lines are read as source.rewrite spells them. In source code (`source_code`) a value outside a
+    string literal is never a secret's text (an identifier, a number, a comment's words), so only
+    values source.opened places inside a literal are judged there.
     """
+    lines = [source.rewrite(line, source_code=source_code) for line in lines]
     seen: set[tuple[int, str]] = set()
+    judged_values: set[tuple[int, str]] = set()
     for first, text, limit, offset in chunks(lines):
         for found in keyword_values.candidates(text):
             line = first + found.line
             if (limit is not None and found.column >= limit) or (line, found.value) in seen:
                 continue
-            start = offset + found.column
-            if source_code and not _OPENED.search(lines[line - 1], max(0, start - 24), start):
+            if source_code and not source.opened(lines[line - 1], offset + found.column):
                 continue
             seen.add((line, found.value))
-            value = shapes.trim(found.value)
+            value = _scheme_token(shapes.trim(found.value))
+            if (line, value) in judged_values:
+                continue
+            judged_values.add((line, value))
             judged = entropy.assess(value)
             if judged.suspicious and shapes.explain(value, found.key) is None:
                 yield Hit(line, found.key, value, judged)
+
+
+def _scheme_token(value: str) -> str:
+    """The token of a value spelled `<scheme> <token>`, else the value."""
+    match = _SCHEME.fullmatch(value)
+    return match["token"] if match else value

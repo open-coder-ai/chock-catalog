@@ -58,8 +58,10 @@ def test_a_windows_path_is_reported_with_forward_slashes() -> None:
     assert found({"conf\\app.env": f"client_secret={V}\n"})[0]["path"] == "conf/app.env"
 
 
-def test_a_file_with_a_nul_byte_is_binary_and_not_judged() -> None:
-    assert found({"logo.png": f"\x00PNG client_secret={V}\n"}) == []
+def test_nul_characters_are_dropped_so_utf16_text_and_a_stray_nul_hide_nothing() -> None:
+    utf16 = f"client_secret={V}\n".encode("utf-16-le").decode("latin-1")
+    assert [r["rule"] for r in found({"conf.reg": utf16})] == ["entropy"]
+    assert [r["rule"] for r in found({"logo.png": f"\x00PNG client_secret={V}\n\x00"})] == ["entropy"]
 
 
 @pytest.mark.parametrize(("event", "kept"), [("commit", 0), ("push", 0), ("ci", 0), ("agent-commit", 1),
