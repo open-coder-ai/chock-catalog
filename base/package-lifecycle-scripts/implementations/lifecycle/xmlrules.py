@@ -6,13 +6,12 @@ come from one index, so a file of unclosed tags stays linear.
 
 from __future__ import annotations
 
-import hashlib
 import html
 import re
 from bisect import bisect_right
 from collections.abc import Callable
 
-from lifecycle import ASK, BLOCK, Hit, norm
+from lifecycle import ASK, BLOCK, Hit, digest, norm
 from lifecycle.signals import danger
 
 #: A comment is blanked; a CDATA section is matched first so a `<!--` inside one stays text.
@@ -103,8 +102,8 @@ def msbuild(text: str) -> list[Hit]:
         task = _attrs(attrs)
         if "codetaskfactory" in task.get("taskfactory", "").lower():
             why = danger(html.unescape(body))
-            digest = hashlib.sha256(norm(body).encode()).hexdigest()[:16]
-            hits.append(Hit(line(start), "msbuild-inline-task", task.get("taskname", ""), digest,
+            key = digest(body)
+            hits.append(Hit(line(start), "msbuild-inline-task", task.get("taskname", ""), key,
                             BLOCK if why else ASK, why or "inline C# task compiled and run by the build"))  # fmt: skip
     return hits
 
@@ -118,7 +117,7 @@ def pom(text: str) -> list[Hit]:
         if not found:
             continue
         why = danger(html.unescape(body))
-        digest = hashlib.sha256(norm(body).encode()).hexdigest()[:16]
-        hits.append(Hit(line(start), "maven-exec-plugin", found[0], digest, BLOCK if why else ASK,
+        key = digest(body)
+        hits.append(Hit(line(start), "maven-exec-plugin", found[0], key, BLOCK if why else ASK,
                         why or "the build runs a command or script through this plugin"))  # fmt: skip
     return hits

@@ -11,9 +11,7 @@ from pathlib import Path
 # treats an exit it did not ask for as a refusal, never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import hashlib
-
-from lifecycle import ASK, BLOCK, Hit
+from lifecycle import ASK, BLOCK, Hit, digest
 from lifecycle.dispatch import read, reader_kind
 from lifecycle.targets import npm_script
 
@@ -21,7 +19,8 @@ SAY = {BLOCK: "fetch-exec class (would block)", ASK: "new or changed hook (would
 
 
 #: Text past this size is not scanned (the patterns are linear, but the budget is 30 s for every file):
-#: a judged file that large is asked about whole, keyed by its digest, so any edit to it is new.
+#: a manifest or build file that large is block class whole, keyed by its digest, so padding a file
+#: past the limit can never turn a hook it hides into a gentler verdict.
 MAX_SCAN = 256 * 1024
 
 
@@ -30,10 +29,8 @@ def _judge(path: str, text: str, writes: dict[str, str], root: str) -> list[Hit]
         return read(path, text, writes, root)
     hits = npm_script(path, text, writes, root, scan=False)
     if reader_kind(path):
-        digest = hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:16]
-        hits.append(
-            Hit(1, "file-too-large", path.rsplit("/", 1)[-1], digest, ASK, f"over {MAX_SCAN} bytes, not scanned")
-        )
+        name = path.rsplit("/", 1)[-1]
+        hits.append(Hit(1, "file-too-large", name, digest(text), BLOCK, f"over {MAX_SCAN} bytes, not scanned"))
     return hits
 
 

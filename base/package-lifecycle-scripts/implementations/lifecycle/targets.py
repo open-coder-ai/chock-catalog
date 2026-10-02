@@ -6,13 +6,12 @@ the file itself is judged, keyed by a digest of its text: any edit is new, an un
 
 from __future__ import annotations
 
-import hashlib
 import json
 import posixpath
 import re
 import tomllib
 
-from lifecycle import ASK, BLOCK, Hit, norm
+from lifecycle import ASK, BLOCK, Hit, digest
 from lifecycle.signals import danger
 from lifecycle.textrules import build_rs
 from lifecycle.tree import ancestors, join, text_of
@@ -34,12 +33,10 @@ LIFECYCLE_NAMES = [
     "uninstall",
     "postuninstall",
 ]
-RUNS_FILE = re.compile(r"(?<![\w.-])((?:\.{0,2}/)?[\w@.-]+(?:/[\w@.-]+)*\.(?:[cm]?[jt]s|sh|py|ps1|cmd|bat))(?![\w.-])")
-SCRIPT_SUFFIX = re.compile(r"(?i)\.(?:[cm]?[jt]s|sh|py|ps1|cmd|bat)$")
-
-
-def _digest(text: str) -> str:
-    return hashlib.sha256(norm(text).encode()).hexdigest()[:16]
+#: A path argument a hook names: anything with a folder in it, or a bare name with a file extension.
+RUNS_FILE = re.compile(
+    r"(?<![\w.@/-])((?:\.{0,2}/)?[\w@.-]+(?:/[\w@.-]+)+|[\w@-][\w@.-]*\.[A-Za-z]\w{0,5})(?![\w.@/-])"
+)
 
 
 def _scripts(folder: str, writes: dict[str, str], root: str) -> dict:
@@ -58,8 +55,6 @@ def npm_script(path: str, text: str, writes: dict[str, str], root: str, *, scan:
 
     `scan=False` (a file too large to scan) skips the signal search: the hit is then asked about.
     """
-    if not SCRIPT_SUFFIX.search(path):
-        return []
     for folder in ancestors(path):
         scripts = _scripts(folder, writes, root)
         for name in LIFECYCLE_NAMES:
@@ -67,7 +62,7 @@ def npm_script(path: str, text: str, writes: dict[str, str], root: str, *, scan:
             if isinstance(body, str) and any(join(folder, m) == path for m in RUNS_FILE.findall(body)):
                 why = danger(text) if scan else None
                 where = posixpath.join(folder, "package.json") if folder else "package.json"
-                return [Hit(1, "npm-lifecycle-target", f"{where} scripts.{name}", _digest(text),
+                return [Hit(1, "npm-lifecycle-target", f"{where} scripts.{name}", digest(text),
                             BLOCK if why else ASK, f"runs at install through scripts.{name}" + (f" and {why}" if why else ""))]  # fmt: skip
     return []
 

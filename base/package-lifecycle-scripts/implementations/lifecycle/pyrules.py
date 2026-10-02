@@ -6,7 +6,7 @@ import ast
 import hashlib
 import re
 
-from lifecycle import ASK, BLOCK, Hit, norm
+from lifecycle import ASK, BLOCK, Hit, digest, norm
 from lifecycle.signals import danger
 
 #: setuptools/distutils commands an override replaces; a subclass of one is a hook on build or install.
@@ -120,57 +120,36 @@ def classify_call(call: ast.Call, names: dict[str, str], source: str) -> tuple[s
     return verdict
 
 
-def _local_callables(tree: ast.Module) -> dict[str, ast.AST]:
-    """Functions and lambdas the module binds to a name, anywhere outside a class: a call by that name runs them."""
-    found: dict[str, ast.AST] = {}
+def _local_functions(tree: ast.Module) -> dict[str, list[ast.AST]]:
+    """Every function the module defines, by name; all definitions of a name, since any of them may be the live one."""
+    found: dict[str, list[ast.AST]] = {}
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            found.setdefault(node.name, node)
-        elif isinstance(node, ast.Assign) and isinstance(node.value, ast.Lambda):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    found.setdefault(target.id, node.value)
+            found.setdefault(node.name, []).append(node)
     return found
 
 
-def _walk_runtime(roots: list[ast.AST]) -> list[ast.AST]:
-    """Nodes that run when `roots` run: class bodies included, function and lambda bodies left for their calls."""
+def _import_time(tree: ast.Module, hooks: tuple[str, ...] = ()) -> list[ast.AST]:
+    """What runs when the module is imported, over-approximated: module and class bodies, every lambda
+    body, and the body of each local function whose name the running code mentions at all (called,
+    passed to `atexit.register`, aliased `k = f`), followed through a worklist so each body is read once;
+    functions named with a `hooks` prefix (pytest start-up hooks) run too.
+    """
+    local = _local_functions(tree)
+    started = {name for name in local if hooks and name.startswith(hooks)}
+    stack: list[ast.AST] = [*tree.body, *(stmt for name in started for fn in local[name] for stmt in fn.body)]
     found: list[ast.AST] = []
-    stack = list(roots)
     while stack:
         node = stack.pop()
         found.append(node)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             stack.extend([*node.decorator_list, *node.args.defaults, *filter(None, node.args.kw_defaults)])
-        elif not isinstance(node, ast.Lambda):
-            stack.extend(ast.iter_child_nodes(node))
+            continue
+        if isinstance(node, ast.Name) and node.id in local and node.id not in started:
+            started.add(node.id)
+            stack.extend(stmt for fn in local[node.id] for stmt in fn.body)
+        stack.extend(ast.iter_child_nodes(node))
     return found
-
-
-def _import_time(tree: ast.Module, hooks: tuple[str, ...] = ()) -> list[ast.AST]:
-    """What runs when the module is imported: module and class bodies, plus every local function or
-    lambda a running call names (followed to a fixed point), plus any function named with a `hooks` prefix.
-    """
-    local = _local_callables(tree)
-    started = {name for name in local if name.startswith(hooks)} if hooks else set()
-    found = _walk_runtime([*tree.body, *(_body(local[name]) for name in started)])
-    while True:
-        called = {
-            n.func.id for n in found if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in local
-        } - started
-        if not called:
-            return found
-        started |= called
-        found += _walk_runtime([_body(local[name]) for name in called])
-
-
-def _body(node: ast.AST) -> ast.AST:
-    """A function as a module of its statements, or a lambda's expression, for walking what it runs."""
-    return (
-        ast.Module(body=node.body, type_ignores=[])
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        else node.body
-    )
 
 
 def _calls(nodes: list[ast.AST], names: dict[str, str], source: str, rule: str) -> list[Hit]:
@@ -238,10 +217,8 @@ def customize_py(path: str, text: str) -> list[Hit]:
     """sitecustomize/usercustomize run in every interpreter start; any new or changed one is asked about."""
     name = path.rsplit("/", 1)[-1]
     why = danger(text)
-    digest = hashlib.sha256(norm(text).encode()).hexdigest()[:16]
-    return [
-        Hit(1, "python-startup-file", name, digest, BLOCK if why else ASK, why or "runs at every interpreter start")
-    ]
+    key = digest(text)
+    return [Hit(1, "python-startup-file", name, key, BLOCK if why else ASK, why or "runs at every interpreter start")]
 
 
 def pth(text: str) -> list[Hit]:

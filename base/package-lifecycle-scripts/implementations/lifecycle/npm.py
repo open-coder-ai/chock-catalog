@@ -15,8 +15,10 @@ from lifecycle.targets import LIFECYCLE_NAMES, RUNS_FILE
 #: `dependencies` runs after node_modules changes (npm 8+); `pnpm:devPreinstall` before a pnpm install;
 #: the uninstall trio when a package manager replaces or removes an installed package.
 LIFECYCLE = tuple(LIFECYCLE_NAMES)
-#: The `prepare` values husky documents, allowed verbatim (roadmap FP control).
-HUSKY = {"husky", "husky install", "husky install .husky"}
+#: The `prepare` values husky documents, through any package runner (roadmap FP control); nothing else may follow.
+HUSKY = re.compile(
+    r"(?:(?:npx|pnpx|bunx|npm exec|pnpm exec|pnpm dlx|yarn dlx|yarn)(?: --?[a-z][\w-]*)* )?husky(?: install(?: \.husky)?)?"
+)
 DEP_SECTIONS = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
 SHADOWED = frozenset(
     [
@@ -150,7 +152,7 @@ def _scripts(path: str, text: str, scripts: dict, writes: dict[str, str], base: 
         if not isinstance(body, str):
             continue
         value = norm(body)
-        if name == "prepare" and value in HUSKY:
+        if name == "prepare" and HUSKY.fullmatch(value):
             continue
         why = danger(body)
         ran = [m for m in RUNS_FILE.findall(body) if posixpath.normpath(posixpath.join(base, m)) in changed]

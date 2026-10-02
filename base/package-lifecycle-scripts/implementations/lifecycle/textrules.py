@@ -6,10 +6,9 @@ may run, so skipping comment lines would let a hidden command through.
 
 from __future__ import annotations
 
-import hashlib
 import re
 
-from lifecycle import ASK, BLOCK, Hit, norm
+from lifecycle import ASK, BLOCK, Hit, digest, norm
 from lifecycle.signals import danger
 
 RUST_NET = re.compile(
@@ -31,13 +30,9 @@ RUBY_PROCESS = re.compile(
     r"|\bKernel\.(?:system|exec|spawn)\b|\bPTY\.spawn\b"
 )
 PODSPEC_PREPARE = re.compile(r"\.prepare_command\s*=")
-HEREDOC = re.compile(r"<<[~-]?(['\"]?)(\w+)\1")
+HEREDOC = re.compile(r"<<([~-]?)(['\"]?)(\w+)\2")
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'')
 HEREDOC_LINES, BRACKET_LINES = 200, 60
-
-
-def _digest(text: str) -> str:
-    return hashlib.sha256(norm(text).encode()).hexdigest()[:16]
 
 
 def build_rs(text: str) -> list[Hit]:
@@ -45,7 +40,7 @@ def build_rs(text: str) -> list[Hit]:
     found = RUST_NET.search(text)
     level, why = (BLOCK, f"build script uses {found.group(0)}") if found else (ASK, "new or changed build script")
     line = text.count("\n", 0, found.start()) + 1 if found else 1
-    return [Hit(line, "cargo-build-rs", "build.rs", _digest(text), level, why)]
+    return [Hit(line, "cargo-build-rs", "build.rs", digest(text), level, why)]
 
 
 def go_source(text: str) -> list[Hit]:
@@ -71,7 +66,7 @@ def gradle(text: str) -> list[Hit]:
                 Hit(number, "gradle-remote-apply", "apply from", norm(line), BLOCK, "applies a build script from a URL")
             )
         elif GRADLE_EXEC.search(line):
-            statement = _statement(lines, number - 1)
+            statement = _statement(lines, number - 1, "//")
             why = danger(statement)
             hits.append(
                 Hit(
@@ -86,30 +81,41 @@ def gradle(text: str) -> list[Hit]:
     return hits
 
 
-def _statement(lines: list[str], index: int) -> str:
-    """The line plus what continues it: a heredoc's body (`<<~CMD` ... `CMD`, what a shell receives), or the lines
-    until its brackets balance (`system(` ... `)`, `exec {` ... `}`), so an edit inside either changes the key.
-    Both are bounded (HEREDOC_LINES, BRACKET_LINES) so a file of unclosed openers stays linear.
+def _statement(lines: list[str], index: int, comment: str = "#") -> str:
+    """The line plus what continues it: the bodies of the heredocs it opens, in order (what a shell
+    receives), or the lines until its brackets balance (`system(` ... `)`, `exec {` ... `}`), so an
+    edit inside either changes the key. Strings and `comment` comments are ignored when counting
+    brackets. Bounded (HEREDOC_LINES, BRACKET_LINES), so a file of unclosed openers stays linear.
     """
-    body = [lines[index]]
-    opened = HEREDOC.search(lines[index])
-    if opened:
-        for line in lines[index + 1 : index + 1 + HEREDOC_LINES]:
+    body, at = [lines[index]], index + 1
+    openers = HEREDOC.findall(lines[index][: len(_code(lines[index], comment))])
+    for flavour, _quote, tag in openers:
+        for line in lines[at : at + HEREDOC_LINES]:
             body.append(line)
-            if line.strip() == opened.group(2):
+            at += 1
+            # A plain `<<TAG` ends only at TAG in column 0; `<<~TAG` and `<<-TAG` allow indentation.
+            if (line.strip() if flavour else line.rstrip("\r")) == tag:
                 break
+    if openers:
         return "\n".join(body)
-    depth = _depth(lines[index])
-    for line in lines[index + 1 : index + 1 + BRACKET_LINES]:
+    depth = _depth(lines[index], comment)
+    for line in lines[at : at + BRACKET_LINES]:
         if depth <= 0:
             break
         body.append(line)
-        depth += _depth(line)
+        depth += _depth(line, comment)
     return "\n".join(body)
 
 
-def _depth(line: str) -> int:
-    code = QUOTED.sub("", line)
+def _code(line: str, comment: str) -> str:
+    """The line with string literals blanked (same length) and anything from a `comment` marker on cut."""
+    code = QUOTED.sub(lambda m: "_" * len(m.group(0)), line)
+    cut = code.find(comment)
+    return code if cut < 0 else code[:cut]
+
+
+def _depth(line: str, comment: str) -> int:
+    code = _code(line, comment)
     return sum(code.count(c) for c in "([{") - sum(code.count(c) for c in ")]}")
 
 

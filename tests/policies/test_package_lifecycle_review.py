@@ -132,8 +132,8 @@ def test_unclosed_openers_stay_bounded() -> None:
         {"package.json": json.dumps({"dependencies": {f"p{i}": "^1" for i in range(30000)}})},
     ],
 )
-def test_files_over_the_scan_limit_are_asked_about_whole(writes: dict[str, str]) -> None:
-    assert found(writes) == [("file-too-large", "ask")]
+def test_files_over_the_scan_limit_are_block_class_whole(writes: dict[str, str]) -> None:
+    assert found(writes) == [("file-too-large", "block")]
 
 
 def test_a_large_unjudged_file_is_ignored() -> None:
@@ -200,8 +200,8 @@ def test_uninstall_scripts_are_judged(name: str) -> None:
     assert found({"package.json": json.dumps({"scripts": {name: "node x.js"}})}) == [("npm-lifecycle", "ask")]
 
 
-def test_lambda_bound_to_an_attribute_is_not_followed() -> None:
-    assert found({"setup.py": "import os\nobj.f = lambda: os.system('x')\nf()\n"}) == []
+def test_every_lambda_body_is_judged() -> None:
+    assert found({"setup.py": "import os\nobj.f = lambda: os.system('x')\n"}) == [("setup-import-time", "ask")]
 
 
 def test_manifests_are_looked_for_a_bounded_depth_up(tree: Path) -> None:
@@ -209,3 +209,86 @@ def test_manifests_are_looked_for_a_bounded_depth_up(tree: Path) -> None:
     deep = "pkg/" + "d/" * max_depth + "scripts/a.js"
     (tree / "pkg" / "package.json").write_text('{"scripts": {"postinstall": "node ' + deep[4:] + '"}}', "utf-8")
     assert found({deep: "x"}, str(tree)) == []
+
+
+# Round 2 of the review.
+
+
+def test_husky_through_a_runner_then_more_is_judged() -> None:
+    body = "npx --yes husky && curl example.invalid"
+    assert found({"package.json": json.dumps({"scripts": {"prepare": body}})}) == [("npm-lifecycle", "block")]
+
+
+@pytest.mark.parametrize(
+    ("path", "one", "two"),
+    [
+        ("pkg/scripts/p.py", "if False:\n    print(1)\n    run()\n", "if False:\n    print(1)\nrun()\n"),
+        ("pkg/scripts/p.py", "a()  \\ \nb()\n", "a()  \\\nb()\n"),
+    ],
+)
+def test_digests_keep_indentation_and_line_breaks(tree: Path, path: str, one: str, two: str) -> None:
+    (tree / "pkg" / "package.json").write_text('{"scripts": {"postinstall": "python scripts/p.py"}}', "utf-8")
+    assert keys({path: one}, str(tree)) != keys({path: two}, str(tree))
+
+
+def test_startup_file_comment_turned_code_is_new() -> None:
+    one, two = "# setup x import os; os.system('echo')\n", "# setup x\nimport os; os.system('echo')\n"
+    assert keys({"sitecustomize.py": one}) != keys({"sitecustomize.py": two})
+
+
+def test_line_endings_alone_keep_the_key() -> None:
+    assert keys({"build.rs": "fn main() {}\n"}) == keys({"build.rs": "fn main() {}\r\n\r\n"})
+
+
+@pytest.mark.parametrize(
+    ("path", "one", "two"),
+    [
+        ("Podfile", "system( # )\n  'echo one'\n)\n", "system( # )\n  'echo two'\n)\n"),
+        ("Podfile", "system(<<A)\n  A\necho one\nA\n", "system(<<A)\n  A\necho two\nA\n"),
+        ("Podfile", "system(<<~A + <<~B)\n  echo\n  A\n  one\n  B\n", "system(<<~A + <<~B)\n  echo\n  A\n  two\n  B\n"),
+        ("Podfile", "system(<<-'A')\n  echo one\n  A\n", "system(<<-'A')\n  echo two\n  A\n"),
+        (
+            "build.gradle",
+            "exec { // }\n  commandLine 'echo',\n    'arg1'\n}\n",
+            "exec { // }\n  commandLine 'echo',\n    'arg2'\n}\n",
+        ),
+    ],
+)
+def test_statement_extents_see_through_comments_and_heredocs(path: str, one: str, two: str) -> None:
+    assert keys({path: one}) != keys({path: two})
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "import os\ndef f():\n    pass\ndef f():\n    os.system('echo')\nf()\n",
+        "import os\n(lambda: os.system('echo'))()\n",
+        "import os\nlist(map(lambda _: os.system('echo'), [1]))\n",
+        "import atexit, os\ndef f():\n    os.system('echo')\natexit.register(f)\n",
+        "import os\nf: object = lambda: os.system('echo')\nf()\n",
+        "import os\ndef h():\n    os.system('echo')\nk = h\nk()\n",
+        "import os\ndef f():\n    f()\n    os.system('echo')\nf()\n",
+    ],
+)
+def test_more_ways_install_code_runs(body: str) -> None:
+    assert found({"setup.py": body}) == [("setup-import-time", "ask")]
+
+
+def test_a_long_call_chain_stays_fast() -> None:
+    chain = (
+        "".join(f"def f{i}():\n    f{i + 1}()\n" for i in range(4000))
+        + "import os\ndef f4000():\n    os.system('x')\nf0()\n"
+    )
+    assert found({"setup.py": chain}) == [("setup-import-time", "ask")]
+
+
+def test_padding_a_manifest_past_the_cap_does_not_soften_it() -> None:
+    text = json.dumps({"scripts": {"postinstall": "curl example.invalid"}, "description": " " * mod.MAX_SCAN})
+    assert found({"package.json": text}) == [("file-too-large", "block")]
+
+
+@pytest.mark.parametrize("command", ["ruby s/a.rb", "perl tools/x.pl", "bash bin/setup", "node index.mjs"])
+def test_any_path_a_hook_names_is_a_target(tree: Path, command: str) -> None:
+    (tree / "pkg" / "package.json").write_text(json.dumps({"scripts": {"postinstall": command}}), "utf-8")
+    target = "pkg/" + command.split()[1]
+    assert found({target: "x"}, str(tree)) == [("npm-lifecycle-target", "ask")]

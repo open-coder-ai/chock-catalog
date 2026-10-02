@@ -35,7 +35,7 @@ SETUP = "from setuptools import setup\n"
         ("import codecs\nREADME = codecs.open('README.md').read()\n", []),
         ("import urllib.parse\nurllib.parse.urljoin('a', 'b')\n", []),
         ("def later():\n    import requests\n    requests.get('" + U + "')\n", []),
-        ("x = lambda: eval('1')\n", []),
+        ("x = lambda: eval('1')\n", [("setup-import-time", "block")]),
         ("print(open('README.md').read())\n", []),
         ("f()(1)\n", []),
         ("@deco(eval('1'))\ndef g():\n    pass\n", [("setup-import-time", "block")]),

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 from typing import NamedTuple
 
 #: Verdict classes a hit carries: BLOCK for a hook that downloads, decodes or evaluates code (or the
@@ -21,8 +23,18 @@ class Hit(NamedTuple):
 
 
 def norm(text: str) -> str:
-    """Whitespace-collapsed text: the value part of a key, so reflowing an old hook keeps it old."""
-    return " ".join(str(text).split())
+    """The value part of a key: line endings unified and outer blank lines dropped, nothing else.
+
+    Inner spaces, newlines and indentation stay: in a shell, Ruby or Python any of them can change
+    what runs (a newline separates commands, an indent moves a call out of a block, a trailing
+    backslash-space is not a continuation), so normalizing them would let a changed hook keep an old key.
+    """
+    return re.sub(r"\r\n?", "\n", str(text)).strip("\n")
+
+
+def digest(text: str) -> str:
+    """A short digest of `norm(text)`: the key of a whole file or block, so any meaningful edit is new."""
+    return hashlib.sha256(norm(text).encode("utf-8", "replace")).hexdigest()[:16]
 
 
 def line_of(text: str, needle: str, start: int = 1) -> int:

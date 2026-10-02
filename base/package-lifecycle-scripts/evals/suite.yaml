@@ -381,17 +381,13 @@ suite:
       expect: warn
   - id: tc-028
     category: behavior
-    prompt: A commit reflows the whitespace of an existing build.rs without changing its code.
-    expect: Allowed; the key is the whitespace-normalized text, which did not change.
+    prompt: A commit converts an existing build.rs to CRLF line endings without changing its code.
+    expect: Allowed; line endings are not part of the key, so the build script is old.
     provenance: authored
     execute:
       head_files:
-        build.rs: |
-          fn main() { println!("cargo:rerun-if-changed=build.rs"); }
+        build.rs: "fn main() {\n    println!(\"cargo:rerun-if-changed=build.rs\");\n}\n"
       files:
-        build.rs: |
-          fn main() {
-              println!("cargo:rerun-if-changed=build.rs");
-          }
+        build.rs: "fn main() {\r\n    println!(\"cargo:rerun-if-changed=build.rs\");\r\n}\r\n"
       event: commit
       expect: allow

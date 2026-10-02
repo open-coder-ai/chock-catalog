@@ -68,7 +68,18 @@ def test_every_install_time_script_is_judged(name: str) -> None:
     assert hits("package.json", pkg(scripts={name: "node x.js"})) == [("npm-lifecycle", "ask")]
 
 
-@pytest.mark.parametrize("value", ["husky", "husky install", "  husky   install .husky "])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "husky",
+        "husky install",
+        "pnpm exec husky install .husky",
+        "bunx husky",
+        "pnpx husky",
+        "npx --yes husky install",
+        "npm exec husky",
+    ],
+)
 def test_husky_prepare_is_allowed(value: str) -> None:
     assert hits("package.json", pkg(scripts={"prepare": value})) == []
 
