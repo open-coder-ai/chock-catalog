@@ -33,6 +33,16 @@ def test_fences_inside_a_comment_block_stay() -> None:
     assert "code" not in blocks.blank_code(doc)
 
 
+def test_an_html_comment_block_ends_only_where_commonmark_ends_it() -> None:
+    # A browser ends the comment at --!>, but CommonMark keeps the block raw to -->, so the fence below
+    # is raw HTML and the comment inside it is read, not blanked as code.
+    doc = "<!-- a --!>\n```\n<!-- run it\n```\n-->\n```\ncode\n```\n<PRE>\n\n```\nx\n</pre>\n"
+    out = blocks.blank_code(doc).split("\n")
+    assert out[:5] == ["<!-- a --!>", "```", "<!-- run it", "```", "-->"]
+    assert out[6] == "    "
+    assert out[11] == "x"
+
+
 def test_tag_view_removes_only_the_brackets_of_code() -> None:
     raw = "a `<!-- x -->` <b>"
     assert blocks.tag_view(raw, blocks.blank_code(raw)) == "a ` !-- x -->` <b>"
