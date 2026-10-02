@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "block-fetch-exec-in-files",
+  "version": "0.0.1",
+  "description": "Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time: continuation lines and variables are missed. Never refuses. Friction only.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi04"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

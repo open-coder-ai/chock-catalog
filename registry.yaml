@@ -723,3 +723,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: block-fetch-exec-in-files
+  path: base/block-fetch-exec-in-files
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 20
+  eval_executed: 20
+  description: 'Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow
+    or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a
+    shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string
+    of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time:
+    continuation lines and variables are missed. Never refuses. Friction only.'

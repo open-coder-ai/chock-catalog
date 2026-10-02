@@ -1,0 +1,122 @@
+id: block-fetch-exec-in-files
+name: "Flag Fetch-Exec in Files"
+version: "0.0.1"
+description: >
+  Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow or
+  package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a shell,
+  python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string of a
+  $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time:
+  continuation lines and variables are missed. Never refuses. Friction only.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+applies_to:
+  # Files that run as build or install steps: scripts, container builds, task runners, CI, npm
+  # scripts. Without this bound the gate would judge every file -- docs that quote the pattern too.
+  paths:
+  - "Dockerfile*"
+  - "*/Dockerfile*"
+  - "*.Dockerfile"
+  - "*.dockerfile"
+  - "Containerfile*"
+  - "*/Containerfile*"
+  - "Makefile"
+  - "*/Makefile"
+  - "GNUmakefile"
+  - "*/GNUmakefile"
+  - "*.mk"
+  - "justfile"
+  - "*/justfile"
+  - "Justfile"
+  - "*/Justfile"
+  - "Taskfile.yml"
+  - "Taskfile.yaml"
+  - "*/Taskfile.yml"
+  - "*/Taskfile.yaml"
+  - "*.sh"
+  - "*.bash"
+  - "*.zsh"
+  - "*.ps1"
+  - "*.psm1"
+  - ".envrc"
+  - "*/.envrc"
+  - "Vagrantfile"
+  - "*/Vagrantfile"
+  - "Procfile"
+  - "*/Procfile"
+  - ".github/workflows/*"
+  - ".github/actions/*"
+  - ".gitlab-ci.yml"
+  - "*/.gitlab-ci.yml"
+  - "Jenkinsfile*"
+  - "*/Jenkinsfile*"
+  - ".circleci/*"
+  - "azure-pipelines*.yml"
+  - "*/azure-pipelines*.yml"
+  - "bitbucket-pipelines.yml"
+  - "cloudbuild.yml"
+  - "cloudbuild.yaml"
+  - "*/cloudbuild.yml"
+  - "*/cloudbuild.yaml"
+  - "package.json"
+  - "*/package.json"
+
+rule:
+  text: |
+    flag(fetch_exec_in_file): added line wires a downloader (curl, wget, iwr, irm) into a shell or interpreter by pipe, $(..), <(..) or here-string; Dockerfile ADD <url> without --checksum
+    prefer: download to a file, verify (sha256sum -c, gpg --verify, ADD --checksum=sha256:...), then run; waiver: same-line pragma, person only
+
+hook:
+  gate:
+    kind: content_regex
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      A line added to a build, CI or install file wires a network download straight into a shell
+      or interpreter (or ADDs a URL without --checksum), so whoever controls that URL controls what
+      runs. Download to a file, verify it (sha256sum -c against a pinned checksum, gpg --verify, or
+      ADD --checksum=sha256:...), then run it as a separate step. This policy only warns while it is
+      measured. Waiver: 'pragma: allowlist fetch-exec' on the same line. A person's commit honours it;
+      in the agent only a line already in HEAD counts. An agent asks a person; it never writes the pragma.
+    params:
+      scan: added_lines
+      allowlist_pragma: 'pragma:\s*allowlist\s+fetch-exec'
+      # Bracketed first letters ([c]url, [i]wr) keep the pattern from matching its own text here and
+      # in the compiled gate.json. One line at a time: a fetcher and a consumer joined by a pipe with
+      # no ; && || between, a runner (bash -c, eval, source, .) fed by $(...) <(...) or a here-string
+      # of a fetch, PowerShell iex of a download, or Dockerfile ADD of a URL with no --checksum. Comment
+      # lines and echo/printf lines are skipped.
+      content_pattern: |-
+        ^\s*(?i:add)\s+(?:--(?!checksum)[\w-]+(?:=\S+)?\s+)*["']?https?://|^(?!\s*(?:-\s+)?(?:echo|printf|Write-Host)\b)[^#\n]*?(?:(?<![\w.-])(?:[c]url|[w]get2?|[a]ria2c|[l]ynx|(?i:[i]wr|[i]rm|[i]nvoke-webrequest|[i]nvoke-restmethod|[d]ownloadstring))(?![\w-])(?:[^;&|\n#]|(?<!\s)#|&(?![&>])|\|(?!\|))*?\|&?\s*[({]?\s*(?:(?:sudo|doas|env|exec|command|nohup|nice|timeout|stdbuf|xargs)(?:\s+(?:-\S+|\w+=\S*|[0-9][\w.]*))*\s+)*["']?(?:[\w./-]*/)?(?:(?:ba|z|da|k|a|c|tc|mk)?sh|fish|busybox\s+sh|(?:python[0-9.]*|perl|ruby|node|php|lua)(?=\s*(?:$|-(?:\s|$)|[;&|)'"`]))|(?i:iex|invoke-expression|pwsh|powershell))(?![\w.-])|(?<![\w.-])(?:eval|source|\.|(?:ba|z|da|k|a|tc|mk)?sh|fish|python[0-9.]*|perl|ruby|node|php|lua)(?:\s+-\S+)*\s+(?:<<<\s*|<\s*)?["']?(?:\$\(|<\(|`)\s*(?:sudo\s+)?(?:[c]url|[w]get2?|[a]ria2c|[l]ynx|(?i:[i]wr|[i]rm|[i]nvoke-webrequest|[i]nvoke-restmethod|[d]ownloadstring))(?![\w-])|(?i:(?<![\w-])(?:iex|invoke-expression)\s*\(*\s*(?:[i]rm|[i]wr|[i]nvoke-webrequest|[i]nvoke-restmethod|new-object\s+(?:system\.)?net\.webclient)(?![\w-])|\[scriptblock\]::create\(\s*\(*\s*(?:[i]rm|[i]wr)))
+
+compliance:
+  owasp_asi:
+  - control: ASI04
+    coverage: partial
+    note: "flags remote-code installs written into build, CI and install files; warns only (observe) and reads one line at a time"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap HP03 companion): a content_regex gate at commit and agent write over the build, CI and install files in applies_to.paths. Ships with action: warn -- the observe stage of rollout decision D15 -- so it reports and never refuses; promotion to block is a separate change once its false-positive rate on real repositories is measured. Waiver 'pragma: allowlist fetch-exec' on the same line (person; HEAD-only for agents)."
