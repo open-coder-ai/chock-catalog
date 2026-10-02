@@ -23,7 +23,7 @@ BERRY_GIT = re.compile(r"^(?:git[+:]|github:)|\.git/?$|^https://github\.com/[^/]
 SELECTORS = frozenset({"commit", "head", "tag", "semver"})
 PERCENT = re.compile(r"%([0-9A-Fa-f]{2})")
 #: Classic header specs as yarn's tokenizer splits them: a comma outside quotes ends one, spaces or not.
-HEADER_PART = re.compile(r'\s*(?:"(?:[^"\\]|\\.)*"|[^,"]+)')
+HEADER_PART = re.compile(r'\s*(?:"(?:[^"\\]|\\.)*"|[^,"\s][^,"]*)')
 #: Classic: a field is indented two spaces, a nested map's entries four. Berry: (entry, field) paths.
 FIELD, NESTED, BERRY_FIELD = 2, 4, 2
 
