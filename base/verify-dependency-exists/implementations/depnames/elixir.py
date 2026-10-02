@@ -5,8 +5,13 @@ from __future__ import annotations
 import re
 
 _COMMENT = re.compile(r"(?m)(?:^|\s)#.*$")
-_TUPLE = re.compile(r'\{\s*:([A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?:"|[a-z_]+:)')
+_TUPLE = re.compile(r'\{\s*:([A-Za-z_][A-Za-z0-9_]*)\s*,\s*((?:"|[a-z_]+:)[^}]*)')
 _NOT_PACKAGES = frozenset({"ok", "error"})
+
+
+def _local(rest: str) -> bool:
+    """An umbrella sibling or a path dependency: no registry or git source is named."""
+    return "in_umbrella:" in rest or ("path:" in rest and not re.search(r"\b(?:git|github|hex|organization)\b:|^\s*\"", rest))
 
 
 def mix_names(text: str) -> list[str]:
@@ -16,4 +21,4 @@ def mix_names(text: str) -> list[str]:
     an inline `deps: [...]` are all seen; `{:ok, "..."}` and `{:error, "..."}` results are not packages.
     """
     code = _COMMENT.sub("", text.removeprefix("﻿"))
-    return [name for name in _TUPLE.findall(code) if name not in _NOT_PACKAGES]
+    return [name for name, rest in _TUPLE.findall(code) if name not in _NOT_PACKAGES and not _local(rest)]

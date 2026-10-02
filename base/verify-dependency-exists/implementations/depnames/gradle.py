@@ -5,26 +5,32 @@ from __future__ import annotations
 import re
 import tomllib
 
-_COORD = re.compile(r"""['"]([\w\-]+(?:\.[\w\-]+)+):([\w.\-]+)(?::[^'"\s]*)?['"]""")
+_VERSIONED = re.compile(r"""['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+):[\d$+\[{][^'"\s]*['"]""")
+_KEYWORDED = re.compile(
+    r"""\b(?:\w*(?:mplementation|Only|lasspath|ompile|untime|rocessor)|api|kapt|ksp|provided|optional)\b"""
+    r"""\s*\(?\s*['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+)['"]"""
+)
 _ID = r"""['"]([\w.\-]+)['"]"""
-_MAP = re.compile(rf"group\s*[:=]\s*{_ID}\s*,\s*name\s*[:=]\s*{_ID}|name\s*[:=]\s*{_ID}\s*,\s*group\s*[:=]\s*{_ID}")
+_GROUP = re.compile(rf"\bgroup\s*[:=]\s*{_ID}")
+_NAME = re.compile(rf"\bname\s*[:=]\s*{_ID}")
 _PLUGIN = re.compile(r"""\bid\s*\(?\s*['"]([\w\-]+(?:\.[\w\-]+)+)['"]\s*\)?\s*version\b""")
 _KOTLIN = re.compile(r"""\bkotlin\s*\(\s*['"]([\w\-]+)['"]\s*\)\s*version\b""")
-_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 
 
 def gradle_names(text: str) -> list[str]:
-    """`group:artifact` for every quoted coordinate with a dotted group, map notation in either order, and
-    `plugin:<id>` for versioned plugins.
+    """`group:artifact` from a quoted coordinate with a version, one on a dependency configuration without, map
+    notation in any order on a line, and `plugin:<id>` for versioned plugins.
 
-    Any configuration, call form or line layout is read because the coordinate string is what is matched. Plugins
-    without a version are the ones Gradle ships, so they are not packages. Computed coordinates are not read.
+    Block comments are not stripped (a glob such as `**/*.class` would open a fake one and hide the code after it),
+    so a commented-out dependency is reported too, and the baseline absorbs one that was already there. Plugins
+    without a version are the ones Gradle ships. Computed coordinates are not read.
     """
-    body = _BLOCK_COMMENT.sub("", text.removeprefix("\ufeff"))
-    code = "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("//"))
-    names = [f"{g}:{a}" for g, a in _COORD.findall(code)]
-    for g1, n1, n2, g2 in _MAP.findall(code):
-        names.append(f"{g1 or g2}:{n1 or n2}")
+    code = "\n".join(line for line in text.removeprefix("\ufeff").splitlines() if not line.lstrip().startswith("//"))
+    names = [f"{g}:{a}" for g, a in _VERSIONED.findall(code) + _KEYWORDED.findall(code)]
+    for line in code.splitlines():
+        group, name = _GROUP.search(line), _NAME.search(line)
+        if group and name:
+            names.append(f"{group.group(1)}:{name.group(1)}")
     names += [f"plugin:{plugin}" for plugin in _PLUGIN.findall(code)]
     return names + [f"plugin:org.jetbrains.kotlin.{short}" for short in _KOTLIN.findall(code)]
 

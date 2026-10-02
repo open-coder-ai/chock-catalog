@@ -10,7 +10,7 @@ _NAME = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?")
 _TAIL = re.compile(r"\s*(?:$|\[|[=<>!~;(@,])")
 _OPTION = re.compile(r"\s+--?[A-Za-z]")
 _INCLUDE = re.compile(r"^(?:-r|-c|--requirement=|--constraint=|--requirement\s+|--constraint\s+)\s*(\S.*)$")
-_EDITABLE = re.compile(r"^(?:-e|--editable)(?:\s+|=)(\S.*)$")
+_EDITABLE = re.compile(r"^(?:-e\s*|--editable(?:\s+|=))(\S.*)$")
 _EGG = re.compile(r"[#&]egg=([A-Za-z0-9][A-Za-z0-9._-]*)")
 _SCHEME = re.compile(r"^(?:[A-Za-z][A-Za-z0-9+.-]*://|(?:git|hg|svn|bzr)\+)")
 _USERINFO = re.compile(r"//[^/@]*@")
@@ -58,9 +58,10 @@ def _named(target: str | None) -> tuple[str, str] | None:
 def parse_line(line: str) -> tuple[str, str] | None:
     """("include", path) for -r/-c, ("name", value) for a requirement, None for an option or a local path."""
     if m := _INCLUDE.match(line):
-        return "include", m.group(1).strip()
+        return "include", m.group(1).split()[0]
     if m := _EDITABLE.match(line):
-        return _named(_target(_OPTION.split(m.group(1), 1)[0].strip()))
+        spec = _OPTION.split(m.group(1), 1)[0].strip()
+        return _named(_target(spec) if _SCHEME.match(spec) or _EGG.search(spec) else None)
     if line.startswith("-"):
         return None
     spec = _OPTION.split(line, 1)[0].strip()
