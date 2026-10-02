@@ -32,6 +32,7 @@ PATTERN_KEYS = frozenset(
         "exec_marker",
         "secret_object",
         "header_arg",
+        "url_arg",
         "guard_prohibit",
         "segment_break",
     }

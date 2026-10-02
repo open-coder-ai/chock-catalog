@@ -50,6 +50,9 @@ class Statement(NamedTuple):
     raw: str
     norm: str
     code: bool
+    #: False for a piece of a statement split for length: a rule that pairs a phrase with a target then
+    #: fires on the phrase alone, since the pair may straddle two pieces.
+    whole: bool = True
 
 
 def lines_of(text: str) -> list[str]:
@@ -153,6 +156,6 @@ def _pieces(st: Statement) -> list[Statement]:
         return [st]
     step = MAX_STATEMENT - OVERLAP
     return [
-        st._replace(raw=st.raw[at : at + MAX_STATEMENT], norm=st.norm[at : at + MAX_STATEMENT])
+        st._replace(raw=st.raw[at : at + MAX_STATEMENT], norm=st.norm[at : at + MAX_STATEMENT], whole=False)
         for at in range(0, len(st.norm) - OVERLAP, step)
     ]
