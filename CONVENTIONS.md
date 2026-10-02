@@ -17,6 +17,7 @@ refused: undeclared copy (any depth, any case) | edited copy | extra file | syml
 limits: importlib/__import__ not followed (lib/ uses static imports); a copy under a name no lib package has is not recognised;
         copies are found by folder name, so a lib package must not share a name with a folder under implementations/
 packages: chock_shellparse (command guards), chock_scan (file scanning; import modules, not the package)
+chock_scan: safe_read (bounded reader), entropy + keyword_values (secret entropy tier), checksums (token validators)
 tests: run against every shipped copy (byte-equal to lib/): tests/chock_scan/ (also lib/), tests/policies/test_shellparse*.py
 runtime: stdlib only, like every guard
 ```

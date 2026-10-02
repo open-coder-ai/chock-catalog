@@ -1,0 +1,16 @@
+Real-world allow corpus for chock_scan.entropy, keyword_values and checksums (tests/chock_scan/test_entropy_corpus.py).
+Every file here must yield no suspicious value: digests, UUIDs, inline images and minified code are not secrets.
+Vendored files are byte-identical to their source unless marked "excerpt"; each keeps its upstream licence.
+
+go.sum              Go 1.25.1 src/cmd/go.sum. Copyright 2009 The Go Authors. BSD-3-Clause (https://go.dev/LICENSE).
+package-lock.json   excerpt: Go 1.25.1 src/cmd/vendor/golang.org/x/telemetry/package-lock.json, first 22 package entries,
+                    re-serialised with 2-space indent. Copyright The Go Authors. BSD-3-Clause (https://go.dev/LICENSE).
+underscore.min.js   Underscore.js 1.13.4, minified, as Debian's libjs-underscore ships it. Copyright 2009-2018 Jeremy Ashkenas,
+                    DocumentCloud and Investigative Reporters & Editors. MIT (Expat) (https://underscorejs.org).
+attrs-RECORD.csv    attrs 26.1.0 wheel's dist-info/RECORD (sha256 digests, urlsafe base64). Copyright 2015 Hynek Schlawack
+                    and the attrs contributors. MIT (https://github.com/python-attrs/attrs/blob/main/LICENSE).
+inline-image.css    authored for this corpus: a 24x24 RGB noise PNG (deflated, so its base64 is high-entropy) inlined as
+inline-image.html   data: URIs, the way bundlers inline small images. Apache-2.0, like this repository.
+uuids.json          authored for this corpus: version-4 UUIDs under id, clientId and secret-like keys. Apache-2.0.
+
+Also read in place, not copied: requirements/test.txt (pip --hash digests) and chock.lock (sha256 digests).
