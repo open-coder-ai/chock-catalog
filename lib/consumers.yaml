@@ -20,3 +20,5 @@ base/rtk-dangerous-actions-blocker:
   chock_shellparse: [args, parse, targets, writes]
 base/verify-mcp-allowlist:
   chock_shellparse: [args, parse, targets, writes]
+agentic-security/iam-policy-scan:
+  chock_scan: [hcl, hcl_json, hcl_lex, jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]

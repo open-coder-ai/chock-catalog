@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "iam-policy-scan",
+  "version": "0.1.0",
+  "description": "Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, CloudFormation, Terraform (documents, jsonencode, heredocs), ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin bindings, subscription Owner. Asks for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants and templated YAML that will not parse. Waiver: pragma, or .chock/iam-policy-scan.json for JSON.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block",
+    "asi03"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

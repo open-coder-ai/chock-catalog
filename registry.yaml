@@ -132,7 +132,7 @@ policies:
     in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.1.0
+  version: 0.1.1
   artifact: hook
   enforcement: block
   mandatory: false
@@ -146,10 +146,10 @@ policies:
     key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public
     members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-line
     strict-JSON AWS Deny statement is exempt. Friction, not a security boundary: grants split across
-    lines, partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants
-    pass; other Deny forms and admission-webhook wildcards are refused. Escape: ''pragma: allowlist
-    broad-privilege'' on the same line, honoured at commit; at agent tool-use only when that exact line
-    is already committed in HEAD.'
+    lines (iam-policy-scan reads those), partial wildcards, unlisted services and roles, YAML aliases
+    or tags and runtime-built grants pass; other Deny forms and admission-webhook wildcards are refused.
+    Escape: ''pragma: allowlist broad-privilege'' on the same line, honoured at commit; at agent tool-use
+    only when that exact line is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
   version: 0.0.4
@@ -728,3 +728,19 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: iam-policy-scan
+  path: agentic-security/iam-policy-scan
+  version: 0.1.0
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, CloudFormation, Terraform
+    (documents, jsonencode, heredocs), ARM, Bicep, Kubernetes. Refuses Allow with Action star or an
+    inverted key, public or any-principal trust, cluster-admin bindings, subscription Owner. Asks for
+    service wildcards on a named resource and cross-account trust. Only added grants. Misses computed
+    grants and templated YAML that will not parse. Waiver: pragma, or .chock/iam-policy-scan.json for
+    JSON.'

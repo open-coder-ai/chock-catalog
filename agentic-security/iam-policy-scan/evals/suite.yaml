@@ -1,0 +1,876 @@
+suite:
+  id: iam-policy-scan-tests-v1
+  policy_id: iam-policy-scan
+  version_constraint: '>=0.1.0'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A JSON policy grants Action star as a list split across lines.
+    expect: 'The commit is refused: the grant is read from the parsed document, not line by line.'
+    execute:
+      event: commit
+      files:
+        policy.json: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A CloudFormation YAML role grants a double-quoted star action on every resource over several lines.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        template.yaml: |
+          Resources:
+            Role:
+              Type: AWS::IAM::Role
+              Properties:
+                Policies:
+                  - PolicyName: all
+                    PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                        - Effect: Allow
+                          Action:
+                            - "*"
+                          Resource: "*"
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A policy grants every S3 action on every resource.
+    expect: 'The commit is refused: a whole-service wildcard on all resources.'
+    execute:
+      event: commit
+      files:
+        s3.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:*"
+                ],
+                "Resource": [
+                  "*"
+                ]
+              }
+            ]
+          }
+      expect: block
+  - id: tc-004
+    category: trigger
+    prompt: A bucket policy lets any AWS principal read, with no Condition.
+    expect: 'The commit is refused: public access.'
+    execute:
+      event: commit
+      files:
+        bucket.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "*"
+                },
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::reports/*"
+              }
+            ]
+          }
+      expect: block
+  - id: tc-005
+    category: trigger
+    prompt: A Kubernetes Role gives every verb on pods in a list split across lines.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        role.yaml: |
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: pods
+          rules:
+            - apiGroups: ['']
+              resources: [pods]
+              verbs:
+                - '*'
+      expect: block
+  - id: tc-006
+    category: trigger
+    prompt: A ClusterRoleBinding binds a service account to cluster-admin.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        crb.yaml: |
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: agent
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+            - kind: ServiceAccount
+              name: agent
+              namespace: ops
+      expect: block
+  - id: tc-007
+    category: trigger
+    prompt: A Terraform role assignment gives Owner on the whole subscription.
+    expect: 'The commit is refused: Owner at subscription scope.'
+    execute:
+      event: commit
+      files:
+        rbac.tf: |
+          resource "azurerm_role_assignment" "agent" {
+            scope                = "/subscriptions/00000000-0000-0000-0000-000000000000"
+            role_definition_name = "Owner"
+            principal_id         = var.agent_id
+          }
+      expect: block
+  - id: tc-008
+    category: trigger
+    prompt: An Azure deployment template at subscription scope assigns Contributor, with a comment in the JSON.
+    expect: 'The commit is refused: ARM JSON is read with its comments.'
+    execute:
+      event: commit
+      files:
+        assign.json: |
+          // deploy at subscription scope
+          {
+            "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+            "resources": [
+              {
+                "type": "Microsoft.Authorization/roleAssignments",
+                "apiVersion": "2022-04-01",
+                "properties": {
+                  "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+                  "principalId": "[parameters('id')]"
+                }
+              }
+            ]
+          }
+      expect: block
+  - id: tc-009
+    category: trigger
+    prompt: A Bicep file at subscription scope assigns Owner by its built-in role id.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        main.bicep: |
+          targetScope = 'subscription'
+
+          resource owner 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+            name: guid(subscription().id, 'agent')
+            properties: {
+              roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8e3af657-a8ff-443c-a75c-2fe8c4bcb635')
+              principalId: agentId
+            }
+          }
+      expect: block
+  - id: tc-010
+    category: trigger
+    prompt: A policy allows NotAction over several lines, which grants everything it does not name.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        inv.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "NotAction": [
+                  "iam:*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: block
+  - id: tc-011
+    category: trigger
+    prompt: A role trust lets any principal assume the role, with a Condition that does not say who.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        trust.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "*"
+                },
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                  "Bool": {
+                    "aws:SecureTransport": "true"
+                  }
+                }
+              }
+            ]
+          }
+      expect: block
+  - id: tc-012
+    category: trigger
+    prompt: A policy grants every S3 action on one named bucket.
+    expect: 'The gate asks a person: broad, but named.'
+    execute:
+      event: commit
+      files:
+        one.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "s3:*",
+                "Resource": "arn:aws:s3:::reports"
+              }
+            ]
+          }
+      expect: ask
+  - id: tc-013
+    category: trigger
+    prompt: A role trusts another account with no external id or MFA condition.
+    expect: The gate asks a person.
+    execute:
+      event: commit
+      files:
+        xacct.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::123456789012:root"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+      expect: ask
+  - id: tc-014
+    category: trigger
+    prompt: A RoleBinding binds a group to cluster-admin inside one namespace.
+    expect: The gate asks a person.
+    execute:
+      event: commit
+      files:
+        rb.yaml: |
+          kind: RoleBinding
+          metadata:
+            name: ops
+            namespace: ops
+          roleRef:
+            kind: ClusterRole
+            name: cluster-admin
+          subjects: []
+      expect: ask
+  - id: tc-015
+    category: negative_trigger
+    prompt: A policy lists scoped actions over several lines.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        ok.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject",
+                  "s3:PutObject"
+                ],
+                "Resource": "arn:aws:s3:::reports/*"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-016
+    category: negative_trigger
+    prompt: A Deny statement uses star, which narrows access.
+    expect: 'The commit is allowed: a Deny is never a finding.'
+    execute:
+      event: commit
+      files:
+        deny.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Deny",
+                "Action": "*",
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-017
+    category: negative_trigger
+    prompt: A Deny statement with NotAction denies everything except what it names.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        deny2.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Deny",
+                "NotAction": [
+                  "iam:ChangePassword"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "BoolIfExists": {
+                    "aws:MultiFactorAuthPresent": "false"
+                  }
+                }
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-018
+    category: negative_trigger
+    prompt: A role trust of another account requires an external id.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        xext.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::123456789012:root"
+                },
+                "Action": "sts:AssumeRole",
+                "Condition": {
+                  "StringEquals": {
+                    "sts:ExternalId": "abc"
+                  }
+                }
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-019
+    category: negative_trigger
+    prompt: A public bucket policy that is limited to one VPC endpoint by a Condition.
+    expect: 'The commit is allowed: a Condition is present.'
+    execute:
+      event: commit
+      files:
+        vpce.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::reports/*",
+                "Condition": {
+                  "StringEquals": {
+                    "aws:SourceVpce": "vpce-1"
+                  }
+                }
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-020
+    category: negative_trigger
+    prompt: A Role names its verbs and resources.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        role.yaml: |
+          kind: Role
+          rules:
+            - apiGroups: ['']
+              resources: [pods]
+              verbs: [get, list]
+      expect: allow
+  - id: tc-021
+    category: negative_trigger
+    prompt: A Bicep file assigns Owner at resource group scope.
+    expect: 'The commit is allowed: not subscription scope.'
+    execute:
+      event: commit
+      files:
+        main.bicep: |
+          resource owner 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+            name: guid(resourceGroup().id, 'agent')
+            properties: {
+              roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8e3af657-a8ff-443c-a75c-2fe8c4bcb635')
+              principalId: agentId
+            }
+          }
+      expect: allow
+  - id: tc-022
+    category: negative_trigger
+    prompt: A package.json mentions a statement.
+    expect: 'The commit is allowed: not a policy document.'
+    execute:
+      event: commit
+      files:
+        package.json: |
+          {
+            "name": "x",
+            "description": "statement of work",
+            "scripts": {}
+          }
+      expect: allow
+  - id: tc-023
+    category: behavior
+    prompt: Statement is one object, not a list, and the keys are in odd case.
+    expect: 'The commit is refused: key case and Statement shape change nothing.'
+    execute:
+      event: commit
+      files:
+        odd.json: |
+          {
+            "statement": {
+              "EFFECT": "allow",
+              "action": "*",
+              "RESOURCE": "*"
+            }
+          }
+      expect: block
+  - id: tc-024
+    category: behavior
+    prompt: The Terraform policy is a multi-line jsonencode object.
+    expect: 'The commit is refused: jsonencode is read as the object it spells.'
+    execute:
+      event: commit
+      files:
+        iam.tf: |
+          resource "aws_iam_policy" "agent" {
+            name = "agent"
+            policy = jsonencode({
+              Version = "2012-10-17"
+              Statement = [{
+                Effect   = "Allow"
+                Action   = "*"
+                Resource = "*"
+              }]
+            })
+          }
+      expect: block
+  - id: tc-025
+    category: behavior
+    prompt: A Terraform aws_iam_policy_document lists its star action over several lines.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        doc.tf: |
+          data "aws_iam_policy_document" "agent" {
+            statement {
+              actions = [
+                "*"
+              ]
+              resources = ["*"]
+            }
+          }
+      expect: block
+  - id: tc-026
+    category: behavior
+    prompt: A Terraform policy document leaves effect out, which means Allow, and names a public principal.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        doc.tf: |
+          data "aws_iam_policy_document" "pub" {
+            statement {
+              actions   = ["s3:GetObject"]
+              resources = ["arn:aws:s3:::reports/*"]
+              principals {
+                type        = "*"
+                identifiers = ["*"]
+              }
+            }
+          }
+      expect: block
+  - id: tc-027
+    category: behavior
+    prompt: A heredoc policy interpolates a bucket arn and still grants every action.
+    expect: 'The commit is refused: interpolations are made placeholders, then the JSON is read.'
+    execute:
+      event: commit
+      files:
+        heredoc.tf: |
+          resource "aws_iam_policy" "p" {
+            policy = <<EOF
+          {"Statement": [{"Effect": "Allow", "Action": "*", "Resource": "*"}], "Note": "${aws_s3_bucket.b.arn}"}
+          EOF
+          }
+      expect: block
+  - id: tc-028
+    category: behavior
+    prompt: A YAML anchor holds the admin statement and an alias reuses it.
+    expect: 'The commit is refused: aliases are resolved, not skipped.'
+    execute:
+      event: commit
+      files:
+        anchor.yaml: |
+          common: &admin
+            Effect: Allow
+            Action: '*'
+            Resource: '*'
+          Statement:
+            - *admin
+      expect: block
+  - id: tc-029
+    category: behavior
+    prompt: A YAML merge key pulls in a base that grants every action.
+    expect: 'The commit is refused: merge keys are applied.'
+    execute:
+      event: commit
+      files:
+        merge.yaml: |
+          base: &b
+            Effect: Allow
+            Action: ['*']
+          Statement:
+            - <<: *b
+              Resource: '*'
+      expect: block
+  - id: tc-030
+    category: behavior
+    prompt: A YAML alias points at its own anchor.
+    expect: 'The commit is refused: what cannot be read with certainty is not judged as clean.'
+    execute:
+      event: commit
+      files:
+        cycle.yaml: |
+          a: &a
+            b: *a
+          Effect: Allow
+      expect: block
+  - id: tc-031
+    category: behavior
+    prompt: A JSON policy repeats Effect, Deny first and Allow last.
+    expect: 'The commit is refused: loaders keep different ones.'
+    execute:
+      event: commit
+      files:
+        dup.json: |
+          {"Statement": [{"Effect": "Deny", "Effect": "Allow", "Action": "*", "Resource": "*"}]}
+      expect: block
+  - id: tc-032
+    category: behavior
+    prompt: A JSON policy is cut off mid-statement.
+    expect: 'The commit is refused: a document that mentions a grant and cannot be read is not passed.'
+    execute:
+      event: commit
+      files:
+        cut.json: '{"Statement": [{"Effect": "Allow", "Action": '
+      expect: block
+  - id: tc-033
+    category: behavior
+    prompt: A Helm template wraps a wildcard verb in an if block.
+    expect: 'The commit is refused: template directives are set aside before the YAML is read.'
+    execute:
+      event: commit
+      files:
+        templates/role.yaml: |
+          kind: ClusterRole
+          metadata:
+            name: {{ .Release.Name }}
+          rules:
+          {{- if .Values.rbac }}
+            - apiGroups: ['']
+              resources: [pods]
+              verbs: ['*']
+          {{- end }}
+      expect: block
+  - id: tc-034
+    category: behavior
+    prompt: A policy in a CloudFormation .template file.
+    expect: 'The commit is refused: .template is read as JSON or YAML by its first character.'
+    execute:
+      event: commit
+      files:
+        stack.template: |
+          {
+            "Resources": {
+              "R": {
+                "Properties": {
+                  "PolicyDocument": {
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": "*",
+                        "Resource": "*"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+      expect: block
+  - id: tc-035
+    category: behavior
+    prompt: A file already holds an admin statement and a scoped one is added.
+    expect: 'The commit is allowed: only grants the change adds are judged.'
+    execute:
+      event: commit
+      head_files: &id001
+        p.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      files:
+        p.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::r/*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-036
+    category: behavior
+    prompt: A file already holds an admin statement and its twin is added.
+    expect: 'The commit is refused: a second copy is a new grant.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        p.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: block
+  - id: tc-037
+    category: behavior
+    prompt: A file already holds an admin statement and a different wildcard one replaces nothing.
+    expect: 'The commit is refused: the new statement is a different grant.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        p.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": "*",
+                "Resource": "*",
+                "Condition": {
+                  "Bool": {
+                    "x": "y"
+                  }
+                }
+              }
+            ]
+          }
+      expect: block
+  - id: tc-038
+    category: behavior
+    prompt: A reviewed Terraform statement carries the broad-privilege pragma.
+    expect: 'The commit is allowed: a person''s reviewed exception.'
+    execute:
+      event: commit
+      files:
+        doc.tf: |
+          data "aws_iam_policy_document" "agent" {
+            statement {
+              actions   = ["*"] # pragma: allowlist broad-privilege
+              resources = ["*"]
+            }
+          }
+      expect: allow
+  - id: tc-039
+    category: behavior
+    prompt: The pragma is on the comment-only line above the YAML grant.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        p.yaml: |
+          Statement:
+            - Effect: Allow
+              # pragma: allowlist broad-privilege
+              Action:
+                - '*'
+              Resource: '*'
+      expect: allow
+  - id: tc-040
+    category: behavior
+    prompt: The agent writes the pragma itself with the wildcard grant.
+    expect: 'The write is refused: in the agent a waiver counts only once a person committed it.'
+    execute:
+      event: tool_use
+      writes:
+        doc.tf: |
+          data "aws_iam_policy_document" "agent" {
+            statement {
+              actions   = ["*"] # pragma: allowlist broad-privilege
+              resources = ["*"]
+            }
+          }
+      expect: block
+  - id: tc-041
+    category: behavior
+    prompt: A person waives one JSON statement in the sidecar by its printed id.
+    expect: 'The commit is allowed: JSON cannot carry a pragma, so the sidecar does.'
+    execute:
+      event: commit
+      files:
+        w.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+        .chock/iam-policy-scan.json: |
+          {
+            "version": 1,
+            "waive": [
+              {
+                "path": "w.json",
+                "rule": "iam-admin-grant",
+                "id": "1208495a7e52",
+                "reason": "break-glass role, reviewed"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-042
+    category: behavior
+    prompt: The sidecar carries a key the schema does not have.
+    expect: 'The commit is refused: an unknown key means the waiver is not understood.'
+    execute:
+      event: commit
+      files:
+        w.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+        .chock/iam-policy-scan.json: |
+          {
+            "version": 1,
+            "waive": [
+              {
+                "path": "w.json",
+                "rule": "iam-admin-grant",
+                "id": "1208495a7e52",
+                "everything": true
+              }
+            ]
+          }
+      expect: block
+  - id: tc-043
+    category: behavior
+    prompt: The sidecar waives a different statement than the one written.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        w.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+        .chock/iam-policy-scan.json: |
+          {
+            "version": 1,
+            "waive": [
+              {
+                "path": "w.json",
+                "rule": "iam-admin-grant",
+                "id": "000000000000"
+              }
+            ]
+          }
+      expect: block

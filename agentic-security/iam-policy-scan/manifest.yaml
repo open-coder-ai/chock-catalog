@@ -1,0 +1,59 @@
+id: iam-policy-scan
+name: "IAM Policy Scan"
+version: "0.1.0"
+description: >
+  Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, CloudFormation, Terraform (documents, jsonencode,
+  heredocs), ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust,
+  cluster-admin bindings, subscription Owner. Asks for service wildcards on a named resource and cross-account trust.
+  Only added grants. Misses computed grants and templated YAML that will not parse. Waiver: pragma, or
+  .chock/iam-policy-scan.json for JSON.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action
+      star, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no
+      cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a
+      pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in
+      .chock/iam-policy-scan.json for JSON, which cannot carry a comment. In the agent a waiver counts only once a
+      person has committed it, so an agent asks a person.
+    params:
+      script: iam-policy-scan-gate.py
+
+compliance:
+  owasp_asi:
+  - control: ASI03
+    coverage: partial
+    note: "refuses broad grants a diff can show in any line layout; identity-per-agent, TTLs and delegation scope remain advisory (owasp-asi03-identity-privilege-abuse)"
+
+provenance:
+  author: "chock-core"
+  author_email: "chock@example.com"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap HP05, structured part): a script gate that parses what block-wildcard-iam can only match a line at a time."

@@ -1,6 +1,6 @@
 id: block-wildcard-iam
 name: "Block Wildcard IAM"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a
   wildcard action, resource or principal in string or list form, any quote style
@@ -9,7 +9,7 @@ description: >
   and IAM-admin managed policies, GCP owner and editor roles and public members,
   Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner.
   Only a one-line strict-JSON AWS Deny statement is exempt. Friction, not a security boundary:
-  grants split across lines, partial wildcards, unlisted services and roles, YAML
+  grants split across lines (iam-policy-scan reads those), partial wildcards, unlisted services and roles, YAML
   aliases or tags and runtime-built grants pass; other Deny forms and
   admission-webhook wildcards are refused. Escape: 'pragma: allowlist
   broad-privilege' on the same line, honoured at commit; at agent tool-use only
@@ -144,3 +144,7 @@ changelog:
   date: '2026-10-02'
   changes:
   - "v2, single-line forms (roadmap HP05; closes the probed misses of defect 4.5 #2): list forms, either quote style, bare YAML and trailing comments for the wildcard action, resource and principal keys (AWS, Federated, Service, CanonicalUser), escaped JSON inside strings and the unicode-escaped star; the global wildcard; whole-service wildcards on s3, iam, sts, kms and ec2 on an action key or alone as a list element line; Allow with NotAction, NotResource or NotPrincipal on one line; PowerUserAccess and IAMFullAccess beside AdministratorAccess, by ARN in any partition, by policy-name key or in SAM Policies; CDK any-principal and star-principal; unquoted GCP owner/editor in gcloud flags and YAML bindings; allUsers and allAuthenticatedUsers members, gcloud member flags and gsutil grants; Kubernetes RBAC verbs, resources and apiGroups wildcards and cluster-admin bindings (kubectl flag, roleRef, a non-list name line); Azure wildcard actions and dataActions, Owner by role definition name, az role assignment create, or built-in id in any case. A single strict-JSON AWS Deny statement on one line (Effect Deny its first key, every later object a key's value, no other effect, statement, escape, code character, Kubernetes or Azure key, or allow) passes, the one format that cannot carry the pragma. Service wildcards and PowerUserAccess block rather than ask: a content_regex gate has one action, so the roadmap's ask tier waits for the structured iam-policy-scan (wave 3), as do multi-line statements."
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Description only, no behaviour change: a grant split across lines still passes this gate, which judges one line at a time, and is now judged by the sibling script gate iam-policy-scan (roadmap HP05, structured part), which reads whole documents. The engine runs one hook.gate per policy, so the structured scan is its own policy rather than a second gate here, and the single-line regex keeps its commit-time block on service wildcards and PowerUserAccess; the ask tier the roadmap wants for those waits on an owner decision (loosening this gate), noted in the iam-policy-scan pull request."
