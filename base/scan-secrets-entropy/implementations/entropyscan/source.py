@@ -23,8 +23,8 @@ _PREFIX = re.compile(r"(?<![\w\"'])(?:[fFbBrRuU]{1,2}|@\$?|\$@?)(?=[\"'])")
 #: `a:` and blanks costs linear time.
 _ANNOTATION = re.compile(
     r"(^[ \t]{0,64}+|[;{(,][ \t]{0,16}+|\b(?:let|const|var|val|private|public|protected|readonly|static|mut|final)"
-    r"[ \t]{1,16}+)([A-Za-z_]\w{0,127}+)[ \t]{0,16}+:[ \t]{0,16}+[&\w<>\[\].,]{1,60}+"
-    r"(?:[ \t]{1,4}+[&\w<>\[\].,]{1,30}+)?[ \t]{0,16}+=(?![=>])"
+    r"[ \t]{1,16}+)([A-Za-z_]\w{0,127}+)[ \t]{0,16}+:[ \t]{0,16}+(?:&'\w{1,16}+[ \t]{1,4}+)?"
+    r"[&\w<>\[\].,]{1,60}+(?:[ \t]{1,4}+(?:\|[ \t]{1,4}+)?[&\w<>\[\].,]{1,30}+){0,3}+[ \t]{0,16}+=(?![=>])"
 )
 #: Go's `var name Type =` (and const); in C# `const string Name =` the type comes first, so Go only.
 _GO_VAR = re.compile(r"\b(?:var|const)[ \t]{1,16}+([A-Za-z_]\w{0,127}+)[ \t]{1,16}+[\w.*\[\]]{1,60}+[ \t]{0,16}+=(?!=)")

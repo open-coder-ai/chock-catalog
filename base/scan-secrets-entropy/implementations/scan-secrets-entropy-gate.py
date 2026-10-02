@@ -25,6 +25,8 @@ SOURCE_CODE = re.compile(
     r"(?i)\.(py|pyi|js|mjs|cjs|jsx|ts|tsx|mts|cts|go|java|kt|kts|scala|groovy|cs|fs|vb|rb|php|rs|swift"
     r"|c|h|cc|cpp|cxx|hpp|m|mm|dart|lua|jl|ex|exs|erl|clj)$"
 )
+CONTROLS = re.compile(r"[\x00-\x08\x0e-\x1a\x1c-\x1f]")
+SAMPLE = 1 << 16
 EXIT_ASK = 3
 EXIT_UNJUDGED = 2
 MESSAGES = {
@@ -49,11 +51,14 @@ def _row(path: str, line: int, rule: str, value: str, message: str) -> dict:
 def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
     """Every finding in one file, in line order; a binary file is not judged.
 
-    Text where NUL is at least a third of the characters is UTF-16 and is read with NULs dropped; a
-    few stray NULs are dropped too. Text where NUL or the replacement character is over one in a
-    hundred characters is binary (a deliberately NUL-padded text file is a stated miss).
+    UTF-16 text (NULs on one parity of the characters) is read with its NULs dropped, and so are a
+    few stray NULs. Text whose NUL and other C0 control characters (tab, line breaks, form feed and
+    escape aside) exceed one in a hundred is binary; a replacement character never counts, so a
+    legacy-encoded file (cp1252, ISO-8859-1) is judged. A text file padded with controls is a stated miss.
     """
-    if _binary(text):
+    if _utf16(text):
+        text = text.replace("\x00", "")
+    elif _binary(text):
         return []
     lines = values.split_lines(text.replace("\x00", ""))
     rows: list[tuple[int, dict]] = []
@@ -73,12 +78,16 @@ def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
     return sorted(kept, key=lambda row: row["line"])
 
 
+def _utf16(text: str) -> bool:
+    """True when NULs sit on one parity of the first SAMPLE characters, as UTF-16 code units do."""
+    sample = text[:SAMPLE]
+    even, odd = sample[0::2].count("\x00"), sample[1::2].count("\x00")
+    return max(even, odd) >= len(sample) // 8 and min(even, odd) * 10 <= max(even, odd)
+
+
 def _binary(text: str) -> bool:
-    """True for decoded binary content: NULs or replacement characters, but not the UTF-16 pattern."""
-    nul = text.count("\x00")
-    if 3 * nul >= len(text):
-        return False
-    return 100 * (nul + text.count("\ufffd")) > len(text)
+    """True when NUL and C0 control characters are over one in a hundred characters."""
+    return 100 * len(CONTROLS.findall(text)) > len(text)
 
 
 def findings(payload: dict) -> list[dict]:

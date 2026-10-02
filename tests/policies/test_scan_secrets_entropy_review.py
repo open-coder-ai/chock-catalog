@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import string
 import time
 
@@ -81,6 +82,11 @@ def test_code_and_regex_written_as_code_are_still_explained(value: str, shape: s
         ("keys.h", f'#define API_KEY "{V}"'),
         ("Keys.cs", f'public const string ApiKey = "{V}";'),
         ("Keys.cs", f'const string ApiKey = "{V}";'),
+        ("keys.rs", f'const API_KEY: &\'static str = "{V}";'),
+        ("cfg.py", f'api_key: str | None = "{V}"'),
+        ("svc.ts", f'apiKey: string | undefined = "{V}";'),
+        ("greet.py", f'token = f"{V}{{user.name}}"'),
+        ("login.ts", f"  password: '{base64.b64encode(V.encode()).decode()}'"),
         ("auth.py", f'headers = {{"Authorization": "SSWS {V}"}}'),
         ("auth.js", f'h.Authorization = "Token token={V}"'),
     ],
@@ -124,3 +130,17 @@ def test_a_long_line_of_annotation_lookalikes_is_rewritten_in_linear_time() -> N
     start = time.perf_counter()
     gate.values.source.rewrite(line, language="ts")
     assert time.perf_counter() - start < 5
+
+
+def test_legacy_encoded_text_is_judged_and_replacement_characters_hide_nothing() -> None:
+    text = f"# R\u00e9glage de la base de donn\u00e9es\n# Pr\u00fcfung\ndb.password={V}\n"
+    decoded = text.encode("cp1252").decode("utf-8", "replace")
+    assert rules(decoded, "app.properties") == ["entropy"]
+    assert rules(f"# \ufffd\ufffd\nCLIENT_SECRET={V}\n") == ["entropy"]
+
+
+def test_utf16_is_told_by_parity_and_zero_filled_binaries_are_skipped() -> None:
+    cjk = f"# \u8a2d\u5b9a\nclient_secret={V}\n".encode("utf-16-le").decode("latin-1")
+    assert rules(cjk) == ["entropy"]
+    zero_filled = "\x00" * 4000 + f"client_secret={V}\n" + "\x00\x01" * 50
+    assert rules(zero_filled, "lib.so") == []

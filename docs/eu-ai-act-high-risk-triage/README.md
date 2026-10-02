@@ -8,8 +8,8 @@
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
 | **Mechanism** | warn-only `content_regex` gate |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
 | **Eval cases** | 11 total, 4 executable |
 | **Enabled by default** | yes |
 
@@ -40,7 +40,7 @@ never(silently add): high_risk capability; decision belongs to the repo owner; s
 
 ## Which primitive it becomes
 
-A **warn-only gate**. `recompile` writes it under `.chock/compiled/eu-ai-act-high-risk-triage/` for each surface its `on` names (the git hook, the agent's write path), and the ambient rule beside it. It runs and prints, but its exit never refuses a commit or a write.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/eu-ai-act-high-risk-triage/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

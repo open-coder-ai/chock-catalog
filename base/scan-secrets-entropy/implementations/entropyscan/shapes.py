@@ -13,7 +13,9 @@ from itertools import pairwise
 _REFERENCE_START = re.compile(r"\$?\$\(|\$\{|\{\{|\{%|%\(|#\{")
 #: An f-string or template interpolation of a name (`{self._secret_id!r}`, `{_core_token}`), closed
 #: or cut at its closing brace by the line lexer.
-_INTERPOLATION = re.compile(r"\{(?=[a-z_][\w.]{0,64}[._])[A-Za-z_][\w.]{1,64}(?:\[[\w'\"]{1,32}\])?(?:![rsa])?(?::[^{}]{0,16})?(?:\}|\Z)")
+_INTERPOLATION = re.compile(
+    r"\{(?=[\w.]{0,64}[._])[A-Za-z_][\w.]{1,64}(?:\[[\w'\"]{1,32}\])?(?:![rsa])?(?::[^{}]{0,16})?(?:\}|\Z)"
+)
 _SPACE = re.compile(r"\s")
 #: A regular expression: two or more escaped classes or metacharacters, group constructs or ranges.
 _REGEX_SIGNS = 2
@@ -71,15 +73,16 @@ MIN_LEN = 16
 
 
 def trim(value: str) -> str:
-    """The value up to its first escaped newline or tab; the rest is another line of a string literal."""
-    return _ESCAPE.split(value, maxsplit=1)[0]
+    """The value up to its first escaped newline or tab (the rest is another line of a string literal),
+    with interpolated names removed: what is left is the literal text a secret would be."""
+    return _INTERPOLATION.sub("", _ESCAPE.split(value, maxsplit=1)[0])
 
 
 def explain(value: str, key: str) -> str | None:
     """The name of the non-secret shape the value is written in, or None when it could be a secret."""
     bare = value.lstrip(_OPENERS)
     checks = (
-        ("reference", _REFERENCE_START.match(value) or _INTERPOLATION.search(value)),
+        ("reference", _REFERENCE_START.match(value)),
         ("text", _SPACE.search(value)),
         ("regex", len(_REGEX.findall(value)) >= _REGEX_SIGNS),
         ("filler", len(value) - _run_chars(value) < MIN_LEN),

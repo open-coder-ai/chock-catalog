@@ -16,12 +16,13 @@ gate = kit.load()
 V = kit.secret(31)
 PROBES = {
     "split across lines": ("conf.yaml", f"client_secret: |\n  {V}\n"),
-    "over 150 characters": (".env", f"CLIENT_SECRET={kit.secret(32, 151)}\n"),
+    "over 150 chars": (".env", f"CLIENT_SECRET={kit.secret(32, 151)}\n"),
     "under other key names": ("conf.json", f'{{"x": "{V}"}}\n'),
-    "cut short by # or & when unquoted": (".env", f"CLIENT_SECRET={V[:10]}#{V[10:]}\n"),
+    "cut by # or & when unquoted": (".env", f"CLIENT_SECRET={V[:10]}#{V[10:]}\n"),
+    "padded with control characters": ("app.env", "\x01" * 40 + f"client_secret={V}\n"),
     "written like code": ("conf.yaml", "client_secret: CorrectHorseBatteryStaple\n"),
-    "wrapped in a call, parentheses or concatenation": ("app.py", f'client_secret = os.getenv("K", "{V}")\n'),
-    "or in XML": ("app.config", f"<clientSecret>{V}</clientSecret>\n"),
+    "wrapped in a call, parens or concatenation": ("app.py", f'client_secret = os.getenv("K", "{V}")\n'),
+    "in XML": ("app.config", f"<clientSecret>{V}</clientSecret>\n"),
 }
 
 

@@ -37,9 +37,10 @@ _KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard"}
 
 WARN_ONLY_PRIMITIVE = (
     "A **warn-only gate**. `recompile` writes it under `.chock/compiled/{id}/` for each surface its `on` "
-    "names (the git hook, the agent's write path), and the ambient rule beside it. It runs and prints, "
-    "but its exit never refuses a commit or a write."
+    "names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but "
+    "its exit never refuses a commit or a write."
 )
+WARN_ONLY_REACH = "`advisory` — the gate runs and prints its findings; it never refuses"
 
 
 def kind_of(policy_dir: Path, manifest: dict) -> str:
@@ -54,6 +55,12 @@ def _mechanism(kind: str, gate: dict, scripts: list[str], manifest: dict) -> str
     if scripts:
         return f"guard script `{scripts[0]}`"
     return f"warn-only `{gate['kind']}` gate" if _warn_only(gate) else "rule text"
+
+
+def _warn_surfaces(gate: dict) -> list[str]:
+    """Where a warn-only gate is compiled: the gate surfaces, the agent's write path for tool_use."""
+    tool_use = ["`pre-tool-use`"] if "tool_use" in (gate.get("on") or []) else []
+    return [*SURFACES["gate"][:-1], *tool_use, SURFACES["gate"][-1]]
 
 
 def _warn_only(gate: dict) -> bool:
@@ -75,7 +82,8 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
     tree = policy_dir.parent.name
     gate = (manifest.get("hook") or {}).get("gate") or {}
     cases = load_cases(policy_dir)
-    executed = sum(1 for c in cases if c.get("execute")) if kind != "text" or _warn_only(gate) else 0
+    warn_only = kind == "text" and _warn_only(gate)
+    executed = sum(1 for c in cases if c.get("execute")) if kind != "text" or warn_only else 0
     scripts = [p.name for p in command_guards(policy_dir, policy_id)] if kind == "guard" else []
     if kind == "script":
         scripts = [p.name for p in event_scripts(policy_dir, policy_id)]
@@ -93,8 +101,8 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
         "| :--- | :--- |",
         f"| **Type** | `{manifest.get('artifact')}` (`enforcement: {manifest.get('enforcement')}`) |",
         f"| **Mechanism** | {_mechanism(kind, gate, scripts, manifest)} |",
-        f"| **Reaches** | {CEILING[kind]}{TOOL_USE_REACH if tool_use else ''} |",
-        f"| **Compiles to** | {', '.join(SURFACES[kind])} |",
+        f"| **Reaches** | {WARN_ONLY_REACH if warn_only else CEILING[kind]}{TOOL_USE_REACH if tool_use else ''} |",
+        f"| **Compiles to** | {', '.join(_warn_surfaces(gate) if warn_only else SURFACES[kind])} |",
         f"| **Eval cases** | {len(cases)} total, {executed} executable |",
         f"| **Enabled by default** | {'no — opt in' if disabled else 'yes'} |",
         "",
@@ -196,7 +204,7 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
         "## Which primitive it becomes",
         "",
         WARN_ONLY_PRIMITIVE.format(id=policy_id)
-        if kind == "text" and _warn_only(gate)
+        if warn_only
         else PRIMITIVE[kind].format(id=policy_id, script=scripts[0] if scripts else ""),
         "",
         "## Installing it",
