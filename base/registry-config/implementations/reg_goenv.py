@@ -52,7 +52,8 @@ def go_env(ctx: Ctx) -> None:
     for number, raw in enumerate(ctx.lines, 1):
         shell = _shell_line(ctx.path, raw, continued=continued)
         # A Makefile recipe line ending in '\' carries on, whatever the next line's indent.
-        continued = shell and raw.rstrip().endswith("\\")
+        stripped = raw.rstrip()
+        continued = shell and (len(stripped) - len(stripped.rstrip("\\"))) % 2 == 1
         if raw.lstrip().startswith(("#", "//")):
             continue
         for match in (*ENV_LINE.finditer(raw), *SETTING.finditer(raw)):

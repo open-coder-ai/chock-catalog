@@ -104,3 +104,7 @@ def test_make_assignments_and_quoted_separators(path: str, text: str, want: list
 )
 def test_makefile_recipe_forms(text: str, want: list[str]) -> None:
     assert rules("Makefile", text) == want
+
+
+def test_an_even_run_of_backslashes_does_not_continue_a_recipe() -> None:
+    assert rules("Makefile", "t:\n\techo a\\\\\nGONOSUMDB := ;,*\n") == [B_TLS]
