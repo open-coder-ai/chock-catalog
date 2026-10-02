@@ -49,6 +49,9 @@ REFUSED = {
         "subprocess.run(cmd, shell=TrueX)",
         "subprocess.run(['sh', '-c', cmd])",
         'execFile("bash", ["-c", cmd])',
+        "subprocess.run(['/bin/sh', '-c', cmd])",
+        "subprocess.run(['bash', '-lc', cmd])",
+        "spawn(cmd, {shell: 1})",
     ],
     "shell-eval-expansion CWE-78": [
         'eval "$cmd"',

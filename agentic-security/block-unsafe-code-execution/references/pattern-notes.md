@@ -20,7 +20,7 @@ look the line up here. CWE ids are also claimed under `compliance.cwe`.
 | compile-builtin | compile with an exec, eval or single mode literal on the line | 95 |
 | vm-run | the node vm run-in-context APIs, compileFunction, a new vm Script, the same on a require of vm | 95 |
 | dynamic-import | dunder import or import_module by a non-literal name, or of os-class modules by literal name | 470 |
-| shell-mode | the shell keyword as True or 1; the shell key as true in JSON or object form; an argument vector that starts with a shell and -c | 78 |
+| shell-mode | the shell keyword as True or 1; the shell key as true or 1 in JSON or object form; an argument vector that starts with a shell (bare name or /bin path) and a flag group ending in c, which also refuses prose that quotes such a vector | 78 |
 | implicit-shell | os system and popen, subprocess or commands getoutput and getstatusoutput, asyncio's shell subprocess, execSync | 78 |
 | os-exec-spawn | os exec*, spawn*, posix_spawn: they take an argument vector, but run whatever program the line names; refused because HP13 lists them | 78 |
 | child-process-exec | the exec method on child_process, childProcess, cp, or on require of child_process, optional chaining included | 78 |
