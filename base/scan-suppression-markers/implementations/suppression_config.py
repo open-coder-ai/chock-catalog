@@ -52,13 +52,31 @@ SCANNER = re.compile(
     r"security[-_ ]?(?:scan|audit|check|lint)|\bchock\s+check\b",
     re.IGNORECASE,
 )
-#: A step or job told to pass when it fails: a flag, or a shell `|| true` / `|| exit 0` / `|| :`.
+#: A step or job told to pass when it fails: a flag, a scanner's own no-fail option, or a shell
+#: `|| true`-style fallback. `set +e` is a separate pattern (see `_RESTORED`).
 SOFT_FAIL = re.compile(
-    r"[\"']?\b(?:continue-on-error|allow_failure|continueOnError|soft[-_]fail)[\"']?\s*:\s*"
-    r"(?:[\"']?(?:true|yes|on)\b|\{|$)|"
-    r"\|\|\s*(?:(?:/usr)?/bin/)?(?:true|:|echo\b|exit\s+0)(?:\s*$|[\s;)#&|'\"])|"
-    r";\s*true\s*$|\bset\s+\+e\b|^\s*exit\s+0\s*$|--soft-fail\b|--exit-code[ =][\"']?0\b",
+    r"[\"']?\b(?:continue-on-error|allow_failure|continueOnError|soft[-_]fail)[\"']?\s*:\s*(?:!!bool\s+)?"
+    r"(?:[\"']?(?:true|yes|on)\b|\{|[>|]-?\s*$|(?:#.*)?$)|"
+    r"\bexit-code\s*:\s*[\"']?0\b|\bshell\s*:\s*bash\s+\+e\b|;\s*true\s*(?:#.*)?$|"
+    r"\|\|\s*(?:\{\s*)?(?:(?:command|builtin)\s+)?(?:(?:/usr)?/bin/)?(?:true|:|exit\s+0)(?=$|[\s;)#&|'\"}])|"
+    r"--soft-fail\b|--exit-code[ =][\"']?0\b|--exit-zero\b|--ignore-on-exit\b|(?:^|\s)--?no-fail\b|--no-exit-codes\b",
     re.IGNORECASE,
+)
+#: A fallback that prints instead of failing; inside `$( )` it only fills a variable.
+_ECHO_FALLBACK = re.compile(r"\|\|\s*(?:echo|printf)\b")
+_SET_PLUS_E = re.compile(r"\bset\s+\+e\b")
+#: A block that turns errexit back on or passes the scan's own status on keeps the scan's verdict.
+_RESTORED = re.compile(r"\bset\s+-e\b|\bexit\s+\"?\$")
+#: GitLab's switches that turn a whole security template off.
+GITLAB_DISABLED = re.compile(
+    r"\b(?:SAST|SECRET_DETECTION|DEPENDENCY_SCANNING|CONTAINER_SCANNING|DAST|API_FUZZING|COVERAGE_FUZZING|"
+    r"IAC_SCANNING)_DISABLED[\"']?\s*:\s*[\"']?(?:true|1|yes)\b",
+    re.IGNORECASE,
+)
+#: Top-level keys that are settings, not a job a soft-fail could belong to.
+_NOT_A_JOB = re.compile(
+    r"^[\"']?(?:env|variables|on|permissions|defaults|concurrency|name|run-name|workflow|stages|include|default)"
+    r"[\"']?\s*:"
 )
 _KEY = re.compile(r"^\s*(?:-\s+)?['\"]?([\w.-]+)['\"]?\s*[:=](.*)$")
 _COMMENT = re.compile(r"^\s*(#|$)")
@@ -109,21 +127,27 @@ def gitleaks_allowlist(text: str) -> Iterator[tuple[int, str]]:
             yield number, f"{table}|{normalized(line)}"
 
 
-def _block_head(lines: list[str], index: int) -> int:
-    """The step or job a CI line belongs to: its nearest list-item ancestor, else its outermost key below the root."""
-    if lines[index].lstrip().startswith("- "):
-        return index
-    limit, chain = _indent(lines[index]), []
-    for back in range(index - 1, -1, -1):
-        line = lines[back]
-        if _COMMENT.match(line) or _indent(line) >= limit:
+def _heads(lines: list[str]) -> list[int]:
+    """For each line, the step or job it belongs to: the line itself if it is a list item, else its
+    nearest list-item ancestor, else its outermost key below the root (the root key for a GitLab job).
+    One pass with a stack of open ancestors, so a long `run:` block stays linear."""
+    heads, stack = [], []  # stack: indices of open ancestors, strictly increasing indent
+    for index, line in enumerate(lines):
+        if _COMMENT.match(line):
+            heads.append(index)
             continue
+        while stack and _indent(lines[stack[-1]]) >= _indent(line):
+            stack.pop()
+        items = [i for i in stack if lines[i].lstrip().startswith("- ")]
         if line.lstrip().startswith("- "):
-            return back
-        chain.append(back)
-        limit = _indent(line)
-    nested = [i for i in chain if _indent(lines[i]) > 0]
-    return nested[-1] if nested else (chain[-1] if chain else index)
+            heads.append(index)
+        elif items:
+            heads.append(items[-1])
+        else:
+            nested = [i for i in stack if _indent(lines[i]) > 0]
+            heads.append(nested[0] if nested else (stack[0] if stack else index))
+        stack.append(index)
+    return heads
 
 
 def _block(lines: list[str], head: int) -> str:
@@ -137,14 +161,34 @@ def _block(lines: list[str], head: int) -> str:
     return "\n".join(body)
 
 
+def _soft_fails(line: str) -> bool:
+    """Whether a CI line lets a failing command pass, before its step is known."""
+    if SOFT_FAIL.search(line) or _SET_PLUS_E.search(line):
+        return True
+    echo = _ECHO_FALLBACK.search(line)
+    return bool(echo) and line.count("$(", 0, echo.start()) <= line.count(")", 0, echo.start())
+
+
 def soft_failed_scans(text: str) -> Iterator[tuple[int, str]]:
-    """A soft-fail line inside a CI step or job that runs a security scanner."""
+    """A soft-fail line inside a CI step or job that runs a security scanner, or a GitLab scan switched off."""
     lines = lines_of(text)
+    heads = _heads(lines)
+    scans: dict[int, str | None] = {}
     for index, line in enumerate(lines):
-        if _COMMENT.match(line) or not SOFT_FAIL.search(line):
+        if _COMMENT.match(line):
             continue
-        head = _block_head(lines, index)
-        if SCANNER.search(_block(lines, head)):
+        if GITLAB_DISABLED.search(line):
+            yield index + 1, f"disabled|{normalized(line)}"
+            continue
+        if not _soft_fails(line):
+            continue
+        head = heads[index]
+        if head not in scans:
+            block = _block(lines, head)
+            scans[head] = None if _NOT_A_JOB.match(lines[head]) or not SCANNER.search(block) else block
+        block = scans[head]
+        restored = _SET_PLUS_E.search(line) and not SOFT_FAIL.search(line) and block and _RESTORED.search(block)
+        if block and not restored:
             yield index + 1, f"{normalized(lines[head])}|{normalized(line)}"
 
 

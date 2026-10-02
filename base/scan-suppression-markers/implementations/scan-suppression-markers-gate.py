@@ -15,16 +15,18 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from suppression_config import config_findings, normalized  # noqa: E402 -- after the path and cache setup
-from suppression_markers import eslint_block_lines, lines_of, marker_rule  # noqa: E402
+from suppression_markers import SECRET_RULES, eslint_block_lines, lines_of, marker_rule  # noqa: E402
 
 ALLOW, ASK, UNREADABLE = 0, 3, 2
 
 #: Prose and chock's own managed files: a marker there silences no scanner.
-PROSE = re.compile(
-    r"(^|/)(CHANGELOG|CHANGES|HISTORY)(\.(md|rst|txt|adoc))?$|\.(md|mdx|markdown|rst|txt|adoc)$"
-    r"|(^|/)\.agents/policies/|(^|/)\.chock/|(^|/)evals/suite\.ya?ml$",
-    re.IGNORECASE,
-)
+PROSE = re.compile(r"\.(md|mdx|markdown|rst|txt|adoc)$", re.IGNORECASE)
+#: chock's own managed files and eval suites: fixtures and installed copies, never judged.
+MANAGED = re.compile(r"(^|/)\.agents/policies/|(^|/)\.chock/|(^|/)evals/suite\.ya?ml$")
+#: A secret-scanner marker quoted in prose (in quotes or backticks) is a mention, not a use.
+QUOTED = re.compile(r"[`'\"]\s*(?:(?:#|//)\s*)?(?:pragma|gitleaks|trufflehog)\b", re.IGNORECASE)
+#: Changelogs by their conventional upper-case names; a script named `history` is code.
+CHANGELOG = re.compile(r"(^|/)(CHANGELOG|CHANGES|HISTORY)(\.(md|rst|txt|adoc))?$")
 
 ADVICE = (
     "Fix what the scanner reports instead of silencing it. If the finding is a reviewed false "
@@ -39,15 +41,22 @@ def _finding(rule: str, path: str, number: int, detail: str, line: str) -> dict:
         "path": path,
         "line": number,
         "rule": rule,
-        "message": f"suppression marker ({rule}): {line.strip()[:120]}",
+        "message": f"suppression marker ({rule}): {normalized(line)[:120]}",
     }
 
 
 def file_findings(path: str, text: str) -> list[dict]:
     """Every suppression marker, ignore entry and soft-failed scan in one file, keyed without line numbers."""
-    if PROSE.search(path):
+    if MANAGED.search(path):
         return []
     lines = lines_of(text)
+    if PROSE.search(path) or CHANGELOG.search(path):
+        # A secret scanner reads prose too, so its own markers count there; nothing else does.
+        return [
+            _finding(rule, path, n, normalized(line), line)
+            for n, line in enumerate(lines, 1)
+            if (rule := marker_rule(line)) in SECRET_RULES and not QUOTED.search(line)
+        ]
     found: dict[int, dict] = {}
     for rule, number, detail in config_findings(path, text):
         found.setdefault(number, _finding(rule, path, number, detail, lines[number - 1]))

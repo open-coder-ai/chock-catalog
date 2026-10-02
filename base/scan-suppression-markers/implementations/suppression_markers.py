@@ -19,21 +19,33 @@ _ESLINT_SEC = (
     r"(?:\bsecurity(?:-node)?/|\bno-unsanitized/|\bno-secrets/|\bxss/|@microsoft/sdl/|\bno-eval\b|"
     r"\bno-implied-eval\b|\bno-new-func\b|\breact/no-danger)"
 )
-_ESLINT_OPEN = re.compile(r"/\*\s*eslint(?:-disable|-enable)?\b")
+_BLOCK_OPEN = re.compile(r"/\*")
+#: An ESLint directive that turns rules off: a disable, or inline config (not eslint-enable).
+_ESLINT_DIRECTIVE = re.compile(r"\s*eslint(?:-disable\b|\s)")
 _ESLINT_RULE = re.compile(_ESLINT_SEC)
 _I = re.IGNORECASE
 
 #: (rule id, pattern, flags, opener needed before the match). The first rule a line matches names it.
 _TABLE: tuple[tuple[str, str, int, re.Pattern[str] | None], ...] = (
-    ("nosec", r"(?:#|//|/\*|--|<!--)\s*#?\s*n[o]sec\b", _I, None),
+    ("nosec", r"(?:#|//|/\*|--|<!--)[^\S\n]{0,40}#?[^\S\n]{0,40}n[o]sec\b", _I, None),
     # Ruff and flake8-bandit codes are S###; S101 (assert) is test hygiene, not a security finding.
-    ("noqa-security", r"#\s*(?:(?:ruff|flake8)\s*:\s*)?n[o]qa\s*:[^#\n]*\bS(?!101\b)\d{3}\b", _I, None),
-    ("nolint-gosec", r"//\s*n[o]lint\s*:[^\n]*\bg[o]sec\b", 0, None),
+    (
+        "noqa-security",
+        r"#[^\S\n]{0,40}(?:(?:ruff|flake8)\s*:\s*)?n[o]qa\s*:[^#\n]{0,300}?\bS(?!101\b)\d{3}\b",
+        _I,
+        None,
+    ),
+    ("nolint-gosec", r"//[^\S\n]{0,40}n[o]lint\s*:[^\n]{0,300}?\bg[o]sec\b", 0, None),
     ("nosonar", r"\bN[O]SONAR\b", 0, _OPENER),
     # Semgrep honours its marker anywhere on the line after whitespace, comment or not.
     ("nosemgrep", r"(?:^|\s)n[o]sem(?:grep)?\b", _I, None),
-    ("eslint-disable-security", r"eslint-disabl[e](?:-next-line|-line)?\b[^\n]*?" + _ESLINT_SEC, 0, _OPENER),
-    ("eslint-config-off", r"/\*\s*eslint\s[^\n]*?" + _ESLINT_SEC + r"[\w/-]*\s*:\s*[\"']?(?:of[f]|0)\b", 0, None),
+    ("eslint-disable-security", r"eslint-disabl[e](?:-next-line|-line)?\b[^\n]{0,300}?" + _ESLINT_SEC, 0, _OPENER),
+    (
+        "eslint-config-off",
+        r"/\*\s*eslint\s[^\n]{0,300}?" + _ESLINT_SEC + r"[\w/-]*[\"']?\s*:\s*\[?\s*[\"']?(?:of[f]|0)\b",
+        0,
+        None,
+    ),
     ("checkov-skip", r"\b(?:checkov|bridgecrew)\s*:\s*s[k]ip\b", _I, _OPENER),
     ("checkov-annotation", r"\bcheckov\.io/s[k]ip\d*\s*:", _I, None),
     ("tfsec-trivy-ignore", r"\b(?:tfsec|trivy)\s*:\s*i[g]nore\b", _I, _OPENER),
@@ -58,24 +70,32 @@ _TABLE: tuple[tuple[str, str, int, re.Pattern[str] | None], ...] = (
     ("deepcode-ignore", r"\bdeepcode\s+i[g]nore\b", _I, _OPENER),
     ("bearer-disable", r"\bbearer\s*:\s*d[i]sable\b", _I, _OPENER),
     ("psalm-suppress-taint", r"@psalm-s[u]ppress\s+Tainted", 0, None),
-    ("rubocop-disable-security", r"\brubocop\s*:\s*(?:disable|todo)\b[^\n]*\bSecurity/", 0, _OPENER),
-    ("rust-allow-unsafe-code", r"#!?\[\s*(?:allow|expect)\s*\([^)\]]*\bunsafe_c[o]de\b", 0, None),
-    ("suppress-security-annotation", r"@Suppress(?:FBWarnings|Warnings)?\s*\([^)]*(?:" + _SEC_TOKENS + r")", _I, None),
+    ("rubocop-disable-security", r"\brubocop\s*:\s*(?:disable|todo)\b[^\n]{0,300}?\bSecurity/", 0, _OPENER),
+    ("rust-allow-unsafe-code", r"#!?\[\s*(?:allow|expect)\s*\([^)\]\n]{0,300}?\bunsafe_c[o]de\b", 0, None),
+    (
+        "suppress-security-annotation",
+        r"@Suppress(?:FBWarnings|Warnings)?\s*\([^)\n]{0,300}?(?:" + _SEC_TOKENS + r")",
+        _I,
+        None,
+    ),
     (
         "suppress-message-security",
         r"\bSuppressMessage(?:Attribute)?\s*\(\s*\"(?:Microsoft\.)?S[e]curity\"|"
-        r"\bSuppressMessage[^\n]*\"CA(?:2100|23\d\d|3\d{3}|5\d{3})\b",
+        r"\bSuppressMessage[^\n]{0,300}?\"CA(?:2100|23\d\d|3\d{3}|5\d{3})\b",
         0,
         None,
     ),
     (
         "pragma-warning-security",
-        r"#\s*pragma\s+warning\s+disable\b[^\n]*\b(?:CA(?:2100|23\d\d|3\d{3}|5\d{3})|SCS\d{4})\b",
+        r"#\s*pragma\s+warning\s+disable\b[^\n]{0,300}?\b(?:CA(?:2100|23\d\d|3\d{3}|5\d{3})|SCS\d{4})\b",
         0,
         None,
     ),
 )
 MARKERS = tuple((rule, re.compile(pattern, flags), opener) for rule, pattern, flags, opener in _TABLE)
+_OPENERS = (_OPENER, _OPENER_OR_QUOTE)
+#: The rules a secret scanner honours even in prose files, which it scans as well.
+SECRET_RULES = frozenset({"gitleaks-allow", "trufflehog-ignore", "pragma-allowlist-secret"})
 
 
 def lines_of(text: str) -> list[str]:
@@ -87,25 +107,32 @@ def lines_of(text: str) -> list[str]:
 def marker_rule(line: str) -> str | None:
     """The rule a line's suppression marker breaks, or None when it carries none.
 
-    The opener is looked for only before each match, never by a leading `.*?`, so a long line
-    with many `*` or `--` (a minified bundle) stays linear."""
+    Each opener is found once per line and every gap is bounded, so a long line (a minified
+    bundle) stays linear."""
+    first = {opener: (hit.start() if (hit := opener.search(line)) else len(line)) for opener in _OPENERS}
     for rule, pattern, opener in MARKERS:
         for found in pattern.finditer(line):
-            if opener is None or opener.search(line, 0, found.start()):
+            if opener is None or first[opener] < found.start():
                 return rule
     return None
 
 
 def eslint_block_lines(lines: list[str]) -> list[int]:
-    """1-based numbers of the continuation lines of an unclosed `/* eslint... ` comment that name a
-    security rule: a disable spread over several lines silences the rule as surely as one line."""
-    found, open_block = [], False
+    """1-based numbers of the continuation lines of an unclosed `/* eslint... ` (or `/*` then an
+    `eslint` directive on the next line) disable or config comment that name a security rule."""
+    found: list[int] = []
+    state = ""  # "", "maybe" (a bare /* opened), "eslint" (inside a disable or config block)
     for number, line in enumerate(lines, 1):
-        if open_block:
-            if _ESLINT_RULE.search(line.split("*/", 1)[0]):
-                found.append(number)
-            open_block = "*/" not in line
-        else:
-            opened = _ESLINT_OPEN.search(line)
-            open_block = bool(opened) and "*/" not in line[opened.end() :]
+        body = line.split("*/", 1)[0]
+        if state == "maybe" and _ESLINT_DIRECTIVE.match(body):
+            state = "eslint"
+        if state == "eslint" and _ESLINT_RULE.search(body):
+            found.append(number)
+        if state and "*/" in line:
+            state = ""
+        elif not state and (opened := _BLOCK_OPEN.search(line)) and "*/" not in line[opened.end() :]:
+            directive = _ESLINT_DIRECTIVE.match(line[opened.end() :])
+            state = "eslint" if directive else ("maybe" if not line[opened.end() :].strip() else "")
+        elif state == "maybe" and body.strip():
+            state = ""
     return found

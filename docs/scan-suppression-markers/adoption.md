@@ -134,9 +134,13 @@ scan-suppression-markers  [deterministic]
   PASS  tc-038                             authored  web/a.js:2: suppression marker (eslint-disable-security): no-eval *…
   PASS  tc-039                             authored  gate exit 0
   PASS  tc-040                             authored  gate exit 0
+  PASS  tc-041                             authored  .gitlab-ci.yml:4: suppression marker (ci-scan-soft-fail): SAST_DISA…
+  PASS  tc-042                             authored  .github/workflows/py.yml:5: suppression marker (ci-scan-soft-fail):…
+  PASS  tc-043                             authored  gate exit 0
+  PASS  tc-044                             authored  gate exit 0
   score 1.00
 
-5 policies: 40 pass, 42 skipped
+5 policies: 44 pass, 42 skipped
 42 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

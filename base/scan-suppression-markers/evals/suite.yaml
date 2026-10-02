@@ -496,6 +496,47 @@ suite:
         src/history.py: "def history():\n    return []\n"
       expect: allow
   - id: tc-041
+    category: trigger
+    prompt: A commit switches GitLab's SAST template off with its _DISABLED variable.
+    expect: 'The commit asks a person: the scan no longer runs.'
+    execute:
+      event: commit
+      files:
+        .gitlab-ci.yml: "include:\n  - template: Security/SAST.gitlab-ci.yml\nvariables:\n  SAST_DISABLED:\
+          \ \"true\"\n"
+      expect: ask
+  - id: tc-042
+    category: trigger
+    prompt: A commit passes --exit-zero to bandit in a workflow step.
+    expect: 'The commit asks a person: the scanner''s own no-fail option is a soft-fail too.'
+    execute:
+      event: commit
+      files:
+        .github/workflows/py.yml: "jobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - run:\
+          \ bandit -r src --exit-zero\n"
+      expect: ask
+  - id: tc-043
+    category: negative_trigger
+    prompt: A commit adds a gitleaks step that exits early when there is nothing to scan.
+    expect: 'The commit is allowed: an early exit 0 is not a soft-failed scan.'
+    execute:
+      event: commit
+      files:
+        .github/workflows/scan.yml: "jobs:\n  s:\n    runs-on: ubuntu-latest\n    steps:\n      - name:\
+          \ gitleaks\n        run: |\n          if [ -z \"$FILES\" ]; then\n            exit 0\n     \
+          \     fi\n          gitleaks detect\n"
+      expect: allow
+  - id: tc-044
+    category: negative_trigger
+    prompt: A commit records a scanner's version with a fallback inside a command substitution.
+    expect: 'The commit is allowed: ''|| echo'' inside $( ) only fills a variable.'
+    execute:
+      event: commit
+      files:
+        .github/workflows/scan.yml: "jobs:\n  s:\n    runs-on: ubuntu-latest\n    steps:\n      - run:\
+          \ V=$(semgrep --version || echo unknown)\n"
+      expect: allow
+  - id: tc-045
     category: edge
     prompt: A person reviewed the false positive and keeps the marker.
     expect: 'A person commits from their own shell with CHOCK_ALLOW=scan-suppression-markers for that

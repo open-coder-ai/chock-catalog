@@ -731,8 +731,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 41
-  eval_executed: 40
+  eval_cases: 45
+  eval_executed: 44
   description: 'Asks a person before a change adds a scanner suppression: inline ignore markers (bandit,
     gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag,
     zizmor, gitleaks, detect-secrets, CodeQL, Java/C#/Rust security allows), scanner ignore files and

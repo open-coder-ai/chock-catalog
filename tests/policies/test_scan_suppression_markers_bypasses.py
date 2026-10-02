@@ -107,3 +107,91 @@ def test_the_gate_writes_no_bytecode_where_it_runs(tmp_path: Path) -> None:
     )
     assert proc.returncode == 0
     assert not list(copy.rglob("__pycache__")), "the gate is read_only: it caches no bytecode"
+
+
+W, J = ".github/workflows/a.yml", "jobs:\n  s:\n    steps:\n"
+SECOND_ROUND_ASKS = {
+    "value after a comment": (
+        W,
+        J + "      - uses: github/codeql-action/analyze@v3\n        continue-on-" + "error: # ok\n",
+    ),
+    "bool tag": (W, J + "      - uses: github/codeql-action/analyze@v3\n        continue-on-" + "error: !!bool true\n"),
+    "brace true": (W, J + "      - run: bandit -r . || { true; }\n"),
+    "or printf": (W, J + "      - run: bandit -r . || printf ''\n"),
+    "or command true": (W, J + "      - run: bandit -r . || command true\n"),
+    "shell bash +e": (W, J + "      - run: bandit -r .\n        shell: bash +e {0}\n"),
+    "bandit exit-zero": (W, J + "      - run: bandit -r . --exit-zero\n"),
+    "trivy action exit-code": (
+        W,
+        J + "      - uses: aquasecurity/trivy-action@0.28.0\n        with:\n          exit-code: '0'\n",
+    ),
+    "gosec no-fail": (W, J + "      - run: gosec -no-fail ./...\n"),
+    "zizmor no exit codes": (W, J + "      - run: zizmor --no-exit-codes .\n"),
+    "gitlab template disabled": (".gitlab-ci.yml", 'variables:\n  SAST_DISABLED: "true"\n'),
+    "eslint directive after a bare opener": ("a.js", "/*\neslint-" + "disable no-" + "eval\n*/\n"),
+    "eslint config array": ("a.js", "/* es" + "lint no-" + "eval: [0] */\n"),
+    "eslint config quoted key": ("a.js", "/* es" + 'lint "no-' + 'eval": "off" */\n'),
+    "gitleaks marker in a README": ("README.md", "AKIAX  # git" + "leaks:allow\n"),
+    "detect-secrets pragma in notes": ("notes.txt", "x  # pragma: allow" + "list secret\n"),
+    "a script named history": ("bin/history", f"x  # {NS}\n"),
+}
+SECOND_ROUND_ALLOWS = {
+    "early exit in a scan step": (
+        W,
+        J + '      - name: gitleaks\n        run: |\n          if [ -z "$F" ]; then\n'
+        "            exit 0\n          fi\n          gitleaks detect\n",
+    ),
+    "exit code captured and passed on": (
+        W,
+        J + "      - run: |\n          set +e\n          trivy fs --exit-code 1 .\n"
+        "          rc=$?\n          set -e\n          exit $rc\n",
+    ),
+    "or echo inside a substitution": (W, J + "      - run: V=$(semgrep --version || echo unknown)\n"),
+    "a root env block": (W, "env:\n  SNYK_TOKEN: x\n  FOO: 'a || true'\njobs:\n  b:\n    steps:\n      - run: make\n"),
+    "an eslint-enable block": ("a.js", "/* eslint-" + "enable\n no-" + "eval */\n"),
+    "a plain block comment": ("a.js", "/*\n  no-" + "eval is banned here\n*/\n"),
+    "a nosec mention in a README": ("README.md", f"use # {NS}\n"),
+    "a quoted secret-pragma mention in a README": (
+        "README.md",
+        "Waiver: '# pragma: allow" + "list secret' same line\n",
+    ),
+    "a secret pragma in an installed policy": (".agents/policies/x/SKILL.md", "k  # pragma: allow" + "list secret\n"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(SECOND_ROUND_ASKS))
+def test_the_second_review_bypasses_are_reported(case: str) -> None:
+    assert mod.file_findings(*SECOND_ROUND_ASKS[case]), case
+
+
+@pytest.mark.parametrize("case", sorted(SECOND_ROUND_ALLOWS))
+def test_the_second_review_false_positives_are_gone(case: str) -> None:
+    assert mod.file_findings(*SECOND_ROUND_ALLOWS[case]) == [], case
+
+
+@pytest.mark.parametrize(
+    "piece",
+    [
+        "eslint-" + "disable ",
+        "/* es" + "lint ",
+        "@Sup" + "press(",
+        "NO" + "SONAR ",
+        "rubo" + "cop:disable ",
+        "#pragma warning disable ",
+        "//no" + "lint:",
+        "#[allow(",
+        "Suppress" + "Message(",
+        "# no" + "qa: ",
+    ],
+)
+def test_a_repeated_marker_prefix_is_judged_in_linear_time(piece: str) -> None:
+    started = time.monotonic()
+    mod.file_findings("a.js", piece * 20000 + "\n")
+    assert time.monotonic() - started < 5
+
+
+def test_a_long_ci_run_block_is_judged_in_linear_time() -> None:
+    started = time.monotonic()
+    text = J + "      - run: |\n" + "          bandit x || true\n" * 8000
+    assert len(mod.file_findings(W, text)) == 8000
+    assert time.monotonic() - started < 5
