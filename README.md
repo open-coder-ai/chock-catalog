@@ -68,7 +68,7 @@ throwaway repo on every push.
 | :--- | :--- | ---: |
 | [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
 | [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes | 32/32 |
-| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 45/45 |
+| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 47/47 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 14/14 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 17/17 |
 | [`pin-github-actions`](docs/pin-github-actions/) | a workflow that references a third-party GitHub Action by a movable tag or branch instead of a full commit SHA -- so a re-tagged or compromised release can't change what CI runs; SHA pins and local actions pass | 17/17 |
