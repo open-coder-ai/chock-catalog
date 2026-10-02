@@ -129,9 +129,28 @@ def text_findings(path: str, text: str, kind: str) -> list[dict]:
     text with only the '<' of code removed, so code inside a comment or an HTML block still counts."""
     scan = spans.blank_code(text) if kind == "markdown" else text
     tags = spans.tag_view(text, scan) if kind == "markdown" else text
+    views = [(tags, tags)]
+    if kind == "markdown":  # what a renderer may read two ways is read both ways: each reading's findings count
+        views = [
+            (view, html)
+            for view in dict.fromkeys([tags, spans.escaped_view(tags)])
+            for html in dict.fromkeys([view, spans.closed_view(text, view)])
+        ]
+    out: dict[tuple, list[dict]] = {}
+    for view, html in views:  # per finding, as many as the reading that found the most: counts stay counts
+        found: dict[tuple, list[dict]] = {}
+        for f in _view_findings(path, scan, view, html, kind):
+            found.setdefault((f["line"], f["rule"], f["key"]), []).append(f)
+        for slot, same in found.items():
+            if len(same) > len(out.get(slot, [])):
+                out[slot] = same
+    return [f for same in out.values() for f in same]
+
+
+def _view_findings(path: str, scan: str, tags: str, html: str, kind: str) -> list[dict]:
     lines, scan_lines = hidden_text.Lines(scan), scan.split("\n")
     words = vocab()
-    collected = hidden_html.collect(tags, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"))
+    collected = hidden_html.collect(html, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"))
     out = _url_findings(path, _urls(scan, lines, kind, collected))
     bodies = [(at, body, "comment") for at, body in hidden_text.comments(tags)]
     if path.lower().endswith(".mdx"):

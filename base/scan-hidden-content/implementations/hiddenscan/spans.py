@@ -1,23 +1,21 @@
 """Markdown with certain code blanked, and the link text that makes a destination an image's.
 
 A code span is blanked only when it is certain: both backtick runs on one paragraph line, with no
-unpaired run earlier in the paragraph (since the last blank line) and no table pipe on the line. Whether
-backticks pair across lines depends on where CommonMark ends a paragraph, and an error there would hide a
-comment or a URL a renderer passes through; read as text instead, the worst case is a report about code.
+unpaired run earlier in the paragraph (since the last blank line). On a line with a pipe it is blanked only
+where both readings pair it: as GFM table cells, each pairing its own spans, and as one line, as a renderer
+without tables reads it. Whether backticks pair across lines depends on where CommonMark ends a paragraph,
+and whether a line is a table row on the renderer; an error there would hide a comment or a URL a renderer
+passes through. Read as text instead, the worst case is a report about code.
 """
 
 from __future__ import annotations
 
 import re
 
-from hiddenscan.blocks import BREAK, CODE, TEXT, classify
+from hiddenscan.blocks import BREAK, CODE, HTML, TEXT, classify
 
 TICKS = re.compile(r"(\\*)(`+)")
 PIPE = re.compile(r"(?<!\\)\|")
-#: A GFM delimiter row; with a header line of as many cells above it, the rows below are a table's, whose
-#: cells are inline content of their own: a code span there pairs within its cell.
-DELIMITER = re.compile(r"^[ \t]*\|?(?:[ \t]*:?-+:?[ \t]*\|)*[ \t]*:?-+:?[ \t]*\|?[ \t]*$")
-
 #: An inline tag or autolink as CommonMark defines them (6.6, 6.5): an open or closing tag with valid
 #: attributes, or a scheme followed by a URL without spaces. Brackets inside one are not link text; any other
 #: `<...>`, such as `a < b ... c > d`, is text.
@@ -25,6 +23,7 @@ ATTRIBUTE = r"""\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:[^\s"'=<>`]+|'[^'\n]*'|"[^"\n]
 INLINE_TAG = rf"<[A-Za-z][A-Za-z0-9-]*(?:{ATTRIBUTE})*\s*/?>|</[A-Za-z][A-Za-z0-9-]*\s*>|<[A-Za-z][A-Za-z0-9.+-]{{1,31}}:[^\s<>]*>"
 #: Tokens of link text: an escape, an inline tag or autolink, an image or link opener, a closer followed by a
 #: destination, and a blank line (which ends any open link text).
+ESCAPED_LT = re.compile(r"(?<!\\)((?:\\\\)*\\)<")
 BRACKETS = re.compile(rf"\\.|{INLINE_TAG}|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
 
 
@@ -52,14 +51,13 @@ def _spans(line: str) -> tuple[str, bool]:
     return "".join(chars), False
 
 
-def _cells(line: str) -> list[str]:
-    cells = PIPE.split(line.strip())
-    return cells[1 if cells and not cells[0] else 0 : -1 if len(cells) > 1 and not cells[-1] else None]
-
-
 def _row(line: str) -> str:
     """A table row with each cell's code spans blanked; an unpaired backtick in a cell is literal."""
     return "|".join(_spans(cell)[0] for cell in PIPE.split(line))
+
+
+def _both(line: str, one: str, other: str) -> str:
+    return "".join(" " if a == " " and b == " " else c for c, a, b in zip(line, one, other, strict=True))
 
 
 def blank_code(text: str) -> str:
@@ -67,27 +65,18 @@ def blank_code(text: str) -> str:
     hidden."""
     lines = text.split("\n")
     out: list[str] = []
-    kinds = classify(lines)
-    unsure = table = before = False  # before: whether anything was unsure before the line above
-    for at, (line, kind) in enumerate(zip(lines, kinds, strict=True)):
+    unsure = False
+    for line, kind in zip(lines, classify(lines), strict=True):
         if kind == CODE:
             out.append(re.sub(r"[^\n]", " ", line))
             continue
-        unsure, table = unsure and kind != BREAK, table and kind == TEXT
-        header = lines[at - 1] if at and kinds[at - 1] == TEXT else None
-        if kind == TEXT and "|" in line and DELIMITER.match(line) and header is not None:
-            table = len(_cells(header)) == len(_cells(line))
-            if table and not before:  # the header's backticks are its cells' own after all
-                out[-1], unsure = _row(header), False
-        before = unsure
-        if table:
-            out.append(_row(line))
-        elif kind == TEXT and not unsure and not PIPE.search(line):
-            blanked, unsure = _spans(line)
-            out.append(blanked)
-        else:
+        unsure = unsure and kind != BREAK
+        if kind != TEXT or unsure:
             unsure = unsure or "`" in line
             out.append(line)
+            continue
+        blanked, unsure = _spans(line)
+        out.append(_both(line, blanked, _row(line)) if PIPE.search(line) else blanked)
     return "\n".join(out)
 
 
@@ -95,6 +84,27 @@ def tag_view(raw: str, blanked: str) -> str:
     """The raw text with only the '<' of code removed: code shows its tags and comments as text, so they
     open nothing, while the words in code stay countable inside a hidden element or comment."""
     return "".join(" " if r == "<" and b == " " else r for r, b in zip(raw, blanked, strict=True))
+
+
+def escaped_view(tags: str) -> str:
+    """The tag view with each backslash-escaped '<' removed: outside an HTML block CommonMark shows `\\<` as a
+    literal '<', which opens no tag or comment. Inside an HTML block the backslash is literal and the '<'
+    opens one, and which lines are in a block is not certain, so the gate reads both views."""
+    return ESCAPED_LT.sub(lambda m: m.group(1) + " ", tags)
+
+
+def closed_view(text: str, view: str) -> str:
+    """The view with a '>' opening each line a renderer may open with its own tag: every line outside an HTML
+    block, each block's first line, and each line after a blank one (where an HTML block of type 6-7 ends).
+    There a renderer writes </p>, <li> and the like, and raw HTML in a paragraph must close within it, so a
+    bogus comment, declaration or tag left open above ends there. Which lines those are is not certain, so
+    the gate reads this view beside the view as written."""
+    raw = text.split("\n")
+    lines, kinds = view.split("\n"), classify(raw)
+    return "\n".join(
+        line if kind == HTML and at and kinds[at - 1] == HTML and raw[at - 1].strip() else ">" + line
+        for at, (line, kind) in enumerate(zip(lines, kinds, strict=True))
+    )
 
 
 def closers(text: str) -> dict[int, bool]:

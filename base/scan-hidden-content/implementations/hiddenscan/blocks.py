@@ -106,6 +106,8 @@ CONTAINER = re.compile(r"^[ \t]*(?:>|[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$))")
 CLOSES_PARAGRAPH = re.compile(
     r"^[ \t]{0,3}(?:#{1,6}(?:[ \t].*)?|(?:\*[ \t]*){3,}|(?:-[ \t]*){2,}|(?:_[ \t]*){3,}|=+[ \t]*|-[ \t]*)$"
 )
+#: List and block quote markers before a line's content: an HTML block opens after them as well.
+MARKERS = re.compile(r"^(?:[ \t]*(?:>|(?:[-+*]|\d{1,9}[.)])(?=[ \t])))*")
 CODE_INDENT, LIST_INDENT = 4, 2
 CODE, HTML, TEXT, BREAK = "code", "html", "text", "break"
 
@@ -124,6 +126,7 @@ def _indent(line: str) -> int:
 
 def _html(line: str, *, paragraph: bool) -> tuple[str, ...] | str | None:
     """What ends the HTML block `line` opens ("" when it ends on that line), or None when it opens none."""
+    line = line[MARKERS.match(line).end() :]
     for start, end in HTML_ENDS:
         if found := start.match(line):
             return "" if _ends(line, end, found.end()) else end
@@ -170,13 +173,19 @@ def classify(lines: list[str]) -> list[str]:
     later fence is blanked."""
     kinds: list[str] = []
     inside: tuple[str, ...] | str | None = None
-    contained = paragraph = indented = doubtful = False
+    after: str | None = None  # what is still open when a block opened inside a type 6-7 block ends
+    contained = paragraph = indented = doubtful = piped = False
     closers = _closers(lines)
     for at, line in enumerate(lines):
         previous = kinds[-1] if kinds else BREAK
         if inside is not None:
             fence = isinstance(inside, str) and inside[0] in "`~"
-            inside = _continues(inside, line)
+            # If the line that opened a type 6-7 block was text after all, a type 1-5 block may open here and
+            # run past blank lines: the block is read to its end, then to a blank line.
+            if inside == "blank" and isinstance(nested := _html(line, paragraph=False), tuple):
+                inside, after = nested, inside
+            elif (inside := _continues(inside, line)) is None:
+                inside, after = after, None
             kinds.append(CODE if fence else HTML if line.strip() or inside is not None else BREAK)
             continue
         if not line.strip():
@@ -195,10 +204,13 @@ def classify(lines: list[str]) -> list[str]:
         elif fence:
             inside, paragraph = fence, False
             kinds.append(CODE)
-        elif (ends := _html(line, paragraph=paragraph)) is not None:
+        # A type 7 line continues a paragraph only when the paragraph is certain: in a container its lines may be
+        # code, and whether a tag ends a GFM table is up to the renderer.
+        elif (ends := _html(line, paragraph=paragraph and not contained and not piped)) is not None:
             inside, paragraph = ends or None, False
             kinds.append(HTML)
         else:
+            piped = (paragraph and piped) or "|" in line
             paragraph = not CLOSES_PARAGRAPH.match(line)
             kinds.append(TEXT)
     return kinds

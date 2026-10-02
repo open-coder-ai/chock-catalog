@@ -125,6 +125,16 @@ class Collector(HTMLParser):
         self.hiding: list[Frame] = []
         self.foreign = 0
 
+    def parse_html_declaration(self, i: int) -> int:
+        """Outside XML, `<![CDATA[` read as a browser reads it in HTML content: a bogus comment ending at the
+        first '>', not at "]]>" (html.parser's reading varies by Python release). Inside SVG or MathML a
+        browser keeps it to "]]>", but HTML tags there can end that context, so this stricter reading is used
+        everywhere: it only lets more tags count."""
+        if self.xml or not self.rawdata.startswith("<![CDATA[", i):
+            return super().parse_html_declaration(i)
+        end = self.rawdata.find(">", i + 2)
+        return len(self.rawdata) if end < 0 else end + 1
+
     def _attrs(self, attrs: list[tuple[str, str | None]]) -> dict[str, str]:
         first: dict[str, str] = {}
         for name, value in attrs:

@@ -159,13 +159,11 @@ def text_urls(text: str) -> list[tuple[int, str, bool]]:
     in destinations decoded as CommonMark decodes them."""
     found = [(m.start(), _trim(m.group(0)), False) for m in BARE.finditer(text)]
     # Destinations are read at each `](` outside an inline tag or autolink, from the text as written (a tag
-    # inside a destination is part of it), and never inside a destination already read.
-    done = 0
+    # inside a destination is part of it). A `](` inside a destination already read is read too: whether that
+    # destination is valid (balanced parentheses, a title, a closing parenthesis) decides whether the inner
+    # one is text or a link, and reading both only reports more.
     for at, image in sorted(closers(text).items()):
-        if at < done:
-            continue
         m = DESTINATION.match(text, at)  # always matches at a `](`: the destination may be empty
-        done = m.end()
         dest = MD_ESCAPE.sub(r"\1", m.group(1))
         if "/" in dest or ":" in dest:
             found.append((m.start(1), dest, image))

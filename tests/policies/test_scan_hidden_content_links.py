@@ -31,7 +31,7 @@ def test_markdown_blanking() -> None:
     ("doc", "kept"),
     [
         ("` y\nb `c` d\n", "b `c` d"),  # an unpaired run earlier in the paragraph: nothing after is certain
-        ("x `a | b` y\n", "x `a | b` y"),  # a pipe outside a table: cells may split the span
+        ("x `a | b` y\n", "x `a | b` y"),  # a pipe: as table cells the span is split
         ("- a\n  ```\n  code\n  ```\n", "  code"),  # a fence in a list item is not certain
         ("> ```\n> code\n> ```\n", "> code"),
         ("- a\n  ```\n\n```\ncode\n```\n", "code"),  # after a fence-like line left unread, none is certain
@@ -46,13 +46,16 @@ def test_only_certain_code_is_blanked(doc: str, kept: str | None) -> None:
         assert kept in out
 
 
-def test_table_cells_pair_their_own_spans() -> None:
-    doc = "| a | b |\n|---|---|\n| `x` | y `z |\n\na\n|---|---|\n| `x` |\n"
+def test_a_line_with_a_pipe_blanks_what_both_readings_call_code() -> None:
+    # As table cells (GFM) and as one line (CommonMark without tables): only what both pair is code.
+    doc = "| a | b |\n|---|---|\n| `x` | y `z |\n\n| `a | b` ![i](u) `c |\n"
     out = blocks.blank_code(doc).split("\n")
     assert out[2] == "|     | y `z |"
-    assert out[6] == "| `x` |"  # one header cell, two delimiter cells: not a table
+    # The cells pair "` ![i](u) `", the line "`a | b`": only the backtick both share is blanked.
+    assert out[4] == "| `a | b  ![i](u) `c |"
     assert blocks.blank_code("text `x\n| `y` | b |\n|---|---|\n").split("\n")[1] == "| `y` | b |"
     assert blocks.blank_code("| `y` | b |\n|---|---|\n").split("\n")[0] == "|     | b |"
+    assert blocks.blank_code("x `a | b` y\n") == "x `a | b` y\n"
 
 
 def test_fences_inside_a_comment_block_stay() -> None:
@@ -79,10 +82,16 @@ def test_a_closing_fence_indented_four_does_not_close() -> None:
     ]
 
 
-def test_a_destination_is_read_once_with_what_it_holds() -> None:
+def test_a_destination_and_each_closer_inside_it_are_read() -> None:
+    # Whether `x](...` is a valid destination decides which `](` a renderer follows: both are read.
     assert [u for _, u, _ in urls.text_urls("[a](x](https://e.example/y)")] == [
         "https://e.example/y",
         "x](https://e.example/y",
+        "https://e.example/y",
+    ]
+    assert urls.text_urls("[x](![i](//e.example/p.png?t=1)") == [
+        (4, "![i](//e.example/p.png?t=1", False),
+        (9, "//e.example/p.png?t=1", True),
     ]
 
 
