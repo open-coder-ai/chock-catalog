@@ -522,11 +522,11 @@ suite:
       expect: allow
   - id: tc-068
     category: negative_trigger
-    prompt: "Mongolian text with a free variation selector before a vowel separator, and an emoji digit with no keycap."
+    prompt: "Mongolian text with a free variation selector before a vowel separator."
     expect: "The hook allows the commit."
     execute:
       files:
-        mn.txt: "\u1828\u1820\u180B\u180E\u1820 Step 1\uFE0F go\n"
+        mn.txt: "\u1828\u1820\u180B\u180E\u1820\n"
       expect: allow
   - id: tc-069
     category: behavior
@@ -536,3 +536,27 @@ suite:
       files:
         locale.yaml: "pattern: \"\u200E+972 \u200F\"\n"
       expect: block
+  - id: tc-070
+    category: trigger
+    prompt: "LRM and RLM pairs sit between letters of an ASCII string; an Arabic letter in a trailing comment makes the line RTL."
+    expect: "The hook blocks the commit; a run of marks inside an ASCII word blocks whatever else is on the line."
+    execute:
+      files:
+        auth.py: "if u == \"adm\u200E\u200Fin\":  # \u0627\n"
+      expect: block
+  - id: tc-071
+    category: trigger
+    prompt: "A digit in a list carries an emoji-presentation selector with no keycap after it."
+    expect: "The hook blocks the commit; on a digit, # or * a selector passes only as a keycap."
+    execute:
+      files:
+        ids.py: "x = [1\uFE0F, 2]\n"
+      expect: block
+  - id: tc-072
+    category: negative_trigger
+    prompt: "ICU Arabic number symbols: a percent sign and a minus with ALM, beside Arabic-Indic digits."
+    expect: "The hook allows the commit; Arabic-Indic digits and punctuation count as RTL context."
+    execute:
+      files:
+        locale.yaml: "percentSign: \"\u066A\u061C\"  minus: \"\u061C-\u0665\"\n"
+      expect: allow
