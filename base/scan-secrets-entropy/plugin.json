@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "scan-secrets-entropy",
+  "version": "0.0.1",
+  "description": "Friction, not a security boundary: flags secrets scan-secrets' patterns miss -- high-entropy values of 16-150 characters assigned to secret-like keys, GitHub and npm tokens whose checksum verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid card numbers. Warns only (observe). Misses: values split across lines, over 150 characters, under other key names, or written like code (a.b(), ALL_CAPS, word names, URLs, paths).",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "advise"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

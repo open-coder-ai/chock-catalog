@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: scan-secrets-entropy
+  path: base/scan-secrets-entropy
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 23
+  eval_executed: 23
+  description: 'Friction, not a security boundary: flags secrets scan-secrets'' patterns miss -- high-entropy
+    values of 16-150 characters assigned to secret-like keys, GitHub and npm tokens whose checksum verifies,
+    Stripe test keys, Slack and AWS key-id shapes, Luhn-valid card numbers. Warns only (observe). Misses:
+    values split across lines, over 150 characters, under other key names, or written like code (a.b(),
+    ALL_CAPS, word names, URLs, paths).'
