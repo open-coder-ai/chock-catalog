@@ -1,38 +1,35 @@
-"""What one git command line does to hooks: skip flags, hooksPath and include config, aliases, plumbing."""
+"""What one git command line does to hooks through config: hooksPath, includes, aliases, other repositories, plumbing."""
 
+import os
 import re
 from itertools import pairwise
 
+from .flags import HOOK_SUBS
+
 HOOKS_KEY = "core.hookspath"
-# Subcommands that run hooks or take the hook-skip long option (cherry-pick and revert: refused as an attempt
-# even where git rejects the option, so a newer git accepting it changes nothing here).
-HOOK_SUBS = frozenset(("commit", "push", "merge", "am", "rebase", "pull", "cherry-pick", "revert"))
-SHORT_N_SUBS = frozenset(("commit", "am"))  # merge/pull/rebase read -n as --no-stat, push as --dry-run
-PREFIX_FLOOR = 9  # --no-veri: shorter collides with --no-verbose
-# Options whose value is the NEXT argument: a message that starts with -n is not a flag.
-TAKES_VALUE = frozenset(
-    ("-m", "-F", "-C", "-c", "-t", "--message", "--file", "--author", "--date", "--template", "--fixup", "--squash")
+GIT_VALUE = frozenset(
+    ("-c", "-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix", "--config-env")
 )
-# A short cluster starting with one of these carries that option's value: `-mnote` is a message.
-VALUE_CLUSTER = ("-m", "-F", "-u", "-C", "-c", "-S")
-GIT_VALUE = frozenset(("-c", "-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix"))
-# Another repository's hooks (none) run for a commit made through it; a config file can carry core.hooksPath.
+# Another repository's hooks (none) run for a commit made through it; a config file can carry core.hooksPath,
+# and HOME / XDG_CONFIG_HOME move the global one.
 OTHER_REPO_ENV = ("GIT_DIR", "GIT_COMMON_DIR")
-CONFIG_FILE_ENV = ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG")
+CONFIG_FILE_ENV = ("GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYSTEM", "GIT_CONFIG", "HOME", "XDG_CONFIG_HOME")
 INCLUDE_KEY = re.compile(r"include\.path|includeif\..*\.path", re.IGNORECASE)
-PLUMBING = frozenset(("commit-tree", "update-ref", "fast-import"))
-THIS_REPO = frozenset((".git", "./.git"))
-READING = frozenset(
-    ("--get", "--get-all", "--get-regexp", "-l", "--list", "--unset", "--unset-all", "--remove-section")
-)
+# help.autocorrect runs a mistyped subcommand as the one it guesses, which no table here can read.
+ASK_KEYS = re.compile(r"include\.path|includeif\..*\.path|help\.autocorrect", re.IGNORECASE)
+PLUMBING = frozenset(("commit-tree", "update-ref", "fast-import", "send-pack"))
+THIS_REPO = frozenset((".git", "./.git", "$PWD/.git", "${PWD}/.git", "$(pwd)/.git"))
+UNSETTING = frozenset(("--unset", "--unset-all", "unset"))
+READING = frozenset(("--get", "--get-all", "--get-regexp", "-l", "--list", "--remove-section", *UNSETTING))
 READ_VERBS = frozenset(("get", "list", "unset", "remove-section", "rename-section", "edit"))
+_COUNT = re.compile(r"\s*\+?(\d+)")  # git reads GIT_CONFIG_COUNT with strtoul: blanks and a + sign are accepted
 
 
 def config_pairs(conf: list[str], env: dict[str, str]) -> list[tuple[str, str]]:
     """(key, value) set for one git command by -c/--config-env, GIT_CONFIG_COUNT/KEY_n/VALUE_n or GIT_CONFIG_PARAMETERS."""
     pairs = [(key, value) for key, _, value in (item.partition("=") for item in conf if "=" in item)]
-    count = env.get("GIT_CONFIG_COUNT", "")
-    for i in range(min(int(count), 64) if count.isdigit() else 0):
+    count = _COUNT.match(env.get("GIT_CONFIG_COUNT", ""))
+    for i in range(min(int(count.group(1)), 64) if count else 0):
         pairs.append((env.get(f"GIT_CONFIG_KEY_{i}", ""), env.get(f"GIT_CONFIG_VALUE_{i}", "")))
     params = env.get("GIT_CONFIG_PARAMETERS", "")
     pairs += re.findall(r"'([^'=]+)'='([^']*)'", params) + re.findall(r"'([^'=]+)=([^']*)'", params)
@@ -48,29 +45,14 @@ def config_writes(rest: list[str]) -> list[tuple[str, str]]:
     return [(key.lower(), value) for key, value in pairwise(operands)]
 
 
-def is_no_verify(arg: str) -> bool:
-    """--no-verify or any unambiguous prefix of it, down to git's floor."""
-    return len(arg) >= PREFIX_FLOOR and "--no-verify".startswith(arg)
+def unsets_hooks(rest: list[str]) -> bool:
+    """`git config --unset core.hooksPath`: for husky and other managers that install through hooksPath, an uninstall."""
+    return bool(UNSETTING & set(rest)) and any(arg.lower() == HOOKS_KEY for arg in rest)
 
 
-def is_short_n(arg: str) -> bool:
-    """A short cluster containing -n, unless it starts with an option whose attached text is a value."""
-    return re.fullmatch(r"-[^-].*", arg) is not None and "n" in arg and not arg.startswith(VALUE_CLUSTER)
-
-
-def skips_verify(sub: str, rest: list[str]) -> bool:
-    """--no-verify on a hook-running subcommand; a short -n only where it means that."""
-    skip = False
-    for arg in rest:
-        if arg == "--":
-            break
-        if skip:
-            skip = False
-        elif is_no_verify(arg) or (sub in SHORT_N_SUBS and is_short_n(arg)):
-            return True
-        else:
-            skip = arg in TAKES_VALUE
-    return False
+def this_repo(path: str) -> bool:
+    path = path.rstrip("/")
+    return path in THIS_REPO or path == os.path.join(os.getcwd(), ".git")
 
 
 def git_dirs(args: list[str], env: dict[str, str]) -> list[str]:
@@ -81,37 +63,32 @@ def git_dirs(args: list[str], env: dict[str, str]) -> list[str]:
             found.append(args[i + 1])
         elif args[i].startswith("--git-dir="):
             found.append(args[i].split("=", 1)[1])
-        i += 2 if args[i] in GIT_VALUE or args[i] == "--config-env" else 1
-    return [path for path in found if path.rstrip("/") not in THIS_REPO]
+        i += 2 if args[i] in GIT_VALUE else 1
+    return [path for path in found if not this_repo(path)]
 
 
-def nested_scripts(sub: str, rest: list[str]) -> list[str]:
-    """Shell commands git itself runs: rebase -x/--exec, submodule foreach."""
-    if sub == "rebase":
-        found = [rest[i + 1] for i, arg in enumerate(rest[:-1]) if arg in ("-x", "--exec")]
-        found += [arg.split("=", 1)[1] for arg in rest if arg.startswith("--exec=")]
-        return found + [arg[2:] for arg in rest if arg.startswith("-x") and arg != "-x"]
-    if sub == "submodule" and "foreach" in rest:
-        words = rest[rest.index("foreach") + 1 :]
-        while words and words[0] in ("--recursive", "-q", "--quiet"):
-            words = words[1:]
-        return [" ".join(words)] if words else []
-    return []
+def submodule_scripts(sub: str, rest: list[str]) -> list[str]:
+    """The command `git submodule foreach` runs in each submodule."""
+    if sub != "submodule" or "foreach" not in rest:
+        return []
+    words = rest[rest.index("foreach") + 1 :]
+    while words and words[0] in ("--recursive", "-q", "--quiet"):
+        words = words[1:]
+    return [" ".join(words)] if words else []
 
 
-def alias_scripts(pairs: list[tuple[str, str]], env: dict[str, str]) -> list[tuple[str, str]]:
-    """(alias, command line it runs) for every alias.NAME defined here; a `!` alias is a shell command."""
-    found = []
+def aliases(pairs: list[tuple[str, str]], env: dict[str, str]) -> dict[str, list[str]]:
+    """alias name -> the texts it may run (the value, and for --config-env the variable's value); `!` marks a shell command."""
+    found: dict[str, list[str]] = {}
     for key, value in pairs:
         if key.startswith("alias.") and value:
-            for text in {value, env.get(value, "")} - {""}:
-                found.append((key[6:], text[1:] if text.startswith("!") else f"git {text}"))
+            found.setdefault(key[6:], []).extend(text for text in (value, env.get(value, "")) if text)
     return found
 
 
 def asks_for(sub: str, rest: list[str], args: list[str], env: dict[str, str], pairs: list[tuple[str, str]]) -> str:
     """Why one git command needs a person's confirmation (plumbing, another repo, a config file), or ''."""
-    included = [key for key, _ in config_writes(rest) if INCLUDE_KEY.fullmatch(key)] if sub == "config" else []
+    keys = [key for key, _ in [*pairs, *(config_writes(rest) if sub == "config" else [])] if ASK_KEYS.fullmatch(key)]
     hooked = sub in HOOK_SUBS
     others = git_dirs(args, env) if hooked else []
     files = [name for name in CONFIG_FILE_ENV if name in env] if hooked else []
@@ -120,18 +97,23 @@ def asks_for(sub: str, rest: list[str], args: list[str], env: dict[str, str], pa
             sub in PLUMBING and not ({"-d", "--delete"} & set(rest)),
             f"git {sub} writes commits or refs without running any hook",
         ),
-        (
-            bool(included),
-            f"git config {''.join(included[:1])} pulls in another config file, which can set core.hooksPath",
-        ),
+        (sub == "config" and unsets_hooks(rest), "unsetting core.hooksPath uninstalls hooks a manager put there"),
+        (bool(keys), f"git {sub} with {''.join(keys[:1])} runs config or commands this guard cannot read"),
         (
             bool(others),
             f"git {sub} against another repository ({''.join(others[:1])}) runs that repository's hooks, not these",
         ),
         (bool(files), f"git {sub} with {''.join(files[:1])} reads a config file that can set core.hooksPath"),
-        (
-            hooked and any(INCLUDE_KEY.fullmatch(key) for key, _ in pairs),
-            f"git {sub} with an include.path config pulls in a file that can set core.hooksPath",
-        ),
     )
     return next((f"{reason}; a person must confirm it." for hit, reason in reasons if hit), "")
+
+
+def env_asks(env: dict[str, str]) -> str:
+    """Why variables left set for later git commands need a person: another repository or another config file."""
+    if others := [name for name in OTHER_REPO_ENV if name in env and not this_repo(env[name])]:
+        return (
+            f"{others[0]} left set points later git commands at another repository's hooks; a person must confirm it."
+        )
+    if files := [name for name in CONFIG_FILE_ENV if name in env and name not in ("HOME",)]:
+        return f"{files[0]} left set makes later git commands read a config file that can set core.hooksPath; a person must confirm it."
+    return ""
