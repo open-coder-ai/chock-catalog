@@ -7,7 +7,6 @@ binary signatures are matched on what survives that: ASCII control bytes and rep
 from __future__ import annotations
 
 import base64
-import bisect
 import re
 
 from sbf_core import ASK, BLOCK, BROWSER, KEYS, MIN_BODY, Finding, body_lines, body_size, line_of
@@ -18,6 +17,8 @@ BEGIN = re.compile(r"-----BEGIN " + LABEL + "-----")
 END = re.compile(r"-----END " + LABEL + "-----")
 #: An unterminated block is read this far (or to the next BEGIN), so every byte is read about once.
 MAX_BODY = 16384
+#: ENDs tried per BEGIN (a forged early END, then the real one): bounds the work per block.
+MAX_ENDS = 8
 OPENSSH_MAGIC = b"openssh-key-v1\0"
 PUTTY = re.compile(r"(?m)^PuTTY-User-Key-File-\d+:")
 PUTTY_CIPHER = re.compile(r"(?m)^Encryption:[ \t]*(\S*)")
@@ -60,14 +61,17 @@ def pem_blocks(text: str) -> list[Finding]:
         ends.setdefault(match[1], []).append(match.start())
     found = []
     for index, match in enumerate(starts):
-        closing = ends.get(match[1], [])
-        at = bisect.bisect_left(closing, match.end())
-        end = closing[at] if at < len(closing) else len(text)
-        stop = min(end, starts[index + 1].start() if index + 1 < len(starts) else len(text), match.end() + MAX_BODY)
-        body, terminated = text[match.end() : stop], at < len(closing) and end == stop
-        if body_size(body, terminated=terminated) >= MIN_BODY:
-            level = ASK if encrypted(match[1], body, terminated=terminated) else BLOCK
-            found.append(Finding(KEYS, line_of(text, match.start()), f"private key block ({match[1]})", body, level))
+        limit = min(starts[index + 1].start() if index + 1 < len(starts) else len(text), match.end() + MAX_BODY)
+        closing = [end for end in ends.get(match[1], []) if match.end() <= end < limit][:MAX_ENDS]
+        # An END forged straight after BEGIN must not cut the body short: try each END up to the next BEGIN.
+        for end, terminated in [*((end, True) for end in closing), (limit, False)]:
+            body = text[match.end() : end]
+            if body_size(body, terminated=terminated) >= MIN_BODY:
+                level = ASK if encrypted(match[1], body, terminated=terminated) else BLOCK
+                found.append(
+                    Finding(KEYS, line_of(text, match.start()), f"private key block ({match[1]})", body, level)
+                )
+                break
     return found
 
 

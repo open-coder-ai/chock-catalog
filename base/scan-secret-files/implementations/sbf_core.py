@@ -58,6 +58,10 @@ BASE64_TOKEN = re.compile(r"[A-Za-z0-9+/=]+")
 #: is neither; a key line (64 base64 characters) scores about 5.5.
 UNTERMINATED_LINE = 40
 RANDOM_BITS = 4.2
+#: Bits per character a whole key body reaches: base64 key bytes, and hex (OpenVPN static keys).
+RANDOM_BITS_BODY = 4.5
+HEX_BITS = 3.5
+HEX = re.compile(r"[0-9A-Fa-f]+")
 EDGE_CHARS = "\"'`,+;\\>()"
 #: A key that names where a secret lives, and a value that is a path or a plain URL: not the secret --
 #: unless the value is high-entropy, or a webhook URL (whose path is the secret).
@@ -133,8 +137,14 @@ def body_lines(block: str, *, terminated: bool = True) -> list[str]:
 
 
 def body_size(block: str, *, terminated: bool = True) -> int:
-    """Base64 characters of a key block's body (see body_lines)."""
-    return sum(len(token) for token in body_lines(block, terminated=terminated))
+    """Base64 characters of a key block's body (see body_lines); 0 when the body does not look random.
+
+    Placeholder text between the armor lines (`Paste your key here`, a row of X) is base64 letters too,
+    but no key body is that orderly: key bytes score about 5.3-5.9 bits per character (hex about 4).
+    """
+    body = "".join(body_lines(block, terminated=terminated))
+    floor = HEX_BITS if HEX.fullmatch(body) else RANDOM_BITS_BODY
+    return len(body) if entropy.shannon(body) >= floor else 0
 
 
 def line_of(text: str, pos: int) -> int:

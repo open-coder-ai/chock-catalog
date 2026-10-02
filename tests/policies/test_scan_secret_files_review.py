@@ -141,3 +141,24 @@ def test_review_round_three_paths_after_a_stray_begin_are_not_key_bytes() -> Non
         'LOG_DIR = "/var/log/myapplication/output/subdirectory/xy"\n'
     )
     assert sbf_judge.judge("src/detect.py", text) == []
+
+
+BEGIN, END = "-----BEGIN OpenVPN Static key V1-----", "-----END OpenVPN Static key V1-----"
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        (".env.example", "Paste your private key contents here and keep the newlines"),
+        ("config/key.template", "REPLACE THIS WITH YOUR SERVICE ACCOUNT PRIVATE KEY CONTENTS"),
+        ("x.txt", "X" * 50),
+        ("README.txt", "This block shows where the static key goes when you configure the tunnel"),
+    ],
+)
+def test_review_round_four_placeholder_text_between_the_armor_is_not_a_key(path: str, body: str) -> None:
+    assert sbf_judge.judge(path, f"{BEGIN}\n{body}\n{END}\n") == []
+
+
+def test_review_round_four_a_forged_early_end_does_not_cut_the_body() -> None:
+    text = f"{BEGIN}\n{END}\n" + HEX_LINE * 4 + f"{END}\n"
+    assert {f.rule for f in sbf_judge.judge("vpn/k.txt", text)} == {"sbf-private-key-files"}
