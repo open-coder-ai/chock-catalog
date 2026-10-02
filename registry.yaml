@@ -39,20 +39,20 @@ policies:
     into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.1.1
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: commit-time guard script
   enforces: enforced-at-commit
-  eval_cases: 81
-  eval_executed: 81
-  description: Best-effort, on parsed commands (echo ignored). Blocks rm -rf on absolute, ~, $HOME,
-    . or .. paths; recursive Remove-Item/rd/del on drive paths; git push --force or +refspec, reset
-    --hard, clean -f, checkout .; kubectl delete; terraform destroy; aws s3 rm --recursive/rb --force;
-    dropdb; helm uninstall; docker volume rm/prune, system prune; find -delete/-exec rm; shred; truncate;
-    wipefs -a/-o; gcloud with any `delete` operand. branch -D asks. Pre-push hook refuses non-fast-forward
-    pushes.
+  eval_cases: 166
+  eval_executed: 166
+  description: 'Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive
+    table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths;
+    mv/chmod/chown -R of system dirs; dd to devices, mkfs, wipefs; account lockouts; force, delete and
+    mirror pushes; history rewrites; IaC destroy; cloud and platform deletes; DB drops. Asks: rm -rf
+    off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre- push: no
+    non-ff.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
   version: 0.0.5
@@ -556,20 +556,19 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.1.1
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 92
-  eval_executed: 92
-  description: 'rtk#1007. Blocks: rm -rf on /, ~, ., .. or abs paths; PowerShell/cmd drive removal;
-    git push --force/+refspec; credential-file reads (.env, keys, ~/.ssh); echo/inline *_API_KEY/_SECRET/_TOKEN;
-    SQL DROP/TRUNCATE/unscoped DELETE/FLUSHALL; dropdb; kubectl delete, terraform destroy, aws s3 rm
-    --recursive/rb --force, helm uninstall, gcloud delete, docker volume rm. Asks: relative rm -rf off
-    safe list, git reset --hard/clean -f/checkout ./branch -D, docker prune. Skips rm/file/echo in container
-    exec.'
+  eval_cases: 105
+  eval_executed: 105
+  description: 'rtk#1007. Destructive verdicts come from the chock_destructive table shared with block-
+    destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard,
+    clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk''s safe list,
+    bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys,
+    ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
   version: 0.0.9

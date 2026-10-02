@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `rtk-dangerous-actions-blocker.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 92 total, 92 executable |
+| **Eval cases** | 105 total, 105 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-rtk#1007. Blocks: rm -rf on /, ~, ., .. or abs paths; PowerShell/cmd drive removal; git push --force/+refspec; credential-file reads (.env, keys, ~/.ssh); echo/inline *_API_KEY/_SECRET/_TOKEN; SQL DROP/TRUNCATE/unscoped DELETE/FLUSHALL; dropdb; kubectl delete, terraform destroy, aws s3 rm --recursive/rb --force, helm uninstall, gcloud delete, docker volume rm. Asks: relative rm -rf off safe list, git reset --hard/clean -f/checkout ./branch -D, docker prune. Skips rm/file/echo in container exec.
+rtk#1007. Destructive verdicts come from the chock_destructive table shared with block- destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's safe list, bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.
 
 ## What it solves
 
@@ -30,8 +30,8 @@ A guard script, `implementations/rtk-dangerous-actions-blocker.py`, run before t
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-block: rm_-rf(/|~|.|..|abs), git_push(--force|+ref), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN), sql(DROP|TRUNCATE|DELETE_no_WHERE)|dropdb|FLUSHALL, kubectl_delete|terraform_destroy|aws_s3(rm_--recursive|rb_--force)|helm_uninstall|gcloud_delete|docker_volume_rm
-ask: rm_-rf(relative, off safe_list), git(reset_--hard|clean_-f|checkout_.|branch_-D), docker_*_prune|docker_rm_-f_$(..); skip_inside: docker|kubectl_exec; prefix: rtk; prefer: stash|dry-run
+block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
+ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve; skip_inside: docker|kubectl_exec(file rows); prefix: rtk; prefer: stash|dry-run
 ```
 
 ## Which primitive it becomes
