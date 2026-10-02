@@ -31,6 +31,7 @@ source = [
     "base/verify-mcp-allowlist/implementations",
     "base/refname-filename-metachar/implementations",
     "agentic-security/agentic-code-security/implementations",
+    "agentic-security/iam-policy-scan/implementations",
     "base/block-test-skips/implementations",
     "base/guard-memory-writes/implementations",
     "base/limit-diff-size/implementations",

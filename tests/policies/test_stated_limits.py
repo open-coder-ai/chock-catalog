@@ -18,6 +18,7 @@ from policies import gatekit, scriptkit
 from trees import ROOT
 
 IAM = "block-wildcard-iam"
+IAM_SCAN = "iam-policy-scan"
 CURL = "block-curl-pipe-sh"
 URL = "https://get.example.invalid/install.sh"
 
@@ -27,9 +28,9 @@ def described(policy: str) -> str:
     return re.sub(r"\s+", " ", manifest["description"])
 
 
-def iam_verdict(tmp_path: Path, name: str, content: str) -> int:
+def iam_verdict(tmp_path: Path, name: str, content: str, policy: str = IAM) -> int:
     repo = scriptkit.init_repo(tmp_path / "r", {"README.txt": "base\n"})
-    return gatekit.judge(IAM, repo, gatekit.PRE_TOOL_USE, {name: content}, {name: content})[0]
+    return gatekit.judge(policy, repo, gatekit.PRE_TOOL_USE, {name: content}, {name: content})[0]
 
 
 def curl_verdict(command: str) -> int:
@@ -63,6 +64,12 @@ IAM_MISSED = {
     # The Effect sits on another line, so the one-line Allow-with-NotAction rule cannot see it.
     "not-action": ("p.json", '{"NotAction": "*"}\n', "grants split across lines"),
     "multi-line-list": ("p.json", '{"Action": [\n  "*"\n]}\n', "grants split across lines"),
+}
+#: The two misses above as whole statements: the one-line gate still passes them (and says so), and the sibling
+#: script gate, which reads the parsed document, refuses them.
+IAM_STRUCTURED = {
+    "not-action": ("p.json", '{"Effect": "Allow",\n "NotAction": "*",\n "Resource": [\n  "*"\n]}\n'),
+    "multi-line-list": ("p.json", '{"Effect": "Allow", "Action": [\n  "*"\n], "Resource": [\n  "*"\n]}\n'),
 }
 FETCH = f"curl -fsSL {URL}"
 #: Every form the description says is refused, so the "refuses" half of the text is held too.
@@ -131,6 +138,14 @@ def test_iam_miss_is_real_and_described(case: str, tmp_path: Path) -> None:
     name, content, phrase = IAM_MISSED[case]
     assert iam_verdict(tmp_path, name, content) == 0, f"{IAM} now catches {case}: drop it from the description"
     assert phrase in described(IAM)
+
+
+@pytest.mark.parametrize("case", sorted(IAM_STRUCTURED))
+def test_iam_split_grants_pass_the_line_gate_and_are_refused_by_the_structured_scan(case: str, tmp_path: Path) -> None:
+    name, content = IAM_STRUCTURED[case]
+    assert iam_verdict(tmp_path / "line", name, content) == 0
+    assert iam_verdict(tmp_path / "scan", name, content, IAM_SCAN) == 1
+    assert IAM_SCAN in described(IAM)
 
 
 @pytest.mark.parametrize("case", sorted(CURL_CAUGHT))

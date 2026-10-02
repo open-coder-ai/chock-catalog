@@ -216,6 +216,21 @@ block-wildcard-iam:
     Terraform/YAML -- for raw JSON documents the options are narrowing the grant or moving
     the document.
 
+iam-policy-scan:
+  solves: >
+    The wildcard grant that survives a line-by-line check because it was written over several
+    lines: `"Action": [` then `"*"` on its own line, an Allow with `NotAction`, a statement
+    pretty-printed by a formatter, a `jsonencode` object in Terraform, a YAML alias. The
+    same one-line gate that catches `"Action": "*"` cannot see any of those; this one reads
+    the whole document and judges the statement.
+  customise: >
+    New packs run in the `observe` rollout first (`rollout: observe` in `.chock/config.yaml`)
+    until the false-positive rate on your own repository is known. A reviewed exception is
+    a `# pragma: allowlist broad-privilege` comment beside the grant, or, for JSON, which
+    cannot carry a comment, an entry in `.chock/iam-policy-scan.json` naming the path, the
+    rule and the statement id the refusal prints. Computed grants (a reference, a function
+    result) and templated YAML that will not parse are not judged.
+
 code-safety:
   solves: >
     The four ways generated code becomes a liability: committed credentials, `eval`/`exec`

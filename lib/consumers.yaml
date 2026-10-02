@@ -45,3 +45,5 @@ base/scan-hidden-content:
   chock_scan: [data_table, hostmatch, hosts, idn, safe_read, urls]
 base/agent-permissions-scan:
   chock_scan: [jsonc, safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+agentic-security/iam-policy-scan:
+  chock_scan: [hcl, hcl_json, hcl_lex, jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
