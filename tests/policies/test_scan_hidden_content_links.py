@@ -97,7 +97,7 @@ def test_a_destination_and_each_closer_inside_it_are_read() -> None:
 
 def test_tag_view_removes_only_the_brackets_of_code() -> None:
     raw = "a `<!-- x -->` <b>"
-    assert blocks.tag_view(raw, blocks.blank_code(raw)) == "a ` !-- x -->` <b>"
+    assert blocks.tag_view(raw, blocks.blank_code(raw)) == "a ` !-- x -- ` <b>"
 
 
 @pytest.mark.parametrize(

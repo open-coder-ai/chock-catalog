@@ -16,6 +16,7 @@ from pathlib import Path, PurePosixPath
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from hiddenscan import liberal as hidden_code  # noqa: E402
 from hiddenscan import links as hidden_urls  # noqa: E402
 from hiddenscan import markdown as hidden_text  # noqa: E402
 from hiddenscan import markup as hidden_html  # noqa: E402
@@ -141,6 +142,9 @@ def text_findings(path: str, text: str, kind: str) -> list[dict]:
         flat = spans.flat_view(tags)
         if flat != tags or RAW_TEXT.search(tags):  # otherwise the flat reading is the first one
             views += [(tags, html, True) for html in dict.fromkeys([flat, spans.closed_view(text, flat)])]
+        if (code := hidden_code.view(text, tags)) != tags:  # what may be code read as code, nothing swallowing
+            flat = spans.flat_view(code)
+            views += [(code, html, True) for html in dict.fromkeys([flat, spans.closed_view(text, flat)])]
     out: dict[tuple, list[dict]] = {}
     for reading in views:  # per finding, as many as the reading that found the most: counts stay counts
         found: dict[tuple, list[dict]] = {}

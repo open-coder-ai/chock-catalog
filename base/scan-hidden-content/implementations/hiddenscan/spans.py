@@ -82,9 +82,9 @@ def blank_code(text: str) -> str:
 
 
 def tag_view(raw: str, blanked: str) -> str:
-    """The raw text with only the '<' of code removed: code shows its tags and comments as text, so they
-    open nothing, while the words in code stay countable inside a hidden element or comment."""
-    return "".join(" " if r == "<" and b == " " else r for r, b in zip(raw, blanked, strict=True))
+    """The raw text with only the '<' and '>' of code removed: a renderer escapes them, so code opens and
+    closes no tag or comment, while the words in code stay countable inside a hidden element or comment."""
+    return "".join(" " if r in "<>" and b == " " else r for r, b in zip(raw, blanked, strict=True))
 
 
 def escaped_view(tags: str) -> str:
