@@ -21,11 +21,19 @@ def _alias(spec: object) -> list[str]:
     return []
 
 
+_LOCAL = ("workspace:", "file:", "link:", "portal:")
+
+
 def _table(value: object) -> list[str]:
-    """Keys of a name -> spec table, plus the real package behind every npm alias."""
+    """Keys of a name -> spec table, plus the real package behind every npm alias; local specs are not packages."""
     if not isinstance(value, dict):
         return []
-    return [name for key, spec in value.items() for name in (key, *_alias(spec))]
+    return [
+        name
+        for key, spec in value.items()
+        if not (isinstance(spec, str) and spec.startswith(_LOCAL))
+        for name in (key, *_alias(spec))
+    ]
 
 
 def _overrides(value: object) -> list[str]:
@@ -82,6 +90,8 @@ def package_json_names(text: str) -> list[str]:
     for key in _BUNDLED:
         bundled = data.get(key)
         names += [n for n in bundled if isinstance(n, str)] if isinstance(bundled, list) else []
+    pnpm = data.get("pnpm")
     names += _overrides(data.get("overrides")) + _resolutions(data.get("resolutions")) + _catalogs(data)
+    names += _overrides(pnpm.get("overrides")) if isinstance(pnpm, dict) else []
     workspaces = data.get("workspaces")
     return names + (_catalogs(workspaces) if isinstance(workspaces, dict) else [])

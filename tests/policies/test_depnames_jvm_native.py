@@ -190,7 +190,7 @@ def test_go_mod_block_with_only_a_comment_line_yields_nothing() -> None:
     assert golang.go_mod_names("require (\n\t\n)\nrequire ()\n") == []
 
 
-def test_mix_reads_only_the_deps_function() -> None:
+def test_mix_reads_dependency_tuples_in_any_layout() -> None:
     text = """defmodule App.MixProject do
   def project do
     [app: :app, deps: deps()]
@@ -210,7 +210,11 @@ end
 """
     assert names(elixir.mix_names, text) == ["ecto_sql", "phoenix"]
     assert elixir.mix_names('def deps do\n  [{:a, "1"}]\n') == ["a"]
-    assert elixir.mix_names('defp deps(), do: [{:b, "1"}]\n') == []
+    assert elixir.mix_names('defp deps, do: [{:b, "1"},\n {:c,\n  github: "x/y"}, {:ok, "s"}, {:error, "e"}]\n') == [
+        "b",
+        "c",
+    ]
+    assert elixir.mix_names('def project, do: [deps: [{:d, "~> 1", only: :dev}]] # {:e, "1"}\n') == ["d"]
 
 
 def test_pubspec_reads_dependency_keys_and_skips_sdk_entries() -> None:
@@ -253,3 +257,27 @@ let package = Package(name: "App", dependencies: [
     assert names(swift.package_swift_names, text) == sorted(
         ["github.com/acme/Alpha", "github.com/acme/beta", "gitlab.example.com/grp/gamma", "scope.delta"]
     )
+
+
+def test_review_round_forms() -> None:
+    text = """
+dependencies {
+    developmentOnly(
+        "org.a:b:1")
+    implementation "g.x:y:1", "g.x:evil:2"
+    compile(name: "n", group: "org.g")
+    add("implementation", "o.z:q")
+    println("http://host:8080/x")
+}
+plugins { kotlin("jvm") version "1.9" }
+/* implementation "o.c:out:1"
+   more */
+"""
+    assert names(gradle.gradle_names, text) == sorted(
+        ["org.a:b", "g.x:y", "g.x:evil", "org.g:n", "o.z:q", "plugin:org.jetbrains.kotlin.jvm"]
+    )
+    assert names(swift.package_swift_names, '/* .package(url: "https://github.com/c/c.git", from: "1.0.0") */\n') == []
+    assert names(
+        dotnet.dotnet_names,
+        '<Project><ItemGroup><PackageReference Include="A;B" /><PackageDownload Include="C" /></ItemGroup></Project>',
+    ) == ["A", "B", "C"]

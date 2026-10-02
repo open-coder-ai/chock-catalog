@@ -14,6 +14,7 @@ def _crates(table: object) -> list[str]:
     return [
         spec["package"] if isinstance(spec, dict) and isinstance(spec.get("package"), str) else key
         for key, spec in table.items()
+        if not (isinstance(spec, dict) and "path" in spec and "version" not in spec and "git" not in spec)
     ]
 
 

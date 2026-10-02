@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-_GEM = re.compile(r"""^\s*gem\s*\(?\s*['"]([^'"\s]+)['"]""")
-_SPEC = re.compile(r"""\badd_(?:runtime_|development_)?dependency\s*\(?\s*['"]([^'"\s]+)['"]""")
+_GEM = re.compile(r"""(?:^|[\s;])gem\s*\(?\s*['"]([^'"\s]+)['"]""")
+_SPEC = re.compile(r"""\badd_(?:runtime_|development_)?dependency\s*\(?\s*(?:%q<|['"])([^'"\s>]+)""")
 
 
 def gemfile_names(text: str) -> list[str]:
@@ -17,6 +17,6 @@ def gemfile_names(text: str) -> list[str]:
             block = True
         elif line.startswith("=end"):
             block = False
-        elif not block and not line.lstrip().startswith("#") and (m := _GEM.match(line) or _SPEC.search(line)):
-            names.append(m.group(1))
+        elif not block and not line.lstrip().startswith("#"):
+            names += _GEM.findall(line) + _SPEC.findall(line)
     return names

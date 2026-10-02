@@ -209,7 +209,7 @@ patched = { git = "https://example.com/p" }
 "replaced:1.0.0" = { git = "https://example.com/r" }
 """
     assert names(rust.cargo_names, text) == sorted(
-        ["serde", "real-crate", "local", "criterion", "cc", "old_dev", "libc", "winres", "tokio", "patched", "replaced"]
+        ["serde", "real-crate", "criterion", "cc", "old_dev", "libc", "winres", "tokio", "patched", "replaced"]
     )
     assert rust.cargo_names('[package]\nname = "x"\n[target]\n') == []
     assert rust.cargo_names("[replace]\n") == []
@@ -229,3 +229,26 @@ def test_composer_skips_platform_requirements() -> None:
     assert names(php.composer_names, text) == ["a/b", "c/d"]
     assert php.composer_names('{"require": []}') == []
     assert php.composer_names("[]") == []
+
+
+def test_review_round_forms() -> None:
+    assert pyreq.includes("-rbase.txt\n-cother.txt\n") == ["base.txt", "other.txt"]
+    assert names(pyreq.requirement_names, "# c \\\nevil\nok\n") == ["evil", "ok"]
+    assert names(pyreq.setup_py_names, "setup(install_requires='single>=1', tests_require='a\\nb')") == [
+        "a",
+        "b",
+        "single",
+    ]
+    toml = '[tool.uv]\noverride-dependencies = ["o"]\nconstraint-dependencies = ["c"]\n[tool.hatch.envs.t]\ndependencies = ["h"]\n'
+    assert names(pytoml.pyproject_names, toml) == ["c", "h", "o"]
+    pkg = (
+        '{"pnpm": {"overrides": {"a": "npm:real@1"}}, "dependencies": {"w": "workspace:*", "f": "file:../f", "n": "1"}}'
+    )
+    assert names(node.package_json_names, pkg) == ["a", "n", "real"]
+    assert names(node.package_json_names, '{"pnpm": 1}') == []
+    cargo = '[dependencies]\nlocal = { path = "../l" }\nboth = { path = "../b", version = "1" }\ngitty = { path = "x", git = "g" }\n'
+    assert names(rust.cargo_names, cargo) == ["both", "gitty"]
+    assert names(
+        ruby.gemfile_names,
+        "group :t do gem 'a' end\ngem 'b'; gem('c')\ns.add_runtime_dependency(%q<d>.freeze, ['1'])\n",
+    ) == ["a", "b", "c", "d"]

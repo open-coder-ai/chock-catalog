@@ -53,6 +53,13 @@ def toml_lock_names(text: str) -> list[str]:
     )
 
 
+def cargo_lock_names(text: str) -> list[str]:
+    """Cargo.lock: crates with a `source`; the workspace's own crates have none and are not dependencies."""
+    packages = tomllib.loads(text.removeprefix("\ufeff")).get("package")
+    found = [p for p in packages if isinstance(p, dict)] if isinstance(packages, list) else []
+    return [p["name"] for p in found if isinstance(p.get("name"), str) and "source" in p]
+
+
 def go_sum_names(text: str) -> list[str]:
     """go.sum: the module of every line."""
     return [line.split()[0] for line in text.removeprefix("\ufeff").splitlines() if line.split()]

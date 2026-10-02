@@ -19,5 +19,6 @@ def _location(url: str) -> str:
 
 def package_swift_names(text: str) -> list[str]:
     """Remote package locations (and registry ids) a manifest depends on; `path:` packages are local."""
-    code = "\n".join(line for line in text.removeprefix("\ufeff").splitlines() if not line.lstrip().startswith("//"))
+    body = re.sub(r"/\*.*?\*/", "", text.removeprefix("\ufeff"), flags=re.DOTALL)
+    code = "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("//"))
     return [_location(value) if kind == "url" else value for kind, value in _PACKAGE.findall(code)]

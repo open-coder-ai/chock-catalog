@@ -1,23 +1,19 @@
-"""mix.exs: the tuples of the deps function, read as text; Elixir is code, so only that literal form is read."""
+"""mix.exs: dependency tuples read as text; Elixir is code, so only the literal `{:name, "req" | opts}` form is read."""
 
 from __future__ import annotations
 
 import re
 
-_DEPS = re.compile(r"^(\s*)defp?\s+deps\b[^\n]*\bdo\s*$")
-_TUPLE = re.compile(r"\{\s*:([A-Za-z_][A-Za-z0-9_]*)\s*,")
+_COMMENT = re.compile(r"(?m)(?:^|\s)#.*$")
+_TUPLE = re.compile(r'\{\s*:([A-Za-z_][A-Za-z0-9_]*)\s*,\s*(?:"|[a-z_]+:)')
+_NOT_PACKAGES = frozenset({"ok", "error"})
 
 
 def mix_names(text: str) -> list[str]:
-    """Package atoms of `{:name, ...}` tuples between `defp deps do` and its closing `end`."""
-    names: list[str] = []
-    indent: str | None = None
-    for line in text.removeprefix("\ufeff").splitlines():
-        if indent is None:
-            if m := _DEPS.match(line):
-                indent = m.group(1)
-        elif line.rstrip() == f"{indent}end":
-            indent = None
-        elif not line.lstrip().startswith("#"):
-            names += _TUPLE.findall(line)
-    return names
+    """Atoms of `{:name, "~> 1"}` and `{:name, github: "x/y"}` tuples anywhere in the file, on one line or several.
+
+    The whole file is read rather than a `deps` function, so a one-line `defp deps, do: [...]`, a multi-line tuple and
+    an inline `deps: [...]` are all seen; `{:ok, "..."}` and `{:error, "..."}` results are not packages.
+    """
+    code = _COMMENT.sub("", text.removeprefix("﻿"))
+    return [name for name in _TUPLE.findall(code) if name not in _NOT_PACKAGES]

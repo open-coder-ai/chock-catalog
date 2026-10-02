@@ -10,6 +10,8 @@ _PYTHON_SEPARATORS = re.compile(r"[-_.]+")
 def normalize(eco: str, name: str) -> str:
     """PEP 503 for Python, `-`/`_` equivalence for Cargo, lowercase (scope kept) for the rest."""
     name = name.strip().lower()
+    if "://" in name:
+        return name
     if eco == "py":
         return _PYTHON_SEPARATORS.sub("-", name)
     if eco == "cargo":

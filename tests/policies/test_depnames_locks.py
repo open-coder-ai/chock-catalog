@@ -83,3 +83,13 @@ def test_other_paths_are_not_manifests(path: str) -> None:
 
 def test_requirements_family_is_the_one_includes_resolve_to() -> None:
     assert families.family("requirements.txt") is families.REQUIREMENTS
+
+
+def test_review_round_forms() -> None:
+    cargo = '[[package]]\nname = "app"\n[[package]]\nname = "serde"\nsource = "registry+x"\n[[package]]\nversion = "1"\nsource = "s"\n'
+    assert lockfiles.cargo_lock_names(cargo) == ["serde"]
+    assert lockfiles.cargo_lock_names('package = "x"') == []
+    assert families.family("Package@swift-5.9.swift").kind == "Package.swift"
+    assert families.family("gradle/deps.versions.toml").kind == "version catalog"
+    assert families.family("Cargo.lock").read is lockfiles.cargo_lock_names
+    assert r.norm.normalize("py", "git+https://github.com/A/b.git") == "git+https://github.com/a/b.git"

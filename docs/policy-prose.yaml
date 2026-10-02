@@ -467,12 +467,21 @@ verify-dependency-exists:
     .chock/dependency-allowlist.txt` -- review it, then set `rollout: observe` in `.chock/config.yaml`, enable
     the policy and read what it would have refused before promoting it. A new name in a manifest blocks; a name
     that only a lockfile adds (a transitive dependency) asks. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET,
-    Go, Elixir, Dart and Swift manifests by parsing them, never running them. Limits: it checks that a name is
+    Go, Elixir, Dart and Swift manifests by parsing them (Ruby, Elixir, Gradle and Swift by pattern), never
+    running them. Limits: the allowlist is one flat list, so a name listed for one ecosystem also passes in
+    another, and Maven, Go and gem names are compared lowercase; tomllib reads TOML 1.0, so a Cargo or
+    pyproject file using TOML 1.1 syntax adds no names; forms not read include Gradle coordinates built from
+    variables, Pipfile custom categories, pyproject tool tables beyond the ones named above (pixi, pdm
+    overrides), NuGet Sdk attributes and dotnet tool manifests, and Maven annotation-processor paths; local
+    path and workspace dependencies are not reported; a lockfile-only addition asks only when the run holds no
+    unlisted manifest name, otherwise the whole run blocks (a seeded allowlist keeps that rare); a Maven
+    `${...}` placeholder is judged as the literal text; the engine shows nothing on an allowed run, so the
+    note for an unparsable file is seen only beside a refusal. Also: it checks that a name is
     listed, never that it exists in a registry, and never a dependency's version or source (a listed name
-    pointed at another git URL passes); a dependency list built by code (a setup.py that concatenates lists, a
-    Gradle or Gemfile computed value, a Maven placeholder) is not read; an `-r` include is judged only when the
-    same change holds the included file; a file that cannot be parsed adds no names and prints a note, while an
-    XML manifest that declares a DOCTYPE or ENTITY is refused unparsed.
+    pointed at another git URL passes); a list built by code (a setup.py that concatenates lists) is not read;
+    an `-r` include is judged only when the same change holds the included file; a plain syntax error adds no
+    names; an XML manifest that declares a DOCTYPE or ENTITY, and one too large or too deeply nested to read,
+    is refused as a finding keyed by a digest of its text.
 
 verify-mcp-allowlist:
   solves: >

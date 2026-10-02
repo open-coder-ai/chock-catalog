@@ -43,7 +43,7 @@ _EXACT = {
     "pnpm-lock.yaml": Family("npm", "pnpm-lock.yaml", lockfiles.pnpm_lock_names, lock=True),
     "poetry.lock": Family("py", "poetry.lock", lockfiles.toml_lock_names, lock=True),
     "uv.lock": Family("py", "uv.lock", lockfiles.toml_lock_names, lock=True),
-    "cargo.lock": Family("cargo", "Cargo.lock", lockfiles.toml_lock_names, lock=True),
+    "cargo.lock": Family("cargo", "Cargo.lock", lockfiles.cargo_lock_names, lock=True),
     "go.sum": Family("go", "go.sum", lockfiles.go_sum_names, lock=True),
     "gemfile.lock": Family("gem", "Gemfile.lock", lockfiles.gemfile_lock_names, lock=True),
     "composer.lock": Family("composer", "composer.lock", lockfiles.composer_lock_names, lock=True),
@@ -66,6 +66,10 @@ def family(path: str) -> Family | None:
     name = pure.name.lower()
     if found := _EXACT.get(name):
         return found
+    if name.startswith("package") and name.endswith(".swift"):
+        return _EXACT["package.swift"]
+    if name.endswith(".versions.toml"):
+        return _EXACT["libs.versions.toml"]
     if _REQ_NAME.match(name) or (pure.parent.name.lower() == "requirements" and _REQ_DIR_FILE.search(name)):
         return REQUIREMENTS
     return next((fam for suffix, fam in _SUFFIX.items() if name.endswith(suffix)), None)

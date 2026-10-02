@@ -10,6 +10,7 @@ outside the written set is read.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import posixpath
 import subprocess
@@ -26,8 +27,9 @@ from depnames.norm import normalize
 from depnames.pyreq import includes
 
 ALLOWLIST = ".chock/dependency-allowlist.txt"
-MAX_CHARS = 2_000_000
+MAX_CHARS = 16_000_000
 ASK, BLOCK = 3, 1
+REFUSALS = {xmlsafe.RefusedError: "declares a DOCTYPE or ENTITY and is not parsed"}
 ADVICE = (
     "ask a person to add it, and confirm the package exists in its registry and is the intended one (no lookup is made)"
 )
@@ -57,23 +59,27 @@ class Allowed:
         return name in self.by_eco[eco]
 
 
+class TooLargeError(ValueError):
+    """The text is larger than this gate reads."""
+
+
 def read_names(fam: Family, text: str) -> list[str]:
     """Distinct normalised names of one manifest; the reader's errors are left to the caller."""
     if len(text) > MAX_CHARS:
         msg = "larger than the size this gate reads"
-        raise ValueError(msg)
+        raise TooLargeError(msg)
     return sorted({normalize(fam.eco, name) for name in fam.read(text) if name.strip()})
 
 
-def line_of(text: str, name: str) -> int:
-    """The first line mentioning the name, for display; 1 when none does."""
+def line_of(lines: list[str], name: str) -> int:
+    """The first of the lowercased lines mentioning the name, for display; 1 when none does."""
     needle = name.lower()
-    return next((n for n, line in enumerate(text.splitlines(), 1) if needle in line.lower()), 1)
+    return next((n for n, line in enumerate(lines, 1) if needle in line), 1)
 
 
 def targets(writes: dict[str, str]) -> dict[str, Family]:
     """Written paths to judge: every manifest by name, plus files a written requirements file includes in-repo."""
-    found = {path: fam for path in writes if (fam := family(path))}
+    found = {path: fam for path in writes if "node_modules" not in path.split("/") and (fam := family(path))}
     queue = [path for path, fam in found.items() if fam is REQUIREMENTS]
     while queue:
         path = queue.pop()
@@ -97,24 +103,27 @@ def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict], list
         text = writes[path]
         try:
             names = read_names(fam, text)
-        except xmlsafe.RefusedError:
-            message = (
-                f"{fam.kind} declares a DOCTYPE or ENTITY, so it is not parsed and its dependencies cannot be checked"
+        except (xmlsafe.RefusedError, TooLargeError, RecursionError, MemoryError) as exc:
+            why = REFUSALS.get(type(exc), "is too large or too deeply nested to read")
+            digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
+            message = f"{fam.kind} {why}, so its dependencies cannot be checked"
+            (locks if fam.lock else manifest).append(
+                {"key": f"refused|{type(exc).__name__}|{digest}", "path": path, "line": 1, "message": message}
             )
-            manifest.append({"key": "refused|doctype", "path": path, "line": 1, "message": message})
             continue
         except Exception as exc:  # noqa: BLE001 -- untrusted manifest text; an unreadable file contributes no names
             notes.append(
                 f"{path}: could not be read as {fam.kind} ({type(exc).__name__}); its dependencies were not checked"
             )
             continue
+        lines = [] if fam.lock else text.lower().splitlines()
         for name in names:
             if (fam.eco, name) in allowed:
                 continue
             where = "pinned in the lockfile" if fam.lock else f"added to {fam.kind}"
             message = f"{name} is {where} and is not in {ALLOWLIST}; {ADVICE}"
             (locks if fam.lock else manifest).append(
-                {"key": f"{fam.eco}|{name}", "path": path, "line": line_of(text, name), "message": message}
+                {"key": f"{fam.eco}|{name}", "path": path, "line": line_of(lines, name), "message": message}
             )
     return manifest, locks, notes
 

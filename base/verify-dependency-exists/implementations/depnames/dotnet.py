@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from depnames import xmlsafe
 
-_ITEMS = frozenset({"PackageReference", "PackageVersion", "GlobalPackageReference", "DotNetCliToolReference"})
+_ITEMS = frozenset(
+    {"PackageReference", "PackageVersion", "GlobalPackageReference", "DotNetCliToolReference", "PackageDownload"}
+)
 
 
 def dotnet_names(text: str) -> list[str]:
@@ -15,6 +17,5 @@ def dotnet_names(text: str) -> list[str]:
     for element in root.iter():
         tag = xmlsafe.local(element.tag)
         name = element.get("id") if legacy and tag == "package" else element.get("Include") if tag in _ITEMS else None
-        if name:
-            names.append(name)
+        names += [part.strip() for part in (name or "").split(";") if part.strip()]
     return names

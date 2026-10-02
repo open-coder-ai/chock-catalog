@@ -9,7 +9,7 @@ import re
 _NAME = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?")
 _TAIL = re.compile(r"\s*(?:$|\[|[=<>!~;(@,])")
 _OPTION = re.compile(r"\s+--?[A-Za-z]")
-_INCLUDE = re.compile(r"^(?:-r|-c|--requirement|--constraint)(?:\s+|=)(\S.*)$")
+_INCLUDE = re.compile(r"^(?:-r|-c|--requirement=|--constraint=|--requirement\s+|--constraint\s+)\s*(\S.*)$")
 _EDITABLE = re.compile(r"^(?:-e|--editable)(?:\s+|=)(\S.*)$")
 _EGG = re.compile(r"[#&]egg=([A-Za-z0-9][A-Za-z0-9._-]*)")
 _SCHEME = re.compile(r"^(?:[A-Za-z][A-Za-z0-9+.-]*://|(?:git|hg|svn|bzr)\+)")
@@ -25,7 +25,7 @@ def logical_lines(text: str) -> list[str]:
     joined = ""
     for raw in [*text.removeprefix("\ufeff").splitlines(), ""]:
         line = raw.rstrip()
-        if line.endswith("\\"):
+        if line.endswith("\\") and not line.lstrip().startswith("#"):
             joined += line[:-1] + " "
             continue
         full = re.sub(r"(^|\s)#.*$", "", joined + line).strip()
@@ -94,6 +94,8 @@ def setup_cfg_names(text: str) -> list[str]:
 
 def _literals(node: ast.expr) -> list[str]:
     """The string elements of a literal list, tuple or set; a computed value yields nothing."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return [node.value]
     if not isinstance(node, ast.List | ast.Tuple | ast.Set):
         return []
     return [e.value for e in node.elts if isinstance(e, ast.Constant) and isinstance(e.value, str)]

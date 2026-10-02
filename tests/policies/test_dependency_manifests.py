@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import io
 import json
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
-from policies import depkit, gatekit, scriptkit
+from policies import depkit, scriptkit
 
 POLICY = "verify-dependency-exists"
 NAME = "dependency-manifests.py"
@@ -121,7 +120,8 @@ def test_a_manifest_name_beside_a_lockfile_name_blocks(repo: Path) -> None:
 def test_a_doctype_is_a_finding_so_no_name_hides_behind_it(repo: Path) -> None:
     pom = '<!DOCTYPE project [<!ENTITY xxe "boom">]><project><dependencies><dependency><groupId>g</groupId><artifactId>&xxe;</artifactId></dependency></dependencies></project>'
     code, document, err = run(repo, {"pom.xml": pom})
-    assert (code, keys(document)) == (1, ["refused|doctype"])
+    assert code == 1
+    assert [k.rsplit("|", 1)[0] for k in keys(document)] == ["refused|RefusedError"]
     assert "DOCTYPE or ENTITY" in err
     assert "boom" not in err
 
@@ -142,11 +142,45 @@ def test_the_baseline_run_prints_findings_but_no_notes(repo: Path) -> None:
     assert "could not be read" not in err
 
 
-def test_a_manifest_over_the_size_limit_is_not_read(repo: Path) -> None:
+def test_a_manifest_too_large_or_too_deep_to_read_is_a_finding_not_a_pass(repo: Path) -> None:
     big = "x" * (mod.MAX_CHARS + 1)
-    code, document, err = run(repo, {"requirements.txt": big})
-    assert (code, document) == (0, {"findings": []})
-    assert "requirements.txt: could not be read as requirements (ValueError)" in err
+    deep = '{"x": ' + "[" * 5000 + "]" * 5000 + ', "dependencies": {"evil": "1"}}'
+    for path, text in (("requirements.txt", big), ("package.json", deep)):
+        code, document, err = run(repo, {path: text})
+        assert code == 1
+        assert keys(document)[0].startswith("refused|")
+        assert "dependencies cannot be checked" in err
+
+
+def test_an_unreadable_lockfile_asks_and_a_changed_unreadable_manifest_is_new(repo: Path) -> None:
+    deep = '{"x": ' + "[" * 5000 + "]" * 5000 + "}"
+    assert run(repo, {"package-lock.json": deep})[0] == 3
+    first = keys(run(repo, {"package.json": deep})[1])
+    second = keys(run(repo, {"package.json": deep + " "})[1])
+    assert first != second
+
+
+def test_a_pip_comment_ending_in_a_backslash_does_not_hide_the_next_requirement(repo: Path) -> None:
+    code, document, _ = run(repo, {"requirements.txt": "# note \\\nevil-pkg==1.0\nrequests\n"})
+    assert (code, keys(document)) == (1, ["py|evil-pkg"])
+
+
+def test_node_modules_manifests_are_not_the_projects_own(repo: Path) -> None:
+    writes = {
+        "node_modules/dep/package.json": '{"dependencies": {"evil": "1"}}',
+        "a/node_modules/x/Gemfile": "gem 'evil'",
+    }
+    assert run(repo, writes)[:2] == (0, {"findings": []})
+
+
+def test_a_lockfile_ask_becomes_a_block_beside_a_manifest_finding_in_the_same_run(repo: Path) -> None:
+    writes = {
+        "package.json": '{"dependencies": {"legacy": "1"}}',
+        "package-lock.json": '{"packages": {"node_modules/new": {}}}',
+    }
+    code, document, _ = run(repo, writes)
+    assert code == 1
+    assert sorted(item["path"] for item in document["findings"]) == ["package-lock.json", "package.json"]
 
 
 def test_files_that_are_not_manifests_are_ignored(repo: Path) -> None:
@@ -182,8 +216,8 @@ def test_windows_separators_are_normalised_in_paths(repo: Path) -> None:
 
 
 def test_line_of_falls_back_to_the_first_line() -> None:
-    assert mod.line_of("a\nFoo\n", "foo") == 2
-    assert mod.line_of("a\nb\n", "missing") == 1
+    assert mod.line_of(["a", "foo"], "Foo") == 2
+    assert mod.line_of(["a", "b"], "missing") == 1
 
 
 def test_malformed_input_is_a_fault_not_a_verdict(repo: Path) -> None:
@@ -200,92 +234,3 @@ def test_main_reads_stdin_in_process(
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload(repo, {"Gemfile": "gem 'evil'\n"}))))
     assert mod.main() == 1
     assert json.loads(capsys.readouterr().out)["findings"][0]["key"] == "gem|evil"
-
-
-def test_seed_prints_the_tracked_manifests_names(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    root = scriptkit.init_repo(
-        tmp_path / "seed",
-        {
-            "requirements.txt": "Requests==2\nFoo_Bar\n",
-            "sub/package.json": '{"dependencies": {"left-pad": "1"}}',
-            "package-lock.json": '{"packages": {"node_modules/transitive": {}}}',
-            "broken/Cargo.toml": "[dependencies",
-            "README.md": "# not a manifest\n",
-            "bin.txt": b"\xff\xfe",
-            "requirements/bad.txt": b"\xff\xfe",
-        },
-    )
-    monkeypatch.chdir(root)
-    monkeypatch.setattr(sys, "argv", [NAME, "--seed"])
-    assert mod.main() == 0
-    out, err = capsys.readouterr()
-    assert out.splitlines() == [
-        "# Seeded from the tracked manifests; review before committing.",
-        "foo-bar",
-        "left-pad",
-        "requests",
-    ]
-    assert "broken/Cargo.toml skipped (TOMLDecodeError)" in err
-    assert "requirements/bad.txt skipped (UnreadableError)" in err
-
-
-def test_the_seed_command_runs_as_a_process_and_its_output_is_a_working_allowlist(tmp_path: Path) -> None:
-    root = scriptkit.init_repo(
-        tmp_path / "seed", {"requirements.txt": "requests\nflask\n", "go.mod": "require example.com/x v1\n"}
-    )
-    proc = scriptkit.run_script_full(POLICY, NAME, root, "")
-    assert proc.returncode == 2  # no payload on stdin
-    seeded = subprocess.run(
-        [sys.executable, str(scriptkit.script_path(POLICY, NAME)), "--seed"],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    (root / ".chock").mkdir()
-    (root / ALLOWLIST).write_text(seeded.stdout, encoding="utf-8")
-    assert run(root, {"requirements.txt": "requests\nflask\n", "go.mod": "require example.com/x v1\n"})[:2] == (
-        0,
-        {"findings": []},
-    )
-    assert run(root, {"requirements.txt": "requests\nfresh\n"})[0] == 1
-
-
-# Through chock's own runner: the baseline run, the three events and the verdict word.
-def engine(repo: Path, event: str, writes: dict[str, str]) -> tuple[int, str]:
-    return gatekit.judge(POLICY, repo, event, writes)
-
-
-@pytest.fixture
-def engine_repo(tmp_path: Path) -> Path:
-    files = {
-        ALLOWLIST: "requests\n",
-        "requirements.txt": "requests\nlegacy-unlisted\n",
-        "package-lock.json": '{"packages": {"node_modules/requests": {}}}',
-    }
-    return scriptkit.init_repo(tmp_path / "engine", files)
-
-
-def test_the_engine_keeps_only_what_the_change_adds(engine_repo: Path) -> None:
-    same = engine(engine_repo, gatekit.PRE_TOOL_USE, {"requirements.txt": "legacy-unlisted\nrequests\n# note\n"})
-    assert same == (0, "")
-    added = engine(engine_repo, gatekit.PRE_TOOL_USE, {"requirements.txt": "requests\nlegacy-unlisted\nreqeusts\n"})
-    assert added[0] == 1
-    assert "reqeusts" in added[1]
-    assert "legacy-unlisted" not in added[1]
-
-
-def test_the_engine_turns_a_lockfile_only_addition_into_an_ask(engine_repo: Path) -> None:
-    lock = '{"packages": {"node_modules/requests": {}, "node_modules/evil-transitive": {}}}'
-    code, err = engine(engine_repo, gatekit.PRE_TOOL_USE, {"package-lock.json": lock})
-    assert code != 0
-    assert "evil-transitive" in err
-    both = engine(
-        engine_repo,
-        gatekit.PRE_TOOL_USE,
-        {"package-lock.json": lock, "requirements.txt": "requests\nlegacy-unlisted\nnew-one\n"},
-    )
-    assert both[0] == 1
-    assert "new-one" in both[1]
