@@ -1,90 +1,93 @@
-"""Code spans blanked within the runs blocks.classify marks out, and the link text that makes an image."""
+"""Markdown with certain code blanked, and the link text that makes a destination an image's.
+
+A code span is blanked only when it is certain: both backtick runs on one paragraph line, with no
+unpaired run earlier in the paragraph (since the last blank line) and no table pipe on the line. Whether
+backticks pair across lines depends on where CommonMark ends a paragraph, and an error there would hide a
+comment or a URL a renderer passes through; read as text instead, the worst case is a report about code.
+"""
 
 from __future__ import annotations
 
 import re
 
-from hiddenscan.blocks import BLOCK_START, CODE, SINGLE, TEXT, classify
+from hiddenscan.blocks import BREAK, CODE, TEXT, classify
 
 TICKS = re.compile(r"(\\*)(`+)")
-#: A GFM table's delimiter row: after it, each row's cells are runs of their own until a blank line.
-TABLE_DELIMITER = re.compile(
-    r"^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)+\|?[ \t]*$|^[ \t]*\|[ \t]*:?-+:?[ \t]*\|?[ \t]*$"
-)
-CELL = re.compile(r"((?<!\\)\|)")
-#: Tokens of link text: an escape, an inline tag or autolink (whose brackets are not link text), an image or
-#: link opener, a closer followed by a destination, and a blank line (which ends any open link text).
-BRACKETS = re.compile(r"\\.|<[^<>\n]*>|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
+PIPE = re.compile(r"(?<!\\)\|")
+#: A GFM delimiter row; with a header line of as many cells above it, the rows below are a table's, whose
+#: cells are inline content of their own: a code span there pairs within its cell.
+DELIMITER = re.compile(r"^[ \t]*\|?(?:[ \t]*:?-+:?[ \t]*\|)*[ \t]*:?-+:?[ \t]*\|?[ \t]*$")
+
+#: An inline tag or autolink as CommonMark defines them (6.6, 6.5): an open or closing tag with valid
+#: attributes, or a scheme followed by a URL without spaces. Brackets inside one are not link text; any other
+#: `<...>`, such as `a < b ... c > d`, is text.
+ATTRIBUTE = r"""\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:[^\s"'=<>`]+|'[^'\n]*'|"[^"\n]*"))?"""
+INLINE_TAG = rf"<[A-Za-z][A-Za-z0-9-]*(?:{ATTRIBUTE})*\s*/?>|</[A-Za-z][A-Za-z0-9-]*\s*>|<[A-Za-z][A-Za-z0-9.+-]{{1,31}}:[^\s<>]*>"
+#: Tokens of link text: an escape, an inline tag or autolink, an image or link opener, a closer followed by a
+#: destination, and a blank line (which ends any open link text).
+BRACKETS = re.compile(rf"\\.|{INLINE_TAG}|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
 
 
-def _spaces(text: str) -> str:
-    return re.sub(r"[^\n]", " ", text)
-
-
-def _blank_spans(segment: str) -> str:
-    """Code spans blanked: a backtick run opens one when a later run of the same length closes it. A
-    backtick after an odd number of backslashes is literal. Linear: each run finds the next of its length once."""
+def _spans(line: str) -> tuple[str, bool]:
+    """The line with its code spans blanked, and whether a backtick run on it found no partner on it (CommonMark
+    may then pair it with a later line, so nothing after it is certain)."""
     runs = []
-    for m in TICKS.finditer(segment):
-        start = m.start(2) + len(m.group(1)) % 2
+    for m in TICKS.finditer(line):
+        start = m.start(2) + len(m.group(1)) % 2  # a backtick after an odd number of backslashes is literal
         if start < m.end(2):
             runs.append((start, m.end(2)))
     following: dict[int, int] = {}
     after = [-1] * len(runs)
-    for i in range(len(runs) - 1, -1, -1):
-        size = runs[i][1] - runs[i][0]
-        after[i] = following.get(size, -1)
-        following[size] = i
-    chars, i = list(segment), 0
+    for k in range(len(runs) - 1, -1, -1):  # the next run of each length, found once: linear
+        size = runs[k][1] - runs[k][0]
+        after[k] = following.get(size, -1)
+        following[size] = k
+    chars, i = list(line), 0
     while i < len(runs):
         j = after[i]
         if j < 0:
-            i += 1
-            continue
-        start, end = runs[i][0], runs[j][1]
-        chars[start:end] = _spaces(segment[start:end])
+            return "".join(chars), True
+        chars[runs[i][0] : runs[j][1]] = " " * (runs[j][1] - runs[i][0])
         i = j + 1
-    return "".join(chars)
+    return "".join(chars), False
+
+
+def _cells(line: str) -> list[str]:
+    cells = PIPE.split(line.strip())
+    return cells[1 if cells and not cells[0] else 0 : -1 if len(cells) > 1 and not cells[-1] else None]
+
+
+def _row(line: str) -> str:
+    """A table row with each cell's code spans blanked; an unpaired backtick in a cell is literal."""
+    return "|".join(_spans(cell)[0] for cell in PIPE.split(line))
 
 
 def blank_code(text: str) -> str:
-    """Markdown with fenced blocks and code spans replaced by spaces, newlines kept: code is shown, not fetched.
-
-    Code spans are paired only within one run of paragraph lines: a blank line, an HTML block, a fence, a
-    heading or setext underline, a thematic break, a list item or a block quote ends the run, and after a
-    GFM table's delimiter row each cell is a run of its own."""
+    """Markdown with what is certainly code replaced by spaces, newlines kept: code is shown, not fetched or
+    hidden."""
     lines = text.split("\n")
     out: list[str] = []
-    segment: list[str] = []
-
-    def flush() -> None:
-        if segment:
-            out.extend(_blank_spans("\n".join(segment)).split("\n"))
-            segment.clear()
-
-    table = False
-    for line, kind in zip(lines, classify(lines), strict=True):
-        table = table and kind == TEXT
-        if kind == TEXT and TABLE_DELIMITER.match(line):
-            header = segment.pop() if segment else None
-            flush()
-            if header is not None:
-                out.append("".join(_blank_spans(cell) for cell in CELL.split(header)))
-            table = True
-            out.append(line)
-        elif table:
-            out.append("".join(_blank_spans(cell) for cell in CELL.split(line)))
-        elif kind == TEXT and SINGLE.match(line):
-            flush()
-            out.append(_blank_spans(line))
-        elif kind == TEXT:
-            if BLOCK_START.match(line):
-                flush()
-            segment.append(line)
+    kinds = classify(lines)
+    unsure = table = before = False  # before: whether anything was unsure before the line above
+    for at, (line, kind) in enumerate(zip(lines, kinds, strict=True)):
+        if kind == CODE:
+            out.append(re.sub(r"[^\n]", " ", line))
+            continue
+        unsure, table = unsure and kind != BREAK, table and kind == TEXT
+        header = lines[at - 1] if at and kinds[at - 1] == TEXT else None
+        if kind == TEXT and "|" in line and DELIMITER.match(line) and header is not None:
+            table = len(_cells(header)) == len(_cells(line))
+            if table and not before:  # the header's backticks are its cells' own after all
+                out[-1], unsure = _row(header), False
+        before = unsure
+        if table:
+            out.append(_row(line))
+        elif kind == TEXT and not unsure and not PIPE.search(line):
+            blanked, unsure = _spans(line)
+            out.append(blanked)
         else:
-            flush()
-            out.append(_spaces(line) if kind == CODE else line)
-    flush()
+            unsure = unsure or "`" in line
+            out.append(line)
     return "\n".join(out)
 
 
