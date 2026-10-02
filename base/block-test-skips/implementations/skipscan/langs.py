@@ -41,10 +41,10 @@ RULES: dict[str, tuple[re.Pattern[str], tuple[str, ...]]] = {
     # Statement-initial calls and example metadata only: `:pending` and `skip:` elsewhere are ordinary Ruby.
     "ruby": (
         re.compile(
-            r"^\s*(?:RSpec\s*\.\s*)?(?:x(?:it|describe|context|specify|example|scenario|feature)"
-            r"|f(?:it|describe|context|specify|example|scenario|feature)|focus)\b(?!\s*(?:[-+*/|&]?=[^=>~]|<<|[.?!:]))"
-            r"|^\s*(?:skip|pending)\b(?!\s*(?:[-+*/|&]?=[^=>~]|<<|[.?!:)\]]))"
-            r"|^\s*(?:RSpec\s*\.\s*)?(?:it|specify|example|scenario|describe|context|feature)\b.*"
+            r"^\s*(?:(?:::)?RSpec\s*\.\s*)?(?:x(?:it|describe|context|specify|example|scenario|feature)"
+            r"|f(?:it|describe|context|specify|example|scenario|feature)|focus)\b(?!\s*(?:(?:\|\||&&|[-+*/|&])?=[^=>~]|[.?!:]))"
+            r"|^\s*(?:skip|pending)\b(?!\s*(?:(?:\|\||&&|[-+*/|&])?=[^=>~]|<<(?![~-]?['\"\w])|[.?!:)\]]))"
+            r"|^\s*(?:(?:::)?RSpec\s*\.\s*)?(?:it|specify|example|scenario|describe|context|feature)\b.*"
             r"(?:,\s*:(?:skip|pending|focus)\b|\b(?:skip|pending|focus):(?!\s*(?:false|nil)\b))"
         ),
         ("#",),

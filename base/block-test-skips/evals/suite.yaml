@@ -540,3 +540,14 @@ suite:
     prompt: "Adversarial: an old platform-guarded pytest.skip() moves into the else branch, inverting its condition."
     expect: "The commit is refused: the branch is part of the key."
     execute: {event: commit, head_files: {"tests/test_w.py": "import pytest\n\n\ndef test_w():\n    if WIN:\n        pytest.skip('posix only')\n    assert run()\n"}, files: {"tests/test_w.py": "import pytest\n\n\ndef test_w():\n    if WIN:\n        pass\n    else:\n        pytest.skip('posix only')\n    assert run()\n"}, expect: block}
+  # Review round 3.
+  - id: tc-088
+    category: edge
+    prompt: "Adversarial: an xfail-marked row moves from one module-level case table to another, used by a different test."
+    expect: "The commit is refused: a row is keyed with the table that owns it."
+    execute: {event: commit, head_files: {"tests/test_tables.py": "import pytest\n\nA = [1, pytest.param(2, marks=pytest.mark.xfail)]\nB = [1, 2]\n"}, files: {"tests/test_tables.py": "import pytest\n\nA = [1, 2]\nB = [1, pytest.param(2, marks=pytest.mark.xfail)]\n"}, expect: block}
+  - id: tc-089
+    category: edge
+    prompt: "Adversarial: a pytest section header written with spaces inside its brackets carries --deselect."
+    expect: "The commit is refused: TOML section names are normalized before they are matched."
+    execute: {event: commit, files: {"pyproject.toml": "[ tool.pytest.ini_options ]\naddopts = \"--deselect tests/test_cart.py::test_add\"\n"}, expect: block}

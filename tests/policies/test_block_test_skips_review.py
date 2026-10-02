@@ -220,4 +220,80 @@ def test_lines_split_as_python_reads_them_so_a_hidden_break_cannot_reuse_an_old_
 def test_a_marked_table_element_is_keyed_by_that_element() -> None:
     text = "import pytest\n\nCASES = [1, pytest.param(2,\n    marks=pytest.mark.xfail)]\n"
     (found,) = mod.findings({"event": "tool_use", "writes": {"tests/test_a.py": text}})
-    assert found["key"] == "test-skip||pytest.param(2, marks=pytest.mark.xfail)"
+    assert found["key"] == "test-skip||CASES :: pytest.param(2, marks=pytest.mark.xfail)"
+
+
+# Round 3 of the review.
+
+
+@pytest.mark.parametrize(
+    ("head", "after"),
+    [
+        (
+            "import pytest\n\nA = [1, pytest.param(2, marks=pytest.mark.xfail)]\nB = [1, 2]\n",
+            "import pytest\n\nA = [1, 2]\nB = [1, pytest.param(2, marks=pytest.mark.xfail)]\n",
+        ),
+        (
+            "import pytest\n\nROWS = [pytest.param(1, marks=[pytest.mark.skip]), pytest.param(2)]\n",
+            "import pytest\n\nROWS = [pytest.param(1), pytest.param(2, marks=[pytest.mark.skip])]\n",
+        ),
+        (
+            "import pytest\n\nWIN_ONLY = [pytest.mark.skipif(sys.platform != 'win32', reason='x')]\n",
+            "import pytest\n\npytestmark = [pytest.mark.skipif(sys.platform != 'win32', reason='x')]\n",
+        ),
+        (
+            "import pytest\n\nROWS = (pytest.param(1, marks=pytest.mark.skip),)\nOTHER = ()\n",
+            "import pytest\n\nROWS = ()\nOTHER = (pytest.param(1, marks=pytest.mark.skip),)\n",
+        ),
+        (
+            "import pytest\n\nROWS = [pytest.param(1, marks=pytest.mark.skip)]\n",
+            "import pytest\n\nROWS = [pytest.param(1, marks=pytest.mark.skip), pytest.param(1, marks=pytest.mark.skip)]\n",
+        ),
+    ],
+)
+def test_a_marked_row_moved_to_another_row_or_table_or_copied_is_new(tmp_path: Path, head: str, after: str) -> None:
+    assert engine(tmp_path, "tests/test_a.py", head, after) == 1
+
+
+def test_a_large_marked_table_is_judged_within_budget(tmp_path: Path) -> None:
+    rows = "".join(f"    pytest.param({n}, 'é' * {n}, marks=pytest.mark.xfail),\n" for n in range(600))
+    head = (
+        "import pytest\n\n\n@pytest.mark.parametrize(('n', 's'), [\n" + rows + "])\ndef test_n(n, s):\n    assert n\n"
+    )
+    started = time.monotonic()
+    assert engine(tmp_path, "tests/test_a.py", head, head.replace("    assert n\n", "    assert s is not None\n")) == 0
+    assert time.monotonic() - started < 25
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "found"),
+    [
+        ("pyproject.toml", '[ tool.pytest.ini_options ]\naddopts = "--deselect a"\n', [2]),
+        ("pyproject.toml", '[tool."pytest".ini_options]\naddopts = "--deselect a"\n', [2]),
+        ("src/a.test.js", "s.replace(/\\/*$/, '');\ntest.each([[1]]).skip('x', () => {});\n", [2]),
+        ("src/a.test.js", "const q = /`/;\nconst r = a / b / c;\ntest.each([[1]]).skip('x', () => {});\n", [3]),
+        ("src/a.test.js", "const q = /[/]\ntest.each([[1]]).skip('x', () => {});\n", [2]),
+        ("spec/a_spec.rb", "  skip <<~MSG\n    later\n  MSG\n", [1]),
+        ("spec/a_spec.rb", "  skip ||= 1\n", []),
+        ("spec/a_spec.rb", "::RSpec.describe User, :focus do\n", [1]),
+    ],
+)
+def test_round_three_forms(path: str, text: str, found: list[int]) -> None:
+    assert lines(path, text) == found
+
+
+@pytest.mark.parametrize(
+    ("text", "key"),
+    [
+        ("ROWS: list = [pytest.param(1, marks=pytest.mark.skip)]\n", "ROWS :: pytest.param(1, marks=pytest.mark.skip)"),
+        ("ROWS += [pytest.param(1, marks=pytest.mark.skip)]\n", "ROWS :: pytest.param(1, marks=pytest.mark.skip)"),
+        ("run([pytest.param(1, marks=pytest.mark.skip)])\n", "Expr :: pytest.param(1, marks=pytest.mark.skip)"),
+        (
+            "@pytest.mark.parametrize('n', [pytest.param(\n    1, marks=pytest.mark.skip)])\ndef test_n(n):\n    pass\n",
+            "test-skip|test_n|pytest.mark.parametrize('n') :: pytest.param( 1, marks=pytest.mark.skip)",
+        ),
+    ],
+)
+def test_a_row_is_named_with_what_owns_its_table(text: str, key: str) -> None:
+    (found,) = mod.findings({"event": "tool_use", "writes": {"tests/test_a.py": "import pytest\n" + text}})
+    assert found["key"].endswith(key)

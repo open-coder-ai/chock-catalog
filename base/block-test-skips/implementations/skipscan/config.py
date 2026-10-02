@@ -14,7 +14,7 @@ JEST_FILE = re.compile(r"^(?:jest\.config(?:\.[\w-]+)*\.[cm]?[jt]s(?:on)?|packag
 #: `--deselect`, `--ignore`/`--ignore-glob` (not `--ignore-installed`), and `-k` (`-vk` too) with a `not`.
 OPTIONS = re.compile(r"(?<![\w-])--(?:deselect|ignore(?:-glob)?)(?![\w-])|(?<![\w-])-[A-Za-z]*k\b.*\bnot\b")
 #: A section header, `[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`, `[testenv]`.
-SECTION = re.compile(r"^\[{1,2}([\w.:\- ]+)\]{1,2}\s*(?:[#;].*)?$")
+SECTION = re.compile(r"^\[{1,2}([\w.:\- \"']+)\]{1,2}\s*(?:[#;].*)?$")
 #: Outside a pytest section only a line that runs pytest counts, so `flake8 --ignore=E501` is not judged.
 #: `PYTEST_ADDOPTS` set from tox `setenv` or hatch `env-vars` counts too, by the same word.
 RUNS_PYTEST = re.compile(r"\bpy\.?test\b|\bPYTEST_ADDOPTS\b", re.IGNORECASE)
@@ -50,7 +50,8 @@ def _pytest_hits(text: str) -> list[tuple[int, str, str | None]]:
     section = ""
     for number, line in enumerate(split_lines(text, PY_BREAK), 1):
         if header := SECTION.match(line):
-            section = header.group(1)
+            # TOML allows `[ tool.pytest.ini_options ]` and `[tool."pytest".ini_options]`; pytest honours both.
+            section = re.sub(r"\s*([.:])\s*", r"\1", header.group(1).strip()).replace('"', "").replace("'", "")
             continue
         code = _code(line)
         if OPTIONS.search(code) and (PYTEST_SECTION.match(section) or RUNS_PYTEST.search(code)):

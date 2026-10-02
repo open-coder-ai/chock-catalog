@@ -31,6 +31,25 @@ def line_index(text: str, breaks: re.Pattern[str] = ANY_BREAK) -> Callable[[int]
     return lambda offset: bisect_right(ends, offset) + 1
 
 
+#: What may precede a regex literal rather than a division: an operator, an opener, or a line start.
+REGEX_BEFORE = re.compile(r"(?:^|[(,=:\[!&|?{};+\-*%<>~^])[ \t]*\Z", re.MULTILINE)
+
+
+def _regex_end(text: str, start: int) -> int:
+    """The index past a regex literal's closing slash, skipping escapes and `[...]` classes; its line ends it."""
+    index, in_class = start + 1, False
+    while index < len(text) and text[index] not in "\r\n\u2028\u2029":
+        char = text[index]
+        if char == "\\":
+            index += 2
+            continue
+        if char == "/" and not in_class:
+            return index + 1
+        in_class = (in_class or char == "[") and char != "]"
+        index += 1
+    return index + 1
+
+
 def blank_code(text: str) -> str:
     """Comments and string contents turned to spaces, offsets and breaks kept, so a scan sees code only."""
     out = list(text)
@@ -48,6 +67,11 @@ def blank_code(text: str) -> str:
             close = text.find("*/", index + 2)
             start, end = index, len(text) if close < 0 else close + 2
             index = end
+        elif text[index] == "/" and REGEX_BEFORE.search(text, max(0, index - 80), index):
+            # A JS regex literal (`/\/*$/`, ``/`/``): its slashes, quotes and backticks are not code either.
+            start, end = index + 1, _regex_end(text, index)
+            index = end
+            end -= 1
         else:
             index += 1
             continue

@@ -78,7 +78,7 @@ def findings(payload: dict) -> list[dict]:
             continue
         lines = split_lines(text, breaks_for(kind))
         scope = scopes_for(norm, text)
-        for number, rule, detail in sorted(set(hits_of(kind, text)), key=lambda hit: (hit[0], hit[1], hit[2] or "")):
+        for number, rule, detail in sorted(hits_of(kind, text), key=lambda hit: (hit[0], hit[1], hit[2] or "")):
             line = lines[number - 1]
             if waive and WAIVER.search(line):
                 continue
