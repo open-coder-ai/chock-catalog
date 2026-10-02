@@ -40,7 +40,8 @@ def test_package_lock_v2_reads_packages_and_skips_links_and_bundles() -> None:
     )
     got = {e.ident: e for e in npm.package_lock(text)}
     # a root-level bundle is still fetched by npm; only one shipped inside a dependency's tarball is skipped
-    assert set(got) == {"left-pad@1.3.0", "deep@2.0.0", "real@1.0.0", "bundled@1.0.0"}
+    # a `name` field the parent never declared as an npm: alias does not rename the folder's package
+    assert set(got) == {"left-pad@1.3.0", "deep@2.0.0", "alias@1.0.0", "bundled@1.0.0"}
     assert got["left-pad@1.3.0"].transitive is False
     assert got["deep@2.0.0"].transitive is True
     assert got["deep@2.0.0"].install is True
@@ -307,3 +308,48 @@ def test_pnpm_lock_v5_keys_and_root_dependencies() -> None:
 def test_pnpm_lock_refuses_what_it_cannot_read(text: str, why: str) -> None:
     with pytest.raises(LockError, match=why):
         pnpm.pnpm_lock(text)
+
+
+def test_an_npm_name_field_counts_only_for_a_declared_alias() -> None:
+    evil = "https://registry.npmjs.org/evil-pad/-/evil-pad-1.3.1.tgz"
+    forged = npm_lock({"left-pad": {**pkg("left-pad", "1.3.1", resolved=evil), "name": "evil-pad"}})
+    assert rules_of("package-lock.json", forged) == [model.SOURCE]
+    packages = {
+        "": {"dependencies": {"left-pad": "npm:real-pad@^1.0.0"}},
+        "node_modules/left-pad": {**pkg("real-pad", "1.0.0"), "name": "real-pad"},
+        "node_modules/a": {**pkg("a", "1.0.0"), "dependencies": {"b": "npm:real-b@^1"}},
+        "node_modules/a/node_modules/b": {**pkg("real-b", "1.0.0"), "name": "real-b"},
+        "node_modules/c": {**pkg("c", "1.0.0"), "name": "c"},
+        "node_modules/d": {**pkg("real-d", "1.0.0"), "name": "real-d"},
+        "node_modules/e": {**pkg("e", "1.0.0"), "name": 5},
+    }
+    text = json.dumps({"lockfileVersion": 3, "packages": packages})
+    got = [e.name for e in npm.package_lock(text)]
+    assert got == ["real-pad", "a", "real-b", "c", "d", "e"]
+    assert rules_of("package-lock.json", text) == [model.SOURCE]  # d's URL is another package's
+    orphan = json.dumps({"packages": {"x/node_modules/y": {**pkg("z", "1.0.0"), "name": "z"}, "x": 1}})
+    with pytest.raises(model.LockError):
+        npm.package_lock(orphan)
+
+
+@pytest.mark.parametrize(
+    ("resolution", "pinned", "git"),
+    [
+        (f"a@https://github.com/x/a.git#commit={SHA40}", True, True),
+        ("a@https://github.com/x/a.git#head=main", False, True),
+        (f"a@https://github.com/x/a#commit={SHA40}x", False, True),
+        ("a@https://github.com/x/a#tag=v1", False, True),
+        ("a@git+ssh://git@github.com/x/a.git#commit=main", False, False),
+        ("a@https://cdn.example/a.tgz", True, False),
+    ],
+)
+def test_berry_reads_git_references_and_their_pins(resolution: str, pinned: bool, git: bool) -> None:
+    text = f'__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"a":\n  version: 1.0.0\n  resolution: "{resolution}"\n'
+    (entry,) = yarn.yarn_lock(text)
+    assert (entry.pinned, entry.git) == (pinned, git)
+
+
+def test_berry_refuses_a_checksum_under_another_cache_key() -> None:
+    text = f'__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"a@npm:1":\n  version: 1.0.0\n  resolution: "a@npm:1.0.0"\n  checksum: 9/{"c" * 64}\n'
+    with pytest.raises(model.LockError, match="cache key"):
+        yarn.yarn_lock(text)

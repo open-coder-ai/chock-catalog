@@ -782,9 +782,9 @@ suite:
         package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/evil-pad/-/evil-pad-6.6.6.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA== sha512-QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ==\"\n    }\n  }\n}\n"
       expect: block
   - id: tc-053
-    category: negative_trigger
+    category: behavior
     prompt: A yarn upgrade rewrites yarn.lock with a new cache key, recomputing every checksum.
-    expect: 'Allowed: checksums under different cache keys are not compared.'
+    expect: 'Asks once for the whole lock, not a block per package: checksums under different cache keys cannot be compared, so a person confirms the upgrade.'
     execute:
       event: commit
       head_files:
@@ -793,7 +793,7 @@ suite:
       files:
         package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"x\": \"1\"\n  }\n}\n"
         yarn.lock: "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n\"left-pad@npm:^1.3.0\":\n  version: 1.3.0\n  resolution: \"left-pad@npm:1.3.0\"\n  checksum: 10c0/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n  languageName: node\n  linkType: hard\n"
-      expect: allow
+      expect: ask
   - id: tc-054
     category: negative_trigger
     prompt: A commit bumps a Go module; go mod tidy replaces the old version's go.sum lines.
@@ -847,3 +847,79 @@ suite:
 
           '
       expect: allow
+  - id: tc-056
+    category: adversarial
+    prompt: A lock entry under node_modules/left-pad claims name evil-pad and resolves evil-pad's registry tarball.
+    expect: 'Blocked: a name field counts only for an npm: alias the parent declares, so the URL is another package''s.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.1\",\n      \"resolved\": \"https://registry.npmjs.org/evil-pad/-/evil-pad-1.3.1.tgz\",\n      \"integrity\": \"sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==\",\n      \"name\": \"evil-pad\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-057
+    category: adversarial
+    prompt: A Berry yarn.lock adds a git dependency on an allowlisted host that follows a branch head.
+    expect: 'Blocked: a git source must be pinned with #commit=<full id>.'
+    execute:
+      event: commit
+      head_files:
+        .chock/registry-allowlist.txt: 'github.com
+
+          '
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\"\n  }\n}\n"
+        yarn.lock: "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n\"left-pad@https://github.com/a/left-pad.git#head=main\":\n  version: 1.3.0\n  resolution: \"left-pad@https://github.com/a/left-pad.git#head=main\"\n"
+      expect: block
+  - id: tc-058
+    category: behavior
+    prompt: A uv.lock keeps idna 3.7 but swaps its sha256 for a sha512 hash.
+    expect: 'Asks: every old hash of a locked version was dropped for one under another algorithm.'
+    execute:
+      event: commit
+      head_files:
+        pyproject.toml: '[project]
+
+          name = "app"
+
+          dependencies = ["idna"]
+
+          '
+        uv.lock: 'version = 1
+
+
+          [[package]]
+
+          name = "idna"
+
+          version = "3.7"
+
+          source = { registry = "https://pypi.org/simple" }
+
+          sdist = { url = "https://files.pythonhosted.org/idna-3.7.tar.gz", hash = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+
+          '
+      files:
+        pyproject.toml: '[project]
+
+          name = "app"
+
+          dependencies = ["idna", "x"]
+
+          '
+        uv.lock: 'version = 1
+
+
+          [[package]]
+
+          name = "idna"
+
+          version = "3.7"
+
+          source = { registry = "https://pypi.org/simple" }
+
+          sdist = { url = "https://files.pythonhosted.org/idna-3.7.tar.gz", hash = "sha512:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }
+
+          '
+      expect: ask

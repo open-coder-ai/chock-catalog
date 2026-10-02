@@ -13,6 +13,7 @@ from lockscan.model import (
     CHANGED,
     INSTALL,
     MISSING,
+    REKEYED,
     REMOVED,
     SOURCE,
     UNPARSEABLE,
@@ -134,11 +135,20 @@ def delta_findings(path: str, entries: list[Entry], base: list[Entry]) -> list[F
     """Hashes replaced for a package@version the baseline already locked, and (go.sum) modules dropped."""
     found = []
     now, before = _hashes(entries), _hashes(base)
+    rekeyed = []
     for ident, (hashes, line, eco) in now.items():
         old = before.get(ident, (set(), 0, eco))[0]
         if replaced(old, hashes, strict=eco not in LOOSE_ECOS):
             message = f"{ident} was already locked with a different hash: the same version must keep its hash"
             found.append(Finding(CHANGED, f"{CHANGED}|{ident}|{digest(' '.join(sorted(hashes)))}", path, line, message))
+        elif old and hashes and not _by_algo(old).keys() & _by_algo(hashes).keys():
+            rekeyed.append((ident, line, hashes))
+    if rekeyed:
+        # every old hash dropped for one under another algorithm or cache key: an upgrade, or a way past the compare
+        ident, line, _ = rekeyed[0]
+        message = f"{len(rekeyed)} locked version(s) re-hashed under another algorithm or cache key (first: {ident})"
+        key = digest(" ".join(f"{i}={sorted(h)}" for i, _, h in rekeyed))
+        found.append(Finding(REKEYED, f"{REKEYED}|{key}", path, line, message + ": confirm the upgrade"))
     # go mod tidy drops an old version's lines on every upgrade; a module gone at every version is worth a look
     gone = sorted({e.name for e in base} - {e.name for e in entries})
     if gone and PurePosixPath(path).name.lower() in REMOVAL_READERS:

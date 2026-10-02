@@ -192,6 +192,12 @@ def test_an_agent_may_not_widen_the_registry_allowlist(repo: Path) -> None:
     assert found(repo, allow, "tool_use") == [model.ALLOWLIST_EDIT]
     assert found(repo, {"sub/.chock/Registry-Allowlist.txt": "x\n"}, "agent-commit") == [model.ALLOWLIST_EDIT]
     assert found(repo, allow, "commit") == []  # a person's commit
+    for spelling in (
+        ".chock/./registry-allowlist.txt",
+        ".chock//registry-allowlist.txt",
+        " .Chock/registry-allowlist.txt ",
+    ):
+        assert found(repo, {spelling: "x\n"}, "tool_use") == [model.ALLOWLIST_EDIT]
     scriptkit.write(repo, allow)
     scriptkit.git(repo, "add", "-A")
     scriptkit.git(repo, "commit", "-qm", "reviewed host")

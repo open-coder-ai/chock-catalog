@@ -169,6 +169,11 @@ def test_delta_findings_catch_replaced_hashes_and_dropped_go_modules() -> None:
     assert "c" in got[1].message
     assert [f.rule for f in rules.delta_findings("Cargo.lock", now, before)] == [model.CHANGED]
     assert rules.delta_findings("go.sum", before, before) == []
+    rekeyed = [E("a", "1", 1, integrity=("sha512:" + "e" * 128,)), E("b", "1", 2, integrity=("y",))]
+    old = [E("a", "1", 1, integrity=("sha256:" + "b" * 64,)), E("b", "1", 2, integrity=("y",))]
+    got = rules.delta_findings("uv.lock", rekeyed, old)
+    assert [(f.rule, f.tier) for f in got] == [(model.REKEYED, model.ASK)]
+    assert "a@1" in got[0].message
     bumped = [E("c", "2", 3, integrity=("w",)), *before[:2]]
     assert rules.delta_findings("go.sum", bumped, before) == []  # go mod tidy drops an old version's lines
 

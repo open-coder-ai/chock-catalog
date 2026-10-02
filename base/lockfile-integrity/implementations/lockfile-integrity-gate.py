@@ -11,6 +11,7 @@ and in CI it cannot name the range base, so it reports per-file findings keyed f
 from __future__ import annotations
 
 import json
+import posixpath
 import shutil
 import subprocess
 import sys
@@ -91,7 +92,9 @@ class Judge:
 
 
 def is_allowlist(path: str) -> bool:
-    return path.lower() == ALLOWLIST or path.lower().endswith("/" + ALLOWLIST)
+    """The allowlist under any spelling of its path: case, `./`, `//` and surrounding blanks do not hide it."""
+    norm = posixpath.normpath(path.strip()).lower()
+    return norm == ALLOWLIST or norm.endswith("/" + ALLOWLIST)
 
 
 def allowlist_edit(path: str, text: str) -> Finding:

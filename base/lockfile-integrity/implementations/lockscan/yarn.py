@@ -7,7 +7,7 @@ import re
 
 from chock_scan import yamlpath
 
-from lockscan.model import COMMIT, Entry, LockError, https, split_spec, sri
+from lockscan.model import Entry, LockError, https, split_spec, sri
 
 MAX_CHARS = 1 << 26
 MAX_NODES = 5_000_000
@@ -17,6 +17,9 @@ FOLDER = ("link:", "workspace:", "portal:")
 TARBALLS = (".tgz", ".tar.gz", ".tar")
 BERRY_LOCAL = ("workspace:", "link:", "portal:")
 ARCHIVE_URL = "__archiveUrl"
+#: A Berry git reference: a .git path or a #commit=/#head=/#tag=/#semver= selector; pinned only by #commit=<id>.
+BERRY_GIT = re.compile(r"\.git(?:[#?]|$)|#(?:commit|head|tag|semver)=")
+BERRY_COMMIT = re.compile(r"#commit=(?:[0-9a-f]{40}|[0-9a-f]{64})(?:&|$)")
 PERCENT = re.compile(r"%([0-9A-Fa-f]{2})")
 #: Classic: a field is indented two spaces, a nested map's entries four. Berry: (entry, field) paths.
 FIELD, NESTED, BERRY_FIELD = 2, 4, 2
@@ -155,8 +158,13 @@ def _berry_entry(fields: dict[str, str], line: int, cache: str) -> Entry | None:
     if local:
         return None
     checksum = fields.get("checksum", "")
-    if checksum and "/" not in checksum:
+    prefix, slash, _ = checksum.rpartition("/")
+    if slash and prefix != cache:
+        msg = f"{name}: a checksum under cache key {prefix!r} in a lock whose cache key is {cache!r}"
+        raise LockError(msg)
+    if checksum and not slash:
         checksum = f"{cache}/{checksum}"  # the cache key decides how a checksum is computed; compare like with like
+    git = bool(source) and (source.startswith(("git", "github:")) or bool(BERRY_GIT.search(source)))
     return Entry(
         name=name,
         version=fields.get("version", ""),
@@ -165,5 +173,6 @@ def _berry_entry(fields: dict[str, str], line: int, cache: str) -> Entry | None:
         eco="npm",
         integrity=(f"berry{checksum}",) if checksum else (),
         expect=registry,
-        pinned=not (source or "").startswith(("git", "github:")) or bool(COMMIT.search(source or "")),
+        git=git and source.startswith(("https://", "git+https://")),
+        pinned=not git or bool(BERRY_COMMIT.search(source)),
     )

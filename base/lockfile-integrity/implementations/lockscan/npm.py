@@ -74,11 +74,27 @@ def _v2(lines: Lines, packages: dict) -> list[Entry]:
         nested = key.count(MODULES) > 1
         if MODULES not in key or raw.get("link") is True or (raw.get("inBundle") is True and nested):
             continue  # the root, a workspace folder, a symlink, or a package shipped inside a dependency's tarball
-        name = raw.get("name") if isinstance(raw.get("name"), str) else key.rsplit(MODULES, 1)[1]
-        transitive = nested or name not in direct
+        name = _installed_name(packages, key, raw)
+        transitive = nested or key.rsplit(MODULES, 1)[1] not in direct
         line = lines(json.dumps(key))
         found.append(_source_entry(name, str(raw.get("version", "")), raw, line, transitive=transitive))
     return found
+
+
+def _installed_name(packages: dict, key: str, raw: dict) -> str:
+    """The package a node_modules folder holds: its folder name, unless its parent declares it an npm: alias.
+
+    A `name` field alone does not count: npm installs whatever the lock resolves, so a forged name would let a
+    registry URL for another package pass as this one's.
+    """
+    parent, _, folder = key.rpartition(MODULES)
+    declared = packages.get(parent.removesuffix("/"), {})
+    named = raw.get("name")
+    if not isinstance(named, str) or named == folder or not isinstance(declared, dict):
+        return folder
+    specs = [(declared.get(k) or {}).get(folder) for k in DIRECT_KEYS if isinstance(declared.get(k), dict)]
+    aliased = any(isinstance(spec, str) and spec.startswith(f"npm:{named}@") for spec in specs)
+    return named if aliased else folder
 
 
 def _v1(lines: Lines, deps: object, depth: int) -> list[Entry]:

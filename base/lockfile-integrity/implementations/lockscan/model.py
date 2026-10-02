@@ -21,6 +21,7 @@ MANIFEST_ONLY = "manifest-without-lock"
 DELETED = "lock-deleted"
 IGNORED = "lock-ignored"
 ALLOWLIST_EDIT = "lock-allowlist-edited"
+REKEYED = "lock-integrity-rekeyed"
 
 TIERS = {
     UNPARSEABLE: BLOCK,
@@ -31,6 +32,7 @@ TIERS = {
     ALLOWLIST_EDIT: BLOCK,
     WEAK: ASK,
     INSTALL: ASK,
+    REKEYED: ASK,
     REMOVED: ASK,
     LOCK_ONLY: ASK,
     MANIFEST_ONLY: ASK,
