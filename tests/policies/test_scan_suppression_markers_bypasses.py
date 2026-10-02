@@ -267,3 +267,23 @@ def test_long_files_and_deep_nesting_are_judged_in_linear_time(path: str, text: 
     started = time.monotonic()
     mod.file_findings(path, text)
     assert time.monotonic() - started < 5
+
+
+FIFTH_ROUND = {
+    "semgrep marker with a long s": ("a.py", "call(cmd, shell=True)  # no" + chr(0x17F) + "em" + "grep\n"),
+    "gosec disable directive": ("m.go", "x := md5.New() //go" + "sec:disable G401\n"),
+    "checkov cortex skip": ("a.tf", "# cor" + "tex:skip=CKV_AWS_18:x\n"),
+    "a security code 600 characters into a noqa list": ("a.py", "x  # no" + "qa: " + "E501, " * 100 + "S603\n"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FIFTH_ROUND))
+def test_the_fifth_review_cases_ask(case: str) -> None:
+    assert mod.file_findings(*FIFTH_ROUND[case]), case
+
+
+def test_a_long_eslint_config_rule_run_is_judged_in_linear_time() -> None:
+    chunk = "/*es" + "lint " + "xss/" * 75
+    started = time.monotonic()
+    mod.file_findings("a.js", (chunk * (2000000 // len(chunk) + 1))[:2000000])
+    assert time.monotonic() - started < 5

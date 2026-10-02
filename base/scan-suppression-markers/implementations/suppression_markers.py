@@ -26,7 +26,7 @@ _ESLINT_DIRECTIVE = re.compile(r"\s*eslint(?:-disable\b|\s|$)")
 _ESLINT_RULE = re.compile(_ESLINT_SEC)
 _I = re.IGNORECASE
 #: How far past its anchor a rule looks for the rule id or code that makes it a security one.
-WINDOW = 300
+WINDOW = 1000
 
 #: (rule id, prefilter word, anchor, tail, flags, opener needed before the anchor). A rule with a
 #: tail matches when the tail is found within WINDOW characters after an anchor, and before the next
@@ -34,6 +34,7 @@ WINDOW = 300
 #: matches names its finding.
 _TABLE: tuple[tuple[str, str, str, str | None, int, re.Pattern[str] | None], ...] = (
     ("nosec", "nosec", r"(?:#|//|/\*|--|<!--)[^\S\n]{0,40}(?:#[^\S\n]{0,40})?n[o]sec\b", None, _I, None),
+    ("gosec-disable", "gosec", r"//\s*g[o]sec:disable\b", None, 0, None),
     # Ruff and flake8-bandit codes are S###; S101 (assert) is test hygiene, not a security finding.
     (
         "noqa-security",
@@ -52,11 +53,11 @@ _TABLE: tuple[tuple[str, str, str, str | None, int, re.Pattern[str] | None], ...
         "eslint-config-off",
         "eslint",
         r"/\*\s*e[s]lint\s",
-        _ESLINT_SEC + r"[\w/-]*[\"']?\s*:\s*\[?\s*[\"']?(?:of[f]|0)\b",
+        _ESLINT_SEC + r"[\w/-]*+[\"']?\s*:\s*\[?\s*[\"']?(?:of[f]|0)\b",
         0,
         None,
     ),
-    ("checkov-skip", "checkov", r"\b(?:checkov|bridgecrew)\s*:\s*s[k]ip\b", None, _I, _OPENER),
+    ("checkov-skip", "checkov", r"\b(?:checkov|bridgecrew|cortex)\s*:\s*s[k]ip\b", None, _I, _OPENER),
     ("checkov-annotation", "checkov", r"\bcheckov\.io/s[k]ip\d*\s*:", None, _I, None),
     ("tfsec-trivy-ignore", "tfsec", r"\b(?:tfsec|trivy)\s*:\s*i[g]nore\b", None, _I, _OPENER),
     ("kics-ignore", "kics", r"\bkics-scan\s+(?:i[g]nore|disable)", None, _I, _OPENER),
@@ -114,9 +115,10 @@ _COMPILED = tuple(
     (rule, word, re.compile(anchor, flags), re.compile(tail, flags) if tail else None, opener)
     for rule, word, anchor, tail, flags, opener in _TABLE
 )
-#: The lowercase words the rules contain (written split, so this file holds none whole), each mapped
-#: to the rules' word key. One case-sensitive literal search over the lowercased line says which
-#: rules can match it: far faster than a case-insensitive search, and a line with none is skipped.
+#: The case-folded words the rules contain (written split, so this file holds none whole), each mapped
+#: to the rules' word key. One case-sensitive literal search over the case-folded line says which rules
+#: can match it: far faster than a case-insensitive search, and a line with none is skipped. Case
+#: folding, not lower(), so a long s or other folded spelling a scanner's caseless match accepts counts.
 _WORDS = {
     "no" + "sec": "nosec",
     "no" + "qa": "noqa",
@@ -126,6 +128,8 @@ _WORDS = {
     "es" + "lint": "eslint",
     "che" + "ckov": "checkov",
     "bridge" + "crew": "checkov",
+    "cor" + "tex:": "checkov",
+    "go" + "sec:": "gosec",
     "tf" + "sec": "tfsec",
     "tri" + "vy": "tfsec",
     "ki" + "cs": "kics",
@@ -149,7 +153,7 @@ PREFILTER = re.compile("|".join(map(re.escape, sorted(_WORDS, key=len, reverse=T
 
 def has_marker_word(text: str) -> bool:
     """Whether any rule could match somewhere in `text`."""
-    return bool(PREFILTER.search(text.lower()))
+    return bool(PREFILTER.search(text.casefold()))
 
 
 #: The markers a secret scanner honours in any file it reads, prose included.
@@ -176,7 +180,7 @@ def _hit(line: str, anchor: re.Pattern[str], tail: re.Pattern[str] | None, opene
 
 def marker_rule(line: str) -> str | None:
     """The rule a line's suppression marker breaks, or None when it carries none."""
-    words = {_WORDS[found.group()] for found in PREFILTER.finditer(line.lower())}
+    words = {_WORDS[found.group()] for found in PREFILTER.finditer(line.casefold())}
     if not words:
         return None
     first: dict[re.Pattern[str], int] = {}
