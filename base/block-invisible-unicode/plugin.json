@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-invisible-unicode",
-  "version": "0.0.5",
-  "description": "Blocks bidi override/embed/isolate controls (U+202A-202E, U+2066-2069; Trojan Source, CVE-2021-42574) and Unicode tag characters (U+E0001-E007F), which smuggle instructions. NOT matched: ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ, LRM/RLM. Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist invisible-unicode' same line. Person's commit: honoured. Agent: only if that line is already in HEAD; MCP gateway: never. Agent asks a person.",
+  "version": "0.1.0",
+  "description": "Blocks invisible Unicode in added lines: bidi controls (CVE-2021-42574), tag chars U+E0000-E007F, zero-width/joiners beside ASCII or in runs, mid-line BOM, variation-selector runs or after ASCII letters, private-use runs of 3+, noncharacters. Allows emoji ZWJ, RTL/Indic/Thai text, line-start BOM. Not caught: homoglyphs, LRM/RLM in prose, U+2028. Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist invisible-unicode' same line; agent: only if in HEAD; MCP gateway: never.",
   "author": {
     "name": "chock-core"
   },
