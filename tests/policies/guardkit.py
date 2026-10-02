@@ -11,7 +11,7 @@ from trees import ROOT
 
 SHELLPARSE = "chock_shellparse"
 DESTRUCTIVE = "chock_destructive"
-SHARED = (SHELLPARSE, DESTRUCTIVE)
+SHIPPED_LIBS = (SHELLPARSE, DESTRUCTIVE, "chock_scan")
 
 
 def impl_dir(policy: str) -> Path:
@@ -26,11 +26,11 @@ def policies_with_shellparse() -> list[str]:
 
 
 def _forget() -> dict[str, ModuleType]:
-    return {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] in SHARED}
+    return {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] in SHIPPED_LIBS}
 
 
 def forget_shellparse() -> None:
-    """Drop any chock_shellparse or chock_destructive a script imported, so the next guard load starts clean."""
+    """Drop any chock_shellparse, chock_destructive or chock_scan a script imported, so the next guard load starts clean."""
     _forget()
 
 

@@ -160,12 +160,13 @@ block-unapproved-egress:
     This blocks the obvious reflex -- a network client that uploads a body to a host you
     have not allowlisted -- so the easy path costs the adversary a visible allowlist edit.
   customise: >
-    The allowlist IS the policy. `ALLOWED_HOSTS` ships with package registries and code
-    hosting; add your org's own upload targets (log sinks, artifact stores, internal APIs).
-    Be honest about the ceiling: this is a tool-time floor, not a network sandbox. Combined
-    short flags, obfuscated payloads, non-standard clients and egress via a language runtime
-    all remain reachable -- containing a determined adversary needs real sandboxing, and a
-    reviewed exception rides in the diff via `pragma: allowlist egress` on the line.
+    The allowlist IS the policy. It ships as a default list of package and container
+    registries; to change it, a person writes `.chock/egress-allowlist.txt` (one host per
+    line, `*.example.com` for subdomains), which replaces the default whole. A broken file
+    refuses every upload until it is fixed. Be honest about the ceiling: this is a tool-time
+    floor, not a network sandbox. Non-standard clients, pipes into raw sockets and egress via
+    a language runtime remain reachable -- containing a determined adversary needs real
+    sandboxing -- and no pragma passes a command: ask the person to run it.
 
 block-unpinned-agent-components:
   solves: >
