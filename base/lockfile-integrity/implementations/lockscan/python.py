@@ -44,7 +44,7 @@ def poetry_lock(text: str) -> list[Entry]:
         kind = str(source.get("type", ""))
         if kind in LOCAL_SOURCES:
             continue
-        files = pkg.get("files", legacy.get(name, []))
+        files = pkg.get("files", legacy.get(name, legacy.get(name.lower(), [])))
         hashes = [f.get("hash") for f in files if isinstance(f, dict)] if isinstance(files, list) else []
         integrity, weak = prefixed(hashes)
         git = kind == "git"
@@ -70,8 +70,8 @@ def uv_lock(text: str) -> list[Entry]:
     found = []
     for pkg in _packages(document):
         source = pkg.get("source") if isinstance(pkg.get("source"), dict) else {}
-        if not source or LOCAL_SOURCES & source.keys():
-            continue  # the project itself, a workspace member or a folder
+        if LOCAL_SOURCES & source.keys():
+            continue  # the project itself, a workspace member or a folder; no source at all is judged as no URL
         files = [pkg.get("sdist")] + (pkg.get("wheels") if isinstance(pkg.get("wheels"), list) else [])
         files = [f for f in files if isinstance(f, dict)]
         integrity, weak = prefixed([f.get("hash") for f in files])
@@ -81,7 +81,16 @@ def uv_lock(text: str) -> list[Entry]:
         line = lines(f'name = "{name}"')
         found.append(
             Entry(
-                name, str(pkg.get("version", "")), line, url, "pypi", integrity, not git, weak, git, _fragment_pin(url)
+                name,
+                str(pkg.get("version", "")),
+                line,
+                url,
+                "pypi",
+                integrity,
+                not git,
+                weak,
+                git,
+                not git or _fragment_pin(url),
             )
         )
         # Each download URL is judged too: a registry entry can still name an archive on another host.

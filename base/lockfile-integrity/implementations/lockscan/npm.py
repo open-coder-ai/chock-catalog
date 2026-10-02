@@ -32,13 +32,16 @@ def _object(text: str) -> dict:
 
 def _source_entry(name: str, version: str, raw: dict, line: int, *, transitive: bool) -> Entry:
     resolved = raw.get("resolved")
+    if resolved is not None and not isinstance(resolved, str):
+        msg = f"{name}: 'resolved' is not a string"
+        raise LockError(msg)
     integrity, weak = sri(raw.get("integrity"))
-    registry = resolved is None or (isinstance(resolved, str) and resolved.startswith("https://"))
+    registry = resolved is None or resolved.startswith("https://")
     return Entry(
         name=name,
         version=version,
         line=line,
-        source=resolved if isinstance(resolved, str) else None,
+        source=resolved,
         eco="npm",
         integrity=integrity,
         expect=registry,
@@ -102,10 +105,14 @@ def _folder(version: str) -> bool:
 
 def bun_lock(text: str) -> list[Entry]:
     try:
-        document = jsonc.loads(text, limit=MAX_CHARS).value
+        loaded = jsonc.loads(text, limit=MAX_CHARS)
     except jsonc.JsoncError as exc:
         msg = f"not valid JSONC ({exc})"
         raise LockError(msg) from exc
+    if loaded.duplicates:
+        msg = f"a key given twice ({loaded.duplicates[0].path}), so one value hides the other"
+        raise LockError(msg)
+    document = loaded.value
     packages = document.get("packages") if isinstance(document, dict) else None
     if not isinstance(packages, dict):
         msg = "no 'packages' object"
@@ -123,9 +130,8 @@ def bun_lock(text: str) -> list[Entry]:
 
 
 def _bun_entry(name: str, version: str, raw: list, line: int) -> Entry:
-    if ":" in version.split("#", 1)[0]:
-        # npm:alias@x is still the registry; anything else with a protocol (github:, git+ssh:, https:, file:) is not.
-        source = None if version.startswith("npm:") else version
+    if ":" in version.split("#", 1)[0] and not version.startswith("npm:"):
+        source = version  # a protocol other than an npm alias (github:, git+ssh:, https:, file:) is not the registry
     else:
         source = raw[1] if len(raw) > 1 and isinstance(raw[1], str) and raw[1] else None
     integrity, weak = sri(raw[INTEGRITY_AT] if len(raw) > INTEGRITY_AT else None)

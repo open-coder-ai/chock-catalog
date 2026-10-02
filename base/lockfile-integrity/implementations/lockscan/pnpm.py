@@ -53,10 +53,11 @@ def _direct(path: tuple[str | int, ...]) -> bool:
 def _ident(key: str) -> tuple[str, str]:
     """(name, version) of a packages key: '/name/1.0.0' (v5), '/name@1.0.0' (v6), 'name@1.0.0(peer@2)' (v9)."""
     bare = key.removeprefix("/")
-    if "@" not in bare[1:]:
+    name, version = split_spec(bare)
+    if name.count("/") != (1 if name.startswith("@") else 0):
+        # v5: the '@' found was in a peer suffix (`_react@17`), not after the name
         name, _, version = bare.rpartition("/")
         return name, version.split("_", 1)[0]
-    name, version = split_spec(bare)
     return name, version if "://" in version else version.split("(", 1)[0]
 
 

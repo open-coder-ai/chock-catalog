@@ -83,7 +83,7 @@ class Judge:
                 found += state_findings(path, entries, self.allow, self.note)
         if self.event in CHANGE_EVENTS:
             found += sync_findings(files, self.root)
-        return found + ignore_findings(files), parsed
+        return found + ignore_findings(files, self.root), parsed
 
 
 def subtract(found: list[Finding], base: list[Finding]) -> list[Finding]:

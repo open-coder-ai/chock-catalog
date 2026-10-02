@@ -137,6 +137,8 @@ def _go_directives(text: str) -> list[str]:
 def lock_on_disk(root: Path, manifest: str, eco: str) -> bool:
     """Whether a lock of `eco` sits in the manifest's folder or a folder above it, up to the repository root."""
     folder = PurePosixPath(manifest).parent
+    if folder.is_absolute():
+        return False  # a write outside the repository
     for parent in (folder, *folder.parents):
         here = root / parent
         if here.is_dir() and any(lock_eco(p.name) == eco for p in here.iterdir()):
@@ -162,18 +164,28 @@ def sync_findings(writes: dict[str, str], root: Path) -> list[Finding]:
     return found
 
 
-def ignore_findings(writes: dict[str, str]) -> list[Finding]:
-    """`.gitignore` patterns that would drop a lockfile from the repository."""
+def _manifests_beside(root: Path, writes: dict[str, str], path: str) -> set[str]:
+    """Ecosystems of the manifests in the folder of `path`, on disk or in the change."""
+    folder = PurePosixPath(path).parent
+    here = root / folder
+    names = [p.name for p in here.iterdir()] if not folder.is_absolute() and here.is_dir() else []
+    names += [PurePosixPath(p).name for p in writes if PurePosixPath(p).parent == folder]
+    return {eco for name in names if (eco := manifest_eco(name))}
+
+
+def ignore_findings(writes: dict[str, str], root: Path) -> list[Finding]:
+    """`.gitignore` patterns that would drop a lockfile whose manifest sits in the same folder."""
     found = []
     for path, text in writes.items():
         if PurePosixPath(path).name != ".gitignore":
             continue
+        manifests = _manifests_beside(root, writes, path)
         for number, raw in enumerate(text.splitlines(), 1):
             pattern = raw.strip()
             if not pattern or pattern.startswith(("#", "!")):
                 continue
             last = pattern.rstrip("/").rsplit("/", 1)[-1].lower()
-            if any(fnmatch.fnmatchcase(lock, last) for lock in LOCKS):
+            if any(fnmatch.fnmatchcase(lock, last) and eco in manifests for lock, eco in LOCKS.items()):
                 message = f"ignores a lockfile ({pattern}): keep lockfiles committed so installs stay pinned"
                 found.append(Finding(IGNORED, f"{IGNORED}|{pattern}", path, number, message))
     return found

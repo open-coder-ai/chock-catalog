@@ -18,6 +18,8 @@ TARBALLS = (".tgz", ".tar.gz", ".tar")
 BERRY_LOCAL = ("workspace:", "link:", "portal:")
 ARCHIVE_URL = "__archiveUrl="
 PERCENT = re.compile(r"%([0-9A-Fa-f]{2})")
+#: Classic: a field is indented two spaces, a nested map's entries four. Berry: (entry, field) paths.
+FIELD, NESTED, BERRY_FIELD = 2, 4, 2
 
 
 def yarn_lock(text: str) -> list[Entry]:
@@ -33,10 +35,7 @@ def _unquote(value: str) -> str:
         except ValueError as exc:
             msg = f"a quoted value that does not close: {value[:40]!r}"
             raise LockError(msg) from exc
-        if not isinstance(loaded, str):
-            msg = f"a quoted value that is not a string: {value[:40]!r}"
-            raise LockError(msg)
-        return loaded
+        return str(loaded)
     return value
 
 
@@ -56,10 +55,10 @@ def _classic_blocks(text: str) -> list[tuple[str, dict[str, str], int]]:
         if indent == 0:
             blocks.append((_unquote(line[:-1].split(", ", 1)[0].strip()), {}, number))
             nested = False
-        elif not blocks or indent not in (2, 4) or (indent == 4 and not nested):  # noqa: PLR2004
+        elif not blocks or indent not in (FIELD, NESTED) or (indent == NESTED and not nested):
             msg = f"line {number} is indented where no entry or field holds it"
             raise LockError(msg)
-        elif indent == 2:  # noqa: PLR2004
+        elif indent == FIELD:
             nested = _field(blocks[-1][1], body, number)
     return blocks
 
@@ -83,7 +82,8 @@ def _classic(header: str, fields: dict[str, str], line: int) -> Entry | None:
     if resolved is None and (spec.startswith(FOLDER) or (spec.startswith("file:") and not spec.endswith(TARBALLS))):
         return None  # a folder in the repository: nothing is downloaded
     integrity, weak = sri(fields.get("integrity"))
-    sha1 = SHA1_FRAGMENT.search(resolved or "")
+    https = resolved is None or resolved.startswith("https://")
+    sha1 = SHA1_FRAGMENT.search(resolved or "") if https else None
     if not integrity and sha1:
         integrity, weak = (f"sha1hex-{sha1.group(1)}",), True
     return Entry(
@@ -93,7 +93,7 @@ def _classic(header: str, fields: dict[str, str], line: int) -> Entry | None:
         source=resolved,
         eco="npm",
         integrity=integrity,
-        expect=resolved is None or resolved.startswith("https://"),
+        expect=https,
         weak=weak,
     )
 
@@ -113,7 +113,7 @@ def _berry(text: str) -> list[Entry]:
         if len(node.path) == 1:
             lines[str(node.path[0])] = node.line
             blocks.setdefault(str(node.path[0]), {})
-        elif len(node.path) == 2:  # noqa: PLR2004
+        elif len(node.path) == BERRY_FIELD:
             blocks[str(node.path[0])][str(node.path[1])] = node.value
     found = []
     for key, fields in blocks.items():
