@@ -117,19 +117,20 @@ policies:
     when that exact line is already committed in HEAD.'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
-  version: 0.0.4
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 13
-  eval_executed: 13
-  description: 'Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess
-    calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort
-    line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05
-    policy. Escape hatch for vetted uses: ''pragma: allowlist exec'' on the same line, honoured at commit;
-    at agent tool-use it counts only for a line already committed in HEAD.'
+  eval_cases: 48
+  eval_executed: 48
+  description: 'Commit and agent-write gate, greppable slice of ASI05: eval and exec (bare, global-receiver
+    and indirect forms), the Function constructor, string timers, exec-mode compile, import by computed
+    name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml
+    loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security
+    boundary. Waiver ''pragma: allowlist exec'' on the line; in the agent only if already committed
+    in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
   version: 0.0.4
