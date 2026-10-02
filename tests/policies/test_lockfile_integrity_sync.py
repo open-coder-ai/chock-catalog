@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -93,3 +94,20 @@ def test_deleted_findings_need_the_manifest_to_stay(tmp_path: Path) -> None:
     (tmp_path / "web" / "package.json").write_text(BASE_MANIFEST, encoding="utf-8")
     got = sync.deleted_findings(["web/yarn.lock", "gone/Cargo.lock", "README.md", "go.sum"], tmp_path)
     assert [(f.rule, f.path) for f in got] == [(model.DELETED, "web/yarn.lock")]
+
+
+def test_manifest_digests_are_linear_on_hostile_input() -> None:
+    started = time.monotonic()
+    sync.dependency_digest("a.gemspec", " \n" * 50_000 + "s.add_dependency 'x'\n")
+    sync.dependency_digest("app.csproj", "<PackageReference " * 20_000)
+    assert time.monotonic() - started < 2
+
+
+def test_nuget_items_span_lines_until_they_close() -> None:
+    multi = (
+        '<Project>\n<PackageReference Include="A">\n  <Version>1</Version>\n</PackageReference>\n<Other/>\n</Project>\n'
+    )
+    bumped = multi.replace("<Version>1<", "<Version>2<")
+    assert sync.dependency_digest("app.csproj", multi) != sync.dependency_digest("app.csproj", bumped)
+    other = multi.replace("<Other/>", "<Other2/>")
+    assert sync.dependency_digest("app.csproj", multi) == sync.dependency_digest("app.csproj", other)
