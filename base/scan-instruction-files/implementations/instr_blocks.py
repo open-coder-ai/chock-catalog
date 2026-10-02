@@ -31,10 +31,16 @@ class Fence(NamedTuple):
         closes it, and so does a non-blank line below the content indent of the list item that holds it."""
         return depth >= self.depth and not (self.in_list and line.strip() and indent(line) < self.base)
 
-    def closes(self, line: str) -> bool:
-        """A closing fence: the marker alone, indented less than CODE_INDENT past the container's content."""
+    def closes(self, line: str, depth: int) -> bool:
+        """A closing fence: the marker alone, at the opener's quote depth, indented less than CODE_INDENT past
+        the container's content."""
         bare = line.strip(" \t")
-        return bare.startswith(self.mark) and not bare.strip(self.mark[0]) and indent(line) - self.base < CODE_INDENT
+        return (
+            depth == self.depth
+            and bare.startswith(self.mark)
+            and not bare.strip(self.mark[0])
+            and indent(line) - self.base < CODE_INDENT
+        )
 
 
 def columns(text: str) -> int:

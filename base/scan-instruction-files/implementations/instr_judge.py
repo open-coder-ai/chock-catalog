@@ -249,8 +249,11 @@ class Doc:
             opened.add(i)
             last = i
             if not self.p["fake_trust_close"].search(self.text, m.end(), self.ends[i]):
-                for j in range(i + 1, min(i + TRUST_SPAN, len(self.sts))):
-                    last = j
+                counted = 0  # a fence's prose reading repeats its lines, so it is not counted
+                for j in range(i + 1, len(self.sts)):
+                    if counted == TRUST_SPAN - 1:
+                        break
+                    last, counted = j, counted + (not self.sts[j].echo)
                     if j in closes:
                         break
             if commands & set(range(i, last + 1)):

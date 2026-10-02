@@ -43,6 +43,11 @@ def hits(text: str) -> list[tuple[int, str]]:
     return sorted({(h.statement.first, h.rule) for h in gate.file_hits(LEX, text)})
 
 
+def verdicts(text: str) -> set[tuple[str, str]]:
+    """(rule, verdict) for every rule that fires in `text` judged as a whole new instruction file."""
+    return {(h.rule, h.verdict) for h in gate.file_hits(LEX, text)}
+
+
 def fired(text: str) -> set[str]:
     return {rule for _, rule in hits(text)}
 

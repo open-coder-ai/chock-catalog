@@ -70,7 +70,7 @@ def judged(path: str) -> bool:
 
 def file_hits(lex: Lexicon, text: str) -> list[Hit]:
     """Every rule that fires in one instruction file: statements, fake trust blocks and encoded blobs."""
-    hits = [h._replace(verdict=ASK) if h.statement.capped else h for h in judge(lex, statements(text))]
+    hits = judge(lex, statements(text))
     for blob in blobs(lines_of(text)):
         st = Statement(blob.first, blob.last, blob.run[:120], blob.run, code=True)
         hidden = blob.decoded is not None and (

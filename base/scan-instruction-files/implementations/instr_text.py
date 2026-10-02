@@ -30,6 +30,8 @@ CONTINUED = ("\\", "|", "&&")
 #: the paragraph is also judged whole.
 HARD_BREAK = ("  ", "\\")
 BREAK_END = re.compile(r"<br\s*/?>$", re.IGNORECASE)
+#: A code comment line in a fence: its prose reading does not join the command under it.
+COMMENT = re.compile(r"[ \t]*(?:#|//|--[ \t]|;|/\*|<!--)")
 LINE_END = re.compile(r"\r\n|\r|\n")
 
 
@@ -96,13 +98,14 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     depth, items = 0, []  # the content indents of the open list items
     for k, line in enumerate(inner):
         number = skip + 1 + k
+        tail: list[tuple[int, str]] = []
         if fence is not None:
             fence, taken, tail = _step(fence, (number, line), depths[k], (code, body), out)
             if taken:
                 continue
-            parts += tail  # the fence's last paragraph, which a lazy line after its container may continue
-            whole += tail
-        nest(items, line, lazy=_lazy(0, whole, line))
+        nest(items, line, lazy=_lazy(0, whole, line))  # a line that ends a fence's container is not lazy
+        parts += tail  # the fence's last paragraph, which that line may continue (a renderer saw no fence)
+        whole += tail
         if depths[k] != depth and not _lazy(depths[k], parts, line):
             _end(parts, whole, out)
             depth = depths[k]
@@ -122,7 +125,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
             _flush(parts, out)
     _end(parts, whole, out)
     _flush_code(code, out)
-    _prose(body, out)
+    _prose(body, out, carry=False)
     return out
 
 
@@ -133,32 +136,37 @@ def _step(
     line or the closer), and when a line outside the fence's container ends it, the body's last paragraph:
     a renderer that saw no fence there joins it with that line."""
     (number, line), (code, body) = at, held
-    if fence.holds(line, depth) and (kept := _fenced(line, number, fence, code, out)):
+    if fence.holds(line, depth) and _fenced(line, number, code, out, closer=fence.closes(line, depth)):
         body.append(at)
-        return kept, True, []
+        return fence, True, []
     _flush_code(code, out)
     taken = fence.holds(line, depth)
-    tail = _prose(body, out, capped=taken)
-    return None, taken, [] if taken else tail
+    return None, taken, _prose(body, out, carry=not taken)
 
 
-def _prose(body: list[tuple[int, str]], out: list[Statement], *, capped: bool = False) -> list[tuple[int, str]]:
-    """Judge a fence's lines as prose paragraphs too (a blank line or a block start begins a new one, a fence
-    line or a heading stands alone), so where this reader and a markdown renderer disagree on a fence, wrapped
-    text the renderer shows as prose is still joined and judged as prose. Returns the last paragraph."""
+def _prose(body: list[tuple[int, str]], out: list[Statement], *, carry: bool) -> list[tuple[int, str]]:
+    """Judge a fence's lines as prose paragraphs too, so where this reader and a markdown renderer disagree on
+    a fence, wrapped text the renderer shows as prose is still joined and judged as prose. A blank line or a
+    block start begins a paragraph, a fence line stands alone, and a comment line (# // -- ; /*) does not join
+    a line that is not one (a comment and the command under it are two things; comment lines join, unmarked). With `carry`, the last
+    paragraph is returned to be continued instead of judged here."""
     group: list[tuple[int, str]] = []
     read: list[Statement] = []
+    was = False
     for number, line in body:
         bare = line[m.end() :] if (m := QUOTE.match(line)) else line
-        if not bare.strip() or BLOCK_START.match(bare) or FENCE.match(bare):
+        now = COMMENT.match(bare)
+        if not bare.strip() or bool(now) != was or (not now and (BLOCK_START.match(bare) or FENCE.match(bare))):
             _flush(group, read)
+        was, bare = bool(now), bare[now.end() :] if now else bare  # a comment's text, without its marker
         if bare.strip():
             group.append((number, bare))
-        if FENCE.match(bare) or bare.lstrip().startswith("#"):
+        if FENCE.match(bare):
             _flush(group, read)
-    last = group[:]
-    _flush(group, read)
-    out.extend(st._replace(capped=capped) for st in read)
+    last = group[:] if carry else []
+    if not carry:
+        _flush(group, read)
+    out.extend(st._replace(echo=True) for st in read)
     body.clear()
     return last
 
@@ -191,16 +199,16 @@ def hard_break(line: str) -> bool:
     return line.endswith(HARD_BREAK) or bool(BREAK_END.search(line[-64:]))
 
 
-def _fenced(line: str, number: int, fence: Fence, code: list[tuple[int, str]], out: list[Statement]) -> Fence | None:
-    """Take one line inside a fence; the fence that stays open, or None when this line closes it."""
-    if fence.closes(line):
+def _fenced(line: str, number: int, code: list[tuple[int, str]], out: list[Statement], *, closer: bool) -> bool:
+    """Take one line inside a fence; whether the fence stays open (False when this line is its closer)."""
+    if closer:
         _flush_code(code, out)
-        return None
+        return False
     if line.strip():
         code.append((number, line.strip()))
         if not line.rstrip().endswith(CONTINUED):
             _flush_code(code, out)
-    return fence
+    return True
 
 
 def _flush_code(code: list[tuple[int, str]], out: list[Statement]) -> None:

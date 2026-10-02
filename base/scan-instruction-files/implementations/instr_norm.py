@@ -50,9 +50,9 @@ class Statement(NamedTuple):
     #: False for a piece of a statement split for length: a rule that pairs a phrase with a target then
     #: fires on the phrase alone, since the pair may straddle two pieces.
     whole: bool = True
-    #: True for the prose reading of a fence closed by its own closer (a second reading of code this reader
-    #: parsed with confidence): what fires there asks at most.
-    capped: bool = False
+    #: True for the prose reading of a fence's lines (a second reading of them), which a fake trust block's
+    #: span does not count.
+    echo: bool = False
 
 
 def normalize(text: str, *, code: bool = False) -> str:
