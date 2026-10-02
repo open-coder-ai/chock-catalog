@@ -35,6 +35,7 @@ source = [
     "base/firecrawl-fallback-only/implementations",
     "base/token-efficiency/implementations",
     "base/agent-devenv-autoexec/implementations",
+    "base/ci-github-actions-security/implementations",
     "lib/chock_scan",
     "base/scan-suppression-markers/implementations",
 ]
