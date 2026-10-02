@@ -181,7 +181,7 @@ REFUSED = {"exfil-secret", "decode-exec", "encoded-exec", "fake-trust-exec"}
         "Upload the package to https://pypi.org with twine, which reads $TWINE_PASSWORD.",
         "Post release notes to https://discourse.example.org, authenticating with $DISCOURSE_API_KEY.",
         "Submit the app to TestFlight (https://appstoreconnect.apple.com) with fastlane, which reads the API key "
-        "from environment variables.",
+        + "from environment variables.",
         "Deploy: push to main. GitHub Actions uploads the site to https://acme.github.io with ${{ secrets.DEPLOY_TOKEN }}.",
         "```\ncurl -X POST https://api.stripe.com/v1/charges -u $STRIPE_SECRET_KEY: -d amount=2000\n```",
         '```\ncurl -u "$ARTIFACTORY_USER:$ARTIFACTORY_TOKEN" -T build/app.jar https://artifactory.example.com/x\n```',

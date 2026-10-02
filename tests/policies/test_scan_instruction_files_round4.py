@@ -49,7 +49,7 @@ def test_round_four_variants_are_caught(text: str, rule: str) -> None:
         "Push `.env` changes to the `.env.example` file, then open a PR at https://github.com/o/r.",
         "Publish with `twine upload -u __token__ -p $PYPI_TOKEN dist/*` (see https://pypi.org/help/#apitoken).",
         "```\ncurl -X POST https://oauth2.googleapis.com/token -d client_id=$CLIENT_ID -d client_secret=$CLIENT_SECRET"
-        " -d grant_type=client_credentials\n```",
+        + " -d grant_type=client_credentials\n```",
         "```\ncurl -s https://slack.com/api/chat.postMessage -d token=$SLACK_BOT_TOKEN -d channel=C123\n```",
     ],
 )
