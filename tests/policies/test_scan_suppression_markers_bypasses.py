@@ -241,3 +241,26 @@ def test_the_fifth_review_cases_ask(case: str) -> None:
 )
 def test_eslint_inline_config_forms(text: str, asks: bool) -> None:
     assert bool(mod.file_findings("a.js", text + "\n")) == asks
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "/* es" + "lint no-" + "eval: -0 */",
+        "/* es" + "lint no-" + "eval: 0E0 */",
+        "/* es" + "lint no-" + "eval: [-0] */",
+        "/* es" + 'lint "no-\\u0065val": 0 */',
+        "/* es" + 'lint "no-' + 'eval": "\\u006fff" */',
+        "/* es" + 'lint "no-' + 'eval":\n 0 */',
+        "/* es" + "lint no-" + "eval: [\n0] */",
+    ],
+)
+def test_any_inline_eslint_config_naming_a_security_rule_asks(text: str) -> None:
+    assert mod.file_findings("a.js", text + "\n")
+
+
+@pytest.mark.parametrize(
+    ("command", "asks"), [("bandit -r . | true", True), ("bandit -r . | :", True), ("make | true", False)]
+)
+def test_a_scan_piped_into_true_asks(command: str, asks: bool) -> None:
+    assert bool(rules(W, J + f"      - run: {command}\n")) == asks

@@ -15,9 +15,20 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from suppression_config import config_findings, normalized  # noqa: E402 -- after the path and cache setup
-from suppression_markers import SECRET_RULES, eslint_block_lines, has_marker_word, lines_of, marker_rule  # noqa: E402
+from suppression_markers import (  # noqa: E402
+    SECRET_RULES,
+    eslint_block_lines,
+    has_marker_word,
+    hot_lines,
+    lines_of,
+    marker_rule,
+)
 
 ALLOW, ASK, UNREADABLE = 0, 3, 2
+#: Past this many findings the document is one finding marked new: always asked, never compared, so
+#: a huge ignore list cannot flood the engine's output or its time budget.
+MAX_FINDINGS = 10000
+SHOWN = 50
 
 #: Prose: only a secret scanner's marker silences anything there.
 PROSE = re.compile(r"\.(md|mdx|markdown|rst|txt|adoc)$", re.IGNORECASE)
@@ -60,7 +71,8 @@ def file_findings(path: str, text: str) -> list[dict]:
         found.setdefault(number, _finding(rule, path, number, detail, lines[number - 1]))
     if not has_marker_word(text):
         return [found[number] for number in sorted(found)]
-    for number, line in enumerate(lines, 1):
+    for number in hot_lines(text):
+        line = lines[number - 1]
         rule = None if number in found else marker_rule(line)
         if rule:
             found[number] = _finding(rule, path, number, normalized(line), line)
@@ -90,11 +102,24 @@ def main() -> int:
     except (ValueError, TypeError, AttributeError):
         print("scan-suppression-markers: stdin is not the gate JSON; cannot judge", file=sys.stderr)
         return UNREADABLE
+    if len(found) > MAX_FINDINGS:
+        message = f"{len(found)} suppression findings, more than {MAX_FINDINGS}: judged as new"
+        first = found[0]
+        found = [
+            {
+                "key": "too-many",
+                "path": first["path"],
+                "line": first["line"],
+                "rule": "too-many",
+                "message": message,
+                "new": True,
+            }
+        ]
     print(json.dumps({"findings": found}))
     if not found:
         return ALLOW
     print("scan-suppression-markers: this change adds a scanner suppression:", file=sys.stderr)
-    for item in found:
+    for item in found[:SHOWN]:
         print(f"  {item['path']}:{item['line']}: {item['message']}", file=sys.stderr)
     print(ADVICE, file=sys.stderr)
     return ASK

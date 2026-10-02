@@ -273,3 +273,12 @@ def test_the_script_runs_as_a_process_the_way_the_runner_starts_it(tmp_path: Pat
     )
     assert proc.returncode == 3
     assert json.loads(proc.stdout)["findings"][0]["rule"] == "checkov-skip"
+
+
+def test_a_flood_of_findings_becomes_one_new_finding(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(mod, "MAX_FINDINGS", 3)
+    assert run_main(monkeypatch, json.dumps(payload({".gitleaksignore": "a\nb\nc\nd\n"}))) == 3
+    (only,) = json.loads(capsys.readouterr().out)["findings"]
+    assert (only["key"], only["new"]) == ("too-many", True)

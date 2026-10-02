@@ -24,6 +24,10 @@ _BLOCK_OPEN = re.compile(r"/\*")
 #: accepts the bare word at the end of the comment's first line, its rules on the lines below.
 _ESLINT_DIRECTIVE = re.compile(r"\s*eslint(?:-disable\b|\s|$)")
 _ESLINT_RULE = re.compile(_ESLINT_SEC)
+#: In an inline config, any mention of a security rule (whatever severity: ESLint reads -0, 0E0 and
+#: [0] as off, and a JSON escape can spell the rule id), or any JSON escape at all.
+_ESLINT_CONFIG_RULE = r"(?<![\w@/-])(?=[\w@/-]*?" + _ESLINT_SEC + r")|\\u"
+_ESLINT_CONFIG_HIT = re.compile(_ESLINT_CONFIG_RULE)
 _I = re.IGNORECASE
 #: How far past its anchor a rule looks for the rule id or code that makes it a security one.
 WINDOW = 1000
@@ -50,10 +54,10 @@ _TABLE: tuple[tuple[str, str, str, str | None, int, re.Pattern[str] | None], ...
     ("nosemgrep", "nosem", r"(?:^|\s)n[o]sem(?:grep)?\b", None, _I, None),
     ("eslint-disable-security", "eslint", r"eslint-disabl[e](?:-next-line|-line)?\b", _ESLINT_SEC, 0, _OPENER),
     (
-        "eslint-config-off",
+        "eslint-config-security",
         "eslint",
         r"/\*\s*e[s]lint\s",
-        r"(?<![\w@/-])(?=[\w@/-]*?" + _ESLINT_SEC + r")[\w@/-]*+[\"']?\s*+:\s*+(?:\[\s*+)?[\"']?(?:of[f]|0)\b",
+        _ESLINT_CONFIG_RULE,
         0,
         None,
     ),
@@ -163,6 +167,12 @@ def has_marker_word(text: str) -> bool:
     return bool(PREFILTER.search(_fold(text)))
 
 
+def hot_lines(text: str) -> list[int]:
+    """1-based numbers of the lines holding a rule word, from one fold of the whole text (folding
+    never adds or removes a newline, so its lines line up with `lines_of`)."""
+    return [number for number, line in enumerate(_fold(text).split("\n"), 1) if PREFILTER.search(line)]
+
+
 #: The markers a secret scanner honours in any file it reads, prose included.
 SECRET_RULES = frozenset({"gitleaks-allow", "trufflehog-ignore", "pragma-allowlist-secret"})
 
@@ -210,13 +220,16 @@ def eslint_block_lines(lines: list[str]) -> list[int]:
         body = line.split("*/", 1)[0]
         if state == "maybe" and _ESLINT_DIRECTIVE.match(body):
             state = "eslint"
-        if state == "eslint" and _ESLINT_RULE.search(body):
+        if state == "eslint" and _ESLINT_CONFIG_HIT.search(body):
             found.append(number)
         if state and "*/" in line:
             state = ""
         elif not state and (opened := _BLOCK_OPEN.search(line, line.rfind("*/") + 2 if "*/" in line else 0)):
-            directive = _ESLINT_DIRECTIVE.match(line[opened.end() :])
-            state = "eslint" if directive else ("maybe" if not line[opened.end() :].strip() else "")
+            rest = line[opened.end() :]
+            directive = _ESLINT_DIRECTIVE.match(rest)
+            state = "eslint" if directive else ("maybe" if not rest.strip() else "")
+            if directive and _ESLINT_CONFIG_HIT.search(rest, directive.end()):
+                found.append(number)  # the rule named on the opener line, its value on a later one
         elif state == "maybe" and body.strip():
             state = ""
     return found
