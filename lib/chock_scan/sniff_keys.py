@@ -28,9 +28,10 @@ LOOSE = re.compile(
 )
 #: A double-quoted key whose colon may sit on a later line, or that follows a `/* */` comment.
 SPLIT_KEY = re.compile(r"""(?:(?<![^\s{,\[])|(?<=\*/))("(?:[^"\\\n]|\\.)*+")\s*+:""")
-EXPLICIT = re.compile(r"(?<![^\s{,\[])\?[ \t]")
-#: In loose_keys: a key this reader cannot name, which may be any key (also an alias's leading `*`).
-UNNAMED = "*"
+#: An explicit `?` key: first on its line (after indentation or `- `), or first in a flow entry.
+EXPLICIT = re.compile(r"(?:^[ \t]*+(?:-[ \t]++)*+|[{,\[][ \t]*+)\?(?:[ \t]|$)")
+#: In loose_keys: a key this reader cannot name, which may be any key (a real key spelled so only adds lows).
+UNNAMED = "\0unnamed"
 ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|.)", re.DOTALL)
 SIMPLE = {"0": "\0", "a": "\a", "b": "\b", "t": "\t", "n": "\n", "v": "\v", "f": "\f", "r": "\r", "e": "\x1b"}
 SIMPLE |= {"N": "\x85", "_": "\xa0", "L": "\u2028", "P": "\u2029"}
@@ -67,18 +68,21 @@ def loose_keys(text: str) -> set[str]:
     named (an alias it cannot resolve, an explicit `?` key), since that key may be any key.
     """
     keys: set[str] = set()
+    aliases: list[str] = []
     anchors: dict[str, str | None] = {}
     for line in LINES.split(text):
         if not line.lstrip().startswith("#"):
-            keys.update(unquote(m.group(1)) for m in LOOSE.finditer(line))
+            for token in (m.group(1) for m in LOOSE.finditer(line)):
+                if token[0] == "*":
+                    aliases.append(token[1:])
+                else:
+                    keys.add(unquote(token))
             if "&" in line:
                 record_anchors(anchors, line)
             if EXPLICIT.search(line):
                 keys.add(UNNAMED)
     keys.update(unquote(m.group(1)) for m in SPLIT_KEY.finditer(text))
-    for alias in [key for key in keys if key.startswith(UNNAMED)]:
-        keys.discard(alias)
-        keys.add(anchors.get(alias[1:]) or UNNAMED)
+    keys.update(anchors.get(alias) or UNNAMED for alias in aliases)
     return keys
 
 

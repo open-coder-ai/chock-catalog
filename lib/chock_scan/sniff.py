@@ -24,7 +24,8 @@ since such a key may be any key.
                   low: a FROM line and a RUN, CMD, ENTRYPOINT, COPY or ADD line anywhere
   script          high: a `#!` first line
   shell           high: the #! command is a shell (through env, its options and -S quoting)
-                  low: a later word of the #! line is a shell (sudo bash, nice sh)
+                  low: a later #! word is a shell (sudo bash), an env word holds `$` or a backslash,
+                  or the kernel cannot run the line (a shell then runs the file itself)
 Not seen: a script with no shebang; a GitHub composite action, an Ansible task file or an
 import_playbook file (none has its kind's keys); keys a `<<` merge brings in are found only as low.
 Bytes are read with their BOM's encoding (UTF-8/16/32), else UTF-16/32 by YAML's NUL pattern,
@@ -37,10 +38,10 @@ from __future__ import annotations
 
 import codecs
 import re
-from collections import deque
 from typing import NamedTuple
 
 from .sniff_keys import UNNAMED, Unit, loose_keys, units
+from .sniff_shebang import interpreter, shell
 
 LIMIT = 1 << 20
 MAX_LIMIT = 1 << 26
@@ -73,13 +74,7 @@ MAPPED = (
     *(("ansible", MEDIUM, ("hosts", key), None) for key in ("roles", "pre_tasks", "post_tasks", "handlers")),
     ("mcp-config", HIGH, ("mcpServers",), None),
 )
-SHELL = re.compile(r"(?:a|ba|da|k|mk|pdk|lk|ok|lok|o|z|ya|po|rba|c|tc|fi|hu|bo|j)?sh(?:[-.\d][\w.-]*+)?")
-MULTICALL = frozenset({"busybox", "toybox"})
-ENV_VALUE = frozenset("uCP")
-ENV_QUOTES = re.compile(r"""["']""")
 DIRECTIVE = re.compile(r"#[ \t]*+([A-Za-z]++)[ \t]*+=[ \t]*+(\S*+)[ \t]*+")
-#: The kernel reads at most 256 bytes of a #! line (BINPRM_BUF_SIZE); more is never an interpreter.
-SHEBANG_MAX = 4096
 DOCKER_BODY = frozenset({"RUN", "CMD", "ENTRYPOINT", "COPY", "ADD"})
 
 
@@ -137,62 +132,6 @@ def sniff(data: bytes, limit: int = LIMIT) -> Sniff:
     return Sniff(content, label, ranked, interpreter(text))
 
 
-def interpreter(text: str) -> tuple[str, ...]:
-    """The command a `#!` first line runs, through `env` and its options (`-S` included), and its words."""
-    first = text[:SHEBANG_MAX].split("\n", 1)[0].rstrip("\r")
-    if not first.startswith("#!"):
-        return ()
-    words = first[2:].split()
-    if not words:
-        return ()
-    if _base(words[0]) != "env":
-        return (_base(words[0]), *words[1:])
-    return _after_env(words[1:])
-
-
-def _after_env(words: list[str]) -> tuple[str, ...]:
-    """The command env runs: options, their values and NAME=VALUE pairs skipped; `-S` splits on.
-
-    Quotes and `\\_` are dropped first, as `env -S` would: a quoted shell name is still that shell.
-    """
-    queue = deque(ENV_QUOTES.sub("", " ".join(words)).replace("\\_", " ").split())
-    while queue:
-        word = queue.popleft()
-        if word == "--":
-            break
-        if word.startswith("--"):
-            _long_option(word, queue)
-        elif word.startswith("-"):
-            _short_options(word[1:], queue)
-        elif "=" not in word:
-            return (_base(word), *queue)
-    return (_base(queue.popleft()), *queue) if queue else ("env",)
-
-
-def _long_option(word: str, queue: deque[str]) -> None:
-    name, eq, value = word.partition("=")
-    if name == "--split-string" and eq:
-        queue.appendleft(value)
-    elif name in ("--unset", "--chdir") and not eq and queue:
-        queue.popleft()
-
-
-def _short_options(flags: str, queue: deque[str]) -> None:
-    for at, flag in enumerate(flags):
-        if flag in ENV_VALUE:
-            if at + 1 == len(flags) and queue:
-                queue.popleft()
-            return
-        if flag == "S":
-            if at + 1 < len(flags):
-                queue.appendleft(flags[at + 1 :])
-            return
-
-
-def _base(word: str) -> str:
-    return word.rsplit("/", 1)[-1]
-
-
 def _encoding(data: bytes) -> tuple[str, int]:
     """The codec the bytes are in and the length of their BOM, by BOM, else YAML's NUL pattern."""
     for bom, name in BOMS:
@@ -217,12 +156,11 @@ def _candidates(text: str) -> list[Candidate]:
         found.append(Candidate("dockerfile", HIGH, "first instruction FROM"))
     elif _docker_lines(instructions + text.split("\n")):
         found.append(Candidate("dockerfile", LOW, "FROM and build instruction lines"))
-    if command := interpreter(text):
-        found.append(Candidate("script", HIGH, f"#! {command[0]}"))
-        if _is_shell(command):
-            found.append(Candidate("shell", HIGH, f"#! {' '.join(command[:2])}"))
-        elif any(SHELL.fullmatch(_base(word).lower()) for word in command[1:]):
-            found.append(Candidate("shell", LOW, "a shell named later in the #! line"))
+    if text.startswith("#!"):
+        command = interpreter(text)
+        found.append(Candidate("script", HIGH, f"#! {command[0] if command else '(no interpreter)'}"))
+        if verdict := shell(text, command):
+            found.append(Candidate("shell", HIGH if verdict[0] else LOW, verdict[1]))
     return found
 
 
@@ -279,8 +217,3 @@ def _first_is_from(instructions: list[str]) -> bool:
 def _docker_lines(lines: list[str]) -> bool:
     words = {split[0].upper() for line in lines if len(split := line.split(None, 1)) > 1}
     return "FROM" in words and bool(words & DOCKER_BODY)
-
-
-def _is_shell(command: tuple[str, ...]) -> bool:
-    name = command[1] if command[0] in MULTICALL and len(command) > 1 else command[0]
-    return SHELL.fullmatch(_base(name).lower()) is not None

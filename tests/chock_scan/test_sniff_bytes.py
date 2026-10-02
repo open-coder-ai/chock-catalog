@@ -201,6 +201,38 @@ def test_what_is_and_is_not_a_shell(sn: ModuleType, line: str, kinds: set[str]) 
     assert sn.sniff(f"{line}\n".encode()).kinds() == kinds
 
 
+@pytest.mark.parametrize(
+    ("text", "shell", "signal"),
+    [
+        (
+            "#!" + " " * 5000 + "/bin/bash\necho x\n",
+            "low",
+            "the kernel cannot run this #! line, so a shell runs the file",
+        ),
+        (
+            "#!" + " " * 300 + "/usr/bin/python3\n",
+            "low",
+            "the kernel cannot run this #! line, so a shell runs the file",
+        ),
+        ("#!/" + "a" * 300 + "\n", "low", "the kernel cannot run this #! line, so a shell runs the file"),
+        ("#!\necho x\n", "low", "the kernel cannot run this #! line, so a shell runs the file"),
+        ("#!/usr/bin/env -S bash\\c x\n", "high", "#! bash"),
+        ("#!/usr/bin/env -S ba${NOPE}sh\n", "low", "a #! word it cannot read (env expands $ and \\ at run time)"),
+        ("#!/usr/bin/env -S ${SHELL}\n", "low", "a #! word it cannot read (env expands $ and \\ at run time)"),
+        ("#!/usr/bin/python3", None, None),
+        ("#!/usr/bin/python3 " + "x" * 300, None, None),
+    ],
+)
+def test_when_a_shell_runs_the_file(sn: ModuleType, text: str, shell: str | None, signal: str | None) -> None:
+    result = sn.sniff(text.encode("utf-8"))
+    found = {c.kind: c for c in result.candidates}
+    assert found["script"].confidence == "high"
+    if shell is None:
+        assert "shell" not in found
+    else:
+        assert (found["shell"].confidence, found["shell"].signal) == (shell, signal)
+
+
 @pytest.mark.parametrize("line", ["#!/usr/bin/sudo bash", "#!/usr/bin/nice -n 5 sh", "#!/usr/bin/env doas zsh"])
 def test_a_shell_behind_a_wrapper_is_a_low_shell(sn: ModuleType, line: str) -> None:
     result = sn.sniff(f"{line}\n".encode())
