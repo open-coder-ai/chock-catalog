@@ -8,24 +8,18 @@ import re
 import unicodedata
 from typing import NamedTuple
 
+from instr_blocks import FENCE, Fence, listing, open_fence, table_rows
+
 #: A statement longer than this is judged in overlapping pieces: any phrase up to OVERLAP characters long
 #: lies whole inside one piece, and no rule is ever run over an unbounded string.
 MAX_STATEMENT = 4000
 OVERLAP = 500
-#: A fence opener: up to three spaces, then three or more backticks or tildes.
-FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
-#: A fence indented more than this is a fence only inside a list item (else it is indented text or code).
-MAX_FENCE_INDENT = 3
-LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d{1,9}[.)])\s")
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, rule or front matter.
 BLOCK_START = re.compile(
     r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|---+\s*$|===+\s*$|<(?:!--|/?(?i:address|article|aside|blockquote"
     r"|details|dialog|div|dl|fieldset|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table"
     r"|tbody|td|tfoot|th|thead|tr|ul)\b))"
 )
-#: A table's delimiter row; `|` lines start their own statements only in a run that has one (a soft-wrapped
-#: line that happens to start with `|` continues its paragraph, as an autolink `<https://...>` does).
-TABLE_DELIMITER = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$")
 #: A front-matter line that starts a new key (not indented, not a list item).
 FRONT_KEY = re.compile(r"^[^\s#-][^:]*:")
 #: A blockquote prefix, also behind a list marker or a list item's indent: its lines are read as a container,
@@ -163,35 +157,6 @@ def _front_matter(lines: list[str], front: int) -> list[Statement]:
     return out
 
 
-class _Fence(NamedTuple):
-    """An open fence: its marker, and the quote depth and indent of its opener (a container that ends closes it)."""
-
-    mark: str
-    depth: int
-    indent: int
-
-
-def _opener(line: str, *, in_list: bool) -> re.Match[str] | None:
-    """A fence opener: indented 4+ spaces only inside a list item, and a backtick fence's info string holding
-    no backtick (else it is a code span)."""
-    m = FENCE.match(line)
-    if m is None or (_indent(line) > MAX_FENCE_INDENT and not in_list):
-        return None
-    return None if m.group(1)[0] == "`" and "`" in line.strip()[len(m.group(1)) :] else m
-
-
-def _listing(line: str, *, in_list: bool) -> bool:
-    """Whether a list item's content goes on after `line`: a list marker starts one, a non-blank line back at
-    the margin ends it, and a blank or indented line keeps the current state."""
-    if not line.strip():
-        return in_list
-    return bool(LIST_ITEM.match(line)) or (in_list and _indent(line) > 0)
-
-
-def _indent(line: str) -> int:
-    return len(line) - len(line.lstrip())
-
-
 def _body(lines: list[str], skip: int) -> list[Statement]:
     """The statements after the front matter: paragraphs, list items, table rows and headings, and fenced
     code lines (a continued line joined with the next). A blockquote is a container: its prefix is set
@@ -200,30 +165,29 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     parts: list[tuple[int, str]] = []
     whole: list[tuple[int, str]] = []  # the paragraph across hard breaks, judged whole as well
     code: list[tuple[int, str]] = []
-    fence: _Fence | None = None
+    fence: Fence | None = None
     quoted = [QUOTE.match(line) for line in lines[skip:]]
     inner = [line[m.end() :] if m else line for line, m in zip(lines[skip:], quoted, strict=True)]
     depths = [m.group(1).count(">") if m else 0 for m in quoted]
-    tables = _table_rows(inner)
+    tables = table_rows(inner)
     depth, in_list = 0, False
     for k, line in enumerate(inner):
         number = skip + 1 + k
         if fence is not None:
-            if depths[k] >= fence.depth and not (line.strip() and _indent(line) < fence.indent):
+            if fence.holds(line, depths[k]):
                 fence = fence if _fenced(line, number, fence.mark, code, out) else None
                 continue
             _flush_code(code, out)
             fence = None
-        in_list = _listing(line, in_list=in_list)
+        in_list = listing(line, in_list=in_list)
         if depths[k] != depth and not _lazy(depths[k], parts, line):
             _end(parts, whole, out)
             depth = depths[k]
-        opener = _opener(line, in_list=in_list)
-        if opener or not line.strip() or BLOCK_START.match(line) or k in tables:
+        opened = open_fence(line, depths[k], in_list=in_list)
+        if opened or not line.strip() or BLOCK_START.match(line) or k in tables:
             _end(parts, whole, out)
-            if opener:
-                fence = _Fence(opener.group(1), depths[k], _indent(line))
-            if opener or not line.strip():
+            fence = opened
+            if opened or not line.strip():
                 continue
         parts.append((number, line))
         whole.append((number, line))
@@ -240,30 +204,22 @@ def _end(parts: list[tuple[int, str]], whole: list[tuple[int, str]], out: list[S
     """End a paragraph: its last part and, where a hard break split it, the sentences that span the break,
     so a hard break cuts a negation's reach in one reading and cannot split a phrase or a command in the
     other. A sentence that crosses no break is emitted once (a second copy would count twice)."""
-    breaks = [n for n, line in whole if HARD_BREAK.search(line)]
+    breaks = [n for n, line in whole if HARD_BREAK.search(line)]  # line numbers, ascending
     _flush(parts, out)
     if breaks:
-        out.extend(st for st in _sentences(whole) if any(st.first <= n < st.last for n in breaks))
+        out.extend(st for st in _sentences(whole) if _spans(breaks, st))
     whole.clear()
+
+
+def _spans(breaks: list[int], st: Statement) -> bool:
+    """True when a hard break falls inside the sentence's lines (on any line but its last)."""
+    k = bisect.bisect_left(breaks, st.first)
+    return k < len(breaks) and breaks[k] < st.last
 
 
 def _lazy(depth: int, parts: list[tuple[int, str]], line: str) -> bool:
     """A line outside the quote that continues a quoted paragraph (CommonMark's lazy continuation)."""
     return depth == 0 and bool(parts) and bool(line.strip()) and not (FENCE.match(line) or BLOCK_START.match(line))
-
-
-def _table_rows(lines: list[str]) -> set[int]:
-    """Indexes of the lines in a run of `|` lines that holds a delimiter row."""
-    rows: set[int] = set()
-    n = 0
-    while n < len(lines):
-        end = n
-        while end < len(lines) and lines[end].lstrip().startswith("|"):
-            end += 1
-        if any(TABLE_DELIMITER.match(lines[k]) for k in range(n, end)):
-            rows.update(range(n, end))
-        n = max(end, n + 1)
-    return rows
 
 
 def _fenced(line: str, number: int, fence: str, code: list[tuple[int, str]], out: list[Statement]) -> str | None:
