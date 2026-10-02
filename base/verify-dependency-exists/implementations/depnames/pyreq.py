@@ -12,6 +12,7 @@ _OPTION = re.compile(r"(?<!\s)\s+--?[A-Za-z]")
 _INCLUDE = re.compile(r"^(?:-r|-c|--requirement=|--constraint=|--requirement\s+|--constraint\s+)\s*(\S.*)$")
 _EDITABLE = re.compile(r"^(?:-e\s*|--editable(?:\s+|=))(\S.*)$")
 _EGG = re.compile(r"[#&]egg=([A-Za-z0-9][A-Za-z0-9._-]*)")
+_COMPUTED = re.compile(r"[^\s\[=<>!~;(@,]*\$\{[A-Z0-9_]+\}[^\s\[=<>!~;(@,]*")
 _SCHEME = re.compile(r"^(?:[A-Za-z][A-Za-z0-9+.-]*://|(?:git|hg|svn|bzr)\+)")
 _USERINFO = re.compile(r"//[^/@]*@")
 _LOCAL_SUFFIXES = (".whl", ".zip", ".tar.gz", ".tgz")
@@ -55,20 +56,26 @@ def _named(target: str | None) -> tuple[str, str] | None:
     return ("name", target) if target else None
 
 
+def _computed(spec: str) -> tuple[str, str] | None:
+    """A name pip builds from `${VAR}` at install time is judged as written, so it never passes as a listed name."""
+    found = None if _local(spec) else _COMPUTED.match(spec)
+    return ("name", found.group(0)) if found else None
+
+
 def parse_line(line: str) -> tuple[str, str] | None:
     """("include", path) for -r/-c, ("name", value) for a requirement, None for an option or a local path."""
     if m := _INCLUDE.match(line):
         return "include", m.group(1).split()[0]
     if m := _EDITABLE.match(line):
         spec = _OPTION.split(m.group(1), 1)[0].strip()
-        return _named(_target(spec) if _SCHEME.match(spec) or _EGG.search(spec) else None)
+        return _named(_target(spec)) if _SCHEME.match(spec) or _EGG.search(spec) else _computed(spec)
     if line.startswith("-"):
         return None
     spec = _OPTION.split(line, 1)[0].strip()
     if _local(spec) or _SCHEME.match(spec):
         return _named(_target(spec))
     m = _NAME.match(spec)
-    return ("name", m.group(0)) if m and _TAIL.match(spec, m.end()) else None
+    return ("name", m.group(0)) if m and _TAIL.match(spec, m.end()) else _computed(spec)
 
 
 def requirement_names(text: str) -> list[str]:

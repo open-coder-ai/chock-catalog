@@ -70,6 +70,9 @@ def read_names(fam: Family, text: str) -> list[str]:
     if len(text) > MAX_CHARS:
         msg = "larger than the size this gate reads"
         raise TooLargeError(msg)
+    if "\0" in text:
+        msg = "binary, or UTF-16/UTF-32 text, which pip reads by its BOM and this gate cannot"
+        raise safe_read.UnreadableError(msg)
     return sorted({normalize(fam.eco, name) for name in fam.read(text) if name.strip()})
 
 

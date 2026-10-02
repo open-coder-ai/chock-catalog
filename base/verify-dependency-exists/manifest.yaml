@@ -1,6 +1,6 @@
 id: verify-dependency-exists
 name: "Dependency Allowlist"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node, Rust, Ruby, PHP, JVM,
   .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from
@@ -100,3 +100,8 @@ changelog:
   - "Behaviour change: the allowlist is matched after normalisation, so `Foo_Bar` is the listed `foo-bar`; before, only a case-insensitive exact match counted. The message now also says the package must be the intended one."
   - "Reader fixes from a third review: a pubspec section built through a YAML alias, merge key or repeated key asks; Gradle reads any version form, platform wrappers, Api-suffixed configurations and a map split over lines; a Gemfile is also Gemfile.ci, *.gemfile and a gem( call; mix.exs reads a hex: rename; any folder named requirements, and .pip files, are requirements files; hatch extra-dependencies and build hooks, poetry requires-plugins and tox requires are read; a csproj item is matched without regard to case; quadratic whitespace backtracking is removed."
   - "Judging detail: Go module paths, Maven coordinates, Hex and pub names are compared as written, not lowercased, because those registries tell `Foo` from `foo` -- an allowlist line for `github.com/BurntSushi/toml` no longer passes the different module `github.com/burntsushi/toml`. A lockfile is asked about only when no manifest of its ecosystem changed beside it (same folder or below): a listed manifest addition is no longer an ask for the transitive names its lock gains."
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Fixes from a fourth, independent review. A requirements.txt saved as UTF-16 or UTF-32 (what PowerShell's `pip freeze >` writes, and pip reads by its BOM) passed the commit gate as noise; a file holding a NUL byte is now a file the reader cannot parse, so it asks. A requirements line whose name pip builds from `${VAR}` was skipped; it is now judged as written, so it is not a listed name. A Gradle `id` followed by a long run of whitespace, and a mix.exs with a long run of blank lines, took quadratic time and hit the 30 s script budget (a refusal, never a pass); both readers are linear now."
+  - "Limits named, no behaviour change: a Poetry, Pipfile, Gemfile or pubspec path dependency is reported by its name (local paths are skipped only in npm, Cargo, pip, Go and mix); a folder named node_modules is never read; a quoted a:b:c string in a Gradle script reads as a coordinate; conda environment.yml, tox.ini and noxfile.py are not read; a lock edited by hand passes beside a changed manifest of its ecosystem."

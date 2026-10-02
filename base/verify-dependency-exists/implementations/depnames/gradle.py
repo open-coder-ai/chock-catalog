@@ -15,7 +15,7 @@ _CONTINUED = re.compile(r",[ \t]*\n[ \t]*")
 _ID = r"""['"]([\w.\-]+)['"]"""
 _GROUP = re.compile(rf"\bgroup\s*[:=]\s*{_ID}")
 _NAME = re.compile(rf"\bname\s*[:=]\s*{_ID}")
-_PLUGIN = re.compile(r"""\bid\s*\(?\s*['"]([\w\-]+(?:\.[\w\-]+)+)['"]\s*\)?\s*version\b""")
+_PLUGIN = re.compile(r"""\bid\s*(?:\(\s*)?['"]([\w\-]+(?:\.[\w\-]+)+)['"]\s*(?:\)\s*)?version\b""")
 _KOTLIN = re.compile(r"""\bkotlin\s*\(\s*['"]([\w\-]+)['"]\s*\)\s*version\b""")
 
 

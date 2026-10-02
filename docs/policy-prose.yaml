@@ -473,22 +473,22 @@ verify-dependency-exists:
     the case; tomllib reads TOML 1.0, so a Cargo or pyproject file using TOML 1.1 syntax cannot be parsed and asks;
     forms not read include Gradle coordinates built from variables, Pipfile custom categories, pyproject tool
     tables beyond the ones named above (pixi, pdm overrides), NuGet Sdk attributes and dotnet tool manifests, and
-    Maven annotation-processor paths; local path and workspace dependencies are not reported; a lockfile is asked
+    Maven annotation-processor paths; local path and workspace dependencies are skipped in npm, Cargo, pip, Go and mix, while a Poetry, Pipfile, Gemfile or pubspec path dependency is reported by its name; anything under a folder named node_modules is never read; a lockfile is asked
     about only when no manifest of its ecosystem changed beside it, in its folder or below (with one, the manifest
-    names are the judgement and the lock's transitive names are what installing them brings), and when one run
+    names are the judgement and the lock's transitive names are what installing them brings, so a lock edited by hand to pin an extra package passes beside a changed manifest), and when one run
     holds both an unlisted manifest name and a lockfile-only addition elsewhere the whole run blocks; a Maven
-    `${...}` placeholder is judged as the literal text; no comment is stripped in Gradle, Swift or mix.exs (a
-    `**/*.class` glob would open a fake block comment), so a commented-out dependency is reported; mix.exs is read
+    `${...}` placeholder, or a pip name built from `${VAR}`, is judged as the literal text; no comment is stripped in Gradle, Swift or mix.exs (a
+    `**/*.class` glob would open a fake block comment), so a commented-out dependency is reported, and any quoted `a:b:c` string in a Gradle script (`"docker:run:tag"`) reads as a coordinate; mix.exs is read
     as text, so a tuple whose version is a variable or module attribute is missed; also not read: Gradle
     `"implementation"(...)` and `id(...).version(...)` forms, an npm `jsr:` alias target, pyproject cibuildwheel
     and flit tables, .mvn/extensions.xml, differently named POMs (pom-ci.xml) and project types such as .nuproj
-    and .sqlproj, and pnpm-workspace.yaml catalogs. Also: it checks that a name is
+    and .sqlproj, and pnpm-workspace.yaml catalogs, conda environment.yml, tox.ini and noxfile.py. Also: it checks that a name is
     listed, never that it exists in a registry, and never a dependency's version or source (a listed name
     pointed at another git URL passes); a list built by code is not read (a setup.py
     list built from a variable, `+` or `**kw`; a multi-line `gem(` call; a Swift raw-string or variable URL; Gradle
     map notation split anywhere but after a comma, `add("implementation", ...)` and settings-catalog `library(...)` calls); an npm name
     pointing at a git or URL spec, and a lockfile entry whose real name differs from its key, report only the key;
-    an `-r` include is judged only when the same change holds the included file; a file that cannot be parsed asks; an XML manifest that declares a DOCTYPE or ENTITY, and one too large or too deeply nested to read,
+    an `-r` include is judged only when the same change holds the included file; a file that cannot be parsed asks, a UTF-16 or UTF-32 file (which pip reads by its BOM) included; an XML manifest that declares a DOCTYPE or ENTITY, and one too large or too deeply nested to read,
     is refused as a finding keyed by a digest of its text.
 
 verify-mcp-allowlist:

@@ -303,3 +303,18 @@ suite:
     prompt: "mix.exs renames a listed dependency to another Hex package with hex:."
     expect: "The commit is blocked: the real package is the hex: name."
     execute: {"event": "commit", "head_files": {"mix.exs": "defmodule M do\n  defp deps, do: [{:requests, \"~> 1\"}]\nend\n"}, "files": {"mix.exs": "defmodule M do\n  defp deps, do: [{:requests, \"~> 1\", hex: :evil_pkg}]\nend\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "block"}
+  - id: tc-055
+    category: adversarial
+    prompt: "The agent saves requirements.txt as UTF-16 with a BOM, as PowerShell does, which pip reads and a line scanner sees as noise."
+    expect: "The commit asks: a file the reader cannot decode is never a silent pass."
+    execute: {"event": "commit", "files": {"requirements.txt": "\ufffd\ufffdr\u0000e\u0000q\u0000u\u0000e\u0000s\u0000t\u0000s\u0000\n\u0000e\u0000v\u0000i\u0000l\u0000-\u0000p\u0000k\u0000g\u0000\n\u0000"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "ask"}
+  - id: tc-056
+    category: adversarial
+    prompt: "A requirements line names its package through an environment variable that pip expands at install time."
+    expect: "The commit is blocked: a name built from ${VAR} is judged as written, so it is not a listed name."
+    execute: {"event": "commit", "files": {"requirements.txt": "requests\n${EVIL_PKG}==1.0\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "block"}
+  - id: tc-057
+    category: negative_trigger
+    prompt: "A listed requirement takes its version, and an index URL its token, from environment variables."
+    expect: "The commit is allowed: a variable in a version or an option is not a package name."
+    execute: {"event": "commit", "files": {"requirements.txt": "requests==${PINNED}\n--index-url https://${TOKEN}@host/simple\n-e ./${LOCAL_DIR}\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "allow"}
