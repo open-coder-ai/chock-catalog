@@ -24,6 +24,8 @@ IGNORABLE = frozenset("\u034f\u115f\u1160\u17b4\u17b5\u180b\u180c\u180d\u180e\u1
     map(chr, range(0xFE00, 0xFE10))
 )
 MAX_LABEL = 63
+#: Categories no valid label holds (controls, surrogates, format, unassigned): UTS 46 rejects them.
+UNNAMED = frozenset({"Cc", "Cs", "Cf", "Cn"})
 UCD_3_2 = unicodedata.ucd_3_2_0
 
 IDN = "idn"
@@ -86,13 +88,18 @@ def _label(label: str) -> str:
 
 
 def decode_alabel(label: str) -> str:
-    """The Unicode form of an `xn--` label; invalid, ASCII-only or non-canonical punycode raises."""
+    """The Unicode form of an `xn--` label; invalid, ASCII-only, non-canonical or control-holding punycode raises."""
     body = label[4:]
     try:
         text = body.encode("ascii").decode("punycode")
     except UnicodeError:
         text = ""
-    if not text or text.isascii() or text.encode("punycode") != body.encode("ascii"):
+    if (
+        not text
+        or text.isascii()
+        or text.encode("punycode") != body.encode("ascii")
+        or any(unicodedata.category(char) in UNNAMED for char in text)
+    ):
         msg = f"'{label}' is not canonical punycode for a non-ASCII label"
         raise UnparseableError(msg)
     return text

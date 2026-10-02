@@ -5,6 +5,7 @@ Run against lib/ and every copy a policy ships. Escapes, never literal invisible
 
 from __future__ import annotations
 
+import re
 from types import SimpleNamespace
 
 import pytest
@@ -101,6 +102,7 @@ def test_names_normalise_to_one_lowercase_ascii_form(
         "xn--a-",
         "xn--zz9-.com",
         "xn--bcher-kva-.de",
+        "xn--a.com",
         "evil.com\uff20allowed.com",
         "evil.com\u2100.allowed.com",
     ],
@@ -114,35 +116,47 @@ def test_ambiguous_or_invalid_names_are_refused(hk: SimpleNamespace, text: str) 
     ("text", "name", "flags"),
     [
         ("127.0.0.1", "127.0.0.1", set()),
-        ("127.0.0.1.", "127.0.0.1", set()),
-        ("0x7f.1", "127.0.0.1", {"ipv4-noncanonical"}),
-        ("0X7F.0.0.1", "127.0.0.1", {"ipv4-noncanonical"}),
-        ("2130706433", "127.0.0.1", {"ipv4-noncanonical"}),
-        ("0x7f000001", "127.0.0.1", {"ipv4-noncanonical"}),
-        ("127.1", "127.0.0.1", {"ipv4-noncanonical"}),
-        ("127.0.1", "127.0.0.1", {"ipv4-noncanonical"}),
-        ("0x", ANY, {"ipv4-noncanonical"}),
-        ("0", ANY, {"ipv4-noncanonical"}),
-        ("00.0.0.0", ANY, {"ipv4-noncanonical"}),
-        ("01.02.03.04", "1.2.3.4", {"ipv4-noncanonical"}),
-        ("0x7f.0x00.00.0x01", "127.0.0.1", {"ipv4-noncanonical"}),
         ("255.255.255.255", "255.255.255.255", set()),
-        ("4294967295", "255.255.255.255", {"ipv4-noncanonical"}),
-        ("\uff11\uff12\uff17.0.0.1", "127.0.0.1", {"ipv4-noncanonical"}),
+        (ANY, ANY, set()),
         ("%31%32%37.0.0.1", "127.0.0.1", {"percent-encoded"}),
     ],
 )
-def test_ipv4_in_every_form_the_url_standard_reads(hk: SimpleNamespace, text: str, name: str, flags: set[str]) -> None:
+def test_ipv4_only_as_a_plain_dotted_quad(hk: SimpleNamespace, text: str, name: str, flags: set[str]) -> None:
     assert _host(hk, text) == (name, "ipv4", flags)
+
+
+@pytest.mark.parametrize(
+    ("text", "reading"),
+    [
+        ("127.0.0.1.", "127.0.0.1"),
+        ("0x7f.1", "127.0.0.1"),
+        ("0X7F.0.0.1", "127.0.0.1"),
+        ("2130706433", "127.0.0.1"),
+        ("0x7f000001", "127.0.0.1"),
+        ("127.1", "127.0.0.1"),
+        ("127.0.1", "127.0.0.1"),
+        ("0x", ANY),
+        ("10.0x.0x.1", "10.0.0.1"),
+        ("0", ANY),
+        ("00.0.0.0", ANY),
+        ("01.02.03.04", "1.2.3.4"),
+        ("0177.0.0.1", "127.0.0.1"),
+        ("010.0.0.1", "8.0.0.1"),
+        ("0" * 40 + "177.0.0.1", "127.0.0.1"),
+        ("4294967295", "255.255.255.255"),
+        ("\uff11\uff12\uff17.0.0.1", "127.0.0.1"),
+    ],
+)
+def test_other_ipv4_forms_are_refused_naming_the_url_standard_reading(
+    hk: SimpleNamespace, text: str, reading: str
+) -> None:
+    with pytest.raises(hk.hosts.UnparseableError, match=f"read {re.escape(reading)},"):
+        hk.hosts.normalize_host(text)
 
 
 @pytest.mark.parametrize(
     "text",
     [
-        "0177.0.0.1",
-        "010.0.0.1",
-        "0177.1",
-        "0" * 40 + "177.0.0.1",
         "08.0.0.1",
         "1.2.3.09",
         "1.2.3.4.5",
@@ -157,8 +171,8 @@ def test_ipv4_in_every_form_the_url_standard_reads(hk: SimpleNamespace, text: st
         "0o177.0.0.1",
     ],
 )
-def test_numeric_hosts_that_are_not_one_address_are_refused(hk: SimpleNamespace, text: str) -> None:
-    with pytest.raises(hk.hosts.UnparseableError):
+def test_numeric_hosts_that_are_not_an_address_are_refused(hk: SimpleNamespace, text: str) -> None:
+    with pytest.raises(hk.hosts.UnparseableError, match="not an IPv4 address"):
         hk.hosts.normalize_host(text)
 
 
@@ -213,7 +227,7 @@ def test_a_non_string_is_a_caller_error(hk: SimpleNamespace) -> None:
 
 
 def test_the_error_is_a_value_error_naming_the_reason(hk: SimpleNamespace) -> None:
-    with pytest.raises(ValueError, match="octal"):
+    with pytest.raises(ValueError, match="dotted quad"):
         hk.hosts.normalize_host("0177.0.0.1")
     with pytest.raises(ValueError, match="U\\+00DF"):
         hk.hosts.normalize_host("fa\u00df.de")

@@ -129,7 +129,8 @@ def test_a_wildcard_matches_exactly_the_hosts_below_its_domain(hk: SimpleNamespa
         label = rng.choice(["", "x.", "x.y.", "evil", "evil-", "evil."])
         tail = rng.choice(["", ".evil.net", "x"])
         host = hk.hosts.normalize_host(label + base + tail)
-        below = host.name.endswith("." + base) and host.name != base
+        labels, base_labels = host.name.split("."), base.split(".")
+        below = len(labels) > len(base_labels) and labels[-len(base_labels) :] == base_labels
         assert hk.hostmatch.matches(host, entry) is below
         assert hk.hostmatch.matches(host, base) is (host.name == base)
 
@@ -138,11 +139,15 @@ def test_a_wildcard_matches_exactly_the_hosts_below_its_domain(hk: SimpleNamespa
 def test_allowlists_parse_whole_or_refuse(hk: SimpleNamespace, seed: int) -> None:
     rng = _rng(seed)
     lines = [rng.choice(["# c", "", "  ", "*." + _domain(rng), _domain(rng), _text(rng, 6)]) for _ in range(8)]
+    bodies = [b for b in (line.partition("#")[0].strip(" \t") for line in lines) if b]
     try:
         entries = hk.hostmatch.parse_allowlist("\n".join(lines))
     except hk.hosts.UnparseableError:
+        with pytest.raises(hk.hosts.UnparseableError):
+            for body in bodies:
+                hk.hostmatch.parse_entry(body)
         return
-    assert len(entries) <= len(lines)
+    assert entries == tuple(hk.hostmatch.parse_entry(body) for body in bodies)
 
 
 HOSTILE = [
@@ -164,11 +169,10 @@ HOSTILE = [
 def test_hostile_hosts_are_refused_fast(hk: SimpleNamespace, text: str) -> None:
     start = time.perf_counter()
     for _ in range(20):
-        try:
+        with pytest.raises(hk.hosts.UnparseableError):
             hk.hosts.normalize_host(text)
+        with pytest.raises(hk.hosts.UnparseableError):
             hk.urls.parse_url("https://" + text + "/")
-        except hk.hosts.UnparseableError:
-            pass
     assert time.perf_counter() - start < 2.0
 
 

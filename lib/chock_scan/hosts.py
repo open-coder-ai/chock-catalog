@@ -1,9 +1,10 @@
 """A host name or address normalised for comparison, read the way the URL Standard's host parser reads it
 (https://url.spec.whatwg.org/#host-parsing); input that clients may read as different hosts is refused.
 
-Never resolves a name (no DNS): two names of one machine stay different hosts. IPv4 written as
-an integer, in hex, or with fewer than four parts is read as inet_aton and the URL Standard read it;
-a leading-zero part that a decimal-only parser would read differently is refused.
+Never resolves a name (no DNS): two names of one machine stay different hosts. IPv4 is accepted
+only as a plain dotted quad (no hex, octal, leading zero, integer, short form or trailing dot): the URL
+Standard reads those as an address, but Go, Java, curl or glibc read some as a DNS name, so they are
+refused with the URL Standard reading in the message.
 """
 
 from __future__ import annotations
@@ -25,7 +26,6 @@ IPV4 = "ipv4"
 IPV6 = "ipv6"
 #: Flags beside the idn module's IDN, MIXED_SCRIPT and CONFUSABLE.
 PERCENT_ENCODED = "percent-encoded"
-IPV4_NONCANONICAL = "ipv4-noncanonical"
 IPV4_MAPPED = "ipv4-mapped"
 IPV4_EMBEDDED = "ipv4-embedded"
 
@@ -105,27 +105,31 @@ def _domain(text: str, seen: frozenset[str]) -> Host:
         msg = f"label {bad!r} is empty, too long, or holds a character outside a-z 0-9 '-' '_'"
         raise UnparseableError(msg)
     if DECIMAL.fullmatch(labels[-1]) or HEX.fullmatch(labels[-1]):
-        return _ipv4(labels, seen, written=text.removesuffix("."))
+        return _ipv4(labels, seen, written=text)
     return Host(name, DOMAIN, seen | flags(labels))
 
 
 def _ipv4(parts: list[str], seen: frozenset[str], written: str) -> Host:
-    """The URL Standard's IPv4 parser (hex, octal, 1-4 parts), refusing a reading decimal parsers do not share."""
-    value = _value(parts, octal=True)
+    """A dotted quad written canonically; every other numeric form is refused, naming the URL Standard reading."""
+    value = _value(parts)
     if value is None:
         msg = "the last label is a number, but the host is not an IPv4 address"
         raise UnparseableError(msg)
-    if all(DECIMAL.fullmatch(part) for part in parts) and _value(parts, octal=False) not in (None, value):
-        msg = "a leading-zero part reads as octal to some clients and decimal to others"
-        raise UnparseableError(msg)
     name = str(ipaddress.IPv4Address(value))
-    return Host(name, IPV4, seen | ({IPV4_NONCANONICAL} if name != written else set()))
+    if name != written:
+        msg = (
+            f"IPv4 not written as a plain dotted quad: the URL Standard and inet_aton read {name}, "
+            "while Go, Java or curl read a DNS name or another address"
+        )
+        raise UnparseableError(msg)
+    return Host(name, IPV4, seen)
 
 
-def _value(parts: list[str], *, octal: bool) -> int | None:
+def _value(parts: list[str]) -> int | None:
+    """The URL Standard's IPv4 parser (hex, octal, 1-4 parts); None where it fails."""
     if len(parts) > MAX_PARTS:
         return None
-    numbers = [_number(part, octal=octal) for part in parts]
+    numbers = [_number(part) for part in parts]
     if None in numbers:
         return None
     *high, last = [n for n in numbers if n is not None]
@@ -134,12 +138,12 @@ def _value(parts: list[str], *, octal: bool) -> int | None:
     return sum(n << (8 * (3 - i)) for i, n in enumerate(high)) + last
 
 
-def _number(part: str, *, octal: bool) -> int | None:
+def _number(part: str) -> int | None:
     if HEX.fullmatch(part):
         return int(part[2:] or "0", 16)
     if not DECIMAL.fullmatch(part):
         return None
-    if octal and len(part) > 1 and part.startswith("0"):
+    if len(part) > 1 and part.startswith("0"):
         return int(part, 8) if OCTAL.fullmatch(part) else None
     return int(part)
 

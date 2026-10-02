@@ -34,8 +34,6 @@ def hk(request: pytest.FixtureRequest) -> SimpleNamespace:
         ("xn--bcher-kva.de", "B\u00fccher.de", True),
         ("www.B\u00fccher.de", "*.xn--bcher-kva.de", True),
         ("127.0.0.1", "127.0.0.1", True),
-        ("2130706433", "127.0.0.1", True),
-        ("0x7f.1", "127.0.0.1", True),
         ("[::ffff:127.0.0.1]", "127.0.0.1", True),
         ("127.0.0.1", "[::ffff:7f00:1]", True),
         ("[0:0::1]", "::1", True),
@@ -83,6 +81,10 @@ def test_entries_with_no_single_meaning_are_refused(hk: SimpleNamespace, entry: 
 def test_an_unparseable_host_raises_instead_of_not_matching(hk: SimpleNamespace) -> None:
     with pytest.raises(hk.hosts.UnparseableError):
         hk.hostmatch.matches("0177.0.0.1", "127.0.0.1")
+    with pytest.raises(hk.hosts.UnparseableError):
+        hk.hostmatch.matches("2130706433", "127.0.0.1")
+    with pytest.raises(hk.hosts.UnparseableError):
+        hk.hostmatch.matches("10.0.0.1", "0x0a.0.0.1")
     with pytest.raises(TypeError):
         hk.hostmatch.parse_entry(None)
 
@@ -92,8 +94,7 @@ def test_an_unparseable_host_raises_instead_of_not_matching(hk: SimpleNamespace)
     [
         ("Example.COM.", "example.com", True),
         ("b\u00fccher.de", "XN--BCHER-KVA.DE", True),
-        ("2130706433", "127.0.0.1", True),
-        ("[::ffff:127.0.0.1]", "0x7f.0.0.1", True),
+        ("[::ffff:127.0.0.1]", "127.0.0.1", True),
         ("[2001:DB8:0::1]", "2001:db8::1", True),
         ("www.example.com", "example.com", False),
         ("localhost", "127.0.0.1", False),
