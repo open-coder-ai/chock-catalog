@@ -218,6 +218,23 @@ CASES = [
     ("echo $(if true; then case $x in (a) echo ok;; esac; fi) > out.txt", OK),
     ('echo "${a#*#}" "${y:-\'}\'}" > out.txt', OK),
     ("cat" + "<<a" * 300 + "\n" + "a\n" * 300, BLOCK),
+    # Scanner review against bash's grammar: comments after metacharacters, arithmetic, heredocs, time, backticks.
+    ("(:)#'\ntouch $'a\\x3bb'\n", BLOCK),
+    ("((x<<1))\necho \"'\"\ntouch $'a\\x3bb'", BLOCK),
+    ("echo $(( $(touch 'a;b') + 1 ))", BLOCK),
+    ("echo $((a>-1)) > n.txt", OK),
+    ("(( count > max )) && echo ok", OK),
+    ("cat $(cat <<EOF)\n'\nEOF\ntouch $'a\\x3bb'", BLOCK),
+    ("cat <<EOF\nEOF\r\n'\nEOF\ntouch $'a\\x3bb'", BLOCK),
+    ("echo $(time -p case a in *) touch 'a;b';; esac)", BLOCK),
+    ("echo $(case x in esac) > out.txt", OK),
+    ("echo $(x;" + " " * 80 + "case a in *) touch 'a;b';; esac)", BLOCK),
+    ("echo $(echo" + " " * 80 + "case) > x.txt", OK),
+    ("echo `echo \\`touch 'a;b'\\``", BLOCK),
+    ("echo `touch \\$'a\\x3bb'`", BLOCK),
+    ("cat <<EOF\n$(touch 'a;b')\n\\$(not) `touch 'c;d'`\nEOF", BLOCK),
+    ("cat <<'EOF'\n$(touch 'a;b')\nEOF", OK),
+    ("cat <<EOF > notes.md\nVersion: $(git describe)\nDate: `date`\nEOF", OK),
     ("Set-Content 'C:/work/notes.txt' 'a;b'", OK),
 ]
 
