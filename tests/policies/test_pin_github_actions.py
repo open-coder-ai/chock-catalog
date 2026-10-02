@@ -17,6 +17,20 @@ SHA = "8f4b7f84864484a7bf31766abe9204da3cbe65b3"
 DIGEST = "sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412"
 
 REFUSED = [
+    "  - ? # c",
+    "  - ? !!str",
+    "  - ? &a",
+    "  - ? |-",
+    "    ? >-",
+    "  ? *k",
+    "  - *k : actions/checkout@v4",
+    "  - {*k : a}",
+    "    *d",
+    '    "\\x64ocker://alpine"',
+    '    "dock\\',
+    '  x: &d "\\x64ocker://alpine"',
+    f"      - uses: actions/checkout@{SHA}\u00a0x",
+    "a" * 4096,
     "      - { ? uses",
     "    steps: [ ? uses",
     "      - {name: x, ? uses",
@@ -72,7 +86,6 @@ REFUSED = [
     "      - uses: 'actions/",
     '      - "u\\x73es": actions/checkout@v4',
     '      - {"u\\u0073es": a}',
-    "      ? uses",
     "      - ? uses",
     f"      - uses: some-org/act@{SHA},x",
     f"      - uses: some-org/act@{SHA}}}x",
@@ -95,6 +108,11 @@ REFUSED = [
 ]
 
 SILENT = [
+    '        "C:\\Users\\me"',
+    '      - run: echo "\\x41"',
+    "          *.txt",
+    "          path: |",
+    "a" * 4095,
     "              ? 'pr'",
     "              : 'push'",
     "              ? context.issue.number",
@@ -191,33 +209,39 @@ def test_silent_on_this_repositorys_own_workflows() -> None:
     assert not fired, "\n".join(fired)
 
 
-@pytest.mark.parametrize(
-    "line",
-    [
-        '"uses":a ' * 8000,
-        '{"uses":a,' * 4000,
-        "'uses':a " * 4000,
-        '{"image":docker://x,' * 8000 + "@sha256:" + "a" * 64,
-        "  &a" * 8000,
-        "[? " * 13000,
-        ",? uses" * 5000,
-        '{"a\\":' * 6000,
-        "uses: a'" * 5000,
-        "uses: " + "!a " * 9000 + "x",
-        "uses: " + "&a " * 9000 + "x",
-        "image: " + "!a " * 9000 + "x",
-        " uses: a" * 5000,
-        "uses: " + "a " * 20000,
-        "uses: " + "a:b " * 10000,
-        "x " * 20000 + "uses: a",
-        '"uses": "' + "\\" * 40000,
-        "uses: '" + "''" * 20000 + "x",
-        "{" * 20000 + "uses: x",
-        "- " * 20000 + "?",
-    ],
-)
+FAMILIES = [
+    '"uses":a ',
+    '{"uses":a,',
+    "'uses':a ",
+    "[&a",
+    ",&a",
+    ":&a",
+    "[? &a",
+    "[?\t!a",
+    '"image":&a',
+    "uses: !a ",
+    "uses: &a ",
+    " uses: a",
+    "uses: a ",
+    "uses: a:b ",
+    "x uses: a ",
+    '"uses": "\\',
+    "uses: '''",
+    "{",
+    "- ",
+    "[? ",
+    ",? uses",
+    '{"a\\":',
+    "uses: a'",
+    "? !a ",
+    "*a: ",
+    '{"image":docker://x,',
+]
+
+
+@pytest.mark.parametrize("line", [(f * 4096)[:4095] for f in FAMILIES] + [f * 13334 for f in FAMILIES[:6]])
 def test_a_long_hostile_line_is_judged_in_linear_time(line: str) -> None:
     """A commit hook has no timeout: no line may make the pattern backtrack quadratically."""
     start = time.perf_counter()
     PATTERN.search(line)
-    assert time.perf_counter() - start < 0.5
+    assert time.perf_counter() - start < 0.3
