@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 26 total, 25 executable |
+| **Eval cases** | 90 total, 89 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip, it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test files. Runs: commit, agent write, turn's end. Only what the change adds is judged. Waiver: 'chock: allow test-skip' same line. Person's commit: honoured. Agent (write, turn's end, an agent's commit: CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already in HEAD; it asks a person.
+Blocks newly added test skips, focus markers and runner options that hide tests: pytest/unittest skips, non-strict xfail, importorskip; JS skip/only/todo/fixme, x/f prefixes; JUnit Disabled/Assume; Go Skip, Short(); Rust ignore; RSpec, PHPUnit, C#, Swift skips; --deselect/-k not, collect_ignore, jest testPathIgnorePatterns. Runs: commit, agent write, turn's end; only additions judged. Friction: computed names evade it. Waiver: 'chock: allow test-skip' same line; agent: only if in HEAD.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Test skip or focus marker (.only) added. Fix the test or the code instead of skipping it. A person may waive a reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell; in the agent a waiver counts only for a line already committed in HEAD, so an agent asks the person rather than writing the pragma itself.
+> Test skip, focus marker (.only) or test-hiding runner option added. Fix the test or the code instead of skipping, focusing or deselecting it. A person may waive a reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell; in the agent a waiver counts only for a line already committed in HEAD, so an agent asks the person rather than writing the pragma itself.
 
 ## Which primitive it becomes
 

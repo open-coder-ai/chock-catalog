@@ -633,20 +633,19 @@ policies:
     refused.'
 - id: block-test-skips
   path: base/block-test-skips
-  version: 0.0.4
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 26
-  eval_executed: 25
-  description: 'Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip,
-    it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test files.
-    Runs: commit, agent write, turn''s end. Only what the change adds is judged. Waiver: ''chock: allow
-    test-skip'' same line. Person''s commit: honoured. Agent (write, turn''s end, an agent''s commit:
-    CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already in HEAD; it asks
-    a person.'
+  eval_cases: 90
+  eval_executed: 89
+  description: 'Blocks newly added test skips, focus markers and runner options that hide tests: pytest/unittest
+    skips, non-strict xfail, importorskip; JS skip/only/todo/fixme, x/f prefixes; JUnit Disabled/Assume;
+    Go Skip, Short(); Rust ignore; RSpec, PHPUnit, C#, Swift skips; --deselect/-k not, collect_ignore,
+    jest testPathIgnorePatterns. Runs: commit, agent write, turn''s end; only additions judged. Friction:
+    computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
   version: 0.0.5
