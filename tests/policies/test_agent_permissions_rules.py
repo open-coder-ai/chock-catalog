@@ -82,7 +82,7 @@ def test_scoped_entries_are_not(entry: str) -> None:
 
 
 def test_the_messages_name_the_command() -> None:
-    assert rules.broad_entry("Bash(git push origin:*)") == "a wildcard over git push"
+    assert rules.broad_entry("Bash(git push --force:*)") == "a wildcard over git push"
     assert rules.broad_entry("Bash(curl:*)") == "a wildcard over curl"
 
 

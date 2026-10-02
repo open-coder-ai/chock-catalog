@@ -66,6 +66,6 @@ def committed_all(root: Path, path: str) -> list[str]:
         )
     except OSError:
         return []
-    names = proc.stdout.decode("utf-8", "replace").split("\0") if proc.returncode == 0 else []
+    names = proc.stdout.decode("utf-8", "surrogateescape").split("\0") if proc.returncode == 0 else []
     wanted = path.casefold()
     return [text for name in names if name.casefold() == wanted and (text := committed(root, name)) is not None]

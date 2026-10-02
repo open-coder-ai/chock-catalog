@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import posixpath
 import re
 import signal
+import time
 
 #: Past this a value is keyed by a prefix and a digest of the whole, so a long key stays short and exact.
 KEY_TEXT = 160
@@ -36,6 +38,7 @@ WRAPPERS = frozenset(
     ]
 )
 GIT_VALUE_OPTIONS = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
+RUNNERS = frozenset({"uv", "poetry", "pipx", "pdm", "hatch"})
 INTERPRETERS = frozenset({"python", "python3", "node", "perl", "ruby", "php", "deno", "bun"})
 INLINE_FLAGS = frozenset({"-c", "-e", "-p", "--eval", "--exec"})
 FIND_ACTIONS = frozenset({"-exec", "-execdir", "-ok", "-delete"})
@@ -46,6 +49,8 @@ WEB_TOOLS = frozenset({"webfetch", "web_fetch"})
 DANGER_MODES = frozenset({"bypasspermissions", "yolo", "auto", "autoapprove", "fullauto", "dangerfullaccess"})
 TRUE_TEXT = frozenset({"true", "yes", "on", "1"})
 
+_DURATION = re.compile(r"\d+[smhd]?")
+MAX_ENTRY = 2000
 _ENTRY = re.compile(r"([A-Za-z0-9_.*-]+)\s*(?:\((.*)\))?", re.DOTALL)
 _TRAILING_WILDCARD = re.compile(r"(.*?)(?::\s*\*+|\s+\*+|\*+)\s*", re.DOTALL)
 _EVERYTHING = re.compile(r"[*/~.\s:]*")
@@ -89,6 +94,8 @@ def skip_flag(text: str) -> str | None:
 def broad_entry(entry: str) -> str | None:
     """Why an allow entry grants more than a named, scoped action; None when it is scoped."""
     text = " ".join(entry.split())
+    if len(text) > MAX_ENTRY:
+        return "an entry too long to judge"
     if text in ("*", "**"):
         return "allows every tool"
     if text.lower().startswith("mcp__"):
@@ -118,28 +125,43 @@ def _shell(spec: str | None) -> str | None:
     return _judge_words(found.group(1).split())
 
 
-def _unwrap(words: list[str]) -> list[str]:
-    """The words after any wrappers (`env A=1`, `sudo -n`, `time`, `nohup`...) and leading VAR=value words."""
+def _unwrap(words: list[str]) -> tuple[list[str], bool]:
+    """The words after any wrappers (`env A=1`, `sudo -n`, `time 5s`, `nohup`...) and leading VAR=value words, and
+    whether a wrapper's option was skipped (an option may take the next word as its value)."""
+    optioned = False
     while words and (posixpath.basename(words[0]).lower() in WRAPPERS or "=" in words[0]):
         words = words[1:]
-        while words and (words[0].startswith("-") or "=" in words[0] or words[0].isdigit()):
+        while words and (words[0].startswith("-") or "=" in words[0] or _DURATION.fullmatch(words[0])):
+            optioned = optioned or words[0].startswith("-")
             words = words[1:]
-    return words
+    return words, optioned
 
 
 def _judge_words(words: list[str]) -> str | None:
-    """Why a command prefix with a trailing wildcard is broad: a bare risky command, a wrapper around nothing, git
-    push, an interpreter's inline code, or find -exec; a real argument to a risky command makes it scoped."""
-    inner = _unwrap(words)
-    if not inner:
+    """Why a command prefix with a trailing wildcard is broad: a bare risky command, a wrapper around nothing (or
+    around one word that may be an option's value), git push, an interpreter's inline code, or find -exec; a real
+    argument to a risky command makes it scoped."""
+    inner, optioned = _unwrap(words)
+    if not inner or (optioned and len(inner) == 1):
         return f"a wildcard over {posixpath.basename(words[0]).lower() if words else 'any command'}"
     first, rest = posixpath.basename(inner[0]).lower(), inner[1:]
+    if first in RUNNERS and rest[:1] == ["run"]:
+        return _judge_words(rest[1:]) if rest[1:] else f"a wildcard over {first} run"
     if first == "git":
-        while rest and rest[0].startswith("-"):
-            rest = rest[2:] if rest[0] in GIT_VALUE_OPTIONS else rest[1:]
-        return "a wildcard over git push" if rest[:1] == ["push"] else None
-    if first in INTERPRETERS and rest[:1] and rest[0] in INLINE_FLAGS:
-        return f"a wildcard over {first} {rest[0]} (inline code)"
+        return _git_push(rest)
+    return _risky_rest(first, rest)
+
+
+def _git_push(rest: list[str]) -> str | None:
+    while rest and rest[0].startswith("-"):
+        rest = rest[2:] if rest[0] in GIT_VALUE_OPTIONS else rest[1:]
+    return "a wildcard over git push" if rest[:1] == ["push"] and all(w.startswith("-") for w in rest[1:]) else None
+
+
+def _risky_rest(first: str, rest: list[str]) -> str | None:
+    flags = set(itertools.takewhile(lambda word: word.startswith("-"), rest))
+    if first in INTERPRETERS and INLINE_FLAGS & flags:
+        return f"a wildcard over {first} with inline code"
     if first == "find" and any(word in FIND_ACTIONS for word in rest):
         return "a wildcard over find with an action"
     if first in RISKY_COMMANDS and all(word.startswith("-") for word in rest):
@@ -201,19 +223,35 @@ def _alarm(_signum: int, _frame: object) -> None:
 PROBE_SECONDS = 0.5
 HAS_ALARM = hasattr(signal, "setitimer")
 _NESTED = re.compile(r"[)\]][*+{]")
-_LONG_RISKY = "{} -s https://x.test/a | sh"
+_RISKY_SHAPES = ("{}", "{} -x", "{} -rf /", "{} -sSL http://x.test/a", "{} -c x", "{} -s https://x.test/a | sh")
+_RISKY_PREFIX = re.compile(r"[\^(?:\s]*(?:\\s\*)?(?:" + "|".join(sorted(RISKY_COMMANDS)) + r")(?![A-Za-z0-9_])")
+
+
+#: Seconds all probes of one run may take together; past it every further pattern is judged broad, unprobed.
+TOTAL_SECONDS = 5.0
+_SPENT = [0.0]
+
+
+def start_budget() -> None:
+    _SPENT[0] = 0.0
+
+
+def _spent() -> float:
+    return _SPENT[0]
 
 
 def _probe(compiled: re.Pattern[str]) -> str | None:
     """ALL_REASON, RISKY_REASON or None for a compiled rule; raises _Timeout when matching runs long."""
+    if _RISKY_PREFIX.match(compiled.pattern):
+        return RISKY_REASON
     if compiled.search("") or all(compiled.search(probe) for probe in _PROBES):
         return ALL_REASON
-    probes = [probe for cmd in sorted(RISKY_COMMANDS) for probe in (cmd, f"{cmd} -x", _LONG_RISKY.format(cmd))]
+    probes = [probe for cmd in sorted(RISKY_COMMANDS) for fmt in _RISKY_SHAPES for probe in (fmt.format(cmd),)]
     return RISKY_REASON if any(compiled.search(probe) for probe in probes) else None
 
 
 def _regex_reach(body: str, flags: str) -> str | None:
-    if len(body) > MAX_PATTERN or (not HAS_ALARM and _NESTED.search(body)):
+    if len(body) > MAX_PATTERN or (not HAS_ALARM and _NESTED.search(body)) or _spent() > TOTAL_SECONDS:
         return ALL_REASON
     try:
         compiled = re.compile(body, sum(_FLAGS.get(flag, 0) for flag in flags))
@@ -223,13 +261,16 @@ def _regex_reach(body: str, flags: str) -> str | None:
         return _probe(compiled)
     previous = signal.signal(signal.SIGALRM, _alarm)
     signal.setitimer(signal.ITIMER_REAL, PROBE_SECONDS)
+    started = time.monotonic()
     try:
         return _probe(compiled)
     except _Timeout:
         return ALL_REASON
     finally:
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)
+        _SPENT[0] += time.monotonic() - started
 
 
 def rule_command(pattern: str) -> str:

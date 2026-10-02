@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from chock_scan import safe_read
-from perms import load, sidecar, walk
+from perms import load, rules, sidecar, walk
 
 ALLOW, REFUSE, FAULT = 0, 1, 2
 #: Where a person reviews what is committed or pushed; anywhere else a waiver counts only once committed.
@@ -111,6 +111,7 @@ def findings(payload: dict) -> list[dict]:
     event = str(payload.get("event", ""))
     root = Path(str(payload.get("repo_root") or ".")).resolve()
     baseline = bool(payload.get("baseline"))
+    rules.start_budget()
     writes = {
         repo_path(root, path): text for path, text in (payload.get("writes") or {}).items() if isinstance(text, str)
     }
