@@ -1,0 +1,114 @@
+suite:
+  id: block-hook-bypass-in-files-tests-v1
+  policy_id: block-hook-bypass-in-files
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # The gate ships in observe (action: warn, D15): every case that it flags expects `warn`, which
+  # becomes `block` when a separate PR promotes it. Each case stages files in a throwaway repo and
+  # replays the content_regex gate at commit (added lines) or at tool_use (the agent's write).
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A package.json prepare script points core.hooksPath at a directory of its own.
+    expect: Flagged; the hooks every clone runs are replaced by whatever that directory holds.
+    execute: {files: {"package.json": "{\n  \"scripts\": {\n    \"prepare\": \"git config core.hooksPath .githooks\"\n  }\n}\n"}, expect: warn}
+  - id: tc-002
+    category: trigger
+    prompt: A husky hook script starts by exporting HUSKY=0.
+    expect: Flagged; HUSKY=0 switches every husky hook off.
+    execute: {files: {".husky/pre-commit": "export HUSKY=0\nnpx lint-staged\n"}, expect: warn}
+  - id: tc-003
+    category: trigger
+    prompt: A release script commits with the hook-skip option.
+    expect: Flagged; the script skips the hooks for everyone who runs it.
+    execute: {files: {"scripts/release.sh": "#!/bin/sh\nset -e\ngit commit -am \"release $V\" --no-verify\n"}, expect: warn}
+  - id: tc-004
+    category: trigger
+    prompt: A Makefile target commits with SKIP= naming pre-commit hooks.
+    expect: Flagged; SKIP= switches the named pre-commit hooks off.
+    execute: {files: {"Makefile": "release:\n\tSKIP=mypy,flake8 git commit -m release\n"}, expect: warn}
+  - id: tc-005
+    category: trigger
+    prompt: A justfile recipe pushes with lefthook switched off.
+    expect: Flagged.
+    execute: {files: {"justfile": "ship:\n    LEFTHOOK=0 git push origin main\n"}, expect: warn}
+  - id: tc-006
+    category: trigger
+    prompt: A setup script removes the pre-commit hooks.
+    expect: Flagged; uninstall removes every hook pre-commit installed.
+    execute: {files: {"tools/setup.sh": "pre-commit uninstall\n"}, expect: warn}
+  - id: tc-007
+    category: adversarial
+    prompt: A script sets core.hooksPath through GIT_CONFIG_KEY_0 instead of git config.
+    expect: Flagged; the environment form sets the same key.
+    execute: {files: {"ci/commit.sh": "export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null\n"}, expect: warn}
+  - id: tc-008
+    category: adversarial
+    prompt: A lefthook config excludes a tag from every run through its environment.
+    expect: Flagged.
+    execute: {files: {"lefthook.yml": "pre-commit:\n  commands:\n    lint:\n      run: LEFTHOOK_EXCLUDE=lint npx eslint {staged_files}\n"}, expect: warn}
+  - id: tc-009
+    category: adversarial
+    prompt: A nested package's script abbreviates the hook-skip option to a prefix git accepts.
+    expect: Flagged; git accepts any unambiguous prefix down to --no-veri.
+    execute: {files: {"packages/app/package.json": "{\"scripts\": {\"ship\": \"git push --no-veri\"}}\n"}, expect: warn}
+  - id: tc-010
+    category: trigger
+    prompt: At write time the agent adds HUSKY=0 to a hook launcher.
+    expect: The write is flagged by the same pattern at tool_use.
+    execute: {event: tool_use, writes: {".husky/pre-push": "HUSKY=0 npm test\n"}, expect: warn}
+  - id: tc-011
+    category: negative_trigger
+    prompt: A hook script reads core.hooksPath to report where the hooks live.
+    expect: Allowed; reading the key changes nothing.
+    execute: {files: {"scripts/doctor.sh": "hooks=$(git config --get core.hooksPath)\necho \"hooks: $hooks\"\n"}, expect: allow}
+  - id: tc-012
+    category: negative_trigger
+    prompt: husky's own runner tests HUSKY before running a hook.
+    expect: Allowed; testing the variable is not setting it.
+    execute: {files: {".husky/_/h": "[ \"${HUSKY-}\" = \"0\" ] && exit 0\n"}, expect: allow}
+  - id: tc-013
+    category: negative_trigger
+    prompt: A Makefile installs the hooks and runs pre-commit on every file.
+    expect: Allowed.
+    execute: {files: {"Makefile": "hooks:\n\tpre-commit install\n\tpre-commit run --all-files\n"}, expect: allow}
+  - id: tc-014
+    category: negative_trigger
+    prompt: A script documents the hook-skip option in a comment.
+    expect: Allowed; a comment line runs nothing.
+    execute: {files: {"scripts/release.sh": "# never use git commit --no-verify here; fix the hook\ngit commit -m release\n"}, expect: allow}
+  - id: tc-015
+    category: negative_trigger
+    prompt: A README outside the scoped files explains HUSKY=0.
+    expect: Allowed; the gate only reads hook launchers, scripts and build files.
+    execute: {files: {"CONTRIBUTING.md": "Set HUSKY=0 to skip installing hooks in Docker builds.\n"}, expect: allow}
+  - id: tc-016
+    category: negative_trigger
+    prompt: A script sets an unrelated variable whose name ends in SKIP.
+    expect: Allowed; only the exact variable names are read.
+    execute: {files: {"build.sh": "TEST_SKIP=slow make test\nSKIP_DOCS=1 make\n"}, expect: allow}
+  - id: tc-017
+    category: behavior
+    prompt: A person keeps a reviewed bypass with the waiver on the same line of a Makefile.
+    expect: Allowed at a person's commit; the pragma is honoured.
+    execute: {files: {"Makefile": "docker:\n\tHUSKY=0 git commit -m image  # pragma: allowlist hook-bypass\n"}, expect: allow}
+  - id: tc-018
+    category: adversarial
+    prompt: The agent writes the waiver itself together with a new bypass.
+    expect: Flagged at tool_use; in the agent only a waived line already in HEAD counts.
+    execute: {event: tool_use, head_files: {"Makefile": "all:\n\tmake test\n"}, writes: {"Makefile": "all:\n\tmake test\n\tSKIP=mypy git commit -m x  # pragma: allowlist hook-bypass\n"}, expect: warn}
+  - id: tc-019
+    category: adversarial
+    prompt: "Documented miss: a script spreads the skip over a continued line."
+    expect: "Allowed; the gate reads one line at a time, so a value on the next line is not seen (stated in the description)."
+    execute: {files: {"scripts/ship.sh": "git commit -m x \\\n  --no-verify\n"}, expect: allow}
+  - id: tc-020
+    category: adversarial
+    prompt: "Documented miss: a script commits with the short -n."
+    expect: "Allowed; -n is also an ordinary option of many commands and message text, so the file gate leaves it to block-no-verify's command guard (stated in the description)."
+    execute: {files: {"scripts/ship.sh": "git commit -n -m x\n"}, expect: allow}
