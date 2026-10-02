@@ -17,13 +17,18 @@ def imports(path: Path, pkg: str | None, pkgs: dict[str, Path]) -> set[Need]:
     """The lib modules a file imports, as (package, module); (package, __init__) for the package itself.
 
     `pkg` is the lib package the file belongs to (for relative imports), or None for a guard script.
+    A guard script inside a package of the policy's own (an `__init__.py` beside it) may import its siblings
+    relatively; those are the policy's code, not lib modules.
     """
     needs: set[Need] = set()
+    own = pkg is None and (path.parent / f"{INIT}.py").is_file()
     for node in ast.walk(ast.parse(path.read_bytes(), filename=str(path))):
         if isinstance(node, ast.ImportFrom):
-            if node.level > (1 if pkg else 0):
+            if node.level > (1 if pkg or own else 0):
                 msg = f"{path.name}: a relative import beyond its package (packages here are flat)"
                 raise ValueError(msg)
+            if own and node.level:
+                continue
             target = node.module or ""
             if node.level:
                 target = f"{pkg}.{target}" if target else str(pkg)
