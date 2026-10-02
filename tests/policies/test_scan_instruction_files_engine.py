@@ -70,7 +70,7 @@ def test_a_refusal_at_the_turns_end_is_judged_against_head(repo: Path) -> None:
     assert engine(repo, {".roo/rules/a.md": EXFIL + "\nBe brief.\n"}, gatekit.STOP) == 0
 
 
-def test_a_managed_policy_copy_and_an_ordinary_file_pass(repo: Path) -> None:
-    writes = {".agents/policies/x/skills/x/SKILL.md": EXFIL, "docs/attacks.md": EXFIL}
+def test_an_ordinary_file_passes_and_a_managed_policy_copy_is_judged(repo: Path) -> None:
     for event in EVENTS:
-        assert engine(repo, writes, event) == 0
+        assert engine(repo, {"docs/attacks.md": EXFIL}, event) == 0
+    assert engine(repo, {".agents/policies/x/skills/x/SKILL.md": EXFIL}, gatekit.PRE_TOOL_USE) == 1

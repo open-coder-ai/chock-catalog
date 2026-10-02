@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import bisect
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 from instr_rules import BLOCK, Hit, Lexicon
 from instr_text import Statement
@@ -21,6 +21,8 @@ TRUST_SPAN = 12
 COMMAND_RULES = frozenset({"fetch-exec", "decode-exec", "exfil-secret"})
 EXFIL = ("exfil-secret", BLOCK, "tells the agent to send a secret to a remote destination")
 TRUST = ("fake-trust-exec", BLOCK, "a fake trust block that runs a command")
+#: A guarded topic's word reduced to its stem, so review/reviewer/reviews or test/tests/testing are one topic.
+STEM = re.compile(r"(?:s|es|ed|er|ers|ing)$")
 CLOSING_TAG = re.compile(r"[<\[]{1,2}\s*/|<\|\s*im_end")
 
 
@@ -38,6 +40,7 @@ class Doc:
         found = list(self.p["clause_break"].finditer(self.text))
         self.break_starts = [m.start() for m in found]
         self.break_ends = [m.end() for m in found]
+        self.segment_ends = [m.end() for m in self.p["segment_break"].finditer(self.text)]
 
     def index(self, pos: int) -> int:
         return bisect.bisect_right(self.starts, pos) - 1
@@ -60,30 +63,48 @@ class Doc:
     def statements_with(self, pattern: re.Pattern[str]) -> set[int]:
         return {i for i, _ in self.matches(pattern)}
 
-    def prohibited(self, pos: int) -> bool:
-        """True when a negation earlier in the same clause governs what starts at `pos` ("never run X")."""
+    def clause_start(self, pos: int) -> int:
+        """Where the clause holding `pos` starts: a clause break, the statement's start, or LOOKBACK back."""
         k = bisect.bisect_right(self.break_ends, pos) - 1
-        start = max(self.starts[self.index(pos)], self.break_ends[k] if k >= 0 else 0, pos - LOOKBACK)
-        clause = self.p["encourager"].sub(" ", self.text[start:pos])
-        return self.p["negation"].search(clause) is not None
+        return max(self.starts[self.index(pos)], self.break_ends[k] if k >= 0 else 0, pos - LOOKBACK)
 
-    def clause_after(self, pos: int) -> str:
+    def clause_end(self, pos: int) -> int:
+        """Where the clause holding `pos` ends: the next clause break, the statement's end, or 2 * LOOKBACK on."""
         k = bisect.bisect_left(self.break_starts, pos)
         end = min(self.ends[self.index(pos)], self.break_starts[k] if k < len(self.break_starts) else len(self.text))
-        return self.text[pos : min(end, pos + 2 * LOOKBACK)]
+        return min(end, pos + 2 * LOOKBACK)
+
+    def negated(self, start: int, end: int) -> bool:
+        return self.p["negation"].search(self.p["encourager"].sub(" ", self.text[start:end])) is not None
+
+    def prohibited(self, pos: int) -> bool:
+        """True when a negation earlier in the same clause governs what starts at `pos` ("never run X")."""
+        return self.negated(self.clause_start(pos), pos)
 
     def rule_hits(self) -> dict[int, list[Hit]]:
         out: dict[int, list[Hit]] = defaultdict(list)
         for rule in self.lex.rules:
-            targets = self.statements_with(rule.target) if rule.target is not None else None
+            targets = [m.start() for _, m in self.matches(rule.target)] if rule.target is not None else None
             fired: set[int] = set()
             for i, m in self.matches(rule.phrase):
-                if i in fired or (targets is not None and i not in targets):
+                if i in fired:
+                    continue
+                if targets is not None and not _within(targets, *self._target_span(rule.target_scope, i, m)):
                     continue
                 if not (rule.discount and self.prohibited(m.start())):
                     fired.add(i)
                     out[i].append(Hit(rule.id, rule.verdict, rule.label, self.sts[i]))
         return out
+
+    def _target_span(self, scope: str, i: int, m: re.Match[str]) -> tuple[int, int]:
+        """Where a rule's target may sit: its statement, or the segment (between sentence ends and semicolons)
+        holding the phrase."""
+        if scope == "statement":
+            return self.starts[i], self.ends[i]
+        k = bisect.bisect_right(self.segment_ends, m.start())
+        low = max(self.starts[i], self.segment_ends[k - 1] if k else 0)
+        high = min(self.ends[i], self.segment_ends[k] if k < len(self.segment_ends) else self.ends[i])
+        return low, high
 
     def exfil(self) -> set[int]:
         """Statements that send a secret somewhere: prose ("upload ~/.ssh/id_rsa to https://..."), a shell
@@ -97,19 +118,33 @@ class Doc:
         for i in nets.keys() & strong & carriers:
             if self.sts[i].code or any(not self.prohibited(pos) for pos in nets[i]):
                 found.add(i)
-        destinations = self.statements_with(p["destination"])
-        strong_at = [m.start() for _, m in self.matches(p["secret_strong"])]
-        generic_at = [m.start() for _, m in self.matches(p["secret_generic"])]
-        for i, verb in self.matches(p["send_verb"]):
-            if i in found or i not in destinations:
-                continue
-            end = verb.end() + len(self.clause_after(verb.end()))
-            window = self._words_end(verb.end(), end)
-            if (_within(strong_at, verb.end(), end) or _within(generic_at, verb.end(), window)) and not self.prohibited(
-                verb.start()
-            ):
+        at = {k: [m.start() for _, m in self.matches(p[k])] for k in ("destination", "secret_strong", "secret_generic")}
+        verbs = [(i, m, True) for i, m in self.matches(p["send_verb"])]
+        verbs += [(i, m, False) for i, m in self.matches(p["send_weak"])]
+        for i, verb, strong_verb in verbs:
+            if i not in found and self._sends_secret(verb, at, strong_verb=strong_verb):
                 found.add(i)
         return found
+
+    def _sends_secret(self, verb: re.Match[str], at: dict[str, list[int]], *, strong_verb: bool) -> bool:
+        """The verb's object is a secret, sent to a destination: a secret file, env dump or secret variable
+        before the destination (or after it, for a plain send verb), or for a plain send verb a credential
+        among the next OBJECT_WORDS words before the destination and not about an auth header. A weak verb
+        (push, copy, share) counts only with a secret file or variable as its object. A negation before the
+        verb or between it and the secret discounts it."""
+        start, end = verb.end(), self.clause_end(verb.end())
+        dest = _first(at["destination"], start, end)
+        if dest is None and not _within(
+            at["destination"], self.starts[self.index(start)], self.ends[self.index(start)]
+        ):
+            return False
+        object_end = end if dest is None else dest
+        secret = _first(at["secret_strong"], start, object_end)
+        if secret is None and strong_verb and dest is not None:
+            secret = _first(at["secret_strong"], dest, end)
+        if secret is None and strong_verb and not self.p["auth_context"].search(self.text, start, object_end):
+            secret = _first(at["secret_generic"], start, self._words_end(start, object_end))
+        return secret is not None and not self.prohibited(verb.start()) and not self.negated(start, secret)
 
     def _words_end(self, pos: int, end: int) -> int:
         """Where the first OBJECT_WORDS words after `pos` end, within `end`."""
@@ -152,10 +187,14 @@ class Doc:
         return out
 
 
-def _within(starts: list[int], low: int, high: int) -> bool:
-    """True when a match starts at or after `low` and before `high`."""
+def _first(starts: list[int], low: int, high: int) -> int | None:
+    """The first match start at or after `low` and before `high`, else None."""
     k = bisect.bisect_left(starts, low)
-    return k < len(starts) and starts[k] < high
+    return starts[k] if k < len(starts) and starts[k] < high else None
+
+
+def _within(starts: list[int], low: int, high: int) -> bool:
+    return _first(starts, low, high) is not None
 
 
 def judge(lex: Lexicon, sts: list[Statement]) -> list[Hit]:
@@ -168,8 +207,12 @@ def judge(lex: Lexicon, sts: list[Statement]) -> list[Hit]:
     return found + doc.trust_blocks(hits)
 
 
-def guardrails(lex: Lexicon, sts: list[Statement]) -> Counter[str]:
-    """Normalized statements that state a guardrail: a mandate word and a guarded topic."""
+def guardrails(lex: Lexicon, sts: list[Statement]) -> dict[int, frozenset[str]]:
+    """The statements that state a guardrail (a mandate word and a guarded topic), each with its topics."""
     doc = Doc(lex, sts)
-    both = doc.statements_with(lex.p["guard_mandate"]) & doc.statements_with(lex.p["guard_topic"])
-    return Counter(sts[i].norm for i in both)
+    mandates = doc.statements_with(lex.p["guard_mandate"])
+    topics: dict[int, set[str]] = defaultdict(set)
+    for i, m in doc.matches(lex.p["guard_topic"]):
+        if i in mandates:
+            topics[i].add(STEM.sub("", m.group()) or m.group())
+    return {i: frozenset(found) for i, found in topics.items()}

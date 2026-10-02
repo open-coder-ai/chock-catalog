@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import posixpath
 import re
 import shutil
 import subprocess
@@ -38,13 +39,8 @@ INSTRUCTION = re.compile(
     r"|\.github/copilot-instructions\.md|\.github/(?:instructions|prompts|agents|chatmodes)/.+"
     r"|\.cursor/rules/.+|\.windsurf/rules/.+|\.roo/rules(?:-[^/]+)?/.+|\.kiro/steering/.+|\.continue/(?:rules|prompts)/.+"
     r"|\.amazonq/rules/.+|\.augment/rules/.+|\.trae/rules/.+|\.junie/guidelines\.md|\.codex/prompts/.+"
-    r"|\.gemini/commands/.+|\.claude/(?:commands|agents|skills|memory)/.+)$"
+    r"|\.gemini/commands/.+|\.claude/(?:commands|agents|skills|memory)/.+|\.agents/policies/index[^/]*\.md)$"
     r"|^memory/.+\.md$"
-)
-#: chock's own managed copies, and the catalog's skill pages that `chock plugin build` derives from each
-#: policy's manifest: policy prose that describes the patterns it refuses, never judged.
-MANAGED = re.compile(
-    r"^\.agents/policies/|^\.chock/|^(?:base|compliance|agentic-security)/([^/]+)/skills/\1/skill\.md$"
 )
 WAIVER = re.compile(r"chock:\s*allow\s+instruction-scan\b")
 WAIVER_LINE = re.compile(r"\s*(?:<!--|#|//|/\*|;)?\s*chock:\s*allow\s+instruction-scan\b.*")
@@ -62,16 +58,12 @@ ADVICE = (
 
 
 def canonical(path: str) -> str:
-    """The path with backslashes as slashes, `//` and `/./` collapsed and a leading `./` dropped."""
-    path = path.replace("\\", "/")
-    while "//" in path or "/./" in path:
-        path = path.replace("//", "/").replace("/./", "/")
-    return path.removeprefix("./")
+    """The path with backslashes as slashes and `//`, `.` and `..` segments folded."""
+    return posixpath.normpath(path.replace("\\", "/"))
 
 
 def judged(path: str) -> bool:
-    low = canonical(path).casefold()
-    return MANAGED.search(low) is None and INSTRUCTION.search(low) is not None
+    return INSTRUCTION.search(canonical(path).casefold()) is not None
 
 
 def file_hits(lex: Lexicon, text: str) -> list[Hit]:
@@ -111,8 +103,8 @@ def before_text(payload: dict, path: str, text: str) -> str | None:
     event, root = str(payload.get("event", "")), Path(str(payload.get("repo_root", ".")))
     if event in FROM_DISK:
         try:
-            disk = (root / path).read_text(encoding="utf-8", errors="replace")
-        except OSError:
+            disk = (root / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
             disk = None
         if disk != text:
             return disk
@@ -132,12 +124,18 @@ def _finding(rule: str, label: str, path: str, st: Statement) -> dict:
 
 
 def removed_guardrails(lex: Lexicon, path: str, old: str, new_lines: int, text: str) -> list[dict]:
-    """A guardrail statement the old text held and the new one no longer does (deleted or reworded)."""
-    old_sts = statements(old)
-    gone = guardrails(lex, old_sts) - guardrails(lex, statements(text))
+    """Guardrail statements the change deletes or rewords, when some topic they guard (tests, review, hooks,
+    secrets...) is left with fewer guardrail statements than before: a weakening, not a rewording."""
+    old_sts, new_sts = statements(old), statements(text)
+    before, after = guardrails(lex, old_sts), guardrails(lex, new_sts)
+    count_before = Counter(topic for topics in before.values() for topic in topics)
+    count_after = Counter(topic for topics in after.values() for topic in topics)
+    weakened = {topic for topic, n in count_before.items() if count_after[topic] < n}
+    gone = Counter(old_sts[i].norm for i in before) - Counter(new_sts[i].norm for i in after)
     out = []
-    for st in old_sts:
-        if gone[st.norm] > 0:
+    for i in sorted(before):
+        st = old_sts[i]
+        if gone[st.norm] > 0 and before[i] & weakened:
             gone[st.norm] -= 1
             line = max(1, min(st.first, new_lines))
             out.append(_finding("guardrail-removed", "removes a guardrail statement", path, st._replace(first=line)))
@@ -166,9 +164,11 @@ def judge_file(lex: Lexicon, payload: dict, path: str, text: str) -> tuple[list[
 def findings(payload: dict) -> tuple[list[dict], bool]:
     """Every finding in the written instruction files, and whether any block-class one is new."""
     writes = payload.get("writes")
-    if not isinstance(writes, dict):
+    if not isinstance(writes, dict) or not all(isinstance(payload.get(k, ""), str) for k in ("event", "repo_root")):
         raise TypeError("writes")
-    judged_writes = {canonical(str(p)): t for p, t in writes.items() if isinstance(t, str) and judged(str(p))}
+    judged_writes = {canonical(str(p)): t for p, t in writes.items() if judged(str(p))}
+    if not all(isinstance(t, str) for t in judged_writes.values()):
+        raise TypeError("writes")
     if not judged_writes:
         return [], False
     lex = Lexicon()

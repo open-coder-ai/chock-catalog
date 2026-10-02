@@ -39,6 +39,7 @@ def test_the_shipped_lexicon_has_no_problem() -> None:
         (lambda d: d["rules"][0].__setitem__("id", 7), "rules[0]: id must be a short lower-case slug"),
         (lambda d: d["rules"][0].__setitem__("phrase", None), "rules[0].phrase: must be a non-empty"),
         (lambda d: d["rules"][0].__setitem__("target", "["), "rules[0].target: does not compile"),
+        (lambda d: d["rules"][0].__setitem__("target_scope", "clause"), "rules[0]: target_scope must be segment"),
     ],
 )
 def test_a_malformed_lexicon_names_its_problem(change, said: str) -> None:

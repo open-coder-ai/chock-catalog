@@ -18,6 +18,8 @@ PATTERN_KEYS = frozenset(
         "encourager",
         "clause_break",
         "send_verb",
+        "send_weak",
+        "auth_context",
         "destination",
         "secret_strong",
         "secret_generic",
@@ -28,9 +30,13 @@ PATTERN_KEYS = frozenset(
         "guard_mandate",
         "guard_topic",
         "exec_marker",
+        "segment_break",
     }
 )
-RULE_KEYS = frozenset({"id", "verdict", "discount", "label", "phrase", "target"})
+RULE_KEYS = frozenset({"id", "verdict", "discount", "label", "phrase", "target", "target_scope"})
+#: Where a rule's target must sit: in the phrase's segment (split at a sentence end or a semicolon), or anywhere
+#: in its statement.
+SCOPES = frozenset({"segment", "statement"})
 LEXICON = Path(__file__).resolve().parent / "data" / "lexicon.json"
 
 
@@ -41,6 +47,7 @@ class Rule(NamedTuple):
     label: str
     phrase: re.Pattern[str]
     target: re.Pattern[str] | None
+    target_scope: str
 
 
 class Hit(NamedTuple):
@@ -66,6 +73,8 @@ def _problems(doc: dict) -> list[str]:
         if not isinstance(rule, dict) or set(rule) != RULE_KEYS:
             out.append(f"rules[{n}] must have exactly the keys {sorted(RULE_KEYS)}")
             continue
+        if rule["target_scope"] not in SCOPES:
+            out.append(f"rules[{n}]: target_scope must be segment or statement")
         if rule["verdict"] not in VERDICTS or not isinstance(rule["discount"], bool):
             out.append(f"rules[{n}]: verdict must be ask or block and discount a boolean")
         if not isinstance(rule["id"], str) or not re.fullmatch(r"[a-z][a-z0-9-]{1,62}", rule["id"]):
@@ -104,6 +113,7 @@ class Lexicon:
                 r["label"],
                 re.compile(r["phrase"]),
                 re.compile(r["target"]) if r["target"] else None,
+                r["target_scope"],
             )
             for r in doc["rules"]
         ]
