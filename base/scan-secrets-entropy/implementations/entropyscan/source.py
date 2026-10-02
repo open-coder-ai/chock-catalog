@@ -22,7 +22,7 @@ _PREFIX = re.compile(r"(?<![\w\"'])(?:[fFbBrRuU]{1,2}|@\$?|\$@?)(?=[\"'])")
 #: `case token: x = v` keeps its key. Every quantifier is bounded and possessive: a long line of
 #: `a:` and blanks costs linear time.
 _ANNOTATION = re.compile(
-    r"(^[ \t]{0,64}+|[;{(,][ \t]{0,16}+|\b(?:let|const|var|val|private|public|protected|readonly|static|mut|final)"
+    r"(\A[ \t]{0,64}+|[;{(,][ \t]{0,16}+|\b(?:let|const|var|val|private|public|protected|readonly|static|mut|final)"
     r"[ \t]{1,16}+)([A-Za-z_]\w{0,127}+)[ \t]{0,16}+:[ \t]{0,16}+(?:&'\w{1,16}+[ \t]{1,4}+)?"
     r"[&\w<>\[\].,]{1,60}+(?:[ \t]{1,4}+(?:\|[ \t]{1,4}+)?[&\w<>\[\].,]{1,30}+){0,3}+[ \t]{0,16}+=(?![=>])"
 )
