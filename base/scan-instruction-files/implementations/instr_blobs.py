@@ -16,11 +16,12 @@ from chock_scan import entropy
 MIN_BLOB = 80
 #: A wrapped blob's lines: each one at least this long and nothing but base64 characters.
 #: A run of 40+ base64 characters that ends a line, the start of a wrapped blob; the run that starts the line
-#: after the wrapped lines ends it; a quote or list prefix in front of a wrapped line is set aside.
-TAIL = re.compile(r"(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{40,}={0,2}\s*$")
+#: after the wrapped lines ends it; a quote or list prefix in front of a wrapped line, and a shell line
+#: continuation (a trailing backslash) after one, are set aside.
+TAIL = re.compile(r"(?<![A-Za-z0-9+/_-])([A-Za-z0-9+/_-]{40,}={0,2})\\?\s*$")
 HEAD = re.compile(r"[A-Za-z0-9+/_-]+={0,2}")
 PREFIX = re.compile(r"^\s*(?:>\s?)*(?:[-*+]\s+|\d{1,9}[.)]\s+)?")
-WRAPPED_LINE = re.compile(r"\s*([A-Za-z0-9+/_-]{40,}={0,2})\s*")
+WRAPPED_LINE = re.compile(r"\s*([A-Za-z0-9+/_-]{40,}={0,2})\\?\s*")
 B64 = re.compile(r"(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{%d,}={0,2}(?![A-Za-z0-9+/_=-])" % MIN_BLOB)
 DATA_URI = re.compile(r"(?i)data:[a-z0-9.+/-]*(?:;[a-z0-9=._-]+)*;base64,\s*$")
 #: Decoded text must be at least this share printable to be read as text.
@@ -89,7 +90,7 @@ def _chain(lines: list[str], n: int) -> tuple[int, str, str] | None:
     tail = TAIL.search(lines[n])
     if tail is None:
         return None
-    parts, end = [tail.group().strip()], n
+    parts, end = [tail.group(1)], n
     while end + 1 < len(lines):
         inner = PREFIX.sub("", lines[end + 1])
         if whole := WRAPPED_LINE.fullmatch(inner):

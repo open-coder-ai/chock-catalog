@@ -25,12 +25,14 @@ BLOCK_START = re.compile(
 TABLE_DELIMITER = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$")
 #: A front-matter line that starts a new key (not indented, not a list item).
 FRONT_KEY = re.compile(r"^[^\s#-][^:]*:")
-#: A blockquote prefix: its lines are read as a container, so a wrapped quoted paragraph is still one paragraph.
-QUOTE = re.compile(r"^ {0,3}((?:>[ \t]?)+)")
+#: A blockquote prefix, also behind a list marker or a list item's indent: its lines are read as a container,
+#: so a wrapped quoted paragraph is still one paragraph.
+QUOTE = re.compile(r"^\s{0,8}(?:(?:[-*+]|\d{1,9}[.)])\s+)?((?:>[ \t]?)+)")
 #: A fenced line continued on the next: a trailing backslash, pipe or && (the backslash is dropped on joining).
 CONTINUED = ("\\", "|", "&&")
-#: Quotes or brackets around one word in prose, dropped so they cannot split a phrase (not $(x) or never(x)).
-WRAPPED_WORD = re.compile(r"(?<![\w$])[\"'(\[]([\w-]+)[\"')\]]")
+#: Quotes or brackets around one word in prose, dropped so they cannot split a phrase (not $(x), never(x) or a
+#: fake trust tag such as [inst]).
+WRAPPED_WORD = re.compile(r"(?<![\w$])[\"'(\[](?!(?:inst|system|sys)[\"')\]])([\w-]+)[\"')\]]")
 #: A markdown hard line break (two trailing spaces, a trailing backslash, <br>) ends a sentence.
 HARD_BREAK = re.compile(r"(?: {2,}|\\|<br\s*/?>)$", re.IGNORECASE)
 #: A sentence ends at . ! or ? followed by space and a capital, quote, bracket or markup character.

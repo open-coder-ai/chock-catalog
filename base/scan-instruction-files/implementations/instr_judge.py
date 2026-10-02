@@ -36,8 +36,6 @@ COMMAND_RULES = frozenset({"fetch-exec", "decode-exec", "exfil-secret"})
 EXFIL = ("exfil-secret", BLOCK, "tells the agent to send a secret to a remote destination")
 IN_REQUEST = ("secret-in-request", ASK, "puts a secret variable in a URL or form field a network tool sends")
 TRUST = ("fake-trust-exec", BLOCK, "a fake trust block that runs a command")
-#: A guarded topic's word reduced to its stem, so review/reviewer/reviews or test/tests/testing are one topic.
-STEM = re.compile(r"(?:s|es|ed|er|ers|ing)$")
 CLOSING_TAG = re.compile(r"[<\[]{1,2}\s*/|<\|\s*im_end")
 
 
@@ -119,6 +117,8 @@ class Doc:
         while parts and LIST_OR.search(reach):
             reach = parts.pop() + "," + reach
         found = self.p["encourager"].sub(" ", reach).split()
+        if words < GOVERN_WORDS and found[-1:] in (["or"], ["nor"]):
+            words += 2  # never commit or push X: the negation reaches the second verb of an or-list
         return self.p["negation"].search(" ".join(found[-words:])) is not None
 
     def prohibited(self, pos: int, words: int = GOVERN_WORDS) -> bool:
@@ -200,6 +200,7 @@ class Doc:
             "secret_strong": [
                 m.start() for _, m in self.matches(p["secret_strong"]) if not _inside(m.start(), set_aside)
             ],
+            "secret_generic": [m.start() for _, m in self.matches(p["secret_generic"])],
         }
         verbs = [(i, m, True) for i, m in self.matches(p["send_verb"])]
         verbs += [(i, m, False) for i, m in self.matches(p["send_weak"])]
@@ -214,9 +215,15 @@ class Doc:
         not about an auth header. A weak verb (push, share, report) counts only with a secret file or variable.
         A secret named only after the destination is how the agent authenticates, not what it sends. A negation
         right before the verb, or governing the secret, discounts it."""
-        start, end = verb.end(), self._object_end(verb.end())
-        dest = _first(at["destination"], start, end)
-        if dest is None or self.prohibited(verb.start(), TIGHT_WORDS):
+        start = verb.end()
+        # Cheap checks first, by bisect: a destination ahead, and some secret before it.
+        dest = _first(at["destination"], start, min(self.ends[self.index(start)], start + 2 * LOOKBACK))
+        if dest is None or (
+            _first(at["secret_strong"], start, dest) is None and _first(at["secret_generic"], start, dest) is None
+        ):
+            return False
+        end = self._object_end(start)
+        if dest >= end or self.prohibited(verb.start(), TIGHT_WORDS):
             return False
         if self.p["leak_context"].search(self.text, start, dest):
             return False  # reporting a leaked or exposed key to a security contact discloses it
@@ -282,19 +289,3 @@ def judge(lex: Lexicon, sts: list[Statement]) -> list[Hit]:
         hits[i].append(Hit(*IN_REQUEST, sts[i]))
     found = [hit for i in sorted(hits) for hit in sorted(hits[i], key=lambda h: h.verdict != BLOCK)]
     return found + doc.trust_blocks(hits)
-
-
-def guardrails(lex: Lexicon, sts: list[Statement]) -> dict[int, frozenset[str]]:
-    """The statements that state a guardrail (a mandate word and a guarded topic), each with its topics, each
-    topic marked by the statement's polarity (a prohibition, or a positive mandate). Encouragers are removed
-    first: "never forget to commit secrets" and "no exceptions" prohibit nothing."""
-    p = lex.p
-    out = {}
-    for i, st in enumerate(sts):
-        text = p["encourager"].sub(" ", st.norm)
-        if not p["guard_mandate"].search(text):
-            continue
-        sign = "never " if p["guard_prohibit"].search(text) else "always "
-        if topics := {sign + (STEM.sub("", m.group()) or m.group()) for m in p["guard_topic"].finditer(text)}:
-            out[i] = frozenset(topics)
-    return out

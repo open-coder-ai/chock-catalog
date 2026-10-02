@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from chock_scan import data_table  # noqa: E402 -- after the path and cache setup
 from instr_blobs import blobs  # noqa: E402
-from instr_judge import guardrails, judge  # noqa: E402
+from instr_judge import judge  # noqa: E402
 from instr_rules import ASK, BLOCK, Hit, Lexicon  # noqa: E402
 from instr_text import Statement, lines_of, statements  # noqa: E402
 
@@ -48,6 +48,8 @@ WAIVER_LINE = re.compile(r"\s*(?:<!--|#|//|/\*|;)?\s*chock:\s*allow\s+instructio
 FROM_DISK = frozenset({"tool_use", "pre-tool-use"})
 FROM_HEAD = frozenset({"commit", "agent-commit", "stop", "push"})
 GIT = shutil.which("git") or "git"
+#: A guarded topic's word reduced to its stem, so review/reviewer/reviews or test/tests/testing are one topic.
+STEM = re.compile(r"(?:s|es|ed|er|ers|ing)$")
 ADVICE = (
     "Instruction files are code an agent obeys: a person reviews every change to them. Keep rules as "
     "prohibitions a person wrote; never instruct an agent to send secrets, run downloaded or encoded code, "
@@ -121,6 +123,22 @@ def before_text(payload: dict, path: str, text: str) -> str | None:
 def _finding(rule: str, label: str, path: str, st: Statement) -> dict:
     shown = " ".join(st.raw.split())[:120]
     return {"key": _key(rule, st.norm), "path": path, "line": st.first, "rule": rule, "message": f"{label}: {shown}"}
+
+
+def guardrails(lex: Lexicon, sts: list[Statement]) -> dict[int, frozenset[str]]:
+    """The statements that state a guardrail (a mandate word and a guarded topic), each with its topics, each
+    topic marked by the statement's polarity (a prohibition, or a positive mandate). Encouragers are removed
+    first: "never forget to commit secrets" and "no exceptions" prohibit nothing."""
+    p = lex.p
+    out = {}
+    for i, st in enumerate(sts):
+        text = p["encourager"].sub(" ", st.norm)
+        if not p["guard_mandate"].search(text):
+            continue
+        sign = "never " if p["guard_prohibit"].search(text) else "always "
+        if topics := {sign + (STEM.sub("", m.group()) or m.group()) for m in p["guard_topic"].finditer(text)}:
+            out[i] = frozenset(topics)
+    return out
 
 
 def removed_guardrails(lex: Lexicon, path: str, old: str, new_lines: int, text: str) -> list[dict]:
