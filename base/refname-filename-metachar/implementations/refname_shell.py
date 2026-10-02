@@ -20,9 +20,12 @@ _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f", "v
 _ANSI = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|c.|.)", re.DOTALL)
 _HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)[ \t]*((?:'[^'\n]*'|\"[^\"\n]*\"|\\.|[^\s'\"<>|;&()\\])+)")
 _QUOTE_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)|([^'\"\\]+)")
-_WORD_BEFORE = frozenset(" \t\n;&|(")
+_WORD_BEFORE = frozenset(" \t\n;&|()<>")  # bash starts a comment after any metacharacter
 MAX_NESTING, MAX_HEREDOCS = 64, 256  # past either the line is refused by the caller, not read
-_COMMAND_WORD = re.compile(r"(?:^|[\s;&|(])(?:then|do|else|elif|if|while|until|!|\{)$")
+_COMMAND_WORD = re.compile(r"(?:^|[\s;&|(])(?:then|do|else|elif|if|while|until|!|\{|time(?:\s+-p)?|coproc)$")
+_AFTER_IN = re.compile(r"(?:^|\s)in$")
+_BODY_QUOTES = str.maketrans("'\"`", "   ")
+_BACKTICK_ESCAPE = re.compile(r"\\([$`\\])")
 
 
 class UnreadableError(ValueError):
@@ -56,11 +59,13 @@ class _Marker:
     def __init__(self, raw: str, *, powershell: bool, start: int = 0, closer: str = "", nesting: int = 0) -> None:
         if nesting > MAX_NESTING:
             raise TooDeepError
-        self.nesting, self.start, self.heredocs = nesting, start, 0
+        # Text a nested pass opens with `(` is arithmetic (`$((...))`, `((...))`): `<<` there is a shift.
+        arith = closer == ")" and raw[start : start + 1] == "("
+        self.nesting, self.start, self.heredocs, self.arith = nesting, start, 0, arith
         self.raw, self.ps, self.escape = raw, powershell, "`" if powershell else "\\"
         self.out: list[str] = []
         self.inner: list[str] = []
-        self.docs: list[tuple[str, bool]] = []
+        self.docs: list[tuple[str, bool, bool]] = []
         self.quote, self.i, self.closer, self.depth, self.cases = "", start, closer, 0, 0
 
     def run(self) -> tuple[str, list[str]]:
@@ -77,22 +82,27 @@ class _Marker:
             return False
         if self.closer == ")" and self._word("case"):
             self.cases += 1
-        elif self.closer == ")" and self._word("esac"):
+        elif self.closer == ")" and self._word("esac", after_in=True):
             self.cases -= 1
         if self.cases > 0:
             return False  # inside case ... esac, a pattern's parentheses are not the substitution's
-        if char == "(" and self.closer == ")":
-            self.depth += 1
+        if char == "(" and self.closer == ")" and self.raw[self.i + 1 : self.i + 2] != "(":
+            self.depth += 1  # a `((` is read whole by its own nested pass
         elif char == self.closer:
             self.depth -= 1
         return self.depth < 0
 
-    def _word(self, word: str) -> bool:
+    def _word(self, word: str, *, after_in: bool = False) -> bool:
         """`word` as a command at this point: after a separator or a reserved word, not as an argument."""
         at, end = self.i, self.i + len(word)
         if not self.raw.startswith(word, at) or self.raw[end : end + 1].isalnum() or self.raw[end : end + 1] == "_":
             return False
-        before = self.raw[self.start : at].rstrip(" \t")
+        blank = at
+        while blank > self.start and self.raw[blank - 1] in " \t":
+            blank -= 1
+        before = self.raw[max(self.start, blank - 64) : blank]  # what precedes the blanks; a window keeps this linear
+        if after_in and _AFTER_IN.search(before):
+            return True  # `case x in esac` has no patterns at all
         return not before or before[-1] in ";&|\n(" or bool(_COMMAND_WORD.search(before))
 
     def _emit(self, text: str, end: int) -> None:
@@ -121,7 +131,7 @@ class _Marker:
 
     def _unquoted(self, char: str, nxt: str) -> bool:
         """A comment, a newline ending heredoc lines, a heredoc operator or a process substitution; True if one."""
-        raw, at, shell = self.raw, self.i, not self.ps and self.closer != "}"
+        raw, at, shell = self.raw, self.i, not self.ps and self.closer != "}" and not self.arith
         if char == "#" and self.closer != "}" and (at == 0 or raw[at - 1] in _WORD_BEFORE):
             end = raw.find("\n", at)
             self._emit(raw[at:end] if end >= 0 else raw[at:], end if end >= 0 else len(raw))
@@ -132,10 +142,13 @@ class _Marker:
             self.heredocs += 1
             if self.heredocs > MAX_HEREDOCS:
                 raise TooDeepError
-            self.docs.append((_delimiter(heredoc.group(2)), bool(heredoc.group(1))))
+            word = heredoc.group(2)
+            self.docs.append((_delimiter(word), bool(heredoc.group(1)), not set(word) & set("'\"\\")))
             self._emit(heredoc.group(), heredoc.end())
         elif not self.ps and char in "<>" and nxt == "(":
             self._nested(at + 2, ")")
+        elif shell and char == "(" and nxt == "(":
+            self._nested(at + 1, ")")  # `(( ... ))`: arithmetic, where `<<` is a shift, not a heredoc
         else:
             return False
         return True
@@ -162,32 +175,56 @@ class _Marker:
             self._emit(EXPANDED if expands else "$", at + 1)
 
     def _nested(self, start: int, closer: str) -> None:
-        """Replace `$(...)`, `<(...)` or `${...}` with EXPANDED; a substitution's script is judged on its own."""
+        """Replace `$(...)`, `<(...)`, `((...))` or `${...}` with EXPANDED; a substitution's script is judged alone.
+
+        Text opening with `(` is arithmetic (`$((...))`, `((...))`): its substitutions are judged, the rest is not a
+        script. A heredoc the nested text opens but does not finish keeps its body on the lines that follow.
+        """
         nested = _Marker(self.raw, powershell=self.ps, start=start, closer=closer, nesting=self.nesting + 1)
         nested.run()
-        self.inner += ([self.raw[start : nested.i]] if closer == ")" else []) + nested.inner
+        script = closer == ")" and not nested.arith
+        self.inner += ([self.raw[start : nested.i]] if script else []) + nested.inner
+        self.docs += nested.docs
         self._emit(EXPANDED, nested.i + 1)
 
     def _backtick(self, start: int) -> None:
         end = start
         while end < len(self.raw) and self.raw[end] != "`":
             end += 2 if self.raw[end] == "\\" else 1
-        self.inner.append(self.raw[start:end])
+        self.inner.append(_BACKTICK_ESCAPE.sub(r"\1", self.raw[start:end]))  # bash drops these backslashes first
         self._emit(EXPANDED, end + 1)
 
     def _bodies(self) -> None:
         """Copy the pending heredoc bodies through to their delimiter lines, quotes and all."""
         while self.docs:
-            delimiter, strip = self.docs.pop(0)
+            delimiter, strip, expands = self.docs.pop(0)
             start = end = self.i
             while end < len(self.raw):
                 stop = self.raw.find("\n", end)
                 stop = len(self.raw) if stop < 0 else stop + 1
-                line = self.raw[end:stop].rstrip("\r\n")
+                line = self.raw[end:stop].rstrip("\n")  # bash keeps a carriage return: `EOF\r` is not EOF
                 end = stop
                 if (line.lstrip("\t") if strip else line) == delimiter:
                     break
-            self._emit(self.raw[start:end], end)
+            if expands:
+                self._body_scripts(self.raw[start:end])
+            # A body holds no names; blank its quotes so the parser, which may end a body elsewhere, keeps step.
+            self._emit(self.raw[start:end].translate(_BODY_QUOTES), end)
+
+    def _body_scripts(self, body: str) -> None:
+        """An unquoted heredoc body runs its `$(...)` and backtick commands: judge their scripts too."""
+        reader = _Marker(body, powershell=False, nesting=self.nesting + 1)
+        while reader.i < len(body):
+            char = body[reader.i]
+            if char == "\\":
+                reader.i += 2
+            elif body.startswith("$(", reader.i):
+                reader._dollar("(")
+            elif char == "`":
+                reader._backtick(reader.i + 1)
+            else:
+                reader.i += 1
+        self.inner += reader.inner
 
 
 def mark_expansions(raw: str, *, powershell: bool) -> tuple[str, list[str]]:
