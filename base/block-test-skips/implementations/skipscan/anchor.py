@@ -40,6 +40,8 @@ def _owner(holder: ast.AST, lines: list[str], row: ast.AST) -> str:
         holder = holder.value
     if isinstance(holder, ast.Call):
         others = [segment(lines, arg) for arg in holder.args if not _within(arg, row)]
+        # `parametrize(argnames=..., argvalues=[...])`: the names say which parameter a row feeds.
+        others += [f"argnames={segment(lines, kw.value)}" for kw in holder.keywords if kw.arg == "argnames"]
         return f"{segment(lines, holder.func)}({', '.join(others)})"
     return type(holder).__name__
 

@@ -88,3 +88,16 @@ def test_a_nested_jest_list_is_judged_whole() -> None:
         "test-config||testPathIgnorePatterns|/b/",
         "test-config||testPathIgnorePatterns|[['/a/'], '/b/']",
     ]
+
+
+def test_keyword_argnames_name_the_row_owner(tmp_path: Path) -> None:
+    head = (
+        "@pytest.mark.parametrize(argnames='x', argvalues=[pytest.param(1, marks=pytest.mark.skip), 2])\n"
+        "@pytest.mark.parametrize(argnames='y', argvalues=[1, 2])\ndef test_a(x, y):\n    pass\n"
+    )
+    after = (
+        "@pytest.mark.parametrize(argnames='x', argvalues=[1, 2])\n"
+        "@pytest.mark.parametrize(argnames='y', argvalues=[pytest.param(1, marks=pytest.mark.skip), 2])\n"
+        "def test_a(x, y):\n    pass\n"
+    )
+    assert engine(tmp_path, "import pytest\n\n\n" + head, "import pytest\n\n\n" + after) == 1
