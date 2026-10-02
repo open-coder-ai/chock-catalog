@@ -58,7 +58,7 @@ def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
     """
     if _utf16(text):
         text = text.replace("\x00", "")
-    elif _binary(text):
+    if _binary(text):
         return []
     lines = values.split_lines(text.replace("\x00", ""))
     rows: list[tuple[int, dict]] = []

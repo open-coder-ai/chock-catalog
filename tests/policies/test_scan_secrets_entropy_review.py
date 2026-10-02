@@ -144,3 +144,8 @@ def test_utf16_is_told_by_parity_and_zero_filled_binaries_are_skipped() -> None:
     assert rules(cjk) == ["entropy"]
     zero_filled = "\x00" * 4000 + f"client_secret={V}\n" + "\x00\x01" * 50
     assert rules(zero_filled, "lib.so") == []
+
+
+def test_a_binary_with_nuls_on_one_parity_is_still_binary() -> None:
+    blob = "\x00\x01" * 4000 + f"client_secret={V}\n"
+    assert rules(blob, "fw.bin") == []
