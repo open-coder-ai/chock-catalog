@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
 from collections.abc import Callable
 
 from skipscan import SKIP
-from skipscan.scan import blank_code, group, line_index, split_lines
+from skipscan.scan import blank_code, closes, line_index, split_lines
 
 C_COMMENTS = ("//", "*", "/*")
 #: v1's one pattern, still applied to a test-path file whose extension no table below names.
@@ -89,32 +90,32 @@ SHORT = re.compile(r"\bif\b[^{\n]*\btesting\.Short\s*\(\s*\)[^{\n]*\{")
 SHORT_EXIT = re.compile(r"\breturn\s*(?:[;}\r\n]|$)|\.\s*Skip")
 
 
-def _each_hits(text: str, line_of: Callable[[int], int]) -> list[int]:
-    """`.each(...).skip` in code; `text` is blanked, so a comment or string cannot open a table."""
+def _each_hits(code: str, line_of: Callable[[int], int]) -> list[int]:
+    """`.each(...).skip` in blanked code: a comment or string cannot open a table, and an unclosed one is passed over."""
+    pairs = closes(code)
+    ticks = [index for index, char in enumerate(code) if char == "`"]
     hits = []
-    for match in EACH.finditer(text):
-        end, _ = group(text, match.end()) if text[match.end()] == "(" else _template(text, match.end())
-        if end >= len(text):
-            # An unclosed table runs to the end, and so would every one after it.
-            break
-        tail = EACH_TAIL.match(text, end)
+    for match in EACH.finditer(code):
+        start = match.end()
+        if code[start] == "(":
+            end = pairs.get(start)
+        else:
+            later = bisect_right(ticks, start)
+            end = ticks[later] + 1 if later < len(ticks) else None
+        tail = EACH_TAIL.match(code, end) if end else None
         if tail:
             hits.append(line_of(tail.end()))
     return hits
 
 
-def _short_hits(text: str, line_of: Callable[[int], int]) -> list[int]:
+def _short_hits(code: str, line_of: Callable[[int], int]) -> list[int]:
+    pairs = closes(code)
     hits = []
-    for match in SHORT.finditer(text):
-        end, _ = group(text, match.end() - 1)
-        if SHORT_EXIT.search(text, match.end(), end):
+    for match in SHORT.finditer(code):
+        end = pairs.get(match.end() - 1)
+        if end and SHORT_EXIT.search(code, match.end(), end):
             hits.append(line_of(match.start()))
     return hits
-
-
-def _template(text: str, start: int) -> tuple[int, list[tuple[int, str]]]:
-    close = text.find("`", start + 1)
-    return (len(text) if close < 0 else close + 1), []
 
 
 def _is_comment(line: str, comments: tuple[str, ...]) -> bool:

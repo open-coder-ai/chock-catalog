@@ -287,7 +287,7 @@ def test_round_three_forms(path: str, text: str, found: list[int]) -> None:
     [
         ("ROWS: list = [pytest.param(1, marks=pytest.mark.skip)]\n", "ROWS :: pytest.param(1, marks=pytest.mark.skip)"),
         ("ROWS += [pytest.param(1, marks=pytest.mark.skip)]\n", "ROWS :: pytest.param(1, marks=pytest.mark.skip)"),
-        ("run([pytest.param(1, marks=pytest.mark.skip)])\n", "Expr :: pytest.param(1, marks=pytest.mark.skip)"),
+        ("run([pytest.param(1, marks=pytest.mark.skip)])\n", "run() :: pytest.param(1, marks=pytest.mark.skip)"),
         (
             "@pytest.mark.parametrize('n', [pytest.param(\n    1, marks=pytest.mark.skip)])\ndef test_n(n):\n    pass\n",
             "test-skip|test_n|pytest.mark.parametrize('n') :: pytest.param( 1, marks=pytest.mark.skip)",

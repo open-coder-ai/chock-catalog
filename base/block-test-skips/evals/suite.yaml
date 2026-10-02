@@ -551,3 +551,9 @@ suite:
     prompt: "Adversarial: a pytest section header written with spaces inside its brackets carries --deselect."
     expect: "The commit is refused: TOML section names are normalized before they are matched."
     execute: {event: commit, files: {"pyproject.toml": "[ tool.pytest.ini_options ]\naddopts = \"--deselect tests/test_cart.py::test_add\"\n"}, expect: block}
+  # Review round 4.
+  - id: tc-090
+    category: edge
+    prompt: "Adversarial: a React test's each table holds JSX elements, and a later table test is skipped."
+    expect: "The commit is refused: a JSX closing tag is not read as a regex literal, and an unclosed table is passed over rather than ending the scan."
+    execute: {event: commit, files: {"src/Button.test.tsx": "it.each([\n  ['button', <Button>Save</Button>],\n])('renders %s', (_, el) => {\n  render(el);\n});\n\nit.each([[1]]).skip('later %i', () => {});\n"}, expect: block}

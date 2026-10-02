@@ -25,15 +25,22 @@ def segment(lines: list[str], node: ast.AST) -> str:
     return " ".join(raw.decode(errors="replace").split())
 
 
-def _owner(holder: ast.AST, lines: list[str]) -> str:
-    """What a table belongs to: an assignment's targets, or a decorator's callee and leading plain arguments."""
+def _within(outer: ast.AST, inner: ast.AST) -> bool:
+    start = (outer.lineno, outer.col_offset) <= (inner.lineno, inner.col_offset)
+    return start and (outer.end_lineno, outer.end_col_offset) >= (inner.end_lineno, inner.end_col_offset)
+
+
+def _owner(holder: ast.AST, lines: list[str], row: ast.AST) -> str:
+    """What a table belongs to: an assignment's targets, or a call's callee and its other positional arguments."""
     if isinstance(holder, ast.Assign):
         return " = ".join(segment(lines, target) for target in holder.targets)
     if isinstance(holder, ast.AnnAssign | ast.AugAssign):
         return segment(lines, holder.target)
+    if isinstance(holder, ast.Expr | ast.Return) and isinstance(holder.value, ast.Call):
+        holder = holder.value
     if isinstance(holder, ast.Call):
-        leading = [segment(lines, arg) for arg in holder.args if not isinstance(arg, CONTAINERS)]
-        return f"{segment(lines, holder.func)}({', '.join(leading)})"
+        others = [segment(lines, arg) for arg in holder.args if not _within(arg, row)]
+        return f"{segment(lines, holder.func)}({', '.join(others)})"
     return type(holder).__name__
 
 
@@ -61,7 +68,7 @@ def anchor(node: ast.AST, parents: dict[int, ast.AST], lines: list[str]) -> tupl
         if holder is not None:
             if row is not None:
                 holder = holder if isinstance(holder, ast.stmt | ast.Call) else parent
-                text = f"{_owner(holder, lines)} :: {segment(lines, row)}"
+                text = f"{_owner(holder, lines, row)} :: {segment(lines, row)}"
             found = (id(row if row is not None else holder), text)
         if isinstance(parent, ast.If | ast.While) and child is not parent.test:
             # A skip moved into the `else` inverts its condition, so the branch is part of the key.

@@ -32,7 +32,8 @@ def line_index(text: str, breaks: re.Pattern[str] = ANY_BREAK) -> Callable[[int]
 
 
 #: What may precede a regex literal rather than a division: an operator, an opener, or a line start.
-REGEX_BEFORE = re.compile(r"(?:^|[(,=:\[!&|?{};+\-*%<>~^])[ \t]*\Z", re.MULTILINE)
+#: Not `<`/`>` (a JSX `</Tag>` is no regex) nor `+`/`-` (`x++ / 2` is division).
+REGEX_BEFORE = re.compile(r"(?:^|[(,=:\[!&|?{};*%~^])[ \t]*\Z", re.MULTILINE)
 
 
 def _regex_end(text: str, start: int) -> int:
@@ -92,6 +93,18 @@ def _string_end(text: str, start: int) -> int:
             return index + 1
         index += 1
     return len(text)
+
+
+def closes(code: str) -> dict[int, int]:
+    """Open bracket offset -> offset past its matching close, in one pass over blanked code."""
+    found: dict[int, int] = {}
+    stack: list[tuple[int, str]] = []
+    for index, char in enumerate(code):
+        if char in PAIRS:
+            stack.append((index, PAIRS[char]))
+        elif stack and char == stack[-1][1]:
+            found[stack.pop()[0]] = index + 1
+    return found
 
 
 def group(text: str, start: int) -> tuple[int, list[tuple[int, str]]]:
