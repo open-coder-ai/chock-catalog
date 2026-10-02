@@ -185,12 +185,11 @@ suite:
       expect: block
   - id: tc-025
     category: trigger
-    prompt: "A setup script pulls an image at the floating edge tag, and an agent YAML config quotes a package at latest in single quotes."
+    prompt: "A setup script pulls an image at the floating edge tag."
     expect: The hook blocks the commit.
     execute:
       files:
         setup.sh: "docker pull alpine:edge\n"  # pragma: allowlist unpinned
-        agent.yaml: "args: ['-y', '@acme/mcp-server@latest']\n"  # pragma: allowlist unpinned
       expect: block
   - id: tc-026
     category: negative_trigger
@@ -215,7 +214,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM ghcr.io/acme/agent-runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
-        setup.sh: "pip install git+https://github.com/acme/agent@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+        setup.sh: "pip install git+https://github.com/acme/agent@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"  # pragma: allowlist unpinned
         package.json: "{\"dependencies\": {\"agent\": \"github:acme/agent#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}\n"
         ci.yml: "steps:\n  - uses: docker://alpine:3.20\n"
       expect: allow
@@ -233,12 +232,11 @@ suite:
       expect: allow
   - id: tc-030
     category: behavior
-    prompt: "Adversarial: a tab after FROM, and leading indentation with a build-platform variable before a latest image."
-    expect: The hook blocks the commit; whitespace and the platform flag do not hide the tag.
+    prompt: "Adversarial: a tab, not a space, after FROM before an untagged registry path."
+    expect: The hook blocks the commit; the separator does not hide the missing tag.
     execute:
       files:
         Dockerfile: "FROM\tghcr.io/acme/agent-runtime\n"  # pragma: allowlist unpinned
-        Containerfile: "  from --platform=$BUILDPLATFORM node:latest\n"  # pragma: allowlist unpinned
       expect: block
   - id: tc-031
     category: behavior
@@ -271,3 +269,95 @@ suite:
     prompt: "The agent writes a setup script whose installs are all pinned."
     expect: "The write is allowed."
     execute: {event: tool_use, writes: {"setup.sh": "go install golang.org/x/tools/gopls@v0.16.1\ncargo install ripgrep@14.1.0\n"}, expect: allow}
+  - id: tc-036
+    category: trigger
+    prompt: "An agent YAML config quotes a package at latest in single quotes."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        agent.yaml: "args: ['-y', '@acme/mcp-server@latest']\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-037
+    category: behavior
+    prompt: "Adversarial: an indented lower-case from with a build-platform variable before a latest image."
+    expect: The hook blocks the commit; indentation, case and the platform flag do not hide the tag.
+    execute:
+      files:
+        Containerfile: "  from --platform=$BUILDPLATFORM node:latest\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-038
+    category: trigger
+    prompt: "A setup script runs an image from a registry with a port, at the latest tag, after port and detach options."
+    expect: The hook blocks the commit; the registry port is not mistaken for the tag.
+    execute:
+      files:
+        setup.sh: "docker run -d -p 8080:8080 registry.internal:5000/agent:latest\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-039
+    category: trigger
+    prompt: "A one-line MCP config runs a server with docker, the image at the edge tag in the args array."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        .mcp.json: "{\"command\": \"docker\", \"args\": [\"run\", \"-i\", \"--rm\", \"ghcr.io/acme/mcp-server:edge\"]}\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-040
+    category: trigger
+    prompt: "An MCP config launches a server with uvx from a git URL at a branch, the URL quoted in the args array."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        .mcp.json: "{\"command\": \"uvx\", \"args\": [\"--from\", \"git+https://github.com/acme/agent@main\", \"agent\"]}\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-041
+    category: trigger
+    prompt: "A requirements file takes the agent from a git URL at a branch."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        requirements.txt: "agent-sdk==1.2.3\ngit+https://github.com/acme/agent@main#egg=agent\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-042
+    category: trigger
+    prompt: "pyproject dependencies take the agent as a PEP 508 direct reference at a branch."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        pyproject.toml: "[project]\ndependencies = [\"agent @ git+https://github.com/acme/agent@main\"]\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-043
+    category: trigger
+    prompt: "A Dockerfile installs a crate with cargo, an option with a path value before the crate."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        Dockerfile: "FROM rust:1.81.0\nRUN cargo install --root /usr/local agent-tool\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-044
+    category: negative_trigger
+    prompt: "Ordinary publishing and metadata: a package.json repository shorthand, an image built and pushed at latest, and Rust prose about cargo installs."
+    expect: "The hook allows the commit: these publish or describe, they do not pull."
+    execute:
+      files:
+        package.json: "{\n  \"repository\": \"github:acme/agent\",\n  \"version\": \"1.2.3\"\n}\n"
+        release.sh: "docker build -t \"ghcr.io/acme/agent:latest\" .\ndocker push \"ghcr.io/acme/agent:latest\"\n"
+        INSTALL.md: "Use cargo install to install binaries.\nNote: cargo install compiles from source.\n"
+      expect: allow
+  - id: tc-045
+    category: negative_trigger
+    prompt: "A package.json repository URL with git+, a pinned requirement from git, and a pinned image running a git command that names a branch."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        package.json: "{\"repository\": {\"type\": \"git\", \"url\": \"git+https://github.com/acme/agent.git\"}}\n"
+        requirements.txt: "git+https://github.com/acme/agent@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#egg=agent\n"  # pragma: allowlist unpinned
+        ci.sh: "docker run --rm alpine/git:2.45.2 push origin HEAD:main\n"
+      expect: allow
+  - id: tc-046
+    category: behavior
+    prompt: "Adversarial: a git+ ref that starts with a 40-hex commit but continues into a branch name."
+    expect: The hook blocks the commit; only a full commit that ends the ref pins.
+    execute:
+      files:
+        setup.sh: "pip install git+https://github.com/acme/agent@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-x\n"  # pragma: allowlist unpinned
+      expect: block
