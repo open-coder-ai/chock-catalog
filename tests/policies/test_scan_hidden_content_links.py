@@ -10,7 +10,7 @@ from policies.hiddenkit import gate as mod
 from policies.hiddenkit import readers
 
 text = readers["markdown"]
-blocks = readers["blocks"]
+blocks = readers["spans"]
 urls = readers["links"]
 vocab = readers["vocab"].vocab()
 
@@ -41,6 +41,21 @@ def test_an_html_comment_block_ends_only_where_commonmark_ends_it() -> None:
     assert out[:5] == ["<!-- a --!>", "```", "<!-- run it", "```", "-->"]
     assert out[6] == "    "
     assert out[11] == "x"
+
+
+def test_a_closing_fence_indented_four_past_its_column_does_not_close() -> None:
+    assert blocks.blank_code("```\n    ```\n<!-- x -->\n```\nafter\n").split("\n")[2:5] == [
+        "          ",
+        "   ",
+        "after",
+    ]
+
+
+def test_a_destination_is_read_once_with_what_it_holds() -> None:
+    assert [u for _, u, _ in urls.text_urls("[a](x](https://e.example/y)")] == [
+        "https://e.example/y",
+        "x](https://e.example/y",
+    ]
 
 
 def test_tag_view_removes_only_the_brackets_of_code() -> None:
@@ -101,7 +116,7 @@ def test_image_labels() -> None:
 )
 def test_image_closers(doc: str, images: list[bool]) -> None:
     ends = [i for i in range(len(doc)) if doc.startswith("](", i)]
-    assert [i in blocks.image_closers(doc) for i in ends] == images
+    assert [blocks.closers(doc).get(i, False) for i in ends] == images
 
 
 @pytest.mark.parametrize(

@@ -1,12 +1,13 @@
-"""Markdown blocks read the way CommonMark reads them, far enough to blank code and find image link text."""
+"""Markdown blocks read the way CommonMark reads them: which lines are code, HTML, paragraph text or breaks."""
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 #: A fence opens a code block that runs to a closing fence of the same character, at least as long; a
 #: backtick fence whose info string holds a backtick is not a fence.
-FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
+FENCE = re.compile(r"(`{3,}|~{3,})(.*)$")
 #: HTML blocks of types 1-5 run to a line holding their end condition, the spec's literal strings (CommonMark
 #: 0.31 section 4.6), across blank lines; types 6 and 7 to a blank line. A type 2 block ends only at "-->": a
 #: browser also ends a comment at "--!>", but CommonMark keeps the block raw past it, so ending there would
@@ -23,7 +24,74 @@ HTML_ENDS = (
 )
 #: Any indentation: inside a list item an HTML block sits at the item's content column; outside one an
 #: indented line is code, shown either way, so reading it as HTML only reports more.
-HTML_OTHER = re.compile(r"^[ \t]*</?[A-Za-z]")
+HTML_OTHER = re.compile(r"^[ \t]*</?([A-Za-z][A-Za-z0-9-]*)")
+#: CommonMark's type 6 tag names: a line opening with one starts an HTML block even inside a paragraph.
+BLOCK_TAGS = set(
+    [
+        "address",
+        "article",
+        "aside",
+        "base",
+        "basefont",
+        "blockquote",
+        "body",
+        "caption",
+        "center",
+        "col",
+        "colgroup",
+        "dd",
+        "details",
+        "dialog",
+        "dir",
+        "div",
+        "dl",
+        "dt",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "form",
+        "frame",
+        "frameset",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "head",
+        "header",
+        "hr",
+        "html",
+        "iframe",
+        "legend",
+        "li",
+        "link",
+        "main",
+        "menu",
+        "menuitem",
+        "nav",
+        "noframes",
+        "ol",
+        "optgroup",
+        "option",
+        "p",
+        "param",
+        "search",
+        "section",
+        "summary",
+        "table",
+        "tbody",
+        "td",
+        "tfoot",
+        "th",
+        "thead",
+        "title",
+        "tr",
+        "track",
+        "ul",
+    ]
+)
 #: An indented code block starts this far past the margin or the list item's content column; a line indented
 #: less than LIST_INDENT after a break ends a list.
 CODE_INDENT, LIST_INDENT = 4, 2
@@ -33,20 +101,15 @@ LIST_ITEM = re.compile(r"^[ \t]*(?:[-+*]|\d{1,9}[.)])([ \t]+|$)")
 BLOCK_START = re.compile(r"^[ \t]*(?:>|[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$))")
 #: Lines that end a run on both sides: an ATX heading, a thematic break, a setext underline.
 SINGLE = re.compile(r"^[ \t]*(?:#{1,6}(?:[ \t].*)?|(?:\*[ \t]*){3,}|(?:-[ \t]*){2,}|(?:_[ \t]*){3,}|=+[ \t]*|-[ \t]*)$")
-#: A GFM table's delimiter row: after it, each row's cells are runs of their own until a blank line.
-TABLE_DELIMITER = re.compile(
-    r"^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)+\|?[ \t]*$|^[ \t]*\|[ \t]*:?-+:?[ \t]*\|?[ \t]*$"
-)
-CELL = re.compile(r"((?<!\\)\|)")
-TICKS = re.compile(r"(\\*)(`+)")
-#: Tokens of link text: an escape, an inline tag or autolink (whose brackets are not link text), an image or
-#: link opener, a closer followed by a destination, and a blank line (which ends any open link text).
-BRACKETS = re.compile(r"\\.|<[^<>\n]*>|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
 CODE, HTML, TEXT, BREAK = "code", "html", "text", "break"
 
 
-def _spaces(text: str) -> str:
-    return re.sub(r"[^\n]", " ", text)
+@dataclass(frozen=True)
+class Fence:
+    """An open fence: its opening characters, and the content column of the list item it sits in (0 outside)."""
+
+    chars: str
+    column: int
 
 
 def _ends(line: str, ends: tuple[str, ...], start: int = 0) -> bool:
@@ -54,17 +117,19 @@ def _ends(line: str, ends: tuple[str, ...], start: int = 0) -> bool:
     return any(lower.find(end, start) != -1 for end in ends)
 
 
-def _opens(line: str) -> tuple[str, tuple[str, ...] | str | None]:
-    """How a line outside any block opens one: (kind, what ends it)."""
+def _opens(line: str, column: int, previous: str) -> tuple[str, tuple[str, ...] | Fence | str | None]:
+    """How a line outside any block opens one: (kind, what ends it). `column` is the open list item's content
+    column (0 outside a list); `previous` is the kind of the line before."""
     if not line.strip():
         return BREAK, None
-    fence = FENCE.match(line)
-    if fence and not (fence.group(1)[0] == "`" and "`" in fence.group(2)):
-        return CODE, fence.group(1)
+    fence = FENCE.match(line.lstrip(" \t"))
+    if fence and _indent(line) - column < CODE_INDENT and not (fence.group(1)[0] == "`" and "`" in fence.group(2)):
+        return CODE, Fence(fence.group(1), column)
     for start, end in HTML_ENDS:
         if found := start.match(line):
             return HTML, None if _ends(line, end, found.end()) else end
-    if HTML_OTHER.match(line):
+    # A type 7 block (a tag not on CommonMark's block list) cannot interrupt a paragraph.
+    if (tag := HTML_OTHER.match(line)) and (tag.group(1).lower() in BLOCK_TAGS or previous != TEXT):
         return HTML, "blank"
     return TEXT, None
 
@@ -81,133 +146,52 @@ def _indent(line: str) -> int:
     return _width(line[: len(line) - len(line.lstrip(" \t"))])
 
 
+def _column(line: str, column: int, previous: str) -> int:
+    """The open list item's content column after `line` (-1 when no list is open)."""
+    if item := LIST_ITEM.match(line):
+        width = _width(item.group(0))
+        return width if len(item.group(1)) <= CODE_INDENT else width - len(item.group(1)) + 1
+    return -1 if _indent(line) < LIST_INDENT and previous == BREAK else column
+
+
+def _html_continues(inside: tuple[str, ...] | str, line: str) -> tuple[str, ...] | str | None:
+    """What still ends an open HTML block after `line`, or None when the line ended it."""
+    if inside == "blank":
+        return inside if line.strip() else None
+    return None if _ends(line, inside) else inside
+
+
+def _closes(fence: Fence, line: str) -> bool:
+    stripped = line.lstrip(" \t")
+    if _indent(line) - fence.column >= CODE_INDENT:
+        return False
+    return re.fullmatch(rf"{re.escape(fence.chars[0])}{{{len(fence.chars)},}}[ \t]*", stripped) is not None
+
+
 def classify(lines: list[str]) -> list[str]:
     """The kind of each line: code (a fence, an indented code block, or inside one), html (inside an HTML
     block), text or break. A line indented four or more past the open list item's content column (the
-    margin, outside a list) after a break is code; less indented, it may open an HTML block."""
-    kinds, inside, column, indented = [], None, -1, False
+    margin, outside a list) after a break is code; less indented, it may open an HTML block. A fence opened
+    inside a list item ends where the item does, at a line indented less than the item's content."""
+    kinds: list[str] = []
+    inside: tuple[str, ...] | Fence | str | None = None
+    column, indented = -1, False
     for line in lines:
         previous = kinds[-1] if kinds else BREAK
+        if isinstance(inside, Fence) and line.strip() and inside.column and _indent(line) < inside.column:
+            inside = None  # the list item ended, and its fence with it
         if inside is None and line.strip():
-            if item := LIST_ITEM.match(line):
-                column = (
-                    _width(item.group(0))
-                    if len(item.group(1)) <= CODE_INDENT
-                    else _width(item.group(0)) - len(item.group(1)) + 1
-                )
-            elif _indent(line) < LIST_INDENT and previous == BREAK:
-                column = -1
+            column = _column(line, column, previous)
             indented = _indent(line) >= max(column, 0) + CODE_INDENT and (previous == BREAK or indented)
         if inside is None and indented:
             kinds.append(CODE if line.strip() else BREAK)
-        elif isinstance(inside, str) and inside[0] in "`~":
-            closing = re.match(rf"^ {{0,3}}{re.escape(inside[0])}{{{len(inside)},}}[ \t]*$", line)
-            inside = None if closing else inside
+        elif isinstance(inside, Fence):
+            inside = None if _closes(inside, line) else inside
             kinds.append(CODE)
         elif inside is not None:
-            if inside == "blank":
-                inside = inside if line.strip() else None
-            elif _ends(line, inside):
-                inside = None
+            inside = _html_continues(inside, line)
             kinds.append(HTML if line.strip() or inside is not None else BREAK)
         else:
-            kind, inside = _opens(line)
+            kind, inside = _opens(line, max(column, 0), previous)
             kinds.append(kind)
     return kinds
-
-
-def _blank_spans(segment: str) -> str:
-    """Code spans blanked: a backtick run opens one when a later run of the same length closes it. A
-    backtick after an odd number of backslashes is literal. Linear: each run finds the next of its length once."""
-    runs = []
-    for m in TICKS.finditer(segment):
-        start = m.start(2) + len(m.group(1)) % 2
-        if start < m.end(2):
-            runs.append((start, m.end(2)))
-    following: dict[int, int] = {}
-    after = [-1] * len(runs)
-    for i in range(len(runs) - 1, -1, -1):
-        size = runs[i][1] - runs[i][0]
-        after[i] = following.get(size, -1)
-        following[size] = i
-    chars, i = list(segment), 0
-    while i < len(runs):
-        j = after[i]
-        if j < 0:
-            i += 1
-            continue
-        start, end = runs[i][0], runs[j][1]
-        chars[start:end] = _spaces(segment[start:end])
-        i = j + 1
-    return "".join(chars)
-
-
-def blank_code(text: str) -> str:
-    """Markdown with fenced blocks and code spans replaced by spaces, newlines kept: code is shown, not fetched.
-
-    Code spans are paired only within one run of paragraph lines: a blank line, an HTML block, a fence, a
-    heading or setext underline, a thematic break, a list item or a block quote ends the run, and after a
-    GFM table's delimiter row each cell is a run of its own."""
-    lines = text.split("\n")
-    out: list[str] = []
-    segment: list[str] = []
-
-    def flush() -> None:
-        if segment:
-            out.extend(_blank_spans("\n".join(segment)).split("\n"))
-            segment.clear()
-
-    table = False
-    for line, kind in zip(lines, classify(lines), strict=True):
-        table = table and kind == TEXT
-        if kind == TEXT and TABLE_DELIMITER.match(line):
-            header = segment.pop() if segment else None
-            flush()
-            if header is not None:
-                out.append("".join(_blank_spans(cell) for cell in CELL.split(header)))
-            table = True
-            out.append(line)
-        elif table:
-            out.append("".join(_blank_spans(cell) for cell in CELL.split(line)))
-        elif kind == TEXT and SINGLE.match(line):
-            flush()
-            out.append(_blank_spans(line))
-        elif kind == TEXT:
-            if BLOCK_START.match(line):
-                flush()
-            segment.append(line)
-        else:
-            flush()
-            out.append(_spaces(line) if kind == CODE else line)
-    flush()
-    return "\n".join(out)
-
-
-def tag_view(raw: str, blanked: str) -> str:
-    """The raw text with only the '<' of code removed: code shows its tags and comments as text, so they
-    open nothing, while the words in code stay countable inside a hidden element or comment."""
-    return "".join(" " if r == "<" and b == " " else r for r, b in zip(raw, blanked, strict=True))
-
-
-def image_closers(text: str) -> set[int]:
-    """Offsets of each `](` that may close an image's text, in one forward pass with escapes honoured. The
-    stricter reading: a `](` counts when no opener is open or any open opener is an image's, and a bare `]`
-    closes nothing, since a bracket inside inline HTML, an autolink or a reference is not one this pass can
-    place."""
-    stack: list[bool] = []
-    images = 0
-    out: set[int] = set()
-    for m in BRACKETS.finditer(text):
-        piece = m.group(0)
-        if piece in ("![", "["):
-            stack.append(piece == "![")
-            images += piece == "!["
-        elif piece == "](":
-            if not stack or images:
-                out.add(m.start())
-            if stack:
-                images -= stack.pop()
-        elif piece[0] == "\n":
-            stack, images = [], 0
-        # an escape or an inline tag or autolink: nothing to count
-    return out

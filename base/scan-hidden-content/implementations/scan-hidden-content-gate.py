@@ -16,10 +16,10 @@ from pathlib import Path, PurePosixPath
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from hiddenscan import blocks  # noqa: E402 -- after the path and cache setup
 from hiddenscan import links as hidden_urls  # noqa: E402
 from hiddenscan import markdown as hidden_text  # noqa: E402
 from hiddenscan import markup as hidden_html  # noqa: E402
+from hiddenscan import spans  # noqa: E402 -- after the path and cache setup
 from hiddenscan import word as hidden_docx  # noqa: E402
 from hiddenscan.vocab import normalized, vocab  # noqa: E402
 
@@ -127,8 +127,8 @@ def text_findings(path: str, text: str, kind: str) -> list[dict]:
 
     In Markdown, URLs are read with code blanked (code is shown, not fetched), and tags and comments from the
     text with only the '<' of code removed, so code inside a comment or an HTML block still counts."""
-    scan = blocks.blank_code(text) if kind == "markdown" else text
-    tags = blocks.tag_view(text, scan) if kind == "markdown" else text
+    scan = spans.blank_code(text) if kind == "markdown" else text
+    tags = spans.tag_view(text, scan) if kind == "markdown" else text
     lines, scan_lines = hidden_text.Lines(scan), scan.split("\n")
     words = vocab()
     collected = hidden_html.collect(tags, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"))

@@ -9,11 +9,10 @@ from dataclasses import dataclass
 
 from chock_scan.urls import UnparseableError, parse_url
 
-from hiddenscan.blocks import image_closers
+from hiddenscan.spans import closers
 
 BARE = re.compile(r"(?:https?|ftp|wss?)://[^\s<>\"'`]+", re.IGNORECASE)
 DESTINATION = re.compile(r"\]\(\s*(<[^>\n]*>|[^\s)]*)")
-INLINE_TAG = re.compile(r"(?<!\]\()<[^<>\n]*>")
 TRAILING = ".,;:!?*_"
 #: CommonMark backslash escapes: any ASCII punctuation.
 MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
@@ -159,13 +158,17 @@ def text_urls(text: str) -> list[tuple[int, str, bool]]:
     """(offset, URL, is an image) of bare URLs and Markdown link and image destinations, backslash escapes
     in destinations decoded as CommonMark decodes them."""
     found = [(m.start(), _trim(m.group(0)), False) for m in BARE.finditer(text)]
-    images = image_closers(text)
-    # A `](` inside an inline tag or autolink is not a destination: those spans are blanked first, unless
-    # one is itself a destination written in angle brackets.
-    for m in DESTINATION.finditer(INLINE_TAG.sub(lambda t: " " * len(t.group(0)), text)):
+    # Destinations are read at each `](` outside an inline tag or autolink, from the text as written (a tag
+    # inside a destination is part of it), and never inside a destination already read.
+    done = 0
+    for at, image in sorted(closers(text).items()):
+        if at < done:
+            continue
+        m = DESTINATION.match(text, at)  # always matches at a `](`: the destination may be empty
+        done = m.end()
         dest = MD_ESCAPE.sub(r"\1", m.group(1))
         if "/" in dest or ":" in dest:
-            found.append((m.start(1), dest, m.start() in images))
+            found.append((m.start(1), dest, image))
     return found
 
 
