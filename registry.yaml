@@ -730,7 +730,7 @@ policies:
     unlisted agents.'
 - id: opaque-blob-guard
   path: base/opaque-blob-guard
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false

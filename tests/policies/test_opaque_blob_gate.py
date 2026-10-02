@@ -175,3 +175,20 @@ def test_a_folder_that_is_a_file_is_unreadable(tmp_path: Path) -> None:
     assert blobkit.rules(blobkit.run(gate, repo, ["tests/a/b"], event="tool_use", writes={"tests/a/b": "x"})) == [
         ("tests/a/b", "unreadable")
     ]
+
+
+@pytest.mark.parametrize("name", ["tests/a\x00.xz", "tests/a\ud800.xz"])
+def test_a_path_that_is_not_a_file_name_is_a_finding_not_a_crash(tmp_path: Path, name: str) -> None:
+    repo = blobkit.make_repo(tmp_path, {"README.md": "x\n"})
+    for event in ("commit", "tool_use"):
+        found = blobkit.run(gate, repo, [name], event=event, writes={name: "x"})
+        assert blobkit.rules(found) == [(name, "unreadable")]
+    code, out, _ = run(repo, {"event": "commit", "repo_root": str(repo), "writes": {name: "x"}})
+    assert code == gate.ASK
+    assert json.loads(out)["findings"][0]["rule"] == "unreadable"
+
+
+def test_an_ordinary_path_beside_a_bad_one_is_judged_normally(tmp_path: Path) -> None:
+    repo = blobkit.make_repo(tmp_path, {"tests/ok.txt": "fine\n"})
+    found = blobkit.run(gate, repo, [], writes={"tests/ok.txt": "fine\n", "tests/b\x00": "x"})
+    assert blobkit.rules(found) == [("tests/b\x00", "unreadable")]

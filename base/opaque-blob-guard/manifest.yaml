@@ -1,6 +1,6 @@
 id: opaque-blob-guard
 name: "Flag Opaque Blobs"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, fixtures/, testdata/,
   spec/, m4/, vendor/, gradle/wrapper/: a file whose first bytes are an archive, executable,
@@ -125,6 +125,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.2
+  date: '2026-10-02'
+  changes:
+  - "Fix: a path holding a NUL byte or a lone surrogate (an agent write can name one) crashed the script; it is now an unreadable finding. Known limits named: exact-case folder names, a commit of thousands of in-scope files can exceed the runner's 30 s script budget, plain Makefile lines that run a script under tests/ are asked about."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

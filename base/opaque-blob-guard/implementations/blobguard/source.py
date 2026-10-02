@@ -53,12 +53,23 @@ def from_bytes(data: bytes) -> Blob:
     return Blob(data[:HEAD_CAP], len(data), hashlib.sha256(data).hexdigest())
 
 
+def _encodable(text: str) -> bool:
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def read_disk(root: str, rel: str) -> Blob | None:
     """The working-tree file at root/rel; None when absent or a symlink that stays inside the repository.
 
     A symlink that leaves the repository (as the final name or through a folder) raises Link; any other
     refusal raises Unreadable. The open uses O_NOFOLLOW, so a name swapped for a link is never followed.
     """
+    if "\0" in rel or not _encodable(rel):
+        msg = "the path is not a valid file name"
+        raise Unreadable(msg)
     base = os.path.realpath(root)
     full = os.path.join(base, *rel.split("/"))
     if os.path.commonpath([base, os.path.realpath(os.path.dirname(full))]) != base:
@@ -97,7 +108,7 @@ def read_git(root: str, spec: str) -> Blob | None:
         proc = subprocess.Popen(  # noqa: S603 -- the git CLI, a fixed argument vector, no shell
             [GIT, "cat-file", "blob", spec], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-    except OSError:
+    except (OSError, ValueError):
         return None
     assert proc.stdout is not None  # noqa: S101 -- PIPE was requested above
     blob = _digest(proc.stdout.read, None)
