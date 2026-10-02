@@ -11,10 +11,30 @@ from pathlib import Path
 # treats an exit it did not ask for as a refusal, never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lifecycle import ASK, BLOCK
-from lifecycle.dispatch import read
+import hashlib
+
+from lifecycle import ASK, BLOCK, Hit
+from lifecycle.dispatch import read, reader_kind
+from lifecycle.targets import npm_script
 
 SAY = {BLOCK: "fetch-exec class (would block)", ASK: "new or changed hook (would ask)"}
+
+
+#: Text past this size is not scanned (the patterns are linear, but the budget is 30 s for every file):
+#: a judged file that large is asked about whole, keyed by its digest, so any edit to it is new.
+MAX_SCAN = 256 * 1024
+
+
+def _judge(path: str, text: str, writes: dict[str, str], root: str) -> list[Hit]:
+    if len(text) <= MAX_SCAN:
+        return read(path, text, writes, root)
+    hits = npm_script(path, text, writes, root, scan=False)
+    if reader_kind(path):
+        digest = hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()[:16]
+        hits.append(
+            Hit(1, "file-too-large", path.rsplit("/", 1)[-1], digest, ASK, f"over {MAX_SCAN} bytes, not scanned")
+        )
+    return hits
 
 
 def findings(payload: dict) -> list[dict]:
@@ -27,7 +47,7 @@ def findings(payload: dict) -> list[dict]:
     root = str(payload.get("repo_root") or "")
     found = []
     for path, text in sorted(writes.items()):
-        for hit in read(path, text, writes, root):
+        for hit in _judge(path, text, writes, root):
             found.append(
                 {
                     "key": f"{hit.rule}|{hit.entry}|{hit.level}|{hit.value}",

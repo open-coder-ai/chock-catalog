@@ -14,7 +14,8 @@ NET_CRATES = {
     "http-req", "ehttp", "awc", "ssh2", "native-tls", "rustls",
 }  # fmt: skip
 PINNED_URL = re.compile(r"@\s*git\+\S+@[0-9a-fA-F]{40}(?:#\S*)?\s*(?:;.*)?$")
-UPPER = re.compile(r"(?:==|~=|<|===|!=)")
+#: A bound that stops a future release: `==`, `~=` or an upper `<`/`<=` (`!=` and `>=` alone do not).
+UPPER = re.compile(r"(?:==|~=|<)")
 
 
 def _load(path: str, text: str) -> tuple[dict | None, list[Hit]]:

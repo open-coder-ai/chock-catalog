@@ -9,27 +9,16 @@ import re
 from lifecycle import ASK, BLOCK, Hit, line_of, norm
 from lifecycle.gyp import native_sources
 from lifecycle.signals import danger
+from lifecycle.targets import LIFECYCLE_NAMES, RUNS_FILE
 
 #: Scripts npm, yarn, pnpm or bun run on install, on a git-dependency prepare, or on pack/publish.
-#: `dependencies` runs after node_modules changes (npm 8+); `pnpm:devPreinstall` before a pnpm install.
-LIFECYCLE = (
-    "preinstall",
-    "install",
-    "postinstall",
-    "preprepare",
-    "prepare",
-    "postprepare",
-    "prepublish",
-    "prepublishOnly",
-    "prepack",
-    "postpack",
-    "dependencies",
-    "pnpm:devPreinstall",
-)
+#: `dependencies` runs after node_modules changes (npm 8+); `pnpm:devPreinstall` before a pnpm install;
+#: the uninstall trio when a package manager replaces or removes an installed package.
+LIFECYCLE = tuple(LIFECYCLE_NAMES)
 #: The `prepare` values husky documents, allowed verbatim (roadmap FP control).
 HUSKY = {"husky", "husky install", "husky install .husky"}
 DEP_SECTIONS = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
-SHADOWED = set(
+SHADOWED = frozenset(
     [
         "node",
         "npm",
@@ -89,9 +78,9 @@ SHADOWED = set(
 GIT_SPEC = re.compile(r"(?i)^(?:git\+[\w+.-]*:|git:|git@|github:|gitlab:|bitbucket:|gist:)")
 SHORTHAND = re.compile(r"^[A-Za-z0-9][\w.-]*/[\w.-]+(?:#.*)?$")
 PINNED = re.compile(r"#[0-9a-fA-F]{40}$")
+KEY = re.compile(r'"((?:[^"\\\n]|\\.)*)"\s*:')
 URL_SPEC = re.compile(r"(?i)^https?://")
 PATH_SPEC = re.compile(r"^(?:file:|link:|\.{1,2}/|/|~|[A-Za-z]:[\\/])")
-RUNS_FILE = re.compile(r"(?<![\w.-])((?:\.{0,2}/)?[\w@.-]+(?:/[\w@.-]+)*\.(?:[cm]?[jt]s|sh|py|ps1|cmd|bat))(?![\w.-])")
 #: Composer runs these for the root package only; roadmap NP04 judges the ones with fetch tools.
 COMPOSER_EVENTS = {
     "pre-install-cmd",
@@ -198,12 +187,19 @@ def _bins(text: str, bins: object, package: str) -> list[Hit]:
 
 def _deps(text: str, section: str, deps: dict, base: str) -> list[Hit]:
     hits = []
-    start = line_of(text, f'"{section}"')
+    start = text.find(f'"{section}"')
+    # The first line of each quoted key after the section, counted in one pass so a 40k-entry list stays linear.
+    lines: dict[str, int] = {}
+    offset, line = 0, 1
+    for key in KEY.finditer(text, max(start, 0)):
+        line += text.count("\n", offset, key.start())
+        offset = key.start()
+        lines.setdefault(key.group(1), line)
     for name, spec in deps.items():
         if not isinstance(spec, str):
             continue
         spec_n = spec.strip()
-        line = line_of(text, f'"{name}"', start)
+        line = lines.get(name, 1)  # an escaped key is reported at line 1
         if (GIT_SPEC.match(spec_n) or (SHORTHAND.match(spec_n) and not spec_n.startswith("@"))) and not PINNED.search(
             spec_n
         ):

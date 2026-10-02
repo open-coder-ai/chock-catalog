@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import os
 import posixpath
 import re
 
-from chock_scan import safe_read
-
 from lifecycle import BLOCK, Hit, norm
 from lifecycle.signals import danger
+from lifecycle.tree import exists, text_of
 
 STRING = re.compile(r'"((?:[^"\\\n]|\\.)*)"|\'((?:[^\'\\\n]|\\.)*)\'')
 NATIVE = re.compile(r"(?i)\.(?:c|cc|cpp|cxx|c\+\+|m|mm)$")
@@ -30,20 +28,6 @@ def _strings(text: str) -> list[tuple[int, str]]:
     return found
 
 
-def _inside(root: str, rel: str) -> str | None:
-    """The absolute path of `rel` under the repository root, or None when it would leave it."""
-    if not root or rel.startswith("../") or rel == ".." or posixpath.isabs(rel):
-        return None
-    return os.path.join(root, *rel.split("/"))
-
-
-def _exists(rel: str, writes: dict[str, str], root: str) -> bool:
-    if rel in writes:
-        return True
-    full = _inside(root, rel)
-    return bool(full) and os.path.isfile(full)
-
-
 def has_native(base: str, text: str, writes: dict[str, str], root: str) -> bool:
     """A source the gyp file names with a C, C++ or Objective-C extension exists in the change or the tree.
 
@@ -52,21 +36,14 @@ def has_native(base: str, text: str, writes: dict[str, str], root: str) -> bool:
     for _, value in _strings(text):
         if NATIVE.search(value) and "<" not in value:
             rel = posixpath.normpath(posixpath.join(base or ".", value))
-            if _exists(rel, writes, root):
+            if exists(rel, writes, root):
                 return True
     return False
 
 
 def native_sources(base: str, writes: dict[str, str], root: str) -> bool:
     """package.json `gypfile: true`: a binding.gyp beside it (in the change or on disk) with native sources."""
-    rel = posixpath.join(base, "binding.gyp") if base else "binding.gyp"
-    text = writes.get(rel)
-    if text is None:
-        full = _inside(root, rel)
-        try:
-            text = safe_read.read_text(full) if full else None
-        except safe_read.UnreadableError:
-            text = None
+    text = text_of(posixpath.join(base, "binding.gyp") if base else "binding.gyp", writes, root)
     return text is not None and has_native(base, text, writes, root)
 
 

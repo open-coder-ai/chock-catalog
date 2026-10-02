@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import PurePosixPath
 
-from lifecycle import Hit, gyp, npm, pyrules, textrules, tomlrules, xmlrules
+from lifecycle import Hit, gyp, npm, pyrules, targets, textrules, tomlrules, xmlrules
 
 #: Detectors that also look at the rest of the change and the tree (sibling files, native sources).
 WITH_TREE = {"package.json": npm.package_json, "binding.gyp": gyp.binding_gyp}
@@ -34,12 +34,21 @@ BY_SUFFIX = {
 }
 
 
-def read(path: str, text: str, writes: dict[str, str], root: str) -> list[Hit]:
-    """The hooks one written file declares; nothing for a file no detector reads."""
+def reader_kind(path: str) -> bool:
+    """A file a detector reads by name (a manifest or build file), as opposed to a script it may only run."""
     name = PurePosixPath(path).name.lower()
+    return name in WITH_TREE or name in WITH_PATH or name in TEXT_ONLY or name.endswith(tuple(BY_SUFFIX))
+
+
+def read(path: str, text: str, writes: dict[str, str], root: str) -> list[Hit]:
+    """The hooks one written file declares, plus, for a script or .rs file, whether a manifest runs it."""
+    name = PurePosixPath(path).name.lower()
+    hits = targets.npm_script(path, text, writes, root)
+    if name.endswith(".rs") and name != "build.rs":
+        hits += targets.cargo_build(path, text, writes, root)
     if name in WITH_TREE:
-        return WITH_TREE[name](path, text, writes, root)
+        return hits + WITH_TREE[name](path, text, writes, root)
     if name in WITH_PATH:
-        return WITH_PATH[name](path, text)
+        return hits + WITH_PATH[name](path, text)
     reader = TEXT_ONLY.get(name) or next((r for suffix, r in BY_SUFFIX.items() if name.endswith(suffix)), None)
-    return reader(text) if reader else []
+    return hits + (reader(text) if reader else [])

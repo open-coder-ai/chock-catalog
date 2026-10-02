@@ -29,20 +29,41 @@ EXEC_BUILTINS = {"exec", "eval", "compile", "__import__"}
 #: Process launches: ask on their own, block when their arguments carry a fetch signal.
 PROCESS = re.compile(r"^(?:subprocess\.\w+|os\.(?:system|popen|exec\w*|spawn\w*|posix_spawn\w*)|pty\.spawn)$")
 PTH_IMPORT = re.compile(r"^import[ \t]")
+#: Lookups that pick the code to run from a string: unresolvable here, so asked about.
+DYNAMIC = {
+    "importlib.import_module",
+    "importlib.__import__",
+    "importlib.util.module_from_spec",
+    "runpy.run_path",
+    "runpy.run_module",
+}
+#: pytest calls these hooks of a conftest at start-up, before any test.
+PYTEST_HOOKS = (
+    "pytest_configure",
+    "pytest_sessionstart",
+    "pytest_load_initial_conftests",
+    "pytest_collection",
+    "pytest_plugin_registered",
+    "pytest_addoption",
+    "pytest_cmdline",
+)
 
 
 def _aliases(tree: ast.Module) -> dict[str, str]:
-    """Local name -> dotted origin for every import in the module (`from os import system as s`)."""
+    """Local name -> dotted origin for every import in the module (`from os import system as s`).
+
+    A star import is recorded under `*<module>`, so a bare call can be resolved against it.
+    """
     names: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                names[alias.asname or alias.name.split(".")[0]] = (
-                    alias.name if alias.asname else alias.name.split(".")[0]
-                )
+                top = alias.name.split(".")[0]
+                names[alias.asname or top] = alias.name if alias.asname else top
         elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
             for alias in node.names:
-                names[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+                key = f"*{node.module}" if alias.name == "*" else alias.asname or alias.name
+                names[key] = f"{node.module}.{alias.name}"
     return names
 
 
@@ -61,9 +82,18 @@ def _matches(dotted: str, prefixes: tuple[str, ...]) -> bool:
     return any(dotted == p or dotted.startswith(p + ".") for p in prefixes)
 
 
-def classify_call(call: ast.Call, names: dict[str, str], source: str) -> tuple[str, str] | None:
-    """(level, why) for a call that reaches the network, decodes, builds code or starts a process."""
+def _resolve(call: ast.Call, names: dict[str, str]) -> str:
+    """The callee's dotted origin; a bare name a star import may have brought in resolves against it."""
     dotted = _dotted(call.func, names)
+    if isinstance(call.func, ast.Name) and call.func.id not in names:
+        for key, origin in names.items():
+            candidate = f"{origin.removesuffix('.*')}.{call.func.id}"
+            if key.startswith("*") and _verdict(candidate):
+                return candidate
+    return dotted
+
+
+def _verdict(dotted: str) -> tuple[str, str] | None:
     if dotted.removeprefix("builtins.") in EXEC_BUILTINS:
         return BLOCK, f"calls {dotted}"
     if _matches(dotted, NETWORK) and dotted not in NOT_NETWORK:
@@ -71,27 +101,76 @@ def classify_call(call: ast.Call, names: dict[str, str], source: str) -> tuple[s
     if DECODING.search(dotted):
         return BLOCK, f"decodes data ({dotted})"
     if PROCESS.match(dotted):
-        text = ast.get_source_segment(source, call) or ""
-        why = danger(text)
-        return (BLOCK, f"starts a process that {why}") if why else (ASK, f"starts a process ({dotted})")
+        return ASK, f"starts a process ({dotted})"
+    if dotted in DYNAMIC:
+        return ASK, f"resolves code by name at run time ({dotted})"
     return None
 
 
-def _import_time(tree: ast.Module) -> list[ast.AST]:
-    """Module-level statements and what they contain, minus function and class bodies (those run later)."""
+def classify_call(call: ast.Call, names: dict[str, str], source: str) -> tuple[str, str] | None:
+    """(level, why) for a call that reaches the network, decodes, builds code, starts a process or looks one up."""
+    dotted = _resolve(call, names)
+    verdict = _verdict(dotted)
+    if dotted == "getattr" and call.args:
+        target = _dotted(call.args[0], names)
+        if target.split(".")[0] in {origin.split(".")[0] for origin in names.values()}:
+            verdict = ASK, f"looks up an attribute of {target} by name"
+    if verdict and verdict[0] == ASK and (why := danger(ast.get_source_segment(source, call) or "")):
+        return BLOCK, f"runs code that {why}"
+    return verdict
+
+
+def _local_callables(tree: ast.Module) -> dict[str, ast.AST]:
+    """Functions and lambdas the module binds to a name, anywhere outside a class: a call by that name runs them."""
+    found: dict[str, ast.AST] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            found.setdefault(node.name, node)
+        elif isinstance(node, ast.Assign) and isinstance(node.value, ast.Lambda):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    found.setdefault(target.id, node.value)
+    return found
+
+
+def _walk_runtime(roots: list[ast.AST]) -> list[ast.AST]:
+    """Nodes that run when `roots` run: class bodies included, function and lambda bodies left for their calls."""
     found: list[ast.AST] = []
-    stack: list[ast.AST] = list(tree.body)
+    stack = list(roots)
     while stack:
         node = stack.pop()
         found.append(node)
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
-            stack.extend(node.decorator_list if not isinstance(node, ast.Lambda) else [])
-            continue
-        if isinstance(node, ast.ClassDef):
-            stack.extend([*node.decorator_list, *node.bases, *node.keywords])
-            continue
-        stack.extend(ast.iter_child_nodes(node))
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            stack.extend([*node.decorator_list, *node.args.defaults, *filter(None, node.args.kw_defaults)])
+        elif not isinstance(node, ast.Lambda):
+            stack.extend(ast.iter_child_nodes(node))
     return found
+
+
+def _import_time(tree: ast.Module, hooks: tuple[str, ...] = ()) -> list[ast.AST]:
+    """What runs when the module is imported: module and class bodies, plus every local function or
+    lambda a running call names (followed to a fixed point), plus any function named with a `hooks` prefix.
+    """
+    local = _local_callables(tree)
+    started = {name for name in local if name.startswith(hooks)} if hooks else set()
+    found = _walk_runtime([*tree.body, *(_body(local[name]) for name in started)])
+    while True:
+        called = {
+            n.func.id for n in found if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in local
+        } - started
+        if not called:
+            return found
+        started |= called
+        found += _walk_runtime([_body(local[name]) for name in called])
+
+
+def _body(node: ast.AST) -> ast.AST:
+    """A function as a module of its statements, or a lambda's expression, for walking what it runs."""
+    return (
+        ast.Module(body=node.body, type_ignores=[])
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        else node.body
+    )
 
 
 def _calls(nodes: list[ast.AST], names: dict[str, str], source: str, rule: str) -> list[Hit]:
@@ -152,7 +231,7 @@ def conftest_py(path: str, text: str) -> list[Hit]:
     tree, hits = _parse(path, text, ASK)
     if tree is None:
         return hits
-    return _calls(_import_time(tree), _aliases(tree), text, "conftest-import-time")
+    return _calls(_import_time(tree, PYTEST_HOOKS), _aliases(tree), text, "conftest-import-time")
 
 
 def customize_py(path: str, text: str) -> list[Hit]:

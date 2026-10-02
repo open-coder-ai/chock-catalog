@@ -32,6 +32,8 @@ RUBY_PROCESS = re.compile(
 )
 PODSPEC_PREPARE = re.compile(r"\.prepare_command\s*=")
 HEREDOC = re.compile(r"<<[~-]?(['\"]?)(\w+)\1")
+QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'')
+HEREDOC_LINES, BRACKET_LINES = 200, 60
 
 
 def _digest(text: str) -> str:
@@ -62,19 +64,21 @@ def go_source(text: str) -> list[Hit]:
 
 def gradle(text: str) -> list[Hit]:
     hits = []
-    for number, line in enumerate(text.splitlines(), 1):
+    lines = text.splitlines()
+    for number, line in enumerate(lines, 1):
         if GRADLE_REMOTE.search(line):
             hits.append(
                 Hit(number, "gradle-remote-apply", "apply from", norm(line), BLOCK, "applies a build script from a URL")
             )
         elif GRADLE_EXEC.search(line):
-            why = danger(line)
+            statement = _statement(lines, number - 1)
+            why = danger(statement)
             hits.append(
                 Hit(
                     number,
                     "gradle-exec",
                     "exec",
-                    norm(line),
+                    norm(statement),
                     BLOCK if why else ASK,
                     f"build runs a process that {why}" if why else "build runs a process",
                 )
@@ -83,16 +87,30 @@ def gradle(text: str) -> list[Hit]:
 
 
 def _statement(lines: list[str], index: int) -> str:
-    """The line, plus the body of a heredoc it opens (`<<~CMD` ... `CMD`), which is what a shell receives."""
-    opened = HEREDOC.search(lines[index])
-    if not opened:
-        return lines[index]
+    """The line plus what continues it: a heredoc's body (`<<~CMD` ... `CMD`, what a shell receives), or the lines
+    until its brackets balance (`system(` ... `)`, `exec {` ... `}`), so an edit inside either changes the key.
+    Both are bounded (HEREDOC_LINES, BRACKET_LINES) so a file of unclosed openers stays linear.
+    """
     body = [lines[index]]
-    for line in lines[index + 1 :]:
-        body.append(line)
-        if line.strip() == opened.group(2):
+    opened = HEREDOC.search(lines[index])
+    if opened:
+        for line in lines[index + 1 : index + 1 + HEREDOC_LINES]:
+            body.append(line)
+            if line.strip() == opened.group(2):
+                break
+        return "\n".join(body)
+    depth = _depth(lines[index])
+    for line in lines[index + 1 : index + 1 + BRACKET_LINES]:
+        if depth <= 0:
             break
+        body.append(line)
+        depth += _depth(line)
     return "\n".join(body)
+
+
+def _depth(line: str) -> int:
+    code = QUOTED.sub("", line)
+    return sum(code.count(c) for c in "([{") - sum(code.count(c) for c in ")]}")
 
 
 def _ruby_lines(text: str, rule: str, pattern: re.Pattern[str], what: str) -> list[Hit]:

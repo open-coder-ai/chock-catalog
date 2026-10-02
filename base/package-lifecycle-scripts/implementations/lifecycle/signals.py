@@ -12,13 +12,15 @@ FETCH = re.compile(
     r"|bitsadmin|certutil)(?:\.exe)?(?![\w-])"
     r"|(?i:\b(?:downloadstring|downloadfile|downloaddata|webclient|httpclient|webrequest)\b)"
     r"|\b(?:https?|ftps?)://"
+    r"|(?<![\w$-])(?:bunx|pnpx)(?![\w-])|\bnpm\s+exec\b|\b(?:pnpm|yarn)\s+dlx\b"
+    r"|(?<![\w$-])npx(?:\s+--?[\w-]+)*?\s+(?:--yes|-y|-p|--package)(?![\w-])"
     r"|(?<![\w.$])fetch\s*\(|\bhttps?\.(?:get|request)\s*\(|\brequire\(\s*['\"](?:node:)?https?['\"]\s*\)"
 )
 #: Base64 decoding, in a shell, in JS or in PowerShell (`-EncodedCommand <blob>`).
 DECODE = re.compile(
-    r"(?i)\bbase64\b[^|;&\n]*?\s(?:-d|-D|--decode)(?![\w-])|\batob\s*\(|frombase64string|b64decode"
+    r"(?i)\bbase64\b[^|;&\n]{0,80}?\s(?:-d|-D|--decode)(?![\w-])|\batob\s*\(|frombase64string|b64decode"
     r"|\bBuffer\.from\([^)]*['\"]base64['\"]|(?<![\w-])-e(?:nc(?:odedcommand)?|c)?\s+[A-Za-z0-9+/]{20,}={0,2}"
-    r"|\bxxd\s+(?:-\w+\s+)*-r\b|\bopenssl\s+(?:enc|base64)\b[^|;&\n]*\s-d\b"
+    r"|\bxxd\s+(?:-\w+\s+)*-r\b|\bopenssl\s+(?:enc|base64)\b[^|;&\n]{0,80}?\s-d\b"
 )
 #: Inline code: interpreter -e/-c/-r/-p flags, eval, PowerShell, child_process, Function constructors.
 EVAL = re.compile(
@@ -38,9 +40,17 @@ LABELS = (
 )
 
 
+#: Shell quoting that splits a word without changing it: `c''url`, `c""url`, `c\url`.
+SPLITTERS = re.compile(r"''|\"\"|\\(?=[A-Za-z])")
+
+
 def danger(text: str) -> str | None:
-    """Why a hook body is fetch-exec class, or None when it holds none of the roadmap's signals."""
+    """Why a hook body is fetch-exec class, or None when it holds none of the roadmap's signals.
+
+    The text is read as written and with empty quotes and letter escapes removed, so `c''url` reads as `curl`.
+    """
+    joined = SPLITTERS.sub("", text)
     for pattern, label in LABELS:
-        if pattern.search(text):
+        if pattern.search(text) or pattern.search(joined):
             return label
     return None
