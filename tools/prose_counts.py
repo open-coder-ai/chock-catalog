@@ -1,10 +1,11 @@
 """Counts quoted in prose files (SECURITY.md, CONTRIBUTING.md), written from registry.yaml.
 
 A count is written between markers, `<!-- gen:KEY -->48<!-- /gen -->`, and the text between them
-belongs to the generator. A count written by hand next to a policy noun fails the check, because
-two hand-written counts in these files went stale (twenty-two of forty-two, two script policies).
-That check is a heuristic backstop for review, not a proof: a count phrased with no policy noun
-nearby ("All 48 ship a manifest", a table cell) still needs a reviewer to ask for a marker.
+belongs to the generator. A number written by hand within five words of a policy noun, either
+side, fails the check, because two hand-written counts in these files went stale (twenty-two of
+forty-two, two script policies). That check is a heuristic backstop for review, not a proof: a
+count with no policy noun nearby ("All 48 ship a manifest") still needs a reviewer to ask for a
+marker.
 """
 
 from __future__ import annotations
@@ -23,19 +24,24 @@ MARKER = re.compile(r"<!-- gen:(?P<key>[a-z-]+) -->(?P<value>[^<\n]*)<!-- /gen -
 #: Any gen token left once the valid markers are gone is a marker spelled some other way.
 STRAY = re.compile(r"\bgen\s*:|/\s*gen\b", re.I)
 #: Markup a reader does not see, which must not separate a number from its noun.
-_INVISIBLE = re.compile(r"<!--.*?-->|<[^>\n]*>|&#?\w+;|[*_`]", re.S)
-_WORDS = (
-    "two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
-    "sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety"
+#: An ordered-list marker ("1." or "**2.**" at the start of a line) numbers an item, not policies.
+#: A link target or bare URL is an address, not words (a "%22" in it is a quote, not 22).
+_INVISIBLE = re.compile(
+    r"<!--.*?-->|</?[A-Za-z][^<>\n]*>|&#?\w+;|(?m:^[ \t>]*[*_]*\d+\.(?=[*_\s]))|\]\([^)\s]*\)|https?://\S+",
+    re.S,
 )
-#: A number, as digits or words, then up to four words, then a noun that counts policies; read
-#: with markup removed, and the gaps may be line breaks, since prose wraps.
-HAND_COUNT = re.compile(
-    rf"(?<![\w.#-])(?:\d+\+?|(?:{'|'.join(_WORDS.split())})(?:-\w+)?)(?!\w)"
-    r"(?:[\s-]+[\w()/,'\"\u2018\u2019\u201c\u201d-]+){0,4}?[\s-]+"
-    r"(?:polic\w*|advisor\w*|enforced[\w-]*|best-effort|guards?|gates?|(?:hook\s+)?programs?)\b",
-    re.I,
+_NUMBER_WORDS = frozenset(
+    {
+        *("two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"),
+        *("thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"),
+        *("thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"),
+    }
 )
+#: Words, and numbers that are not part of a version, an issue (#12) or a decimal.
+_TOKEN = re.compile(r"[A-Za-z][\w'\u2019-]*|(?<![#.\w])\d+(?![.\w]\d)")
+_NOUN = re.compile(r"(?:polic|advisor|enforced|best-effort|guard|gate|program)", re.I)
+#: How many words either side of a number a policy noun may sit and still make it a count.
+WINDOW = 5
 
 
 def _hook_program(row: dict) -> bool:
@@ -69,11 +75,23 @@ def render(text: str, known: dict[str, str]) -> tuple[str, list[str]]:
     outside = MARKER.sub("", filled)
     problems += [f"line {_line(outside, m)}: malformed or unclosed gen marker" for m in STRAY.finditer(outside)]
     visible = _INVISIBLE.sub(lambda m: " " + "\n" * m[0].count("\n"), outside)
-    for hit in HAND_COUNT.finditer(visible):
-        problems.append(
-            f"line {_line(visible, hit)}: hand-written count {' '.join(hit[0].split())!r}; use a gen marker"
-        )
+    problems += [f"line {line}: hand-written count {near!r}; use a gen marker" for line, near in hand_counts(visible)]
     return filled, problems
+
+
+def _is_number(token: str) -> bool:
+    return token.isdigit() or token.lower().split("-")[0] in _NUMBER_WORDS
+
+
+def hand_counts(text: str) -> list[tuple[int, str]]:
+    """(line, the words around it) for each number with a policy noun within WINDOW words either side."""
+    tokens = list(_TOKEN.finditer(text))
+    found = []
+    for i, token in enumerate(tokens):
+        near = tokens[max(0, i - WINDOW) : i + WINDOW + 1]
+        if _is_number(token[0]) and any(_NOUN.match(t[0]) for t in near):
+            found.append((_line(text, token), " ".join(t[0] for t in near)))
+    return found
 
 
 def _line(text: str, match: re.Match) -> int:
