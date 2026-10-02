@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from policies.test_registry_config import A_CONF, A_REDIR, B_HTTP, B_TLS, B_TOKEN, rules
+from policies.test_registry_config import A_CONF, A_REDIR, B_HOST, B_HTTP, B_TLS, B_TOKEN, rules
 
 
 @pytest.mark.parametrize(
@@ -21,7 +21,8 @@ from policies.test_registry_config import A_CONF, A_REDIR, B_HTTP, B_TLS, B_TOKE
         ("Makefile", "export GOSUMDB ?= $(GOSUMDB)\n", []),
         ("b.sh", 'export GOSUMDB="$GOSUMDB"\n', []),
         ("b.sh", "export GOSUMDB=of'f'\n", [B_TLS]),
-        ("b.sh", 'GOSUMDB="of"f\n', [B_TLS]),
+        # Read as the value's own quote plus glued text, so both "of" and "off" are judged.
+        ("b.sh", 'GOSUMDB="of"f\n', [B_HOST, B_TLS]),
         (".github/workflows/x.yml", "env: {GOSUMDB: 'off', GOFLAGS: -insecure}\n", [B_TLS]),
         ("Dockerfile", 'ENV GOPROXY="https://proxy.golang.org,direct"\n', []),
         # A defaulted reference is a reference only when the default is empty or itself a reference.

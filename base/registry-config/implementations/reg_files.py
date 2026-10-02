@@ -8,6 +8,7 @@ from collections.abc import Callable
 import reg_bots
 import reg_cargo
 import reg_go
+import reg_goenv
 import reg_misc
 import reg_npm
 import reg_python
@@ -41,7 +42,7 @@ BY_NAME: dict[str, Reader] = {
     "environment.yaml": reg_python.condarc,
     "go.mod": reg_go.gomod,
     "go.work": reg_go.gomod,
-    "go.env": reg_go.go_env,
+    "go.env": reg_goenv.go_env,
     "deny.toml": reg_cargo.deny_toml,
     "nuget.config": reg_xml.nuget,
     "directory.build.props": reg_xml.props,
@@ -81,10 +82,10 @@ BY_PATH: tuple[tuple[re.Pattern[str], Reader], ...] = (
             r"|[^/]+\.env|\.envrc|jenkinsfile|\.gitlab-ci\.ya?ml|bitbucket-pipelines\.ya?ml|azure-pipelines[^/]*\.ya?ml"
             r"|\.travis\.ya?ml|\.drone\.ya?ml|cloudbuild[^/]*\.ya?ml|buildspec[^/]*\.ya?ml|action\.ya?ml"
             r"|[^/]*\.gitlab-ci\.ya?ml|(?:docker-)?compose[^/]*\.ya?ml|taskfile[^/]*\.ya?ml|\.?justfile|[^/]+\.just"
-            r"|\.goreleaser\.ya?ml|devcontainer\.json|[^/]+\.(?:sh|bash|zsh|ps1))$"
+            r"|\.goreleaser\.ya?ml|\.?devcontainer\.json|[^/]+\.(?:sh|bash|zsh|ps1))$"
             r"|(?:^|/)\.github/workflows/[^/]+\.ya?ml$|(?:^|/)\.circleci/[^/]+\.ya?ml$|(?:^|/)\.buildkite/[^/]+\.ya?ml$"
         ),
-        reg_go.go_env,
+        reg_goenv.go_env,
     ),
 )
 
