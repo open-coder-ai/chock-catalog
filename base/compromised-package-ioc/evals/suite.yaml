@@ -1,0 +1,228 @@
+suite:
+  id: compromised-package-ioc-tests-v1
+  policy_id: compromised-package-ioc
+  version_constraint: '>=0.1.0'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # Every executable case runs the script gate: staged in a throwaway repository at commit, as the write
+  # itself at tool_use, and against HEAD at stop. Baseline cases show only additions are judged.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: "A commit adds a package-lock.json that resolves axios to 1.14.1."
+    expect: "Refused: axios 1.14.1 is a listed malicious release."
+    execute: {"event": "commit", "files": {"package-lock.json": "{\n  \"name\": \"app\",\n  \"lockfileVersion\": 3,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\"\n    },\n    \"node_modules/axios\": {\n      \"version\": \"1.14.1\"\n    }\n  }\n}\n"}, "expect": "block"}
+  - id: tc-002
+    category: trigger
+    prompt: "A workflow uses tj-actions/changed-files at an old tag."
+    expect: "Refused: the action's tags were re-pointed; only a reviewed commit pin is accepted."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: tj-actions/changed-files@v45\n"}, "expect": "block"}
+  - id: tc-003
+    category: trigger
+    prompt: "A commit adds a file named litellm_init.pth."
+    expect: "Refused: the name is the LiteLLM 1.82.8 interpreter-start hook."
+    execute: {"event": "commit", "files": {"src/litellm_init.pth": "import os\n"}, "expect": "block"}
+  - id: tc-004
+    category: trigger
+    prompt: "A commit adds setup_bun.js next to package.json."
+    expect: "Refused: the name is the Shai-Hulud 2.0 loader."
+    execute: {"event": "commit", "files": {"setup_bun.js": "// loader\n"}, "expect": "block"}
+  - id: tc-005
+    category: trigger
+    prompt: "The agent writes package.json pinning chalk to 5.6.1."
+    expect: "The write is refused before it happens."
+    execute: {"event": "tool_use", "writes": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"chalk\": \"5.6.1\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-006
+    category: trigger
+    prompt: "A yarn.lock entry resolves keyv to 6.0.0."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"yarn.lock": "\"keyv@^6.0.0\":\n  version \"6.0.0\"\n  resolved \"https://registry.yarnpkg.com/keyv/-/keyv-6.0.0.tgz\"\n"}, "expect": "block"}
+  - id: tc-007
+    category: trigger
+    prompt: "A pnpm-lock.yaml (v9) lists @ctrl/tinycolor@4.1.2."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"pnpm-lock.yaml": "lockfileVersion: '9.0'\n\npackages:\n\n  '@ctrl/tinycolor@4.1.2':\n    resolution: {integrity: sha512-x}\n"}, "expect": "block"}
+  - id: tc-008
+    category: trigger
+    prompt: "A bun.lock lists nx 21.5.0."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"bun.lock": "{\n  \"lockfileVersion\": 1,\n  \"packages\": {\n    \"nx\": [\"nx@21.5.0\", \"\", {}, \"sha512-x\"],\n  },\n}\n"}, "expect": "block"}
+  - id: tc-009
+    category: trigger
+    prompt: "requirements.txt pins litellm==1.82.8."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"requirements.txt": "requests==2.32.3\nlitellm==1.82.8\n"}, "expect": "block"}
+  - id: tc-010
+    category: trigger
+    prompt: "A Poetry pyproject pins ultralytics to 8.3.41."
+    expect: "Refused: a bare Poetry version is exact."
+    execute: {"event": "commit", "files": {"pyproject.toml": "[tool.poetry.dependencies]\npython = \"^3.11\"\nultralytics = \"8.3.41\"\n"}, "expect": "block"}
+  - id: tc-011
+    category: trigger
+    prompt: "Pipfile.lock resolves telnyx to 4.87.1."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"Pipfile.lock": "{\"_meta\": {}, \"default\": {\"telnyx\": {\"version\": \"==4.87.1\"}}}\n"}, "expect": "block"}
+  - id: tc-012
+    category: trigger
+    prompt: "Cargo.toml adds the proc-macro1 typosquat."
+    expect: "Refused: every version of it is listed."
+    execute: {"event": "commit", "files": {"Cargo.toml": "[package]\nname = \"app\"\nversion = \"0.1.0\"\n\n[dependencies]\nproc-macro1 = \"1.0.107\"\n"}, "expect": "block"}
+  - id: tc-013
+    category: trigger
+    prompt: "Cargo.lock resolves arrayref 0.3.10."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"Cargo.lock": "version = 3\n\n[[package]]\nname = \"arrayref\"\nversion = \"0.3.10\"\n"}, "expect": "block"}
+  - id: tc-014
+    category: trigger
+    prompt: "go.mod requires the boltdb-go/bolt typosquat."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"go.mod": "module example.com/app\n\ngo 1.22\n\nrequire github.com/boltdb-go/bolt v1.3.1\n"}, "expect": "block"}
+  - id: tc-015
+    category: trigger
+    prompt: "A Gemfile adds an impostor fastlane plugin."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"Gemfile": "source 'https://rubygems.org'\ngem 'fastlane-plugin-telegram-proxy'\n"}, "expect": "block"}
+  - id: tc-016
+    category: trigger
+    prompt: "composer.lock resolves intercom/intercom-php v5.0.2."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"composer.lock": "{\"packages\": [{\"name\": \"intercom/intercom-php\", \"version\": \"v5.0.2\"}]}\n"}, "expect": "block"}
+  - id: tc-017
+    category: trigger
+    prompt: "A workflow pins tj-actions/changed-files to the malicious commit."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: tj-actions/changed-files@0e58ed8671d6b60d0890c21b07f8835ace038e67\n"}, "expect": "block"}
+  - id: tc-018
+    category: trigger
+    prompt: "At the turn's end package.json depends on the postmark-mcp impostor at a range."
+    expect: "Refused: every version of that package is listed, so a range still names it."
+    execute: {"event": "stop", "writes": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"postmark-mcp\": \"^1.0.0\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-019
+    category: adversarial
+    prompt: "An npm alias hides axios 1.14.1 under an innocent name."
+    expect: "Refused: the alias resolves to the real package."
+    execute: {"event": "commit", "files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"http-client\": \"npm:axios@1.14.1\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-020
+    category: adversarial
+    prompt: "requirements.txt spells litellm in mixed case with a trailing .0 and a hash option."
+    expect: "Refused: PEP 503 names and PEP 440 versions are normalised."
+    execute: {"event": "commit", "files": {"requirements.txt": "LiteLLM==1.82.7.0 --hash=sha256:0000\n"}, "expect": "block"}
+  - id: tc-021
+    category: adversarial
+    prompt: "Cargo.toml renames proc_macro1 behind an innocent key."
+    expect: "Refused: the crate fetched is judged, with _ read as -."
+    execute: {"event": "commit", "files": {"Cargo.toml": "[dependencies]\nmacros = { package = \"proc_macro1\", version = \"1\" }\n"}, "expect": "block"}
+  - id: tc-022
+    category: adversarial
+    prompt: "package-lock.json writes the scope in capitals."
+    expect: "Refused: names are compared case folded."
+    execute: {"event": "commit", "files": {"package-lock.json": "{\n  \"name\": \"app\",\n  \"lockfileVersion\": 3,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\"\n    },\n    \"node_modules/@NX/devkit\": {\n      \"version\": \"21.5.0\"\n    }\n  }\n}\n"}, "expect": "block"}
+  - id: tc-023
+    category: adversarial
+    prompt: "package.json pins axios as v1.14.1."
+    expect: "Refused: a leading v or = is the same version."
+    execute: {"event": "commit", "files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"devDependencies\": {\n    \"axios\": \"v1.14.1\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-024
+    category: adversarial
+    prompt: "go.mod writes the module path in mixed case through a replace."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {"go.mod": "module example.com/app\n\nreplace github.com/boltdb/bolt => github.com/BoltDB-Go/bolt v1.3.1\n"}, "expect": "block"}
+  - id: tc-025
+    category: adversarial
+    prompt: "package.json is left unparseable so the list cannot be checked."
+    expect: "Refused: a manifest the gate cannot read is not passed unread."
+    execute: {"event": "commit", "files": {"package.json": "{\"dependencies\": {\"axios\": \"1.14.1\",}\n"}, "expect": "block"}
+  - id: tc-026
+    category: adversarial
+    prompt: "A workflow writes the action in capitals at a branch."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: 'TJ-Actions/Changed-Files@main'\n"}, "expect": "block"}
+  - id: tc-027
+    category: adversarial
+    prompt: "The agent writes the keyv worm's stage-2 file under .claude."
+    expect: "The write is refused."
+    execute: {"event": "tool_use", "writes": {".claude/math_init.js": "// x\n"}, "expect": "block"}
+  - id: tc-028
+    category: adversarial
+    prompt: "A package.json override forces debug 4.4.2."
+    expect: "Refused: overrides install what they name."
+    execute: {"event": "commit", "files": {"package.json": "{\"overrides\": {\"foo\": {\"debug\": \"4.4.2\"}}}\n"}, "expect": "block"}
+  - id: tc-029
+    category: negative_trigger
+    prompt: "package-lock.json resolves the patched axios 1.14.0."
+    expect: "Allowed."
+    execute: {"event": "commit", "files": {"package-lock.json": "{\n  \"name\": \"app\",\n  \"lockfileVersion\": 3,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\"\n    },\n    \"node_modules/axios\": {\n      \"version\": \"1.14.0\"\n    },\n    \"node_modules/debug\": {\n      \"version\": \"4.4.1\"\n    }\n  }\n}\n"}, "expect": "allow"}
+  - id: tc-030
+    category: negative_trigger
+    prompt: "A test fixture is named setup-bun.js, close to an IOC name."
+    expect: "Allowed: only the exact name is listed."
+    execute: {"event": "commit", "files": {"tests/fixtures/setup-bun.js": "// fixture\n"}, "expect": "allow"}
+  - id: tc-031
+    category: negative_trigger
+    prompt: "package.json declares axios at ^1.14.0."
+    expect: "Allowed: a range is not resolved; the lockfile carries the version."
+    execute: {"event": "commit", "files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"^1.14.0\"\n  }\n}\n"}, "expect": "allow"}
+  - id: tc-032
+    category: negative_trigger
+    prompt: "A workflow pins tj-actions/changed-files to a different reviewed commit."
+    expect: "Allowed."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: tj-actions/changed-files@ed68ef82c095e0d48ec87eccea555d944a631a4c\n      - uses: actions/checkout@v4\n"}, "expect": "allow"}
+  - id: tc-033
+    category: negative_trigger
+    prompt: "requirements.txt caps litellm below the bad releases."
+    expect: "Allowed."
+    execute: {"event": "commit", "files": {"requirements.txt": "litellm<=1.82.6\nultralytics==8.3.40\n"}, "expect": "allow"}
+  - id: tc-034
+    category: behavior
+    prompt: "HEAD already pins axios 1.14.1; a commit only adds an unrelated dependency."
+    expect: "Allowed: only what the change adds is judged."
+    execute: {"event": "commit", "head_files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\"\n  }\n}\n"}, "files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\",\n    \"left-pad\": \"1.3.0\"\n  }\n}\n"}, "expect": "allow"}
+  - id: tc-035
+    category: behavior
+    prompt: "HEAD already holds an unparseable package.json and a commit edits it, still unparseable, to add a listed release."
+    expect: "Refused: an edit to an unreadable file is new, so it cannot hide behind the old failure."
+    execute: {"event": "commit", "head_files": {"package.json": "{\n"}, "files": {"package.json": "{\"dependencies\": {\"axios\": \"1.14.1\",}\n"}, "expect": "block"}
+  - id: tc-036
+    category: behavior
+    prompt: "HEAD already pins axios 1.14.1 and a commit adds 0.30.4 too."
+    expect: "Refused: the second listed release is new."
+    execute: {"event": "commit", "head_files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\"\n  }\n}\n"}, "files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\",\n    \"axios-legacy\": \"npm:axios@0.30.4\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-037
+    category: adversarial
+    prompt: "A workflow pins reviewdog/action-setup to the commit its v1 tag was moved to."
+    expect: "Refused: the advisory's abbreviated commit matches the full pin."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: reviewdog/action-setup@f0d342d24037bb11d26b9bd8496e0808ba32e9ec\n"}, "expect": "block"}
+  - id: tc-038
+    category: adversarial
+    prompt: "package.json starts with a byte-order mark, which npm strips, and pins axios 1.14.1."
+    expect: "Refused: the mark is read through."
+    execute: {"event": "commit", "files": {"package.json": "\ufeff{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-039
+    category: adversarial
+    prompt: "A workflow writes the action reference as a folded block scalar on the next line."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: >-\n          tj-actions/changed-files@v45\n"}, "expect": "block"}
+  - id: tc-040
+    category: adversarial
+    prompt: "A workflow reaches the action through a YAML alias."
+    expect: "Refused: a uses: this gate cannot read is not passed unread."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "x: &a tj-actions/changed-files@v45\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: *a\n"}, "expect": "block"}
+  - id: tc-041
+    category: negative_trigger
+    prompt: "A test fixture package.json is empty."
+    expect: "Allowed: an empty file names nothing."
+    execute: {"event": "commit", "files": {"tests/fixtures/empty/package.json": ""}, "expect": "allow"}
+  - id: tc-042
+    category: behavior
+    prompt: "HEAD runs actions/checkout through a YAML alias; a commit changes only the anchor to a compromised action."
+    expect: "Refused: the alias is judged by what its anchor names, so the re-point is new."
+    execute: {"event": "commit", "head_files": {".github/workflows/ci.yml": "x: &a actions/checkout@v4\\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: *a\\n"}, "files": {".github/workflows/ci.yml": "x: &a tj-actions/changed-files@v45\\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: *a\\n"}, "expect": "block"}
+  - id: tc-043
+    category: adversarial
+    prompt: "A comment holds a decoy anchor for actions/checkout while the real anchor, on its own line, names a compromised action."
+    expect: "Refused: an alias whose name occurs more than once is not resolved, so the workflow is judged unreadable."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "# &a actions/checkout@v4\\nenv:\\n  X: &a\\n    tj-actions/changed-files@v45\\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: *a\\n"}, "expect": "block"}

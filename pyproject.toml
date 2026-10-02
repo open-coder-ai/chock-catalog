@@ -39,6 +39,7 @@ source = [
     "base/dockerfile-compose-security/implementations",
     "base/package-lifecycle-scripts/implementations",
     "base/lockfile-integrity/implementations",
+    "base/compromised-package-ioc/implementations",
     "lib/chock_scan",
     "base/scan-suppression-markers/implementations",
 ]
