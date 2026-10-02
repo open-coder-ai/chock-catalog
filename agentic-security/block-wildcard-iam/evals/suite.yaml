@@ -268,3 +268,28 @@ suite:
     prompt: "The agent writes a CDK statement with wildcard actions into stack.ts."
     expect: "The write is refused before it happens."
     execute: {event: tool_use, writes: {"stack.ts": "new iam.PolicyStatement({ actions: ['*'], resources: ['*'] });\n"}, expect: block}  # pragma: allowlist broad-privilege
+  - id: tc-036
+    category: trigger
+    prompt: "Adversarial: a Terraform statement (Allow by default) carries a trailing comment that says Deny."
+    expect: "The hook blocks the commit; only a strict-JSON Deny object is exempt."
+    execute:
+      files:
+        iam.tf: "data \"aws_iam_policy_document\" \"a\" { statement { actions = [\"*\"] resources = [\"*\"] } } # Effect = Deny\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-037
+    category: trigger
+    prompt: "A quoted wildcard action is followed by a line comment (the v0.0.4 form main already caught)."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        stack.ts: "const s = { Action: '*' // all\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-038
+    category: trigger
+    prompt: "Adversarial: a strict-JSON line opens with a Deny statement and appends a second statement with no Effect."
+    expect: "The hook blocks the commit; the exemption covers one object only."
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Deny\", \"Action\": \"x:Y\", \"Resource\": \"*\"}, {\"Action\": \"*\", \"Resource\": \"*\"}\n"  # pragma: allowlist broad-privilege
+      expect: block
+

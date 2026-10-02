@@ -5,15 +5,17 @@ description: >
   Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a
   wildcard action, resource or principal in string or list form and either quote
   style (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on
-  s3, iam, sts, kms and ec2, Allow with an inverted action or resource key,
+  s3, iam, sts, kms and ec2 actions, Allow with an inverted action or resource key,
   administrator, power-user and IAM-admin managed policies, GCP owner and editor
   roles and public members, Kubernetes RBAC wildcards and cluster-admin bindings,
-  Azure wildcard actions and Owner. A Deny written on one line passes. Friction,
-  not a security boundary: grants split across lines, partial wildcards, YAML
-  aliases or tags, unicode-escaped keys and runtime-built grants pass, and a Deny
-  split across lines is still refused. Escape: 'pragma: allowlist broad-privilege'
-  on the same line, honoured at commit; at agent tool-use it counts only when that
-  exact line is already committed in HEAD.
+  Azure wildcard actions and Owner. Only a one-object strict-JSON Deny statement is
+  exempt. Friction, not a security boundary: grants split across lines, partial
+  wildcards, unlisted services and roles, YAML aliases or tags, unicode-escaped
+  keys and runtime-built grants pass; Deny statements in other syntaxes or split
+  across lines, admission-webhook wildcards and a wildcard resource on describe-only
+  actions are refused. Escape: 'pragma: allowlist broad-privilege' on the same line,
+  honoured at commit; at agent tool-use it counts only when that exact line is
+  already committed in HEAD.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -43,39 +45,54 @@ hook:
       # alternatives from matching their own source here and in the compiled gate.json (#32).
       content_pattern: |-
         (?x)
-        # A Deny statement written on one line, with no Allow on it, grants nothing.
-        ^(?!(?=.*(?<![^\s{,(])(?:[Ee]ffect|"[Ee]ffect"|'[Ee]ffect'|\\"[Ee]ffect\\")\s*[:=]\s*
-            (?:"Deny"|'Deny'|\\"Deny\\"|Deny\b|(?:\w+\.)*Effect\.DENY\b))(?!.*(?i:allow)))
-        (?:
+        # Grant keys and service wildcards, unless the line is one strict-JSON Deny statement: one object,
+        # Effect Deny its first key, no second statement or effect, no escapes, no allow anywhere.
+        ^(?:
+          (?!\s*\{\s*"Effect"\s*:\s*"Deny"\s*,(?!.*Effect)(?!.*(?i:allow))(?!.*Statement)(?!.*\[\s*\{)
+             (?!.*\}\s*,\s*\{)[^\\]*\}\s*,?\s*$)
+          (?:
         # Allow with an inverted key grants everything the key does not name.
-          (?=.*(?:\b[Ee]ffect\\?["']?\s*[:=]\s*\\?["']?Allow\b|\bEffect\.ALLOW\b))
-          .*(?<![\w.-])\\?["']?Not(?:Action|Resource|Principal)\\?["']?\s*[:=]
+            (?=.*(?:\b[Ee]ffect\\?["']?\s*[:=]\s*\\?["']?Allow\b|\bEffect\.ALLOW\b))
+            .*(?<![\w.-])\\?["']?Not(?:Action|Resource|Principal)\\?["']?\s*[:=]
+          | .*?(?:
+        # A grant key whose value is the wildcard, or a one-line list holding it.
+              (?<![\w.-])\\?["']?
+              (?:Action|Resource|Principal|AWS|Federated|Service|CanonicalUser|actions|resources|Actions
+                |dataActions|DataActions|verbs|apiGroups|identifiers)
+              \\?["']?\s*[:=]\s*
+              (?:\\?["'](?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?\\?["']
+                |(?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?(?=\s*(?:[,;})\]\#]|//|/\*|--|$))
+                |\[[^\][]*?(?<=[\[,\s])\\?["']?(?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?\\?["']?\s*[,\]])
+        # A whole-service wildcard on an action key, or alone as a list element line.
+            | (?<![\w.-])\\?["']?(?:Action|actions|Actions)\\?["']?\s*[:=]\s*(?:\[[^\][]*?)?
+              (?<=[\[,\s:=])\\?["']?(?i:s3|iam|sts|kms|ec2):(?:\*|\\u002[aA])\\?["']?(?![\w*:/.-])
+            | ^\s*(?:-\s*)?\\?["']?(?i:s3|iam|sts|kms|ec2):(?:\*|\\u002[aA])\\?["']?\s*,?\s*$
+            )
+          )
         | .*?(?:
-        # A grant key whose value is the wildcard, or a list holding it.
-            (?<![\w.-])\\?["']?
-            (?:Action|Resource|Principal|AWS|actions|resources|Actions|dataActions|DataActions|verbs|apiGroups|identifiers)
-            \\?["']?\s*[:=]\s*
-            (?:\\?["']?(?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?\\?["']?(?=\s*(?:[,;})\]\#]|$))
-              |\[[^\][]*?(?<=[\[,\s])\\?["']?(?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?\\?["']?\s*[,\]])
-        # A whole-service wildcard on the services that reach privilege or every resource.
-          | (?:["'\[,:=]|^\s*-)\s*\\?["']?(?i:s3|iam|sts|kms|ec2):(?:\*|\\u002[aA])\\?["']?(?![\w*:/.-])
-        # Managed policies that grant administrator, power-user or IAM-admin rights.
-          | :iam::aws:policy/(?:Administrator[A]ccess|PowerUser[A]ccess|IAMFull[A]ccess)\b
-          | \\?["'](?:Administrator[A]ccess|PowerUser[A]ccess|IAMFull[A]ccess)\\?["']
+        # Managed policies that grant administrator, power-user or IAM-admin rights: ARN, policy name, SAM.
+            :iam::aws:policy/(?:Administrator[A]ccess|PowerUser[A]ccess|IAMFull[A]ccess)\b
+          | (?:\b(?:name|policy_name|PolicyName|policyName|ManagedPolicyName)\\?["']?\s*[:=]|--policy-name)
+            \s*\\?["']?(?:Administrator[A]ccess|PowerUser[A]ccess|IAMFull[A]ccess)\b
+          | (?:\bPolicies:\s*\[?[^\]\#]*?|^\s*-\s*)(?<![\w-])(?:Administrator[A]ccess|PowerUser[A]ccess|IAMFull[A]ccess)(?![\w-])
+        # Wildcard principal objects in CDK.
+          | \b(?:AnyPrincipa[l]|StarPrincipa[l])\s*\(
         # GCP primitive roles.
           | (?:["'=]|\brole\\?["']?\s*:\s*|--role\s+)\\?["']?roles/(?:owner|editor)(?![\w./-])
         # GCP public members.
           | \bmembers?\\?["']?\s*[:=]\s*\[?[^\][]{0,200}?\\?["']all(?:Authenticated)?Users\\?["']
+          | \bmembers?:\s*\[?\s*all(?:Authenticated)?Users(?![\w.(])
           | --member[=\s]\s*\\?["']?all(?:Authenticated)?Users\b
-          | ^\s*(?:-\s*\\?["']?|\\?["'])all(?:Authenticated)?Users\\?["']?\s*,?\s*$
-          | \ball(?:Authenticated)?Users:(?:R|W|O|objectViewer|objectAdmin|objectCreator|legacy\w+)\b
+          | ^\s*-\s*\\?["']?all(?:Authenticated)?Users\\?["']?\s*$
+          | (?i:\ball(?:authenticated)?users):(?:R|W|O|FC|roles/|objectViewer|objectAdmin|objectCreator|legacy\w+)
         # Kubernetes cluster-admin bindings.
           | --clusterrole[=\s]\s*\\?["']?cluster-admin(?![\w@.-])
-          | \bname\\?["']?\s*[:=]\s*\\?["']?cluster-admin\\?["']?\s*(?:[,}\#]|$)
+          | ^\s*\\?["']?name\\?["']?\s*[:=]\s*\\?["']?cluster-admin\\?["']?\s*(?:[,}\#]|$)
+          | \brole_?[Rr]ef\\?["']?\s*[:={]\s*\{?[^}]*?\bname\\?["']?\s*[:=]\s*\\?["']?cluster-admin(?![\w@.-])
         # Azure Owner, by name or by its built-in role id.
-          | \brole_?[Dd]efinition_?[Nn]ame\\?["']?\s*[:=]\s*\\?["']Owner\\?["']
-          | --role[=\s]\s*\\?["']?Owner(?![\w-])
-          | 8e3af657-a8ff-443c-a75c-2fe8c4bcb63[5]
+          | \brole_?[Dd]efinition_?[Nn]ame\\?["']?\s*[:=]\s*\\?["']?Owner\b(?![\w-])
+          | \baz\s+role\s+assignment\b.*--role[=\s]\s*\\?["']?Owner(?![\w-])
+          | (?i:8e3af657-a8ff-443c-a75c-2fe8c4bcb63[5])
           )
         )
 
@@ -121,4 +138,4 @@ changelog:
 - version: 0.1.0
   date: '2026-10-02'
   changes:
-  - "v2, single-line forms (roadmap HP05; closes the probed misses of defect 4.5 #2): list forms and either quote style or bare YAML for the wildcard action, resource and principal keys, escaped JSON inside strings and the unicode-escaped star; global and whole-service wildcards on s3, iam, sts, kms and ec2; Allow with NotAction, NotResource or NotPrincipal; PowerUserAccess and IAMFullAccess beside AdministratorAccess, in any partition and by bare name; unquoted GCP owner/editor in gcloud flags and YAML bindings; allUsers and allAuthenticatedUsers members; Kubernetes RBAC verbs, resources and apiGroups wildcards and cluster-admin bindings; Azure wildcard actions and dataActions and Owner by name or built-in id. A Deny statement on one line with no Allow on it now passes. Service wildcards and PowerUserAccess block rather than ask: a content_regex gate has one action, so the roadmap's ask tier for them waits for the structured iam-policy-scan (wave 3), as do multi-line statements."
+  - "v2, single-line forms (roadmap HP05; closes the probed misses of defect 4.5 #2): list forms, either quote style, bare YAML and trailing comments for the wildcard action, resource and principal keys (AWS, Federated, Service, CanonicalUser), escaped JSON inside strings and the unicode-escaped star; the global wildcard; whole-service wildcards on s3, iam, sts, kms and ec2 on an action key or alone as a list element line; Allow with NotAction, NotResource or NotPrincipal on one line; PowerUserAccess and IAMFullAccess beside AdministratorAccess, by ARN in any partition, by policy-name key or in SAM Policies; CDK any-principal and star-principal; unquoted GCP owner/editor in gcloud flags and YAML bindings; allUsers and allAuthenticatedUsers members, gcloud member flags and gsutil grants; Kubernetes RBAC verbs, resources and apiGroups wildcards and cluster-admin bindings (kubectl flag, roleRef, a non-list name line); Azure wildcard actions and dataActions, Owner by role definition name, az role assignment, or built-in id in any case. A single strict-JSON Deny statement on one line (Effect Deny its first key, no other effect, statement, escape or allow) passes, the one format that cannot carry the pragma. Service wildcards and PowerUserAccess block rather than ask: a content_regex gate has one action, so the roadmap's ask tier waits for the structured iam-policy-scan (wave 3), as do multi-line statements."
