@@ -16,13 +16,19 @@ OVERLAP = 500
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, rule or front matter.
 BLOCK_START = re.compile(
-    r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|>|---+\s*$|===+\s*$|<(?:!--|/?(?i:address|article|aside|blockquote"
+    r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|---+\s*$|===+\s*$|<(?:!--|/?(?i:address|article|aside|blockquote"
     r"|details|dialog|div|dl|fieldset|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table"
     r"|tbody|td|tfoot|th|thead|tr|ul)\b))"
 )
 #: A table's delimiter row; `|` lines start their own statements only in a run that has one (a soft-wrapped
 #: line that happens to start with `|` continues its paragraph, as an autolink `<https://...>` does).
 TABLE_DELIMITER = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$")
+#: A blockquote prefix: its lines are read as a container, so a wrapped quoted paragraph is still one paragraph.
+QUOTE = re.compile(r"^ {0,3}((?:>[ \t]?)+)")
+#: A fenced line continued on the next: a trailing backslash, pipe or && (the backslash is dropped on joining).
+CONTINUED = ("\\", "|", "&&")
+#: Quotes or brackets around one word in prose, dropped so they cannot split a phrase (not $(x) or never(x)).
+WRAPPED_WORD = re.compile(r"(?<![\w$])[\"'(\[]([\w-]+)[\"')\]]")
 #: A markdown hard line break (two trailing spaces, a trailing backslash, <br>) ends a sentence.
 HARD_BREAK = re.compile(r"(?: {2,}|\\|<br\s*/?>)$", re.IGNORECASE)
 #: A sentence ends at . ! or ? followed by space and a capital, quote, bracket or markup character.
@@ -77,7 +83,7 @@ def normalize(text: str, *, code: bool = False) -> str:
         text = "".join(map(_kept, unicodedata.normalize("NFKD", text.translate(FOLD))))
     text = text.casefold()
     if not code:
-        text = EMPHASIS.sub("", text.replace("`", ""))
+        text = WRAPPED_WORD.sub(r"\1", EMPHASIS.sub("", text.replace("`", "")))
     return SPACE.sub(" ", text).strip()
 
 
@@ -137,17 +143,26 @@ def statements(text: str) -> list[Statement]:
 
 def _body(lines: list[str], skip: int) -> list[Statement]:
     """The statements after the front matter: paragraphs, list items, table rows and headings, and fenced
-    code lines (a line ending in a backslash joined with the next)."""
+    code lines (a continued line joined with the next). A blockquote is a container: its prefix is set
+    aside and a statement ends only where the quote depth changes."""
     out: list[Statement] = []
     parts: list[tuple[int, str]] = []
     code: list[tuple[int, str]] = []
     fence: str | None = None
-    tables = _table_rows(lines)
-    for number, line in enumerate(lines[skip:], skip + 1):
+    quoted = [QUOTE.match(line) for line in lines[skip:]]
+    inner = [line[m.end() :] if m else line for line, m in zip(lines[skip:], quoted, strict=True)]
+    depths = [m.group(1).count(">") if m else 0 for m in quoted]
+    tables = _table_rows(inner)
+    depth = 0
+    for k, line in enumerate(inner):
+        number = skip + 1 + k
         if fence is not None:
             fence = _fenced(line, number, fence, code, out)
             continue
-        if (opener := FENCE.match(line)) or not line.strip() or BLOCK_START.match(line) or number - 1 in tables:
+        if depths[k] != depth:
+            _flush(parts, out)
+            depth = depths[k]
+        if (opener := FENCE.match(line)) or not line.strip() or BLOCK_START.match(line) or k in tables:
             _flush(parts, out)
             if opener:
                 fence = opener.group(1)
@@ -182,7 +197,7 @@ def _fenced(line: str, number: int, fence: str, code: list[tuple[int, str]], out
         return None
     if line.strip():
         code.append((number, line.strip()))
-        if not line.rstrip().endswith("\\"):
+        if not line.rstrip().endswith(CONTINUED):
             _flush_code(code, out)
     return fence
 

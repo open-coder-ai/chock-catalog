@@ -16,7 +16,7 @@ from chock_scan import entropy
 MIN_BLOB = 80
 #: A wrapped blob's lines: each one at least this long and nothing but base64 characters.
 WRAPPED_LINE = re.compile(r"\s*([A-Za-z0-9+/_-]{40,}={0,2})\s*")
-B64 = re.compile(r"(?<![A-Za-z0-9+/_=-])[A-Za-z0-9+/_-]{%d,}={0,2}(?![A-Za-z0-9+/_=-])" % MIN_BLOB)
+B64 = re.compile(r"(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{%d,}={0,2}(?![A-Za-z0-9+/_=-])" % MIN_BLOB)
 DATA_URI = re.compile(r"(?i)data:[a-z0-9.+/-]*(?:;[a-z0-9=._-]+)*;base64,\s*$")
 #: Decoded text must be at least this share printable to be read as text.
 PRINTABLE = 0.9
@@ -27,7 +27,9 @@ MAX_DECODE = 65536
 
 
 #: Characters that, just before a run, make it part of a URL, path or address rather than a blob.
-JOINED = frozenset(".:/@#?&%")
+JOINED = frozenset("./@#?&%")
+#: A colon glues a run to what precedes it only after a host (example.com:path), not after a name (KEY:).
+HOST_COLON = re.compile(r"[\w-]+\.[\w.-]*:$")
 
 
 class Blob(NamedTuple):
@@ -72,36 +74,64 @@ def _runs(lines: list[str]) -> list[tuple[int, int, str, str, bool]]:
                 out.append((n + 1, end + 1, joined, "", DATA_URI.search(previous[-BEFORE:]) is not None))
                 n = end + 1
                 continue
-        ran_on, line = False, lines[n]
-        indent = len(line) - len(line.lstrip())
-        for m in B64.finditer(line):
-            before = line[max(0, m.start() - BEFORE) : m.start()]
-            starts_line = m.start() <= indent
-            data = bool(DATA_URI.search(before) or (starts_line and (carry or DATA_URI.search(previous[-BEFORE:]))))
-            out.append((n + 1, n + 1, m.group(), before, data))
-            ran_on = data and m.end() >= len(line.rstrip())
-        carry = ran_on
+        found, carry = _line_runs(lines[n], n + 1, previous, carry=carry)
+        out += found
         n += 1
     return out
 
 
+def _line_runs(
+    line: str, number: int, previous: str, *, carry: bool
+) -> tuple[list[tuple[int, int, str, str, bool]], bool]:
+    """The base64 runs on one line, and whether a data: URI payload runs on past its end."""
+    out, ran_on = [], False
+    indent = len(line) - len(line.lstrip())
+    for m in B64.finditer(line):
+        before = line[max(0, m.start() - BEFORE) : m.start()]
+        starts_line = m.start() <= indent
+        data = bool(DATA_URI.search(before) or (starts_line and (carry or DATA_URI.search(previous[-BEFORE:]))))
+        out.append((number, number, m.group(), before, data))
+        ran_on = data and m.end() >= len(line.rstrip())
+    return out, ran_on
+
+
+def _glued(before: str) -> bool:
+    """True when a run continues a URL, path, address or host (so it is not a blob of its own)."""
+    return before[-1:] in JOINED or HOST_COLON.search(before) is not None
+
+
 def _opaque(run: str, before: str) -> bool:
     """A run that reads as encoded data: base64 alphabet with mixed case and digits, high entropy, not glued to a URL."""
-    if before[-1:] in JOINED or entropy.charset(run.rstrip("=")) not in {"base64", "base64url", "alnum"}:
+    if _glued(before) or entropy.charset(run.rstrip("=")) not in {"base64", "base64url", "alnum"}:
         return False
     mixed = re.search(r"[a-z]", run) and re.search(r"[A-Z]", run) and re.search(r"[0-9]", run)
     return bool(mixed) and entropy.shannon(run) >= entropy.THRESHOLDS["base64"]
 
 
 def blobs(lines: list[str]) -> list[Blob]:
-    """Every encoded blob worth judging: one that decodes to text, or an opaque base64 run."""
+    """Every encoded blob worth judging: one that decodes to text, or an opaque base64 run. Wrapped lines
+    that do not decode as one blob (two blobs stacked, a digest beside one) are judged line by line, and
+    their joined text, padding removed, as one opaque run."""
     out = []
-    for first, last, run, before, data in _runs(lines):
+    for first, last, found, before, data in _runs(lines):
         if data:
             continue
-        text = _decoded(run)
-        if text is not None and before[-1:] not in JOINED:
-            out.append(Blob(first, last, run, text))
-        elif text is None and not re.fullmatch(r"[0-9A-Fa-f]+", run) and _opaque(run, before):
+        text = _decoded(found)
+        run = found
+        if text is None and last > first:
+            for number in range(first, last + 1):
+                out += _judged(_line_runs(lines[number - 1], number, "", carry=False)[0])
+            run = found.replace("=", "")
+        out += _judged([(first, last, run, before, False)], text)
+    return out
+
+
+def _judged(runs: list[tuple[int, int, str, str, bool]], text: str | None = None) -> list[Blob]:
+    out = []
+    for first, last, run, before, _ in runs:
+        decoded = text if text is not None else _decoded(run)
+        if decoded is not None and not _glued(before):
+            out.append(Blob(first, last, run, decoded))
+        elif decoded is None and not re.fullmatch(r"[0-9A-Fa-f]+", run) and _opaque(run, before):
             out.append(Blob(first, last, run, None))
     return out

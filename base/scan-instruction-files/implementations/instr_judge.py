@@ -24,6 +24,9 @@ COMPACT = re.compile(r"\bnever\s*\([^()]{0,120}\)\s*:\s*(?:\S+\s+){0,2}$")
 #: What ends a negation's reach: a closing bracket or `>`, colon, semicolon, pipe, arrow (->, =>, \u2192), a spaced
 #: dash or double dash, a closing double quote, and/then/so. A comma ends it too, unless what follows continues a list ending in or/nor.
 CUT = re.compile(r"[)\]:;|>\u2192\u21d2\u27f6]|\s--?\s|\b(?:and|then|so)\b")
+#: A colon or dash that joins a send verb to its destination when "to" (into, at, onto, via) sits beside it.
+JOINER = re.compile(r"\s*(?::|-{1,2})")
+TO_WORD = re.compile(r"\b(?:to|into|at|onto|via)\b")
 LIST_OR = re.compile(r"\b(?:or|nor)\b")
 #: How many statements after a fake trust tag its block may run when no closing tag ends it sooner.
 TRUST_SPAN = 12
@@ -84,6 +87,14 @@ class Doc:
         k = bisect.bisect_left(self.break_starts, pos)
         end = min(self.ends[self.index(pos)], self.break_starts[k] if k < len(self.break_starts) else len(self.text))
         return min(end, pos + 2 * LOOKBACK)
+
+    def _object_end(self, pos: int) -> int:
+        """Where a send verb's clause ends, carried past a colon or dash that joins it to its destination
+        ("to: https://...", "-- to https://...")."""
+        end, limit = self.clause_end(pos), min(self.ends[self.index(pos)], pos + 2 * LOOKBACK)
+        while end < limit and JOINER.match(self.text, end) and TO_WORD.search(self.text, max(pos, end - 8), end + 8):
+            end = max(end + 1, self.clause_end(end + 1))
+        return min(end, limit)
 
     def governs(self, low: int, pos: int, words: int = GOVERN_WORDS) -> bool:
         """True when a negation between `low` and `pos` governs what starts at `pos`: within the `words` words
@@ -197,7 +208,7 @@ class Doc:
         not about an auth header. A weak verb (push, share, report) counts only with a secret file or variable.
         A secret named only after the destination is how the agent authenticates, not what it sends. A negation
         right before the verb, or governing the secret, discounts it."""
-        start, end = verb.end(), self.clause_end(verb.end())
+        start, end = verb.end(), self._object_end(verb.end())
         dest = _first(at["destination"], start, end)
         if dest is None or self.prohibited(verb.start(), TIGHT_WORDS):
             return False
