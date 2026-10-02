@@ -98,6 +98,20 @@ REFUSED = [
     ("a: |2\n y\n", 2, "a mapping entry indented deeper than its siblings"),
     ("--- |\ntext\n", 2, "content after the document's root node"),
     ("a: |\n  x\n\ty\n", 3, "a tab in indentation"),
+    ("-\n  &p privileged: true\n- *p\n", 2, "a tag or anchor on the line where a block collection starts"),
+    ("-\n  !t k: v\n", 2, "a tag or anchor on the line where a block collection starts"),
+    ("&a\n!t k: v\n", 2, "a tag or anchor on the line where a block collection starts"),
+    ("!t\n&a k: v\n", 2, "a tag or anchor on the line where a block collection starts"),
+    ("-\n  &x - y\n", 2, "a tag or anchor on the line where a block collection starts"),
+    ("-\ta: 1\n  b: 2\n", 1, "a tab before a block collection"),
+    ("- \ta: 1\n   b: 2\n", 1, "a tab before a block collection"),
+    ("-\t- a\n  - b\n", 1, "a tab before a block collection"),
+    ("--- a: b\n    c: d\n", 1, "a block collection on the --- line"),
+    ("x: 1\n--- - a\n    - b\n", 2, "a block collection on the --- line"),
+    ("%TAG !! tag:example.com,2000:\n---\na: !!str x\n", 1, "a directive other than %YAML 1.x"),
+    ("%YAML 2.0\n---\na: 1\n", 1, "a directive other than %YAML 1.x"),
+    ("%\n---\n", 1, "a directive other than %YAML 1.x"),
+    ("%YAML 1.2@\n---\na: 1\n", 1, "a directive other than %YAML 1.x"),
 ]
 
 
@@ -144,3 +158,19 @@ def test_the_node_limit_counts_every_node_across_documents(yp: ModuleType) -> No
 def test_only_text_is_scanned(yp: ModuleType, text: object) -> None:
     with pytest.raises(TypeError, match="text must be str"):
         yp.scan(text)
+
+
+@pytest.mark.parametrize(
+    ("limit", "bad"),
+    [("max_chars", 0), ("max_chars", 1.5), ("max_depth", 0), ("max_depth", 65), ("max_depth", True), ("max_nodes", -1)],
+)
+def test_a_limit_out_of_range_is_a_caller_error(yp: ModuleType, limit: str, bad: object) -> None:
+    with pytest.raises(ValueError, match=f"^{limit} must be an int from 1") as caught:
+        yp.scan("a: 1", **{limit: bad})
+    assert not isinstance(caught.value, yp.ParseError)
+
+
+def test_the_deepest_allowed_nesting_is_refused_cleanly_not_by_the_stack(yp: ModuleType) -> None:
+    text = "".join(" " * i + "- " for i in range(0, 400, 2))
+    with pytest.raises(yp.ParseError, match="nested deeper than 64"):
+        yp.scan(text, max_depth=yp.MAX_DEPTH)

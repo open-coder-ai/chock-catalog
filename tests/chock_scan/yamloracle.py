@@ -12,6 +12,10 @@ STYLES = {None: "plain", "'": "single", '"': "double", "|": "literal", ">": "fol
 CORE = "tag:yaml.org,2002:"
 
 
+class KeyPropertyError(Exception):
+    """PyYAML read a tag or anchor on a key: the node shape cannot carry it, so the scanner must refuse."""
+
+
 def nodes(text: str) -> list[tuple]:
     """(path, value, line, kind, tag, anchor, doc) for every node PyYAML reports, in order."""
     out: list[tuple] = []
@@ -28,6 +32,9 @@ def nodes(text: str) -> list[tuple]:
                 if not isinstance(event, yaml.ScalarEvent):
                     msg = "a key that is not a scalar"
                     raise yaml.YAMLError(msg)
+                if event.anchor or event.tag:
+                    msg = "a tag or anchor on a key, which the scanner must refuse"
+                    raise KeyPropertyError(msg)
                 stack[-1][2] = event.value  # a key
                 continue
             path = _path(stack)

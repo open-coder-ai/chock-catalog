@@ -167,7 +167,18 @@ def test_anchors_aliases_and_merge_keys_are_reported_never_expanded(yp: ModuleTy
         (("job", "list", 0), "b", "alias", ""),
         (("job", "list", 1), "y", "plain", "x"),
     ]
-    assert ("job", "perm") not in {n.path for n in yp.scan(text)}
+    found = yp.scan(text)
+    assert ("job", "perm") not in {n.path for n in found}
+    assert [(n.path, n.kind) for n in yp.indirect(found)] == [(("job", "<<"), "alias"), (("job", "list", 0), "alias")]
+    inline = yp.scan("j:\n  <<: {permissions: write-all}\n  runs-on: x\n")
+    assert [n.path for n in yp.indirect(inline)] == [("j", "<<"), ("j", "<<", "permissions")]
+    assert yp.MERGE == "<<"
+    assert yp.indirect(yp.scan("a: {b: c}")) == []
+
+
+def test_properties_on_their_own_line_mark_the_node_from_there(yp: ModuleType) -> None:
+    found = yp.scan("a:\n  !t\n  &x\n  b: 1\n")
+    assert [(n.path, n.tag, n.anchor, n.line) for n in found][1] == (("a",), "!t", "x", 2)
 
 
 def test_properties_on_their_own_line_belong_to_the_next_node(yp: ModuleType) -> None:

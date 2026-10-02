@@ -20,13 +20,16 @@ VENDORED = sorted(p for p in (CORPUS / "vendor").rglob("*.y*ml"))
 SKIP_DIRS = {".git", ".framework", "__pycache__", ".pytest_cache", ".ruff_cache", ".venv", "node_modules"}
 OWN = sorted(p for p in ROOT.rglob("*.y*ml") if p.is_file() and not set(p.relative_to(ROOT).parts) & SKIP_DIRS)
 SIZE = 1 << 18
+KEY_PROPERTY: list[tuple] = [("a tag or anchor on a key",)]
 SECONDS = 15.0
 
 
 def reference(text: str) -> list[tuple] | None:
-    """PyYAML's nodes, or None when PyYAML cannot read the text."""
+    """PyYAML's nodes; KEY_PROPERTY when it reads a tag or anchor on a key; None when it cannot read the text."""
     try:
         return [tuple(node) for node in yamloracle.nodes(text)]
+    except yamloracle.KeyPropertyError:
+        return KEY_PROPERTY
     except Exception:  # noqa: BLE001 -- any PyYAML failure (it raises ValueError and others too) is "unreadable"
         return None
 
@@ -49,8 +52,9 @@ def test_each_vendored_file_reads_as_pyyaml_reads_it(yp: ModuleType, path: Path)
 
 def test_every_yaml_file_in_this_repository_reads_as_pyyaml_reads_it(yp: ModuleType) -> None:
     assert len(OWN) > 100
-    differ = [p.relative_to(ROOT).as_posix() for p in OWN if scanned(yp, t := p.read_text("utf-8-sig")) != reference(t)]
-    assert not differ
+    found = {p.relative_to(ROOT).as_posix(): (scanned(yp, t := p.read_text("utf-8-sig")), reference(t)) for p in OWN}
+    assert not [path for path, (mine, theirs) in found.items() if mine != theirs]
+    assert not [path for path, (mine, _) in found.items() if mine is None]
 
 
 def test_every_vendored_file_has_its_source_and_licence_recorded() -> None:
@@ -69,15 +73,17 @@ def test_generated_documents_read_as_pyyaml_reads_them(yp: ModuleType, block: in
         assert scanned(yp, text) == reference(text), f"seed {seed}: {text!r}"
 
 
-@pytest.mark.parametrize("block", range(10))
+@pytest.mark.parametrize("block", range(16))
 def test_mutated_documents_are_refused_or_read_as_pyyaml_reads_them(yp: ModuleType, block: int) -> None:
-    """Never another exception, and never a different reading of a text both can read."""
+    """Never another exception, never a different reading of a text both can read, and a key property refused."""
     read = 0
-    for seed in range(block * 150, block * 150 + 150):
+    for seed in range(block * 250, block * 250 + 250):
         r = yamlgen.rng(seed)
         text = yamlgen.mutate(r, yamlgen.document(r))
         mine, theirs = scanned(yp, text), reference(text)
-        if mine is not None and theirs is not None:
+        if theirs is KEY_PROPERTY:
+            assert mine is None, f"seed {seed}: {text!r}"
+        elif mine is not None and theirs is not None:
             assert mine == theirs, f"seed {seed}: {text!r}"
             read += 1
     assert read > 30

@@ -39,6 +39,9 @@ def value(cur: Cursor, path: Path, indent: int, context: str) -> None:
         if cur.char() not in "!&":
             return _own_line(cur, path, indent, props)
         props = _more(cur, props)
+        if not (cur.at_break() or cur.at_comment()) and (_entry(cur, 0) or is_key(cur)):
+            msg = "a tag or anchor on the line where a block collection starts (it would name the first key)"
+            raise cur.error(msg)
     if context != MAP:
         return _own_line(cur, path, indent, props)
     if _entry(cur, 0) or is_key(cur):
@@ -53,7 +56,7 @@ def _more(cur: Cursor, props: Props) -> Props:
     if (props.tag and more.tag) or (props.anchor and more.anchor):
         msg = "a second tag or anchor on one node"
         raise cur.error(msg)
-    return Props(props.tag or more.tag, props.anchor or more.anchor, props.pos)
+    return Props(props.tag or more.tag, props.anchor or more.anchor, props.pos if props.pos >= 0 else more.pos)
 
 
 def _own_line(cur: Cursor, path: Path, indent: int, props: Props) -> None:
@@ -64,6 +67,12 @@ def _own_line(cur: Cursor, path: Path, indent: int, props: Props) -> None:
         return _inline(cur, path, indent, props)
     if props.pos >= 0 and cur.line(props.pos) == cur.line():
         msg = "a tag or anchor on the line where a block collection starts (it would name the first key)"
+        raise cur.error(msg)
+    if "\t" in cur.text[cur.pos - column : cur.pos]:
+        msg = "a tab before a block collection (loaders count its width differently)"
+        raise cur.error(msg)
+    if cur.line() == cur.marker:
+        msg = "a block collection on the --- line"
         raise cur.error(msg)
     return collection(cur, path, column, props)
 

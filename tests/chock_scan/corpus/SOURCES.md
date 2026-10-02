@@ -26,5 +26,6 @@ is executed: the files are test input only.
 | `gitlab-ci/SAST.gitlab-ci.yml` | gitlab-org/gitlab `master:lib/gitlab/ci/templates/Jobs/SAST.gitlab-ci.yml` | MIT |
 | `dependabot/dependabot-core.yml` | dependabot/dependabot-core `main:.github/dependabot.yml` | MIT (`dependabot-core-MIT.txt`) |
 
-Every YAML file this repository tracks is read the same way, so the catalog's own
-workflows, dependabot config, manifests and eval suites are corpus too.
+Every `*.yml`/`*.yaml` file in this repository's tree (outside `.git` and tool caches) is
+read the same way and must be readable, so the catalog's own workflows, dependabot config,
+manifests and eval suites are corpus too.

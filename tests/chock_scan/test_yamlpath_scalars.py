@@ -82,7 +82,6 @@ def test_quoted_scalars_unescape_and_fold(yp: ModuleType, text: str, value: str)
         ("a: ?x", "?x"),
         ("a: :x", ":x"),
         ("a: x\t", "x"),
-        ("a: [x\n  y]", ""),
     ],
 )
 def test_plain_scalars_fold_over_deeper_lines(yp: ModuleType, text: str, value: str) -> None:
@@ -91,6 +90,7 @@ def test_plain_scalars_fold_over_deeper_lines(yp: ModuleType, text: str, value: 
 
 
 def test_flow_plain_scalars_fold_and_stop_at_indicators(yp: ModuleType) -> None:
+    assert value_at(yp, "a: [x\n  y]", ("a", 0)) == "x y"
     found = yp.scan("[x\n  y, a:b, c\t, {k: v}\n# comment\n]")
     assert [n.value for n in found if n.kind == "plain"] == ["x y", "a:b", "c", "v"]
 

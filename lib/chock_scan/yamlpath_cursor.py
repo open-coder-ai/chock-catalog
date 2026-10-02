@@ -14,6 +14,8 @@ BOM = "\ufeff"
 #: do not, so a key behind one is a key to one reader and text to another. Refused, never guessed.
 FORBIDDEN = re.compile("[^\t\n\x20-\x7e\xa0-\ud7ff\ue000-\ufefe\uff00-\ufffd\U00010000-\U0010ffff]|[\u2028\u2029]")
 MARKER = re.compile(r"(?:---|\.\.\.)(?=[ \t]|$)")
+#: %YAML is read; %TAG would change what every tag means, and other directives are reserved: both refused.
+DIRECTIVE = re.compile(r"%YAML[ \t]++1\.[0-9]++[ \t]*+(?:#.*+)?")
 SPACES = re.compile(r" *+")
 BLANKS = re.compile(r"[ \t]*+")
 WHITE = " \t"
@@ -66,28 +68,28 @@ def prepare(text: str, max_chars: int) -> str:
     return text
 
 
-def documents(text: str) -> list[tuple[int, str]]:
-    """(first line, text) per document; a `---` marker becomes spaces so columns hold."""
-    docs: list[tuple[int, str]] = []
+def documents(text: str) -> list[tuple[int, str, bool]]:
+    """(first line, text, explicit) per document; a `---` marker becomes spaces so columns hold."""
+    docs: list[tuple[int, str, bool]] = []
     current: list[str] | None = None
-    start, directive = 1, 0
+    start, explicit, directive = 1, False, 0
     lines = text.split("\n")
     for number, line in enumerate(lines, 1):
         kept = line if number == len(lines) else line + "\n"
         marker = _marker(line, number)
         if marker:
             if current is not None:
-                docs.append((start, "".join(current)))
+                docs.append((start, "".join(current), explicit))
             current = ["   " + kept[3:]] if marker == "---" else None
-            start, directive = number, 0
+            start, explicit, directive = number, True, 0
         elif current is not None:
             current.append(kept)
         else:
             directive = _prefix(line, number, directive)
             if directive < 0:
-                current, start, directive = [kept], number, 0
+                current, start, explicit, directive = [kept], number, False, 0
     if current is not None:
-        docs.append((start, "".join(current)))
+        docs.append((start, "".join(current), explicit))
     elif directive:
         msg = "a directive must be followed by ---"
         raise ParseError(msg, directive)
@@ -109,6 +111,9 @@ def _marker(line: str, number: int) -> str:
 def _prefix(line: str, number: int, directive: int) -> int:
     """Between documents: the first directive line seen so far, or -1 when this line starts a document."""
     if line.startswith("%"):
+        if not DIRECTIVE.fullmatch(line):
+            msg = "a directive other than %YAML 1.x"
+            raise ParseError(msg, number)
         return directive or number
     if not line.strip(WHITE) or line.lstrip(WHITE).startswith("#"):
         return directive
@@ -129,6 +134,7 @@ class Cursor:
         self.out = out
         self.max_depth, self.max_nodes = limits
         self.depth = 0
+        self.marker = 0  # the line of this document's `---`, where no block collection may start
         self.starts = [0, *(m.end() for m in re.finditer("\n", text))]
 
     def line(self, pos: int | None = None) -> int:
