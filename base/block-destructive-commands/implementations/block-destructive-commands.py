@@ -56,9 +56,7 @@ def rm(cmd: Cmd) -> Verdict:
 def git_push(flags: set[str], targets: list[str]) -> Verdict:
     forced = min((t for t in targets if t.startswith("+") or ":+" in t), default="")
     if flags & {"-f", "--force"}:
-        return refuse(
-            "git push --force rewrites remote history. Rebase onto the remote and push fast-forward; a rewrite is the person's call."
-        )
+        return refuse("git push --force rewrites remote history. Rebase onto the remote and push fast-forward; a rewrite is the person's call.")
     if forced:
         return refuse(
             f"git push with a '+' force-refspec ('{forced}') rewrites remote history. Rebase onto the remote and push fast-forward; a rewrite is the person's call."

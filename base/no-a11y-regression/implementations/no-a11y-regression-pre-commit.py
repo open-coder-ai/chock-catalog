@@ -146,7 +146,9 @@ class Scanner(HTMLParser):
         # carrying aria-hidden is in neither, and that is exactly what an agent reached for.
         self._hidden: list[str] = []
 
-    def _open(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None) -> None:
+    def _open(
+        self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None
+    ) -> None:
         a = {k.lower(): (v or "") for k, v in attrs}
         inherited = bool(self._hidden)
         if a.get("aria-hidden") == SPEC["suppressing"]["aria-hidden"] and not closed and tag not in VOID:

@@ -48,11 +48,7 @@ def test_a_deleted_file_is_named_by_its_old_path_and_a_pure_rename_is_a_move_not
     gone = "diff --git a/m.js b/m.js\ndeleted file mode 100644\n--- a/m.js\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-app.use(auth)\n-x\n"
     (hunk,) = hunks.parse_patch(gone)
     assert (hunk.path, hunk.line, hunk.removed, hunk.added) == ("m.js", 1, ("app.use(auth)", "x"), ())
-    rename = "diff --git a/o.py b/n.py
-similarity index 100%
-rename from o.py
-rename to n.py
-"
+    rename = "diff --git a/o.py b/n.py\nsimilarity index 100%\nrename from o.py\nrename to n.py\n"
     assert hunks.parse_patch(rename) == [hunks.Hunk("n.py", 1, (), (), "o.py")]
 
 
