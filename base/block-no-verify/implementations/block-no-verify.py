@@ -66,7 +66,7 @@ FIX = "Fix the failing hook instead; if it must be skipped, ask the person to ru
 # A line the lexer could not split is refused when it names any of these (CHOCK_ARGV_FALLBACK, fail closed).
 FALLBACK = re.compile(
     r"--no-veri|core\.hookspath|\balias\.|include(?:if\.\S*)?\.path|--git-dir|--exec\b|\bforeach\b"
-    r"|\bgit\b.*\b(?:commit|am)\b.*\s-[^-\s]*n|commit-tree|update-ref|fast-import|send-pack|\b(?:pre-commit|pre_commit|lefthook|husky)\b.*\buninstall\b"
+    r"|\bgit\b[^;&|\n]*\b(?:commit|am)\b[\s\S]*?\s-[^-\s'\"]*n(?![\w-])|commit-tree|update-ref|fast-import|send-pack|\b(?:pre-commit|pre_commit|lefthook|husky)\b.*\buninstall\b"
     r"|\b(?:HUSKY\w*|LEFTHOOK\w*|SKIP|PRE_COMMIT_ALLOW_NO_CONFIG|GIT_DIR|GIT_COMMON_DIR|GIT_CONFIG\w*)\s*=",
     re.IGNORECASE,
 )

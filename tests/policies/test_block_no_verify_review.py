@@ -120,6 +120,9 @@ ROWS: list[tuple[str, int]] = [
     ('echo "<<X"\ngit commit -m it\'s --no-verify', BLOCK),  # a quoted marker opens no body
     ("uv run bash -c 'git commit --no-verify -m x'", BLOCK),
     ("uv run bash -c 'pytest -q'", OK),
+    # final pass: a lone double quote in a here-document inside $() sends the lexer to its fallback
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" -n', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)"', OK),
     ("fish -c 'git status'", OK),
 ]
 
