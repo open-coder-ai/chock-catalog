@@ -1,0 +1,67 @@
+id: scan-suppression-markers
+name: "Scan Suppression Markers"
+version: "0.0.1"
+description: >
+  Asks a person before a change adds a scanner suppression: inline ignore markers (bandit, gosec,
+  ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag,
+  zizmor, gitleaks, detect-secrets, chock waivers, CodeQL, Java/C#/Rust security allows), scanner
+  ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped.
+  Runs: commit, agent write, turn's end; CI annotates. Line-local, friction not a boundary.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: ask
+    message: >
+      This change adds a scanner suppression: an inline ignore marker, an ignore-file entry or
+      skip key, or a CI security step told to pass when it fails. Fix what the scanner reports
+      instead of silencing it. If the finding is a reviewed false positive, a person keeps the
+      suppression by committing from their own shell with CHOCK_ALLOW=scan-suppression-markers
+      for that one commit; an agent asks the person and never sets it.
+    params:
+      script: scan-suppression-markers-gate.py
+
+compliance:
+  owasp_asi:
+  - control: ASI10
+    coverage: partial
+    note: "asks a person when an agent silences a security scanner (reward hacking); the agent inventory, monitoring and kill switch stay with the advisory owasp-asi10-rogue-agents policy"
+  owasp_cicd:
+  - control: CICD-SEC-1
+    coverage: partial
+    note: "a CI security step made to pass on failure, or an ignore entry added, asks a person; branch protection and required checks stay with the platform"
+  cwe:
+  - control: CWE-693
+    coverage: partial
+    note: "protection mechanism failure by suppression: line-local markers, ignore files and soft-failed CI scans only"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap NP25, classes I07, J06, M03). A script gate that asks, never blocks: a suppression can be a reviewed false positive, so a person decides (CHOCK_ALLOW=scan-suppression-markers on their own commit) and an agent cannot. The script prints a findings document; the engine re-runs it on the baseline and asks only about what the change adds, so markers already in HEAD, and markers that only move, are old. Keys carry the rule and the normalized line (plus the owning key or CI step for config entries), never a line number."
+  - "Judged: inline markers for bandit and gosec, ruff and flake8-bandit S codes other than S101, golangci nolint naming gosec, Sonar, Semgrep, ESLint security rule sets and eval rules, Checkov and Bridgecrew skips, tfsec and Trivy ignores, KICS, hadolint, cfn_nag and cfn-lint metadata, zizmor, gitleaks, TruffleHog, detect-secrets and chock pragmas, chock script-gate waivers, CodeQL and LGTM, DevSkim, Snyk Code, Bearer, Psalm taint suppressions, RuboCop Security cops, Rust unsafe_code allows, Java and Kotlin suppressions naming a security pattern, C# SuppressMessage in the Security category or a CA security id, and C# pragma warning disable of those ids; every entry added to .gitleaksignore, .trivyignore(.yaml) or .semgrepignore; skip keys in .checkov.yml, .hadolint.yaml, .ansible-lint, bandit, .snyk and zizmor configs, and the allowlist tables of .gitleaks.toml; continue-on-error, allow_failure, soft_fail or a shell '|| true' on a CI step or job that runs a security scanner (GitHub Actions, GitLab, Azure Pipelines, Bitbucket, CircleCI)."
+  - "Not judged: Markdown, reStructuredText, AsciiDoc and text files, changelogs, chock's managed .agents/policies/ and .chock/, and eval suites, where a marker silences nothing. Limits: one line at a time, so a Java annotation whose arguments start on a later line, a marker assembled from variables, a blanket suppression that names no rule (a bare noqa, eslint-disable or nolint) and a continue-on-error set by an expression are not seen; scanner configs outside the listed file names, and ruff, flake8 or .editorconfig severity changes, are not read. Rollout: ship under 'rollout: observe' first (decision D15)."
