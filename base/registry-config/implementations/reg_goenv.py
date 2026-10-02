@@ -35,10 +35,8 @@ EXPANSION = re.compile(r"\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|\$\([^)\n]*\)")
 SIMPLE = re.compile(r"[A-Za-z0-9._/:@,|*?\[\]+=%~-]*")
 QUOTES = re.compile("[\"']")
 COMMAND_END = re.compile(r"[;&()]")
-SHELL_FILE = re.compile(
-    r"(?:\.(?:sh|bash|zsh|mk|envrc)|(?:^|/)(?:gnu)?makefile)$",
-    re.IGNORECASE,
-)
+SHELL_FILE = re.compile(r"\.(?:sh|bash|zsh|envrc)$", re.IGNORECASE)
+MAKEFILE = re.compile(r"(?:\.mk|(?:^|/)(?:gnu)?makefile)$", re.IGNORECASE)
 YAML_JSON = re.compile(r"\.(?:ya?ml|json)$", re.IGNORECASE)
 MAX_CODEPOINT = 0x10FFFF
 ESCAPED = re.compile(r"\\(?:x([0-9A-Fa-f]{2})|u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8}))")
@@ -112,12 +110,19 @@ def _bare(ctx: Ctx, raw: str, pos: int) -> tuple[list[str] | None, bool]:
     cut = TERMINATOR.search(EXPANSION.sub(lambda m: "x" * len(m[0]), word))
     if cut is None:
         return [plain + tail], True
-    if cut[0] in ";&()" and SHELL_FILE.search(ctx.path):
-        # In a shell script or Makefile an unquoted ; & ( or ) ends the word: one reading only. (A Dockerfile
-        # ENV line is not shell, so there it stays uncertain.)
+    if cut[0] in ";&()" and _shell_line(ctx.path, raw) and not re.search(r"[\"'\\]", word[: cut.start()]):
+        # On a shell line an unquoted ; & ( or ) ends the word: one reading only. A make assignment, a Dockerfile
+        # ENV line or a word quoted before the separator stays uncertain.
         return [QUOTES.sub("", word[: cut.start()]) + tail], True
     # A shell keeps `a#,*` as one word; a comment, a command separator or a flow collection ends it there.
     return [plain + tail, QUOTES.sub("", word[: cut.start()]) + tail], False
+
+
+def _shell_line(path: str, raw: str) -> bool:
+    """A shell script's line, or a Makefile recipe line (tab-indented); a make variable assignment is not shell."""
+    if MAKEFILE.search(path):
+        return raw.startswith("\t")
+    return bool(SHELL_FILE.search(path))
 
 
 def _unbracket(word: str) -> str:

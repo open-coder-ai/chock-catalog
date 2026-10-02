@@ -72,3 +72,20 @@ def test_a_command_separator_ends_a_bare_or_sumdb_value(text: str, want: list[st
 
 def test_a_sumdb_value_that_is_only_a_separator_is_empty() -> None:
     assert rules(".github/workflows/x.yml", "env:\n  GOSUMDB: ;x\n") == ["reg-overrides-redirect"]
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "want"),
+    [
+        # A make variable assignment keeps ; & ( ) in its value; a recipe line is shell.
+        ("Makefile", "GONOSUMDB = ;,*\n", [B_TLS]),
+        ("rules.mk", "GOPRIVATE := (none),*\n", [B_TLS]),
+        ("Makefile", "build:\n\tGOSUMDB=sum.golang.org; go build\n", []),
+        ("Makefile", "build:\n\texport GOPRIVATE=github.com&&go build\n", [B_TLS]),
+        # A quote or backslash before the separator: the shell may join across it, so both readings stand.
+        ("a.sh", 'GOFLAGS=-ldflags=-s"; "-insecure\n', [B_TLS]),
+        ("a.sh", "GOPROXY=https://proxy.golang.org'&',http://evil.example\n", ["reg-http-registry", B_UNREAD]),
+    ],
+)
+def test_make_assignments_and_quoted_separators(path: str, text: str, want: list[str]) -> None:
+    assert rules(path, text) == sorted(want)
