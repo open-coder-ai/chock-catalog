@@ -1168,7 +1168,7 @@ suite:
       expect: block
   - id: tc-086
     category: trigger
-    prompt: A service compares a status string with == against a literal.
+    prompt: With the bugs pack set to deny in .chock/security.json, a service compares a status string with == against a literal.
     expect: The commit is refused (bugs-string-identity-comparison, CWE-597); the agent uses equals, which compares
       the characters rather than the object identity.
     execute:
@@ -1181,9 +1181,12 @@ suite:
           }
       event: commit
       expect: block
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"bugs": {"verdict": "deny"}}}
   - id: tc-087
     category: negative_trigger
-    prompt: The same service compares the status with "SHIPPED".equals(status).
+    prompt: With the bugs pack set to deny, the same service compares the status with "SHIPPED".equals(status).
     expect: The commit proceeds silently; equals on the literal is the correct, null-safe comparison.
     execute:
       files:
@@ -1195,9 +1198,12 @@ suite:
           }
       event: commit
       expect: allow
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"bugs": {"verdict": "deny"}}}
   - id: tc-088
     category: trigger
-    prompt: A formatter holds a SimpleDateFormat in a static field shared by every request thread.
+    prompt: With the concurrency pack set to deny in .chock/security.json, a formatter holds a SimpleDateFormat in a static field shared by every request thread.
     expect: The commit is refused (concurrency-static-date-format, CWE-567); SimpleDateFormat is not thread-safe,
       and the agent uses a static DateTimeFormatter instead.
     execute:
@@ -1208,9 +1214,12 @@ suite:
           }
       event: commit
       expect: block
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"concurrency": {"verdict": "deny"}}}
   - id: tc-089
     category: trigger
-    prompt: A method opens a FileInputStream into a local, reads it, and never closes it.
+    prompt: With the resources pack set to deny in .chock/security.json, a method opens a FileInputStream into a local, reads it, and never closes it.
     expect: The commit is refused (resources-unclosed-closeable, CWE-772); the agent opens it in try-with-resources.
     execute:
       files:
@@ -1223,9 +1232,12 @@ suite:
           }
       event: commit
       expect: block
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"resources": {"verdict": "deny"}}}
   - id: tc-090
     category: negative_trigger
-    prompt: The same method opens the stream in try-with-resources.
+    prompt: With the resources pack set to deny, the same method opens the stream in try-with-resources.
     expect: The commit proceeds silently; the stream is closed on every path.
     execute:
       files:
@@ -1239,9 +1251,12 @@ suite:
           }
       event: commit
       expect: allow
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"resources": {"verdict": "deny"}}}
   - id: tc-091
     category: trigger
-    prompt: A catch block swallows an exception with nothing in it.
+    prompt: With the exceptions pack set to deny in .chock/security.json, a catch block swallows an exception with nothing in it.
     expect: The commit is refused (exceptions-empty-catch, CWE-1071); the agent handles, logs or rethrows it, or
       says in a comment why nothing is done.
     execute:
@@ -1257,9 +1272,12 @@ suite:
           }
       event: commit
       expect: block
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"exceptions": {"verdict": "deny"}}}
   - id: tc-092
     category: trigger
-    prompt: A loop builds a report by appending to a String with +=.
+    prompt: With the performance pack set to deny in .chock/security.json, a loop builds a report by appending to a String with +=.
     expect: The commit is refused (performance-string-concat-loop); every += copies the whole string, and the agent
       uses a StringBuilder.
     execute:
@@ -1276,9 +1294,12 @@ suite:
           }
       event: commit
       expect: block
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"performance": {"verdict": "deny"}}}
   - id: tc-093
     category: trigger
-    prompt: Production code prints a diagnostic with System.out.println.
+    prompt: With the style pack set to deny in .chock/security.json, production code prints a diagnostic with System.out.println.
     expect: The commit is refused (style-system-out-println); the agent logs through the application's logger.
     execute:
       files:
@@ -1290,9 +1311,12 @@ suite:
           }
       event: commit
       expect: block
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"style": {"verdict": "deny"}}}
   - id: tc-094
     category: trigger
-    prompt: A JUnit test calls the service and asserts nothing.
+    prompt: With the testing pack set to deny in .chock/security.json, a JUnit test calls the service and asserts nothing.
     expect: The commit is refused (testing-no-assertion); a test that cannot fail proves nothing, and the agent adds
       an assertion on the result.
     execute:
@@ -1306,9 +1330,12 @@ suite:
           }
       event: commit
       expect: block
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"testing": {"verdict": "deny"}}}
   - id: tc-095
     category: negative_trigger
-    prompt: The test asserts on the result with AssertJ.
+    prompt: With the testing pack set to deny, the test asserts on the result with AssertJ.
     expect: The commit proceeds silently.
     execute:
       files:
@@ -1321,6 +1348,9 @@ suite:
           }
       event: commit
       expect: allow
+      repo_files:
+        .chock/security.json: |
+          {"version": 2, "packs": {"testing": {"verdict": "deny"}}}
   - id: tc-096
     category: trigger
     prompt: "The agent writes an unescaped template expression into p.html."
@@ -1569,14 +1599,14 @@ suite:
     execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    ALLOWED.get(file);\n    return Files.readAllBytes(Paths.get(\"/srv/files\", file));\n  }\n  private static final Map<String, String> ALLOWED = Map.of(\"a\", \"a.txt\");\n  private static final Set<String> NAMES = Set.of(\"a\", \"b\");\n}\n"}, expect: block}
   - id: tc-145
     category: negative_trigger
-    prompt: "A comment holds a Unicode line separator (U+2028), in a class with no finalize method."
+    prompt: "With the resources pack set to deny, a comment holds a Unicode line separator (U+2028), in a class with no finalize method."
     expect: "The commit passes: the file is read with the separator as a line break, and nothing in it is refused."
-    execute: {event: commit, files: {"C.java": "public class C {\n  // note \u2028 more of the note\n  public void close() {}\n}\n"}, expect: allow}
+    execute: {event: commit, files: {"C.java": "public class C {\n  // note \u2028 more of the note\n  public void close() {}\n}\n"}, expect: allow, repo_files: {".chock/security.json": "{\"version\": 2, \"packs\": {\"resources\": {\"verdict\": \"deny\"}}}\n"}}
   - id: tc-146
     category: adversarial
-    prompt: "A class overrides finalize() and a comment above holds a Unicode line separator (U+2028)."
+    prompt: "With the resources pack set to deny, a class overrides finalize() and a comment above holds a Unicode line separator (U+2028)."
     expect: "The commit is refused by resources-finalize-override: the separator does not hide the declaration."
-    execute: {event: commit, files: {"C.java": "public class C {\n  // note \u2028 more of the note\n  protected void finalize() {}\n}\n"}, expect: block}
+    execute: {event: commit, files: {"C.java": "public class C {\n  // note \u2028 more of the note\n  protected void finalize() {}\n}\n"}, expect: block, repo_files: {".chock/security.json": "{\"version\": 2, \"packs\": {\"resources\": {\"verdict\": \"deny\"}}}\n"}}
   - id: tc-147
     category: adversarial
     prompt: "The containment check is a Java assert, then the normalized path is read."
@@ -1707,3 +1737,28 @@ suite:
     prompt: "A block comment holding a closing brace comes before a top-level containment check, then the normalized path is read."
     expect: "The commit passes: the brace in the comment opens or closes no block."
     execute: {event: commit, files: {"C.java": "public class C {\n  @GetMapping(\"/download\")\n  public byte[] download(@RequestParam String file) throws Exception {\n    Path p = Paths.get(\"/srv/files\", file).normalize();\n    /* } */\n    if (!p.startsWith(\"/srv/files\")) throw new IllegalArgumentException();\n    return Files.readAllBytes(p);\n  }\n}\n"}, expect: allow}
+  - id: tc-173
+    category: negative_trigger
+    prompt: "No .chock/security.json exists, and a legacy class with an empty catch block is edited and staged."
+    expect: "The commit passes: exceptions is a quality pack, and a quality rule nobody spoke for allows (owner-approved, plan D2)."
+    execute: {event: commit, files: {"E.java": "void m() {\n  try {\n    risky();\n  } catch (IOException e) {\n  }\n}\n"}, expect: allow}
+  - id: tc-174
+    category: adversarial
+    prompt: "No .chock/security.json exists, and one commit stages a th:utext beside an empty catch block."
+    expect: "The commit is refused by java-xss-unescaped-template: a security rule nobody spoke for still denies, whatever quality findings sit beside it."
+    execute: {event: commit, files: {"p.html": "<p th:utext=\"${bio}\"></p>\n", "E.java": "void m() {\n  try {\n    risky();\n  } catch (IOException e) {\n  }\n}\n"}, expect: block}
+  - id: tc-175
+    category: adversarial
+    prompt: "The selection allows every quality pack by name and says nothing about any security pack, and a th:utext is staged."
+    expect: "The commit is refused: allowing quality packs leaves every unnamed security pack at deny."
+    execute: {event: commit, files: {"p.html": "<p th:utext=\"${bio}\"></p>\n"}, expect: block, repo_files: {".chock/security.json": "{\"version\": 2, \"packs\": {\"bugs\": {\"verdict\": \"allow\"}, \"concurrency\": {\"verdict\": \"allow\"}, \"resources\": {\"verdict\": \"allow\"}, \"exceptions\": {\"verdict\": \"allow\"}, \"performance\": {\"verdict\": \"allow\"}, \"style\": {\"verdict\": \"allow\"}, \"testing\": {\"verdict\": \"allow\"}}}\n"}}
+  - id: tc-176
+    category: behavior
+    prompt: "A selection written before quality packs defaulted to allow spells exceptions-empty-catch as deny, and an empty catch is staged."
+    expect: "The commit is refused: a verdict the file spells keeps its value; only silence changed meaning."
+    execute: {event: commit, files: {"E.java": "void m() {\n  try {\n    risky();\n  } catch (IOException e) {\n  }\n}\n"}, expect: block, repo_files: {".chock/security.json": "{\"version\": 2, \"packs\": {\"exceptions\": {\"rules\": {\"exceptions-empty-catch\": \"deny\"}}}}\n"}}
+  - id: tc-177
+    category: adversarial
+    prompt: "The selection sets the exceptions pack to ask, and an empty catch is staged with no terminal to ask."
+    expect: "The commit is refused: an ask never degrades to an allow, for a quality pack as for a security one."
+    execute: {event: commit, files: {"E.java": "void m() {\n  try {\n    risky();\n  } catch (IOException e) {\n  }\n}\n"}, expect: block, repo_files: {".chock/security.json": "{\"version\": 2, \"packs\": {\"exceptions\": {\"verdict\": \"ask\"}}}\n"}}

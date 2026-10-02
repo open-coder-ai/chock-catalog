@@ -1,6 +1,6 @@
 ---
 name: block-curl-pipe-sh
-description: "Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node, bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout; also bash -c \"$(curl ...)\", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only."
+description: "Best-effort: refuses curl/wget/lynx/aria2c/iwr/irm piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node (by path, quoted, in a subshell, after bare sudo/env/xargs/nohup/timeout), bash -c \"$(curl ...)\", bash <(curl ...), `| iex`. Probed misses: fetch right after a quote (bash -c \"curl ...\", ssh), eval \"$(curl ...)\", source <(curl ...), wrapper options (sudo -u, env VAR=, /usr/bin/env), doas, csh/tcsh/mksh/lua/php/pwsh/deno/busybox, su -c, $SHELL, download then run. Friction only."
 metadata:
   chock.artifact: rule
   chock.enforcement: advise
@@ -9,7 +9,7 @@ metadata:
 
 # Block Curl-Pipe-Shell
 
-Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node, bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout; also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.
+Best-effort: refuses curl/wget/lynx/aria2c/iwr/irm piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node (by path, quoted, in a subshell, after bare sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash <(curl ...), `| iex`. Probed misses: fetch right after a quote (bash -c "curl ...", ssh), eval "$(curl ...)", source <(curl ...), wrapper options (sudo -u, env VAR=, /usr/bin/env), doas, csh/tcsh/mksh/lua/php/pwsh/deno/busybox, su -c, $SHELL, download then run. Friction only.
 
 ```
 block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(sh|bash|python|perl|node|iex)

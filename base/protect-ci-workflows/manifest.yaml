@@ -1,18 +1,34 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.1.1"
+version: "0.2.0"
 description: >
   Stops an agent weakening the checks that review its work. Shell guard refuses writes to
-  .github/workflows/, .github/actions/ and .github/dependabot.yml|yaml: redirect, rm/mv/tee/sed
-  -i, cp into, git checkout/restore, Set-Content/Add-Content/Out-File. Reads and `chock sync`
-  pass. Best-effort, coarse. No marker bypass: a person edits from their own shell. Shell only:
-  Edit/Write to these paths is not checked (no gate). Backstop: server-side branch protection.
+  .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
+  into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate
+  asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS,
+  husky, more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin
+  installs ship no gate.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    ci_config(.github/workflows|.github/actions|.github/dependabot.yml|yaml): never(shell_edit|delete); ask_person
+    ci_config(.github/{workflows,actions,dependabot.y*ml}): never(shell_edit|delete); edit_or_write(those|CODEOWNERS|.gitlab-ci.yml|.gitlab/|Jenkinsfile*|.circleci/|azure-pipelines*|bitbucket-pipelines.yml|.buildkite/|.drone.yml|cloudbuild*|renovate|.pre-commit-config.yaml|.husky/|lefthook|.githooks/|.travis.yml|action.yml|more): ask_person
     if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
+hook:
+  gate:
+    kind: content_regex
+    "on": [tool_use]
+    action: ask
+    message: >
+      This path is CI, release, hook or dependency-bot configuration: the checks that review an
+      agent's own work. An agent's change to it needs a person's decision. Say which file should
+      change, what and why, and let the person approve the edit or make it from their own shell.
+      Where a person cannot be asked, the write is refused: propose the change instead. At the
+      turn's end this is a reminder that such a file is still changed and uncommitted.
+    params:
+      scan: added_lines
+      forbidden_path_regex: '(?i)(?:^|[/\\])(?:(?:\.github[. ]*(?::[^/\\:]*){0,2}[/\\](?:\.?[/\\])*(?:workflows|actions|workflow-templates)|\.gitlab(?:-ci)?|\.circleci|\.azure-pipelines|\.buildkite|\.husky|\.githooks|\.lefthook(?:-local)?|\.woodpecker|\.semaphore|\.tekton)[. ]*(?::[^/\\:]*){0,2}(?:[/\\]|$)|(?:\.github[. ]*(?::[^/\\:]*){0,2}[/\\](?:\.?[/\\])*dependabot\.ya?ml|CODEOWNERS|[^/\\]*\.gitlab-ci\.ya?ml|azure-pipelines[^/\\]*\.ya?ml|bitbucket-pipelines\.ya?ml|buildkite\.ya?ml|\.drone\.(?:ya?ml|jsonnet|star)|cloudbuild[^/\\]*\.(?:ya?ml|json)|renovate\.json5?|\.renovaterc(?:\.json5?)?|\.pre-commit-config\.ya?ml|\.?lefthook(?:-local)?\.(?:ya?ml|json|toml)|\.travis\.ya?ml|action\.ya?ml|\.woodpecker\.ya?ml|\.?appveyor\.ya?ml|\.cirrus\.ya?ml|buildspec[^/\\]*\.ya?ml|bitrise\.ya?ml|codemagic\.ya?ml)[. ]*(?::[^/\\:]*){0,2}$|Jenkinsfile[^/\\]*(?<!\.md)(?<!\.txt)(?<!\.rst)(?<!\.adoc)(?<!\.py)(?<!\.java)(?<!\.kt)(?<!\.js)(?<!\.ts)(?<!\.go)$)'
+      content_pattern: '(?!)'
 effects:
 - read_only
 approval:
@@ -22,12 +38,12 @@ compliance:
   owasp_asi:
   - control: ASI02
     coverage: partial
-    note: "blocks shell self-modification of CI workflow, action and dependency-automation files; server-side branch protection and required-status-checks remain the backstop an agent cannot self-approve"
+    note: "blocks shell self-modification of CI workflow, action and dependency-automation files and asks a person before an Edit/Write tool write to CI, hook or bot config; server-side branch protection and required-status-checks remain the backstop an agent cannot self-approve"
 
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -41,6 +57,13 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-10-02'
+  changes:
+  - "Behaviour change: a second check for the Edit and Write tools. A content_regex gate at tool_use only (PreToolUse and the turn's end), never at commit, so a person stays free to edit and commit these files. Its forbidden_path_regex refuses on the path alone (the content pattern is `(?!)`, which matches nothing) and its action is ask: a person decides before the write lands. Before, an agent could rewrite any CI file with the Write tool, and only shell writes were checked."
+  - "Paths gated: everything the shell guard protects (`.github/workflows/`, `.github/actions/`, `.github/dependabot.yml|yaml`) plus `.github/workflow-templates/`, `CODEOWNERS` in any directory, GitLab (`.gitlab-ci.yml`, `*.gitlab-ci.yml`, `.gitlab/`, `.gitlab-ci/`), `Jenkinsfile*` (except a name ending in a doc or source extension: .md, .txt, .rst, .adoc, .py, .java, .kt, .js, .ts, .go), `.circleci/`, Azure (`azure-pipelines*.yml`, `.azure-pipelines/`), `bitbucket-pipelines.yml`, Buildkite (`.buildkite/`, `buildkite.yml`), Drone (`.drone.yml|jsonnet|star`), `cloudbuild*.yaml|yml|json`, Renovate (`renovate.json|json5`, `.renovaterc*`), `.pre-commit-config.yaml`, `.husky/`, lefthook (`lefthook.yml`, `.lefthook.yml`, `-local`, json/toml, and the `.lefthook/` and `.lefthook-local/` script directories), `.githooks/`, `.travis.yml`, `action.yml|yaml` in any directory (a local or composite action), Woodpecker, AppVeyor, Cirrus, AWS CodeBuild `buildspec*.yml`, Semaphore, Tekton, Bitrise and Codemagic. Each is matched as a whole path segment, case-insensitively (macOS and Windows filesystems ignore case), through backslashes, `//` and `/./`, and through trailing dots and spaces or an NTFS `:stream`/`::$TYPE` suffix on any segment (Windows drops or resolves those). The engine folds `..` in a path given relative to the repository root or as an absolute path, and also judges the path a symlink resolves to, so `src/../.github/workflows/ci.yml` and a write through a symlink into `.github/workflows/` are judged as the workflow. On the catalog's own tree the set matches exactly its eleven CI files (nine workflows, dependabot, CODEOWNERS) and nothing else. Accepted false positives, each an ask: docs and templates under `.gitlab/`, an `action.yml` that is not a GitHub Action, vendored copies of CI files."
+  - "How ask lands per client: the client's own permission prompt where it has one (exit 3 at PreToolUse). A client whose hook protocol has no ask (Codex) refuses the write, which is the stricter outcome and accepted (plan decision D6). At the turn's end there is nobody to ask, so a CI file left changed (as UTF-8 text) is reported as a warning (exit 4), not a refusal, on every turn's end until the change is committed. A commit is never judged."
+  - "Known limits (verified by the adversarial review of this change; the backstop is server-side branch protection). Engine and adapter: a Write whose content is the empty string is not judged at PreToolUse on the pinned framework, because the adapter reads an empty `content` as absent, so emptying a CI file only warns at the turn's end (this affects every path gate, protect-agent-config's included; it needs an agentseam fix and a pin bump); deletions are judged by neither the gate nor the turn's end (a Codex `*** Delete File` patch, an `rm` of a non-GitHub CI file); a relative path is joined to the repository root, not the agent's working directory, so `../.github/workflows/ci.yml` written from a subdirectory is dropped as outside the repository; writes outside the root (a sibling `git worktree`, a monorepo whose chock root is a subdirectory) are not judged; a hard link to a CI file (`ln`, `cp -l`, which the shell guard does not refuse) is written as an ordinary path; a file that is not UTF-8 is skipped at the turn's end; Windows 8.3 short names (`GITHUB~1`) are matched only if the engine resolves them. Shell writes are unchanged: the guard blocks writes to the three GitHub paths only, so a shell write to `.gitlab-ci.yml`, a `Jenkinsfile` or `.circleci/` runs (a modification then warns at the turn's end). Plugin packages: until the engine ships a guard and its tool_use gate together (open-coder-ai/chock#223) and the catalog's framework pin moves past it, a plugin-only install carries the shell guard and not this gate; the gate runs where `chock sync` compiles it. Files that drive CI indirectly (Makefile, scripts a workflow runs, `package.json` scripts, `.github/zizmor.yml`) are not gated."
 - version: 0.1.1
   date: '2026-09-30'
   changes:

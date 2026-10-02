@@ -2,34 +2,69 @@
 
 The mechanizable slice of ASI03. The advisory policy
 `owasp-asi03-identity-privilege-abuse` owns the risk — identity per agent,
-short TTLs, delegation scope intersection. This gate blocks the one defect a
-diff states literally: a grant whose blast radius is everything.
+short TTLs, delegation scope intersection. This gate blocks the defects a
+diff states on one line: a grant whose blast radius is everything, or a whole
+service that reaches privilege.
+
+Every line is judged alone. Examples below are described in words; the eval
+suite holds the literal forms.
 
 ## What blocks
 
-| Match | Form |
+| Match | Forms |
 | --- | --- |
-| `"Action": "*"`, `"Resource": "*"` | JSON policy documents | <!-- pragma: allowlist broad-privilege -->
-| `Action: '*'`, `Resource: '*'` | CloudFormation / YAML | <!-- pragma: allowlist broad-privilege -->
-| `actions = ["*"]`, `resources = ["*"]` | Terraform | <!-- pragma: allowlist broad-privilege -->
-| `arn:aws:iam::aws:policy/AdministratorAccess` | managed-policy attachment | <!-- pragma: allowlist broad-privilege -->
-| `'roles/owner'`, `'roles/editor'` (quoted) | GCP basic roles | <!-- pragma: allowlist broad-privilege -->
+| wildcard value on a grant key: Action, Resource, Principal (and its AWS, Federated, Service, CanonicalUser keys), Terraform/CDK actions, resources, identifiers, Azure actions and dataActions, Kubernetes verbs, resources, apiGroups | string or one-line list; double, single or no quotes; JSON, YAML, HCL, CDK, Python kwargs; escaped JSON inside a string; the JSON unicode escape of the star; the global service-and-action wildcard |
+| whole-service wildcard on s3, iam, sts, kms, ec2 | on an action key (string or one-line list), or alone as a list element line; service prefix in any case |
+| Allow with NotAction, NotResource or NotPrincipal | the effect and the inverted key on one line |
+| administrator, power-user and IAM-admin AWS managed policies | ARN in any partition; the name on a policy-name key or flag, in SAM Policies, or alone as a YAML list item |
+| CDK wildcard principal | the any-principal and star-principal constructors |
+| GCP owner and editor basic roles | quoted, as a gcloud role flag value, as a YAML role value |
+| GCP public members (all users, all authenticated users) | quoted in a members value, a YAML member key, gcloud member flag, YAML list item, gsutil iam and acl grants |
+| Kubernetes cluster-admin binding | kubectl clusterrole flag, a one-line roleRef, a name line that is not a list item |
+| Azure Owner | role definition name in HCL or ARM/Bicep, az role assignment create, or the built-in role id in any case |
 
-## What deliberately does not block
+## What passes
 
-- Scoped wildcards: `"Action": "s3:*"` narrows to a service; blocking it would make
-  the gate unsatisfiable and get it disabled within a week. The advisory policy is
-  where "is s3:* too broad for this agent" gets judged.
-- `Resource: "arn:...:::bucket/*"` — a path wildcard under a named resource.
-- Resource labels that merely contain `owner` — the GCP match requires the quoted
-  role string.
+- A single strict-JSON Deny statement on one line (an SCP region lock, a
+  deny-insecure-transport bucket policy): one object whose first key is Effect
+  Deny, every later object the value of a key, and no other effect, statement,
+  backslash escape, code character (parenthesis, semicolon, hash), Kubernetes or
+  Azure grant key, or allow on the line.
+  JSON is the format that cannot carry the pragma; a Deny in YAML, HCL or CDK is
+  refused and takes the pragma, because a comment or default-Allow statement
+  could otherwise fake one.
+- Partial wildcards (a verb prefix, a path under a named bucket ARN).
+- Prose and ordinary code: key globs with a service prefix outside an action key,
+  search match-all queries, a variable named after public members, a basic role
+  named in a sentence, a policy name compared or listed in code, a kubeconfig
+  user list item named cluster-admin, listing or deleting an Owner assignment.
 
-## Known blind spots
+## Known blind spots (friction, not a security boundary)
 
-- Grants assembled at runtime, wildcards built by string concat, permissions granted
-  in a console. Only committed text is visible.
-- `NotAction` / `NotResource` inversions — rarer and legitimately subtle; review owns them.
-- Azure `Owner` role assignments — the bare word is too common to match safely.
+- Multi-line statements: a list element alone on its line, an effect and its
+  action on different lines. A Deny written across lines is still refused (false
+  positive); a bare star alone on its own list line passes (miss), while a
+  whole-service wildcard alone on its line is refused even under a Deny. The structured
+  `iam-policy-scan` (roadmap HP05, wave 3) owns both.
+- The roadmap's ask tier (service wildcard on one named resource, power-user):
+  a content_regex gate has one action, so both block.
+- Partial wildcards that still escalate (a verb-prefix wildcard on iam), YAML
+  aliases and tags between key and value, unicode-escaped keys, Terraform
+  not_actions, grants built at runtime or by string concatenation.
+- Azure Contributor, Microsoft.Authorization wildcards and scope, GCP admin-suffix
+  and impersonation roles, whole-service wildcards on services beyond the five
+  listed, Kubernetes nonResourceURLs and escalate/bind/impersonate verbs.
+- Lines split by the runner on vertical tab, form feed or other Unicode line
+  breaks are judged as separate lines.
+- False positives that take the pragma (or narrowing): a wildcard resource on
+  describe/list-only actions, admission-webhook and policy-engine rules with
+  wildcard apiGroups/resources, generic `actions`/`resources` keys in app code.
+- More false positives: a kubeconfig context or ClusterRole metadata whose name
+  line is cluster-admin; quoted text that merely spells a wildcard grant; a log
+  string shaped like a gsutil grant; the Owner role id as a bare string; the
+  Service and CanonicalUser principal keys outside a Principal.
+- Every scan that looks ahead is bounded (200 to 300 characters), so cost stays
+  linear: up to about 2.5 seconds per megabyte of a single hostile line.
 
 ## The JSON pragma limitation
 

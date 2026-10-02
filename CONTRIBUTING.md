@@ -8,7 +8,7 @@ overstated policy is worse here than a missing one.
 All are mechanical, and all are checked by CI rather than by a reviewer's memory.
 
 **1. A policy claims only what it can do.** If it does not exit non-zero, it is advisory,
-and the tooling labels it that way whatever the manifest says. Twenty-two of the forty-two
+and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->20<!-- /gen --> of the <!-- gen:policies -->48<!-- /gen -->
 policies here are advisory, and the README says so in its third paragraph rather than its
 appendix. Do not raise a claim your mechanism cannot support.
 
@@ -38,7 +38,7 @@ earns triage rights; see [The ladder](#the-ladder) below.
 
 Or, without waiting for an issue to be filed, roughly in order of usefulness:
 
-1. **Turn an advisory policy into an enforced one.** Any of the twenty-two that can be expressed
+1. **Turn an advisory policy into an enforced one.** Any of the <!-- gen:advisory -->20<!-- /gen --> that can be expressed
    as a `content_regex`, `forbidden_ref` or `dependency_allowlist` gate is a strict upgrade —
    and the eval suite already describes the behaviour you would need to satisfy. Where only a
    slice is greppable, add a narrow sibling gate instead of promoting the rule: the
@@ -101,9 +101,11 @@ checks (pytest and the staged adopter) while you iterate; `--check-only` writes 
 What it regenerates, in this order -- the order is load-bearing:
 
 ```bash
+python tools/gen_lib_copies.py                      # lib/ modules into each policy that lists them
 chock plugin build --repo . --policies-dir <tree>   # each tree in tools/trees.py: Agent Plugins output
 chock sync --repo .                                 # only on drift; the lockfile hashes packaged files
-python tools/gen_registry.py                        # registry.yaml rows; README badges, ladder, eval cells
+python tools/gen_registry.py                        # registry.yaml rows; README badges, ladder, eval cells;
+                                                    # SECURITY.md and CONTRIBUTING.md counts (gen markers)
 python tools/gen_policy_docs.py                     # docs/<id>/README.md
 python tools/gen_coverage_matrix.py                 # docs/assets/coverage-matrix.svg
 python tools/gen_java_security_contract.py          # the java-security setup page and reference
@@ -120,8 +122,10 @@ framework moves.
 What it then checks, as CI does -- fast checks in parallel, then the slow ones:
 
 ```bash
-python tools/check_registry.py             # registry facts match the policies on disk
+python tools/check_registry.py             # registry facts match the policies on disk (and lib/ copies,
+                                           # and data/*.json tables fresh today: check_data_tables.py); OWASP LLM ids are 2025 entries
 python tools/gen_registry.py --check       # ... and are what the generator writes
+python tools/gen_lib_copies.py --check     # every lib/ copy declared and byte-equal to its source
 python tools/check_installed.py            # an installed policy never leads its base/ source (behind: warning)
 python tools/check_readme.py               # README counts match what is in the trees
 python tools/gen_policy_docs.py --check    # docs match the manifests they describe
@@ -134,7 +138,8 @@ python tools/check_effects.py              # a read_only guard does not actually
 python tools/check_a11y_rules.py && python tools/check_a11y_table.py
 ruff check .                               # the framework's own lint rule set, from pyproject.toml
 ruff format --check base/java-security tests tools/gen_java_security_contract.py \
-  tools/regen_all.py tools/gen_registry.py tools/check_installed.py
+  tools/regen_all.py tools/gen_registry.py tools/check_installed.py tools/owasp_llm.py tools/prose_counts.py \
+  tools/check_data_tables.py tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
 chock sync --repo . --check                # compiled artifacts match their manifests
 chock plugin build --repo . --policies-dir <tree> --check   # each tree
 # figures and brand card re-rendered and diffed
