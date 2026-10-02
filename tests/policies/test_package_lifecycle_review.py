@@ -166,7 +166,7 @@ def test_obfuscated_and_remote_package_runners(body: str, level: str) -> None:
         "<artifactId >exec-maven-plugin</artifactId>",
         "<artifactId>exec-maven&#45;plugin</artifactId>",
         "<dependencies><dependency><artifactId>z</artifactId></dependency></dependencies>"
-        "<artifactId>maven-antrun-plugin</artifactId>",
+        + "<artifactId>maven-antrun-plugin</artifactId>",
     ],
 )
 def test_maven_plugin_spellings(body: str) -> None:
