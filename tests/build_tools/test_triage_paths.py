@@ -1,4 +1,4 @@
-"""tools/triage_tables.py: no table edit and no path spelling drops agent config from a review."""
+"""tools/triage_tables.py: no table edit and no path spelling drops a path in the code floor from a review."""
 
 from __future__ import annotations
 
@@ -110,6 +110,11 @@ def test_excluded_paths(path: str, expected: str) -> None:
         "docs/CLAUDE.local.md",
         "docs/AGENTS.override.md",
         "docs/conf.py",
+        "docs/.roo/rules.md",
+        "docs/.clinerules/r.md",
+        "docs/CONVENTIONS.md",
+        "tests/pytest.ini",
+        "tests/package.json",
         "tests/conftest.py",
         "tests/CLAUDE.md",
         "vendor/x/SKILL.md",
@@ -138,3 +143,7 @@ def test_excluded_paths(path: str, expected: str) -> None:
 )
 def test_paths_that_stay_in_scope(path: str) -> None:
     assert tt.excluded(tt.load(), path) is None
+
+
+def test_a_non_string_path_stays_in_scope() -> None:
+    assert tt.excluded(tt.load(), b"tests/x.py") is None

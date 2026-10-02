@@ -30,19 +30,21 @@ SEVERITIES = ("low", "medium", "high")
 RANKS = ("1", "2", "3", "4", "5")
 #: (keys in rising order, scale, floors as (key, least strict value), what rises).
 VERDICT_SPEC = (SEVERITIES, VERDICTS, (("high", "deny"), ("medium", "ask")), "severity")
-TIER_SPEC = (RANKS, TIERS, (("5", "ask"),), "rank")
+TIER_SPEC = (RANKS, TIERS, (("4", "ask"), ("5", "ask")), "rank")
 CONFIDENCE_CEILING = 8
 #: Agent config, hook, instruction and policy paths (protect-agent-config's set and more), and
 #: this table and its loader. A review report never drops them, whatever the data says.
 NEVER_DIRS = frozenset(
     {".agents", ".chock", ".claude", ".codex", ".cursor", ".devin", ".gemini", ".git", ".github", ".githooks"}
     | {".grok", ".husky", ".junie", ".kimi-code", ".tabnine", ".vscode", ".windsurf"}
-    | {"evals", "implementations", "skill", "skills"}
+    | {".amazonq", ".clinerules", ".continue", ".kiro", ".roo", "evals", "implementations", "skill", "skills"}
 )
 NEVER_NAMES = frozenset(
     {".aider.conf.yml", ".clinerules", ".cursorrules", ".mcp.json", ".windsurfrules", "AGENTS.md"}
     | {"AGENTS.override.md", "CLAUDE.md", "CLAUDE.local.md", "GEMINI.md", "SKILL.md", "codex.md"}
-    | {"copilot-instructions.md", "conf.py", "conftest.py", "manifest.yaml", "suite.yaml"}
+    | {"CONVENTIONS.md", "copilot-instructions.md", "conf.py", "conftest.py", "manifest.yaml", "suite.yaml"}
+    | {".pre-commit-config.yaml", "noxfile.py", "package.json", "pyproject.toml", "pytest.ini", "setup.cfg"}
+    | {"setup.py", "tox.ini"}
     | {"triage.json", "triage_tables.py"}
 )
 #: The widest path exclusion: data may use a subset; anything wider is a code change.
@@ -76,10 +78,12 @@ ENTRY_KEYS = {
     "path_exclusions": ({"id", "dirs", "names", "text", "source"}, set()),
     "not_adopted": ({"id", "upstream", "why", "source"}, set()),
 }
+#: Emptying the other lists only tightens the table.
+NON_EMPTY = frozenset({"not_adopted"})
 TEXT_FIELDS = ("text", "unless", "upstream", "why")
 MAX_TEXT = 300
 ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-REPO_PATH = re.compile(r"[\w.-]+/[\w.-]+:[\w.-]+(?:/[\w.-]+)*")
+REPO_PATH = re.compile(r"[\w.-]+/[\w.-]+:(?!\.\./)[\w.-]+(?:/(?!\.\.(?:/|$))[\w.-]+)*")
 URL = re.compile(r"https://[\w-]+(?:\.[\w-]+)+(?:/\S*)?")
 ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 WORDS = re.compile(r"[A-Za-z]{3}")
@@ -215,8 +219,8 @@ def _entries(doc: dict) -> list[str]:
     seen: set[str] = set()
     for key in ENTRY_KEYS:
         entries = doc[key]
-        if not isinstance(entries, list) or not entries:
-            out.append(f"{key} must be a non-empty list")
+        if not isinstance(entries, list) or (key in NON_EMPTY and not entries):
+            out.append(f"{key} must be a {'non-empty ' if key in NON_EMPTY else ''}list")
             continue
         for i, entry in enumerate(entries):
             out += _entry(key, i, entry, doc)
@@ -273,7 +277,7 @@ def excluded(doc: dict, path: str) -> str | None:
     Only a plain repo-relative POSIX path can be excluded. The code floor and never_excluded win
     over every exclusion, compared case-insensitively so a case variant cannot slip a file out.
     """
-    parts = _plain(path)
+    parts = _plain(path) if isinstance(path, str) else None
     if parts is None:
         return None
     *dirs, name = parts

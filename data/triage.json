@@ -24,15 +24,15 @@
     "5": "ask"
   },
   "never_excluded": {
-    "dirs": [".agents", ".chock", ".claude", ".codex", ".cursor", ".devin", ".gemini", ".git", ".githooks", ".github", ".grok", ".husky", ".junie", ".kimi-code", ".tabnine", ".vscode", ".windsurf", "evals", "implementations", "skill", "skills"],
-    "names": [".aider.conf.yml", ".clinerules", ".cursorrules", ".mcp.json", ".windsurfrules", "AGENTS.md", "AGENTS.override.md", "CLAUDE.local.md", "CLAUDE.md", "GEMINI.md", "SKILL.md", "codex.md", "conf.py", "conftest.py", "copilot-instructions.md", "manifest.yaml", "suite.yaml", "triage.json", "triage_tables.py"]
+    "dirs": [".agents", ".amazonq", ".chock", ".claude", ".clinerules", ".codex", ".continue", ".cursor", ".devin", ".gemini", ".git", ".githooks", ".github", ".grok", ".husky", ".junie", ".kimi-code", ".kiro", ".roo", ".tabnine", ".vscode", ".windsurf", "evals", "implementations", "skill", "skills"],
+    "names": [".aider.conf.yml", ".clinerules", ".cursorrules", ".mcp.json", ".pre-commit-config.yaml", ".windsurfrules", "AGENTS.md", "AGENTS.override.md", "CLAUDE.local.md", "CLAUDE.md", "CONVENTIONS.md", "GEMINI.md", "SKILL.md", "codex.md", "conf.py", "conftest.py", "copilot-instructions.md", "manifest.yaml", "noxfile.py", "package.json", "pyproject.toml", "pytest.ini", "setup.cfg", "setup.py", "suite.yaml", "tox.ini", "triage.json", "triage_tables.py"]
   },
   "path_exclusions": [
     {
       "id": "tests",
       "dirs": ["tests", "test", "__tests__", "testdata"],
       "names": ["test_*.py", "*_test.py", "*_test.go", "*.test.js", "*.test.ts", "*.spec.js", "*.spec.ts", "*Test.java", "*Tests.java"],
-      "text": "Test code does not ship to production. CI-facing test config (conftest.py) stays in scope, and a real secret in a test file is still a finding (scan-secrets judges every path).",
+      "text": "Test code does not ship to production. CI-facing test and build config (conftest.py, pytest.ini, tox.ini, setup.py, package.json, and the like) stays in scope, and a real secret in a test file is still a finding (scan-secrets judges every path).",
       "source": ["sr-command"]
     },
     {
@@ -61,7 +61,7 @@
     {
       "id": "denial-of-service",
       "text": "Denial of service, rate limiting, and memory or CPU exhaustion.",
-      "unless": "the exhaustion is unbounded agent or model spend, or a deletion of data",
+      "unless": "the exhaustion is unbounded agent or model spend",
       "source": ["sr-command", "roadmap"]
     },
     {

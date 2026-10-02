@@ -110,7 +110,17 @@ def test_schema_is_the_integer_one(doc: dict, schema: object) -> None:
     assert found(doc) == ["schema must be 1"]
 
 
-@pytest.mark.parametrize("value", [{"r11": ""}, {"r11": 3}, {"r11": "http://x.example"}, {"r11": "https://"}])
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"r11": ""},
+        {"r11": 3},
+        {"r11": "http://x.example"},
+        {"r11": "https://"},
+        {"r11": "a/b:../x"},
+        {"r11": "a/b:c/../d"},
+    ],
+)
 def test_source_values_must_be_https_or_repo_paths(doc: dict, value: dict) -> None:
     doc["source"] |= value
     assert found(doc) == ["source values must be https:// URLs or owner/repo:path references"]
@@ -164,11 +174,22 @@ def test_finding_entries_are_closed_and_bounded(doc: dict, mutate, expected: str
 
 
 @pytest.mark.parametrize("key", ["finding_exclusions", "precedents", "path_exclusions", "not_adopted"])
-def test_lists_must_be_non_empty_lists_of_objects(doc: dict, key: str) -> None:
-    doc[key] = []
-    assert f"{key} must be a non-empty list" in found(doc)
+def test_lists_must_be_lists_of_objects(doc: dict, key: str) -> None:
+    doc[key] = "x"
+    assert any(p.startswith(f"{key} must be a") for p in found(doc)), found(doc)
     doc[key] = ["x"]
     assert f"{key}[0] must be an object" in found(doc)
+
+
+@pytest.mark.parametrize("key", ["finding_exclusions", "precedents", "path_exclusions"])
+def test_emptying_a_list_that_only_loosens_is_allowed(doc: dict, key: str) -> None:
+    doc[key] = []
+    assert not [p for p in found(doc) if p.startswith(key)], found(doc)
+
+
+def test_not_adopted_must_not_be_empty(doc: dict) -> None:
+    doc["not_adopted"] = []
+    assert "not_adopted must be a non-empty list" in found(doc)
 
 
 def test_ids_are_unique_across_every_list(doc: dict) -> None:
@@ -213,6 +234,7 @@ def test_severity_verdicts(doc: dict, verdicts: object, expected: str) -> None:
         ),
         ({"1": "ask", "2": "off", "3": "off", "4": "ask", "5": "ask"}, "rank_tier must not loosen as rank rises"),
         ({"1": "off", "2": "off", "3": "off", "4": "off", "5": "off"}, "rank_tier.5 must be at least ask"),
+        ({"1": "off", "2": "off", "3": "off", "4": "advisory", "5": "ask"}, "rank_tier.4 must be at least ask"),
         ({"1": "off"}, "rank_tier must map exactly 1, 2, 3, 4, 5"),
         ("x", "rank_tier must map exactly 1, 2, 3, 4, 5"),
     ],
