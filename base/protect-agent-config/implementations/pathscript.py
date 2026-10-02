@@ -6,7 +6,6 @@ import codecs
 import os
 import re
 import shlex
-from typing import Any
 
 from chock_shellparse.parse import Cmd
 from pathmatch import DYNAMIC
@@ -41,15 +40,6 @@ class Scripts:
     docs: dict[str, str]
     prev: Cmd | None
     base: str
-
-    def script(self, text: str, depth: int) -> bool:
-        raise NotImplementedError
-
-    def reaches(self, token: str, env: dict[str, str], **kwargs: Any) -> bool:
-        raise NotImplementedError
-
-    def _path(self, token: str, env: dict[str, str]) -> tuple[str, bool]:
-        raise NotImplementedError
 
     def sub(self, text: str) -> bool:
         """Whether a script that runs here, in the same directory, is refused."""

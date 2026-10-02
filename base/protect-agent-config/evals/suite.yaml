@@ -2684,3 +2684,73 @@ suite:
     prompt: "An agent runs a command with substitutions nested past the limit the guard judges: echo $(echo $(echo $(echo hi)))"
     expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
     execute: {command: "echo $(echo $(echo $(echo hi)))", expect: allow}
+  - id: tc-498
+    category: trigger
+    prompt: "An agent runs a command with substitutions nested past what the guard scans: echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo hi)))))))))"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo $(echo hi)))))))))", expect: block}
+  - id: tc-499
+    category: trigger
+    prompt: "An agent runs a command with a robocopy log file: robocopy src /srv/out /log:.mcp.json"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "robocopy src /srv/out /log:.mcp.json", expect: block}
+  - id: tc-500
+    category: trigger
+    prompt: "An agent runs a command with a robocopy log file: robocopy src /srv/out /UNILOG+:.claude/settings.json"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "robocopy src /srv/out /UNILOG+:.claude/settings.json", expect: block}
+  - id: tc-501
+    category: negative_trigger
+    prompt: "An agent runs a command with a robocopy log file: robocopy src /srv/out /log:/srv/out.log"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "robocopy src /srv/out /log:/srv/out.log", expect: allow}
+  - id: tc-502
+    category: trigger
+    prompt: "An agent runs a command with a Windows move whose source is agent config: robocopy .cursor /srv/out /MOVE"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "robocopy .cursor /srv/out /MOVE", expect: block}
+  - id: tc-503
+    category: trigger
+    prompt: "An agent runs a command with a Windows move whose source is agent config: xcopy .claude /srv/out /move"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "xcopy .claude /srv/out /move", expect: block}
+  - id: tc-504
+    category: negative_trigger
+    prompt: "An agent runs a command with a Windows move whose source is agent config: robocopy src /srv/out /MOVE"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "robocopy src /srv/out /MOVE", expect: allow}
+  - id: tc-505
+    category: trigger
+    prompt: "An agent runs a command with a wrapper's long script option: su --command='echo x > .mcp.json'"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "su --command='echo x > .mcp.json'", expect: block}
+  - id: tc-506
+    category: trigger
+    prompt: "An agent runs a command with a wrapper's long script option: flock /srv/l --command 'echo x > .mcp.json'"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "flock /srv/l --command 'echo x > .mcp.json'", expect: block}
+  - id: tc-507
+    category: negative_trigger
+    prompt: "An agent runs a command with a wrapper's long script option: su --command='echo hi'"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "su --command='echo hi'", expect: allow}
+  - id: tc-508
+    category: trigger
+    prompt: "An agent runs a command with a wrapper option the guard does not know: unshare -Z cat .mcp.json"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "unshare -Z cat .mcp.json", expect: block}
+  - id: tc-509
+    category: negative_trigger
+    prompt: "An agent runs a command with a wrapper option the guard does not know: unshare -Z cat README.md"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "unshare -Z cat README.md", expect: allow}
+  - id: tc-510
+    category: negative_trigger
+    prompt: "An agent runs a command with an env with options and no command: env -i -u HOME FOO=bar"
+    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
+    execute: {command: "env -i -u HOME FOO=bar", expect: allow}
+  - id: tc-511
+    category: trigger
+    prompt: "An agent runs a command with an env with options and no command: env -i -u HOME FOO=bar rm .mcp.json"
+    expect: "The guard resolves the command and refuses it, or asks a person where it cannot tell."
+    execute: {command: "env -i -u HOME FOO=bar rm .mcp.json", expect: block}
