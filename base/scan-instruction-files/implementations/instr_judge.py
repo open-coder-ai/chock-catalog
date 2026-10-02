@@ -241,22 +241,26 @@ class Doc:
         commands = self.statements_with(self.p["net_tool"]) | {
             i for i, found in hits.items() if any(h.rule in COMMAND_RULES for h in found)
         }
-        closes = self.statements_with(self.p["fake_trust_close"])
-        out, opened = [], set()
+        closes, cmds = sorted(self.statements_with(self.p["fake_trust_close"])), sorted(commands)
+        counted = [k for k, st in enumerate(self.sts) if not st.echo]  # a fence's prose reading repeats its lines
+        out, opened, covered = [], set(), -1  # a tag inside a block already reported adds nothing
         for i, m in self.matches(rule.phrase):
-            if i in opened or m.group()[0] not in "<[" or CLOSING_TAG.match(m.group()) or self.prohibited(m.start()):
+            if (
+                i <= covered
+                or i in opened
+                or m.group()[0] not in "<["
+                or CLOSING_TAG.match(m.group())
+                or self.prohibited(m.start())
+            ):
                 continue
             opened.add(i)
             last = i
             if not self.p["fake_trust_close"].search(self.text, m.end(), self.ends[i]):
-                counted = 0  # a fence's prose reading repeats its lines, so it is not counted
-                for j in range(i + 1, len(self.sts)):
-                    if counted == TRUST_SPAN - 1:
-                        break
-                    last, counted = j, counted + (not self.sts[j].echo)
-                    if j in closes:
-                        break
-            if commands & set(range(i, last + 1)):
+                at = bisect.bisect_right(counted, i) + TRUST_SPAN - 2
+                last = counted[at] if at < len(counted) else len(self.sts) - 1
+                if (c := bisect.bisect_right(closes, i)) < len(closes):
+                    last = min(last, closes[c])
+            if (c := bisect.bisect_left(cmds, i)) < len(cmds) and cmds[c] <= last:
                 span = self.sts[i : last + 1]
                 region = Statement(
                     span[0].first,
@@ -266,6 +270,7 @@ class Doc:
                     code=False,
                 )
                 out.append(Hit(*TRUST, region))
+                covered = last
         return out
 
 

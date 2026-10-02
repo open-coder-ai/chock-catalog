@@ -53,6 +53,9 @@ class Statement(NamedTuple):
     #: True for the prose reading of a fence's lines (a second reading of them), which a fake trust block's
     #: span does not count.
     echo: bool = False
+    #: True for the prose reading of a sure fence closed by its own closer: text every renderer shows as code,
+    #: so what fires only there asks at most.
+    capped: bool = False
 
 
 def normalize(text: str, *, code: bool = False) -> str:

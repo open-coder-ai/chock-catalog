@@ -18,13 +18,15 @@ TABLE_DELIMITER = re.compile(r"\|?[ \t]*+:?-{3,}+:?[ \t]*+(?:\|[ \t]*+:?-{3,}+:?
 
 class Fence(NamedTuple):
     """An open fence: its marker, its opener's quote depth, the content indent of the list item holding it
-    (0 at top level), whether a list item holds it, and its info string."""
+    (0 at top level), whether a list item holds it, its info string, and whether any renderer must read it as
+    a fence too (opened at the margin, outside any list, quote or HTML block)."""
 
     mark: str
     depth: int
     base: int
     in_list: bool
     info: str
+    sure: bool = False
 
     def holds(self, line: str, depth: int) -> bool:
         """Whether `line` (at quote depth `depth`) is still inside this fence's container: a quote that ends

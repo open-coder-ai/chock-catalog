@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import bisect
 import re
+from re import Pattern
+from typing import Any
 
 from instr_blocks import FENCE, Fence, nest, open_fence, table_rows
+from instr_html import html_step
 from instr_norm import Statement, normalize, sentences
 
 #: A statement longer than this is judged in overlapping pieces: any phrase up to OVERLAP characters long
@@ -15,9 +18,9 @@ MAX_STATEMENT = 4000
 OVERLAP = 500
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, thematic break or rule.
 BLOCK_START = re.compile(
-    r"^[ \t]*(?:[-*+](?:[ \t]|$)|[0-9]{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|---+[ \t]*$|===+[ \t]*$|(?:\*[ \t]*+){3,}+$|(?:_[ \t]*+){3,}+$|<(?:!--|/?(?i:address|article|aside|blockquote"
+    r"^(?:[ \t]{0,3}#{1,6}(?:[ \t]|$)|[ \t]*(?:[-*+](?:[ \t]|$)|[0-9]{1,9}[.)](?:[ \t]|$)|---+[ \t]*$|===+[ \t]*$|(?:\*[ \t]*+){3,}+$|(?:_[ \t]*+){3,}+$|<(?:!--|/?(?i:address|article|aside|blockquote"
     r"|details|dialog|div|dl|fieldset|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table"
-    r"|tbody|td|tfoot|th|thead|tr|ul)\b))"
+    r"|tbody|td|tfoot|th|thead|tr|ul)\b)))"
 )
 #: A front-matter line that starts a new key: a plain YAML key at the margin, then a colon and a space or the end.
 FRONT_KEY = re.compile(r"^[A-Za-z0-9_][\w.-]*+:(?:[ \t]|$)")
@@ -30,8 +33,8 @@ CONTINUED = ("\\", "|", "&&")
 #: the paragraph is also judged whole.
 HARD_BREAK = ("  ", "\\")
 BREAK_END = re.compile(r"<br\s*/?>$", re.IGNORECASE)
-#: A code comment line in a fence: its prose reading does not join the command under it.
-COMMENT = re.compile(r"[ \t]*(?:#|//|--[ \t]|;|/\*|<!--)")
+#: An ATX heading: one line, its own block.
+HEADING = re.compile(r"[ \t]{0,3}#{1,6}(?:[ \t]|$)")
 LINE_END = re.compile(r"\r\n|\r|\n")
 
 
@@ -96,6 +99,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     depths = [m.group(1).count(">") if m else 0 for m in quoted]
     tables = table_rows(inner)
     depth, items = 0, []  # the content indents of the open list items
+    html = None  # the end condition of an open HTML block
     for k, line in enumerate(inner):
         number = skip + 1 + k
         tail: list[tuple[int, str]] = []
@@ -109,7 +113,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
         if depths[k] != depth and not _lazy(depths[k], parts, line):
             _end(parts, whole, out)
             depth = depths[k]
-        opened = open_fence(line, depths[k], items)
+        opened, html = _opening(line, depths[k], items, html)
         if opened or not line.strip() or BLOCK_START.match(line) or k in tables:
             _end(parts, whole, out)
             fence = opened
@@ -119,7 +123,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
                 continue
         parts.append((number, line))
         whole.append((number, line))
-        if line.lstrip().startswith("#"):
+        if HEADING.match(line):
             _end(parts, whole, out)
         elif hard_break(line):
             _flush(parts, out)
@@ -127,6 +131,15 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     _flush_code(code, out)
     _prose(body, out, carry=False)
     return out
+
+
+def _opening(line: str, depth: int, items: list[int], html: Pattern[str] | str | None) -> tuple[Fence | None, Any]:
+    """The fence `line` opens, if any, and the HTML block state after it. A fence is sure when every renderer
+    reads it as one: opened at the margin, outside any list, quote or HTML block."""
+    opened = open_fence(line, depth, items)
+    if opened is None:
+        return None, html_step(html, line)
+    return opened._replace(sure=html is None and depth == 0 and not items and not line[:1].isspace()), html
 
 
 def _step(
@@ -140,33 +153,31 @@ def _step(
         body.append(at)
         return fence, True, []
     _flush_code(code, out)
-    taken = fence.holds(line, depth)
-    return None, taken, _prose(body, out, carry=not taken)
+    taken = fence.holds(line, depth)  # here, only the fence's closer is taken
+    return None, taken, _prose(body, out, carry=not taken, capped=taken and fence.sure)
 
 
-def _prose(body: list[tuple[int, str]], out: list[Statement], *, carry: bool) -> list[tuple[int, str]]:
+def _prose(
+    body: list[tuple[int, str]], out: list[Statement], *, carry: bool, capped: bool = False
+) -> list[tuple[int, str]]:
     """Judge a fence's lines as prose paragraphs too, so where this reader and a markdown renderer disagree on
-    a fence, wrapped text the renderer shows as prose is still joined and judged as prose. A blank line or a
-    block start begins a paragraph, a fence line stands alone, and a comment line (# // -- ; /*) does not join
-    a line that is not one (a comment and the command under it are two things; comment lines join, unmarked). With `carry`, the last
-    paragraph is returned to be continued instead of judged here."""
+    a fence, wrapped text the renderer shows as prose is still joined and judged as prose: a blank line or a
+    block start begins a paragraph, a fence line or a heading stands alone. With `carry`, the last paragraph
+    is returned to be continued instead of judged here; `capped` marks the reading of a sure, closed fence."""
     group: list[tuple[int, str]] = []
     read: list[Statement] = []
-    was = False
     for number, line in body:
         bare = line[m.end() :] if (m := QUOTE.match(line)) else line
-        now = COMMENT.match(bare)
-        if not bare.strip() or bool(now) != was or (not now and (BLOCK_START.match(bare) or FENCE.match(bare))):
+        if not bare.strip() or BLOCK_START.match(bare) or FENCE.match(bare):
             _flush(group, read)
-        was, bare = bool(now), bare[now.end() :] if now else bare  # a comment's text, without its marker
         if bare.strip():
             group.append((number, bare))
-        if FENCE.match(bare):
+        if FENCE.match(bare) or HEADING.match(bare):
             _flush(group, read)
     last = group[:] if carry else []
     if not carry:
         _flush(group, read)
-    out.extend(st._replace(echo=True) for st in read)
+    out.extend(st._replace(echo=True, capped=capped) for st in read)
     body.clear()
     return last
 
