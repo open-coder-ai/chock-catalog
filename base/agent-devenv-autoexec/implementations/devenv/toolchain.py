@@ -6,7 +6,7 @@ import html
 import re
 
 from devenv.commands import run
-from devenv.core import ASK, BLOCK, Collector, dotted, network, norm, risky, strings, walk
+from devenv.core import ASK, BLOCK, Collector, dotted, key_of, network, norm, risky, strings, walk
 from devenv.parse import toml_value, under, yaml_leaves
 
 RULE = "dev-shell-toolchain"
@@ -53,11 +53,7 @@ def mise(c: Collector) -> None:
     for path, leaf in walk(config):
         head = path[0] if path else ""
         spot = dotted(path)
-        if (
-            head in ("tasks", "hooks")
-            and isinstance(leaf, str)
-            and str(path[-1]) not in ("description", "alias", "dir")
-        ):
+        if head in ("tasks", "hooks") and isinstance(leaf, str) and key_of(path) not in ("description", "alias", "dir"):
             run(c, RULE, spot, leaf, f"mise {head[:-1]} command", severity=ASK)
         elif head == "env" and path[1:2] == ("_",):
             c.add(
@@ -67,13 +63,13 @@ def mise(c: Collector) -> None:
                 severity=ASK,
                 line=c.line_of("_."),
             )
-        elif head == "settings" and str(path[-1]) in ("trusted_config_paths", "task_run_auto_install", "experimental"):
+        elif head == "settings" and key_of(path) in ("trusted_config_paths", "task_run_auto_install", "experimental"):
             c.add(
                 RULE,
                 f"{spot}={norm(leaf)}",
                 f"mise setting {spot} widens what runs",
                 severity=ASK,
-                line=c.line_of(str(path[-1])),
+                line=c.line_of(key_of(path)),
             )
 
 
@@ -156,7 +152,7 @@ def ruby_file(c: Collector) -> None:
 def gitpod(c: Collector) -> None:
     """.gitpod.yml tasks run when the workspace starts."""
     for path, value, line in under(yaml_leaves(c.text), "tasks"):
-        if str(path[-1]) in ("init", "before", "command", "prebuild"):
+        if key_of(path) in ("init", "before", "command", "prebuild"):
             run(
                 c,
                 RULE,
@@ -171,7 +167,7 @@ def gitpod(c: Collector) -> None:
 def replit(c: Collector) -> None:
     """.replit `run` and `onBoot` run when the workspace starts."""
     for path, leaf in walk(toml_value(c.text)):
-        if path and str(path[-1]) in ("run", "onBoot", "build"):
+        if key_of(path) in ("run", "onBoot", "build"):
             for text in strings(leaf):
                 run(c, RULE, dotted(path), text, "workspace start command", severity=BLOCK if network(text) else ASK)
 

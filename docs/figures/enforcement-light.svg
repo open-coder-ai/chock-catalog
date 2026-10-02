@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="760" height="246" viewBox="0 0 760 246" role="img" aria-labelledby="t d">
   <title id="t">Chock-catalog enforcement coverage</title>
-  <desc id="d">Of 48 chock-catalog policies, 19 are enforced at commit and 9 more are enforced in-agent, for 28 enforced overall -- 20, more than half, are advisory only, read by the agent but backed by no mechanism.</desc>
+  <desc id="d">Of 49 chock-catalog policies, 19 are enforced at commit and 10 more are enforced in-agent, for 29 enforced overall -- 20, more than half, are advisory only, read by the agent but backed by no mechanism.</desc>
   <rect width="760" height="246" fill="#fcfcfb"/>
-  <text x="40" y="40" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#0b0b0b" text-anchor="start">48 policies, by what actually enforces them</text>
+  <text x="40" y="40" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="600" fill="#0b0b0b" text-anchor="start">49 policies, by what actually enforces them</text>
   <text x="40" y="64" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">strongest → weakest, left to right — colour is never the only signal</text>
-  <rect x="40" y="96" width="267" height="72" rx="4" fill="#104281"/>
-  <text x="173.5" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#fcfcfb" text-anchor="middle">19</text>
-  <text x="173.5" y="144" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fcfcfb" text-anchor="middle">ENFORCED AT COMMIT</text>
-  <rect x="309" y="96" width="126" height="72" rx="4" fill="#2a78d6"/>
-  <text x="372" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#fcfcfb" text-anchor="middle">9</text>
-  <text x="372" y="144" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fcfcfb" text-anchor="middle">IN-AGENT</text>
-  <rect x="437" y="96" width="281" height="72" rx="4" fill="#86b6ef"/>
-  <text x="577.5" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#0b0b0b" text-anchor="middle">20</text>
-  <text x="577.5" y="144" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#0b0b0b" text-anchor="middle">ADVISORY</text>
-  <text x="40" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#52514e" text-anchor="start">28 enforced (19 at commit + 9 in-agent) — 20 advisory, the largest slice</text>
+  <rect x="40" y="96" width="262" height="72" rx="4" fill="#104281"/>
+  <text x="171" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#fcfcfb" text-anchor="middle">19</text>
+  <text x="171" y="144" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fcfcfb" text-anchor="middle">ENFORCED AT COMMIT</text>
+  <rect x="304" y="96" width="137" height="72" rx="4" fill="#2a78d6"/>
+  <text x="372.5" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#fcfcfb" text-anchor="middle">10</text>
+  <text x="372.5" y="144" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#fcfcfb" text-anchor="middle">IN-AGENT</text>
+  <rect x="443" y="96" width="276" height="72" rx="4" fill="#86b6ef"/>
+  <text x="581" y="126" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#0b0b0b" text-anchor="middle">20</text>
+  <text x="581" y="144" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="600" fill="#0b0b0b" text-anchor="middle">ADVISORY</text>
+  <text x="40" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#52514e" text-anchor="start">29 enforced (19 at commit + 10 in-agent) — 20 advisory, the largest slice</text>
   <text x="40" y="224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="11" font-weight="400" fill="#52514e" text-anchor="start">counts read from registry.yaml at generation time; the CI job below fails if this ever drifts from it</text>
 </svg>

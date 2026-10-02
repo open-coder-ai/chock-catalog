@@ -41,7 +41,7 @@ def run(  # noqa: PLR0913 -- the finding's parts, named at every call
     if not text or CHOCK_WIRING.fullmatch(text):
         return
     reason = risky(text)
-    line = line or c.line_of(where.rsplit(".", 1)[-1], text[:40])
+    line = line or c.line_of(re.sub(r"(?:\.\d+)+$", "", where).rsplit(".", 1)[-1], text[:40])
     c.commands.append((where, text, line))
     if severity is None and not reason:
         return

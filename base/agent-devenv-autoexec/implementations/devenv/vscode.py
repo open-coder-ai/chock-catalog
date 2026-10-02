@@ -6,7 +6,7 @@ import re
 
 from devenv.agents import object_of
 from devenv.commands import dangerous_env, run
-from devenv.core import ASK, BLOCK, Collector, dotted, into_repo, norm, strings, walk
+from devenv.core import ASK, BLOCK, Collector, dotted, into_repo, norm, strings, trim, walk
 
 FOLDER_OPEN, AUTO, TRUST, EXEC, EXT = (
     "dev-vscode-folderopen",
@@ -60,7 +60,7 @@ def launch_file(c: Collector) -> None:
 #: Setting names (last segment) whose value is a program, interpreter or SDK the editor runs.
 _EXEC_KEY = re.compile(
     r"(?i)(?:^|\.)(?:path|executablepath|executable|serverpath|nodepath|pythonpath|defaultinterpreterpath|"
-    r"interpreterpath|interpreter|command|tsdk|javahome|home|binpath|toolpath|lsppath|runtimeexecutable|"
+    r"interpreterpath|interpreter|command|overridecommand|tsdk|javahome|home|binpath|toolpath|lsppath|runtimeexecutable|"
     r"shellpath|alternatetools|serverbinary|binary)$"
 )
 _TERMINAL = re.compile(r"(?i)^terminal\.integrated\.(?:profiles|automationprofile|shellargs|shell)\.")
@@ -81,7 +81,7 @@ def settings(c: Collector, config: object, where: str = "settings") -> None:
         return
     for path, leaf in walk(config):
         name = dotted(path)
-        low = name.lower()
+        low = dotted(trim(path)).lower()
         spot = f"{where}.{name}"
         line = c.line_of(str(path[-1]) if path else "")
         if "autoapprove" in low or "autoaccept" in low or low.endswith("yolo"):

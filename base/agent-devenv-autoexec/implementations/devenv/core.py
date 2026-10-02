@@ -34,6 +34,8 @@ RULES = {
 
 #: Past this a value is keyed by a prefix and a digest of the whole, so a long key stays short and exact.
 KEY_TEXT = 160
+#: Longer than any real command line; past it a command is refused rather than searched.
+MAX_COMMAND = 8192
 
 
 class Finding(NamedTuple):
@@ -89,6 +91,19 @@ def walk(value: object, path: tuple = ()) -> Iterator[tuple[tuple, object]]:
         yield path, value
 
 
+def trim(path: tuple) -> tuple:
+    """A path without its trailing list indexes: `tasks.a.run` for `tasks.a.run.0`."""
+    while path and isinstance(path[-1], int):
+        path = path[:-1]
+    return path
+
+
+def key_of(path: tuple) -> str:
+    """The last key of a path, past any list indexes."""
+    kept = trim(path)
+    return str(kept[-1]) if kept else ""
+
+
 def dotted(path: tuple) -> str:
     return ".".join(str(part) for part in path) or "<root>"
 
@@ -107,13 +122,13 @@ def strings(value: object) -> list[str]:
 _FETCH = r"(?:curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod|aria2c|fetch|lwp-download|lynx|httpie|xh)"
 _INTERP = r"(?:(?:ba|z|da|k|fi|c|tc|a)?sh|python[0-9.]*|node|deno|bun|perl|ruby|php|pwsh|powershell|iex|invoke-expression|source|\.)"
 _PIPE_TO_INTERP = re.compile(
-    rf"(?i)\b{_FETCH}\b[^|\n]*\|\s*(?:sudo\s+(?:-\S+\s+)*)?(?:env\s+(?:\S+=\S*\s+)*)?(?:\S*[/\\])?{_INTERP}(?![\w.-])"
+    rf"(?i)\b{_FETCH}\b[^|\n]{{0,1000}}\|\s*(?:sudo\s+(?:-\S+\s+)*)?(?:env\s+(?:\S+=\S*\s+)*)?(?:\S*[/\\])?{_INTERP}(?![\w.-])"
 )
 _SUBST_FETCH = re.compile(rf"(?i)(?:\$\(|`|<\(|\(\s*)\s*(?:\S*[/\\])?{_FETCH}\b")
-_EVAL_FETCH = re.compile(rf"(?i)\b(?:eval|iex|invoke-expression)\b.*\b{_FETCH}\b")
+_EVAL_FETCH = re.compile(rf"(?i)\b(?:eval|iex|invoke-expression)\b[^\n]{{0,1000}}?\b{_FETCH}\b")
 _ENCODED = re.compile(
-    r"(?i)(?:\b(?:pwsh|powershell)(?:\.exe)?\b.*\s-e(?:nc(?:odedcommand)?|c)?\s+[A-Za-z0-9+/=]{12,}"
-    r"|\bbase64\s+(?:-d|--decode|-D)\b|\bfrombase64string\b|\bcertutil\b.*-decode"
+    r"(?i)(?:\b(?:pwsh|powershell)(?:\.exe)?\b[^\n]{0,1000}?\s-e(?:nc(?:odedcommand)?|c)?\s+[A-Za-z0-9+/=]{12,}"
+    r"|\bbase64\s+(?:-d|--decode|-D)\b|\bfrombase64string\b|\bcertutil\b[^\n]{0,1000}?-decode"
     r"|\b(?:node|deno|bun)\s+(?:-e|--eval|-p|--print)\b|\bpython[0-9.]*\s+-c\b|\b(?:perl|ruby)\s+-e\b"
     r"|[A-Za-z0-9+/]{80,}={0,2})"
 )
@@ -124,6 +139,9 @@ _NETWORK = re.compile(
 
 def risky(command: str) -> str | None:
     """Why a command fetches and runs, or runs an encoded or inline payload; None when it does neither."""
+    if len(command) > MAX_COMMAND:
+        # Not searched: the time would grow with its length, so it is refused instead.
+        return "is too long to judge"
     if _PIPE_TO_INTERP.search(command) or _SUBST_FETCH.search(command) or _EVAL_FETCH.search(command):
         return "fetches and runs code"
     if _ENCODED.search(command):

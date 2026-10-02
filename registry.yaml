@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: agent-devenv-autoexec
+  path: base/agent-devenv-autoexec
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 45
+  eval_executed: 45
+  description: 'Warns only (observe): flags files that make a dev tool run code on open, clone or shell
+    entry -- agent hooks, helpers, env/BASE_URL overrides, auto-approve; VS Code folderOpen tasks, trust
+    off, repo executables; devcontainer initializeCommand; .envrc, mise, husky, lefthook, pre-commit;
+    gitconfig exec keys, gitattributes drivers, unsafe .gitmodules. Commit, agent write, turn''s end;
+    additions only; unreadable configs refused. Friction: misses interpreted code and unlisted files.'

@@ -14,11 +14,11 @@ from devenv.paths import SPAWN_ONLY, handler_for, normalized
 
 _AGENT_CLI = r"(?:claude|codex|gemini|cursor-agent|copilot|qwen|opencode|amp|aider|goose|crush|auggie|droid|kiro-cli)"
 _SPAWN = re.compile(
-    rf"(?i)(?<![\w./-]){_AGENT_CLI}(?:\.exe|\.cmd)?\b[^\n;&|]*?\s(?:--dangerously-skip-permissions|"
+    rf"(?i)(?<![\w./-]){_AGENT_CLI}(?:\.exe|\.cmd)?\b[^\n;&|]{{0,1000}}?\s(?:--dangerously-skip-permissions|"
     r"--dangerously-bypass-approvals-and-sandbox|--permission-mode[= ]+['\"]?bypasspermissions|--yolo|--full-auto|"
     r"--approval-mode[= ]+['\"]?yolo|--allow-all-tools|--allow-all-paths|--yes-always|"
     r"(?:--sandbox|-s)[= ]+['\"]?danger-full-access)(?![\w-])"
-    r"|(?<![\w./-])(?:gemini\b[^\n;&|]*?\s-y|cursor-agent\b[^\n;&|]*?\s(?:-f|--force))(?![\w-])"
+    r"|(?<![\w./-])(?:gemini\b[^\n;&|]{0,1000}?\s-y|cursor-agent\b[^\n;&|]{0,1000}?\s(?:-f|--force))(?![\w-])"
 )
 #: Agent and editor config folders: a command in one that runs a script kept in another is the keyv-worm shape.
 AGENT_DIRS = frozenset(
