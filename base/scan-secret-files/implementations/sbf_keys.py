@@ -25,10 +25,21 @@ PUTTY_CIPHER = re.compile(r"(?m)^Encryption:[ \t]*(\S*)")
 PKCS12 = re.compile(r"0[\s\S]{1,4}?\x02\x01\x030")
 DER_KEY = re.compile(r"0[\s\S]{1,4}?\x02\x01(?:\x00[0\x02]|\x01[0\x04])")
 #: JKS (FEEDFEED) and JCEKS (CECECECE) magic decode to four U+FFFD; version 1|2, a count under 65536,
-#: then the first entry's tag (1 private key, 2 trusted certificate).
-KEYSTORE = re.compile("\\ufffd{4}\\x00\\x00\\x00[\\x01\\x02]\\x00\\x00[\\s\\S]{2}\\x00\\x00\\x00([\\x01\\x02])")
-#: A plain (unencrypted) DER private key's first bytes: SEQUENCE, length, INTEGER version 0 or 1.
-PLAIN_DER = re.compile(rb"\x30[\s\S]{1,4}?\x02\x01[\x00\x01]")
+#: then the first entry's tag. Whether it holds a key is read from the key-protector OID.
+KEYSTORE = re.compile("\\ufffd{4}\\x00\\x00\\x00[\\x01\\x02]\\x00\\x00[\\s\\S]{2}\\x00\\x00\\x00[\\x01\\x02]")
+#: A plaintext private key in DER, at any offset: a PKCS#8 version and key algorithm OID (RSA, EC, DSA,
+#: X25519/Ed25519), a PKCS#1 version and modulus, a SEC1 version and key octets.
+PLAIN_ANYWHERE = re.compile(
+    rb"\x02\x01[\x00\x01]\x30[\s\S]{1,2}\x06[\s\S]{1,2}"
+    rb"(?:\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01|\x2a\x86\x48\xce\x3d\x02\x01|\x2a\x86\x48\xce\x38\x04\x01|\x2b\x65[\x6e\x70])"
+    rb"|\x02\x01\x00\x02[\x81\x82]|\x02\x01\x01\x04[\x20\x30\x42]"
+)
+#: Password-based encryption algorithm OIDs: PKCS#5 (PBES1, PBES2) and PKCS#12.
+PBE_OID = re.compile(rb"\x2a\x86\x48\x86\xf7\x0d\x01(?:\x05|\x0c\x01)")
+OPENSSH_TYPES = re.compile(rb"ssh-(?:ed25519|rsa|dss)|ecdsa-sha2-|sk-ssh-|sk-ecdsa-")
+MAX_DECODE = 1 << 16
+#: Java's key-protector OIDs (bytes under 0x80, so they survive the lossy decode): a store that holds a key.
+KEY_PROTECTORS = ("\x2b\x06\x01\x04\x01\x2a\x02\x11\x01\x01", "\x2b\x06\x01\x04\x01\x2a\x02\x13\x01")
 SQLITE = "SQLite format 3\x00"
 #: Tables a browser keeps credentials in: by name, or by the column that holds the secret.
 TABLE = re.compile(r'CREATE TABLE "?(\w+)')
@@ -66,31 +77,26 @@ def pem_blocks(text: str) -> list[Finding]:
 def encrypted(label: str, body: str) -> bool:
     """Whether a key block is passphrase-protected, judged by its bytes: a label or header alone never says so.
 
-    OpenSSH names its cipher; an ENCRYPTED PRIVATE KEY (PKCS#8) opens with an algorithm SEQUENCE where a
-    plain key has its version; legacy Proc-Type/DEK-Info headers count only over bytes that are not a
-    plain DER key. A plaintext key relabelled or given headers stays a plaintext key (block).
+    A plaintext key structure anywhere in the body (at any of the four base64 alignments) refuses,
+    whatever the label or headers claim. Otherwise: OpenSSH names a cipher and carries its key type
+    once (a plaintext private section repeats it); PKCS#8 names a password-based encryption algorithm;
+    a legacy key has Proc-Type and DEK-Info headers.
     """
-    raw = decoded(body)
-    if label == "OPENSSH PRIVATE KEY":
-        return openssh_cipher(raw) not in (None, b"none")
-    if label == "ENCRYPTED PRIVATE KEY":
-        return sequence_first(raw)
-    legacy = "Proc-Type: 4,ENCRYPTED" in body and "DEK-Info:" in body
-    return legacy and not PLAIN_DER.match(raw)
-
-
-def decoded(body: str) -> bytes:
-    """The first bytes of a block's base64 body (whole quads, padding dropped: never raises)."""
-    chars = "".join(body_lines(body)).replace("=", "")[:128]
-    return base64.b64decode(chars[: len(chars) // 4 * 4])
-
-
-def sequence_first(raw: bytes) -> bool:
-    """A DER SEQUENCE whose first element is itself a SEQUENCE (EncryptedPrivateKeyInfo's algorithm)."""
-    if len(raw) < 2 or raw[0] != 0x30:  # noqa: PLR2004 -- tag and length
+    raws = alignments(body)
+    if any(PLAIN_ANYWHERE.search(raw) for raw in raws):
         return False
-    header = 2 + (raw[1] & 0x7F if raw[1] & 0x80 else 0)
-    return len(raw) > header and raw[header] == 0x30  # noqa: PLR2004 -- SEQUENCE tag
+    if label == "OPENSSH PRIVATE KEY":
+        return openssh_cipher(raws[0]) not in (None, b"none") and len(OPENSSH_TYPES.findall(raws[0])) < 2  # noqa: PLR2004
+    if label == "ENCRYPTED PRIVATE KEY":
+        return any(PBE_OID.search(raw[:64]) for raw in raws)
+    return "Proc-Type: 4,ENCRYPTED" in body and "DEK-Info:" in body
+
+
+def alignments(body: str) -> list[bytes]:
+    """The body decoded from each of its four base64 alignments, to its last byte (bounded: never raises)."""
+    chars = "".join(body_lines(body)).replace("=", "")[:MAX_DECODE]
+    parts = (chars[shift:] for shift in range(4))
+    return [base64.b64decode(part[: len(part) - (len(part) % 4 == 1)] + "==") for part in parts]
 
 
 def openssh_cipher(raw: bytes) -> bytes | None:
@@ -116,10 +122,10 @@ def binary(text: str) -> list[Finding]:
     for pattern, what in ((PKCS12, "PKCS#12 key store"), (DER_KEY, "DER private key")):
         if pattern.match(text):
             return [Finding(KEYS, 1, what, text)]
-    if store := KEYSTORE.match(text):
-        if store[1] == "\x01":
+    if KEYSTORE.match(text):
+        if any(oid in text for oid in KEY_PROTECTORS):
             return [Finding(KEYS, 1, "Java keystore holding a private key", text)]
-        return [Finding(KEYS, 1, "Java keystore whose first entry is a certificate (a truststore?)", text, ASK)]
+        return [Finding(KEYS, 1, "Java keystore with no key entry seen (a truststore?)", text, ASK)]
     if text.startswith(SQLITE) and browser_tables(text):
         return [Finding(BROWSER, 1, "browser cookie or password database", text)]
     return []

@@ -148,7 +148,11 @@ REFUSED = [
     ),
     ("build/x.bin", "0\x82\n\x1b\x02\x01\x030\x82", "sbf-private-key-files"),
     ("build/y.bin", "0\ufffd\x02\x01\x030\ufffd", "sbf-private-key-files"),
-    ("build/z.dat", "\ufffd" * 4 + "\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x01", "sbf-private-key-files"),
+    (
+        "build/z.dat",
+        "\ufffd" * 4 + "\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x01" + "\x2b\x06\x01\x04\x01\x2a\x02\x11\x01\x01",
+        "sbf-private-key-files",
+    ),
     ("certs/server.key", "0\ufffd\x02\x01\x000\r", "sbf-private-key-files"),
     ("certs/ec.der", "0w\x02\x01\x01\x04 ", "sbf-private-key-files"),
     # browser credential stores

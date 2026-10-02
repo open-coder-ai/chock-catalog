@@ -39,16 +39,19 @@ CONN_PW = re.compile(r"(?i)(?:^|;)\s*(?:password|pwd)\s*=\s*([^;]*)")
 
 
 #: A document that opens like JSON: blanks and comments, then an object or array.
-JSONISH = re.compile(r"(?:\s|//[^\n]*+\n|/\*(?:[^*]|\*(?!/))*+\*/)*+[\[{]")
-#: Keys a credential file of each shape carries; JSON this reader cannot parse that holds them is reported.
+#: Blanks and comments, then an object opening on a quoted key (or empty), or an array of objects or
+#: strings: not TOML or INI sections, Markdown links or number arrays.
+JSONISH = re.compile(r"(?:\s|//[^\n]*+\n|/\*(?:[^*]|\*(?!/))*+\*/)*+(?:\{\s*+[\"}]|\[\s*+[{\"\]\[])")
+#: Keys a credential file of each shape carries (all of the first, one of the second); JSON this reader
+#: cannot parse that holds them is reported.
 MARKERS = (
-    (GCP, ('"service_account"', '"private_key"')),
-    (GCP, ('"authorized_user"', '"refresh_token"')),
-    (GCP, ('"client_secret"',)),
-    (TF, ('"terraform_version"', '"lineage"')),
-    (RC, ('"auths"',)),
-    (KUBE, ('"Config"', '"users"')),
-    (BROWSER, ('"encryptedPassword"',)),
+    (GCP, ('"service_account"', '"private_key"'), ()),
+    (GCP, ('"authorized_user"', '"refresh_token"'), ()),
+    (GCP, ('"client_secret"',), ('"installed"', '"web"')),
+    (TF, ('"terraform_version"', '"lineage"'), ()),
+    (RC, ('"auths"',), ('"auth"', '"identitytoken"', '"password"')),
+    (KUBE, ('"Config"', '"users"'), ()),
+    (BROWSER, ('"encryptedPassword"', '"logins"'), ()),
 )
 
 
@@ -56,8 +59,8 @@ def unreadable(text: str) -> list[Finding]:
     """Fail closed: JSON this reader cannot parse (too deep, too large, malformed) holding a credential file's keys."""
     return [
         Finding(rule, 1, "credential-shaped JSON this reader cannot parse", text)
-        for rule, keys in MARKERS
-        if all(key in text for key in keys)
+        for rule, keys, either in MARKERS
+        if all(key in text for key in keys) and (not either or any(key in text for key in either))
     ]
 
 
@@ -80,13 +83,23 @@ def judge(text: str, name: str = "") -> list[Finding]:
     try:
         root = parse(text)
     except ValueError:
-        return unreadable(text)
+        root = lines(text)
+        if root is None:
+            return unreadable(text)
     found = [finding for obj in objects(root) for finding in shapes(obj, text)]
     if isinstance(root, Obj):
         found += notebook(root, text) + legacy_docker(root, text)
         if name.startswith("appsettings.production.") or name.endswith(".tfvars.json"):
             found += named(root, text, FRAMEWORK if name.startswith("appsettings") else TF)
     return found
+
+
+def lines(text: str) -> list[object] | None:
+    """JSON Lines: one document per non-blank line, or None when any line is not one."""
+    try:
+        return [parse(line) for line in text.split("\n") if line.strip()]
+    except ValueError:
+        return None
 
 
 def objects(root: object) -> Iterator[Obj]:

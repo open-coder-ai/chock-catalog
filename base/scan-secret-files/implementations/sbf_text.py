@@ -18,7 +18,9 @@ AWS_NAMES = ("/.aws/credentials", "/.aws/config")
 AWS_KEY = re.compile(r"(?im)^[ \t]*(aws_secret_access_key|aws_session_token)[ \t]*[=:][ \t]*(.*?)[ \t]*$")
 SECTION = re.compile(r"(?m)^[ \t]*\[[^\]\r\n]+\][ \t]*$")
 PYPI_SECTION = re.compile(r"(?m)^[ \t]*\[(?:distutils|pypi|testpypi)\][ \t]*$")
-PYPI_PW = re.compile(r"(?m)^[ \t]*password[ \t]*[=:][ \t]*(.*?)[ \t]*$")
+PYPI_PW = re.compile(r"([ \t]*)password[ \t]*[=:][ \t]*(.*?)[ \t]*")
+INI_SECTION = re.compile(r"[ \t]*\[([^\]\n]+)\][ \t]*")
+INDEX_SERVERS = re.compile(r"index-servers[ \t]*[=:]([^\[]*)")
 NPM_SCOPED = re.compile(r"(?m)^[ \t]*//[^\s=]+:_(?:authToken|auth|password)[ \t]*=[ \t]*(.*?)[ \t]*$")
 NPM_ANY = re.compile(r"(?m)^[ \t]*(?://[^\s=]+:)?_(?:authToken|auth|password)[ \t]*=[ \t]*(.*?)[ \t]*$")
 WORD = re.compile(r"\S+")
@@ -31,8 +33,10 @@ WP_DEFINE = re.compile(
     r"""define\s*\(\s*(['"])(DB_PASSWORD|(?:SECURE_)?AUTH_(?:KEY|SALT)|LOGGED_IN_(?:KEY|SALT)|NONCE_(?:KEY|SALT))\1"""
     r"""\s*,\s*(['"])([^'"\r\n]*)\3"""
 )
-#: A `kind` key valued Config however it is spelled (quoted, tagged, flow, escaped): enough to refuse an unreadable file.
+#: A `kind` key valued Config however it is spelled (quoted, tagged, flow): routes a file to the YAML reader.
 KIND_CONFIG = re.compile(r"""kind["']?[ \t]*:[ \t]*(?:!\S*[ \t]+)?["']?Config\b""")
+#: The same at the top level (column 0, after `---` or an opening brace): an unreadable file with it is refused.
+KIND_TOP = re.compile(r"""(?m)^(?:---[ \t]*)?(?:\{[ \t]*)?["']?kind["']?[ \t]*:[ \t]*(?:!\S*[ \t]+)?["']?Config\b""")
 #: A double-quoted YAML key holding an escape, which can spell `kind` or `users` without the letters.
 ESCAPED_KEY = re.compile(r'"[^"\n]{0,64}\\[xuU][^"\n]{0,64}"[ \t]*:')
 INI_LINE = re.compile(r"[ \t]*(?:[#;].*|\[[^\]\n]+\][ \t]*|[\w.-]+[ \t]*[=:].*|[ \t]+\S.*)?")
@@ -57,7 +61,7 @@ def judge(path: str, name: str, text: str) -> list[Finding]:
 def aws(path: str, text: str) -> list[Finding]:
     """An AWS shared-credentials file: a section and a literal secret key or session token."""
     named = ("/" + path.lower()).endswith(AWS_NAMES)
-    if not (named or ini(text)):
+    if not (named or SECTION.search(text)):
         return []
     return [
         Finding(AWS, line_of(text, m.start()), m[1].lower(), m[2])
@@ -67,17 +71,25 @@ def aws(path: str, text: str) -> list[Finding]:
 
 
 def pypirc(name: str, text: str) -> list[Finding]:
-    """A .pypirc (by name, or by its distutils/pypi section) holding a literal password."""
-    if name not in (".pypirc", "pypirc") and not (PYPI_SECTION.search(text) and ini(text)):
+    """A literal password in a .pypirc, or under any name in a [pypi]/[testpypi]/index-servers section.
+
+    A section lasts only while the lines stay INI-shaped, so source code that mentions [pypi] and then
+    assigns a password is not judged; outside a file named .pypirc the password line is unindented.
+    """
+    named = name in (".pypirc", "pypirc")
+    if not (named or PYPI_SECTION.search(text)):
         return []
-    return [
-        Finding(RC, line_of(text, m.start()), "PyPI password", m[1]) for m in PYPI_PW.finditer(text) if literal(m[1])
-    ]
-
-
-def ini(text: str) -> bool:
-    """The whole file is INI: sections, `key = value` lines, comments, continuations; at least one section."""
-    return bool(SECTION.search(text)) and all(INI_LINE.fullmatch(line) for line in text.split("\n"))
+    index = INDEX_SERVERS.search(text)
+    servers = {"pypi", "testpypi", *(index[1].split() if index else ())}
+    found, section = [], None
+    for number, line in enumerate(text.split("\n"), 1):
+        if head := INI_SECTION.fullmatch(line):
+            section = head[1].strip().lower()
+        elif not INI_LINE.fullmatch(line):
+            section = None
+        elif (pw := PYPI_PW.fullmatch(line)) and literal(pw[2]) and (named or (section in servers and not pw[1])):
+            found.append(Finding(RC, number, "PyPI password", pw[2]))
+    return found
 
 
 def npmrc(name: str, text: str) -> list[Finding]:
@@ -153,7 +165,7 @@ def wp_config(text: str) -> list[Finding]:
 def kubeconfig(text: str) -> list[Finding]:
     """A kubeconfig (root `kind: Config`, found by EP13 sniffing or the line itself) with inline user credentials.
 
-    Fails closed: a file with a `kind: Config` line this reader cannot parse, or whose users sit behind
+    Fails closed: a file with a top-level `kind: Config` this reader cannot parse, or whose users sit behind
     an alias or merge key, is reported rather than passed.
     """
     stated = KIND_CONFIG.search(text) is not None
@@ -164,7 +176,7 @@ def kubeconfig(text: str) -> list[Finding]:
     try:
         nodes = yamlpath.scan(text)
     except yamlpath.ParseError:
-        return [Finding(KUBE, 1, "kubeconfig this reader cannot parse", text)] if stated else []
+        return [Finding(KUBE, 1, "kubeconfig this reader cannot parse", text)] if KIND_TOP.search(text) else []
     configs = {n.doc for n in nodes if n.path == ("kind",) and n.kind in SCALARS and n.value == "Config"}
     found = [
         Finding(KUBE, n.line, f"kubeconfig user {n.path[-1]}", n.value)

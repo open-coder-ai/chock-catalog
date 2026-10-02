@@ -7,7 +7,7 @@ import functools
 import re
 from typing import NamedTuple
 
-from chock_scan import keyword_values
+from chock_scan import entropy, keyword_values
 
 BLOCK, ASK = "block", "ask"
 GCP = "sbf-gcp-sa-json"
@@ -51,8 +51,12 @@ PLACEHOLDER = re.compile(
 REPEAT = re.compile(r"(.)\1*")
 NUMBER_OR_FLAG = re.compile(r"(?i)[-+]?\d+(?:\.\d+)?[a-z]{0,2}|true|false|yes|no|on|off|null|none|nil")
 ARMOR = re.compile(r"-----(?:BEGIN|END) [^-\r\n]{1,60}-----")
-BASE64_LINE = re.compile(r"[A-Za-z0-9+/=]+")
-#: A key that names where a secret lives, and a value that is a path or a plain URL: not the secret.
+#: A body token: base64 of at least 16 characters (prose words rarely reach it), once quotes, commas,
+#: concatenation operators, semicolons, quote marks and backslashes are stripped from its ends.
+BASE64_TOKEN = re.compile(r"[A-Za-z0-9+/=]{16,}")
+EDGE_CHARS = "\"'`,+;\\>()"
+#: A key that names where a secret lives, and a value that is a path or a plain URL: not the secret --
+#: unless the value is high-entropy, or a webhook URL (whose path is the secret).
 POINTER_KEY = re.compile(r"(?i)(?:^|[_.-])(?:file|path|dir|name|url|uri|location|ref)$")
 PATH_VALUE = re.compile(r"(?:\.{0,2}/|~/|[A-Za-z]:\\|[a-z][a-z0-9+.-]*://(?![^/@\s]*:[^/@\s]*@))")
 
@@ -78,12 +82,18 @@ def secretish(key: str, value: str, minimum: int = 8) -> bool:
     text = unquote(value)
     return (
         keyword_values.secret_key(key)
-        and not POINTER_KEY.search(key)
         and literal(text)
         and len(text) >= minimum
         and not NUMBER_OR_FLAG.fullmatch(text)
-        and not PATH_VALUE.match(text)
+        and not pointer(key, text)
     )
+
+
+def pointer(key: str, value: str) -> bool:
+    """A path, a plain URL, or a key naming where the secret lives -- with a value that does not look random."""
+    if not (POINTER_KEY.search(key) or PATH_VALUE.match(value)) or "hook" in value.lower():
+        return False
+    return not entropy.assess(value).suspicious
 
 
 def key_material(value: object) -> bool:
@@ -97,18 +107,20 @@ def key_material(value: object) -> bool:
 
 
 def body_lines(block: str) -> list[str]:
-    """The lines of a key block that are wholly base64 once indentation, quotes and commas are off.
+    """The base64 tokens of a key block's body, in order, whatever its layout.
 
-    Armor lines and `Name: value` headers are left out, and so is prose that follows an unterminated BEGIN.
+    Lines, one line with spaces, quoted and concatenated source strings, `> ` quoting and numbered
+    lines all read the same. Armor and `Name: value` headers are left out (a header word holds `:` or
+    `,`), and so is prose after an unterminated BEGIN (its words are short or not base64).
     """
-    lines = ARMOR.sub("\n", block.replace("\\r", "").replace("\\n", "\n")).splitlines()
-    stripped = (line.strip().strip("\"',").strip() for line in lines)
-    return [line for line in stripped if BASE64_LINE.fullmatch(line)]
+    text = ARMOR.sub(" ", block.replace("\\r", " ").replace("\\n", " "))
+    tokens = (token.strip(EDGE_CHARS) for token in text.split())
+    return [token for token in tokens if BASE64_TOKEN.fullmatch(token)]
 
 
 def body_size(block: str) -> int:
     """Base64 characters of a key block's body (see body_lines)."""
-    return sum(len(line) for line in body_lines(block))
+    return sum(len(token) for token in body_lines(block))
 
 
 def line_of(text: str, pos: int) -> int:
