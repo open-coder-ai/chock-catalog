@@ -14,7 +14,7 @@ TEXT_CAP = 2 << 20
 CONTINUATION = re.compile(r"\\\r?\n")
 COMMENT = re.compile(r"(?m)^[ \t]*(?:#|dnl\b).*$")
 #: Anchors per rule past which a file is reported, not scanned: each anchor costs a bounded window search.
-MAX_ANCHORS = 50_000
+MAX_ANCHORS = 3_000
 
 
 def _matches(data: bytes, sig: Sig) -> bool:
@@ -60,12 +60,12 @@ def is_build_text(rel: str, tables: Tables) -> bool:
 def text_hits(blob: Blob, tables: Tables) -> list[tuple[str, str, int]]:
     """(rule id, reason, line) for each decode-and-evaluate shape; too large or too dense is one finding.
 
-    Comment lines are blanked (line numbers kept) and continuations joined. A rule is an anchor and a
+    Comment lines are blanked first (a comment never continues onto the next line), then continuations are joined. A rule is an anchor and a
     bounded window around it, so the work is linear in the text whatever it holds.
     """
     if blob.size > TEXT_CAP:
         return [("too-large", f"over {TEXT_CAP} bytes, not scanned", 1)]
-    text = COMMENT.sub("", CONTINUATION.sub(" ", blob.head.decode("utf-8", "replace")))
+    text = CONTINUATION.sub(" ", COMMENT.sub("", blob.head.decode("utf-8", "replace")))
     seen: dict[tuple[str, int], str] = {}
     for rule in tables.patterns:
         for count, found in enumerate(rule.anchor.finditer(text)):

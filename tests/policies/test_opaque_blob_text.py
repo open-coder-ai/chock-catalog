@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -151,6 +152,21 @@ def test_hostile_text_is_scanned_in_bounded_work(tmp_path: Path, line: str) -> N
         "text-too-dense",
         "text-tr-swap-pipe",
     }
+
+
+@pytest.mark.parametrize("lead", ["# harmless \\", "dnl harmless \\"])
+def test_a_comment_ending_in_a_backslash_does_not_hide_the_next_line(tmp_path: Path, lead: str) -> None:
+    assert text_rules(tmp_path, "m4/a.m4", f"{lead}\nxz -d < f | sh\n") == [(2, "text-decode-eval")]
+
+
+def test_dense_hostile_files_together_stay_well_inside_the_gate_clock(tmp_path: Path) -> None:
+    shapes = ["xz a a a a a a a a a a gzip b b b b b | sh\n", "zcat bzcat xzcat | sh ", "bash -c $(", "| sh "]
+    files = {f"m4/{i}.m4": shapes[i % 4] * (1_000_000 // len(shapes[i % 4])) for i in range(12)}
+    repo = blobkit.make_repo(tmp_path, files)
+    start = time.monotonic()
+    found = blobkit.run(gate, repo, files)
+    assert time.monotonic() - start < 20
+    assert len(found) >= 12  # every one is a finding (match or too-dense), none a pass
 
 
 def test_too_many_candidate_spots_is_a_finding_not_a_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

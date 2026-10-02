@@ -49,7 +49,15 @@
     {"name": "tiff-le", "at": [[0, "49492a00"]]},
     {"name": "tiff-be", "at": [[0, "4d4d002a"]]},
     {"name": "ttf", "at": [[0, "0001000000"]]},
-    {"name": "otf", "at": [[0, "4f54544f"]]}
+    {"name": "otf", "at": [[0, "4f54544f"]]},
+    {"name": "flac", "at": [[0, "664c6143"]]},
+    {"name": "psd", "at": [[0, "38425053"]]},
+    {"name": "bmp", "at": [[0, "424d"]]},
+    {"name": "jp2", "at": [[4, "6a502020"]]},
+    {"name": "mpeg-sync", "at": [[0, "fffb"]]},
+    {"name": "mpeg-sync2", "at": [[0, "fff3"]]},
+    {"name": "adts", "at": [[0, "fff1"]]},
+    {"name": "jxl", "at": [[0, "ff0a"]]}
   ],
   "entropy": {"min_size": 102400, "window": 16384, "min_tail": 4096, "bits_per_byte": 7.5}
 }
