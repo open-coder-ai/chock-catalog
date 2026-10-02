@@ -30,9 +30,8 @@ A guard script, `implementations/block-no-verify.py`, run before the agent execu
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-never(commit|merge|am|rebase|push|pull|cherry-pick|revert): --no-verify|-n(commit|am); never(set): core.hooksPath|HUSKY=0|HUSKY_SKIP_HOOKS|SKIP|LEFTHOOK=0|LEFTHOOK_EXCLUDE|PRE_COMMIT_ALLOW_NO_CONFIG; never: pre-commit|lefthook|husky uninstall
-ask_person: commit-tree|update-ref|fast-import|GIT_DIR(other repo)|GIT_CONFIG_GLOBAL|include.path; never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT
-if(hook_fails|override_needed): fix_issue|ask_person; never(skip_hook)
+never(commit|push|merge|am|rebase|pull|cherry-pick|revert): --no-verify|-n(commit|am); never(set): core.hooksPath|HUSKY=0|SKIP=|LEFTHOOK=0|kin; never: pre-commit|lefthook|husky uninstall; ask: commit-tree|update-ref|GIT_DIR|config files
+never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT; if(hook_fails|override_needed): fix_issue|ask_person
 ```
 
 ## Which primitive it becomes
