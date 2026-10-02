@@ -73,7 +73,7 @@
     "go",
     "rust"
    ],
-   "pattern": "(?<![\\w-])-z(?:[ \\t]*,[ \\t]*|[ \\t]*)(?:-Xlinker[ \\t]+|-Wl,)?execstack(?![\\w-])",
+   "pattern": "(?<![\\w-])-z[ \\t,\\\"']*(?:-Xlinker[ \\t\\\"',]*|-Wl,)?[\\\"']?execstack(?![\\w-])",
    "what": "marks the stack executable (-z execstack)"
   },
   {
@@ -84,7 +84,7 @@
     "go",
     "rust"
    ],
-   "pattern": "(?<![\\w-])-z(?:[ \\t]*,[ \\t]*|[ \\t]*)(?:-Xlinker[ \\t]+|-Wl,)?norelro(?![\\w-])",
+   "pattern": "(?<![\\w-])-z[ \\t,\\\"']*(?:-Xlinker[ \\t\\\"',]*|-Wl,)?[\\\"']?norelro(?![\\w-])",
    "what": "turns RELRO off (-z norelro)"
   },
   {
@@ -121,12 +121,23 @@
    "what": "sets POSITION_INDEPENDENT_CODE off"
   },
   {
+   "id": "meson-pie-off",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])(?:pie[ \\t]*:[ \\t]*false|b_pie[ \\t]*=[ \\t]*false)(?![\\w-])",
+   "what": "turns position-independent executables off in meson (pie: false, b_pie=false)"
+  },
+  {
    "id": "rust-relocation-model-static",
    "tier": "block",
    "langs": [
     "rust"
    ],
-   "pattern": "(?<![\\w-])-C[ \\t\\\"',]*relocation-model=static(?![\\w-])",
+   "pattern": "(?<![\\w-])(?:-C|--codegen)[ \\t\\\"',=]*relocation-model=static(?![\\w-])",
    "what": "builds Rust with the static (non-PIE) relocation model"
   },
   {
@@ -189,7 +200,7 @@
    "langs": [
     "rust"
    ],
-   "pattern": "^\\s*(?:[\\w\\\"'*.-]+\\.)?overflow-checks\\s*=\\s*false\\b",
+   "pattern": "^\\s*(?:[\\w\\\"'*.-]+\\.)?[\\\"']?overflow-checks[\\\"']?\\s*=\\s*false\\b",
    "what": "disables integer overflow checks in the release profile",
    "section": "^profile\\.release(?:\\.|$)"
   },
@@ -199,7 +210,7 @@
    "langs": [
     "rust"
    ],
-   "pattern": "\\bprofile\\s*\\.\\s*release\\b[^=\\n]*?\\boverflow-checks\\s*=\\s*false\\b",
+   "pattern": "\\bprofile\\s*\\.\\s*release\\b[^=\\n]{0,200}?\\boverflow-checks\\s*=\\s*false\\b",
    "what": "disables integer overflow checks in the release profile"
   },
   {
@@ -208,7 +219,7 @@
    "langs": [
     "rust"
    ],
-   "pattern": "^\\s*release\\s*=\\s*\\{[^}\\n]*\\boverflow-checks\\s*=\\s*false\\b",
+   "pattern": "^\\s*release\\s*(?:=\\s*\\{[^}\\n]*?|\\.\\s*(?:[\\w\\\"'*.-]{0,100}\\.)?)[\\\"']?overflow-checks[\\\"']?\\s*=\\s*false\\b",
    "what": "disables integer overflow checks in the release profile",
    "section": "^profile$"
   },

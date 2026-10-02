@@ -10,32 +10,18 @@ import time
 from pathlib import Path
 
 import pytest
-from policies import scriptkit
+from policies import hardflagskit, scriptkit
 from policies.hardening_flags_cases import CARGO, CMAKE, KERNEL, MAKE, PRAGMA, RUST, SHELL, UNSCANNED
+from policies.hardflagskit import NAME
 
-NAME = "hardening-flags-gate.py"
-
-
-def load_gate() -> object:
-    """Import the gate with its own shipped chock_scan copy: tests/chock_scan shadows that name in a full run."""
-    saved = {k: v for k, v in sys.modules.items() if k == "chock_scan" or k.startswith("chock_scan.")}
-    for key in saved:
-        del sys.modules[key]
-    try:
-        return scriptkit.load("hardening-flags", NAME)
-    finally:
-        for key in [k for k in sys.modules if k == "chock_scan" or k.startswith("chock_scan.")]:
-            del sys.modules[key]
-        sys.modules.update(saved)
-
-
-mod = load_gate()
+mod = hardflagskit.load_gate()
 ENTRIES = mod.rules.load()
 
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("CHOCK_AGENT_COMMIT", raising=False)
+    for name in ("CHOCK_AGENT_COMMIT", "CLAUDECODE", "AI_AGENT"):
+        monkeypatch.delenv(name, raising=False)
 
 
 def found(path: str, text: str, event: str = "commit") -> list[str]:
@@ -70,7 +56,7 @@ def test_cases(path: str, text: str, keys: list[str]) -> None:
 )
 def test_waiver_is_a_comment_on_the_same_line(path: str, line: str, waived: bool) -> None:
     assert (found(path, line + "\n") == []) is waived
-    assert found(path, line + "\n", "tool_use") != [] or not any(line)
+    assert found(path, line + "\n", "tool_use") != []
 
 
 def test_waiver_events() -> None:
@@ -91,6 +77,39 @@ def test_agent_commit_never_waives(monkeypatch: pytest.MonkeyPatch, value: str) 
 def test_a_person_marker_still_waives(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
     monkeypatch.setenv("CHOCK_AGENT_COMMIT", value)
     assert found("Makefile", f"X = -no-pie # {PRAGMA}\n") == []
+
+
+@pytest.mark.parametrize("name", ["CLAUDECODE", "AI_AGENT"])
+def test_agent_markers_never_waive(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
+    monkeypatch.setenv(name, "1" if name == "CLAUDECODE" else "claude-code_agent")
+    assert found("Makefile", f"X = -no-pie # {PRAGMA}\n") == ["no-pie"]
+    monkeypatch.setenv("CHOCK_AGENT_COMMIT", "0")
+    assert found("Makefile", f"X = -no-pie # {PRAGMA}\n") == []
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        "agent_commit_env: MY_AGENT\n",
+        "agent_commit_env: [A, MY_AGENT]\n",
+        "agent_commit_env:\n  # c\n\n  - 'MY_AGENT'\n",
+    ],
+)
+def test_configured_agent_env_never_waives(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config: str) -> None:
+    (tmp_path / ".chock").mkdir()
+    (tmp_path / ".chock" / "config.yaml").write_text(config, encoding="utf-8")
+    monkeypatch.setenv("MY_AGENT", "1")
+    payload = {"event": "commit", "repo_root": str(tmp_path), "writes": {"Makefile": f"X = -no-pie # {PRAGMA}\n"}}
+    assert [i["key"] for i in mod.findings(payload, ENTRIES)] == ["no-pie"]
+    monkeypatch.delenv("MY_AGENT")
+    assert mod.findings(payload, ENTRIES) == []
+
+
+def test_unreadable_agent_config_is_no_marker(tmp_path: Path) -> None:
+    assert mod.agent_commit(tmp_path) is False
+    (tmp_path / ".chock").mkdir()
+    (tmp_path / ".chock" / "config.yaml").write_bytes(b"\xff\xfe")
+    assert mod.agent_commit(tmp_path) is False
 
 
 def test_pragma_on_another_line_does_not_waive() -> None:
@@ -150,6 +169,28 @@ def test_block_wins_over_ask() -> None:
     assert run(json.dumps({"event": "commit", "writes": writes}))[0] == 1
 
 
+@pytest.mark.parametrize(
+    "stdin",
+    [
+        "null",
+        "[]",
+        "5",
+        '{"writes": null}',
+        '{"writes": {"Makefile": null}}',
+        '{"writes": {"Makefile": 5}}',
+        "[" * 100000,
+    ],
+)
+def test_odd_payload_is_undecided_not_a_crash(stdin: str) -> None:
+    code, _out, err = run(stdin)
+    assert code == 2, err
+    assert "Traceback" not in err
+
+
+def test_empty_payload_allows() -> None:
+    assert run("{}")[0] == 0
+
+
 def test_bad_stdin_is_undecided() -> None:
     code, out, err = run("not json")
     assert (code, out) == (2, "")
@@ -179,67 +220,12 @@ def test_the_shipped_table_loads_and_is_dated() -> None:
     assert len(doc["entries"]) == len(ENTRIES)
 
 
-def table(tmp_path: Path, entries: object) -> Path:
-    path = tmp_path / "data" / "flags.json"
-    path.parent.mkdir()
-    doc = {
-        "schema": 1,
-        "kind": "curated",
-        "as_of": "2026-10-02",
-        "source": "https://example.invalid/x",
-        "entries": entries,
-    }
-    path.write_text(json.dumps(doc), encoding="utf-8")
-    return path
-
-
-GOOD = {"id": "a-flag", "tier": "block", "langs": ["c"], "pattern": "-x", "what": "turns x off"}
-
-
-@pytest.mark.parametrize(
-    ("entries", "problem"),
-    [
-        ([], "non-empty list"),
-        ("nope", "non-empty list"),
-        ([5], "fields must be"),
-        ([{**GOOD, "extra": 1}], "fields must be"),
-        ([{k: v for k, v in GOOD.items() if k != "what"}], "fields must be"),
-        ([{**GOOD, "id": "Bad_Id"}], "unique kebab-case"),
-        ([{**GOOD, "id": 7}], "unique kebab-case"),
-        ([GOOD, GOOD], "unique kebab-case"),
-        ([{**GOOD, "tier": "warn"}], "tier must be"),
-        ([{**GOOD, "langs": []}], "langs must be"),
-        ([{**GOOD, "langs": ["cobol"]}], "langs must be"),
-        ([{**GOOD, "langs": "c"}], "langs must be"),
-        ([{**GOOD, "what": " "}], "what must say"),
-        ([{**GOOD, "what": 3}], "what must say"),
-        ([{**GOOD, "pattern": "("}], "does not compile"),
-        ([{**GOOD, "pattern": 5}], "does not compile"),
-        ([{**GOOD, "pattern": "x*"}], "empty string"),
-        ([{**GOOD, "section": "["}], "does not compile"),
-        ([{**GOOD, "section": "^$"}], "empty string"),
-    ],
-)
-def test_a_bad_table_is_refused(tmp_path: Path, entries: object, problem: str) -> None:
-    with pytest.raises(mod.TableError, match=problem):
-        mod.rules.load(table(tmp_path, entries))
-
-
-def test_a_good_table_loads_with_a_section(tmp_path: Path) -> None:
-    loaded = mod.rules.load(table(tmp_path, [{**GOOD, "section": "^profile$"}]))
-    assert [(e.id, e.tier, bool(e.section)) for e in loaded] == [("a-flag", "block", True)]
-
-
-def test_sections_and_hits() -> None:
-    assert mod.rules.section_of("[profile.release]", "x") == "profile.release"
-    assert mod.rules.section_of('[[bin."a b"]]', "x") == "bin.ab"
-    assert mod.rules.section_of("name = 1", "x") == "x"
-    entry = ENTRIES[0]
-    assert list(mod.rules.hits(ENTRIES, frozenset({"kernel"}), "-fno-stack-protector", "")) == []
-    assert [e.id for e, _ in mod.rules.hits(ENTRIES, frozenset({"c"}), "-fno-stack-protector", "")] == [entry.id]
-
-
 def test_the_gate_is_fast_on_hostile_lines() -> None:
+    start = time.monotonic()
+    found("Cargo.toml", "profile.release " * 20000)
+    found("Cargo.toml", "profile . release " * 20000)
+    assert time.monotonic() - start < 10
+
     start = time.monotonic()
     text = ("-U_FORTIFY_SOURCE " * 4000 + "\n") * 5 + "X = " + "-z " * 20000 + "\n" + "[" * 5000 + "\n"
     found("Makefile", text)

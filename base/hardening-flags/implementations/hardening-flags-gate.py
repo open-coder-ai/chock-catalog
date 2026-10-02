@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 from collections import Counter
@@ -16,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from chock_scan.data_table import TableError
 from hardflags import rules
+from hardflags.agent import agent_commit
 from hardflags.blank import split
 from hardflags.logical import JOINED, logical_lines
 
@@ -43,7 +43,6 @@ LANGS = {
 }
 BUILD_LANGS = {"c", "go", "rust"}
 WAIVER = re.compile(r"pragma:\s*allowlist\s+hardening-flag")
-FALSY = {"", "0", "false", "no", "off"}
 HINT = (
     "Keep the hardening setting: build with the compiler's or kernel's default, or enable the protection "
     "(stack protector, FORTIFY_SOURCE, PIE, full RELRO, a non-executable stack, CET). A reviewed exception "
@@ -59,10 +58,9 @@ def kind_of(path: str) -> str | None:
     return None
 
 
-def waivable(event: str) -> bool:
+def waivable(event: str, root: Path) -> bool:
     """A waiver counts only where a person staged the text, and never for a commit an agent marked as its own."""
-    agent = os.environ.get("CHOCK_AGENT_COMMIT", "").strip().lower() not in FALSY
-    return event in {"commit", "ci"} and not agent
+    return event in {"commit", "ci"} and not agent_commit(root)
 
 
 def hits_in(entries: list[rules.Entry], kind: str, text: str) -> Counter[tuple[str, int]]:
@@ -83,7 +81,7 @@ def hits_in(entries: list[rules.Entry], kind: str, text: str) -> Counter[tuple[s
 
 def findings(payload: dict, entries: list[rules.Entry]) -> list[dict]:
     """Every weakening setting in a write, keyed by entry id (the engine compares counts per file with the baseline)."""
-    waive = waivable(str(payload.get("event", "")))
+    waive = waivable(str(payload.get("event", "")), Path(str(payload.get("repo_root") or ".")))
     by_id = {entry.id: entry for entry in entries}
     found = []
     for path, text in sorted(payload.get("writes", {}).items()):
@@ -114,11 +112,15 @@ def main() -> int:
     try:
         payload = json.load(sys.stdin)
         entries = rules.load()
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, RecursionError):
         print("hardening-flags: stdin is not the gate JSON", file=sys.stderr)
         return 2
     except (TableError, OSError) as exc:
         print(f"hardening-flags: the flag table cannot be used ({exc}); refusing rather than allowing", file=sys.stderr)
+        return 2
+    writes = payload.get("writes", {}) if isinstance(payload, dict) else None
+    if not isinstance(writes, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in writes.items()):
+        print("hardening-flags: the gate JSON has no writes map of text", file=sys.stderr)
         return 2
     found = findings(payload, entries)
     print(json.dumps({"findings": found}))

@@ -13,6 +13,18 @@ TABLE = Path(__file__).resolve().parent.parent / "data" / "flags.json"
 TIERS = ("block", "ask")
 LANGS = frozenset({"c", "go", "rust", "kernel"})
 FIELDS = frozenset({"id", "tier", "langs", "pattern", "what"})
+#: Rows a table edit may not drop: the gate refuses a table without them rather than judge less.
+REQUIRED = frozenset(
+    {
+        "no-stack-protector",
+        "fortify-source-zero",
+        "no-pie",
+        "execstack",
+        "norelro",
+        "kernel-stackprotector-off",
+        "kernel-kaslr-off",
+    }
+)
 ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 HEADER = re.compile(r"^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*$")
 
@@ -48,6 +60,8 @@ def _problems(doc: dict) -> list[str]:
         if not (isinstance(item["what"], str) and item["what"].strip()):
             out.append(f"{name}: what must say what the setting weakens")
         out.extend(_regex_problems(name, item))
+    if missing := sorted(REQUIRED - seen):
+        out.append(f"required entries missing: {', '.join(missing)}")
     return out
 
 

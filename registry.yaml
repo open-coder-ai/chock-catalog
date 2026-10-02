@@ -736,8 +736,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 31
-  eval_executed: 31
+  eval_cases: 34
+  eval_executed: 34
   description: 'Blocks added settings that weaken compiler, linker, Rust or kernel hardening, in CMake,
     Make, meson, configure.ac, Cargo, build.rs, Go release scripts, Dockerfiles and kernel config: no
     stack protector, FORTIFY_SOURCE off, non-PIE, execstack, norelro, CET off, kernel KASLR/RWX off.

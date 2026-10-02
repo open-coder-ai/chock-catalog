@@ -126,9 +126,12 @@ hardening-flags  [deterministic]
   PASS  tc-029                             authored  gate exit 0
   PASS  tc-030                             authored  gate exit 0
   PASS  tc-031                             authored  gate exit 0
+  PASS  tc-032                             authored  meson.build:1: block: marks the stack executable (-z execstack): ad…
+  PASS  tc-033                             authored  meson.build:1: block: turns position-independent executables off in…
+  PASS  tc-034                             authored  CMakeLists.txt:1: block: turns the stack protector (canaries) off: …
   score 1.00
 
-5 policies: 31 pass, 41 skipped
+5 policies: 34 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

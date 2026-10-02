@@ -117,8 +117,22 @@ SHELL = [
     ("meson.build", "# -no-pie\nx = 'a \\' # -no-pie'\n", ["no-pie"]),
     ("meson.build", "x = '''\n# -no-pie\n'''\n", ["no-pie"]),
     ("meson.build", "x = '''never closed -no-pie\n", ["no-pie"]),
-    ("meson.build", "add_project_link_arguments(\n  '-z',\n  'execstack',\n)\n", []),
+    ("meson.build", "add_project_link_arguments(\n  '-z',\n  'execstack',\n)\n", ["execstack"]),
     ("meson.build", "add_project_link_arguments('-Wl,-z,execstack')\n", ["execstack"]),
+    ("meson.build", "add_project_link_arguments('-z', 'norelro', language: 'c')\n", ["norelro"]),
+    ("meson.build", "executable('x', 'x.c', pie: false)\n", ["meson-pie-off"]),
+    ("meson.build", "project('x', 'c', default_options: ['b_pie=false'])\n", ["meson-pie-off"]),
+    ("meson.build", "executable('x', 'x.c', pie: true, install: false)\n", []),
+    ("CMakeLists.txt", 'target_link_options(t PRIVATE "-z" "execstack")\n', ["execstack"]),
+    ("CMakeLists.txt", "add_compile_options(-DX=\\# -fno-stack-protector)\n", ["no-stack-protector"]),
+    ("CMakeLists.txt", "add_compile_options(-DX=\\# -D_FORTIFY_SOURCE=0)\n", ["fortify-source-zero"]),
+    (
+        "build.sh",
+        'gcc -z \'execstack\' x.c\ngcc -z "norelro" x.c\ngcc -Wl,-z,"execstack" x.c\n',
+        ["execstack"] * 2 + ["norelro"],
+    ),
+    ("configure.ac", "dnl -fno-stack-protector\nAC_PROG_CC # -no-pie\n", []),
+    ("configure.ac", "AC_PROG_CC dnl -no-pie\nCFLAGS=-no-pie\n", ["no-pie"]),
 ]
 CARGO = [
     ("Cargo.toml", "[profile.release]\noverflow-checks = false\n", ["rust-overflow-checks-release"]),
@@ -160,6 +174,10 @@ CARGO = [
     ("Cargo.toml", 'x = """\n# -no-pie\n"""\ny = \'a # b\' # -no-pie\n', ["no-pie"]),
     ("Cargo.toml", "x = 'C:\\\\' # -no-pie\nflags = ['-no-pie']\n", ["no-pie"]),
     ("Cargo.toml", 'x = """never closed # -no-pie\n', ["no-pie"]),
+    ("Cargo.toml", '[profile.release]\n"overflow-checks" = false\n', ["rust-overflow-checks-release"]),
+    ("Cargo.toml", "[profile]\nrelease.overflow-checks = false\n", ["rust-overflow-checks-release-inline"]),
+    (".cargo/config.toml", 'rustflags = ["--codegen", "relocation-model=static"]\n', ["rust-relocation-model-static"]),
+    (".cargo/config.toml", "rustflags = ['--codegen=relocation-model=static']\n", ["rust-relocation-model-static"]),
 ]
 RUST = [
     ("build.rs", 'fn main() {\n    println!("cargo:rustc-link-arg=-no-pie");\n}\n', ["no-pie"]),
@@ -183,6 +201,7 @@ RUST = [
     ),
     ("build.rs", 'Command::new("ld").arg("-z").arg("execstack");\n', []),
     ("build.rs", 'let a = 1 // "-no-pie"\n', []),
+    ("build.rs", 'let a = br"\\"; let b = "//"; let c = "-fno-stack-protector";\n', ["no-stack-protector"]),
 ]
 KERNEL = [
     ("board_defconfig", "# CONFIG_STACKPROTECTOR is not set\n", ["kernel-stackprotector-off"]),

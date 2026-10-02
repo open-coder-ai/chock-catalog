@@ -15,7 +15,8 @@ QUOTES = {
 TRIPLE = frozenset({"meson", "toml"})
 BRACKET = re.compile(r"\[(=*)\[")
 CHAR = re.compile(r"'(?:\\.[^']{0,8}|[^\\'])'")
-RAW = re.compile(r'(?<![\w"])r(#*)"')
+RAW = re.compile(r'(?<![\w"])(?:b|c)?r(#*)"')
+DNL = re.compile(r"(?<![\w])dnl(?![\w])")
 WORD_START = " \t\r\n;&|("
 
 
@@ -32,6 +33,8 @@ def split(kind: str, text: str) -> tuple[str, str]:
         spans = _make_spans(text)
     else:
         spans = _hash_spans(text, kind)
+        if kind == "autoconf":
+            spans += _to_eol(text, lambda line: m.start() if (m := DNL.search(line)) else -1)
     code, note = list(text), [ch if ch == "\n" else " " for ch in text]
     for start, end in spans:
         for i in range(start, end):
@@ -81,7 +84,7 @@ def _hash_spans(text: str, kind: str) -> list[tuple[int, int]]:
         ch = text[i]
         if ch in quotes:
             i = _skip_string(text, i, ch, escapes=quotes[ch], triple=kind in TRIPLE)
-        elif ch == "\\" and shell:
+        elif ch == "\\" and (shell or kind == "cmake"):
             i += 2
         elif ch == "[" and kind == "cmake" and (m := BRACKET.match(text, i)):
             i = _after(text, "]" + m.group(1) + "]", m.end())

@@ -165,3 +165,18 @@ suite:
     prompt: "build.rs names a flag only in a line comment."
     expect: "The commit passes."
     execute: {"event": "commit", "files": {"build.rs": "// -C relocation-model=static was tried and dropped\nfn main() {}\n"}, "expect": "allow"}
+  - id: tc-032
+    category: trigger
+    prompt: "A meson file passes -z and execstack as separate quoted arguments."
+    expect: "The commit is refused: quoted argument pairs are joined."
+    execute: {"event": "commit", "files": {"meson.build": "add_project_link_arguments('-z', 'execstack', language: 'c')\n"}, "expect": "block"}
+  - id: tc-033
+    category: trigger
+    prompt: "A meson executable switches PIE off."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {"meson.build": "executable('app', 'main.c', pie: false)\n"}, "expect": "block"}
+  - id: tc-034
+    category: trigger
+    prompt: "A CMake define ends in an escaped hash and the flag follows on the same line."
+    expect: "The commit is refused: an escaped hash does not start a comment."
+    execute: {"event": "commit", "files": {"CMakeLists.txt": "add_compile_options(-DX=\\# -fno-stack-protector)\n"}, "expect": "block"}
