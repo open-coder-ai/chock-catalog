@@ -10,9 +10,12 @@ import hashlib
 import re
 
 import pytest
+from policies import guard_cases_destructive as authored
+from policies import guard_cases_destructive_review as review
 from policies import guardkit
-from policies.guard_cases_destructive import CASES, FALLBACK
 
+CASES = authored.CASES + review.CASES
+FALLBACK = authored.FALLBACK + review.FALLBACK
 POLICIES = ("block-destructive-commands", "rtk-dangerous-actions-blocker")
 GUARDS = {policy: guardkit.load_guard(policy) for policy in POLICIES}
 TABLE = GUARDS[POLICIES[0]].chock_destructive.TABLE

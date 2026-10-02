@@ -5,12 +5,20 @@ import re
 from collections.abc import Callable
 from itertools import takewhile
 
-from chock_shellparse import Cmd, flags_of, is_dangerous_target, operands, positionals, removes_root_recursively
+from chock_shellparse import (
+    Cmd,
+    abbreviates,
+    flags_of,
+    is_dangerous_target,
+    operands,
+    positionals,
+    removes_root_recursively,
+)
 
 Hit = tuple[str, str] | None
 _SYSTEM = "bin|boot|dev|etc|home|lib|lib32|lib64|opt|proc|root|sbin|srv|sys|usr|var"
-_ROOT = re.compile(rf"/\*?|/({_SYSTEM})(/\*?)?|~/?\*?|\$\{{?HOME\}}?(/\*?)?", re.IGNORECASE)
-_CWD = frozenset(("$PWD", "${PWD}", "$(pwd)", "`pwd`"))
+_ROOT = re.compile(rf"/\*?|/({_SYSTEM})(/\*?)?|~([a-z_][\w.-]*)?/?\*?|\$\{{?HOME\}}?(/\*?)?", re.IGNORECASE)
+_CWD = frozenset(("$PWD", "${PWD}", "$(pwd)", "~+"))
 # rtk's safe list: build output a developer deletes all day, matched on the last path segment.
 SAFE_DIRS = frozenset(
     (
@@ -19,7 +27,6 @@ SAFE_DIRS = frozenset(
     )
 )
 _QUIET_DEVICES = re.compile(r"/dev/(null|zero|stdout|stderr|tty|fd/\d+)")
-_CHMOD_MODE = re.compile(r"0*(777|000)|[ugoa]*([+=]rwx|-rwx|=)")
 _KEYS = frozenset(("authorized_keys", "authorized_keys2"))
 _CLOBBER = re.compile(r"(^|[^>])>\|?\s*[\"']?[^\s;&|<>]*authorized_keys2?([\s\"';&|)]|$)")
 _COPIERS = frozenset(("cp", "mv", "install", "ln", "scp", "rsync"))
@@ -30,8 +37,7 @@ _EXEC_FLAGS = frozenset(("-exec", "-execdir", "-ok"))
 
 def is_root(path: str) -> bool:
     """`/`, a top-level system directory, or home (also as a `/*` glob): never a routine target."""
-    clean = posixpath.normpath(path) if path.startswith("/") else path
-    return _ROOT.fullmatch(re.sub("/+", "/", clean)) is not None
+    return _ROOT.fullmatch(re.sub("/+", "/", posixpath.normpath(path))) is not None
 
 
 def is_cwd(path: str) -> bool:
@@ -45,11 +51,17 @@ def _safe(path: str) -> bool:
     return last in SAFE_DIRS
 
 
+def has(cmd: Cmd, short: set[str], long: str) -> bool:
+    """A short flag, or any unambiguous prefix (three characters or more) of the long one, as getopt accepts."""
+    flags = flags_of(cmd.args)
+    return bool(flags & short) or any(abbreviates(f, long, len("--r")) for f in flags if f.startswith("--"))
+
+
 def rm(cmd: Cmd) -> Hit:
-    flags, targets = flags_of(cmd.args), operands(cmd.args)
-    if not flags & {"-r", "-R", "--recursive"}:
+    targets = operands(cmd.args)
+    if not has(cmd, {"-r", "-R"}, "--recursive"):
         return None
-    forced = bool(flags & {"-f", "--force"})
+    forced = has(cmd, {"-f"}, "--force")
     if forced and (hit := next((t for t in targets if is_dangerous_target(t) or is_cwd(t)), None)):
         return "rm-rf", hit
     if hit := next((t for t in targets if is_root(t)), None):
@@ -74,25 +86,32 @@ def mv(cmd: Cmd) -> Hit:
     return None if hit is None else ("mv-root", hit)
 
 
-def chmod(cmd: Cmd) -> Hit:
+def _changed(cmd: Cmd) -> list[str]:
+    """chmod/chown/chgrp targets: every operand after the mode or owner, or all of them with --reference."""
     items = operands(cmd.args)
-    if not ({"-R", "--recursive"} & flags_of(cmd.args) and items and _CHMOD_MODE.fullmatch(items[0])):
-        return None
-    return ("chmod-root", items[0]) if any(is_root(t) for t in items[1:]) else None
+    return items if any(a.startswith("--reference") for a in cmd.args) else items[1:]
+
+
+def chmod(cmd: Cmd) -> Hit:
+    """Any recursive chmod of root, a system directory or home: no mode makes that routine."""
+    hit = has(cmd, {"-R"}, "--recursive") and any(is_root(t) for t in _changed(cmd))
+    return ("chmod-root", (operands(cmd.args) or [""])[0]) if hit else None
 
 
 def chown(cmd: Cmd) -> Hit:
-    recursive = bool({"-R", "--recursive"} & flags_of(cmd.args))
-    return ("chown-root", cmd.name) if recursive and any(is_root(t) for t in operands(cmd.args)[1:]) else None
+    hit = has(cmd, {"-R"}, "--recursive") and any(is_root(t) for t in _changed(cmd))
+    return ("chown-root", cmd.name) if hit else None
 
 
 def dd(cmd: Cmd) -> Hit:
-    hit = next((a[3:] for a in cmd.args if a.startswith("of=/dev/") and not _QUIET_DEVICES.fullmatch(a[3:])), None)
+    paths = [re.sub("/+", "/", posixpath.normpath(a[3:])) for a in cmd.args if a.startswith("of=")]
+    hit = next((p for p in paths if p.startswith("/dev/") and not _QUIET_DEVICES.fullmatch(p)), None)
     return None if hit is None else ("dd-device", hit)
 
 
 def mkfs(cmd: Cmd) -> Hit:
-    return "mkfs", cmd.name
+    asking = {"-h", "--help", "-V", "--version"} & set(cmd.args)
+    return None if asking else ("mkfs", cmd.name)
 
 
 def find(cmd: Cmd) -> Hit:
@@ -131,21 +150,21 @@ def keys(cmd: Cmd, raw: str) -> Hit:
 
 
 def usermod(cmd: Cmd) -> Hit:
-    return ("account-lock", f"{cmd.name} -L") if flags_of(cmd.args) & {"-L", "--lock"} else None
+    return ("account-lock", f"{cmd.name} -L") if has(cmd, {"-L"}, "--lock") else None
 
 
 def passwd(cmd: Cmd) -> Hit:
-    return ("account-lock", f"{cmd.name} -l") if flags_of(cmd.args) & {"-l", "--lock"} else None
+    return ("account-lock", f"{cmd.name} -l") if has(cmd, {"-l"}, "--lock") else None
 
 
 def chattr(cmd: Cmd) -> Hit:
-    hit = next((a for a in cmd.args if a.startswith("+") and "i" in a), None)
+    hit = next((a for a in cmd.args if a[:1] in "+=" and "i" in a), None)
     return None if hit is None else ("chattr-immutable", hit)
 
 
 def kill(cmd: Cmd) -> Hit:
     """`kill -9 -1`, `kill -s KILL -1`, `kill -- -1`: -1 in the pid slot is every process; `kill -1 <pid>` is SIGHUP."""
-    return ("kill-all", "") if len(cmd.args) > 1 and cmd.args[-1] == "-1" else None
+    return ("kill-all", "") if "-1" in cmd.args[1:] else None
 
 
 def pkill(cmd: Cmd) -> Hit:
@@ -153,7 +172,8 @@ def pkill(cmd: Cmd) -> Hit:
 
 
 def killall(cmd: Cmd) -> Hit:
-    return ("kill-pattern", cmd.name) if operands(cmd.args) else None
+    probing = "-0" in cmd.args
+    return ("kill-pattern", cmd.name) if operands(cmd.args) and not probing else None
 
 
 def crontab(cmd: Cmd) -> Hit:

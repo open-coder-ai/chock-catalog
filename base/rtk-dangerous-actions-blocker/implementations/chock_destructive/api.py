@@ -13,7 +13,7 @@ INFRA_HOSTS = (
     *("api.planetscale.com", ".googleapis.com", ".amazonaws.com"),
 )
 _AUTH_HEADER = re.compile(r"\s*(authorization|private-token|x-api-key|api-key|x-auth-token|x-auth-key)\s*:", re.I)
-_AUTH_FLAGS = ("-u", "--user", "--oauth2-bearer", "--aws-sigv4", "-n", "--netrc")
+_AUTH_FLAGS = ("--oauth2-bearer", "--aws-sigv4", "-n", "--netrc", "--netrc-file")
 _HOST = re.compile(r"(?:https?://)?(?:[^@/?#]*@)?([^:/?#]+)", re.IGNORECASE)
 _MUTATION = re.compile(r"\bmutation\b[\s\S]*?(delete|destroy|remove)", re.IGNORECASE)
 
@@ -26,8 +26,10 @@ def _values(args: list[str], short: str, long: str) -> list[str]:
             found.append(args[i + 1])
         elif arg.startswith(f"{long}="):
             found.append(arg.partition("=")[2])
-        elif arg.startswith(short) and len(arg) > len(short) and not arg.startswith("--"):
-            found.append(arg[len(short) :])
+        elif len(short) == len("-X") and arg[:1] == "-" and arg[1:2] != "-" and short[1] in arg[1:]:
+            # A short-flag cluster: `-sX DELETE` takes the next word, `-sXDELETE` the rest of this one.
+            rest = arg[arg.index(short[1], 1) + 1 :]
+            found.extend([rest] if rest else args[i + 1 : i + 2])
     return found
 
 
@@ -47,8 +49,10 @@ def curl(cmd: Cmd, _raw: str) -> Hit:
     args = cmd.args
     if not any(_infra_host(u) for u in (*operands(args), *_values(args, "--url", "--url"))):
         return None
-    authed = any(_AUTH_HEADER.match(h) for h in _values(args, "-H", "--header")) or any(
-        a.split("=", 1)[0] in _AUTH_FLAGS or (a.startswith("-u") and a != "-u") for a in args
+    authed = (
+        any(_AUTH_HEADER.match(h) for h in _values(args, "-H", "--header"))
+        or bool(_values(args, "-u", "--user"))
+        or any(a.split("=", 1)[0] in _AUTH_FLAGS for a in args)
     )
     deleting = any(v.upper() == "DELETE" for v in _values(args, "-X", "--request"))
     mutation = _MUTATION.search(_data(args)) is not None

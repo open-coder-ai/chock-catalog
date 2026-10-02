@@ -20,7 +20,7 @@ compliance:
 rule:
   text: |
     block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
-    ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve; skip_inside: docker|kubectl_exec(file rows); prefix: rtk; prefer: stash|dry-run
+    ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve, pkill_-f, systemctl_disable; skip_inside: docker|kubectl_exec(file rows); prefix: rtk
 effects:
 - read_only
 approval:
@@ -53,6 +53,7 @@ changelog:
   changes:
   - "Destructive verdicts now come from chock_destructive (table 1.0.0), shipped byte for byte in this policy and block-destructive-commands; this guard keeps only its own credential rows (file reads, echoes, inline literals). Where the two policies disagreed the stricter verdict wins, because an agent may not lower enforcement: git reset --hard, git clean -f, git checkout . and docker system/volume prune now block instead of asking (tc-017 to tc-020, tc-034, tc-035, tc-040, tc-060 and tc-068 flip ask to block), and git push --force-with-lease with no value asks (tc-016 flips allow to ask). Aligning at ask instead, as the roadmap's HP02 note suggests, would loosen block-destructive-commands; that is the owner's call and a one-row change in the table."
   - "Gains every verb block-destructive-commands 0.2.0 adds (its changelog lists them), plus find -delete/-exec rm, shred, truncate, wipefs and docker volume remove, which this fork never judged. The C3 fallback is honoured fail-closed the same way: an unsplittable command is also read without its quotes and the stricter reading wins. 13 eval cases added (tc-093 to tc-105)."
+  - "The same review hardening as block-destructive-commands 0.2.0 (its changelog lists it), through the shared table. rtk's safe list for rm -rf is unchanged: widening it (.venv, .pytest_cache, out) would turn asks into allows, which only the owner can decide."
 - version: 0.1.1
   date: '2026-09-30'
   changes:

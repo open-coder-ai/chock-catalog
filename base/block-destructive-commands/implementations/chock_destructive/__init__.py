@@ -17,6 +17,7 @@ __all__ = ["ASK", "BLOCK", "TABLE", "TABLE_VERSION", "Extra", "Verdict", "check"
 Verdict = tuple[int, str] | None
 #: A policy's own rows, given (command, inside a container exec); judged beside the table's.
 Extra = Callable[[Cmd, bool], Verdict]
+_SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh", "ash"))
 _EXEC_VALUES = frozenset(("-e", "-u", "-w", "--env", "--user", "--workdir", "--env-file"))
 
 
@@ -71,8 +72,10 @@ def judge_all(cmds: list[Cmd], raw: str, *, container: bool, extra: Extra | None
     for cmd in cmds:
         words = inner_command(cmd)
         inner = judge_all(commands(shlex.join(words)), raw, container=True, extra=extra) if words else None
+        body = cmd.doc if cmd.name in _SHELLS else ""
+        script = judge_all(commands(body), raw, container=container, extra=extra) if body else None
         own = extra(cmd, container) if extra else None
-        for verdict in (own, judge(cmd, raw, container=container), inner):
+        for verdict in (own, judge(cmd, raw, container=container), inner, script):
             if verdict and verdict[0] == BLOCK:
                 return verdict
             asked = asked or verdict
@@ -96,8 +99,10 @@ def raw_command(argv: list[str]) -> str:
 
 
 def check(raw: str, extra: Extra | None = None) -> Verdict:
-    """The verdict for a command line. One that cannot be split is also read with every quote and backslash dropped,
-    and the stricter reading wins: a command whose quoting is unknown is never let through on one guess."""
-    readings = [raw, re.sub(r"[\"'\\]", " ", raw)] if unreadable(raw) else [raw]
+    """The verdict for a command line. One that cannot be split is also read with every quote and backslash removed,
+    and replaced by a space, and the strictest reading wins: a command whose quoting is unknown is never let through
+    on one guess."""
+    quote = re.compile(r"[\"'\\]")
+    readings = [raw, quote.sub("", raw), quote.sub(" ", raw)] if unreadable(raw) else [raw]
     found = [judge_all(commands(text), text, container=False, extra=extra) for text in readings]
     return next((v for v in found if v and v[0] == BLOCK), None) or next((v for v in found if v), None)

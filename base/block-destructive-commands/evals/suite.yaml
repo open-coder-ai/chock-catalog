@@ -1180,3 +1180,31 @@ suite:
     execute:
       command: "git commit -m 'document terraform destroy and git push --mirror'"
       expect: allow
+  - id: tc-167
+    category: adversarial
+    prompt: "A global flag that takes a value sits before the s3 verb."
+    expect: "The guard still refuses; the verb is found after the service word."
+    execute:
+      command: "aws --cli-read-timeout 5 s3 rm s3://prod --recursive"
+      expect: block
+  - id: tc-168
+    category: adversarial
+    prompt: "curl's DELETE is folded into a short-flag cluster."
+    expect: "The guard reads the cluster and asks."
+    execute:
+      command: "curl -sX DELETE -H \"Authorization: Bearer $GH_TOKEN\" https://api.github.com/repos/o/r"
+      expect: ask
+  - id: tc-169
+    category: adversarial
+    prompt: "pulumi is pointed at a directory before destroy."
+    expect: "The guard skips the flag's value and refuses."
+    execute:
+      command: "pulumi -C infra destroy"
+      expect: block
+  - id: tc-170
+    category: adversarial
+    prompt: "A heredoc feeds a destructive command to bash."
+    expect: "The guard judges the heredoc body and refuses."
+    execute:
+      command: "bash <<EOF\nterraform destroy\nEOF"
+      expect: block

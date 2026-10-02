@@ -4,11 +4,13 @@ from chock_shellparse import Cmd, abbreviates, flags_of, git_parts, operands
 
 Hit = tuple[str, str] | None
 _LEASE = "--force-with-lease"
+_WHOLE = frozenset(("", ".", "..", "*", ":", ":/", ":/*", ":/.", ":(top)", ":(top)*", ":(top)."))
+_NOW = frozenset(("now", "all", "0"))
 
 
 def _whole_tree(targets: list[str]) -> str:
-    """The pathspec that names the whole worktree ('.', './', ':/', '*'), or ''."""
-    return next((t for t in targets if t.rstrip("/") == "." or t in (":/", "*")), "")
+    """The pathspec that names the whole worktree ('.', './', '..', ':/', ':(top)', '*'), or ''."""
+    return next((t for t in targets if t.rstrip("/") in _WHOLE or set(t) <= set("./")), "")
 
 
 def push(rest: list[str]) -> Hit:
@@ -42,8 +44,14 @@ def history(sub: str, rest: list[str]) -> Hit:
         return "history-rewrite", sub
     if sub == "reflog" and first in (["expire"], ["delete"]):
         return "history-rewrite", f"reflog {first[0]}"
-    if sub == "gc" and any(a in ("--prune=now", "--prune=all") for a in rest):
+    if sub == "gc" and any(a.startswith("--prune=") and a[8:].split(".")[0] in _NOW for a in rest):
         return "history-rewrite", "gc --prune=now"
+    expiry = next(
+        (a[9:] for a in rest if a.startswith("--expire=")),
+        rest[rest.index("--expire") + 1] if "--expire" in rest[:-1] else "now",
+    )
+    if sub == "prune" and expiry.split(".")[0] in _NOW and not {"-n", "--dry-run"} & set(rest):
+        return "history-rewrite", "prune"
     return ("history-rewrite", "update-ref -d") if sub == "update-ref" and "-d" in flags_of(rest) else None
 
 
