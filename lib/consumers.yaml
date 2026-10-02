@@ -20,3 +20,5 @@ base/rtk-dangerous-actions-blocker:
   chock_shellparse: [args, parse, targets, writes]
 base/verify-mcp-allowlist:
   chock_shellparse: [args, parse, targets, writes]
+base/agent-devenv-autoexec:
+  chock_scan: [jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
