@@ -11,16 +11,20 @@ from typing import Any, NamedTuple
 from chock_scan import data_table
 
 TABLE = Path(__file__).resolve().parent / "data" / "secret_stores.json"
-KEYS = ("home", "names", "templates", "absolute", "interpreters", "recursive", "readers", "printers")
+KEYS = ("home", "names", "templates", "absolute", "interpreters", "recursive", "dotskip", "readers", "printers")
 MODES = frozenset(("operands", "pattern-first", "program-first", "sources", "archive", "dd"))
 ACTIONS = frozenset(("block", "ask"))
 RELATIVE = frozenset(("always", "code", "never"))
-MIN_LITERAL = 3
+MIN_LITERAL = 2
 TEXT_LIMIT = 1 << 20
 _HOME = re.compile(r"(?:~[\w.-]*|\$\{?(?:HOME|USERPROFILE)\}?|%USERPROFILE%|\$env:(?:HOME|USERPROFILE))(?=/|$)", re.I)
 _VAR = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
 _DRIVE = re.compile(r"^[A-Za-z]:(?=/)")
-_ANCHOR = re.compile(r"^/(?:mnt/)?(?:[A-Za-z]/)?(?:(?:home|Users)/[^/]+|root)(?=/|$)")
+_ANCHOR = re.compile(
+    r"^/(?:(?:mnt|cygdrive)/)?(?:[A-Za-z]/)?(?:(?:(?:usr|export)/)?(?:home|Users)/[^/]+|(?:private/)?(?:var/)?root)(?=/|$)"
+)
+_PROC_ROOT = re.compile(r"^/proc/[^/]+/(?:root|cwd)(?=/|$)")
+ANCESTORS = frozenset((("/",), ("/", "home"), ("/", "Users"), ("/", "users")))
 _GLOB = re.compile(r"[*?\[]")
 _WORD = re.compile(r"[^\s'\"`()\[\]{},;=<>|&]+")
 _DIRS = {
@@ -51,12 +55,14 @@ class Table(NamedTuple):
     templates: tuple[str, ...]
     interpreters: frozenset[str]
     recursive: dict[str, Any]
+    dotskip: dict[str, list[str]]
     readers: dict[str, str]
     printers: list[dict[str, Any]]
 
 
 def _problems(doc: dict) -> list[str]:
     found = [f"unknown reader mode {mode!r}" for mode in sorted(set(doc["readers"].values()) - MODES)]
+    found += [] if doc["readers"] else ["readers must not be empty"]
     for item in [*doc["home"], *doc["names"], *doc["absolute"]]:
         if item.get("action", "block") not in ACTIONS:
             found.append(f"{item['id']}: action must be block or ask")
@@ -94,6 +100,7 @@ def load(path: Path = TABLE) -> Table:
         tuple(doc["templates"]),
         frozenset(doc["interpreters"]),
         doc["recursive"],
+        doc["dotskip"],
         doc["readers"],
         doc["printers"],
     )
@@ -144,11 +151,11 @@ def resolve(path: str, env: dict[str, str], cwd: tuple[str, ...] | None = None) 
     parts = collapse(text)
     if not text.startswith("/"):
         return tuple(parts)
-    flat = "/" + "/".join(parts)
+    flat = _PROC_ROOT.sub("", "/" + "/".join(parts))
     found = _ANCHOR.match(flat)
     if found:
         return ("~", *[part for part in flat[found.end() :].split("/") if part])
-    return ("~",) if parts in ([], ["home"], ["Users"]) else ("/", *parts)
+    return ("/", *[part for part in flat.split("/") if part])
 
 
 def braces(word: str, cap: int = 1024) -> list[str] | None:
@@ -183,8 +190,8 @@ def _public(name: str, allow: tuple[str, ...]) -> bool:
 
 def _inside(rest: tuple[str, ...], entry: Entry, *, walk: bool) -> bool:
     """Whether `rest` is the entry, below it, or (for a verb that walks trees) a parent of it."""
-    floor = 0 if entry.files else MIN_LITERAL
-    if not all(comp_match(op, store, floor) for op, store in zip(rest, entry.path, strict=False)):
+    pairs = enumerate(zip(rest, entry.path, strict=False))
+    if not all(comp_match(op, store, MIN_LITERAL if len(rest) == 1 else 0) for i, (op, store) in pairs):
         return False
     if len(rest) < len(entry.path):
         return walk
@@ -222,6 +229,7 @@ def find(parts: tuple[str, ...], table: Table, *, walk: bool = False, code: bool
     if not parts:
         return None
     low = tuple(part.casefold() for part in parts)
+    low = ("~",) if low in ANCESTORS else low
     return _home(low, table, walk=walk, code=code) or _absolute(low, table) or _named(low[-1], table)
 
 
