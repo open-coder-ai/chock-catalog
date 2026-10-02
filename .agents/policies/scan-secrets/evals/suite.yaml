@@ -312,3 +312,13 @@ suite:
       files:
         blob.yaml: "data: Z2xwYXQtRVhBTVBMRTBOT1RBUkVBTDBUT0tFTg==\n"
       expect: allow
+  - id: tc-053
+    category: negative_trigger
+    prompt: A commit adds code that passes credentials by name, path or variable, not by value.
+    expect: The hook allows identifiers, quoted environment-variable names, key-file paths and a templated bearer.
+    execute:
+      files:
+        client.py: "load(private_key=private_key_pem2, access_key='AWS_ACCESS_KEY_ID_2')\n"
+        app.yaml: "private_key: 'secrets/prod-key2.pem'\n"
+        call.sh: "curl -H 'Authorization: Bearer ACCESS_TOKEN_2' https://api.internal\n"
+      expect: allow

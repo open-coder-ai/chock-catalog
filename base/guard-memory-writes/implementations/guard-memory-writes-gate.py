@@ -19,7 +19,7 @@ HISTORY = re.compile(
 # scan-secrets' content_pattern, verbatim; tests/policies/test_guard_memory_writes.py fails on drift.
 SECRET = re.compile(
     r"""(?ix)
-# v1 shapes, unchanged
+# v1 shapes, unchanged except where noted
 (AKIA|ASIA)[0-9A-Z]{16}
 |gh[oprsu]_[0-9A-Za-z]{36}
 |github_pat_[0-9A-Za-z_]{22,}
@@ -31,37 +31,43 @@ SECRET = re.compile(
 |AIza[0-9A-Za-z_-]{35}
 |npm_[0-9A-Za-z]{36}
 |SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}
-|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*
+# JWT: segment lengths bounded so a hostile line is judged in linear time
+|eyJ[A-Za-z0-9_-]{0,1024}\.[A-Za-z0-9_-]{0,16384}\.[A-Za-z0-9_-]*
 |api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |password\s*=\s*["'][^"'\s]{12,}["']
 |(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}
 # v1 bare password, now silent on SOPS, vault:, Terraform references and environment lookups
-|password\s*[=:]\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]*(?:env|getenv|environ)[.(\[])[^\s"'${}]{12,}
+|password\s*[=:]\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])[^\s"'${}]{12,}
 # private keys: any PEM label ending PRIVATE KEY (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS8), PGP armor
 |-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE\ KEY(?:\ BLOCK)?-----
-# key, token, secret and password names, any case and separator, in JSON, YAML, env, HCL, Go, Ruby, PHP
-|(?:api[_.-]?key|secret[_.-]?(?:access[_.-]?)?key|access[_.-]?key|(?:client|consumer|jwt)[_.-]?secret
-   |(?:auth|access|refresh|api|bearer)[_.-]?token|private[_.-]?key|passw(?:or)?d|passphrase)
- ["'`]?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?P<kv_quote>["'`])?
- (?!(?:\$|\{\{|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/|/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
-   |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef|[\w.]*(?:env|getenv|environ)[.(\[]
-   |your|my[_-]|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo\b|none\b|null\b|insert|enter))
- (?(kv_quote)(?=[^"'`\s]*[^a-z._\-"'`\s])[^"'`\s]{12,}["'`]
-   |(?=[A-Za-z0-9/+=_~-]*\d)(?![A-Za-z0-9/+=_~-]*(?-i:Key|Token|Secret|Passw|Type|Str|Bytes|Cred))
-    [A-Za-z0-9/+=_~-]{16,}(?=[\s,;)\]}]|$))
+# key, token, secret and password names in any case and separator: JSON, YAML, env, HCL, Go, Ruby, PHP, Python, JS
+|(?:api[_.-]?key|secret[_.-]?(?:access[_.-]?)?key(?:[_.-]?base)?|access[_.-]?key
+   |(?:client|consumer|jwt|webhook|app|session|signing|cookie)[_.-]?secret
+   |(?:auth|access|refresh|api|bearer|bot)[_.-]?token|(?:private|signing|encryption|master)[_.-]?key
+   |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,64}_(?:TOKEN|SECRET|PASS|PWD)))
+ ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bru]{1,2}(?=["'`]))?(?P<kv_quote>["'`])?
+ (?!(?:\$|\{|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/|/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
+   |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
+   |[\w.]{0,64}(?:env|getenv|environ)[.(\[]|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?:["'`\s,;)\]}]|$)
+   |(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_]|$)))
+ (?(kv_quote)(?=[^"'`\s]{0,512}[^a-z._\-"'`\s])(?![^"'`\s]{0,512}\.(?:txt|pem|key|crt|cer|json|ya?ml|env|cfg|conf|ini|p12|pfx|jks)["'`])
+    [^"'`\s]{12,512}["'`]
+   |(?=[A-Za-z0-9/+=_~-]{0,512}\d)(?![A-Za-z0-9/+=_~-]{0,512}(?-i:Key|Token|Secret|Passw|Type|Str|Bytes|Cred))
+    [A-Za-z0-9/+=_~-]{16,512}(?=[\s,;)\]}]|$))
 # credentials in a URI: scheme://user:password@host, not localhost or example hosts, not a placeholder
 |\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"]*):(?!(?P=uri_user)@)
  (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token|example|dummy|redacted|placeholder)@))
  [^\s/:@'"]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
 # Authorization header literals
-|\bauthorization["'`]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]+(?:["'`\s,;)]|$))
- (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example))[A-Za-z0-9._~+/-]{12,}
+|\bauthorization["'`]?\]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]{1,512}(?:["'`\s,;)]|$))
+ (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?:["'`\s,;)]|$)))
+ [A-Za-z0-9._~+/-]{12,}
 # passwords passed on a command line
-|\bcurl\b.{0,200}\s(?:-u|--user)[=\s]+["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-|\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)[=\s]+["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-|\bmysql(?:dump|admin|sh)?\b.{0,200}\s(?-i:-p)(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+|\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+|\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+|\bmysql(?:dump|admin|sh)?\b.{0,200}\s(?-i:-p)["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
 |\bsshpass\s+(?-i:-p)\s*["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
 # vendor token shapes (case-sensitive)
 |(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})

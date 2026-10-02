@@ -578,13 +578,13 @@ policies:
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 39
-  eval_executed: 39
-  description: 'Blocks credentials: vendor token shapes (AWS, GitHub, GitLab, Slack, OpenAI, Hugging
-    Face, ...), JWTs, private-key and PGP blocks, key/token/secret/password values in code, JSON, YAML,
-    .env and HCL, URI credentials, Authorization literals, CLI password flags; files by path (.env*,
-    keys). Misses: values split over lines or encoded, digitless bare values, values shaped like references
-    or placeholders. Pragma ''# pragma: allowlist secret'' same line; agent: only if in HEAD.'
+  eval_cases: 40
+  eval_executed: 40
+  description: 'Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs,
+    private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code),
+    URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split
+    or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values.
+    Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.'
 - id: token-efficiency
   path: base/token-efficiency
   version: 0.1.1
