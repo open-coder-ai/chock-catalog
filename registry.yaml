@@ -86,19 +86,19 @@ policies:
     aliases, scripts.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.1.1
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 49
-  eval_executed: 49
-  description: 'Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod)
-    that UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
-    -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact or
-    .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a person.
-    A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.'
+  eval_cases: 135
+  eval_executed: 135
+  description: 'Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist
+    (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet,
+    scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL
+    or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:.
+    Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
   version: 0.1.0

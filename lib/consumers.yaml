@@ -8,6 +8,7 @@ base/block-no-verify:
   chock_shellparse: [args, parse, targets, writes]
 base/block-unapproved-egress:
   chock_shellparse: [args, parse, targets, writes]
+  chock_scan: [hostmatch, hosts, idn, safe_read, urls]
 base/block-unguarded-agent-spawn:
   chock_shellparse: [args, parse, targets, writes]
 base/protect-agent-config:
