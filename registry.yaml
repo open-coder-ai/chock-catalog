@@ -61,13 +61,14 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 47
-  eval_executed: 47
-  description: 'Blocks invisible Unicode in added lines: bidi controls (CVE-2021-42574), tag chars U+E0000-E007F,
-    zero-width/joiners beside ASCII or in runs, mid-line BOM, variation-selector runs or after ASCII
-    letters, private-use runs of 3+, noncharacters. Allows emoji ZWJ, RTL/Indic/Thai text, line-start
-    BOM. Not caught: homoglyphs, LRM/RLM in prose, U+2028. Runs: commit, agent write, turn''s end. Waiver:
-    ''pragma: allowlist invisible-unicode'' same line; agent: only if in HEAD; MCP gateway: never.'
+  eval_cases: 61
+  eval_executed: 61
+  description: 'Blocks hidden Unicode in added lines: bidi, tag and plane-14 chars, word joiner, chained
+    invisibles, zero-width/joiners/fillers by ASCII, mid-line BOM, LRM/RLM outside RTL text, selectors
+    after ASCII, private-use runs of 16+. Allows emoji, RTL/Indic/Thai/CJK text, line-start BOM. Not
+    caught: homoglyphs, a joiner between non-ASCII, binary files and text after U+2028 at commit. Runs:
+    commit, agent write, turn''s end. Waiver: ''pragma: allowlist invisible-unicode'' same line; agent:
+    HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
   version: 0.3.2

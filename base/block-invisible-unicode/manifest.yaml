@@ -2,12 +2,12 @@ id: block-invisible-unicode
 name: "Block Invisible Unicode"
 version: "0.1.0"
 description: >
-  Blocks invisible Unicode in added lines: bidi controls (CVE-2021-42574), tag chars
-  U+E0000-E007F, zero-width/joiners beside ASCII or in runs, mid-line BOM, variation-selector
-  runs or after ASCII letters, private-use runs of 3+, noncharacters. Allows emoji ZWJ,
-  RTL/Indic/Thai text, line-start BOM. Not caught: homoglyphs, LRM/RLM in prose, U+2028. Runs:
-  commit, agent write, turn's end. Waiver: 'pragma: allowlist invisible-unicode' same line;
-  agent: only if in HEAD; MCP gateway: never.
+  Blocks hidden Unicode in added lines: bidi, tag and plane-14 chars, word joiner,
+  chained invisibles, zero-width/joiners/fillers by ASCII, mid-line BOM, LRM/RLM outside
+  RTL text, selectors after ASCII, private-use runs of 16+. Allows emoji, RTL/Indic/Thai/CJK
+  text, line-start BOM. Not caught: homoglyphs, a joiner between non-ASCII, binary
+  files and text after U+2028 at commit. Runs: commit, agent write, turn's end. Waiver:
+  'pragma: allowlist invisible-unicode' same line; agent: HEAD only.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -22,42 +22,49 @@ hook:
     "on": [commit, tool_use]
     action: block
     message: >
-      Invisible or direction-changing Unicode detected in this change: a bidi control, a tag
-      character, a zero-width character or joiner beside ASCII or in a run, a BOM after the
-      start of a line, a variation-selector run, a private-use run or a noncharacter. It changes
-      how code reads to a human or hides instructions an agent will still obey. Remove it; where
-      the character is meant, write it as an escape sequence instead. Waiver: 'pragma: allowlist
-      invisible-unicode' on the same line. A person's commit honours it; in the agent (write,
-      the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway
-      never does. An agent asks a person; it never writes the pragma.
+      Hidden Unicode detected in this change: a bidi control, a tag character, a word joiner,
+      two invisible characters in a row, a zero-width character, joiner or filler beside ASCII,
+      a BOM after the start of a line, a direction mark outside right-to-left text, a variation
+      selector after ASCII, or a long private-use run. It changes how code reads to a human or
+      hides instructions an agent will still obey. Remove it; where the character is meant,
+      write it as an escape sequence instead. Waiver: 'pragma: allowlist invisible-unicode' on
+      the same line. A person's commit honours it; in the agent (write, the turn's end, an
+      agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An
+      agent asks a person; it never writes the pragma.
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+invisible-unicode'
       # \u escapes, never literal characters: the pattern must not carry the bytes it
       # blocks, or committing this policy folder would trip its own gate (#32 class).
       # Judged one line at a time. Alternatives, in order:
-      #  1 always: bidi embed/override/isolate 202A-202E 2066-2069, deprecated format
-      #    206A-206F, word joiner and invisible operators 2060-2064, noncharacters FDD0-FDEF
-      #    FFFE FFFF, lone surrogates, the whole tag block E0000-E007F (subdivision flags too)
-      #  2 any run of 2+ zero-width characters (180E 200B-200D 2060-2064 FEFF): binary stego
-      #  3-4 ZWSP 200B or Mongolian vowel separator 180E unless both neighbours are in a
-      #    script written without spaces (Thai, Lao, Tibetan, Myanmar, Khmer, Mongolian)
-      #  5-6 ZWNJ/ZWJ 200C 200D beside an ASCII character or a line edge; emoji sequences and
-      #    Persian/Indic joiners sit between two non-ASCII characters and pass
-      #  7 BOM FEFF anywhere but the start of a line
-      #  8 ALM/LRM/RLM 061C 200E 200F between two ASCII word characters (reorders an identifier);
-      #    next to RTL prose, spaces or punctuation they pass (the ask class, not this regex)
-      #  9-11 variation selectors FE00-FE0F E0100-E01EF: a run of 2+ (byte encoding), one after
-      #    an ASCII letter or underscore, or a supplementary one not after a CJK ideograph
-      #  12 private use E000-F8FF F0000-10FFFD in runs of 3+
-      content_pattern: '[\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFDD0-\uFDEF\uFFFE\uFFFF\uD800-\uDFFF\U000E0000-\U000E007F]|[\u180E\u200B-\u200D\u2060-\u2064\uFEFF]{2,}|(?<![\u0E00-\u0FFF\u1000-\u109F\u1780-\u18AF])[\u180E\u200B]|[\u180E\u200B](?![\u0E00-\u0FFF\u1000-\u109F\u1780-\u18AF])|(?:^|[\x00-\x7F])[\u200C\u200D]|[\u200C\u200D](?:[\x00-\x7F]|$)|(?<!^)\uFEFF|(?<=[A-Za-z0-9_])[\u061C\u200E\u200F](?=[A-Za-z0-9_])|[\uFE00-\uFE0F\U000E0100-\U000E01EF]{2,}|[A-Za-z_][\uFE00-\uFE0F\U000E0100-\U000E01EF]|(?<![\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\U00020000-\U0003FFFF])[\U000E0100-\U000E01EF]|[\uE000-\uF8FF\U000F0000-\U0010FFFD]{3,}'
-      # Not matched (limits): homoglyphs, mixed-script and fullwidth identifiers and soft
-      # hyphens (the confusable-identifiers script tier); one joiner or VS between two
-      # non-ASCII characters (one bit or byte per visible character); LRM/RLM/ALM beside
-      # non-word ASCII; supplementary noncharacters; a BOM at the start of a later line; and
-      # U+2028/2029, U+0085, VT, FF, U+001C-001E and a lone CR, which the line split consumes:
-      # at commit the text after one of them on an added line is not judged at all (engine
-      # follow-up). Escaped forms (\u200B in JSON, &#8203; in HTML) are visible ASCII and pass.
+      #  1 always: bidi embed/override/isolate 202A-202E and the whole 2060-206F block (word
+      #    joiner, invisible operators, isolates, deprecated format controls), noncharacters
+      #    FDD0-FDEF FFFE FFFF, interlinear annotation FFF9-FFFB, lone surrogates (reachable only
+      #    through an agent's tool input), the tag block E0000-E007F (subdivision flags too) and
+      #    the unassigned plane-14 ranges E0080-E00FF, E01F0-E0FFF
+      #  2 any two adjacent invisible or default-ignorable characters (soft hyphen, CGJ, ALM,
+      #    Hangul fillers, Khmer inherent vowels, Mongolian selectors, 200B-200F, 2060-206F,
+      #    variation selectors, BOM, musical format controls, plane 14), except FE0F then ZWJ,
+      #    which every emoji ZWJ sequence uses: no legitimate text chains two of them
+      #  3-4 ZWSP, ZWNJ, ZWJ, Mongolian vowel separator, Khmer inherent vowels or a Hangul filler
+      #    beside an ASCII word character, or with ASCII (or a line edge) on both sides; between
+      #    two non-ASCII characters (emoji, Persian, Indic, Malayalam, Thai, CJK) they pass
+      #  5 BOM FEFF anywhere but the start of a line
+      #  6-7 ALM/LRM/RLM 061C 200E 200F between two ASCII word characters, or on a line with no
+      #    right-to-left letter; on a line of RTL prose they pass (the ask class)
+      #  8-9 a variation selector after an ASCII letter, digit or underscore (unless a keycap
+      #    follows), or a supplementary one (E0100-E01EF) not after a CJK ideograph
+      #  10 private use E000-F8FF F0000-10FFFD in runs of 16+: icon-font prompts and status
+      #    bars stay well under it, encoded payloads do not
+      content_pattern: '[\u202A-\u202E\u2060-\u206F\uFDD0-\uFDEF\uFFF9-\uFFFB\uFFFE\uFFFF\uD800-\uDFFF\U000E0000-\U000E00FF\U000E01F0-\U000E0FFF]|(?!\uFE0F\u200D)[\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180F\u200B-\u200F\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF9-\uFFFB\U0001D173-\U0001D17A\U000E0000-\U000E0FFF][\u00AD\u034F\u061C\u115F\u1160\u17B4\u17B5\u180B-\u180F\u200B-\u200F\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF\uFFA0\uFFF9-\uFFFB\U0001D173-\U0001D17A\U000E0000-\U000E0FFF]|(?<=[A-Za-z0-9_])[\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200D\u3164\uFFA0]|[\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200D\u3164\uFFA0](?=[A-Za-z0-9_])|(?:^|(?<=[\x00-\x7F]))[\u115F\u1160\u17B4\u17B5\u180E\u200B-\u200D\u3164\uFFA0](?:$|(?=[\x00-\x7F]))|(?<!^)\uFEFF|(?<=[A-Za-z0-9_])[\u061C\u200E\u200F](?=[A-Za-z0-9_])|^(?!.*[\u0590-\u061B\u061D-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFC\U00010800-\U00010FFF\U0001E800-\U0001EFFF]).*[\u061C\u200E\u200F]|[A-Za-z0-9_][\uFE00-\uFE0F\U000E0100-\U000E01EF](?!\u20E3)|(?<![\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\U00020000-\U0003FFFF])[\U000E0100-\U000E01EF]|[\uE000-\uF8FF\U000F0000-\U0010FFFD]{16,}'
+      # Not matched (limits): homoglyphs, mixed-script and fullwidth identifiers (the
+      # confusable-identifiers script tier); one soft hyphen or CGJ, or one joiner or ZWSP
+      # between two non-ASCII letters (one bit per visible character); private-use runs under
+      # 16; supplementary noncharacters; a BOM at the start of a later line. Engine limits at
+      # commit and CI: a file git treats as binary (a NUL byte, UTF-16, `-diff` or `binary` in
+      # .gitattributes) has no added lines, and the text after U+2028/2029, NEL, VT, FF,
+      # U+001C-001E or a lone CR on an added line is not judged (the agent's write and turn
+      # end still judge both). Escaped forms (a JSON or HTML escape) are visible ASCII and pass.
 
 compliance:
   mitre_atlas:
@@ -110,6 +117,6 @@ changelog:
 - version: 0.1.0
   date: '2026-10-02'
   changes:
-  - "v2 regex tier (roadmap HP15). Widens the pattern from bidi controls and tags to the invisible classes: the tag block now starts at U+E0000; deprecated format controls U+206A-206F; word joiner and invisible operators U+2060-2064; zero-width space and Mongolian vowel separator except between letters of a script written without spaces; ZWNJ/ZWJ beside an ASCII character or a line edge; any run of two or more zero-width characters; a BOM anywhere but the start of a line; ALM/LRM/RLM between two ASCII word characters; variation selectors in runs of two or more, after an ASCII letter, or (supplementary) not after a CJK ideograph; private-use runs of three or more; BMP noncharacters and lone surrogates. Display name back to 'Block Invisible Unicode'."
-  - "Allowed by design and pinned by evals: emoji ZWJ and keycap sequences, Persian/Indic joiners, Thai word-break ZWSP, ideographic variation sequences, LRM next to RTL prose, a BOM at the start of a file, two adjacent icon-font glyphs. Stricter than 0.0.5: a ZWJ between ASCII characters (old tc-005) now blocks, so tc-005 pins an emoji sequence instead."
-  - "Limits, in the description and the pattern comments: homoglyphs and mixed-script identifiers (the confusable-identifiers script tier), a single joiner or selector between two non-ASCII characters, LRM/RLM in prose, supplementary noncharacters, a BOM at the start of a later line, escaped forms, and line separators: at commit the text after U+2028/2029, NEL, VT, FF or a lone CR on an added line is not judged (engine follow-up). Subdivision flag emoji are built from tag characters and block; a person waives them."
+  - "v2 regex tier (roadmap HP15). Widens the pattern from bidi controls and tags to hidden-character classes: the tag block from U+E0000 and the unassigned plane-14 ranges; the whole U+2060-206F block (word joiner, invisible operators, deprecated format controls); interlinear annotation controls; any two adjacent invisible or default-ignorable characters, except the FE0F+ZWJ pair emoji sequences use; ZWSP, ZWNJ, ZWJ, Mongolian vowel separator, Khmer inherent vowels and Hangul fillers beside an ASCII word character or between ASCII characters; a BOM anywhere but the start of a line; ALM/LRM/RLM inside an ASCII identifier or on a line with no right-to-left letter; a variation selector after an ASCII letter, digit or underscore, or a supplementary one not after a CJK ideograph; private-use runs of 16 or more; BMP noncharacters; lone surrogates (agent tool input only). Display name back to 'Block Invisible Unicode'."
+  - "Allowed by design and pinned by evals: emoji ZWJ, keycap and presentation sequences; Persian, Indic and Malayalam joiners, including before a space; Thai and Japanese word-break ZWSP; ideographic variation sequences; LRM/RLM/ALM in RTL prose; a BOM at the start of a file; icon-font glyph runs under 16; soft hyphens in prose. Stricter than 0.0.5: a ZWJ between ASCII characters (old tc-005) now blocks, so tc-005 pins an emoji sequence instead. Deviation from the roadmap: private-use runs block at 16, not 3, because three adjacent Nerd Font glyphs are ordinary prompt and status-bar config."
+  - "Limits, in the description and the pattern comments: homoglyphs and mixed-script identifiers (the confusable-identifiers script tier); one joiner, ZWSP, soft hyphen or CGJ between two non-ASCII characters; supplementary noncharacters; a BOM at the start of a later line; escaped forms. Engine limits at commit and CI: a file git treats as binary (NUL byte, UTF-16, -diff or binary in .gitattributes) has no added lines, and the text after U+2028/2029, NEL, VT, FF or a lone CR on an added line is not judged; the agent's write and turn end still judge both. Subdivision flag emoji are built from tag characters and block; a person waives them. Math text with invisible operators (U+2061-2064) blocks."
