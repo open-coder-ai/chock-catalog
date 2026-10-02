@@ -30,7 +30,7 @@ BLOCK = frozenset({CREDENTIAL, HTTP, TLS, SCRIPTS, HOST, UNREADABLE})
 #: A value that names a secret held elsewhere: ${VAR}, ${env.X}, $VAR, %VAR%, ${{ secrets.X }}, {env:X}, env("X"),
 #: Ruby's #{ENV["X"]}, Renovate's {{ secrets.X }}.
 ENV_REF = re.compile(
-    r"^\s*[\"']?(?:\$\{\{[^}]*\}\}|\$\{[A-Za-z_][A-Za-z0-9_.]*(?::?-[^}]*|\?)?\}|\$[A-Za-z_][A-Za-z0-9_]*"
+    r"^\s*[\"']?(?:\$\{\{[^}]*\}\}|\$\{[A-Za-z_][A-Za-z0-9_.]*(?::?-(?:\$\{?[A-Za-z_]\w*\}?)?|\?)?\}|\$[A-Za-z_][A-Za-z0-9_]*"
     r"|%[A-Za-z_][A-Za-z0-9_]*%|\{env:[A-Za-z_][A-Za-z0-9_]*\}|env\(\s*[\"'][A-Za-z_][A-Za-z0-9_]*[\"']\s*\)"
     r"|#\{ENV(?:\[|\.fetch\(\s*)[\"'][A-Za-z_][A-Za-z0-9_]*[\"'][^}]*\}|\{\{\s*secrets\.[\w.]+\s*\}\})[\"']?\s*$"
 )

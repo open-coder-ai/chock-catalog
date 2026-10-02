@@ -7,15 +7,20 @@ import re
 from reg_core import REDIRECT, TLS, Ctx, add, norm, url
 
 NAMES = r"(GOINSECURE|GOSUMDB|GONOSUMDB|GONOSUMCHECK|GOPRIVATE|GOPROXY|GOFLAGS)"
-#: A value: double-quoted (escapes kept), single-quoted, or bare up to whitespace, with GOFLAGS-style flags after.
-VALUE = r"""(?:"((?:[^"\\\n]|\\.)*)"|'([^'\n]*)'|(\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|[^\s"'#;}\]]*(?:\s+--?[\w=.,-]+)*))"""
+#: A value as one whole shell word: ${...} and $(...) expansions, quoted pieces (spaces inside them kept) and
+#: plain characters, then GOFLAGS-style flags after spaces. `"of"f` is one word, as the shell reads it.
+VALUE = (
+    r"""((?:\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|\$\([^)\n]*\)|"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|[^\s"'#;}\]])*"""
+    r"""(?:\s+--?[\w=.,${}-]+)*)"""
+)
 #: A GO* setting as a shell, make or env assignment, a YAML key or `go env -w` writes one; never a ${GO...} read.
 #: A bare `NAME value` (no '=' or ':') is prose, except on a Dockerfile ENV or ARG line (GO_ENV_LINE).
 GO_SETTING = re.compile(rf"""(?<![\w$])(?<!\$\{{){NAMES}["']?(?:\s*[:?+]?=\s*|\s*:\s+){VALUE}""")
 GO_ENV_LINE = re.compile(rf"""^\s*(?:ENV|ARG)\s+{NAMES}\s+{VALUE}""", re.IGNORECASE)
-#: A shell default expansion, ${NAME:-value} or ${NAME:=value}: the value applies when the name is unset.
 #: A value passed through unchanged from the environment or a CI variable: nothing to judge here.
-PURE_REF = re.compile(r"^(?:\$\w+|\$\{\w+\}|\$\{\{\s*[\w.]+\s*\}\})$")
+PURE_REF = re.compile(r"^(?:\$\w+|\$\{\w+\}|\$\(\w+\)|\$\{\{\s*[\w.]+\s*\}\})$")
+QUOTE_CHARS = re.compile("[\"']")
+#: A shell default expansion, ${NAME:-value} or ${NAME:=value}: the value applies when the name is unset.
 DEFAULT = re.compile(r"^\$\{\w+:?[-=](.*)\}$")
 #: Hosts anyone can publish modules under: a pattern naming one of them with no path is every module there.
 PUBLIC_HOSTS = frozenset(
@@ -44,9 +49,17 @@ def _broad(pattern: str) -> bool:
 
 def go_setting(ctx: Ctx, number: int, name: str, value: str) -> None:
     """Judge one GO* setting written with `value`."""
-    value = norm(value)
+    # A trailing comma ends a YAML flow-mapping value; it is never part of a GO* setting.
+    value = norm(value).rstrip(",")
     default = DEFAULT.match(value)
     value = norm(default[1]) if default else value
+    if not value or PURE_REF.match(value):
+        return
+    if "$" in value:
+        # Part literal, part expansion: what Go ends up reading is not knowable from the file.
+        message = f"{name} is built from an expression; what it sets is not judged here"
+        add(ctx, REDIRECT, number, (name, value), message)
+        return
     # Go trims each list element, so a space after ',' or '|' hides nothing.
     items = [v.strip() for v in re.split(r"[,|]", value) if v.strip()]
     if name == "GOINSECURE" and value:
@@ -63,14 +76,8 @@ def go_setting(ctx: Ctx, number: int, name: str, value: str) -> None:
 
 def _gosumdb(ctx: Ctx, number: int, value: str) -> None:
     """GOSUMDB is `name`, `name+key` or `name+key url`: off, another database, its own key or URL all count.
-    A value read from the environment is not judged."""
+    The caller has already set aside a value read from the environment or built from an expression."""
     fields = value.split()
-    if not fields or PURE_REF.match(value):
-        return
-    if "$" in value:
-        message = "GOSUMDB is built from an expression; what it names is not judged here"
-        add(ctx, REDIRECT, number, ("GOSUMDB", value), message)
-        return
     named = fields[0].split("+")[0].lower()
     if named == "off":
         add(ctx, TLS, number, ("GOSUMDB", "off"), "GOSUMDB=off turns checksum verification off for every module")
@@ -113,7 +120,9 @@ def go_env(ctx: Ctx) -> None:
         if raw.lstrip().startswith(("#", "//")):
             continue
         for match in (*GO_ENV_LINE.finditer(raw), *GO_SETTING.finditer(raw)):
-            value = next((g for g in match.groups()[1:] if g is not None), "")
+            # A shell word drops its quotes when the shell reads it (of'f' is off); one with an expansion
+            # keeps them, so $X"off" is never mistaken for the plain reference $Xoff.
+            value = match[2] if "$" in match[2] else QUOTE_CHARS.sub("", match[2])
             go_setting(ctx, number, match[1], value)
 
 

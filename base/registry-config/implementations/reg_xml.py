@@ -49,7 +49,7 @@ def _package_sources(found: list[Token]) -> tuple[list[Token], bool, list[int]]:
     """The <add> sources inside every <packageSources>, whether one holds a <clear/>, and where each opens."""
     depth, inner, adds, cleared, sections = 0, 0, [], False, []
     for token in found:
-        if token.name == "packagesources" and token.kind != "text":
+        if token.name == "packagesources" and token.kind != "text" and not inner:
             depth = max(depth + {"start": 1, "end": -1}.get(token.kind, 0), 0)
             sections += [token.pos] if token.kind != "end" else []
             inner = 0

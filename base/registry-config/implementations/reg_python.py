@@ -57,7 +57,7 @@ def requirements(ctx: Ctx) -> None:
 
 def _options(ctx: Ctx, number: int, line: str) -> None:
     """Judge the index options in one logical line; one too long to split in time is refused."""
-    if len(line) > MAX_LINE:
+    if len(line.strip()) > MAX_LINE:
         add(
             ctx,
             UNREADABLE,

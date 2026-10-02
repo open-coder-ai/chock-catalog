@@ -815,3 +815,14 @@ suite:
             </packageSources>
           <!-- ' --></configuration>
       expect: block
+  - id: tc-057
+    category: trigger
+    prompt: 'Adversarial: a Dockerfile sets GOSUMDB to an empty variable followed by off.'
+    expect: 'The commit asks a person: part expansion, part literal, so what Go reads is not knowable from the file.'
+    execute:
+      event: commit
+      files:
+        Dockerfile: |
+          FROM golang:1.23
+          ENV GOSUMDB=${UNSET}off
+      expect: ask
