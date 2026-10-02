@@ -2,8 +2,8 @@
 
 A unit is the root mapping of one YAML document, or one mapping item of a root sequence (an Ansible
 play), or the root object of JSON text. Keys this reader cannot name (an explicit `?` key, an
-alias of an anchor that is not one simple scalar on its line) are counted as opaque, so the
-sniffer can stay suspicious of them.
+alias of an anchor that is not one simple scalar on its line, or whose name appears twice) are
+counted as opaque, so the sniffer can stay suspicious of them.
 """
 
 from __future__ import annotations
@@ -22,12 +22,12 @@ ALIAS = re.compile(r"\*([^\s,\[\]{}]+)")
 SCALAR = r"""("(?:[^"\\\n]|\\.)*+"|'(?:[^'\n]|'')*+'|[^\s,\[\]{}#'"|>!&*](?:[^\s,\[\]{}#:]|:(?=[^\s,\[\]{}]))*+)"""
 ANCHOR = re.compile(r"&([^\s,\[\]{}&]++)")
 #: The scalar an anchor names, when it is one whole simple scalar (tags dropped); else the anchor is unknown.
-ANCHORED = re.compile(r"[ \t]++(?:![^\s]*+[ \t]++)*+" + SCALAR + r"(?=[ \t]*+(?:[,\]}:#]|$))")
+ANCHORED = re.compile(r"[ \t]++(?:![^\s&]*+[ \t]++)*+" + SCALAR + r"(?=[ \t]*+(?:[,\]}:]|$)|[ \t]++#)")
 LOOSE = re.compile(
-    r"""(?<![^\s{,\[/])("(?:[^"\\\n]|\\.)*+"|'(?:[^'\n]|'')*+'|[^\s"'{}\[\],:#][^\s"'{}\[\],:]*+)[ \t]*:"""
+    r"""(?<![^\s{,\[])("(?:[^"\\\n]|\\.)*+"|'(?:[^'\n]|'')*+'|[^\s"'{}\[\],:#][^\s"'{}\[\],:]*+)[ \t]*:"""
 )
-#: A JSON-style key whose colon may sit on a later line (`"key"` newline `: value`).
-SPLIT_KEY = re.compile(r"""(?<![^\s{,\[/])("(?:[^"\\\n]|\\.)*+")\s*+:""")
+#: A double-quoted key whose colon may sit on a later line, or that follows a `/* */` comment.
+SPLIT_KEY = re.compile(r"""(?:(?<![^\s{,\[])|(?<=\*/))("(?:[^"\\\n]|\\.)*+")\s*+:""")
 ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|.)", re.DOTALL)
 SIMPLE = {"0": "\0", "a": "\a", "b": "\b", "t": "\t", "n": "\n", "v": "\v", "f": "\f", "r": "\r", "e": "\x1b"}
 SIMPLE |= {"N": "\x85", "_": "\xa0", "L": "\u2028", "P": "\u2029"}
@@ -130,11 +130,16 @@ class _Reader:
             content = body.lstrip(" \t")
             if content and content[0] != "#" and not (self.root is None and body[0] == "%"):
                 self._line(len(line) - len(body), body)
-            if "&" in line:
-                for anchor in ANCHOR.finditer(line):
-                    scalar = ANCHORED.match(line, anchor.end())
-                    self.anchors[anchor.group(1)] = unquote(scalar.group(1)) if scalar else None
+            if "&" in line and not content.startswith("#"):
+                self._anchors(line)
         return [Unit(frozenset(keys.names), keys.opaque) for keys in self.units]
+
+    def _anchors(self, line: str) -> None:
+        """Anchors this line may set; a name seen twice (or in a quoted or block scalar) is unnamed from then on."""
+        for anchor in ANCHOR.finditer(line):
+            scalar = ANCHORED.match(line, anchor.end())
+            name = anchor.group(1)
+            self.anchors[name] = None if name in self.anchors or not scalar else unquote(scalar.group(1))
 
     def _line(self, col: int, body: str) -> None:
         if self.root is None or col < self.root:

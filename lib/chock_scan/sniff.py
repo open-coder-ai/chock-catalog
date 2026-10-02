@@ -9,7 +9,7 @@ Signals, read over the whole text (no first-N-lines window: padding cannot push 
 Keys are top-level: of a YAML document's root mapping, of a root sequence item, or of JSON's root
 object. `low` is the same keys found anywhere outside full-line comments (nested, split across
 documents, in a flow mapping, JSON with comments, a trailing comment), or a unit whose keys this
-reader cannot all name (an explicit `?` key, an alias of an anchor that is not one simple scalar),
+reader cannot all name (an explicit `?` key, an alias of an anchor not one simple scalar, or reused),
 since such a key may be any key.
   kubernetes      high: apiVersion + kind
   cloudformation  high: AWSTemplateFormatVersion, or Transform with AWS::Serverless in the text
@@ -72,10 +72,10 @@ MAPPED = (
     *(("ansible", MEDIUM, ("hosts", key), None) for key in ("roles", "pre_tasks", "post_tasks", "handlers")),
     ("mcp-config", HIGH, ("mcpServers",), None),
 )
-SHELL = re.compile(r"(?:a|ba|da|k|mk|pdk|lk|ok|lok|o|z|ya|po|rba|c|tc|fi|hu|bo|j)?sh[-\d.]*+")
+SHELL = re.compile(r"(?:a|ba|da|k|mk|pdk|lk|ok|lok|o|z|ya|po|rba|c|tc|fi|hu|bo|j)?sh(?:[-.\d][\w.-]*+)?")
 MULTICALL = frozenset({"busybox", "toybox"})
 ENV_VALUE = frozenset("uCP")
-ENV_QUOTING = re.compile(r"""\\_|["']""")
+ENV_QUOTES = re.compile(r"""["']""")
 DIRECTIVE = re.compile(r"#[ \t]*([A-Za-z]+)[ \t]*=[ \t]*(\S*)[ \t]*")
 DOCKER_BODY = frozenset({"RUN", "CMD", "ENTRYPOINT", "COPY", "ADD"})
 
@@ -152,7 +152,7 @@ def _after_env(words: list[str]) -> tuple[str, ...]:
 
     Quotes and `\\_` are dropped first, as `env -S` would: a quoted shell name is still that shell.
     """
-    queue = deque(ENV_QUOTING.sub(" ", " ".join(words)).split())
+    queue = deque(ENV_QUOTES.sub("", " ".join(words)).replace("\\_", " ").split())
     while queue:
         word = queue.popleft()
         if word == "--":

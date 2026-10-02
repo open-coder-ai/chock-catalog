@@ -138,6 +138,7 @@ SHEBANGS = {
     '#!/usr/bin/env -S "bash" -e': ("bash", "-e"),
     "#!/usr/bin/env -S\\_bash": ("bash",),
     "#!/usr/bin/env 'zsh'": ("zsh",),
+    '#!/usr/bin/env -S PATH="/usr/bin" bash -e': ("bash", "-e"),
     "#!": (),
     "#!   ": (),
     "# !/bin/sh": (),
@@ -155,7 +156,7 @@ def test_shebang_interpreter(sn: ModuleType, line: str, expected: tuple[str, ...
 @pytest.mark.parametrize(
     "name",
     [
-        *("ksh93", "bash5.2", "bash-5.2", "hush", "bosh", "jsh", "osh", "oksh", "loksh"),
+        *("ksh93", "bash5.2", "bash-5.2", "hush", "bosh", "jsh", "osh", "oksh", "loksh", "bash-static", "mksh-static"),
         "sh",
         "bash",
         "dash",

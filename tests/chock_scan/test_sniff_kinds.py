@@ -47,6 +47,17 @@ CASES = {
     "alias-through-block-anchor": ("x-n: &k >-\n  services\n*k :\n  web: {}\n", SINGLE),
     "alias-through-multi-word-anchor": ("x: &k foo bar\n*k : 1\n", SINGLE),
     "alias-through-anchored-key": ("x:\n  &k kind: 1\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
+    "anchor-reused-in-comment": ("x: &k kind\n# &k nope\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
+    "anchor-reused-in-string": (
+        "x: &k kind\ny: 'a &k nope, b'\napiVersion: v1\n*k : Pod\n",
+        SINGLE | {"kubernetes": L},
+    ),
+    "anchor-reused-in-block": (
+        "x: &k kind\ns: |\n  run &k nope\napiVersion: v1\n*k : Pod\n",
+        SINGLE | {"kubernetes": L},
+    ),
+    "anchor-hash-without-space": ("x: &k kind#x\napiVersion: v1\n*k : Pod\n", SINGLE | {"kubernetes": L}),
+    "anchor-then-comment": ("x: &k kind # c\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
     "anchor-in-flow": ("x: [&k kind, b]\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
     "json-then-yaml-document": ("{}\n---\n" + K8S, {"kubernetes": H}),
     "tab-only-line-in-indented-root": ("  apiVersion: v1\n\t\n  kind: Pod\n", {"kubernetes": H}),
