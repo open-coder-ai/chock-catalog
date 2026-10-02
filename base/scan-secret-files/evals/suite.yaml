@@ -1,0 +1,141 @@
+suite:
+  id: scan-secret-files-tests-v1
+  policy_id: scan-secret-files
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # The gate ships in observe (action: warn, D15): every case it flags expects `warn`, which becomes
+  # `block` (or `ask` for encrypted keys and notebook outputs) when a separate PR promotes it. Each case
+  # stages files in a throwaway repo and runs the script gate at commit, or at tool_use on the agent's
+  # write. Fixture values are plainly fake; cases with a PEM private-key header need a person's commit
+  # (tests/policies/test_scan_secret_files_keys.py and the PR's owner step).
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A kubeconfig with an inline user token is committed.
+    expect: Flagged; the token is a live cluster credential.
+    execute: {files: {"deploy/kubeconfig": "apiVersion: v1\nkind: Config\nusers:\n- name: ci\n  user:\n    token: kubeletbootstrap\n"}, expect: warn}
+  - id: tc-002
+    category: trigger
+    prompt: A Google service-account JSON with a private key is committed under an unrelated name.
+    expect: Flagged by its shape (type service_account plus key bytes), whatever the file is called.
+    execute: {files: {"notes/data.json": "{\"type\": \"service_account\", \"client_email\": \"svc@p.iam.gserviceaccount.com\", \"private_key\": \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\"}\n"}, expect: warn}
+  - id: tc-003
+    category: trigger
+    prompt: Terraform state is committed.
+    expect: Flagged; state files hold every secret the plan touched.
+    execute: {files: {"infra/terraform.tfstate": "{\"version\": 4, \"terraform_version\": \"1.6.0\", \"serial\": 1, \"lineage\": \"l\", \"resources\": []}\n"}, expect: warn}
+  - id: tc-004
+    category: trigger
+    prompt: An .npmrc with a literal registry auth token is committed.
+    expect: Flagged.
+    execute: {files: {".npmrc": "//registry.npmjs.org/:_authToken=npmauthvalue\n"}, expect: warn}
+  - id: tc-005
+    category: trigger
+    prompt: An AWS shared-credentials file is committed.
+    expect: Flagged.
+    execute: {files: {".aws/credentials": "[default]\naws_secret_access_key = awssecretaccesskeyvalue\n"}, expect: warn}
+  - id: tc-006
+    category: trigger
+    prompt: A tracked .env.production holds a session secret.
+    expect: Flagged; a dotenv file that is not a template holds live values.
+    execute: {files: {"svc/.env.production": "PORT=8080\nSESSION_SECRET=sessionvalue\n"}, expect: warn}
+  - id: tc-007
+    category: trigger
+    prompt: A PKCS#12 key store is committed.
+    expect: Flagged by name; a key store's bytes reach the gate only lossily.
+    execute: {files: {"certs/client.p12": "binary key store\n"}, expect: warn}
+  - id: tc-008
+    category: trigger
+    prompt: An OpenVPN profile carries its static key inline.
+    expect: Flagged; the inline key block is a private key whatever the file is called.
+    execute: {files: {"vpn/client.ovpn": "client\n<tls-auth>\n-----BEGIN OpenVPN Static key V1-----\n0123456789abcdef0123456789abcdef\n0123456789abcdef0123456789abcdef\n-----END OpenVPN Static key V1-----\n</tls-auth>\n"}, expect: warn}
+  - id: tc-009
+    category: trigger
+    prompt: A .git-credentials store, a .netrc and a .pypirc are committed together.
+    expect: Flagged; each holds a literal password.
+    execute: {files: {".git-credentials": "https://bot:pw@localhost\n", ".netrc": "machine api.example.com login bot password netrcvalue\n", ".pypirc": "[pypi]\nusername = __token__\npassword = pypivalue\n"}, expect: warn}
+  - id: tc-010
+    category: trigger
+    prompt: A Chrome cookie database is committed.
+    expect: Flagged by its file name.
+    execute: {files: {"profile/Default/Cookies": "cookie store\n"}, expect: warn}
+  - id: tc-011
+    category: trigger
+    prompt: At write time the agent writes a docker config with a registry login.
+    expect: Flagged at tool_use, before the file lands.
+    execute: {event: tool_use, writes: {".docker/config.json": "{\"auths\": {\"registry.example.com\": {\"auth\": \"dXNlcjpwYXNz\"}}}\n"}, expect: warn}
+  - id: tc-012
+    category: adversarial
+    prompt: A kubeconfig is renamed to cluster.conf to slip past name rules.
+    expect: Flagged; kubeconfig is recognised by its content (root kind Config, EP13 sniffing).
+    execute: {files: {"ops/cluster.conf": "apiVersion: v1\nkind: Config\nusers:\n- name: admin\n  user:\n    client-key-data: clientkeydatablob\n"}, expect: warn}
+  - id: tc-013
+    category: adversarial
+    prompt: A kubeconfig is written so this reader cannot parse it (a tab in its indentation).
+    expect: Flagged; a kubeconfig it cannot read is refused, never passed (fail closed).
+    execute: {files: {"ops/kubeconfig": "apiVersion: v1\nkind: Config\nusers:\n\t- name: x\n"}, expect: warn}
+  - id: tc-014
+    category: adversarial
+    prompt: A JSON credential repeats a key so a loader keeps an empty value while the file still carries the secret.
+    expect: Flagged; every duplicate value is judged, not only the last.
+    execute: {files: {"keys/adc.json": "{\"type\": \"authorized_user\", \"refresh_token\": \"refreshvalue\", \"refresh_token\": \"\"}\n"}, expect: warn}
+  - id: tc-015
+    category: adversarial
+    prompt: A git credential store is renamed to a .txt file.
+    expect: Flagged; a file holding nothing but credential URLs is a credential store.
+    execute: {files: {"backup/creds.txt": "https://bot:pw@localhost\n"}, expect: warn}
+  - id: tc-016
+    category: adversarial
+    prompt: A file already in HEAD with a token gains an unrelated comment.
+    expect: Allowed; only findings the change adds are judged (the engine's baseline run).
+    execute: {head_files: {"ops/kubeconfig": "kind: Config\nusers:\n- name: a\n  user:\n    token: kubeletbootstrap\n"}, files: {"ops/kubeconfig": "# rotated quarterly\nkind: Config\nusers:\n- name: a\n  user:\n    token: kubeletbootstrap\n"}, expect: allow}
+  - id: tc-017
+    category: negative_trigger
+    prompt: A committed .env.example and .env.local.example carry template values.
+    expect: Allowed; templates stay allowed, as in scan-secrets.
+    execute: {files: {".env.example": "API_KEY=livevaluehere\n", ".env.local.example": "SESSION_SECRET=sessionvalue\n"}, expect: allow}
+  - id: tc-018
+    category: negative_trigger
+    prompt: A kubeconfig that gets its token from an exec plugin is committed.
+    expect: Allowed; no credential is inline.
+    execute: {files: {"deploy/kubeconfig": "apiVersion: v1\nkind: Config\nusers:\n- name: eks\n  user:\n    exec: {command: aws, args: [eks, get-token]}\n"}, expect: allow}
+  - id: tc-019
+    category: negative_trigger
+    prompt: A public certificate is committed as a .pem file.
+    expect: Allowed; a .pem file is judged by its content, and a certificate is not a key.
+    execute: {files: {"certs/ca.pem": "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIU\n-----END CERTIFICATE-----\n"}, expect: allow}
+  - id: tc-020
+    category: negative_trigger
+    prompt: A .npmrc reads its token from the environment.
+    expect: Allowed; a reference is not a credential.
+    execute: {files: {".npmrc": "//registry.npmjs.org/:_authToken=${NPM_TOKEN}\n"}, expect: allow}
+  - id: tc-021
+    category: negative_trigger
+    prompt: A WordPress sample config keeps its placeholder words.
+    expect: Allowed.
+    execute: {files: {"wp-config-sample.php": "<?php\ndefine( 'DB_PASSWORD', 'password_here' );\ndefine( 'AUTH_KEY', 'put your unique phrase here' );\n"}, expect: allow}
+  - id: tc-022
+    category: negative_trigger
+    prompt: A tfvars file sets only non-secret variables and a placeholder password.
+    expect: Allowed.
+    execute: {files: {"prod.tfvars": "region = \"eu-west-1\"\ndb_password = \"changeme\"\n"}, expect: allow}
+  - id: tc-023
+    category: behavior
+    prompt: An SSH public key is committed next to where a private key would go.
+    expect: Allowed; id_*.pub is a public key.
+    execute: {files: {"deploy/id_ed25519.pub": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA me@host\n"}, expect: allow}
+  - id: tc-024
+    category: behavior
+    prompt: A PuTTY key file protected by a passphrase is committed under a test fixtures path.
+    expect: Flagged (asks once promoted); encrypted keys and fixture paths ask rather than refuse.
+    execute: {files: {"tests/fixtures/me.ppk": "PuTTY-User-Key-File-3: ssh-ed25519\nEncryption: aes256-cbc\nPrivate-Lines: 1\nAAAA\n"}, expect: warn}
+  - id: tc-025
+    category: adversarial
+    prompt: "Documented miss: a JKS key store renamed to .bin whose first entry count is 65536 or more."
+    expect: "Allowed; a renamed Java key store is recognised only by the header shape the gate's lossy text keeps (stated on the policy page)."
+    execute: {files: {"build/store.bin": "����\0\0\0\x02\0\x01\0\0\0\0\0\x01"}, expect: allow}

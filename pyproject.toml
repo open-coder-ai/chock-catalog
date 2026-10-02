@@ -34,6 +34,7 @@ source = [
     "base/limit-diff-size/implementations",
     "base/firecrawl-fallback-only/implementations",
     "base/token-efficiency/implementations",
+    "base/scan-secret-files/implementations",
     "lib/chock_scan",
 ]
 # The build tools written to this bar, by module name (tools/ is on pytest's pythonpath). Older tools
