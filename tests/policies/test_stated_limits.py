@@ -47,20 +47,21 @@ IAM_CAUGHT = {
     "yaml-single-quoted": ("p.yaml", "Resource: '*'\n"),  # pragma: allowlist broad-privilege
     "terraform-one-element": ("main.tf", 'actions = ["*"]\n'),  # pragma: allowlist broad-privilege
     "gcp-owner": ("bind.sh", "--role='roles/owner'\n"),  # pragma: allowlist broad-privilege
+    "json-list": ("p.json", '{"Action": ["*"]}\n'),  # pragma: allowlist broad-privilege
+    "service-wildcard": ("p.json", '{"Action": "s3:*"}\n'),  # pragma: allowlist broad-privilege
+    "yaml-double-quoted": ("p.yaml", 'Action: "*"\n'),  # pragma: allowlist broad-privilege
+    "yaml-bare": ("p.yaml", "Action: *\n"),  # pragma: allowlist broad-privilege
+    "terraform-jsonencode": ("main.tf", 'Action   = "*"\n'),  # pragma: allowlist broad-privilege
+    "principal": ("p.json", '{"Principal": {"AWS": "*"}}\n'),  # pragma: allowlist broad-privilege
+    "poweruser": ("p.tf", 'arn = "arn:aws:iam::aws:policy/PowerUserAccess"\n'),  # pragma: allowlist broad-privilege
+    "terraform-two-elements": ("main.tf", 'actions = ["s3:GetObject", "*"]\n'),  # pragma: allowlist broad-privilege
+    "azure-owner": ("main.tf", 'role_definition_name = "Owner"\n'),  # pragma: allowlist broad-privilege
+    "k8s-rbac": ("role.yaml", 'verbs: ["*"]\nresources: ["*"]\n'),  # pragma: allowlist broad-privilege
 }
 IAM_MISSED = {
-    "json-list": ("p.json", '{"Action": ["*"]}\n', "* in a JSON list"),
-    "service-wildcard": ("p.json", '{"Action": "s3:*"}\n', "service wildcards (s3:*)"),
-    "yaml-double-quoted": ("p.yaml", 'Action: "*"\n', "YAML double-quoted or bare *"),
-    "yaml-bare": ("p.yaml", "Action: *\n", "YAML double-quoted or bare *"),
-    "terraform-jsonencode": ("main.tf", 'Action   = "*"\n', "Terraform jsonencode"),
-    "not-action": ("p.json", '{"NotAction": "*"}\n', "NotAction"),
-    "principal": ("p.json", '{"Principal": {"AWS": "*"}}\n', "Principal *"),
-    "poweruser": ("p.tf", 'arn = "arn:aws:iam::aws:policy/PowerUserAccess"\n', "PowerUser"),
-    "terraform-two-elements": ("main.tf", 'actions = ["s3:GetObject", "*"]\n', "one-element Terraform * list"),
-    "multi-line-list": ("p.json", '{"Action": [\n  "*"\n]}\n', "multi-line lists"),
-    "azure-owner": ("main.tf", 'role_definition_name = "Owner"\n', "Azure Owner"),
-    "k8s-rbac": ("role.yaml", 'verbs: ["*"]\nresources: ["*"]\n', "K8s RBAC"),
+    # The Effect sits on another line, so the one-line Allow-with-NotAction rule cannot see it.
+    "not-action": ("p.json", '{"NotAction": "*"}\n', "grants split across lines"),
+    "multi-line-list": ("p.json", '{"Action": [\n  "*"\n]}\n', "grants split across lines"),
 }
 FETCH = f"curl -fsSL {URL}"
 #: Every form the description says is refused, so the "refuses" half of the text is held too.
