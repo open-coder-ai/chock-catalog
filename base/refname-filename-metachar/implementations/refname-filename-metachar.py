@@ -18,15 +18,17 @@ import chock_shellparse.parse as shellparse
 from chock_shellparse import Cmd, commands, git_parts, is_powershell
 from refname_git import WORKTREE, created_refs, parse
 from refname_rules import describe, problems, ref_problems
-from refname_shell import EXPANDED, mark_expansions
+from refname_shell import EXPANDED, TooDeepError, mark_expansions
 
 EVERY_OPERAND = frozenset(("touch", "mkdir", "tee", "md"))
 DESTINATION = frozenset(("cp", "mv", "install", "ln", "rsync", "scp", "copy", "move", "ren", "rename"))
 TARGET_FLAGS = ("-t", "--target-directory")
 PS_FLAGS = ("-path", "-literalpath", "-name", "-newname", "-destination", "-filepath")
 PS_VALUE_FLAGS = frozenset((*PS_FLAGS, "-value", "-itemtype", "-type", "-encoding", "-filter", "-include", "-exclude"))
-MAX_SCRIPTS = 64  # inner scripts judged per command line; past it the line is refused, never passed unread
-TOO_DEEP = "command line nests more inner scripts than this guard judges, so a name in it cannot be checked."
+# Bounds on what one command line may hold; past any of them the line is refused, never passed unread.
+MAX_DEPTH, MAX_SCRIPTS, MAX_TEXT, LONG_UNBALANCED = 8, 512, 1_000_000, 4096
+TOO_DEEP = "command line holds more nested script than this guard judges, so a name in it cannot be checked."
+UNBALANCED = "command line is long and its quoting does not balance, so a name in it cannot be checked in time."
 _SCRIPTS: list[str] = []  # bash -c and eval scripts met while parsing, judged after the line that holds them
 _PARSE = shellparse._parse
 
@@ -121,17 +123,33 @@ def named(cmd: Cmd) -> list[tuple[str, str, list[tuple[str, str]]]]:
     return found
 
 
+def _scripts(cmds: list[Cmd], inner: list[str]) -> list[str]:
+    """The scripts a line holds: substitutions, bash -c and eval scripts, and any left unread at the parser's depth."""
+    leftover = [script for cmd in cmds if (script := shellparse._inner(cmd.name, cmd.args)) is not None]
+    return list(dict.fromkeys([*inner, *_SCRIPTS, *leftover]))
+
+
 def check(raw: str) -> str | None:
     """The reason the command creates a misreadable name, or None."""
-    scripts, done = [raw], 0
-    while done < len(scripts):
-        if done == MAX_SCRIPTS:
+    pending, seen, budget = [(raw, 0)], set(), MAX_TEXT
+    while pending:
+        script, depth = pending.pop(0)
+        if script in seen:
+            continue
+        seen.add(script)
+        budget -= len(script)
+        if depth > MAX_DEPTH or len(seen) > MAX_SCRIPTS or budget < 0:
             return TOO_DEEP
-        text, inner = mark_expansions(scripts[done], powershell=is_powershell(scripts[done]))
+        try:
+            text, inner = mark_expansions(script, powershell=is_powershell(script))
+        except TooDeepError:
+            return TOO_DEEP
+        if len(text) > LONG_UNBALANCED and shellparse._Scan(text).run() is None:
+            return UNBALANCED  # the parser's fallback for unbalanced quoting slows quadratically
         _SCRIPTS.clear()
-        found = [item for cmd in commands(text) for item in named(cmd) if item[2]]
-        scripts += inner + _SCRIPTS
-        done += 1
+        cmds = commands(text)
+        pending += [(inner_script, depth + 1) for inner_script in _scripts(cmds, inner)]
+        found = [item for cmd in cmds for item in named(cmd) if item[2]]
         if found:
             kind, name, problems_found = found[0]
             return describe(kind, name.replace(EXPANDED, "$"), problems_found)

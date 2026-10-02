@@ -1,10 +1,11 @@
 """Mark what a shell expands before the command is parsed, so a name keeps only the text it would literally hold.
 
-A `$` or backtick the shell expands becomes EXPANDED, and a command substitution, backtick command or process
-substitution (`$(...)`, `` `...` ``, `<(...)`) becomes one EXPANDED whose inner script is handed back to be judged
-on its own. So `"${OUT}/x"` is never read as substitution syntax, while text the shell keeps (single-quoted,
-escaped, spliced from quoted pieces such as `a$\\(id\\)` or `$(true)'a;b'`) stays and is judged. `$'...'` is decoded
-and re-quoted, so `$'a\\x3bb'` is judged as `a;b`. Heredoc bodies are copied through untouched. Stdlib only.
+A `$` the shell expands becomes EXPANDED; a whole `${...}`, command substitution, backtick command or process
+substitution (`$(...)`, `` `...` ``, `<(...)`) becomes one EXPANDED, and every script inside one is handed back to be
+judged on its own. So `"${OUT}/x"` or `"${f// /_}"` is never read as a name, while text the shell keeps
+(single-quoted, escaped, spliced from quoted pieces such as `a$\\(id\\)` or `$(true)'a;b'`) stays and is judged.
+`$'...'` is decoded and re-quoted, so `$'a\\x3bb'` is judged as `a;b`. Heredoc bodies are copied through untouched.
+The same scanner, run nested, finds where a substitution ends, so quotes in its heredocs and comments are tracked.
 """
 
 from __future__ import annotations
@@ -14,11 +15,18 @@ import sys
 
 EXPANDED = chr(0xE000)  # a private-use character standing in for expanded text
 REPLACEMENT = chr(0xFFFD)  # what a code point past Unicode decodes to
-_STARTS = frozenset("{@*#?$!-_")
+_STARTS = frozenset("@*#?$!-_")
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f", "v": "\v", "e": "\x1b", "E": "\x1b"}
 _ANSI = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|c.|.)", re.DOTALL)
-_HEREDOC = re.compile(r"<<(-?)[ \t]*(?:'([^'\n]*)'|\"([^\"\n]*)\"|\\?([^\s'\"<>|;&()]+))")
-_COMMENT_AFTER = frozenset(" \t\n;&|(")
+_HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)[ \t]*((?:'[^'\n]*'|\"[^\"\n]*\"|\\.|[^\s'\"<>|;&()\\])+)")
+_QUOTE_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)|([^'\"\\]+)")
+_WORD_BEFORE = frozenset(" \t\n;&|(")
+_CLOSERS = {")": "(", "}": "{"}
+MAX_NESTING = 64  # substitutions inside substitutions; deeper is refused by the caller, not read
+
+
+class TooDeepError(ValueError):
+    """The line nests substitutions deeper than MAX_NESTING."""
 
 
 def _ansi_char(match: re.Match[str]) -> str:
@@ -33,20 +41,48 @@ def _ansi_char(match: re.Match[str]) -> str:
     return _ESCAPES.get(code, code)
 
 
-class _Marker:
-    """One left-to-right pass that tracks quoting the way the shell does."""
+def _delimiter(word: str) -> str:
+    """A heredoc delimiter as the shell reads it: quoted pieces and escapes joined (`E"O"F` is EOF)."""
+    return "".join("".join(piece) for piece in _QUOTE_PIECE.findall(word))
 
-    def __init__(self, raw: str, *, powershell: bool) -> None:
+
+class _Marker:
+    """One left-to-right pass that tracks quoting the way the shell does; nested, it stops at its closer."""
+
+    def __init__(self, raw: str, *, powershell: bool, start: int = 0, closer: str = "", nesting: int = 0) -> None:
+        if nesting > MAX_NESTING:
+            raise TooDeepError
+        self.nesting = nesting
         self.raw, self.ps, self.escape = raw, powershell, "`" if powershell else "\\"
         self.out: list[str] = []
         self.inner: list[str] = []
         self.docs: list[tuple[str, bool]] = []
-        self.quote, self.i = "", 0
+        self.quote, self.i, self.closer, self.depth, self.cases = "", start, closer, 0, 0
 
     def run(self) -> tuple[str, list[str]]:
-        while self.i < len(self.raw):
+        while self.i < len(self.raw) and not self._closes():
             self._step(self.raw[self.i])
         return "".join(self.out), self.inner
+
+    def _closes(self) -> bool:
+        """At the unquoted closer of the substitution or `${...}` this nested pass reads."""
+        char = self.raw[self.i]
+        if not self.closer or self.quote:
+            return False
+        if self.closer == ")" and not self.quote and self._word("case"):
+            self.cases += 1
+        elif self.closer == ")" and self._word("esac"):
+            self.cases -= 1
+        if char == _CLOSERS.get(self.closer, ""):
+            self.depth += 1
+        elif char == self.closer and self.cases <= 0:
+            self.depth -= 1
+        return self.depth < 0
+
+    def _word(self, word: str) -> bool:
+        at, end = self.i, self.i + len(word)
+        before = at == 0 or self.raw[at - 1] in _WORD_BEFORE
+        return before and self.raw.startswith(word, at) and not self.raw[end : end + 1].isalnum()
 
     def _emit(self, text: str, end: int) -> None:
         self.out.append(text)
@@ -61,22 +97,21 @@ class _Marker:
         elif char == self.escape:
             literal = self.ps and not quote and nxt not in ("'", "\n", "")
             self._emit(f"'{nxt}'" if literal else raw[at : at + 2], at + 2)
-        elif not quote and char == "#" and (at == 0 or raw[at - 1] in _COMMENT_AFTER):
+        elif not quote and char == "#" and (at == 0 or raw[at - 1] in _WORD_BEFORE):
             end = raw.find("\n", at)
             self._emit(raw[at:end] if end >= 0 else raw[at:], end if end >= 0 else len(raw))
         elif not quote and char == "\n":
             self._emit(char, at + 1)
             self._bodies()
         elif not quote and not self.ps and (heredoc := _HEREDOC.match(raw, at)):
-            strip, *words = heredoc.groups()
-            self.docs.append((next(word for word in words if word is not None), bool(strip)))
+            self.docs.append((_delimiter(heredoc.group(2)), bool(heredoc.group(1))))
             self._emit(heredoc.group(), heredoc.end())
         elif char == "$":
             self._dollar(nxt)
         elif char == "`" and not self.ps:
-            self._substitution(at + 1, "`")
+            self._backtick(at + 1)
         elif not quote and not self.ps and char in "<>" and nxt == "(":
-            self._substitution(at + 2, ")")
+            self._nested(at + 2, ")")
         else:
             if char in "'\"" and quote in ("", char):
                 self.quote = "" if quote else char
@@ -84,8 +119,8 @@ class _Marker:
 
     def _dollar(self, nxt: str) -> None:
         at, unquoted = self.i, not self.quote
-        if nxt == "(":
-            self._substitution(at + 2, ")")
+        if nxt in "({" and nxt:
+            self._nested(at + 2, ")" if nxt == "(" else "}")
         elif unquoted and not self.ps and nxt == "'":
             end = at + 2
             while end < len(self.raw) and self.raw[end] != "'":
@@ -98,31 +133,19 @@ class _Marker:
             expands = bool(nxt) and (nxt.isalnum() or nxt in _STARTS)
             self._emit(EXPANDED if expands else "$", at + 1)
 
-    def _substitution(self, start: int, closer: str) -> None:
-        """Replace `$(...)`, `<(...)` or a backtick command with EXPANDED; its script is judged on its own."""
-        end = self._close(start, closer)
+    def _nested(self, start: int, closer: str) -> None:
+        """Replace `$(...)`, `<(...)` or `${...}` with EXPANDED; a substitution's script is judged on its own."""
+        nested = _Marker(self.raw, powershell=self.ps, start=start, closer=closer, nesting=self.nesting + 1)
+        nested.run()
+        self.inner += ([self.raw[start : nested.i]] if closer == ")" else []) + nested.inner
+        self._emit(EXPANDED, nested.i + 1)
+
+    def _backtick(self, start: int) -> None:
+        end = start
+        while end < len(self.raw) and self.raw[end] != "`":
+            end += 2 if self.raw[end] == "\\" else 1
         self.inner.append(self.raw[start:end])
         self._emit(EXPANDED, end + 1)
-
-    def _close(self, at: int, closer: str) -> int:
-        """The index of the closer matching an opener just before `at`, skipping quoted text; the end if none."""
-        depth, quote = 1, ""
-        while at < len(self.raw):
-            char = self.raw[at]
-            if quote != "'" and char == self.escape:
-                at += 1
-            elif quote:
-                quote = "" if char == quote else quote
-            elif char in "'\"":
-                quote = char
-            elif closer == ")" and char == "(":
-                depth += 1
-            elif char == closer:
-                depth -= 1
-                if not depth:
-                    return at
-            at += 1
-        return len(self.raw)
 
     def _bodies(self) -> None:
         """Copy the pending heredoc bodies through to their delimiter lines, quotes and all."""
