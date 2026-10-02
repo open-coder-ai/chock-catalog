@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 
-from chock_security.decision import DENY, VERDICTS
+from chock_security.decision import ALLOW, DENY, VERDICTS
 from chock_security.pack import Rule
+from chock_security.rules import packs
 
 SCHEMA_VERSION = 2
 
@@ -39,8 +40,24 @@ USER_FILENAME = ".chock/security.json"
 _TOP_KEYS = frozenset({"version", "packs"})
 _PACK_KEYS = frozenset({"verdict", "rules"})
 
-#: A rule nobody spoke about enforces. Silence is never a way to switch enforcement off.
-DEFAULT = DENY
+#: What a rule nobody spoke about does, by its pack's kind. A security rule enforces: silence is
+#: never a way to switch it off. A quality rule stays off until chosen -- a person's loosening,
+#: owner-approved (plan D2). A kind not written here, or a pack this build lacks, enforces.
+SILENT = {"security": DENY, "quality": ALLOW}
+
+
+def _kind_of(pack: str) -> str | None:
+    found = packs().get(pack)
+    return found.kind if found else None
+
+
+def default(rule: Rule) -> str:
+    """The verdict of a rule no selection speaks for: deny unless its pack's kind says otherwise."""
+    return SILENT.get(_kind_of(rule.pack) or "", DENY)
+
+
+def _defaults(rules: Mapping[str, Rule], ids: Iterable[str]) -> dict[str, str]:
+    return {rule_id: default(rules[rule_id]) for rule_id in ids}
 
 
 class SelectionError(Exception):
@@ -71,11 +88,11 @@ def _verdict(where: str, subject: str, value: object) -> str:
     return str(value)
 
 
-def _verdicts_in(pack: str, ids: set[str], declared: object) -> dict[str, str]:
-    """A pack or rule the file omits enforces: an upgrade's rule runs until spoken for."""
+def _verdicts_in(rules: Mapping[str, Rule], pack: str, ids: set[str], declared: object) -> dict[str, str]:
+    """A pack or rule the file omits takes its tier's default: an upgrade's security rule runs until spoken for."""
     where = f"pack {pack!r}"
     if declared is None:
-        return dict.fromkeys(ids, DEFAULT)
+        return _defaults(rules, ids)
     if not isinstance(declared, dict):
         got = type(declared).__name__
         msg = f"{where} must be an object with keys {sorted(_PACK_KEYS)}, got {got}"
@@ -91,7 +108,8 @@ def _verdicts_in(pack: str, ids: set[str], declared: object) -> dict[str, str]:
         msg = f"{where} names rule(s) it does not contain: {absent}"
         raise SelectionError(msg)
     return {
-        rule_id: _verdict(where, repr(rule_id), spoken[rule_id]) if rule_id in spoken else DEFAULT for rule_id in ids
+        rule_id: _verdict(where, repr(rule_id), spoken[rule_id]) if rule_id in spoken else default(rules[rule_id])
+        for rule_id in ids
     }
 
 
@@ -128,23 +146,23 @@ def parse(raw: str, rules: Mapping[str, Rule]) -> dict[str, str]:
         msg = "selection 'packs' must be an object of pack name -> {verdict, rules}"
         raise SelectionError(msg)
     legacy = document.get("version") == LEGACY_VERSION
-    packs = _legacy_packs(rules) if legacy else _packs_of(rules)
-    if absent := sorted(set(declared) - set(packs)):
+    grouped = _legacy_packs(rules) if legacy else _packs_of(rules)
+    if absent := sorted(set(declared) - set(grouped)):
         known = (
             f"a version-{LEGACY_VERSION} selection has only {LEGACY_PACK!r}" if legacy else "this build does not carry"
         )
         msg = f"selection names pack(s) {absent}; {known}"
         raise SelectionError(msg)
-    verdicts = dict.fromkeys(rules, DEFAULT)
-    for pack, ids in packs.items():
-        verdicts |= _verdicts_in(pack, ids, declared.get(pack))
+    verdicts = _defaults(rules, rules)
+    for pack, ids in grouped.items():
+        verdicts |= _verdicts_in(rules, pack, ids, declared.get(pack))
     return verdicts
 
 
 def render(rules: Mapping[str, Rule]) -> str:
-    """The exhaustive selection, every rule enforcing: what install writes, upgrade reconciles."""
-    packs = {pack: {"rules": dict.fromkeys(sorted(ids), DEFAULT)} for pack, ids in sorted(_packs_of(rules).items())}
-    return json.dumps({"version": SCHEMA_VERSION, "packs": packs}, indent=2) + "\n"
+    """The exhaustive selection, every rule at its tier's default: what install writes, upgrade reconciles."""
+    spelled = {pack: {"rules": _defaults(rules, sorted(ids))} for pack, ids in sorted(_packs_of(rules).items())}
+    return json.dumps({"version": SCHEMA_VERSION, "packs": spelled}, indent=2) + "\n"
 
 
 def user_path() -> Path:
@@ -167,8 +185,8 @@ def source(root: Path) -> Path | None:
 
 
 def load(root: Path, rules: Mapping[str, Rule]) -> dict[str, str]:
-    """The selection that governs. No file means nothing was spoken for, so every rule enforces."""
+    """The selection that governs. No file means nothing was spoken for: every rule takes its tier's default."""
     path = source(root)
     if path is None:
-        return dict.fromkeys(rules, DEFAULT)
+        return _defaults(rules, rules)
     return parse(path.read_text(encoding="utf-8"), rules)
