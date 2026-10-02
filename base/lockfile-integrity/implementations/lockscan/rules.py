@@ -13,7 +13,7 @@ from lockscan.model import (
     CHANGED,
     INSTALL,
     MISSING,
-    NESTED_ALIAS,
+    NPM_ALIAS,
     REKEYED,
     REMOVED,
     SOURCE,
@@ -89,7 +89,7 @@ def state_findings(path: str, entries: list[Entry], allow: tuple[HostEntry, ...]
             message = (
                 f"{e.ident} is installed under another folder name by an alias only a dependency declares: confirm it"
             )
-            found.append(Finding(NESTED_ALIAS, f"{NESTED_ALIAS}|{e.ident}", path, e.line, message))
+            found.append(Finding(NPM_ALIAS, f"{NPM_ALIAS}|{e.ident}", path, e.line, message))
         if e.install and e.transitive:
             message = f"{e.ident} is a transitive package that runs an install script: confirm it is expected"
             found.append(Finding(INSTALL, f"{INSTALL}|{e.ident}", path, e.line, message))

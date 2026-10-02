@@ -926,7 +926,7 @@ suite:
   - id: tc-059
     category: behavior
     prompt: A lock adds npm's hoisted alias string-width-cjs, which @isaacs/cliui declares as npm:string-width.
-    expect: 'Asks, never refuses: an alias only a dependency''s lock entry declares is checked by nothing, so a person confirms it.'
+    expect: 'Asks, never refuses: an npm: alias is lock text npm ci never holds to package.json, so a person confirms a new one.'
     execute:
       event: commit
       head_files: *id001
@@ -951,7 +951,7 @@ suite:
   - id: tc-061
     category: adversarial
     prompt: 'A lock forges an npm: alias on glob''s entry so left-pad''s folder holds evil-pad from the registry.'
-    expect: 'Held for a person, not passed: an alias only a dependency declares is asked about.'
+    expect: 'Held for a person, not passed: every new npm: alias is asked about.'
     execute:
       event: commit
       head_files: *id001

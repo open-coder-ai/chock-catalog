@@ -85,33 +85,28 @@ def _v2(lines: Lines, packages: dict) -> list[Entry]:
     return found
 
 
-def _aliases(packages: dict) -> dict[tuple[str, str], bool]:
-    """(folder, package) -> trusted, for every npm: alias the lock declares; npm hoists an alias anywhere.
-
-    Trusted when the root or a workspace declares it: npm ci checks those against their package.json. A
-    dependency's declaration is lock text only, so an alias found only there is reported, not trusted.
-    """
-    found: dict[tuple[str, str], bool] = {}
-    for key, raw in packages.items():
+def _aliases(packages: dict) -> set[tuple[str, str]]:
+    """(folder, package) for every npm: alias the lock declares; npm hoists an alias anywhere."""
+    found = set()
+    for raw in packages.values():
         for deps_key in DIRECT_KEYS:
             deps = raw.get(deps_key) if isinstance(raw, dict) else None
             for folder, spec in deps.items() if isinstance(deps, dict) else ():
                 if isinstance(spec, str) and spec.startswith("npm:"):
-                    pair = (folder, split_spec(spec[4:])[0])
-                    found[pair] = found.get(pair, False) or MODULES not in key
+                    found.add((folder, split_spec(spec[4:])[0]))
     return found
 
 
-def _installed_name(aliases: dict[tuple[str, str], bool], key: str, raw: dict) -> tuple[str, bool]:
-    """(package, alias declared only inside the lock) for a node_modules folder.
+def _installed_name(aliases: set[tuple[str, str]], key: str, raw: dict) -> tuple[str, bool]:
+    """(package, installed under an alias) for a node_modules folder.
 
-    The folder name, unless the lock declares that npm: alias: a `name` field alone does not count, since npm
-    installs whatever the lock resolves and a forged name would let another package's registry URL pass.
+    The folder name, unless the lock declares that npm: alias. A declaration is lock text: npm ci does not hold
+    even the root's to package.json, so an aliased package is named for the host check and also reported.
     """
     folder = key.rsplit(MODULES, 1)[1]
     named = raw.get("name")
-    if isinstance(named, str) and (folder, named) in aliases:
-        return named, not aliases[(folder, named)]
+    if isinstance(named, str) and named != folder and (folder, named) in aliases:
+        return named, True
     return folder, False
 
 
