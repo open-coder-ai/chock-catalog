@@ -118,3 +118,44 @@ def test_service_host_names_are_not_overrides() -> None:
     assert rules("mise.toml", "[env]\nDB_HOST = 'db'\nREDIS_HOST = 'r'\nDOCKER_HOST = 'tcp://x:2375'\n") == [
         ("dev-shell-toolchain", B)
     ]
+
+
+def test_round3_quote_scans_are_linear() -> None:
+    started = time.monotonic()
+    rules("run.sh", '"\\' * 200000 + "\n")
+    found({".envrc": '"\\' * 200000 + " # chock: allow dev-shell-toolchain\n"}, event="push")
+    assert time.monotonic() - started < 5
+
+
+def test_round3_waiver_on_a_multi_line_string_does_not_count() -> None:
+    text = '[tasks.a]\nrun = """./x.sh # chock: allow dev-shell-toolchain\n"""\n'
+    assert found({"mise.toml": text}, event="push")
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "claude -p hi 2>&1 --dangerously-skip-permissions\n",
+        "claude -p hi &>/dev/null --yolo\n",
+        'claude -p "a\nb" --dangerously-skip-permissions\n',
+        "//usr/bin/claude --dangerously-skip-permissions\n",
+        "env AGENT=claude gemini -y\n",
+        "claude --permission-mode\tbypassPermissions\n",
+        "claude --allow-dangerously-skip-permissions\n",
+        "claude -p 'say \\' --yolo\n",
+    ],
+)
+def test_round3_spawn_forms(text: str) -> None:
+    assert rules("run.sh", text) == [("dev-agent-spawn", B)]
+
+
+def test_round3_statement_reader() -> None:
+    statements = gate.sys.modules["devenv.spawn"].statements
+    text = 'a "x;\\"y" 2>&1 b # c ; d\r\ne \\\n f; g < &h\n"open'
+    assert statements(text) == [(1, 'a x "y 2>&1 b '), (2, "e   f"), (3, " g < "), (3, "h"), (4, "open")]
+    assert rules("run.sh", "cl\\aude --yolo\n") == [("dev-agent-spawn", B)]
+    assert rules("run.sh", "# claude --yolo\necho claude; echo --yolo\n") == []
+
+
+def test_round3_doubled_and_back_separators_in_paths() -> None:
+    assert scan.paths_in("sh tools//c.sh tools\\d.sh") == ["tools/c.sh", "tools/d.sh"]

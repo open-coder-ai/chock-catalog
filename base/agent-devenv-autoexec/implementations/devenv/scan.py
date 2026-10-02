@@ -44,7 +44,8 @@ def paths_in(command: str) -> list[str]:
     if len(command) > MAX_COMMAND:
         return []
     found = []
-    for token in _TOKEN.findall(command.replace('"', "").replace("'", "")):
+    for raw in _TOKEN.findall(command.replace('"', "").replace("'", "")):
+        token = re.sub(r"[\\/]+", "/", raw)
         at = 0
         while (prefix := _ROOTED.match(token, at)) is not None:
             at = prefix.end()

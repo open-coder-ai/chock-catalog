@@ -14,7 +14,7 @@ from pathlib import Path
 # exit it did not ask for as a refusal, never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from devenv.core import BLOCK, RULES, Collector
+from devenv.core import BLOCK, RULES, Collector, blank_strings
 from devenv.paths import normalized
 from devenv.scan import cross_references, judge_file, link_findings, raw_cr, symlinks, untracked
 
@@ -25,8 +25,6 @@ AGENT_ENV = ("CHOCK_AGENT_COMMIT", "CLAUDECODE", "AI_AGENT")
 FALSY = frozenset({"", "0", "false", "no", "off"})
 #: A waiver counts only inside a comment, never inside a value such as a hook's command string.
 _WAIVER = re.compile(r"(?:^\s*;|(?:^|\s)(?:#|//|<!--|/\*))\s*chock:\s*allow\s+(dev-[a-z-]+)", re.MULTILINE)
-#: Quoted strings are blanked before a waiver is looked for, so one inside a value never counts.
-_QUOTED = re.compile(r"\"(?:[^\"\\\n]|\\.)*\"|'[^'\n]*'")
 
 
 def by_person(event: str) -> bool:
@@ -58,7 +56,7 @@ def waived(c: Collector, rule: str, line: int, head: frozenset[str] | None) -> b
         text = c.lines[number - 1] if 0 < number <= len(c.lines) else ""
         own_line = number == line or text.lstrip().startswith(("#", "//", ";", "<!--", "/*"))
         committed = head is None or (text in head and target in head)
-        if own_line and rule in _WAIVER.findall(_QUOTED.sub('""', text)) and committed:
+        if own_line and rule in _WAIVER.findall(blank_strings(text)) and committed:
             return True
     return False
 

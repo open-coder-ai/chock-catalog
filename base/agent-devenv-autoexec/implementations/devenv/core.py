@@ -80,6 +80,28 @@ def norm(value: object) -> str:
     return f"{text[:KEY_TEXT]}...#{digest}"
 
 
+def blank_strings(line: str) -> str:
+    """The line with every quoted string's contents removed, in one pass; a quote left open (a multi-line
+    string's first line) blanks the rest of the line, so nothing inside a value can read as a comment."""
+    out: list[str] = []
+    quote = ""
+    index = 0
+    while index < len(line):
+        char = line[index]
+        if quote:
+            if char == "\\" and quote == '"':
+                index += 1
+            elif char == quote:
+                quote = ""
+                out.append(char)
+        else:
+            if char in "\"'":
+                quote = char
+            out.append(char)
+        index += 1
+    return "".join(out)
+
+
 def digest(value: object) -> str:
     """A short digest of a parsed value, so a key changes whenever anything inside it does."""
     text = json.dumps(value, sort_keys=True, default=str, ensure_ascii=False)
