@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 18 total, 17 executable |
+| **Eval cases** | 22 total, 21 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none like it in the same hunk (ask), or removes or weakens a hardening flag, security header, cookie attribute, TLS verification, row-level security or file mode (block). Hunk-local, line-level; misses a guard moved to another hunk or file, a semantic replacement, a deletion-only commit, and tests, docs and vendored code (not judged).
+trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check, row-level security or narrow file mode, or swaps one for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> guard-deletion: this change removes a check or a security mitigation (the refusal above names the file, line and family). Keep it, or move its replacement into the same hunk. A removed guard asks a person; a removed or weakened mitigation (hardening flag, security header, cookie attribute, TLS verification, row-level security, file mode) is refused. A person who has reviewed the removal waives one line with 'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma counts only once that exact line is committed.
+> guard-deletion: this change removes a check or a security mitigation (the refusal above names the file, line and family). Keep it, or move its replacement into the same hunk. A removed guard asks a person; a removed or weakened mitigation (hardening flag, security header, cookie attribute, TLS verification, row-level security, file mode) is refused. A person who has reviewed the removal waives one line with 'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma is itself a finding, and counts only on a removed line that is already committed.
 
 ## Which primitive it becomes
 
@@ -55,7 +55,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The check shapes and the mitigation families are regexes in `implementations/data/shapes.json`, and the judged paths in `implementations/data/scope.json` (EP12 tables, dated and schema-checked); add a family there with a bad and a good eval. A person waives a reviewed hunk with `pragma: allowlist guard-removal` or `pragma: allowlist mitigation-removal` on a line in it; an agent's pragma counts only on a removed line HEAD already holds. Hunk-local by design -- it does not follow a guard moved across hunks or files, and it does not read a commit that only deletes files.
+The check shapes and the mitigation families are regexes in `implementations/data/shapes.json`, and the judged paths in `implementations/data/scope.json` (EP12 tables, dated and schema-checked); add a family there with a bad and a good eval. A person waives a reviewed hunk with `pragma: allowlist guard-removal` or `pragma: allowlist mitigation-removal` on a line in it; an agent's pragma counts only on a removed line HEAD already holds, and one an agent adds to a guard or mitigation line is a finding. Known limits, each a miss rather than a refusal: it is hunk-local, so a guard moved across hunks or files is not followed; a guard neutralised in place (`assert True`, a swapped middleware) is not seen; an insecure setting added with nothing removed is left to other policies; a commit whose only change is deleted files never reaches a script gate; a strong-to-plain stack protector downgrade is not seen; files over 4000 lines are compared by line counts, not hunks; CI without a base ref or a push event file reads only the tip commit; the path scope skips root `test`, `fixtures`, `evals`, `docs` and any `tests`, `vendor`, `node_modules` directory.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

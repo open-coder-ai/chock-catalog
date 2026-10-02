@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "guard-deletion",
   "version": "0.0.1",
-  "description": "trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none like it in the same hunk (ask), or removes or weakens a hardening flag, security header, cookie attribute, TLS verification, row-level security or file mode (block). Hunk-local, line-level; misses a guard moved to another hunk or file, a semantic replacement, a deletion-only commit, and tests, docs and vendored code (not judged).",
+  "description": "trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check, row-level security or narrow file mode, or swaps one for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.",
   "author": {
     "name": "chock-core"
   },

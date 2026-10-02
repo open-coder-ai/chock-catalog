@@ -89,3 +89,8 @@ def run_script_full(
 def os_path() -> str:
     """The PATH of this process, for a child run with a custom environment."""
     return os.environ.get("PATH", "")
+
+
+def git_out(repo: Path, *args: str) -> str:
+    """Stdout of a git command in `repo`, stripped."""
+    return subprocess.run([GIT, *args], cwd=repo, check=True, capture_output=True, text=True).stdout.strip()

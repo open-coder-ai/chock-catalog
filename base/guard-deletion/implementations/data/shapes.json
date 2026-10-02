@@ -23,7 +23,7 @@
       "id": "failure-exit",
       "group": "check",
       "label": "a return, raise or throw on a failed check",
-      "pattern": "\\bif\\b.{0,120}:\\s*(?:return|raise|throw|abort|exit)\\b|\\bif\\b\\s*\\(.{0,120}\\)\\s*(?:return|goto|exit|abort)\\b|\\bif\\b.{0,120}\\{\\s*(?:return|throw|raise|exit|abort)\\b|^\\s*(?:raise|throw)\\b|\\bthrow\\s+new\\b|\\breturn\\s+(?:nil,\\s*)?(?:err|fmt\\.Errorf|errors\\.(?:New|Wrap\\w*))\\b|\\b(?:abort|HTTPException|sendStatus|status)\\s*\\(\\s*40[0139]\\b"
+      "pattern": "\\bif\\b.{0,120}:\\s*(?:return|raise|throw|abort|exit)\\b|\\bif\\b\\s*\\(.{0,120}\\)\\s*(?:return|goto|exit|abort)\\b|\\bif\\b.{0,120}\\{\\s*(?:return|throw|raise|exit|abort)\\b|^\\s*(?:raise|throw)\\b(?!\\s+(?:NotImplemented|new\\s+NotImplemented|new\\s+UnsupportedOperation))|\\bthrow\\s+new\\b(?!\\s+(?:NotImplemented|UnsupportedOperation))|\\breturn\\s+(?:nil,\\s*)?(?:err|fmt\\.Errorf|errors\\.(?:New|Wrap\\w*))\\b|\\b(?:abort|HTTPException|sendStatus|status)\\s*\\(\\s*40[0139]\\b"
     },
     {
       "id": "assertion",
@@ -41,7 +41,7 @@
       "id": "middleware-registration",
       "group": "registration",
       "label": "a middleware or request-filter registration",
-      "pattern": "\\b(?:app|router|server|api|application|bp|blueprint)\\.use\\s*\\(|\\bMIDDLEWARE(?:_CLASSES)?\\s*=|\\badd_middleware\\s*\\(|\\b\\w{0,40}Middleware\\b|\\bbefore_(?:request|action|filter)\\b|\\.(?:UseAuthentication|UseAuthorization|UseHttpsRedirection|UseHsts|UseCors)\\s*\\(|\\b(?:helmet|csurf)\\s*\\("
+      "pattern": "\\b(?:app|router|server|api|application|bp|blueprint)\\.use\\s*\\(|\\bMIDDLEWARE(?:_CLASSES)?\\s*=|\\badd_middleware\\s*\\(|\\b\\w{0,40}Middleware\\b(?!\\s*[},;]?\\s*(?:from\\b|$))|\\bbefore_(?:request|action|filter)\\b|\\.(?:UseAuthentication|UseAuthorization|UseHttpsRedirection|UseHsts|UseCors)\\s*\\(|\\b(?:helmet|csurf)\\s*\\("
     },
     {
       "id": "sanitizer-call",
@@ -59,7 +59,7 @@
       "id": "tls-verify-true",
       "group": "tls",
       "label": "TLS verification set on",
-      "pattern": "\\bverify(?:_\\w+)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|\\bcheck_hostname\\s*=\\s*True\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b"
+      "pattern": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|\\bcheck_hostname\\s*=\\s*True\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b"
     }
   ],
   "mitigations": [
@@ -68,6 +68,7 @@
       "label": "stack protector flag",
       "trigger": "removed",
       "removed": "(?<![\\w-])-fstack-protector(?:-strong|-all|-explicit)?(?![\\w-])",
+      "kept": "^(?!.*(?:-fno-stack-protector)).*(?:(?<![\\w-])-fstack-protector(?:-strong|-all|-explicit)?(?![\\w-]))",
       "fix": "restore -fstack-protector-strong"
     },
     {
@@ -75,7 +76,7 @@
       "label": "_FORTIFY_SOURCE level 2 or 3",
       "trigger": "removed",
       "removed": "_FORTIFY_SOURCE[=\\s]*[123]\\b",
-      "kept": "_FORTIFY_SOURCE[=\\s]*[23]\\b",
+      "kept": "^(?!.*(?:-U_FORTIFY_SOURCE)).*(?:_FORTIFY_SOURCE[=\\s]*[23]\\b)",
       "fix": "keep -D_FORTIFY_SOURCE=2 (with optimisation on)"
     },
     {
@@ -83,20 +84,29 @@
       "label": "position-independent executable flag",
       "trigger": "removed",
       "removed": "(?<![\\w-])(?:-fPIE|-fpie|-pie)(?![\\w-])|-Wl,-pie\\b",
+      "kept": "^(?!.*(?:-no-pie|-fno-pie|-fno-PIE)).*(?:(?<![\\w-])(?:-fPIE|-fpie|-pie)(?![\\w-])|-Wl,-pie\\b)",
       "fix": "restore -fPIE at compile time and -pie at link time"
     },
     {
-      "id": "relro-now",
-      "label": "RELRO or BIND_NOW linker flag",
+      "id": "relro",
+      "label": "RELRO linker flag",
       "trigger": "removed",
-      "removed": "-z[,\\s]+(?:relro|now)\\b",
-      "fix": "restore -Wl,-z,relro,-z,now"
+      "removed": "-z[,\\s]+relro\\b",
+      "fix": "restore -Wl,-z,relro"
+    },
+    {
+      "id": "bind-now",
+      "label": "BIND_NOW linker flag",
+      "trigger": "removed",
+      "removed": "-z[,\\s]+now\\b",
+      "fix": "restore -Wl,-z,now"
     },
     {
       "id": "noexecstack",
       "label": "non-executable stack linker flag",
       "trigger": "removed",
       "removed": "-z[,\\s]+noexecstack\\b",
+      "kept": "^(?!.*(?:-z[,\\s]+execstack)).*(?:-z[,\\s]+noexecstack\\b)",
       "fix": "restore -Wl,-z,noexecstack"
     },
     {
@@ -104,6 +114,7 @@
       "label": "Strict-Transport-Security response header",
       "trigger": "removed",
       "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bstrict[-_]transport[-_]security|secure_hsts_seconds\\b",
+      "kept": "(?i)^(?!.*(?:max-age\\s*=\\s*0\\b)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bstrict[-_]transport[-_]security|secure_hsts_seconds\\b",
       "fix": "keep the Strict-Transport-Security header set, or set it again in the same hunk"
     },
     {
@@ -111,6 +122,7 @@
       "label": "Content-Security-Policy response header",
       "trigger": "removed",
       "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bcontent[-_]security[-_]policy\\b",
+      "kept": "(?i)^(?!.*(?:unsafe-inline|unsafe-eval|default-src\\s+\\*)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bcontent[-_]security[-_]policy\\b",
       "fix": "keep the Content-Security-Policy header set, or set it again in the same hunk"
     },
     {
@@ -118,6 +130,7 @@
       "label": "X-Frame-Options response header",
       "trigger": "removed",
       "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bx[-_]frame[-_]options\\b",
+      "kept": "(?i)^(?!.*(?:ALLOWALL|ALLOW-FROM)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bx[-_]frame[-_]options\\b",
       "fix": "keep the X-Frame-Options header set, or set it again in the same hunk"
     },
     {
@@ -152,8 +165,8 @@
       "id": "tls-verify",
       "label": "TLS certificate verification",
       "trigger": "replaced-by-weak",
-      "removed": "\\bverify(?:_\\w+)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b|\\bcheck_hostname\\s*=\\s*True\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?1\\b",
-      "weak": "\\bverify(?:_\\w+)?[\\\"']?\\s*[:=]\\s*(?:False|false|0)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*false\\b|\\bInsecureSkipVerify\\s*:\\s*true\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:0|false)\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?0\\b|\\bcheck_hostname\\s*=\\s*False\\b|\\bCERT_NONE\\b",
+      "removed": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b|\\bcheck_hostname\\s*=\\s*True\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?1\\b",
+      "weak": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:False|false|0)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*false\\b|\\bInsecureSkipVerify\\s*:\\s*true\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:0|false)\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?0\\b|\\bcheck_hostname\\s*=\\s*False\\b|\\bCERT_NONE\\b",
       "fix": "keep verification on and trust the issuing CA with a bundle path instead"
     },
     {
@@ -161,6 +174,7 @@
       "label": "row-level security",
       "trigger": "removed-or-added",
       "removed": "(?i)^(?!.*\\b(?:NO\\s+FORCE|DISABLE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b).*(?:\\b(?:ENABLE|FORCE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bCREATE\\s+POLICY\\b)",
+      "kept": "(?i)^(?!.*(?:\\b(?:NO\\s+FORCE|DISABLE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bUSING\\s*\\(\\s*true\\s*\\))).*(?:\\b(?:ENABLE|FORCE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bCREATE\\s+POLICY\\b)",
       "weak": "(?i)\\bDISABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bNO\\s+FORCE\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bDROP\\s+POLICY\\b",
       "fix": "keep row-level security enabled and re-create the policy in the same change"
     },

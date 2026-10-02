@@ -117,7 +117,8 @@ BLOCKED = [
     (["CPPFLAGS += -D_FORTIFY_SOURCE=2"], ["CPPFLAGS += -D_FORTIFY_SOURCE=0"], "fortify-source"),
     (["CFLAGS += -fPIE"], ["CFLAGS += -fno-pie"], "pie"),
     (["LDFLAGS += -pie"], ["LDFLAGS += -no-pie"], "pie"),
-    (["LDFLAGS += -Wl,-z,relro,-z,now"], [], "relro-now"),
+    (["LDFLAGS += -Wl,-z,relro,-z,now"], [], "relro"),
+    (["LDFLAGS += -Wl,-z,relro,-z,now"], [], "bind-now"),
     (["LDFLAGS += -z noexecstack"], ["LDFLAGS += -z execstack"], "noexecstack"),
     (["res.setHeader('Strict-Transport-Security', 'max-age=63072000')"], [], "hsts"),
     (["SECURE_HSTS_SECONDS = 31536000"], [], "hsts"),
@@ -210,3 +211,56 @@ def test_a_waiver_clears_only_its_own_rule() -> None:
     assert verdict(gone, [], waived=waiver(human=True)) == []
     assert verdict(gone, [], waived=waiver(human=False)) == [(GUARD, "bound-compare")]
     assert verdict(gone, [], waived=waiver(human=False, committed=frozenset(gone))) == []
+
+
+def test_a_string_or_docstring_is_not_a_replacement_check() -> None:
+    assert verdict(["    if len(b) > 3: raise E"], ["    s = 'if y is None: raise E'"]) == [(GUARD, "bound-compare")]
+    assert verdict(["    out = html.escape(s)"], ['    doc = "html.escape(s)"']) == [(GUARD, "sanitizer-call")]
+
+
+def test_an_import_line_and_a_not_implemented_stub_are_not_guards() -> None:
+    assert verdict(["import { ErrorMiddleware } from 'x'", "from a import escape", "#include <x.h>"], []) == []
+    assert verdict(["    raise NotImplementedError", "    throw new NotImplementedException();"], []) == []
+
+
+WEAKENED = [
+    (["h['Strict-Transport-Security'] = 'max-age=31536000'"], ["h['Strict-Transport-Security'] = 'max-age=0'"], "hsts"),
+    (["setHeader('X-Frame-Options', 'DENY')"], ["setHeader('X-Frame-Options', 'ALLOWALL')"], "x-frame-options"),
+    (
+        ["Content-Security-Policy: default-src 'self'"],
+        ["Content-Security-Policy: default-src * 'unsafe-inline'"],
+        "csp",
+    ),
+    (["LDFLAGS += -Wl,-z,relro,-z,now"], ["LDFLAGS += -Wl,-z,relro"], "bind-now"),
+    (["LDFLAGS += -Wl,-z,relro,-z,now"], ["LDFLAGS += -Wl,-z,now"], "relro"),
+    (
+        ["CFLAGS += -fstack-protector-strong"],
+        ["CFLAGS += -fstack-protector-strong -fno-stack-protector"],
+        "stack-protector",
+    ),
+    (["CPPFLAGS += -D_FORTIFY_SOURCE=2"], ["CPPFLAGS += -D_FORTIFY_SOURCE=2 -U_FORTIFY_SOURCE"], "fortify-source"),
+    (["LDFLAGS += -pie"], ["LDFLAGS += -pie -no-pie"], "pie"),
+    (["LDFLAGS += -z noexecstack"], ["LDFLAGS += -z noexecstack -z execstack"], "noexecstack"),
+    (
+        ["CREATE POLICY p ON t USING (owner = current_user);"],
+        ["CREATE POLICY p ON t USING (true);"],
+        "row-level-security",
+    ),
+]
+
+
+@pytest.mark.parametrize(("removed", "added", "family"), WEAKENED, ids=[w[2] + str(i) for i, w in enumerate(WEAKENED)])
+def test_a_weakened_form_that_keeps_the_old_token_is_still_refused(
+    removed: list[str], added: list[str], family: str
+) -> None:
+    assert (MITIGATION, family) in verdict(removed, added)
+
+
+def test_an_unrelated_verify_setting_is_not_tls_verification() -> None:
+    assert verdict(["verify_email = True"], ["verify_email = False"]) == []
+
+
+def test_a_removed_line_too_long_to_read_asks_unless_waived() -> None:
+    long = "x = 1; " * 200
+    assert verdict([long], []) == [(GUARD, "long-line")]
+    assert verdict([long + " # pragma: allowlist guard-removal"], [], waived=waiver(human=True)) == []

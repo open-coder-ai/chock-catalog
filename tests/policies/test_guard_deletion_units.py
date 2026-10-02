@@ -98,7 +98,7 @@ def write_table(tmp_path: Path, name: str, doc: dict) -> Path:
 
 
 def test_the_scope_table_refuses_a_malformed_list(tmp_path: Path) -> None:
-    good = {"dirs": ["t"], "names": ["n"], "suffixes": [".m"]}
+    good = {"root_dirs": ["r"], "dirs": ["t"], "names": ["n"], "suffixes": [".m"]}
     assert scope.load(write_table(tmp_path, "s.json", good))["dirs"] == ("t",)
     for bad in ({"dirs": []}, {"names": [""]}, {"suffixes": "x"}, {"dirs": [1]}):
         with pytest.raises(data_table.TableError):
@@ -195,3 +195,38 @@ def test_a_baseline_that_cannot_be_read_falls_back_to_head(tmp_path: Path, monke
 
     monkeypatch.setattr(Path, "read_text", boom)
     assert changes.baseline(root, "a.py", "new\n") == "head\n"
+
+
+def test_a_hunk_is_judged_when_either_side_of_a_move_is_in_scope() -> None:
+    (hunk,) = hunks.parse_patch(
+        "diff --git a/src/a.py b/vendor/a.py\nsimilarity index 90%\nrename from src/a.py\nrename to vendor/a.py\n"
+        "--- a/src/a.py\n+++ b/vendor/a.py\n@@ -2 +2,0 @@\n-    if x is None: return\n"
+    )
+    assert (hunk.path, hunk.old) == ("vendor/a.py", "src/a.py")
+    assert changes.repo_path(Path("/r"), "/r/a/../b.py") == "b.py"
+    for bad in ("/elsewhere/x.py", "../x.py", ".."):
+        with pytest.raises(changes.ChangeError, match="outside the repository"):
+            changes.repo_path(Path("/r"), bad)
+
+
+def test_a_push_events_before_commit_is_the_range_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    root = scriptkit.init_repo(tmp_path / "r", {"a": "1\n"})
+    first = changes.git(root, "rev-parse", "HEAD").strip()
+    scriptkit.write(root, {"a": "2\n"})
+    scriptkit.git(root, "commit", "-qam", "two")
+    scriptkit.write(root, {"a": "3\n"})
+    scriptkit.git(root, "commit", "-qam", "three")
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
+    event = tmp_path / "event.json"
+    for body, want in (
+        ({"before": first}, [f"{first}...HEAD"]),
+        ({"before": "0" * 40}, ["HEAD^1", "HEAD"]),
+        ({"before": "nope"}, ["HEAD^1", "HEAD"]),
+        ({"before": "a" * 40}, ["HEAD^1", "HEAD"]),
+        ([], ["HEAD^1", "HEAD"]),
+    ):
+        event.write_text(json.dumps(body))
+        monkeypatch.setenv("GITHUB_EVENT_PATH", str(event))
+        assert changes.ci_range(root) == want
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "missing.json"))
+    assert changes.ci_range(root) == ["HEAD^1", "HEAD"]

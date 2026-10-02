@@ -14,8 +14,11 @@ MITIGATION_RULE = "mitigation-removal"
 #: Longer lines are cut here, so a pathological line cannot make a pattern run long.
 MAX_LINE = 1000
 COMMENT_ONLY = re.compile(r"^(?:#(?!(?:define|undef)\b)|//|/\*|\*|--|<!--|;)")
+IMPORT_ONLY = re.compile(r"^(?:import|from\s+\S+\s+import|using|use|#include)\b")
+STRINGS = re.compile(r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'")
 TRAILING_COMMENT = re.compile(r"\s(?:#|//|--\s).*$")
 #: waived(hunk, the removed lines the finding rests on, rule) -> True when a pragma waives the rule there.
+LONG = "split the long line, or have a person review the removal"
 Waived = Callable[[Hunk, list[str], str], bool]
 
 
@@ -32,7 +35,7 @@ class Finding:
 def code_of(raw: str) -> str:
     """The line without its trailing comment; empty when the whole line is a comment."""
     text = raw.strip()[:MAX_LINE]
-    return "" if COMMENT_ONLY.match(text) else TRAILING_COMMENT.sub("", text)
+    return "" if COMMENT_ONLY.match(text) or IMPORT_ONLY.match(text) else TRAILING_COMMENT.sub("", text)
 
 
 def _fires(fam: Mitigation, carried: list[int], weaker: list[int], added: list[str]) -> bool:
@@ -71,7 +74,8 @@ def _guards(hunk: Hunk, shapes: Shapes, waived: Waived, rem: list[str], add: lis
             removed_hits.setdefault(guard.group, {})[(guard.id, guard.label)] = None
     found: list[Finding] = []
     for group, hits in removed_hits.items():
-        if any(g.group == group and g.pattern.search(code) for g in shapes.guards for code in add):
+        bare = add if group == "registration" else [STRINGS.sub('""', code) for code in add]
+        if any(g.group == group and g.pattern.search(code) for g in shapes.guards for code in bare):
             continue
         advice = "keep the check, or put its replacement in the same hunk"
         found += [Finding(GUARD_RULE, hunk.path, hunk.line, fam, label, advice) for fam, label in hits]
@@ -84,4 +88,7 @@ def judge_hunk(hunk: Hunk, shapes: Shapes, waived: Waived) -> list[Finding]:
     add = [code_of(raw) for raw in hunk.added]
     mitigation, handled = _mitigations(hunk, shapes, waived, rem, add)
     left = ["" if i in handled else code for i, code in enumerate(rem)]
-    return mitigation + _guards(hunk, shapes, waived, left, add)
+    found = mitigation + _guards(hunk, shapes, waived, left, add)
+    if not found and any(len(raw.strip()) > MAX_LINE for raw in hunk.removed) and not waived(hunk, [], GUARD_RULE):
+        found.append(Finding(GUARD_RULE, hunk.path, hunk.line, "long-line", "a removed line too long to read", LONG))
+    return found

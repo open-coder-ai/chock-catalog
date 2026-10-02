@@ -3,9 +3,9 @@ name: "Guard Deletion and Mitigation Removal"
 version: "0.0.1"
 description: >
   trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check
-  with none like it in the same hunk (ask), or removes or weakens a hardening flag, security header, cookie
-  attribute, TLS verification, row-level security or file mode (block). Hunk-local, line-level; misses a guard moved
-  to another hunk or file, a semantic replacement, a deletion-only commit, and tests, docs and vendored code (not judged).
+  with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute,
+  TLS check, row-level security or narrow file mode, or swaps one for a weakened form (block). Hunk-local: misses
+  a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -22,8 +22,8 @@ hook:
       line and family). Keep it, or move its replacement into the same hunk. A removed guard asks a person; a
       removed or weakened mitigation (hardening flag, security header, cookie attribute, TLS verification,
       row-level security, file mode) is refused. A person who has reviewed the removal waives one line with
-      'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma counts
-      only once that exact line is committed.
+      'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma is itself a
+      finding, and counts only on a removed line that is already committed.
     params:
       script: guard-deletion-gate.py
 provenance:
@@ -45,4 +45,4 @@ changelog:
 - version: 0.0.1
   date: '2026-10-02'
   changes:
-  - "Initial draft (NP31). One script gate, two rules, over the diff of a change rather than a file. guard-deletion (ask): a removed line matches a guard shape and no added line in the same hunk matches a guard shape of the same group. mitigation-removal (block): a removed or weakened hardening flag, security header, cookie attribute, TLS verification, row-level security or file mode. Shapes live in implementations/data/shapes.json and the path scope in implementations/data/scope.json (EP12 tables)."
+  - "Initial draft (NP31). One script gate, two rules, over the diff of a change rather than a file. guard-deletion (ask): a removed line matches a guard shape and no added line in the same hunk matches a guard shape of the same group. mitigation-removal (block): a removed hardening flag, security header, cookie attribute, TLS verification, row-level security or file mode, or a swap to a weakened form (flag with its opposite on the line, header value max-age=0 or ALLOWALL or unsafe-inline, a policy USING (true), a world-writable mode). Shapes live in implementations/data/shapes.json and the path scope in implementations/data/scope.json (EP12 tables)."

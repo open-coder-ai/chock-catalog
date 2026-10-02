@@ -20,6 +20,7 @@ class Hunk:
     line: int
     removed: tuple[str, ...]
     added: tuple[str, ...]
+    old: str = ""  # the path before a rename or move, when the patch names one
 
 
 def lines_of(text: str) -> list[str]:
@@ -73,7 +74,7 @@ def parse_patch(text: str) -> list[Hunk]:
                 added.append(raw[1:].rstrip("\r"))
                 need_new -= 1
             if not need_old and not need_new:
-                hunks.append(Hunk(new_path or old_path or "", start, tuple(removed), tuple(added)))
+                hunks.append(Hunk(new_path or old_path or "", start, tuple(removed), tuple(added), old_path or ""))
             continue
         if raw.startswith("diff --git "):
             old_path = new_path = None

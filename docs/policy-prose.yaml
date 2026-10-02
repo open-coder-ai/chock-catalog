@@ -540,8 +540,14 @@ guard-deletion:
     the judged paths in `implementations/data/scope.json` (EP12 tables, dated and schema-checked); add a
     family there with a bad and a good eval. A person waives a reviewed hunk with `pragma: allowlist
     guard-removal` or `pragma: allowlist mitigation-removal` on a line in it; an agent's pragma counts
-    only on a removed line HEAD already holds. Hunk-local by design -- it does not follow a guard moved
-    across hunks or files, and it does not read a commit that only deletes files.
+    only on a removed line HEAD already holds, and one an agent adds to a guard or mitigation line is a
+    finding. Known limits, each a miss rather than a refusal: it is hunk-local, so a guard moved across
+    hunks or files is not followed; a guard neutralised in place (`assert True`, a swapped middleware) is
+    not seen; an insecure setting added with nothing removed is left to other policies; a commit whose only
+    change is deleted files never reaches a script gate; a strong-to-plain stack protector downgrade is not
+    seen; files over 4000 lines are compared by line counts, not hunks; CI without a base ref or a push event
+    file reads only the tip commit; the path scope skips root `test`, `fixtures`, `evals`, `docs` and any
+    `tests`, `vendor`, `node_modules` directory.
 
 block-unguarded-agent-spawn:
   solves: |

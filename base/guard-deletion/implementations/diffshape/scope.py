@@ -7,7 +7,7 @@ import os
 
 from chock_scan import data_table
 
-KEYS = ("dirs", "names", "suffixes")
+KEYS = ("root_dirs", "dirs", "names", "suffixes")
 
 
 def _check(doc: dict) -> list[str]:
@@ -31,7 +31,7 @@ def in_scope(path: str, scope: dict[str, tuple[str, ...]]) -> bool:
     if not parts:
         return False
     name = parts[-1]
-    if set(parts[:-1]) & set(scope["dirs"]):
+    if (parts[0] in scope["root_dirs"] and len(parts) > 1) or set(parts[:-1]) & set(scope["dirs"]):
         return False
     if name.endswith(scope["suffixes"]):
         return False

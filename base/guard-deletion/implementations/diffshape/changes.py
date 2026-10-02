@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -11,10 +12,11 @@ from diffshape.hunks import Hunk, from_texts, parse_patch
 
 GIT_TIMEOUT = 25
 DIFF = [
-    "diff", "-U0", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--relative",
+    "diff", "-U0", "--text", "--no-color", "--no-ext-diff", "--no-textconv", "-M", "--relative",
     "--src-prefix=a/", "--dst-prefix=b/",
 ]  # fmt: skip
 #: Branch names reach git as `origin/<name>`; anything else in the variable is not a base.
+SHA = re.compile(r"[0-9a-f]{40}")
 BASE_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 
 
@@ -29,9 +31,6 @@ def git(root: Path, *args: str) -> str:
             ["git", "-c", "core.quotePath=false", *args],  # noqa: S607
             cwd=root,
             capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
             timeout=GIT_TIMEOUT,
             check=False,
         )
@@ -39,9 +38,9 @@ def git(root: Path, *args: str) -> str:
         msg = f"git {args[0]} could not run ({type(exc).__name__})"
         raise ChangeError(msg) from None
     if proc.returncode != 0:
-        msg = f"git {args[0]} failed: {proc.stderr.strip()[:200]}"
+        msg = f"git {args[0]} failed: {proc.stderr.decode('utf-8', 'replace').strip()[:200]}"
         raise ChangeError(msg)
-    return proc.stdout
+    return proc.stdout.decode("utf-8", errors="replace")
 
 
 def _resolves(root: Path, ref: str) -> bool:
@@ -57,6 +56,15 @@ def staged(root: Path) -> list[Hunk]:
     return parse_patch(git(root, *DIFF, "--cached"))
 
 
+def _pushed_before() -> str:
+    """The commit a push event started from, read from the CI's event file; empty when there is none."""
+    try:
+        before = json.loads(Path(os.environ.get("GITHUB_EVENT_PATH", "")).read_text(encoding="utf-8")).get("before")
+    except (OSError, ValueError, AttributeError):
+        return ""
+    return before if isinstance(before, str) and SHA.fullmatch(before) and set(before) != {"0"} else ""
+
+
 def ci_range(root: Path) -> list[str] | None:
     """The git range of the change under test: the pull request's base when the CI names one, else the tip commit.
 
@@ -69,6 +77,9 @@ def ci_range(root: Path) -> list[str] | None:
             msg = f"base ref {ref!r} does not resolve; fetch it (actions/checkout fetch-depth: 0)"
             raise ChangeError(msg)
         return [f"{ref}...HEAD"]
+    before = _pushed_before()
+    if before and _resolves(root, before):
+        return [f"{before}...HEAD"]
     return ["HEAD^1", "HEAD"] if _resolves(root, "HEAD^1") else None
 
 
@@ -96,10 +107,20 @@ def baseline(root: Path, path: str, after: str) -> str:
     return disk if disk is not None and disk != after else committed(root, path)
 
 
+def repo_path(root: Path, path: str) -> str:
+    """`path` relative to the repository root, forward-slashed; ChangeError when it points outside the repository."""
+    top = Path(os.path.abspath(root))
+    rel = os.path.relpath(os.path.abspath(top / path), top)
+    if rel == ".." or rel.startswith(".." + os.sep) or os.path.isabs(rel):
+        msg = f"write path {path!r} is outside the repository"
+        raise ChangeError(msg)
+    return rel.replace(os.sep, "/")
+
+
 def written(root: Path, writes: dict[str, str]) -> list[Hunk]:
-    """Hunks of an agent's writes against their baselines; text with a NUL byte is binary and skipped."""
+    """Hunks of an agent's writes against their baselines, by repository-relative path."""
     hunks: list[Hunk] = []
     for path, after in sorted(writes.items()):
-        if "\0" not in after:
-            hunks += from_texts(path, baseline(root, path, after), after)
+        rel = repo_path(root, path)
+        hunks += from_texts(rel, baseline(root, rel, after), after)
     return hunks

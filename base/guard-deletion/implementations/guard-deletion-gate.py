@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 from chock_scan.data_table import TableError
@@ -16,10 +17,13 @@ HERE = Path(__file__).resolve().parent
 BLOCK, ASK, UNJUDGED = 1, 3, 2
 #: Events at which a person staged the text, so a pragma on a line counts. Anywhere else (the agent's tool
 #: call, its turn's end, its commit) a pragma counts only once the same line is already committed.
-HUMAN_EVENTS = frozenset({"commit", "push", "ci"})
+HUMAN_EVENTS = frozenset({"commit", "ci"})
 STAGED_EVENTS = frozenset({"commit", "agent-commit"})
+EVENTS = STAGED_EVENTS | {"ci", "tool_use"}
+BUDGET = 20.0
 PRAGMA = re.compile(r"pragma:\s*allowlist\s+(guard-removal|mitigation-removal)\b", re.IGNORECASE)
 WAIVER_NAMES = {judge.GUARD_RULE: "guard-removal", judge.MITIGATION_RULE: "mitigation-removal"}
+PRAGMA_ADVICE = "remove it; a person who reviewed the removal adds the pragma"
 MAX_CHANGED_LINES = 20000
 SHOWN = 12
 OVERSIZE = (
@@ -50,6 +54,13 @@ def make_waiver(root: Path, event: str):
     return waived
 
 
+def known_event(event: str) -> None:
+    """ValueError for an event this gate does not judge: an unknown event must not read as an allow."""
+    if event not in EVENTS:
+        msg = f"event {event!r} is not one this gate judges"
+        raise ValueError(msg)
+
+
 def collect(payload: dict, root: Path, event: str):
     """The hunks of the change this event is judging."""
     if event in STAGED_EVENTS:
@@ -57,6 +68,25 @@ def collect(payload: dict, root: Path, event: str):
     if event == "ci":
         return changes.in_range(root)
     return changes.written(root, payload.get("writes") or {})
+
+
+def shaped(table: shapes.Shapes, raw: str) -> bool:
+    """Whether the line, without its comment, is one a guard or mitigation family matches."""
+    code = judge.code_of(raw)
+    return any(g.pattern.search(code) for g in table.guards) or any(
+        m.removed.search(code) or m.kept.search(code) for m in table.mitigations
+    )
+
+
+def agent_pragmas(hunks: list[Hunk], table: shapes.Shapes) -> list[judge.Finding]:
+    """A waiver pragma an agent's change adds to a guard or mitigation line: only a person adds one."""
+    return [
+        judge.Finding(
+            judge.GUARD_RULE, h.path, h.line, "agent-pragma", "a waiver pragma added by the agent", PRAGMA_ADVICE
+        )
+        for h in hunks
+        if any(PRAGMA.search(raw) and shaped(table, raw) for raw in h.added)
+    ]
 
 
 def report(findings: list[judge.Finding]) -> str:
@@ -86,9 +116,14 @@ def main() -> int:
         payload = json.load(sys.stdin)
         root = Path(payload.get("repo_root") or ".")
         event = str(payload.get("event", ""))
+        known_event(event)
         table = shapes.load(HERE / "data" / "shapes.json")
         in_scope = scope.load(HERE / "data" / "scope.json")
-        hunks = [h for h in collect(payload, root, event) if scope.in_scope(h.path, in_scope)]
+        hunks = [
+            h
+            for h in collect(payload, root, event)
+            if scope.in_scope(h.path, in_scope) or scope.in_scope(h.old, in_scope)
+        ]
     except (TableError, changes.ChangeError, ValueError, AttributeError, TypeError) as exc:
         print(
             f"guard-deletion: could not read the change ({type(exc).__name__}: {exc}); refusing to guess",
@@ -99,7 +134,16 @@ def main() -> int:
         print(OVERSIZE.format(limit=MAX_CHANGED_LINES), file=sys.stderr)
         return ASK
     waived = make_waiver(root, event)
-    findings = [f for h in hunks for f in judge.judge_hunk(h, table, waived)]
+    started = time.monotonic()
+    findings = [] if event in HUMAN_EVENTS else agent_pragmas(hunks, table)
+    for hunk in hunks:
+        if time.monotonic() - started > BUDGET:
+            print(
+                f"guard-deletion: out of time ({BUDGET:.0f}s) before every hunk was read; a person decides",
+                file=sys.stderr,
+            )
+            return ASK
+        findings += judge.judge_hunk(hunk, table, waived)
     if not findings:
         return 0
     print(report(findings), file=sys.stderr)
