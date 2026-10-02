@@ -1,13 +1,13 @@
 id: rtk-dangerous-actions-blocker
 name: "rtk Dangerous Actions Blocker"
-version: "0.1.1"
+version: "0.2.0"
 description: >
-  rtk#1007. Blocks: rm -rf on /, ~, ., .. or abs paths; PowerShell/cmd drive removal; git push
-  --force/+refspec; credential-file reads (.env, keys, ~/.ssh); echo/inline
-  *_API_KEY/_SECRET/_TOKEN; SQL DROP/TRUNCATE/unscoped DELETE/FLUSHALL; dropdb; kubectl delete,
-  terraform destroy, aws s3 rm --recursive/rb --force, helm uninstall, gcloud delete, docker
-  volume rm. Asks: relative rm -rf off safe list, git reset --hard/clean -f/checkout ./branch -D,
-  docker prune. Skips rm/file/echo in container exec.
+  rtk#1007. Destructive verdicts come from the chock_destructive table shared with block-
+  destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset
+  --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's
+  safe list, bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads
+  (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container
+  exec.
 artifact: rule
 enforcement: advise
 compliance:
@@ -19,8 +19,8 @@ compliance:
   - ASI02
 rule:
   text: |
-    block: rm_-rf(/|~|.|..|abs), git_push(--force|+ref), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN), sql(DROP|TRUNCATE|DELETE_no_WHERE)|dropdb|FLUSHALL, kubectl_delete|terraform_destroy|aws_s3(rm_--recursive|rb_--force)|helm_uninstall|gcloud_delete|docker_volume_rm
-    ask: rm_-rf(relative, off safe_list), git(reset_--hard|clean_-f|checkout_.|branch_-D), docker_*_prune|docker_rm_-f_$(..); skip_inside: docker|kubectl_exec; prefix: rtk; prefer: stash|dry-run
+    block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
+    ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve, pkill_-f, systemctl_disable; skip_inside: docker|kubectl_exec(file rows); prefix: rtk
 effects:
 - read_only
 approval:
@@ -29,7 +29,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-09-13T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -48,6 +48,12 @@ tags:
 - requested-by:rtk-ai/rtk#1007
 
 changelog:
+- version: 0.2.0
+  date: '2026-10-02'
+  changes:
+  - "Destructive verdicts now come from chock_destructive (table 1.0.0), shipped byte for byte in this policy and block-destructive-commands; this guard keeps only its own credential rows (file reads, echoes, inline literals). Where the two policies disagreed the stricter verdict wins, because an agent may not lower enforcement: git reset --hard, git clean -f, git checkout . and docker system/volume prune now block instead of asking (tc-017 to tc-020, tc-034, tc-035, tc-040, tc-060 and tc-068 flip ask to block), and git push --force-with-lease with no value asks (tc-016 flips allow to ask). Aligning at ask instead, as the roadmap's HP02 note suggests, would loosen block-destructive-commands; that is the owner's call and a one-row change in the table."
+  - "Gains every verb block-destructive-commands 0.2.0 adds (its changelog lists them), plus find -delete/-exec rm, shred, truncate, wipefs and docker volume remove, which this fork never judged. The C3 fallback is honoured fail-closed the same way: an unsplittable command is also read without its quotes and the stricter reading wins. 13 eval cases added (tc-093 to tc-105)."
+  - "The same review hardening as block-destructive-commands 0.2.0 (its changelog lists it), through the shared table. rtk's safe list for rm -rf is unchanged: widening it (.venv, .pytest_cache, out) would turn asks into allows, which only the owner can decide."
 - version: 0.1.1
   date: '2026-09-30'
   changes:

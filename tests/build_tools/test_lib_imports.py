@@ -97,3 +97,20 @@ def test_the_lib_copies_themselves_are_not_read_as_policy_scripts(cat: Path) -> 
     _put(cat / "lib" / "pkg" / "c.py", "from pkg.b import x\n")
     _put(cat / "base" / "one" / "implementations" / "__pycache__" / "junk.py", "from pkg.c import y\n")
     assert gen_lib_copies.problems(cat) == []
+
+
+def test_a_policys_own_package_may_import_its_siblings_relatively(cat: Path) -> None:
+    own = cat / "base" / "one" / "implementations" / "own"
+    _put(own / "__init__.py", "from .rules import R\nfrom . import more\n")
+    _put(own / "rules.py", "from .more import M\n")
+    _put(own / "more.py", "M = 1\n")
+    gen_lib_copies.write(cat)
+    assert gen_lib_copies.problems(cat) == []
+    _put(own / "rules.py", "from pkg.c import y\nfrom .more import M\n")
+    assert gen_lib_copies.problems(cat) == [
+        "lib/consumers.yaml: base/one: rules.py imports pkg.c, which is not listed for it"
+    ]
+    _put(own / "rules.py", "from ..up import x\n")
+    assert gen_lib_copies.problems(cat)[0].startswith(
+        "lib/consumers.yaml: base/one: rules.py: cannot be read for imports"
+    )

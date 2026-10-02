@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-no-verify",
-  "version": "0.3.2",
-  "description": "Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c, --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says ask the person. Bypasses: aliases, scripts.",
+  "version": "0.4.0",
+  "description": "Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c, git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; hook manager uninstall; aliases and rebase --exec defined in the command. Asks on plumbing, unset hooksPath, another GIT_DIR and config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.",
   "author": {
     "name": "chock-core"
   },
