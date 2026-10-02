@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~446 tokens (chars/4, max 2000)
+INDEX.md: ~454 tokens (chars/4, max 2000)
 Recompiled 1 policies
 guard-deletion:
   claude: enforced-at-commit + best-effort at tool use (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~446 tokens (chars/4, max 2000)
+INDEX.md: ~454 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -111,9 +111,13 @@ guard-deletion  [deterministic]
   PASS  tc-015                             authored  mitigation-removal: this change removes or weakens a security mitig…
   PASS  tc-016                             authored  mitigation-removal: this change removes or weakens a security mitig…
   PASS  tc-017                             authored  gate exit 0
+  PASS  tc-019                             authored  guard-deletion: this change removes a check and puts none like it i…
+  PASS  tc-020                             authored  mitigation-removal: this change removes or weakens a security mitig…
+  PASS  tc-021                             authored  mitigation-removal: this change removes or weakens a security mitig…
+  PASS  tc-022                             authored  guard-deletion: this change removes a check and puts none like it i…
   score 1.00
 
-5 policies: 17 pass, 42 skipped
+5 policies: 21 pass, 42 skipped
 42 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -147,5 +151,5 @@ guard-deletion  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **guard-deletion**: guard-deletion: this change removes a check or a security mitigation (the refusal above names the file, line and family). Keep it, or move its replacement into the same hunk. A removed guard asks a person; a removed or weakened mitigation (hardening flag, security header, cookie attribute, TLS verification, row-level security, file mode) is refused. A person who has reviewed the removal waives one line with 'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma counts only once that exact line is committed. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **guard-deletion**: guard-deletion: this change removes a check or a security mitigation (the refusal above names the file, line and family). Keep it, or move its replacement into the same hunk. A removed guard asks a person; a removed or weakened mitigation (hardening flag, security header, cookie attribute, TLS verification, row-level security, file mode) is refused. A person who has reviewed the removal waives one line with 'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma is itself a finding, and counts only on a removed line that is already committed. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```
