@@ -396,3 +396,35 @@ suite:
         package.json: "{\n  \"homepage\": \"github:acme/agent\",\n  \"bugs\": \"github:acme/agent\"\n}\n"
         NOTES.md: "Prefer cargo install over cargo build here.\n"
       expect: allow
+  - id: tc-051
+    category: behavior
+    prompt: "Adversarial: cargo behind the BuildKit RUN cache-mount flag, an env assignment, sudo with a flag and a path to the binary."
+    expect: The hook blocks the commit; command prefixes do not hide the install.
+    execute:
+      files:
+        Dockerfile: "FROM rust:1.81.0\nRUN --mount=type=cache,target=/root/.cargo cargo install agent-tool\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-052
+    category: behavior
+    prompt: "Adversarial: cargo in a shell conditional, behind an env assignment and sudo flags, and from its absolute path."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "if ! command -v agent; then CARGO_HOME=/opt/cargo sudo -E /usr/local/cargo/bin/cargo install agent-tool; fi\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-053
+    category: trigger
+    prompt: "A Makefile recipe installs a crate silently with the at-sign prefix."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        Makefile: "tools:\n\t@cargo install agent-tool\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-054
+    category: negative_trigger
+    prompt: "A changelog bullet and a short prose line mention cargo installs."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        CHANGELOG.md: "- cargo install now works offline\n- cargo install builds binaries\n"
+      expect: allow
