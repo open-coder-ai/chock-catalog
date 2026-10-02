@@ -15,6 +15,10 @@ GEM_SPEC = re.compile(r" {4}(\S+) \(([^)]+)\)$")
 GEM_CHECKSUM = re.compile(r" {2}(\S+) \(([^)]+)\)(?: (.*))?$")
 GEM_ATTR = re.compile(r" {2}(remote|revision): (.+)$")
 NUGET_SKIP = frozenset({"Project"})
+GEM_SOURCES = frozenset({"GEM", "GIT", "PATH", "PLUGIN SOURCE"})
+#: Sections whose specs come from the remote above them: the registry, or a git repository (bundler plugins too).
+GIT_SPECS = frozenset({"GEM", "GIT", "PLUGIN SOURCE"})
+GEM_SECTIONS = GEM_SOURCES | {"PLATFORMS", "DEPENDENCIES", "CHECKSUMS", "RUBY VERSION", "BUNDLED WITH"}
 
 
 def cargo_lock(text: str) -> list[Entry]:
@@ -59,19 +63,26 @@ def go_sum(text: str) -> list[Entry]:
 def gemfile_lock(text: str) -> list[Entry]:
     found: list[Entry] = []
     checksums: dict[str, str] = {}
-    section, attrs = "", {}
+    section, attrs, seen = "", {}, set()
     for number, raw in enumerate(text.splitlines(), 1):
         line = raw.rstrip("\r")
         if line and not line.startswith(" "):
             section, attrs = line.strip(), {}
+            if section not in GEM_SECTIONS:
+                msg = f"line {number}: unknown section {section[:40]!r}"
+                raise LockError(msg)
+            seen.add(section)
         elif section == "CHECKSUMS" and (match := GEM_CHECKSUM.match(line)):
             checksums[f"{match.group(1)}@{match.group(2)}"] = (match.group(3) or "").replace("=", ":", 1)
-        elif section in ("GEM", "GIT") and (match := GEM_ATTR.match(line)):
+        elif section in GEM_SOURCES and (match := GEM_ATTR.match(line)):
             attrs.setdefault(match.group(1), []).append(match.group(2).strip())
             if match.group(1) == "remote" and section == "GEM":
                 found.append(Entry("GEM remote", match.group(2).strip(), number, match.group(2).strip(), "gem"))
-        elif section in ("GEM", "GIT") and (match := GEM_SPEC.match(line)):
+        elif section in GIT_SPECS and (match := GEM_SPEC.match(line)):
             found.append(_gem_spec(section, attrs, match, number))
+    if not seen & GEM_SOURCES:
+        msg = "no GEM, GIT or PATH section"
+        raise LockError(msg)
     return [
         Entry(e.name, e.version, e.line, e.source, e.eco, _gem_hash(checksums.get(e.ident)), git=e.git, pinned=e.pinned)
         for e in found
@@ -85,15 +96,8 @@ def _gem_spec(section: str, attrs: dict[str, list[str]], match: re.Match, number
     if section == "GEM":
         return Entry(match.group(1), match.group(2), number, None, "gem")
     revision = attrs.get("revision", [""])[-1]
-    return Entry(
-        match.group(1),
-        match.group(2),
-        number,
-        attrs["remote"][-1],
-        "gem",
-        git=True,
-        pinned=bool(COMMIT.fullmatch(revision)),
-    )
+    pinned = bool(COMMIT.fullmatch(revision))
+    return Entry(match.group(1), match.group(2), number, attrs["remote"][-1], "gem", git=True, pinned=pinned)
 
 
 def _gem_hash(value: str | None) -> tuple[str, ...]:

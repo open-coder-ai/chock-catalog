@@ -33,12 +33,14 @@ def test_package_lock_v2_reads_packages_and_skips_links_and_bundles() -> None:
             "left-pad": pkg("left-pad", "1.3.0"),
             "left-pad/node_modules/deep": pkg("deep", "2.0.0", hasInstallScript=True),
             "linked": {"resolved": "packages/linked", "link": True},
-            "bundled": {"version": "1.0.0", "inBundle": True},
+            "bundled": {**pkg("bundled", "1.0.0"), "inBundle": True},
+            "left-pad/node_modules/inner": {"version": "1.0.0", "inBundle": True},
             "alias": {**pkg("real", "1.0.0"), "name": "real"},
         }
     )
     got = {e.ident: e for e in npm.package_lock(text)}
-    assert set(got) == {"left-pad@1.3.0", "deep@2.0.0", "real@1.0.0"}
+    # a root-level bundle is still fetched by npm; only one shipped inside a dependency's tarball is skipped
+    assert set(got) == {"left-pad@1.3.0", "deep@2.0.0", "real@1.0.0", "bundled@1.0.0"}
     assert got["left-pad@1.3.0"].transitive is False
     assert got["deep@2.0.0"].transitive is True
     assert got["deep@2.0.0"].install is True
@@ -197,9 +199,42 @@ def test_berry_yarn_lock_reads_resolutions() -> None:
     assert got["a"].integrity and got["a"].source is None
     assert got["b"].expect is True and got["b"].integrity == ()
     assert got["g"].pinned is False
-    assert got["p"].source is None and got["p"].expect is False
+    assert got["p"].source is None and got["p"].expect is True  # a patch of a registry package
     assert got["x"].source == "https://evil.example/x.tgz"
-    assert sorted(rules_of("yarn.lock", BERRY)) == sorted([model.MISSING, model.SOURCE, model.UNPINNED, model.SOURCE])
+    assert got["a"].integrity == ("berry10c0/" + "f" * 64,)
+    assert sorted(rules_of("yarn.lock", BERRY)) == sorted(
+        [model.MISSING, model.MISSING, model.SOURCE, model.UNPINNED, model.SOURCE]
+    )
+
+
+@pytest.mark.parametrize(
+    ("resolution", "source"),
+    [
+        ("left-pad@patch:left-pad@https%3A%2F%2Fevil.example%2Fx.tgz#./p.patch::version=1.3.0&hash=abc", "https://evil.example/x.tgz"),
+        ("left-pad@npm:1.3.0::__archive%55rl=https%3A%2F%2Fevil.example%2Fx.tgz", "https://evil.example/x.tgz"),
+        ("left-pad@patch:left-pad@workspace%3Apackages%2Fl#./p.patch", None),
+        ("left-pad@patch:left-pad@npm%3A1.3.0#./p.patch::version=1.3.0", None),
+    ],
+)  # fmt: skip
+def test_berry_judges_the_reference_a_patch_wraps_and_decoded_parameters(resolution: str, source: str | None) -> None:
+    text = f'__metadata:\n  version: 8\n  cacheKey: 8\n\n"e":\n  version: 1.3.0\n  resolution: "{resolution}"\n  checksum: {"a" * 64}\n'
+    got = yarn.yarn_lock(text)
+    assert [e.source for e in got] == ([source] if "workspace" not in resolution else [])
+    if got:
+        assert got[0].integrity == ("berry8/" + "a" * 64,)
+
+
+def test_classic_yarn_reads_a_field_written_with_a_colon() -> None:
+    text = 'left-pad@^1.3.0:\n  version "1.3.0"\n  resolved: "https://evil.example/left-pad-1.3.0.tgz"\n'
+    assert [e.source for e in yarn.yarn_lock(text)] == ["https://evil.example/left-pad-1.3.0.tgz"]
+
+
+def test_an_npm_alias_is_judged_by_the_package_it_installs() -> None:
+    url = "https://registry.npmjs.org/real/-/real-1.0.0.tgz"
+    classic = f'alias@npm:real@^1.0.0:\n  version "1.0.0"\n  resolved "{url}"\n  integrity {h()}\n'
+    assert rules_of("yarn.lock", classic) == []
+    v1 = json.dumps({"dependencies": {"alias": {"version": "npm:real@1.0.0", "resolved": url, "integrity": h()}}})
+    assert rules_of("package-lock.json", v1) == []
 
 
 @pytest.mark.parametrize(

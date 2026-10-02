@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from chock_scan import yamlpath
 
-from lockscan.model import COMMIT, Entry, LockError, split_spec, sri
+from lockscan.model import COMMIT, Entry, LockError, https, split_spec, sri
 
 MAX_CHARS = 1 << 26
 MAX_NODES = 5_000_000
@@ -77,9 +77,10 @@ def _entry(key: str, got: dict[str, str], line: int, direct: set[str]) -> Entry 
         source=source,
         eco="npm",
         integrity=integrity,
-        expect=not git and (source is None or source.startswith("https://")),
+        expect=not git and https(source),
         weak=weak,
         pinned=not git or bool(COMMIT.fullmatch(got.get("resolution/commit", ""))),
         install=got.get("requiresBuild") == "true",
         transitive=name not in direct,
+        tarball=got.get("resolution/tarball") is not None,
     )

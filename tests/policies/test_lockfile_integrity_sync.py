@@ -76,13 +76,16 @@ def test_sync_findings_ask_for_a_lock_or_a_manifest_moved_alone(tmp_path: Path) 
 def test_ignore_findings_need_a_manifest_beside_the_ignored_lock(tmp_path: Path) -> None:
     (tmp_path / "cache").mkdir()
     (tmp_path / "package.json").write_text(BASE_MANIFEST, encoding="utf-8")
+    (tmp_path / "package-lock.json").write_text(BASE_LOCK, encoding="utf-8")
     text = "# locks\n!keep.lock\n\nnode_modules/\n/package-lock.json\n**/Cargo.lock\n"
     got = sync.ignore_findings({".gitignore": text}, tmp_path)
     assert [(f.rule, f.line) for f in got] == [(model.IGNORED, 5)]
     assert sync.ignore_findings({"cache/.gitignore": "*\n"}, tmp_path) == []
-    with_cargo = sync.ignore_findings({".gitignore": text, "Cargo.toml": "[package]\n"}, tmp_path)
+    with_cargo = sync.ignore_findings({".gitignore": text, "Cargo.toml": "[package]\n", "Cargo.lock": ""}, tmp_path)
     assert [f.line for f in with_cargo] == [5, 6]
     assert sync.ignore_findings({"/outside/.gitignore": "yarn.lock\n", "README.md": "x"}, tmp_path) == []
+    # ignoring another package manager's lock keeps a project to one; only a lock the folder holds counts
+    assert sync.ignore_findings({".gitignore": "yarn.lock\npnpm-lock.yaml\n"}, tmp_path) == []
 
 
 def test_deleted_findings_need_the_manifest_to_stay(tmp_path: Path) -> None:

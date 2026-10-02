@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import PurePosixPath
 
@@ -42,6 +43,8 @@ READERS: dict[str, Callable[[str], list[Entry]]] = {
 }
 #: Ecosystems whose lock drops a line for every module it no longer needs, so a removal is worth a look.
 REMOVAL_READERS = frozenset({"go.sum"})
+#: Ecosystems that record one hash per downloadable file, so a version may gain hashes legitimately.
+LOOSE_ECOS = frozenset({"pypi"})
 
 
 def reader(path: str) -> Callable[[str], list[Entry]] | None:
@@ -64,7 +67,9 @@ def state_findings(path: str, entries: list[Entry], allow: tuple[HostEntry, ...]
     """What is wrong with each entry on its own, keyed so a copy already in the baseline cancels it."""
     found = []
     for e in entries:
-        if e.source is not None and (why := problem(e.source, e.eco, allow, git=e.git)):
+        if e.source is not None and (
+            why := problem(e.source, e.eco, allow, git=e.git, name=e.name if e.tarball else "")
+        ):
             where = host_of(e.source) or scheme_of(e.source) or "path"
             extra = f"; {note}" if note else ""
             message = f"{e.ident} is {why}{extra}. Restore the registry URL, or ask a person to add the host"
@@ -84,25 +89,59 @@ def state_findings(path: str, entries: list[Entry], allow: tuple[HostEntry, ...]
     return found
 
 
-def _hashes(entries: list[Entry]) -> dict[str, tuple[set[str], int]]:
-    found: dict[str, tuple[set[str], int]] = {}
+#: The algorithm (or Berry cache key) a hash was made with; hashes are compared only within one.
+ALGO = re.compile(r"(sha1hex|sha1|sha256|sha384|sha512|md5|h1|berry[^/]*)[-:/]")
+STRENGTH = {"md5": 0, "sha1": 1, "sha1hex": 1, "sha256": 2, "sha384": 3, "sha512": 4}
+
+
+def _by_algo(hashes: set[str]) -> dict[str, set[str]]:
+    grouped: dict[str, set[str]] = {}
+    for value in hashes:
+        found = ALGO.match(value)
+        grouped.setdefault(found.group(1) if found else "", set()).add(value)
+    return grouped
+
+
+def _strongest(grouped: dict[str, set[str]]) -> int:
+    return max((STRENGTH[algo] for algo in grouped if algo in STRENGTH), default=-1)
+
+
+def replaced(old: set[str], new: set[str], *, strict: bool) -> bool:
+    """Whether the hashes of one package@version changed in a way that admits other content.
+
+    Within one algorithm: any difference when `strict` (an npm client accepts any listed hash of the strongest
+    algorithm, so an added one is as good as a replacement), else a hash both removed and added (PyPI lists one
+    per file, and a new wheel adds one). Across algorithms: the strongest one dropped (a sha512 replaced by a
+    sha1). A new algorithm beside the old ones (a sha1 lock upgraded to sha512) is not a replacement.
+    """
+    before, after = _by_algo(old), _by_algo(new)
+    for algo in before.keys() & after.keys():
+        removed, added = before[algo] - after[algo], after[algo] - before[algo]
+        if (removed or added) if strict else (removed and added):
+            return True
+    return bool(new) and 0 <= _strongest(after) < _strongest(before)
+
+
+def _hashes(entries: list[Entry]) -> dict[str, tuple[set[str], int, str]]:
+    found: dict[str, tuple[set[str], int, str]] = {}
     for e in entries:
-        hashes, _ = found.setdefault(e.ident, (set(), e.line))
+        hashes, _, _ = found.setdefault(e.ident, (set(), e.line, e.eco))
         hashes.update(e.integrity)
     return found
 
 
 def delta_findings(path: str, entries: list[Entry], base: list[Entry]) -> list[Finding]:
-    """Hashes replaced for a package@version the baseline already locked, and (go.sum) lines removed."""
+    """Hashes replaced for a package@version the baseline already locked, and (go.sum) modules dropped."""
     found = []
     now, before = _hashes(entries), _hashes(base)
-    for ident, (hashes, line) in now.items():
-        old = before.get(ident, (set(), 0))[0]
-        if old - hashes and hashes - old:
+    for ident, (hashes, line, eco) in now.items():
+        old = before.get(ident, (set(), 0, eco))[0]
+        if replaced(old, hashes, strict=eco not in LOOSE_ECOS):
             message = f"{ident} was already locked with a different hash: the same version must keep its hash"
             found.append(Finding(CHANGED, f"{CHANGED}|{ident}|{digest(' '.join(sorted(hashes)))}", path, line, message))
-    gone = sorted(set(before) - set(now))
+    # go mod tidy drops an old version's lines on every upgrade; a module gone at every version is worth a look
+    gone = sorted({e.name for e in base} - {e.name for e in entries})
     if gone and PurePosixPath(path).name.lower() in REMOVAL_READERS:
-        message = f"{len(gone)} checksum line(s) removed (first: {gone[0]}): confirm the modules were dropped"
+        message = f"{len(gone)} module(s) removed from go.sum (first: {gone[0]}): confirm they were dropped"
         found.append(Finding(REMOVED, f"{REMOVED}|{digest(' '.join(gone))}", path, 1, message))
     return found

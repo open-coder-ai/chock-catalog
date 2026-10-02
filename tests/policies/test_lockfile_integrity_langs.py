@@ -59,7 +59,8 @@ pyyaml = [{{file = "PyYAML.whl", hash = "{SHA256}"}}]
     assert (got["httpx"].git, got["httpx"].pinned, got["httpx"].expect) == (True, True, False)
     assert got["private"].source == "https://pypi.corp.example/simple"
     assert got["PyYAML"].integrity == (SHA256,)
-    assert rules_of("poetry.lock", text) == [model.SOURCE, model.MISSING]
+    # a git source on a host no person allowlisted is refused like any other off-registry source
+    assert rules_of("poetry.lock", text) == [model.SOURCE, model.SOURCE, model.MISSING]
 
 
 def test_poetry_lock_tolerates_odd_metadata() -> None:
@@ -101,7 +102,13 @@ version = "1.0"
     assert ("idna", "https://pypi.org/simple", False, True) in got
     assert ("g", f"https://github.com/x/g?rev=main#{SHA40}", True, True) in got
     assert ("nosrc", "", False, True) in got
-    assert rules_of("uv.lock", text) == [model.SOURCE, model.SOURCE, model.MISSING]
+    assert rules_of("uv.lock", text) == [model.SOURCE, model.SOURCE, model.SOURCE, model.MISSING]
+
+
+def test_uv_refuses_a_source_that_is_local_and_remote_at_once() -> None:
+    text = 'version = 1\n[[package]]\nname = "c"\nversion = "1"\nsource = { registry = "https://pypi.org/simple", editable = "." }\n'
+    with pytest.raises(LockError, match="both local"):
+        python.uv_lock(text)
 
 
 def test_pipfile_lock_reads_sources_and_packages() -> None:
@@ -117,12 +124,14 @@ def test_pipfile_lock_reads_sources_and_packages() -> None:
                 "url": {"file": "https://cdn.example/u.whl", "hashes": [SHA256]},
             },
             "develop": {},
+            "docs": {"evil": {"file": "http://evil.example/e.whl", "hashes": [SHA256]}},
         }
     )
     got = {e.name: e for e in python.pipfile_lock(text)}
-    assert set(got) == {"_meta.sources", "ok", "nohash", "g", "url"}
+    assert set(got) == {"_meta.sources", "ok", "nohash", "g", "url", "evil"}  # custom categories are read too
     assert got["g"].pinned is False
-    assert rules_of("Pipfile.lock", text) == [model.SOURCE, model.MISSING, model.UNPINNED, model.SOURCE]
+    rules = rules_of("Pipfile.lock", text)
+    assert rules == [model.SOURCE, model.MISSING, model.SOURCE, model.UNPINNED, model.SOURCE, model.SOURCE]
 
 
 @pytest.mark.parametrize(
@@ -177,7 +186,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
     assert got["alt"].source == "https://crates.corp.example/index/"
     assert (got["g"].git, got["g"].pinned) == (True, True)
     assert got["old"].integrity == ("c" * 64,)
-    assert rules_of("Cargo.lock", text) == [model.SOURCE, model.MISSING, model.SOURCE, model.MISSING]
+    rules = rules_of("Cargo.lock", text)
+    assert rules == [model.SOURCE, model.MISSING, model.SOURCE, model.SOURCE, model.MISSING]
 
 
 def test_go_sum_reads_lines_and_refuses_others() -> None:
@@ -229,9 +239,20 @@ def test_gemfile_lock_reads_git_and_gem_sections_and_checksums() -> None:
     assert got["rails@8.0.0"].pinned is True and got["y@1.0.0"].pinned is False
     assert got["rake@13.2.1"].integrity == ("sha256:" + "d" * 64,)
     assert got["rails@8.0.0"].integrity == ()
-    assert rules_of("Gemfile.lock", GEMFILE_LOCK) == [model.UNPINNED, model.SOURCE]
+    assert rules_of("Gemfile.lock", GEMFILE_LOCK) == [model.SOURCE, model.SOURCE, model.UNPINNED, model.SOURCE]
     with pytest.raises(LockError, match="before any 'remote:'"):
         other.gemfile_lock("GEM\n  specs:\n    rake (1.0)\n")
+
+
+@pytest.mark.parametrize(("text", "why"), [("", "no GEM, GIT or PATH"), ("vendor/real.lock\n", "unknown section")])
+def test_gemfile_lock_refuses_what_is_not_a_bundler_lock(text: str, why: str) -> None:
+    with pytest.raises(LockError, match=why):
+        other.gemfile_lock(text)
+
+
+def test_gemfile_lock_reads_plugin_sources_as_git() -> None:
+    text = "PLUGIN SOURCE\n  remote: http://evil.example/p.git\n  revision: main\n  specs:\n    p (1.0)\n\nGEM\n  remote: https://rubygems.org/\n  specs:\n"
+    assert rules_of("Gemfile.lock", text) == [model.SOURCE, model.UNPINNED]
 
 
 def test_composer_lock_reads_dist_and_source() -> None:

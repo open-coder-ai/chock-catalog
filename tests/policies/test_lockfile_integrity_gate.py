@@ -185,3 +185,14 @@ def test_a_huge_pnpm_lock_is_read_through_the_yaml_scanner_inside_the_budget(rep
     assert code == 1
     assert [f["rule"] for f in document["findings"]] == [model.SOURCE, model.MISSING]
     assert elapsed < 15
+
+
+def test_an_agent_may_not_widen_the_registry_allowlist(repo: Path) -> None:
+    allow = {".chock/registry-allowlist.txt": "npm.evil.example\n"}
+    assert found(repo, allow, "tool_use") == [model.ALLOWLIST_EDIT]
+    assert found(repo, {"sub/.chock/Registry-Allowlist.txt": "x\n"}, "agent-commit") == [model.ALLOWLIST_EDIT]
+    assert found(repo, allow, "commit") == []  # a person's commit
+    scriptkit.write(repo, allow)
+    scriptkit.git(repo, "add", "-A")
+    scriptkit.git(repo, "commit", "-qm", "reviewed host")
+    assert found(repo, allow, "tool_use") == []  # unchanged from HEAD

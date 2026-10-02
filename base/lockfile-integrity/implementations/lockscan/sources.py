@@ -65,17 +65,40 @@ def host_of(source: str) -> str:
         return ""
 
 
-def problem(source: str, eco: str, allow: tuple[HostEntry, ...], *, git: bool = False) -> str:
-    """Why `source` is not an https URL on a registry host (any https host for a git source), or ''."""
-    scheme = scheme_of(source)
-    url = source[4:] if git and scheme == "git+https" else source
+def _transport_problem(url: str, scheme: str) -> str:
     if scheme_of(url) != "https":
         return f"fetched with {scheme}: (only https is accepted)" if scheme else "not a URL (an ssh or local path)"
-    if why := _url_problem(url):
+    return _url_problem(url)
+
+
+def _package_path(url: str, name: str) -> bool:
+    """Whether a default npm registry tarball URL is under the package's own path (/name/-/ or /@scope%2fname/-/)."""
+    path = "/" + url.split("://", 1)[1].partition("/")[2]
+    if any(part in path.lower() for part in ("/../", "/./", "%2e", "\\")):
+        return False
+    scope, _, base = name.partition("/")
+    allowed = [f"/{name}/-/"] + ([f"/{scope}%2f{base}/-/".lower()] if base else [])
+    return any(path.lower().startswith(prefix.lower()) for prefix in allowed)
+
+
+def problem(source: str, eco: str, allow: tuple[HostEntry, ...], *, git: bool = False, name: str = "") -> str:
+    """Why `source` is not an https URL on a host it may use, or ''.
+
+    A registry download must be on a default registry of its ecosystem or an allowlisted host; with `name`, a
+    default npm registry URL must also be that package's own tarball. A git repository must be on an
+    allowlisted host: no git host is a default.
+    """
+    scheme = scheme_of(source)
+    url = source[4:] if git and scheme == "git+https" else source
+    if why := _transport_problem(url, scheme):
         return why
-    if git:
-        return ""
     host = parse_url(url).host
-    if any(matches(host, entry) for entry in (*DEFAULTS.get(eco, ()), *allow)):
+    if any(matches(host, entry) for entry in allow):
         return ""
-    return f"fetched from {host.name}, which is neither a default {eco} registry nor listed in {ALLOWLIST}"
+    if git:
+        return f"a git repository on {host.name}, which is not listed in {ALLOWLIST}"
+    if not any(matches(host, entry) for entry in DEFAULTS.get(eco, ())):
+        return f"fetched from {host.name}, which is neither a default {eco} registry nor listed in {ALLOWLIST}"
+    if name and not _package_path(url, name):
+        return f"a registry URL for another package than {name}"
+    return ""

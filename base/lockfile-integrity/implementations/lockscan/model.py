@@ -20,6 +20,7 @@ LOCK_ONLY = "lock-without-manifest"
 MANIFEST_ONLY = "manifest-without-lock"
 DELETED = "lock-deleted"
 IGNORED = "lock-ignored"
+ALLOWLIST_EDIT = "lock-allowlist-edited"
 
 TIERS = {
     UNPARSEABLE: BLOCK,
@@ -27,6 +28,7 @@ TIERS = {
     MISSING: BLOCK,
     CHANGED: BLOCK,
     UNPINNED: BLOCK,
+    ALLOWLIST_EDIT: BLOCK,
     WEAK: ASK,
     INSTALL: ASK,
     REMOVED: ASK,
@@ -38,6 +40,11 @@ TIERS = {
 
 #: A full git commit id: what a git source must name to be pinned (40 hex for SHA-1, 64 for SHA-256 repositories).
 COMMIT = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})")
+
+
+def https(source: str | None) -> bool:
+    """Whether a source is absent (the registry default) or an https URL, whatever the scheme's case."""
+    return source is None or source[:8].lower() == "https://"
 
 
 class LockError(ValueError):
@@ -56,6 +63,7 @@ class Entry:
     git: `source` is a git repository (judged for transport and pin, not against the registry list).
     pinned: for a git source, whether the lock names a full commit id.
     install: the lock marks it as running an install script; transitive: no manifest names it directly.
+    tarball: `source` is the package's own npm tarball URL, so on a default registry its path must name it.
     """
 
     name: str
@@ -70,6 +78,7 @@ class Entry:
     pinned: bool = True
     install: bool = False
     transitive: bool = True
+    tarball: bool = False
 
     @property
     def ident(self) -> str:

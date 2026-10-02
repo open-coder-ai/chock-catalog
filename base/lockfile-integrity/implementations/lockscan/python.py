@@ -71,6 +71,9 @@ def uv_lock(text: str) -> list[Entry]:
     for pkg in _packages(document):
         source = pkg.get("source") if isinstance(pkg.get("source"), dict) else {}
         if LOCAL_SOURCES & source.keys():
+            if len(source) > 1:
+                msg = f"{pkg.get('name')!r}: a source that is both local and {sorted(source)}"
+                raise LockError(msg)
             continue  # the project itself, a workspace member or a folder; no source at all is judged as no URL
         files = [pkg.get("sdist")] + (pkg.get("wheels") if isinstance(pkg.get("wheels"), list) else [])
         files = [f for f in files if isinstance(f, dict)]
@@ -114,7 +117,8 @@ def pipfile_lock(text: str) -> list[Entry]:
         for src in meta.get("sources", [])
         if isinstance(src, dict)
     ]
-    for section in PIPFILE_SECTIONS:
+    # default and develop, and any custom category pipenv installs with --categories
+    for section in sorted({*PIPFILE_SECTIONS, *document} - {"_meta"}):
         packages = document.get(section, {})
         if not isinstance(packages, dict):
             msg = f"'{section}' is not an object"

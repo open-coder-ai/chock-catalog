@@ -21,7 +21,7 @@ from pathlib import Path, PurePosixPath
 # it did not ask for as a refusal, never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lockscan.model import BLOCK, Finding
+from lockscan.model import ALLOWLIST_EDIT, BLOCK, Finding, digest
 from lockscan.rules import delta_findings, read, reader, state_findings
 from lockscan.sources import ALLOWLIST, load_allowlist
 from lockscan.sync import deleted_findings, ignore_findings, sync_findings
@@ -31,6 +31,8 @@ SELF_BASELINE = frozenset({"commit", "agent-commit", "tool_use"})
 #: Events that judge a whole change, where a lock and its manifest are expected to move together.
 CHANGE_EVENTS = frozenset({"commit", "agent-commit", "push", "ci"})
 COMMIT_EVENTS = frozenset({"commit", "agent-commit"})
+#: Events where the agent is the writer: it may not widen the host allowlist that judges its own locks.
+AGENT_EVENTS = frozenset({"agent-commit", "tool_use"})
 ALLOW, REFUSE, FAULT, ASK = 0, 1, 2, 3
 
 
@@ -83,7 +85,18 @@ class Judge:
                 found += state_findings(path, entries, self.allow, self.note)
         if self.event in CHANGE_EVENTS:
             found += sync_findings(files, self.root)
+        if self.event in AGENT_EVENTS:
+            found += [allowlist_edit(path, text) for path, text in files.items() if is_allowlist(path)]
         return found + ignore_findings(files, self.root), parsed
+
+
+def is_allowlist(path: str) -> bool:
+    return path.lower() == ALLOWLIST or path.lower().endswith("/" + ALLOWLIST)
+
+
+def allowlist_edit(path: str, text: str) -> Finding:
+    message = f"an agent may not edit {ALLOWLIST}: a person reviews a registry host and commits it"
+    return Finding(ALLOWLIST_EDIT, f"{ALLOWLIST_EDIT}|{digest(text)}", path, 1, message)
 
 
 def subtract(found: list[Finding], base: list[Finding]) -> list[Finding]:

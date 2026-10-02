@@ -6,7 +6,7 @@ import json
 
 from chock_scan import jsonc
 
-from lockscan.model import Entry, Lines, LockError, split_spec, sri
+from lockscan.model import Entry, Lines, LockError, https, split_spec, sri
 
 MAX_CHARS = 1 << 26
 DIRECT_KEYS = ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies")
@@ -36,7 +36,7 @@ def _source_entry(name: str, version: str, raw: dict, line: int, *, transitive: 
         msg = f"{name}: 'resolved' is not a string"
         raise LockError(msg)
     integrity, weak = sri(raw.get("integrity"))
-    registry = resolved is None or resolved.startswith("https://")
+    registry = https(resolved)
     return Entry(
         name=name,
         version=version,
@@ -48,6 +48,7 @@ def _source_entry(name: str, version: str, raw: dict, line: int, *, transitive: 
         weak=weak,
         install=raw.get("hasInstallScript") is True,
         transitive=transitive,
+        tarball=True,
     )
 
 
@@ -70,10 +71,11 @@ def _v2(lines: Lines, packages: dict) -> list[Entry]:
         if not isinstance(raw, dict):
             msg = f"package {key!r} is not an object"
             raise LockError(msg)
-        if MODULES not in key or raw.get("link") is True or raw.get("inBundle") is True:
-            continue  # the root, a workspace folder, a symlink, or a package shipped inside its parent's tarball
+        nested = key.count(MODULES) > 1
+        if MODULES not in key or raw.get("link") is True or (raw.get("inBundle") is True and nested):
+            continue  # the root, a workspace folder, a symlink, or a package shipped inside a dependency's tarball
         name = raw.get("name") if isinstance(raw.get("name"), str) else key.rsplit(MODULES, 1)[1]
-        transitive = key.count(MODULES) > 1 or name not in direct
+        transitive = nested or name not in direct
         line = lines(json.dumps(key))
         found.append(_source_entry(name, str(raw.get("version", "")), raw, line, transitive=transitive))
     return found
@@ -91,9 +93,10 @@ def _v1(lines: Lines, deps: object, depth: int) -> list[Entry]:
         version = str(raw.get("version", ""))
         if raw.get("bundled") is not True and not _folder(version):
             line = lines(json.dumps(name))
+            real = split_spec(version[4:])[0] if version.startswith("npm:") else name  # an alias installs this one
             # v1 records a git or URL dependency in `version`, with no `resolved`
             fields = {**raw, "resolved": version} if ":" in version and "resolved" not in raw else raw
-            found.append(_source_entry(name, version, fields, line, transitive=depth > 0))
+            found.append(_source_entry(real, version, fields, line, transitive=depth > 0))
         found += _v1(lines, raw.get("dependencies") or {}, depth + 1)
     return found
 
@@ -142,6 +145,6 @@ def _bun_entry(name: str, version: str, raw: list, line: int) -> Entry:
         source=source,
         eco="npm",
         integrity=integrity,
-        expect=source is None or source.startswith("https://"),
+        expect=https(source),
         weak=weak,
     )

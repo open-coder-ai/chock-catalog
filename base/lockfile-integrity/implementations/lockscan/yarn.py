@@ -7,7 +7,7 @@ import re
 
 from chock_scan import yamlpath
 
-from lockscan.model import COMMIT, Entry, LockError, split_spec, sri
+from lockscan.model import COMMIT, Entry, LockError, https, split_spec, sri
 
 MAX_CHARS = 1 << 26
 MAX_NODES = 5_000_000
@@ -16,7 +16,7 @@ SHA1_FRAGMENT = re.compile(r"#([0-9a-f]{40})$")
 FOLDER = ("link:", "workspace:", "portal:")
 TARBALLS = (".tgz", ".tar.gz", ".tar")
 BERRY_LOCAL = ("workspace:", "link:", "portal:")
-ARCHIVE_URL = "__archiveUrl="
+ARCHIVE_URL = "__archiveUrl"
 PERCENT = re.compile(r"%([0-9A-Fa-f]{2})")
 #: Classic: a field is indented two spaces, a nested map's entries four. Berry: (entry, field) paths.
 FIELD, NESTED, BERRY_FIELD = 2, 4, 2
@@ -68,7 +68,7 @@ def _field(fields: dict[str, str], body: str, number: int) -> bool:
     if body.endswith(":") and " " not in body:
         return True
     key, _, value = body.partition(" ")
-    key = _unquote(key)
+    key = _unquote(key).removesuffix(":")  # the parser also reads `resolved: "url"`
     if key in fields:
         msg = f"line {number} repeats the field {key!r}, so one copy hides the other"
         raise LockError(msg)
@@ -78,12 +78,14 @@ def _field(fields: dict[str, str], body: str, number: int) -> bool:
 
 def _classic(header: str, fields: dict[str, str], line: int) -> Entry | None:
     name, spec = split_spec(header)
+    if spec.startswith("npm:"):
+        name = split_spec(spec[4:])[0]  # an alias installs the package it names
     resolved = fields.get("resolved")
     if resolved is None and (spec.startswith(FOLDER) or (spec.startswith("file:") and not spec.endswith(TARBALLS))):
         return None  # a folder in the repository: nothing is downloaded
     integrity, weak = sri(fields.get("integrity"))
-    https = resolved is None or resolved.startswith("https://")
-    sha1 = SHA1_FRAGMENT.search(resolved or "") if https else None
+    download = https(resolved)
+    sha1 = SHA1_FRAGMENT.search(resolved or "") if download else None
     if not integrity and sha1:
         integrity, weak = (f"sha1hex-{sha1.group(1)}",), True
     return Entry(
@@ -93,8 +95,9 @@ def _classic(header: str, fields: dict[str, str], line: int) -> Entry | None:
         source=resolved,
         eco="npm",
         integrity=integrity,
-        expect=https,
+        expect=download,
         weak=weak,
+        tarball=True,
     )
 
 
@@ -116,35 +119,51 @@ def _berry(text: str) -> list[Entry]:
         elif len(node.path) == BERRY_FIELD:
             blocks[str(node.path[0])][str(node.path[1])] = node.value
     found = []
+    cache = blocks.get("__metadata", {}).get("cacheKey", "")
     for key, fields in blocks.items():
         if key == "__metadata":
             continue
         if "resolution" not in fields:
             msg = f"entry {key!r} has no resolution"
             raise LockError(msg)
-        if entry := _berry_entry(fields, lines[key]):
+        if entry := _berry_entry(fields, lines[key], cache):
             found.append(entry)
     return found
 
 
-def _berry_entry(fields: dict[str, str], line: int) -> Entry | None:
-    name, ref = split_spec(fields["resolution"])
+def _decode(text: str) -> str:
+    return PERCENT.sub(lambda m: chr(int(m.group(1), 16)), text)
+
+
+def _berry_ref(ref: str) -> tuple[str | None, bool, bool]:
+    """(source, from the registry, local) of a Berry reference; a patch: is judged by the reference it wraps."""
+    ref, _, params = ref.partition("::")
+    for pair in params.split("&"):
+        key, _, value = pair.partition("=")
+        if _decode(key) == ARCHIVE_URL:
+            return _decode(value), False, False  # npm:x::__archiveUrl=<url> fetches that URL instead
+    if ref.startswith("patch:"):
+        return _berry_ref(split_spec(_decode(ref.removeprefix("patch:").split("#", 1)[0]))[1])
     if ref.startswith(BERRY_LOCAL):
+        return None, False, True
+    return (None, True, False) if ref.startswith("npm:") else (ref, False, False)
+
+
+def _berry_entry(fields: dict[str, str], line: int, cache: str) -> Entry | None:
+    name, ref = split_spec(fields["resolution"])
+    source, registry, local = _berry_ref(ref)
+    if local:
         return None
     checksum = fields.get("checksum", "")
-    registry = ref.startswith(("npm:", "patch:")) and ARCHIVE_URL not in ref
-    if ARCHIVE_URL in ref:
-        # npm:1.0.0::__archiveUrl=<url> fetches the archive from that URL instead of the registry.
-        source = PERCENT.sub(lambda m: chr(int(m.group(1), 16)), ref.split(ARCHIVE_URL, 1)[1].split("&", 1)[0])
-    else:
-        source = None if registry else ref
+    if checksum and "/" not in checksum:
+        checksum = f"{cache}/{checksum}"  # the cache key decides how a checksum is computed; compare like with like
     return Entry(
         name=name,
         version=fields.get("version", ""),
         line=line,
         source=source,
         eco="npm",
-        integrity=(checksum,) if checksum else (),
-        expect=ref.startswith("npm:"),
-        pinned=not ref.startswith(("git", "github:")) or bool(COMMIT.search(ref)),
+        integrity=(f"berry{checksum}",) if checksum else (),
+        expect=registry,
+        pinned=not (source or "").startswith(("git", "github:")) or bool(COMMIT.search(source or "")),
     )
