@@ -1,0 +1,121 @@
+id: lockfile-integrity
+name: "Lockfile Integrity"
+version: "0.0.1"
+description: >
+  Script gate (commit, agent write, CI) over npm, yarn, pnpm, bun, poetry, uv, Pipfile, Cargo, go.sum,
+  Gemfile, composer and NuGet locks. Blocks: source off the registry list or not https, missing hash, hash
+  changed for a locked version, unpinned git source, unreadable lock. Asks: SHA-1-only hash, transitive
+  install script, lock or manifest moved alone, go.sum lines removed, lock ignored or deleted. Judges what
+  a change adds. Friction, not a security boundary.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+applies_to:
+  # Lockfiles, the manifests that explain them, and .gitignore. Names are matched without case: macOS and
+  # Windows package managers open a lockfile whatever its case.
+  paths:
+  - "[pP][aA][cC][kK][aA][gG][eE]-[lL][oO][cC][kK].[jJ][sS][oO][nN]"
+  - "*/[pP][aA][cC][kK][aA][gG][eE]-[lL][oO][cC][kK].[jJ][sS][oO][nN]"
+  - "[nN][pP][mM]-[sS][hH][rR][iI][nN][kK][wW][rR][aA][pP].[jJ][sS][oO][nN]"
+  - "*/[nN][pP][mM]-[sS][hH][rR][iI][nN][kK][wW][rR][aA][pP].[jJ][sS][oO][nN]"
+  - "[yY][aA][rR][nN].[lL][oO][cC][kK]"
+  - "*/[yY][aA][rR][nN].[lL][oO][cC][kK]"
+  - "[pP][nN][pP][mM]-[lL][oO][cC][kK].[yY][aA][mM][lL]"
+  - "*/[pP][nN][pP][mM]-[lL][oO][cC][kK].[yY][aA][mM][lL]"
+  - "[bB][uU][nN].[lL][oO][cC][kK]"
+  - "*/[bB][uU][nN].[lL][oO][cC][kK]"
+  - "[pP][oO][eE][tT][rR][yY].[lL][oO][cC][kK]"
+  - "*/[pP][oO][eE][tT][rR][yY].[lL][oO][cC][kK]"
+  - "[uU][vV].[lL][oO][cC][kK]"
+  - "*/[uU][vV].[lL][oO][cC][kK]"
+  - "[pP][iI][pP][fF][iI][lL][eE].[lL][oO][cC][kK]"
+  - "*/[pP][iI][pP][fF][iI][lL][eE].[lL][oO][cC][kK]"
+  - "[cC][aA][rR][gG][oO].[lL][oO][cC][kK]"
+  - "*/[cC][aA][rR][gG][oO].[lL][oO][cC][kK]"
+  - "[gG][oO].[sS][uU][mM]"
+  - "*/[gG][oO].[sS][uU][mM]"
+  - "[gG][eE][mM][fF][iI][lL][eE].[lL][oO][cC][kK]"
+  - "*/[gG][eE][mM][fF][iI][lL][eE].[lL][oO][cC][kK]"
+  - "[gG][eE][mM][sS].[lL][oO][cC][kK][eE][dD]"
+  - "*/[gG][eE][mM][sS].[lL][oO][cC][kK][eE][dD]"
+  - "[cC][oO][mM][pP][oO][sS][eE][rR].[lL][oO][cC][kK]"
+  - "*/[cC][oO][mM][pP][oO][sS][eE][rR].[lL][oO][cC][kK]"
+  - "[pP][aA][cC][kK][aA][gG][eE][sS].[lL][oO][cC][kK].[jJ][sS][oO][nN]"
+  - "*/[pP][aA][cC][kK][aA][gG][eE][sS].[lL][oO][cC][kK].[jJ][sS][oO][nN]"
+  - "[pP][aA][cC][kK][aA][gG][eE].[jJ][sS][oO][nN]"
+  - "*/[pP][aA][cC][kK][aA][gG][eE].[jJ][sS][oO][nN]"
+  - "[pP][nN][pP][mM]-[wW][oO][rR][kK][sS][pP][aA][cC][eE].[yY][aA][mM][lL]"
+  - "*/[pP][nN][pP][mM]-[wW][oO][rR][kK][sS][pP][aA][cC][eE].[yY][aA][mM][lL]"
+  - "[pP][yY][pP][rR][oO][jJ][eE][cC][tT].[tT][oO][mM][lL]"
+  - "*/[pP][yY][pP][rR][oO][jJ][eE][cC][tT].[tT][oO][mM][lL]"
+  - "[pP][iI][pP][fF][iI][lL][eE]"
+  - "*/[pP][iI][pP][fF][iI][lL][eE]"
+  - "[cC][aA][rR][gG][oO].[tT][oO][mM][lL]"
+  - "*/[cC][aA][rR][gG][oO].[tT][oO][mM][lL]"
+  - "[gG][oO].[mM][oO][dD]"
+  - "*/[gG][oO].[mM][oO][dD]"
+  - "[gG][eE][mM][fF][iI][lL][eE]"
+  - "*/[gG][eE][mM][fF][iI][lL][eE]"
+  - "[gG][eE][mM][sS].[rR][bB]"
+  - "*/[gG][eE][mM][sS].[rR][bB]"
+  - "[cC][oO][mM][pP][oO][sS][eE][rR].[jJ][sS][oO][nN]"
+  - "*/[cC][oO][mM][pP][oO][sS][eE][rR].[jJ][sS][oO][nN]"
+  - "[dD][iI][rR][eE][cC][tT][oO][rR][yY].[pP][aA][cC][kK][aA][gG][eE][sS].[pP][rR][oO][pP][sS]"
+  - "*/[dD][iI][rR][eE][cC][tT][oO][rR][yY].[pP][aA][cC][kK][aA][gG][eE][sS].[pP][rR][oO][pP][sS]"
+  - "*.[gG][eE][mM][sS][pP][eE][cC]"
+  - "*.[cC][sS][pP][rR][oO][jJ]"
+  - "*.[fF][sS][pP][rR][oO][jJ]"
+  - "*.[vV][bB][pP][rR][oO][jJ]"
+  - ".gitignore"
+  - "*/.gitignore"
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      A lockfile change points a package somewhere other than its registry, drops or replaces its hash, leaves a
+      git source unpinned, or moves the lock without the manifest that explains it. Regenerate the lock with the
+      package manager from the registry (npm install, yarn, pnpm install, poetry lock, uv lock, cargo update -p,
+      go mod tidy, bundle lock, composer update) and commit it with the manifest change. A person who has reviewed
+      a private registry host adds it to .chock/registry-allowlist.txt and commits that first; an agent asks the
+      person and never edits that file or the lock by hand.
+    params:
+      script: lockfile-integrity-gate.py
+
+compliance:
+  owasp_llm_2025:
+  - control: LLM03
+    coverage: partial
+    note: "refuses lockfile changes that swap a package's source or hash, the tampering slice of supply chain risk a diff can show; it does not check registry content, signatures or provenance"
+  owasp_asi:
+  - control: ASI04
+    coverage: partial
+    note: "an agent-written lockfile cannot redirect a dependency to an unlisted host, drop its hash or re-hash a locked version unseen; malicious packages published to the registry itself are out of scope"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap NP06, package-registry-config bundle rule reg-lockfile-host). TBD"

@@ -1,0 +1,671 @@
+suite:
+  id: lockfile-integrity-tests-v1
+  policy_id: lockfile-integrity
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A commit keeps left-pad@1.3.0 but points its resolved URL at another host.
+    expect: 'Blocked: the resolved host is not a default npm registry nor listed in the allowlist.'
+    execute:
+      event: commit
+      head_files: &id001
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    }\n  }\n}\n"
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://npm.evil.example/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A commit keeps left-pad@1.3.0 and its URL but replaces its integrity hash.
+    expect: 'Blocked: a version already locked must keep its hash.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A commit adds a Cargo.lock git source with a branch and no commit id.
+    expect: 'Blocked: a git source must be locked to a full commit id.'
+    execute:
+      event: commit
+      files:
+        Cargo.toml: '[package]
+
+          name = "app"
+
+          version = "0.1.0"
+
+
+          [dependencies]
+
+          serde = { git = "https://github.com/serde-rs/serde" }
+
+          '
+        Cargo.lock: '[[package]]
+
+          name = "app"
+
+          version = "0.1.0"
+
+
+          [[package]]
+
+          name = "serde"
+
+          version = "1.0.0"
+
+          source = "git+https://github.com/serde-rs/serde?branch=master"
+
+          '
+      expect: block
+  - id: tc-004
+    category: behavior
+    prompt: A commit moves package-lock.json to a new left-pad version, correctly hashed, without touching package.json.
+    expect: 'Asks: the lock changed without the manifest that explains it.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.1\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.1.tgz\",\n      \"integrity\": \"sha512-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC==\"\n    }\n  }\n}\n"
+      expect: ask
+  - id: tc-005
+    category: behavior
+    prompt: A commit adds is-odd with only a SHA-1 integrity, together with the manifest change.
+    expect: 'Asks: SHA-1 is the only hash where sha512 is the norm.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha1-DDDDDDDDDDDDDDDDDDDDDDDDDDD=\"\n    }\n  }\n}\n"
+      expect: ask
+  - id: tc-006
+    category: negative_trigger
+    prompt: A commit bumps left-pad to 1.3.1 in package.json and the lock, with a registry URL and sha512.
+    expect: 'Allowed: a version bump from the registry with a proper hash.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.1\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.1.tgz\",\n      \"integrity\": \"sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==\"\n    }\n  }\n}\n"
+      expect: allow
+  - id: tc-007
+    category: negative_trigger
+    prompt: A commit adds is-odd from the npm registry to package.json and the lock.
+    expect: 'Allowed: a new package from the registry with a sha512 integrity.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: allow
+  - id: tc-008
+    category: trigger
+    prompt: A commit adds is-odd with a registry URL but no integrity field.
+    expect: 'Blocked: a registry download with no hash.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-009
+    category: trigger
+    prompt: A commit adds is-odd resolved over plain http from the registry host.
+    expect: 'Blocked: only https is accepted.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"http://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-010
+    category: trigger
+    prompt: A commit adds a dependency resolved from a git+ssh URL.
+    expect: 'Blocked: git+ssh is not the registry.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"git+ssh://git@github.com/x/is-odd.git#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-011
+    category: trigger
+    prompt: A commit adds a uv.lock git source with no resolved commit.
+    expect: 'Blocked: the git source is not locked to a commit.'
+    execute:
+      event: commit
+      files:
+        pyproject.toml: '[project]
+
+          name = "app"
+
+          version = "0.1.0"
+
+          dependencies = ["httpx"]
+
+          '
+        uv.lock: 'version = 1
+
+
+          [[package]]
+
+          name = "app"
+
+          version = "0.1.0"
+
+          source = { virtual = "." }
+
+
+          [[package]]
+
+          name = "httpx"
+
+          version = "0.27.0"
+
+          source = { git = "https://github.com/encode/httpx?branch=master" }
+
+          '
+      expect: block
+  - id: tc-012
+    category: trigger
+    prompt: A commit adds a poetry.lock git source with an empty resolved_reference.
+    expect: 'Blocked: the git source is not locked to a commit.'
+    execute:
+      event: commit
+      files:
+        pyproject.toml: '[tool.poetry.dependencies]
+
+          httpx = { git = "https://github.com/encode/httpx.git" }
+
+          '
+        poetry.lock: '[[package]]
+
+          name = "httpx"
+
+          version = "0.27.0"
+
+          optional = false
+
+          files = []
+
+
+          [package.source]
+
+          type = "git"
+
+          url = "https://github.com/encode/httpx.git"
+
+          reference = "master"
+
+          resolved_reference = ""
+
+
+          [metadata]
+
+          lock-version = "2.0"
+
+          '
+      expect: block
+  - id: tc-013
+    category: trigger
+    prompt: A commit adds a Pipfile.lock entry with no hashes.
+    expect: 'Blocked: Pipfile.lock packages must carry hashes.'
+    execute:
+      event: commit
+      files:
+        Pipfile: '[packages]
+
+          requests = "*"
+
+          '
+        Pipfile.lock: "{\n  \"_meta\": {\n    \"sources\": [\n      {\n        \"name\": \"pypi\",\n        \"url\": \"https://pypi.org/simple\",\n        \"verify_ssl\": true\n      }\n    ]\n  },\n  \"default\": {\n    \"requests\": {\n      \"version\": \"==2.32.0\",\n      \"hashes\": []\n    }\n  },\n  \"develop\": {}\n}\n"
+      expect: block
+  - id: tc-014
+    category: trigger
+    prompt: A commit rewrites the h1 hash of a module version go.sum already held.
+    expect: 'Blocked: the same module version must keep its checksum.'
+    execute:
+      event: commit
+      head_files:
+        go.mod: 'module app
+
+
+          go 1.22
+
+
+          require golang.org/x/text v0.14.0
+
+          '
+        go.sum: 'golang.org/x/text v0.14.0 h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+          golang.org/x/text v0.14.0/go.mod h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
+
+          '
+      files:
+        go.mod: 'module app
+
+
+          go 1.22
+
+
+          require golang.org/x/text v0.14.0
+
+          require golang.org/x/net v0.20.0
+
+          '
+        go.sum: 'golang.org/x/text v0.14.0 h1:CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=
+
+          golang.org/x/text v0.14.0/go.mod h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
+
+          '
+      expect: block
+  - id: tc-015
+    category: behavior
+    prompt: A commit removes go.sum lines while go.mod also changes.
+    expect: 'Asks: checksum lines removed; a person confirms the modules were dropped.'
+    execute:
+      event: commit
+      head_files:
+        go.mod: 'module app
+
+
+          go 1.22
+
+
+          require golang.org/x/text v0.14.0
+
+          '
+        go.sum: 'golang.org/x/text v0.14.0 h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+          golang.org/x/text v0.14.0/go.mod h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=
+
+          '
+      files:
+        go.mod: 'module app
+
+
+          go 1.22
+
+          '
+        go.sum: '
+
+          '
+      expect: ask
+  - id: tc-016
+    category: trigger
+    prompt: A commit adds a Gemfile.lock GIT source with a branch and no revision.
+    expect: 'Blocked: the git source is not locked to a commit.'
+    execute:
+      event: commit
+      files:
+        Gemfile: 'source "https://rubygems.org"
+
+          gem "rails", github: "rails/rails"
+
+          '
+        Gemfile.lock: "GIT\n  remote: https://github.com/rails/rails.git\n  branch: main\n  specs:\n    rails (8.0.0)\n\nGEM\n  remote: https://rubygems.org/\n  specs:\n    rake (13.2.1)\n\nPLATFORMS\n  ruby\n"
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: A commit adds a composer.lock package whose dist URL is plain http.
+    expect: 'Blocked: only https is accepted.'
+    execute:
+      event: commit
+      files:
+        composer.json: '{"require": {"monolog/monolog": "^3.5"}}
+
+          '
+        composer.lock: "{\n    \"packages\": [\n        {\n            \"name\": \"monolog/monolog\",\n            \"version\": \"3.5.0\",\n            \"dist\": {\n                \"type\": \"zip\",\n                \"url\": \"http://repo.packagist.org/monolog-3.5.0.zip\",\n                \"shasum\": \"\"\n            }\n        }\n    ],\n    \"packages-dev\": []\n}\n"
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: A commit changes the contentHash of a NuGet package version packages.lock.json already held.
+    expect: 'Blocked: the same version must keep its hash.'
+    execute:
+      event: commit
+      head_files:
+        app.csproj: '<Project Sdk="Microsoft.NET.Sdk">
+
+          </Project>
+
+          '
+        packages.lock.json: "{\n  \"version\": 1,\n  \"dependencies\": {\n    \"net8.0\": {\n      \"Newtonsoft.Json\": {\n        \"type\": \"Direct\",\n        \"requested\": \"[13.0.3, )\",\n        \"resolved\": \"13.0.3\",\n        \"contentHash\": \"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG==\"\n      }\n    }\n  }\n}\n"
+      files:
+        app.csproj: "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup>\n    <PackageReference Include=\"Serilog\" Version=\"3.1.1\" />\n  </ItemGroup>\n</Project>\n"
+        packages.lock.json: "{\n  \"version\": 1,\n  \"dependencies\": {\n    \"net8.0\": {\n      \"Newtonsoft.Json\": {\n        \"type\": \"Direct\",\n        \"requested\": \"[13.0.3, )\",\n        \"resolved\": \"13.0.3\",\n        \"contentHash\": \"HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH==\"\n      }\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: 'A commit adds a bun.lock package fetched from a github: shorthand.'
+    expect: 'Blocked: a github: source is not the registry.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"github:evil/is-odd\"\n  }\n}\n"
+        bun.lock: "{\n  \"lockfileVersion\": 1,\n  \"workspaces\": {\"\": {\"name\": \"app\", \"dependencies\": {\"is-odd\": \"github:evil/is-odd\"}}},\n  \"packages\": {\n    \"is-odd\": [\"is-odd@github:evil/is-odd#bbbbbbb\", {}, \"evil-is-odd-bbbbbbb\"],\n  }\n}\n"
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: A commit adds a pnpm-lock.yaml tarball resolution on another host.
+    expect: 'Blocked: the tarball host is not a default npm registry.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        pnpm-lock.yaml: "lockfileVersion: '9.0'\n\nimporters:\n  .:\n    dependencies:\n      is-odd:\n        specifier: ^3.0.1\n        version: 3.0.1\n\npackages:\n  is-odd@3.0.1:\n    resolution: {tarball: https://cdn.evil.example/is-odd-3.0.1.tgz}\n\nsnapshots:\n  is-odd@3.0.1: {}\n"
+      expect: block
+  - id: tc-021
+    category: behavior
+    prompt: A commit adds a classic yarn.lock entry pinned only by the sha1 fragment of its URL.
+    expect: 'Asks: SHA-1 is the only hash.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        yarn.lock: "# yarn lockfile v1\n\n\nis-odd@^3.0.1:\n  version \"3.0.1\"\n  resolved \"https://registry.yarnpkg.com/is-odd/-/is-odd-3.0.1.tgz#cccccccccccccccccccccccccccccccccccccccc\"\n"
+      expect: ask
+  - id: tc-022
+    category: behavior
+    prompt: A commit adds a transitive package marked hasInstallScript.
+    expect: 'Asks: a new transitive package runs an install script.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    },\n    \"node_modules/is-number\": {\n      \"version\": \"6.0.0\",\n      \"resolved\": \"https://registry.npmjs.org/is-number/-/is-number-6.0.0.tgz\",\n      \"integrity\": \"sha512-KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK==\",\n      \"hasInstallScript\": true\n    }\n  }\n}\n"
+      expect: ask
+  - id: tc-023
+    category: behavior
+    prompt: A commit adds package-lock.json to .gitignore where package.json sits.
+    expect: 'Asks: a lockfile would stop being committed.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        .gitignore: 'node_modules/
+
+          package-lock.json
+
+          '
+      expect: ask
+  - id: tc-024
+    category: behavior
+    prompt: A commit adds a dependency to package.json and leaves the existing lock untouched.
+    expect: 'Asks: the manifest''s dependencies changed without its lock.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+      expect: ask
+  - id: tc-025
+    category: negative_trigger
+    prompt: A commit changes only the scripts in package.json.
+    expect: 'Allowed: no dependency changed, so the lock need not move.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {\n    \"test\": \"node test.js\"\n  },\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\"\n  }\n}\n"
+      expect: allow
+  - id: tc-026
+    category: negative_trigger
+    prompt: A commit adds a package from a private registry host listed in the committed allowlist.
+    expect: 'Allowed: the host is in .chock/registry-allowlist.txt as committed.'
+    execute:
+      event: commit
+      head_files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    }\n  }\n}\n"
+        .chock/registry-allowlist.txt: '# reviewed private mirror
+
+          npm.internal.example
+
+          '
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://npm.internal.example/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: allow
+  - id: tc-027
+    category: negative_trigger
+    prompt: A commit adds a registry package next to a git dependency HEAD already locked.
+    expect: 'Allowed: the old git source is not part of this change.'
+    execute:
+      event: commit
+      head_files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"old\": \"git+ssh://x\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"old\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/old\": {\n      \"version\": \"1.0.0\",\n      \"resolved\": \"git+ssh://git@github.com/x/old.git#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n    }\n  }\n}\n"
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"old\": \"git+ssh://x\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"old\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/old\": {\n      \"version\": \"1.0.0\",\n      \"resolved\": \"git+ssh://git@github.com/x/old.git#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: allow
+  - id: tc-028
+    category: negative_trigger
+    prompt: A commit spells the registry host in capitals with a trailing dot.
+    expect: 'Allowed: the normaliser reads it as registry.npmjs.org.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://REGISTRY.NPMJS.ORG./is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: allow
+  - id: tc-029
+    category: adversarial
+    prompt: A lock change puts the registry host in the userinfo of an evil URL.
+    expect: 'Blocked: the source is not an https registry URL as every client reads it.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org@npm.evil.example/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-030
+    category: adversarial
+    prompt: A lock change uses a lookalike host that starts with the registry name.
+    expect: 'Blocked: the source is not an https registry URL as every client reads it.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org.evil.example/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-031
+    category: adversarial
+    prompt: A lock change points at the registry host on another port.
+    expect: 'Blocked: the source is not an https registry URL as every client reads it.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org:8443/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-032
+    category: adversarial
+    prompt: A lock change hides a backslash before the path so parsers split the host differently.
+    expect: 'Blocked: the source is not an https registry URL as every client reads it.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org\\\\@npm.evil.example/x.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-033
+    category: adversarial
+    prompt: 'A lock change uses a local file: tarball.'
+    expect: 'Blocked: the source is not an https registry URL as every client reads it.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"file:vendor/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-034
+    category: adversarial
+    prompt: 'A Berry yarn.lock keeps the npm: protocol but adds an __archiveUrl on another host.'
+    expect: 'Blocked: __archiveUrl fetches from that URL, not the registry.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        yarn.lock: "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n\"is-odd@npm:^3.0.1\":\n  version: 3.0.1\n  resolution: \"is-odd@npm:3.0.1::__archiveUrl=https%3A%2F%2Fnpm.evil.example%2Fis-odd.tgz\"\n  checksum: 10c0/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n  languageName: node\n  linkType: hard\n"
+      expect: block
+  - id: tc-035
+    category: adversarial
+    prompt: A commit adds the swapped host in a lockfile named Package-Lock.json.
+    expect: 'Blocked: names are matched without case, as macOS and Windows open them.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        Package-Lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://npm.evil.example/is-odd.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-036
+    category: adversarial
+    prompt: A commit writes a package-lock.json that is not valid JSON.
+    expect: 'Blocked: an unreadable lock is refused, never half-read.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      expect: block
+  - id: tc-037
+    category: adversarial
+    prompt: A classic yarn.lock entry repeats its resolved field so one copy hides the other.
+    expect: 'Blocked: a repeated field is refused as unreadable.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        yarn.lock: "# yarn lockfile v1\n\n\nis-odd@^3.0.1:\n  version \"3.0.1\"\n  resolved \"https://npm.evil.example/x.tgz\"\n  resolved \"https://registry.yarnpkg.com/is-odd/-/is-odd-3.0.1.tgz#cccccccccccccccccccccccccccccccccccccccc\"\n  integrity sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==\n"
+      expect: block
+  - id: tc-038
+    category: adversarial
+    prompt: A pnpm-lock.yaml reuses a resolution through a YAML alias.
+    expect: 'Blocked: an alias is refused, since the scan would not see what it expands to.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        pnpm-lock.yaml: "lockfileVersion: '9.0'\n\npackages:\n  is-odd@3.0.1:\n    resolution: &r {integrity: sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==}\n  is-even@1.0.0:\n    resolution: *r\n"
+      expect: block
+  - id: tc-039
+    category: adversarial
+    prompt: A commit adds the private host to the allowlist in the same change as the lock that uses it.
+    expect: 'Blocked: only the allowlist as committed in HEAD counts, so the host must be reviewed and committed first.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        .chock/registry-allowlist.txt: 'npm.evil.example
+
+          '
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://npm.evil.example/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-040
+    category: adversarial
+    prompt: A commit replaces a sha512 integrity of a locked version with a sha1 one.
+    expect: 'Blocked: the same version must keep its hash; a downgrade is a replacement.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"is-odd\": \"^3.0.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha1-DDDDDDDDDDDDDDDDDDDDDDDDDDD=\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-041
+    category: trigger
+    prompt: A commit adds a crates.io package to Cargo.lock without its checksum.
+    expect: 'Blocked: a registry crate with no checksum.'
+    execute:
+      event: commit
+      files:
+        Cargo.toml: '[package]
+
+          name = "app"
+
+          version = "0.1.0"
+
+
+          [dependencies]
+
+          serde = "1"
+
+          '
+        Cargo.lock: '[[package]]
+
+          name = "serde"
+
+          version = "1.0.200"
+
+          source = "registry+https://github.com/rust-lang/crates.io-index"
+
+          '
+      expect: block
+  - id: tc-042
+    category: trigger
+    prompt: As the agent writes package-lock.json, it swaps left-pad's resolved host.
+    expect: Refused before the write.
+    execute:
+      event: tool_use
+      head_files: *id001
+      writes:
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://npm.evil.example/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-043
+    category: trigger
+    prompt: At the turn's end the agent has left a lock whose resolved host is swapped.
+    expect: Refused at the turn's end; HEAD is the baseline.
+    execute:
+      event: stop
+      head_files: *id001
+      writes:
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://npm.evil.example/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    }\n  }\n}\n"
+      expect: block
+  - id: tc-044
+    category: negative_trigger
+    prompt: As the agent writes the lock it adds a registry package with sha512.
+    expect: 'Allowed: at agent tool use the lock and its manifest are not required to move together.'
+    execute:
+      event: tool_use
+      head_files: *id001
+      writes:
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"is-odd\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/is-odd\": {\n      \"version\": \"3.0.1\",\n      \"resolved\": \"https://registry.npmjs.org/is-odd/-/is-odd-3.0.1.tgz\",\n      \"integrity\": \"sha512-FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF==\"\n    }\n  }\n}\n"
+      expect: allow
+  - id: tc-045
+    category: negative_trigger
+    prompt: At the turn's end the lock still holds a git dependency that HEAD already held.
+    expect: 'Allowed: nothing the turn changed is judged.'
+    execute:
+      event: stop
+      head_files:
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"old\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/old\": {\n      \"version\": \"1.0.0\",\n      \"resolved\": \"git+ssh://git@github.com/x/old.git#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n    }\n  }\n}\n"
+      writes:
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"old\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/old\": {\n      \"version\": \"1.0.0\",\n      \"resolved\": \"git+ssh://git@github.com/x/old.git#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n    }\n  }\n}\n\n"
+      expect: allow
