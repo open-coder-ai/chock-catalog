@@ -7,6 +7,7 @@ binary signatures are matched on what survives that: ASCII control bytes and rep
 from __future__ import annotations
 
 import base64
+import bisect
 import re
 
 from sbf_core import ASK, BLOCK, BROWSER, KEYS, MIN_BODY, Finding, body_lines, body_size, line_of
@@ -62,7 +63,9 @@ def pem_blocks(text: str) -> list[Finding]:
     found = []
     for index, match in enumerate(starts):
         limit = min(starts[index + 1].start() if index + 1 < len(starts) else len(text), match.end() + MAX_BODY)
-        closing = [end for end in ends.get(match[1], []) if match.end() <= end < limit][:MAX_ENDS]
+        same = ends.get(match[1], [])
+        at = bisect.bisect_left(same, match.end())
+        closing = [end for end in same[at : at + MAX_ENDS] if end < limit]
         # An END forged straight after BEGIN must not cut the body short: try each END up to the next BEGIN.
         for end, terminated in [*((end, True) for end in closing), (limit, False)]:
             body = text[match.end() : end]

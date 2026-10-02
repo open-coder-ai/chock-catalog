@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import base64
 import json
+import random
+import time
 
 import pytest
 from policies import sbfkit
@@ -162,3 +165,17 @@ def test_review_round_four_placeholder_text_between_the_armor_is_not_a_key(path:
 def test_review_round_four_a_forged_early_end_does_not_cut_the_body() -> None:
     text = f"{BEGIN}\n{END}\n" + HEX_LINE * 4 + f"{END}\n"
     assert {f.rule for f in sbf_judge.judge("vpn/k.txt", text)} == {"sbf-private-key-files"}
+
+
+@pytest.mark.parametrize("width", [32, 39])
+def test_review_round_five_zero_padding_does_not_dilute_a_rewrapped_key(width: int) -> None:
+    body = base64.b64encode(random.Random(5).randbytes(48)).decode()  # noqa: S311 -- a fixed fake body
+    lines = [body[i : i + width] for i in range(0, len(body), width)] + ["A" * 64] * 32
+    text = f"{BEGIN}\n" + "\n".join(lines) + f"\n{END}\n"
+    assert {f.rule for f in sbf_judge.judge("keys/k.pem", text)} == {"sbf-private-key-files"}
+
+
+def test_review_round_five_many_begin_end_pairs_stay_linear() -> None:
+    started = time.monotonic()
+    sbf_judge.judge("x.txt", f"{BEGIN}\n{END}\n" * 60000)
+    assert time.monotonic() - started < 10

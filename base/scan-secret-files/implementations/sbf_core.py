@@ -61,6 +61,8 @@ RANDOM_BITS = 4.2
 #: Bits per character a whole key body reaches: base64 key bytes, and hex (OpenVPN static keys).
 RANDOM_BITS_BODY = 4.5
 HEX_BITS = 3.5
+#: Characters per window the floor is measured over (a key line).
+WINDOW = 64
 HEX = re.compile(r"[0-9A-Fa-f]+")
 EDGE_CHARS = "\"'`,+;\\>()"
 #: A key that names where a secret lives, and a value that is a path or a plain URL: not the secret --
@@ -144,7 +146,10 @@ def body_size(block: str, *, terminated: bool = True) -> int:
     """
     body = "".join(body_lines(block, terminated=terminated))
     floor = HEX_BITS if HEX.fullmatch(body) else RANDOM_BITS_BODY
-    return len(body) if entropy.shannon(body) >= floor else 0
+    # Any window of key bytes counts: padding (a run of A, which decodes to ignored zero bytes) must not
+    # dilute a real key under the floor. Prose and placeholder windows stay under it.
+    windows = (body[at : at + WINDOW] for at in range(0, max(len(body) - WINDOW, 0) + 1, WINDOW // 4))
+    return len(body) if any(entropy.shannon(window) >= floor for window in windows) else 0
 
 
 def line_of(text: str, pos: int) -> int:
