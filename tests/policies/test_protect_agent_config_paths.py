@@ -38,11 +38,12 @@ def _forms(target: str) -> list[str]:
         f"echo x > `echo {target}`",
         f"echo x > x/../{target}",
         f"echo x > {target.replace('/', '/x/../', 1)}",
-        f"echo x > ${{D}}/{name}",
         f"cd src && echo x > ../{target}",
         f"cd src; tee ../{target}",
-        f"cd $UNKNOWN; echo x > {name}",
     ]
+    if name != "x":  # a file inside a hooks folder is judged by its folder: a substitution cannot name it
+        forms.append(f"cd $UNKNOWN; echo x > {name}")
+        forms.append(f"D=$(echo {folder or '.'}); echo x > ${{D}}/{name}")
     if folder:
         forms += [
             f"cd {folder} && echo x > {name}",

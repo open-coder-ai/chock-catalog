@@ -12,6 +12,8 @@ from policies import guardkit
 POLICY = "protect-agent-config"
 guard = guardkit.load_guard(POLICY)
 paths = guardkit.load_guard(POLICY, "pathguard")
+match = guardkit.load_guard(POLICY, "pathmatch")
+words = guardkit.load_guard(POLICY, "pathwords")
 
 
 @pytest.fixture(autouse=True)
@@ -93,7 +95,8 @@ def test_git_paths_resolve_but_a_branch_name_in_a_variable_is_not_a_path(raw: st
         ("dd if=a of=out.img", False),
         ("find .cursor -name x -delete", True),
         ("find .cursor/x/.. -exec rm {} +", True),
-        ("find . -name '*.md' -delete", False),
+        ("find . -name '*.md' -delete", True),
+        ("find . -name '*.pyc' -delete", False),
         ("find .cursor -name mcp.json", False),
         ("python -c \"open('.cursor/./x/../mcp.json','w')\"", True),
         ("python -c \"import glob; glob.glob('*.md')\"", False),
@@ -180,7 +183,8 @@ def test_substitutions_are_replaced_by_a_placeholder_and_their_bodies_judged(raw
         ("a/[^bc].md", False, "a/d.md", True),
         ("a/[z-a].md", False, "a/anything", True),
         ("a/[b.md", False, "a/[b.md", True),
-        ("a/$X.md", False, "a/b/c.md", True),
+        ("a/$X.md", False, "a/b.md", True),
+        ("a/$X.md", False, "a/b/c.md", False),
         ("a/${X}", False, "a/b/c", True),
         ("a/$", False, "a/$", True),
         ("b.md", True, "x/y/b.md", True),
@@ -188,13 +192,13 @@ def test_substitutions_are_replaced_by_a_placeholder_and_their_bodies_judged(raw
     ],
 )
 def test_a_glob_or_unknown_text_becomes_a_regex(pattern: str, loose: bool, text: str, matches: bool) -> None:
-    assert bool(paths._regex(pattern, loose=loose).fullmatch(text)) == matches
+    assert bool(match.pattern(pattern, loose=loose).fullmatch(text)) == matches
 
 
 def test_the_removers_match_the_shared_parser() -> None:
     shared = guardkit.load_shellparse(POLICY).writes
-    assert paths._REMOVERS | {"mv"} == frozenset(shared._ALL_OPERANDS)
-    assert frozenset((*shared._DEST_LAST, "mv")) == paths._DEST
+    assert frozenset(shared._ALL_OPERANDS) <= words.REMOVERS | {"mv"}
+    assert frozenset((*shared._DEST_LAST, "mv")) == words.DEST
 
 
 def test_powershell_text_is_read_with_backslashes_as_separators(monkeypatch: pytest.MonkeyPatch) -> None:

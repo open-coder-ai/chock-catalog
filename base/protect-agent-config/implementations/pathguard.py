@@ -2,158 +2,86 @@
 
 from __future__ import annotations
 
+import codecs
+import itertools
 import os
 import posixpath
 import re
-from collections.abc import Callable, Iterator
-from itertools import takewhile
+from collections.abc import Callable
 
-from chock_shellparse import flags_of, git_parts
-from chock_shellparse.parse import _WINPATH, _parse, _Scan, is_powershell
+from chock_shellparse import flags_of
+from chock_shellparse.parse import _SHELLS, _WINPATH, Cmd, _parse, _Scan, is_powershell
+from pathmatch import DYNAMIC, expand, pattern, values
+from pathtext import braces, scan
+from pathwords import (
+    CD,
+    CHILDREN,
+    DELETERS,
+    DEST,
+    GUARD_DIRS,
+    INTERPRETERS,
+    POP,
+    PRODUCERS,
+    PUSH,
+    REMOVERS,
+    ancestors,
+    bound,
+    writes,
+)
+from pathwriters import OUTPUT, awk, dest, find, git, interpreter, output, sed
 
 Normalise = Callable[[str], str]
-_CD = frozenset(("cd", "chdir", "pushd", "set-location", "sl", "push-location"))
-_PUSH = frozenset(("pushd", "push-location"))
-_POP = frozenset(("popd", "pop-location"))
-_REMOVERS = frozenset(
-    (
-        *("tee", "rm", "chmod", "chown", "truncate", "patch", "ed", "ex", "touch", "shred", "unlink", "rmdir"),
-        *("set-content", "add-content", "out-file", "new-item", "clear-content", "remove-item", "move-item"),
-        *("rename-item", "set-item", "tee-object", "sc", "ac", "ni", "ri", "mi", "rni", "del", "erase", "rd", "ren"),
-    )
-)
-_DEST = frozenset(("cp", "install", "ln", "mv", "rsync", "scp", "copy-item", "copy", "cpi"))
-_INTERPRETERS = ("python", "perl", "ruby", "node", "php")
-_CODE_FLAGS = frozenset(("-c", "-e", "--eval", "-i", "--in-place", "-pi", "-ni", "-ne"))
-_EXEC_FLAGS = frozenset(("-exec", "-execdir", "-ok"))
-_HEREDOC = re.compile(r"(?<!<)<<(-?[ \t]*)(['\"]?)(\w+)\2([^\n]*)\n.*?\n[ \t]*\3[ \t]*(?=\n|$)", re.DOTALL)
-_BACKTICKS = re.compile(r"`((?:[^`\\]|\\.)*)(?:`|$)")
-_DYNAMIC = re.compile(r"[*?\[$]")
-_VARIABLE = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
-_PIECE = re.compile(r"\$(?:\{[^}]*\}|\w+)")
-_SUBST = "$__subst__"
+_LEAD = re.compile(r"\$(?:\{(\w+)\}|(\w+))/(?=.)")
+_ONLY = re.compile(r"\$(?:\{[^}]*\}|\w+)")
 _DEPTH = 3
-_GUARD_DIRS = re.compile(r"(?:^|/)\.agents(?:/policies(?:/[^/]+)?)?$")
-
-
-def _ancestors(path: str) -> Iterator[str]:
-    while True:
-        yield path
-        parent = os.path.dirname(path)
-        if parent == path:
-            return
-        path = parent
-
-
-def _heredocs_removed(text: str) -> str:
-    """The bodies of here-documents are data, not commands."""
-    return _HEREDOC.sub(lambda m: f"<<{m[1]}{m[2]}{m[3]}{m[2]}{m[4]}\n{m[3]}", text)
-
-
-def _close(text: str, start: int) -> int:
-    depth, at = 1, start
-    while at < len(text) and depth:
-        depth += (text[at] == "(") - (text[at] == ")")
-        at += 1
-    return at
-
-
-def _split(text: str) -> tuple[str, list[str]]:
-    """The text with each `$(...)` and backtick substitution replaced by a placeholder word, and the bodies cut out."""
-    out, bodies, at, quote = [], [], 0, ""
-    while at < len(text):
-        char = text[at]
-        step, piece = 1, char
-        if char == "\\" and quote != "'":
-            step, piece = 2, text[at : at + 2]
-        elif char in "'\"" and quote in ("", char):
-            quote = "" if quote else char
-        elif quote != "'" and text.startswith("$(", at):
-            end = _close(text, at + 2)
-            bodies.append(text[at + 2 : end].removesuffix(")"))
-            step, piece = end - at, _SUBST
-        elif quote != "'" and char == "`" and (found := _BACKTICKS.match(text, at)):
-            bodies.append(found[1])
-            step, piece = found.end() - at, _SUBST
-        out.append(piece)
-        at += step
-    return "".join(out), bodies
-
-
-def _expand(token: str, env: dict[str, str]) -> str:
-    """Replace `$X` and `${X}` that an earlier assignment in the same command line set to a plain value."""
-
-    def value(found: re.Match[str]) -> str:
-        known = env.get(found[1] or found[2])
-        return found[0] if known is None or _DYNAMIC.search(known) else known
-
-    return _VARIABLE.sub(value, token)
-
-
-def _bracket(body: str) -> str:
-    negated = body[:1] in ("!", "^")
-    return (
-        "[" + ("^" if negated else "") + (body[1:] if negated else body).replace("\\", "\\\\").replace("[", "\\[") + "]"
-    )
-
-
-def _regex(pattern: str, *, loose: bool) -> re.Pattern[str]:
-    """A glob (`*` `?` `[..]`, never matching `/` or a leading dot) and unknown variable text (anything) as a regex."""
-    out, at = ["(?:.*/)?" if loose else ""], 0
-    while at < len(pattern):
-        char = pattern[at]
-        if char in "*?[" and (at == 0 or pattern[at - 1] == "/"):
-            out.append(r"(?!\.)")
-        piece = _PIECE.match(pattern, at) if char == "$" else None
-        close = pattern.find("]", at + 2) if char == "[" else -1
-        if piece:
-            out.append(".*")
-            at = piece.end()
-        elif close > 0:
-            out.append(_bracket(pattern[at + 1 : close]))
-            at = close + 1
-        else:
-            out.append({"*": "[^/]*", "?": "[^/]"}.get(char) or re.escape(char))
-            at += 1
-    try:
-        return re.compile("".join(out), re.DOTALL)
-    except re.error:
-        return re.compile(".*")
-
-
-def _values(args: list[str]) -> list[str]:
-    """Path-like words of an argument list: operands, and the value of `--opt=x` or `-Path:x`."""
-    found = []
-    for arg in args:
-        if not arg.startswith("-"):
-            found.append(arg)
-        elif "=" in arg or ":" in arg:
-            found.append(re.split("[=:]", arg, maxsplit=1)[1])
-    return found
-
-
-def _literals(arg: str) -> list[str]:
-    return [arg, *re.findall(r"""['"]([^'"\s]+)['"]""", arg)]
-
-
-def _writes(name: str, redirects: list[str]) -> bool:
-    return bool(redirects) or name in _REMOVERS | _DEST | {"dd"}
 
 
 class _Walk:
     """One command line, run in order against a virtual working directory."""
 
     def __init__(
-        self, protected: tuple[str, ...], hit: Callable[[str], bool], normalise: Normalise, where: str
+        self,
+        protected: tuple[str, ...],
+        hit: Callable[[str], bool],
+        normalise: Normalise,
+        start: str,
+        *,
+        ps: bool,
     ) -> None:
-        self.hit, self.normal = hit, normalise
-        self.root = self.normal(where)
+        self.hit, self.normal, self.ps = hit, normalise, ps
+        self.root = self.normal(next((d for d in ancestors(start) if os.path.exists(os.path.join(d, ".git"))), start))
         self.stack: list[str | None] = []
-        entries = [self.normal(entry).strip("/") for entry in (*protected, ".agents/policies/x/implementations")]
+        self.docs: dict[str, str] = {}
+        self.unsure: set[str] = set()
+        self.prev: Cmd | None = None
+        self.depth, self.blind, self.wrote = 0, False, False
+        entries = [self.normal(entry).strip("/") for entry in (*protected, ".agents/policies/\0/implementations")]
         self.entries = entries
-        self.files = [path for e in entries for path in (e, f"{e}/x", f"{e}.json")]
+        self.files = [
+            *entries,
+            *(f"{e}{s}" for e in entries if e.endswith("/settings") for s in (".json", ".local.json")),
+        ]
         self.dirs = sorted({"/".join(e.split("/")[:i]) for e in entries for i in range(1, e.count("/") + 1)})
-        self.cwd = self._within(self.normal(os.getcwd()))
+        self.names = sorted({b for f in self.files if "." in (b := posixpath.basename(f))} | CHILDREN)
+        parts = self.root.split("/")
+        self.spots = [
+            *("/".join(parts[:k]) or "/" for k in range(1, len(parts) + 1)),
+            *(".", *("/".join([".."] * k) for k in range(1, len(parts)))),
+            *("/".join([".."] * k + parts[-k:]) for k in range(1, len(parts))),
+        ]
+        self.here = [".", self.root]
+        self.cwd = self._within(self.normal(start))
+        self.handlers: dict[str, Callable[[Cmd], bool]] = {
+            **dict.fromkeys(REMOVERS, self._remove),
+            **dict.fromkeys(DEST, lambda c: dest(self, c.name, c.args, c.env)),
+            **dict.fromkeys(OUTPUT, lambda c: output(self, c.name, c.args, c.env)),
+            **dict.fromkeys(("awk", "gawk", "mawk", "nawk"), lambda c: awk(self, c.args, c.env)),
+            **dict.fromkeys(("sed", "yq"), lambda c: sed(self, c.args, c.env)),
+            "git": lambda c: git(self, c.args, c.env),
+            "find": lambda c: find(self, c.args, c.env),
+            "dd": self._dd,
+            "uniq": self._uniq,
+        }
 
     def _within(self, path: str) -> str:
         if path == self.root:
@@ -162,131 +90,211 @@ class _Walk:
 
     def _path(self, token: str, env: dict[str, str]) -> tuple[str, bool]:
         """The token as a repo-relative, normalised path, and whether the directory it is relative to is unknown."""
-        token = _expand(token, env).replace("\\", "/")
-        if token.startswith("/"):
-            return self._within(self.normal(posixpath.normpath(token))), False
-        return self.normal(posixpath.normpath(posixpath.join(self.cwd or "", token))), self.cwd is None
+        word = expand(token, env).replace("\\", "/")
+        if word == "~" or word.startswith("~/"):
+            word = os.path.expanduser(word).replace("\\", "/")
+        if word.startswith("$"):
+            return self.normal(posixpath.normpath(word)), False
+        if word.startswith("/"):
+            return self._within(self.normal(posixpath.normpath(word))), False
+        path = self.normal(posixpath.normpath(posixpath.join(self.cwd or "", word)))
+        if path == ".." or path.startswith("../"):
+            path = self._within(self.normal(posixpath.normpath(posixpath.join(self.root, path))))
+        return path, self.cwd is None
 
     def _parent(self, path: str) -> bool:
         """Whether a path is a directory that holds a protected path."""
         parts = path.split("/")
         tails = ("/".join(parts[-k:]) for k in range(1, len(parts) + 1))
         return any(e == t or e.startswith(f"{t}/") for t in tails for e in self.entries) or bool(
-            _GUARD_DIRS.search(path)
+            GUARD_DIRS.search(path)
         )
 
-    def reaches(self, token: str, env: dict[str, str], *, parents: bool = False) -> bool:
-        """Whether a token, read as a path (or a glob, or text with variables), is protected, or holds a protected path."""
-        if not token:
-            return False
+    def _holds(self, path: str, *, exact: bool = False) -> bool:
+        """Whether a path is the repository folder (or, unless `exact`, one of its ancestors): they hold every protected path."""
+        there = path if path.startswith("/") else self.normal(posixpath.normpath(posixpath.join(self.root, path)))
+        return self.root == there or (not exact and self.root.startswith(there.rstrip("/") + "/"))
+
+    def at_root(self, token: str, env: dict[str, str]) -> bool:
+        """Whether a plain token names the repository folder itself."""
+        path, _ = self._path(token, env)
+        return not DYNAMIC.search(path) and self._holds(path, exact=True)
+
+    def reaches(
+        self, token: str, env: dict[str, str], *, parents: bool = False, whole: bool = False, root: bool = False
+    ) -> bool:
+        """Whether a token, read as a path (a glob, text with variables, a brace list), is protected or holds one.
+
+        `parents` also counts a directory that holds a protected path; `whole` the repository folder and its ancestors,
+        `root` the repository folder alone.
+        """
+        return any(
+            self._reach(
+                t, env, parents=parents, above=self.spots if whole else self.here if root else None, exact=not whole
+            )
+            for t in braces(token)
+            if t
+        )
+
+    def _reach(self, token: str, env: dict[str, str], *, parents: bool, above: list[str] | None, exact: bool) -> bool:
         path, loose = self._path(token, env)
-        if not (loose or _DYNAMIC.search(path)):
-            return self.hit(path) or (parents and self._parent(path))
-        rx = _regex(path, loose=loose)
-        prefixes = ("",) if self.cwd in (None, ".") else ("", f"{self.cwd}/")
-        return any(rx.fullmatch(p + c) for c in (*self.files, *(self.dirs if parents else ())) for p in prefixes)
+        if not (loose or DYNAMIC.search(path)):
+            return (
+                self.hit(path)
+                or (parents and self._parent(path))
+                or (above is not None and self._holds(path, exact=exact))
+            )
+        rx = pattern(path, loose=loose)
+        if above is not None and any(map(rx.fullmatch, above)):
+            return True
+        files = (*self.files, *(self.names if loose else ()))
+        everything = (*files, *(self.dirs if parents else ()))
+        if (
+            (lone := _LEAD.match(path))
+            and not loose
+            and (lone[1] or lone[2]) not in {n.lower() for n in (*env, "__subst__", *self.unsure)}
+        ):
+            # An unknown start can be the repository folder, so what follows it is a path from there.
+            return self._below(path[lone.end() :], files, everything, ("",), loose=False)
+        lead = ("", "/") if self.cwd in (None, ".") else ("", "/", f"{self.cwd}/")
+        return self._below(path, files, everything, lead, loose=loose)
+
+    @staticmethod
+    def _below(
+        path: str, files: tuple[str, ...], everything: tuple[str, ...], lead: tuple[str, ...], *, loose: bool
+    ) -> bool:
+        """Whether the path can be one of `everything`, or lies below one of `files` (a folder on the way to it)."""
+        parts = path.split("/")
+        way = ["/".join(parts[:k]) for k in range(1 + (len(parts) > 1 and bool(_ONLY.fullmatch(parts[0]))), len(parts))]
+        return any(pattern(p, loose=loose).fullmatch(x + c) for p in way for c in files for x in lead) or any(
+            pattern(path, loose=loose).fullmatch(x + c) for c in everything for x in lead
+        )
+
+    def under(self, start: str, env: dict[str, str]) -> list[str]:
+        """The protected files and directories below a path, as written from the working directory."""
+        path, loose = self._path(start, env)
+        if self.hit(path):
+            return [start]
+        pool = [*self.files, *self.dirs]
+        if loose or DYNAMIC.search(path) or self._holds(path):
+            below = pool
+        else:
+            below = [p for p in pool if p.startswith(f"{path}/")]
+        return [p if self.cwd in (None, ".") else posixpath.relpath(p, self.cwd) for p in below]
+
+    def sub(self, text: str) -> bool:
+        """Whether a script that runs here, in the same directory, is refused."""
+        saved = self.cwd, list(self.stack)
+        refused = self.script(text, self.depth + 1)
+        self.cwd, self.stack = saved
+        return refused
 
     def _chdir(self, cmd_name: str, args: list[str], env: dict[str, str]) -> None:
-        if cmd_name in _PUSH:
+        if cmd_name in PUSH:
             self.stack.append(self.cwd)
-        target = _expand(next((a for a in args if a == "-" or not a.startswith("-")), ""), env) or "~"
-        self.cwd = None if target == "-" or _DYNAMIC.search(target) else self._path(target, env)[0]
-
-    def _dest(self, cmd_name: str, args: list[str], env: dict[str, str]) -> bool:
-        """cp, mv, ln, install, rsync, scp: the destination is written, and a directory that holds a protected path is not a safe one."""
-        operands = [a for a in args if not a.startswith("-")]
-        into = next((a.split("=", 1)[1] for a in args if a.startswith("--target-directory=")), "")
-        into = into or (args[args.index("-t") + 1] if "-t" in args[:-1] else "")
-        sources = [a for a in operands if a != into] if into else operands[:-1]
-        dest = into or (operands[-1] if operands else "")
-        if cmd_name == "mv" and any(self.reaches(s, env, parents=True) for s in sources):
-            return True
-        if not dest or not self.reaches(dest, env, parents=True):
-            return False
-        if self.reaches(dest, env):
-            return True
-        flags = flags_of(args)
-        whole = cmd_name in ("mv", "ln") or bool(flags & {"-r", "-R", "-a", "--recursive", "--archive"})
-        if whole and not (into or dest.endswith("/")):
-            return True
-        names = [posixpath.basename(s.rstrip("/")) for s in sources]
-        return any(n in ("", ".", "..") or self.reaches(posixpath.join(dest, n), env) for n in names)
-
-    def _git(self, args: list[str], env: dict[str, str]) -> bool:
-        sub, _, rest = git_parts(args)
-        if sub not in ("checkout", "restore", "rm", "mv") or ("--staged" in rest and sub == "restore"):
-            return False
-        paths = rest[rest.index("--") + 1 :] if "--" in rest else []
-        static = [t for t in _values(rest) if sub in ("rm", "mv") or t in paths or not _DYNAMIC.search(t)]
-        return any(self.reaches(t, env, parents=True) for t in static)
-
-    def _sed(self, args: list[str], env: dict[str, str]) -> bool:
-        if not any(re.fullmatch(r"-[A-Za-z]*i.*|--in-place.*", a) for a in args):
-            return False
-        scripted = any(a in ("-e", "-f") for a in args)
-        skip = {i + 1 for i, a in enumerate(args) if a in ("-e", "-f")}
-        words = [a for i, a in enumerate(args) if not a.startswith("-") and i not in skip]
-        return any(self.reaches(w, env) for w in (words if scripted else words[1:]))
-
-    def _interpreter(self, args: list[str], env: dict[str, str]) -> bool:
-        """The code may write any path it names as a string: plain literals only, never a guess at a glob."""
-        code = bool(_CODE_FLAGS & set(args)) or any(re.fullmatch(r"-(?:pi|i)\..*", a) for a in args)
-        words = [w for a in args for w in _literals(a) if not _DYNAMIC.search(w)]
-        return code and any(self.reaches(w, env) for w in words)
-
-    def _find(self, args: list[str], env: dict[str, str]) -> bool:
-        given = set(args)
-        if "-delete" not in given and not (given & _EXEC_FLAGS and given & (_REMOVERS | {"mv"})):
-            return False
-        starts = takewhile(lambda arg: not arg.startswith(("-", "(", "!")), args)
-        return any(self.reaches(s, env, parents=True) for s in starts)
+        target = expand(next((a for a in args if a == "-" or not a.startswith("-")), ""), env) or "~"
+        self.cwd = None if target == "-" or DYNAMIC.search(target) else self._path(target, env)[0]
 
     def _unknown(self, args: list[str], env: dict[str, str]) -> bool:
         """A command named by a variable or substitution: judged on the plain paths it is given and on what the line assigned."""
-        plain = [a for a in _values(args) if not _DYNAMIC.search(_expand(a, env))]
+        plain = [a for a in values(args) if "/" in a or not DYNAMIC.search(expand(a, env))]
         return any(self.reaches(t, env, parents=True) for t in plain) or any(
             self.reaches(v, {}, parents=True) for v in env.values()
         )
 
-    def command(self, name: str, args: list[str], writes: list[str], env: dict[str, str]) -> bool:
+    def _remove(self, cmd: Cmd) -> bool:
+        flags = flags_of(cmd.args)
+        recursive = bool(flags & {"-r", "-R"}) or any(a.lower().startswith("-rec") for a in cmd.args)
+        whole = cmd.name in DELETERS or recursive
+        return any(self.reaches(t, cmd.env, parents=True, whole=whole) for t in values(cmd.args))
+
+    def _dd(self, cmd: Cmd) -> bool:
+        return any(a.startswith("of=") and self.reaches(a[3:], cmd.env) for a in cmd.args)
+
+    def _uniq(self, cmd: Cmd) -> bool:
+        return any(self.reaches(t, cmd.env) for t in values(cmd.args)[1:2])
+
+    def _code(self, cmd: Cmd) -> bool:
+        scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self._produced(self.prev)
+        return interpreter(self, cmd.args, cmd.env, scripts)
+
+    def command(self, cmd: Cmd) -> bool:
         """Whether one simple command may write, delete, move or link a protected path."""
-        if any(self.reaches(t, env) for t in writes):
+        name, args, env = cmd.name, cmd.args, cmd.env
+        if any(self.reaches(t, env) for t in cmd.writes):
             return True
         if "$" in name:
+            self.blind = True
             return self._unknown(args, env)
-        if name in _REMOVERS:
-            return any(self.reaches(t, env, parents=True) for t in _values(args))
-        if name in _DEST:
-            return self._dest(name, args, env)
-        if name == "dd":
-            return any(a.startswith("of=") and self.reaches(a[3:], env) for a in args)
-        checks = {"git": self._git, "sed": self._sed, "find": self._find}
-        check = checks.get(name) or (self._interpreter if name.startswith(_INTERPRETERS) else None)
-        return check is not None and check(args, env)
+        handler = self.handlers.get(name) or (self._code if name.startswith(INTERPRETERS) else None)
+        return handler is not None and handler(cmd)
+
+    def _produced(self, prev: Cmd | None) -> list[str]:
+        """The script text a command writes to the shell after it, when it is plain text."""
+        if prev is None or prev.name not in PRODUCERS:
+            return []
+        if prev.name == "cat":
+            return [self.docs[r] for r in prev.reads if r in self.docs]
+        words = [a for a in prev.args if not re.fullmatch(r"-[neE]+", a)]
+        text = words[0] if prev.name == "printf" and words else " ".join(words)
+        return [codecs.decode(text, "unicode_escape", "replace") if prev.name == "printf" else text]
+
+    def _fed(self, cmd: Cmd, prev: Cmd | None) -> bool:
+        """A shell that reads its script from standard input: here-string, here-document or the command before it."""
+        scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self._produced(prev)
+        self.blind |= not scripts
+        return any(self.sub(text) for text in scripts)
+
+    def step(self, cmd: Cmd, prev: Cmd | None, *, unparsed: bool) -> bool:
+        if cmd.name in CD:
+            self._chdir(cmd.name, cmd.args, cmd.env)
+        elif cmd.name in POP:
+            self.cwd = self.stack.pop() if self.stack else None
+        elif cmd.name in _SHELLS and ("-s" in cmd.args or not values(cmd.args)):
+            return self._fed(cmd, prev)
+        else:
+            return self.command(cmd) or (unparsed and writes(cmd.name, cmd.writes))
+        return False
 
     def run(self, text: str, *, ps: bool) -> bool:
         """Walk the commands of one script in order, tracking cd, pushd and popd."""
-        unparsed = _Scan(text).run() is None
+        unparsed, prev = _Scan(text).run() is None, None
         for cmd in _parse(text, {}, ps=ps, depth=0)[0]:
-            if cmd.name in _CD:
-                self._chdir(cmd.name, cmd.args, cmd.env)
-            elif cmd.name in _POP:
-                self.cwd = self.stack.pop() if self.stack else None
-            elif self.command(cmd.name, cmd.args, cmd.writes, cmd.env) or (unparsed and _writes(cmd.name, cmd.writes)):
+            self.prev = prev
+            self.unsure.update(bound(cmd))
+            if self.step(cmd, prev, unparsed=unparsed):
                 return True
+            self.wrote |= writes(cmd.name, cmd.writes)
+            prev = cmd
+        return False
+
+    def script(self, text: str, depth: int) -> bool:
+        """Whether a script, and each substitution in it, writes a protected path or may."""
+        if depth > _DEPTH:
+            return True
+        self.depth, scanned = depth, scan(text)
+        self.docs.update(scanned.docs)
+        start, stack = self.cwd, list(self.stack)
+        if self.run(scanned.outer, ps=self.ps):
+            return True
+        after = self.cwd, self.stack
+        # A substitution runs wherever the line has got to: judge it from the start and from where the line ends.
+        for body, (cwd, held) in itertools.product(scanned.bodies, ((start, stack), after)):
+            self.cwd, self.stack = cwd, list(held)
+            if depth < _DEPTH and self.script(body, depth + 1):
+                return True
+        self.cwd, self.stack = after
+        self.depth = depth
         return False
 
 
 def refuses(raw: str, protected: tuple[str, ...], hit: Callable[[str], bool], normalise: Normalise) -> bool:
     """Whether a command line writes, deletes, moves or links a protected path or a directory holding one, or may."""
-    where = next((d for d in _ancestors(os.getcwd()) if os.path.exists(os.path.join(d, ".git"))), os.getcwd())
+    start = os.path.abspath(os.environ.get("CHOCK_HOOK_CWD") or os.getcwd())
     ps = is_powershell(raw)
     views = [raw.replace("\\", "/").replace("`", "")] if ps else list(dict.fromkeys([raw, _WINPATH.sub("/", raw)]))
-    queue = [(view, 0) for view in views]
-    while queue:
-        text, depth = queue.pop()
-        outer, bodies = _split(_heredocs_removed(text))
-        queue += [(body, depth + 1) for body in bodies if depth < _DEPTH]
-        if _Walk(protected, hit, normalise, where).run(outer, ps=ps):
+    for view in views:
+        walk = _Walk(protected, hit, normalise, start, ps=ps)
+        if walk.script(view, 0) or (walk.blind and walk.wrote):
             return True
     return False
