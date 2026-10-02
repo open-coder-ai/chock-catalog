@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
 from policies import lifecyclekit
 
 mod = lifecyclekit.load_gate()
-executed = mod.npm_script.__globals__["executed"]
+executed = mod.npm_script.__globals__["runs"].__wrapped__.__globals__["executed"]
 
 
 def found(writes: dict[str, str], root: str = "") -> list[tuple[str, str]]:
@@ -133,11 +134,23 @@ def test_a_class_never_named_runs_no_constructor() -> None:
         "node build.js scripts/a.js",
         "C:\\tools\\node.exe scripts\\a.js",
         "sh -c 'unbalanced",
+        "npx zx scripts/a.mjs",
+        "zx scripts/a",
+        "babel-node scripts/a.js",
+        "esno scripts/a.ts",
+        "vite-node scripts/a",
+        "source scripts/a.sh",
+        ". scripts/a.sh",
+        "cmd /c scripts\\a.cmd",
+        "node -e \"try{require('./scripts/a')}catch(e){}\"",
     ],
 )
 def test_hook_shapes_that_run_a_script(tmp_path: Path, body: str) -> None:
     (tmp_path / "package.json").write_text(json.dumps({"scripts": {"postinstall": body}}), "utf-8")
-    target = "scripts/index.js" if body == "node scripts" else "scripts/a.js"
+    named = re.search(r"scripts[/\\]a(\.\w+)?", body)
+    target = (
+        "scripts/index.js" if body == "node scripts" else "scripts/a" + (named.group(1) or ".js" if named else ".js")
+    )
     expected = [] if "unbalanced" in body else [("npm-lifecycle-target", "ask")]
     assert found({target: "x"}, str(tmp_path)) == expected
 
@@ -155,3 +168,10 @@ def test_only_the_run_file_written_in_the_same_change_escalates() -> None:
     assert data == [("npm-lifecycle-target", "ask"), ("npm-lifecycle", "ask")]
     build = found({"package.json": package, "build.js": "x"})
     assert build == [("npm-lifecycle-target", "ask"), ("npm-lifecycle", "block")]
+
+
+def test_many_operands_and_many_written_files() -> None:
+    body = "node " + " ".join(f"f{i}.js" for i in range(3000))
+    writes = {"package.json": json.dumps({"scripts": {"postinstall": body}}), **{f"w{i}.txt": "x" for i in range(200)}}
+    writes["f0.js"] = "x"
+    assert ("npm-lifecycle", "block") in found(writes)

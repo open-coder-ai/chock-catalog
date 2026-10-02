@@ -8,7 +8,7 @@ import re
 
 from lifecycle import ASK, BLOCK, Hit, line_of, norm
 from lifecycle.gyp import native_sources
-from lifecycle.shellwords import executed, resolves_to
+from lifecycle.shellwords import runs
 from lifecycle.signals import danger
 from lifecycle.targets import LIFECYCLE_NAMES
 
@@ -156,7 +156,7 @@ def _scripts(path: str, text: str, scripts: dict, writes: dict[str, str], base: 
         if name == "prepare" and HUSKY.fullmatch(value):
             continue
         why = danger(body)
-        ran = [m for m, primary in executed(body) if primary and any(resolves_to(base, m, c) for c in changed)]
+        ran = sorted(runs(base, body, primary_only=True) & changed)
         if not why and ran:
             why = f"runs {ran[0]}, a file this same change writes"
         level = BLOCK if why else ASK

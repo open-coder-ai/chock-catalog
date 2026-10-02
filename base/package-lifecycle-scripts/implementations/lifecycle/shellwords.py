@@ -10,16 +10,18 @@ from __future__ import annotations
 import posixpath
 import re
 import shlex
+from functools import lru_cache
 
 INTERPRETERS = frozenset(
-    "node nodejs bun deno sh bash zsh dash ksh python python3 py ruby perl php pwsh powershell tsx ts-node lua".split()  # noqa: SIM905
+    "node nodejs bun deno sh bash zsh dash ksh python python3 py ruby perl php pwsh powershell tsx ts-node lua"  # noqa: SIM905
+    " zx babel-node esno esr vite-node jiti sucrase-node ts-node-esm coffee source . cmd".split()
 )
 #: Words that run the rest of the line: `env X=1 node x.js`, `npx tsx x.ts`, `pnpm exec node x.js`.
 WRAPPERS = frozenset("env sudo doas exec nohup time command cross-env npx pnpx bunx run x --".split())  # noqa: SIM905
 RUNNERS = frozenset("npm pnpm yarn bun".split())  # noqa: SIM905 -- followed by exec/x/node, also wrappers
 KEYWORDS = frozenset("if then else elif fi do done while until for ! { } ( )".split())  # noqa: SIM905
 #: Flags whose value is code to run (read again as commands) or a module to load (a file it runs).
-INLINE = frozenset(["-e", "--eval", "-p", "--print", "-pe", "-c", "-E"])
+INLINE = frozenset(["-e", "--eval", "-p", "--print", "-pe", "-c", "-E", "/c", "/C", "/k", "/K"])
 LOADS = frozenset(["-r", "--require", "--import", "--loader", "--experimental-loader"])
 #: Flags that take a separate value which is not a file to run.
 VALUED = frozenset(["-W", "-X", "-m", "-C", "--max-old-space-size", "--env-file", "--config", "--title"])
@@ -66,7 +68,8 @@ def _strip_prefix(words: list[str]) -> list[str]:
     return words
 
 
-def executed(body: str, nesting: int = 0) -> list[tuple[str, bool]]:
+@lru_cache(maxsize=256)
+def executed(body: str, nesting: int = 0) -> tuple[tuple[str, bool], ...]:
     """(path, primary) for each file the body may run; primary marks a program or an interpreter's first operand."""
     found: list[tuple[str, bool]] = []
     for command in SEPARATORS.split(body):
@@ -79,7 +82,7 @@ def executed(body: str, nesting: int = 0) -> list[tuple[str, bool]]:
                 found.append((words[0], True))
             continue
         found += _operands(words[1:], nesting)
-    return found
+    return tuple(found)
 
 
 def _operands(words: list[str], nesting: int) -> list[tuple[str, bool]]:
@@ -103,7 +106,13 @@ def _operands(words: list[str], nesting: int) -> list[tuple[str, bool]]:
     return found
 
 
-def resolves_to(folder: str, candidate: str, path: str) -> bool:
-    """`candidate`, named from `folder`, is `path` the way node and shells resolve it (extension, index file)."""
-    base = posixpath.normpath(posixpath.join(folder or ".", candidate.replace("\\", "/")))
-    return any(posixpath.normpath(base + ext) == path for ext in EXTENSIONS)
+@lru_cache(maxsize=256)
+def runs(folder: str, body: str, *, primary_only: bool = False) -> frozenset[str]:
+    """Every repository path the body may run from `folder`, each name expanded the way node and shells resolve
+    it (extension, index file); computed once per body, so matching a written file is one set lookup."""
+    found = set()
+    for candidate, primary in executed(body):
+        if primary or not primary_only:
+            base = posixpath.normpath(posixpath.join(folder or ".", candidate.replace("\\", "/")))
+            found.update(posixpath.normpath(base + ext) for ext in EXTENSIONS)
+    return frozenset(found)

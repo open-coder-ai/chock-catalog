@@ -11,7 +11,7 @@ import posixpath
 import tomllib
 
 from lifecycle import ASK, Hit, digest
-from lifecycle.shellwords import executed, resolves_to
+from lifecycle.shellwords import runs
 from lifecycle.textrules import build_rs
 from lifecycle.tree import ancestors, join, text_of
 
@@ -52,7 +52,7 @@ def npm_script(path: str, text: str, writes: dict[str, str], root: str) -> list[
         for name in LIFECYCLE_NAMES:
             body = scripts.get(name)
             where = posixpath.join(folder, "package.json") if folder else "package.json"
-            if isinstance(body, str) and path != where and any(resolves_to(folder, m, path) for m, _ in executed(body)):
+            if isinstance(body, str) and path != where and path in runs(folder, body):
                 # Asked about, never blocked: a URL or child_process in a program's own source is ordinary,
                 # so its text is no signal; the edit itself is what a person reviews.
                 return [Hit(1, "npm-lifecycle-target", f"{where} scripts.{name}", digest(text), ASK,
