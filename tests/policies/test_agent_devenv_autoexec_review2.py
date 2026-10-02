@@ -154,7 +154,7 @@ def test_round3_statement_reader() -> None:
     text = 'a "x;\\"y" 2>&1 b # c ; d\r\ne \\\n f; g < &h\n"open'
     assert statements(text) == [(1, 'a x "y 2>&1 b '), (2, "e   f"), (3, " g < "), (3, "h"), (4, "open")]
     assert rules("run.sh", "cl\\aude --yolo\n") == [("dev-agent-spawn", B)]
-    assert rules("run.sh", "# claude --yolo\n") == []
+    assert rules("run.sh", "# claude\n") == []
     # The raw-line pass errs toward reporting: a flag later on the same line counts.
     assert rules("run.sh", "echo claude; echo --yolo\n") == [("dev-agent-spawn", B)]
 
@@ -215,3 +215,8 @@ def test_round5_whole_file_pass_for_a_short_flag() -> None:
 def test_round5_a_yaml_string_spanning_lines_supplies_no_waiver() -> None:
     text = 'pre-commit:\n  tags: "x\n    # chock: allow dev-hook-launchers"\n  commands:\n    a:\n      run: ./x.sh\n'
     assert found({"lefthook.yml": text}, event="push")
+
+
+def test_round6_a_flag_on_a_line_that_looks_like_a_comment() -> None:
+    text = "cat <<EOF\ndon't\nEOF\nclaude '#' \"\n#\" --yolo\n"
+    assert rules("run.sh", text) == [("dev-agent-spawn", B)]

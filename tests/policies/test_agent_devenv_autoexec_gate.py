@@ -147,8 +147,12 @@ def test_spawns(line: str) -> None:
 
 
 def test_spawn_misses_on_purpose() -> None:
-    text = "# claude --dangerously-skip-permissions\necho claude-yolo\n./claude --help\ngemini -p x --yes\n"
+    text = "echo claude-yolo\n./claude --help\ngemini -p x --yes\n"
     assert rules("ci/run.sh", text) == []
+    # A comment naming both is reported by the whole-file pass: such a line may sit inside a quoted argument.
+    assert [f["key"] for f in found({"ci/run.sh": "# claude --dangerously-skip-permissions\n"})] == [
+        "dev-agent-spawn|spawn-file=claude..--dangerously-skip-permissions"
+    ]
     assert rules("src/app.py", "claude --yolo\n") == []
 
 

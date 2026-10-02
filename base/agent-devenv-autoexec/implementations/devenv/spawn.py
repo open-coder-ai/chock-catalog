@@ -111,11 +111,12 @@ def spawns(c: Collector) -> None:
             c.add("dev-agent-spawn", f"spawn-line={norm(line.strip())}", message, line=number)
             seen.add(number)
     if not seen:
-        _whole_file(c, code)
+        _whole_file(c, list(enumerate(c.lines, 1)))
 
 
 def _whole_file(c: Collector, code: list[tuple[int, str]]) -> None:
-    """Last pass, with no reading of quotes or continuations at all: an agent CLI anywhere in the file and a
+    """Last pass, with no reading of quotes, continuations or comments at all (a line that looks like a comment
+    may sit inside a quoted argument): an agent CLI anywhere in the file and a
     skip flag anywhere after it. It errs toward reporting, so no way of splitting the two across lines hides one."""
     joined = " ".join(line for _, line in code)
     first = _CLI.search(joined)
