@@ -18,7 +18,7 @@ import chock_shellparse.parse as shellparse
 from chock_shellparse import Cmd, commands, git_parts, is_powershell
 from refname_git import WORKTREE, created_refs, parse
 from refname_rules import describe, problems, ref_problems
-from refname_shell import EXPANDED, TooDeepError, mark_expansions
+from refname_shell import EXPANDED, TooDeepError, UnreadableError, mark_expansions
 
 EVERY_OPERAND = frozenset(("touch", "mkdir", "tee", "md"))
 DESTINATION = frozenset(("cp", "mv", "install", "ln", "rsync", "scp", "copy", "move", "ren", "rename"))
@@ -28,6 +28,7 @@ PS_VALUE_FLAGS = frozenset((*PS_FLAGS, "-value", "-itemtype", "-type", "-encodin
 # Bounds on what one command line may hold; past any of them the line is refused, never passed unread.
 MAX_DEPTH, MAX_SCRIPTS, MAX_TEXT, LONG_UNBALANCED = 8, 512, 1_000_000, 4096
 TOO_DEEP = "command line holds more nested script than this guard judges, so a name in it cannot be checked."
+UNCLOSED = "command line opens a substitution it never closes, so a name after it cannot be checked."
 UNBALANCED = "command line is long and its quoting does not balance, so a name in it cannot be checked in time."
 _SCRIPTS: list[str] = []  # bash -c and eval scripts met while parsing, judged after the line that holds them
 _PARSE = shellparse._parse
@@ -144,6 +145,8 @@ def check(raw: str) -> str | None:
             text, inner = mark_expansions(script, powershell=is_powershell(script))
         except TooDeepError:
             return TOO_DEEP
+        except UnreadableError:
+            return UNCLOSED
         if len(text) > LONG_UNBALANCED and shellparse._Scan(text).run() is None:
             return UNBALANCED  # the parser's fallback for unbalanced quoting slows quadratically
         _SCRIPTS.clear()

@@ -21,12 +21,16 @@ _ANSI = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0
 _HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)[ \t]*((?:'[^'\n]*'|\"[^\"\n]*\"|\\.|[^\s'\"<>|;&()\\])+)")
 _QUOTE_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)|([^'\"\\]+)")
 _WORD_BEFORE = frozenset(" \t\n;&|(")
-_CLOSERS = {")": "(", "}": "{"}
-MAX_NESTING = 64  # substitutions inside substitutions; deeper is refused by the caller, not read
+MAX_NESTING, MAX_HEREDOCS = 64, 256  # past either the line is refused by the caller, not read
+_COMMAND_WORD = re.compile(r"(?:^|[\s;&|(])(?:then|do|else|elif|if|while|until|!|\{)$")
 
 
-class TooDeepError(ValueError):
-    """The line nests substitutions deeper than MAX_NESTING."""
+class UnreadableError(ValueError):
+    """The line cannot be read to the end: a substitution never closes, or it holds too much to read in time."""
+
+
+class TooDeepError(UnreadableError):
+    """The line nests substitutions deeper than MAX_NESTING, or holds more than MAX_HEREDOCS heredocs."""
 
 
 def _ansi_char(match: re.Match[str]) -> str:
@@ -52,7 +56,7 @@ class _Marker:
     def __init__(self, raw: str, *, powershell: bool, start: int = 0, closer: str = "", nesting: int = 0) -> None:
         if nesting > MAX_NESTING:
             raise TooDeepError
-        self.nesting = nesting
+        self.nesting, self.start, self.heredocs = nesting, start, 0
         self.raw, self.ps, self.escape = raw, powershell, "`" if powershell else "\\"
         self.out: list[str] = []
         self.inner: list[str] = []
@@ -62,6 +66,8 @@ class _Marker:
     def run(self) -> tuple[str, list[str]]:
         while self.i < len(self.raw) and not self._closes():
             self._step(self.raw[self.i])
+        if self.closer and self.i >= len(self.raw):
+            raise UnreadableError  # bash refuses an unclosed substitution too
         return "".join(self.out), self.inner
 
     def _closes(self) -> bool:
@@ -69,20 +75,25 @@ class _Marker:
         char = self.raw[self.i]
         if not self.closer or self.quote:
             return False
-        if self.closer == ")" and not self.quote and self._word("case"):
+        if self.closer == ")" and self._word("case"):
             self.cases += 1
         elif self.closer == ")" and self._word("esac"):
             self.cases -= 1
-        if char == _CLOSERS.get(self.closer, ""):
+        if self.cases > 0:
+            return False  # inside case ... esac, a pattern's parentheses are not the substitution's
+        if char == "(" and self.closer == ")":
             self.depth += 1
-        elif char == self.closer and self.cases <= 0:
+        elif char == self.closer:
             self.depth -= 1
         return self.depth < 0
 
     def _word(self, word: str) -> bool:
+        """`word` as a command at this point: after a separator or a reserved word, not as an argument."""
         at, end = self.i, self.i + len(word)
-        before = at == 0 or self.raw[at - 1] in _WORD_BEFORE
-        return before and self.raw.startswith(word, at) and not self.raw[end : end + 1].isalnum()
+        if not self.raw.startswith(word, at) or self.raw[end : end + 1].isalnum() or self.raw[end : end + 1] == "_":
+            return False
+        before = self.raw[self.start : at].rstrip(" \t")
+        return not before or before[-1] in ";&|\n(" or bool(_COMMAND_WORD.search(before))
 
     def _emit(self, text: str, end: int) -> None:
         self.out.append(text)
@@ -97,29 +108,46 @@ class _Marker:
         elif char == self.escape:
             literal = self.ps and not quote and nxt not in ("'", "\n", "")
             self._emit(f"'{nxt}'" if literal else raw[at : at + 2], at + 2)
-        elif not quote and char == "#" and (at == 0 or raw[at - 1] in _WORD_BEFORE):
-            end = raw.find("\n", at)
-            self._emit(raw[at:end] if end >= 0 else raw[at:], end if end >= 0 else len(raw))
-        elif not quote and char == "\n":
-            self._emit(char, at + 1)
-            self._bodies()
-        elif not quote and not self.ps and (heredoc := _HEREDOC.match(raw, at)):
-            self.docs.append((_delimiter(heredoc.group(2)), bool(heredoc.group(1))))
-            self._emit(heredoc.group(), heredoc.end())
+        elif not quote and self._unquoted(char, nxt):
+            return
         elif char == "$":
             self._dollar(nxt)
         elif char == "`" and not self.ps:
             self._backtick(at + 1)
-        elif not quote and not self.ps and char in "<>" and nxt == "(":
-            self._nested(at + 2, ")")
         else:
             if char in "'\"" and quote in ("", char):
                 self.quote = "" if quote else char
             self._emit(char, at + 1)
 
+    def _unquoted(self, char: str, nxt: str) -> bool:
+        """A comment, a newline ending heredoc lines, a heredoc operator or a process substitution; True if one."""
+        raw, at, shell = self.raw, self.i, not self.ps and self.closer != "}"
+        if char == "#" and self.closer != "}" and (at == 0 or raw[at - 1] in _WORD_BEFORE):
+            end = raw.find("\n", at)
+            self._emit(raw[at:end] if end >= 0 else raw[at:], end if end >= 0 else len(raw))
+        elif char == "\n":
+            self._emit(char, at + 1)
+            self._bodies()
+        elif shell and (heredoc := _HEREDOC.match(raw, at)):
+            self.heredocs += 1
+            if self.heredocs > MAX_HEREDOCS:
+                raise TooDeepError
+            self.docs.append((_delimiter(heredoc.group(2)), bool(heredoc.group(1))))
+            self._emit(heredoc.group(), heredoc.end())
+        elif not self.ps and char in "<>" and nxt == "(":
+            self._nested(at + 2, ")")
+        else:
+            return False
+        return True
+
     def _dollar(self, nxt: str) -> None:
         at, unquoted = self.i, not self.quote
-        if nxt in "({" and nxt:
+        if self.ps and nxt == "{":
+            end = at + 2
+            while end < len(self.raw) and self.raw[end] != "}":
+                end += 2 if self.raw[end] == "`" else 1
+            self._emit(EXPANDED, end + 1)  # a PowerShell ${name} ends at the first unescaped brace
+        elif nxt in "({" and nxt:
             self._nested(at + 2, ")" if nxt == "(" else "}")
         elif unquoted and not self.ps and nxt == "'":
             end = at + 2
