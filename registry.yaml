@@ -76,13 +76,13 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 101
-  eval_executed: 101
+  eval_cases: 107
+  eval_executed: 107
   description: 'Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify
     on commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
-    git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; pre-commit/lefthook/husky uninstall;
-    aliases and rebase --exec it sees defined. Asks on commit-tree/update-ref, GIT_DIR and config files.
-    Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts.'
+    git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; hook manager uninstall; aliases
+    and rebase --exec defined in the command. Asks on plumbing, unset hooksPath, another GIT_DIR and
+    config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
   version: 0.1.1

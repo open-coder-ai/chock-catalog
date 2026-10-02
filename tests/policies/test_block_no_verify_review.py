@@ -44,9 +44,15 @@ ROWS: list[tuple[str, int]] = [
     ("export GIT_CONFIG_GLOBAL=/tmp/g", ASK),
     ("export GIT_DIR=/tmp/o.git", ASK),
     ("declare -x GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/x; git commit -m x", BLOCK),
-    ("$env:GIT_CONFIG_COUNT=1; $env:GIT_CONFIG_KEY_0='core.hooksPath'; $env:GIT_CONFIG_VALUE_0='/x'; git commit", BLOCK),
+    (
+        "$env:GIT_CONFIG_COUNT=1; $env:GIT_CONFIG_KEY_0='core.hooksPath'; $env:GIT_CONFIG_VALUE_0='/x'; git commit",
+        BLOCK,
+    ),
     ("set GIT_CONFIG_COUNT=1&& set GIT_CONFIG_KEY_0=core.hooksPath&& set GIT_CONFIG_VALUE_0=x&& git commit", BLOCK),
-    ("set -x GIT_CONFIG_COUNT 1; set -x GIT_CONFIG_KEY_0 core.hooksPath; set -x GIT_CONFIG_VALUE_0 x; git commit", BLOCK),
+    (
+        "set -x GIT_CONFIG_COUNT 1; set -x GIT_CONFIG_KEY_0 core.hooksPath; set -x GIT_CONFIG_VALUE_0 x; git commit",
+        BLOCK,
+    ),
     ("HOME=/tmp/h git commit -m x", ASK),
     ("XDG_CONFIG_HOME=/tmp/x git push", ASK),
     ("export GIT_DIR=.git", OK),
@@ -61,7 +67,7 @@ ROWS: list[tuple[str, int]] = [
     ("git commit $'--no-\\x76erify' -m x", BLOCK),
     ('git commit $"--no-verify" -m x', BLOCK),
     ("git commit $'--no-\\166erify' -m x", BLOCK),  # octal escape
-    ("git -c \"alias.c=commit -n -m 'x\" c", BLOCK),  # an alias value whose quoting does not balance
+    ('git -c "alias.c=commit -n -m \'x" c', BLOCK),  # an alias value whose quoting does not balance
     ("git commit -m $'it\\'s' -n", BLOCK),
     ("git commit -m $'line one\\nline two'", OK),
     # B7: brace expansion
