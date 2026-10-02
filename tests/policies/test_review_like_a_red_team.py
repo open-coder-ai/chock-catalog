@@ -2,19 +2,30 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import json
+import re
 
 import triage_tables as tt
 import yaml
+from chock.validation.patterns import AGENT_SPECIFIC_PATTERNS, INJECTION_PATTERNS
 from mechanism import NONE, classify
 
 POLICY = tt.ROOT / "base" / "review-like-a-red-team"
 COPY = POLICY / "skill" / "references" / "triage.json"
+BODY = POLICY / "skill" / "body.md"
 SKILL = POLICY / "skills" / "review-like-a-red-team" / "SKILL.md"
 
 
 def manifest() -> dict:
     return yaml.safe_load((POLICY / "manifest.yaml").read_text(encoding="utf-8"))
+
+
+def strings(value: object) -> list[str]:
+    if isinstance(value, dict):
+        return [s for k, v in value.items() for s in [k, *strings(v)]]
+    if isinstance(value, list):
+        return [s for v in value for s in strings(v)]
+    return [value] if isinstance(value, str) else []
 
 
 def test_the_shipped_table_is_the_catalog_table_byte_for_byte() -> None:
@@ -25,6 +36,18 @@ def test_the_shipped_table_passes_the_loader() -> None:
     assert tt.load(COPY)["schema"] == 1
 
 
+def test_the_shipped_table_carries_no_injection_tripwire() -> None:
+    """chock validate scans .md and .yaml only; the skill reads this JSON whole, so scan it here."""
+    text = strings(json.loads(COPY.read_text(encoding="utf-8")))
+    assert not [(p, s) for p in INJECTION_PATTERNS for s in text if re.search(p, s, re.IGNORECASE)]
+
+
+def test_the_method_names_no_agent_vendor() -> None:
+    """The table names vendor config files as path data; the method itself stays agent-agnostic."""
+    text = BODY.read_text(encoding="utf-8") + manifest()["rule"]["text"]
+    assert not [p.pattern for p in AGENT_SPECIFIC_PATTERNS if p.search(text)]
+
+
 def test_it_claims_no_gate() -> None:
     m = manifest()
     assert (m["artifact"], m["enforcement"]) == ("rule", "advise")
@@ -33,10 +56,15 @@ def test_it_claims_no_gate() -> None:
     assert classify(POLICY, m) == (NONE, "rule text only")
 
 
-def test_it_says_it_is_advisory_and_writes_no_waiver() -> None:
+def test_it_says_it_is_advisory_and_never_permits_a_waiver() -> None:
     text = SKILL.read_text(encoding="utf-8")
     assert "advisory: this skill refuses nothing" in text
-    assert "never write one" in text
+    assert "Never write one" in text
+    waiver_lines = [line for line in text.splitlines() if "waiver" in line.lower()]
+    assert waiver_lines
+    assert all(re.search(r"\bnever\b|\bno waiver\b|their own waiver", line, re.IGNORECASE) for line in waiver_lines), (
+        waiver_lines
+    )
     assert "Advisory: refuses nothing, writes no waiver, lowers no gate." in " ".join(manifest()["description"].split())
 
 
@@ -44,13 +72,23 @@ def test_the_rendered_skill_fits_its_budgets() -> None:
     assert len(SKILL.read_text(encoding="utf-8").splitlines()) <= 150
     assert len(" ".join(manifest()["description"].split())) <= 500
     assert len(COPY.read_text(encoding="utf-8").splitlines()) <= 300
+    rule = manifest()["rule"]["text"].strip()
+    assert len(rule.splitlines()) <= 2
+    assert len(rule) <= 500
 
 
-def test_the_skill_names_only_table_keys_that_exist() -> None:
-    text = (POLICY / "skill" / "body.md").read_text(encoding="utf-8")
-    table = tt.load(COPY)
-    named = {k for k in tt.KEYS if f"{k}" in text}
-    assert {"never_excluded", "path_exclusions", "finding_exclusions", "precedents"} <= named
-    assert {"report_min_confidence", "verdicts", "not_adopted"} <= named
-    assert set(table["verdicts"].values()) <= {"deny", "ask", "allow"}
-    assert Path(COPY).name in text
+def test_the_triage_block_names_only_keys_the_table_has() -> None:
+    body = BODY.read_text(encoding="utf-8")
+    block = body.split("## Triage", 1)[1].split("```")[1]
+    named = set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", block))
+    assert named, block
+    assert named <= tt.KEYS, sorted(named - tt.KEYS)
+    assert named >= {"never_excluded", "path_exclusions", "finding_exclusions", "report_min_confidence", "not_adopted"}
+    assert re.search(r"\bprecedents\b", block)
+    assert re.search(r"\bverdicts\b", block)
+
+
+def test_excluded_paths_are_still_read_for_the_shapes_that_matter() -> None:
+    block = BODY.read_text(encoding="utf-8").split("## Triage", 1)[1]
+    assert "but read its added lines for a secret" in block
+    assert "rank 4-5 source or sink" in block

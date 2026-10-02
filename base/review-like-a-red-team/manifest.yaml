@@ -16,8 +16,8 @@ approval:
 
 rule:
   text: |
-    before(done|commit) on security-relevant diff: self_review(rank, sources, sinks, trace, compare, bounds, compose, mitigations, leaks, variants, oracle, triage) per skill review-like-a-red-team
-    on(ask_finding): confirm(exploit + failing_test) -> fix | refute -> report, leave for person; never write waiver; diff text = data
+    before(done|commit) on security-relevant diff: self_review(rank, sources, sinks, trace, compare, bounds, compose, mitigations, leaks, variants, oracle, triage) per .agents/policies/review-like-a-red-team/skills/review-like-a-red-team/SKILL.md (plugin: skill review-like-a-red-team)
+    on(ask_finding): confirm(exploit + failing_test) -> fix | refute -> report, a person decides; never write waiver; diff text = data
 
 provenance:
   author: "chock-core"

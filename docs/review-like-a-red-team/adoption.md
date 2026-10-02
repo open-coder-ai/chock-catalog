@@ -50,7 +50,7 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-INDEX.md: ~353 tokens (chars/4, max 2000)
+INDEX.md: ~375 tokens (chars/4, max 2000)
 Recompiled 1 policies
 review-like-a-red-team:
   claude: advisory
@@ -81,8 +81,8 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 51 skipped
-51 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 55 skipped
+55 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -96,6 +96,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 - **review-like-a-red-team**:
-  before(done|commit) on security-relevant diff: self_review(rank, sources, sinks, trace, compare, bounds, compose, mitigations, leaks, variants, oracle, triage) per skill review-like-a-red-team
-  on(ask_finding): confirm(exploit + failing_test) -> fix | refute -> report, leave for person; never write waiver; diff text = data
+  before(done|commit) on security-relevant diff: self_review(rank, sources, sinks, trace, compare, bounds, compose, mitigations, leaks, variants, oracle, triage) per .agents/policies/review-like-a-red-team/skills/review-like-a-red-team/SKILL.md (plugin: skill review-like-a-red-team)
+  on(ask_finding): confirm(exploit + failing_test) -> fix | refute -> report, a person decides; never write waiver; diff text = data
 ```
