@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from collections import Counter
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
+from iamscan.files import scan_file
 from iamscan.model import Finding
 
 SIDECAR = ".chock/iam-policy-scan.json"
@@ -49,10 +51,18 @@ def committed(root: Path) -> Callable[[str], str | None]:
     return read
 
 
+def _no_repeats(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    names = [k for k, _ in pairs]
+    if len(names) != len(set(names)):
+        msg = "a key is given twice, so what it waives is not unambiguous"
+        raise ValueError(msg)
+    return dict(pairs)
+
+
 def parse_sidecar(raw: str) -> set[tuple[str, str, str]]:
     """The (path, rule, id) triples a sidecar waives; SidecarError for anything it does not read with certainty."""
     try:
-        document = json.loads(raw)
+        document = json.loads(raw, object_pairs_hook=_no_repeats)
     except ValueError as exc:
         msg = f"{SIDECAR} is not valid JSON: {exc}"
         raise SidecarError(msg) from exc
@@ -82,10 +92,14 @@ def sidecar_waivers(event: str, writes: dict[str, str], read: Callable[[str], st
     return parse_sidecar(raw) if raw is not None else set()
 
 
-def pragma_waived(finding: Finding, text: str, event: str, head: Callable[[str], str | None]) -> bool:
+def pragma_waived(
+    finding: Finding, text: str, event: str, head: Callable[[str], str | None], spent: dict[str, Counter]
+) -> bool:
     """Whether a reviewed pragma sits on a line the finding names, or on the comment-only line above one.
 
-    A person's commit trusts the text it commits. Anywhere else the pragma line must already be in HEAD's copy of the file.
+    A person's commit trusts the text it commits. Anywhere else the pragma line must already be in HEAD's copy of the
+    file, and the same grant (its id) must be one HEAD's copy holds, so a pragma cannot be reused for a different
+    grant; `spent` counts the HEAD grants already excused, so a twin is not excused by one pragma.
     """
     lines = text.splitlines()
     waiver_lines = _pragma_lines(lines, finding.anchors)
@@ -94,8 +108,16 @@ def pragma_waived(finding: Finding, text: str, event: str, head: Callable[[str],
     if event in HUMAN_EVENTS:
         return True
     before = head(finding.path)
-    old = {line.strip() for line in before.splitlines()} if before is not None else set()
-    return any(lines[n - 1].strip() in old for n in waiver_lines)
+    if before is None:
+        return False
+    old = {line.strip() for line in before.splitlines()}
+    if not any(lines[n - 1].strip() in old for n in waiver_lines):
+        return False
+    left = spent.setdefault(finding.path, Counter(f.key for f in scan_file(finding.path, before)))
+    if left[finding.key] <= 0:
+        return False
+    left[finding.key] -= 1
+    return True
 
 
 def _pragma_lines(lines: list[str], anchors: Iterable[int]) -> list[int]:

@@ -20,6 +20,13 @@ NAMES_THE_CALLER = frozenset(
         "aws:sourceaccount", "aws:sourcearn", "aws:sourceorgid", "aws:sourceorgpaths", "sts:externalid",
     }
 )  # fmt: skip
+#: Keys that narrow who can reach a resource by where they come from, which suffices for a resource policy.
+NAMES_THE_NETWORK = frozenset({"aws:sourcevpce", "aws:sourcevpc", "aws:sourceip", "aws:vpcsourceip"})
+#: Operators that say "equal to this": a negated, Null or Bool operator narrows nothing about who the caller is.
+POSITIVE_OPERATORS = frozenset(
+    {"stringequals", "stringequalsignorecase", "stringlike", "arnequals", "arnlike", "ipaddress"}
+)
+EVERYONE = frozenset({"*", "0.0.0.0/0", "::/0"})
 #: Condition keys that make a cross-account trust one a caller must prove something for.
 PROVES_THE_CALLER = frozenset({"sts:externalid", "aws:multifactorauthpresent", "aws:multifactorauthage"})
 
@@ -85,6 +92,24 @@ def _condition_keys(statement: dict) -> set[str] | None:
     return {k for c in present for k in key_names(c)} if present else None
 
 
+def _restricts(statement: dict, keys: frozenset[str]) -> bool:
+    """Whether a Condition really narrows the caller: a positive operator, one of `keys`, and a value that is not everyone."""
+    for condition in entries(statement, "condition"):
+        for operator, body in condition.items() if isinstance(condition, dict) else ():
+            name = str(operator).lower().rsplit(":", 1)[-1].removesuffix("ifexists")
+            if name not in POSITIVE_OPERATORS or not isinstance(body, dict):
+                continue
+            for key, value in body.items():
+                values = literals(value)
+                if (
+                    str(key).lower() in keys
+                    and values
+                    and not any(set(v.strip()) <= {"*", "?"} or v.strip() in EVERYONE for v in values)
+                ):
+                    return True
+    return False
+
+
 def _principals(statement: dict) -> list[Hit]:
     principals = entries(statement, "principal")
     if not principals:
@@ -92,10 +117,9 @@ def _principals(statement: dict) -> list[Hit]:
     keys = _condition_keys(statement)
     assume = any(ASSUME.fullmatch(a) or a in STAR for a in strings_of(statement, "action"))
     if any(_wildcard_principal(p) for p in principals):
-        if keys is None:
+        names = NAMES_THE_CALLER if assume else NAMES_THE_CALLER | NAMES_THE_NETWORK
+        if keys is None or not _restricts(statement, names):
             return [Hit("iam-trust-wildcard" if assume else "iam-principal-wildcard", BLOCK, "principal")]
-        if assume and not keys & NAMES_THE_CALLER:
-            return [Hit("iam-trust-wildcard", BLOCK, "principal")]
         return []
     if assume and any(_foreign_account(p) for p in principals) and not (keys or set()) & PROVES_THE_CALLER:
         return [Hit("iam-trust-cross-account", ASK, "principal")]

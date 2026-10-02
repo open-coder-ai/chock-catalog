@@ -68,10 +68,10 @@ def test_a_file_that_names_a_grant_and_cannot_be_read_is_refused(name: str, text
     assert [f.rule for f in found({name: text})] == ["iam-unreadable"]
 
 
-def test_the_unreadable_finding_is_the_same_before_and_after_so_an_old_one_is_not_new() -> None:
+def test_an_unreadable_file_that_changes_is_new_so_an_old_refusal_never_excuses_an_edit() -> None:
     first = found({"p.json": '{"Effect": "Allow", '})
-    second = found({"p.json": '{"Effect": "Allow", "x": '})
-    assert first[0].key == second[0].key
+    assert first[0].key == found({"p.json": '{"Effect": "Allow", '})[0].key
+    assert first[0].key != found({"p.json": '{"Effect": "Allow", "x": '})[0].key
 
 
 def test_aliases_that_expand_past_the_budget_are_refused() -> None:

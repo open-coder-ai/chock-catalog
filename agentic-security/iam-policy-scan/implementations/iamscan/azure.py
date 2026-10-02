@@ -13,12 +13,17 @@ ROLE_NAMES = frozenset({"owner", "contributor"})
 ASSIGNMENT = "microsoft.authorization/roleassignments"
 SUBSCRIPTION_SCOPE = re.compile(
     r"(?i)/subscriptions/(?:[\w-]+|\$\{[^}]*\}|\{[^}]*\})/?|\[?subscription\(\)(?:\.id)?\]?"
+    r"|/providers/Microsoft\.Management/managementGroups/[^/\s]+/?|/"
     r"|data\.azurerm_subscription\.\w+\.id"
 )
 SUBSCRIPTION_SCHEMA = "subscriptiondeploymenttemplate"
 BICEP_RESOURCE = re.compile(
-    r"(?i)^[ \t]*resource\s+\w+\s+'Microsoft\.Authorization/roleAssignments@[^']*'\s*=\s*\{", re.M
+    r"(?i)^[ \t]*resource\s+\w+\s+'Microsoft\.Authorization/roleAssignments@[^']*'\s*=\s*"
+    r"(?:\[[^\n]*?:\s*|if\s*\([^\n]*?\)\s*)?\{",
+    re.M,
 )
+#: A body read past this is not read: one unbalanced brace must not make every match rescan the rest of the file.
+MAX_BODY = 20_000
 
 
 def names_privileged_role(text: str) -> bool:
@@ -27,7 +32,10 @@ def names_privileged_role(text: str) -> bool:
 
 
 def at_subscription(scope: str) -> bool:
-    return bool(SUBSCRIPTION_SCOPE.fullmatch(scope.strip().strip("\"'")))
+    """Subscription scope, or broader (a management group, the tenant), written plainly or as one `${...}` template."""
+    text = scope.strip().strip("\"'")
+    wrapped = re.fullmatch(r"\$\{(.*)\}", text, re.S)
+    return bool(SUBSCRIPTION_SCOPE.fullmatch(wrapped.group(1).strip() if wrapped else text))
 
 
 def arm_assignment(node: dict, *, subscription_deployment: bool) -> bool:
@@ -67,10 +75,11 @@ def bicep_assignments(text: str) -> list[int]:
 
 
 def _balanced(text: str, start: int) -> str:
-    """The text from the `{` at `start` to its matching `}`, strings and comments ignored; to the end if unmatched."""
+    """The text from the `{` at `start` to its matching `}`, strings and comments ignored; to MAX_BODY if unmatched."""
     depth = 0
-    for match in re.finditer(r"'(?:[^'\\\n]|\\.)*'|//[^\n]*|/\*.*?\*/|[{}]", text[start:], re.S):
+    window = text[start : start + MAX_BODY]
+    for match in re.finditer(r"'(?:[^'\\\n]|\\.)*'|//[^\n]*|/\*.*?\*/|[{}]", window, re.S):
         depth += {"{": 1, "}": -1}.get(match.group(), 0)
         if not depth:
-            return text[start : start + match.end()]
-    return text[start:]
+            return window[: match.end()]
+    return window

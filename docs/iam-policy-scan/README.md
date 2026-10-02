@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, CloudFormation, Terraform (documents, jsonencode, heredocs), ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin bindings, subscription Owner. Asks for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants and templated YAML that will not parse. Waiver: pragma, or .chock/iam-policy-scan.json for JSON.
+Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants (concat, for, locals), services beyond s3/iam/sts/kms/ec2, templated YAML that will not parse, unlisted file extensions. Waiver: pragma, or .chock/iam-policy-scan.json.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action star, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in .chock/iam-policy-scan.json for JSON, which cannot carry a comment. In the agent a waiver counts only once a person has committed it, so an agent asks a person.
+> Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action star, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in .chock/iam-policy-scan.json for strict JSON, which cannot carry a comment. In the agent a waiver counts only once a person has committed it, so an agent asks a person.
 
 ## Which primitive it becomes
 

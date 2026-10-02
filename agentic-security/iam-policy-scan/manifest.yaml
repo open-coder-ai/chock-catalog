@@ -2,11 +2,11 @@ id: iam-policy-scan
 name: "IAM Policy Scan"
 version: "0.1.0"
 description: >
-  Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, CloudFormation, Terraform (documents, jsonencode,
-  heredocs), ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust,
-  cluster-admin bindings, subscription Owner. Asks for service wildcards on a named resource and cross-account trust.
-  Only added grants. Misses computed grants and templated YAML that will not parse. Waiver: pragma, or
-  .chock/iam-policy-scan.json for JSON.
+  Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses
+  Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks
+  for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants
+  (concat, for, locals), services beyond s3/iam/sts/kms/ec2, templated YAML that will not parse, unlisted file
+  extensions. Waiver: pragma, or .chock/iam-policy-scan.json.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -25,7 +25,7 @@ hook:
       star, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no
       cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a
       pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in
-      .chock/iam-policy-scan.json for JSON, which cannot carry a comment. In the agent a waiver counts only once a
+      .chock/iam-policy-scan.json for strict JSON, which cannot carry a comment. In the agent a waiver counts only once a
       person has committed it, so an agent asks a person.
     params:
       script: iam-policy-scan-gate.py
@@ -57,3 +57,5 @@ changelog:
   date: '2026-10-02'
   changes:
   - "Initial draft (roadmap HP05, structured part): a script gate that parses what block-wildcard-iam can only match a line at a time."
+  - "Adversarial review, fixed before ready: the file prefilter now reads keys spelled with \\u, \\x or \\U escapes; a file over 1 MiB, or one that does not parse and mentions a grant, is refused as iam-unreadable rather than skipped, and its id holds the text so an edit of an unreadable file is new; a JSON policy held in a string is opened however deep the string sits (the limit counts strings inside strings, three); a pragma waives in the agent only when the same grant (its id) is one HEAD's copy of the file holds, once per HEAD copy; JSON findings are placed by counting the file's keys in document order, so a pragma beside a different statement no longer waives; Azure scope in a `${...}` template, a management group or the tenant counts as subscription scope or broader, and Bicep `[for ...]` and `if (...)` resources are read with a bounded body; a wildcard principal needs a positive operator, a caller-naming key and a value that is not everyone (the roadmap said only 'no Condition'); a sidecar is read only when a finding needs it, and a key given twice in it is refused."
+  - "Limits (not caught): computed grants (`concat`, `for`, `merge` of literals, `local.x`, `var.x`, CloudFormation `Fn::` forms and `!Join`); service wildcards other than s3, iam, sts, kms and ec2 (lambda:*, organizations:*, secretsmanager:*), partial wildcards (iam:Put*), `arn:*` resources; Azure roles other than Owner and Contributor, a role id held in a Bicep variable or parameter, `format()` scopes; native Terraform Kubernetes resources and `kubectl_manifest`; Kubernetes nonResourceURLs, escalate/bind verbs and the system:masters group; Helm values without a kind; files with another extension (.json5, .tftpl, .yaml.tpl, none); JSON in a YAML string is read only to the same depth. A pragma is any `#` or `//` text on the line, a string value included; in the agent it needs the pragma line and the grant in HEAD. A document that is not strict JSON (JSON lines, NaN) and mentions a grant word is refused. Friction, not a security boundary."

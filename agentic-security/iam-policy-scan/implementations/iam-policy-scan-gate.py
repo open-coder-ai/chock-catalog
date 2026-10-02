@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 # The scanners ship beside this script. A missing or broken copy raises here, and the runner
@@ -39,15 +40,18 @@ def judged(payload: dict) -> list[Finding]:
     event = str(payload.get("event", ""))
     writes = {str(p).replace("\\", "/"): t for p, t in (payload.get("writes") or {}).items() if isinstance(t, str)}
     head = committed(root)
+    spent: dict[str, Counter] = {}
+    found = [
+        finding
+        for path in sorted(writes)
+        for finding in scan_file(path, writes[path])
+        if not pragma_waived(finding, writes[path], event, head, spent)
+    ]
+    if not found:
+        return []
+    # The sidecar is read only when something needs it, so a broken one cannot refuse a write that holds no grant.
     waived = sidecar_waivers(event, writes, head)
-    found = []
-    for path in sorted(writes):
-        for finding in scan_file(path, writes[path]):
-            if (path, finding.rule, finding.sig) in waived:
-                continue
-            if not pragma_waived(finding, writes[path], event, head):
-                found.append(finding)
-    return found
+    return [f for f in found if (f.path, f.rule, f.sig) not in waived]
 
 
 def main() -> int:

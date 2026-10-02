@@ -39,6 +39,7 @@ class Finding:
     sig: str
     anchors: tuple[int, ...] = ()
     hint: str = ""
+    nth: int = -1  # which occurrence of the hint key in the file this is, for files that carry no line numbers
 
     @property
     def key(self) -> str:
