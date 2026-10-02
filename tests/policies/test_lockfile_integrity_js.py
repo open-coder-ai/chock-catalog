@@ -186,3 +186,18 @@ def test_an_npm_name_field_counts_only_for_a_declared_alias() -> None:
     orphan = json.dumps({"packages": {"x/node_modules/y": {**pkg("z", "1.0.0"), "name": "z"}, "x": 1}})
     with pytest.raises(model.LockError):
         npm.package_lock(orphan)
+
+
+def test_npm_hoists_an_alias_a_dependency_declares() -> None:
+    url = "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz"
+    packages = {
+        "": {"dependencies": {"glob": "^10.0.0"}},
+        "node_modules/@isaacs/cliui": {
+            **pkg("@isaacs/cliui", "8.0.2"),
+            "dependencies": {"string-width-cjs": "npm:string-width@^4.2.0"},
+        },
+        "node_modules/string-width-cjs": {**pkg("string-width", "4.2.3", resolved=url), "name": "string-width"},
+    }
+    text = json.dumps({"lockfileVersion": 3, "packages": packages})
+    assert [e.name for e in npm.package_lock(text)][-1] == "string-width"
+    assert rules_of("package-lock.json", text) == []

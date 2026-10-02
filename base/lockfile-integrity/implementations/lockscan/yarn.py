@@ -7,7 +7,7 @@ import re
 
 from chock_scan import yamlpath
 
-from lockscan.model import Entry, LockError, https, split_spec, sri
+from lockscan.model import COMMIT, Entry, LockError, https, split_spec, sri
 
 MAX_CHARS = 1 << 26
 MAX_NODES = 5_000_000
@@ -17,9 +17,9 @@ FOLDER = ("link:", "workspace:", "portal:")
 TARBALLS = (".tgz", ".tar.gz", ".tar")
 BERRY_LOCAL = ("workspace:", "link:", "portal:")
 ARCHIVE_URL = "__archiveUrl"
-#: A Berry git reference: a .git path or a #commit=/#head=/#tag=/#semver= selector; pinned only by #commit=<id>.
-BERRY_GIT = re.compile(r"\.git(?:[#?]|$)|#(?:commit|head|tag|semver)=")
-BERRY_COMMIT = re.compile(r"#commit=(?:[0-9a-f]{40}|[0-9a-f]{64})(?:&|$)")
+#: What Berry reads as a git repository: a git scheme, a .git path, or a GitHub repository URL (not a tarball).
+BERRY_GIT = re.compile(r"^(?:git[+:]|github:)|\.git/?$|^https://github\.com/[^/]+/[^/]+/?$", re.IGNORECASE)
+SELECTORS = frozenset({"commit", "head", "tag", "semver"})
 PERCENT = re.compile(r"%([0-9A-Fa-f]{2})")
 #: Classic: a field is indented two spaces, a nested map's entries four. Berry: (entry, field) paths.
 FIELD, NESTED, BERRY_FIELD = 2, 4, 2
@@ -152,6 +152,24 @@ def _berry_ref(ref: str) -> tuple[str | None, bool, bool]:
     return (None, True, False) if ref.startswith("npm:") else (ref, False, False)
 
 
+def _git_pin(source: str | None) -> tuple[bool, bool]:
+    """(git, pinned) as Berry reads a reference: the part after the first '#' is a query string of selectors, or a
+    bare committish; pinned only by one full commit id and no head, tag or semver selector beside it."""
+    if not source:
+        return False, True
+    base, hashed, fragment = source.partition("#")
+    pairs = [pair.partition("=") for pair in fragment.split("&")] if "=" in fragment else []
+    keys = [_decode(key) for key, _, _ in pairs]
+    git = bool(BERRY_GIT.search(base)) or bool(SELECTORS & set(keys))
+    if not git:
+        return False, True
+    if not pairs:
+        return True, bool(hashed) and bool(COMMIT.fullmatch(fragment))
+    commits = [_decode(value) for key, _, value in pairs if _decode(key) == "commit"]
+    others = SELECTORS - {"commit"}
+    return True, len(commits) == 1 and bool(COMMIT.fullmatch(commits[0])) and not others & set(keys)
+
+
 def _berry_entry(fields: dict[str, str], line: int, cache: str) -> Entry | None:
     name, ref = split_spec(fields["resolution"])
     source, registry, local = _berry_ref(ref)
@@ -164,7 +182,7 @@ def _berry_entry(fields: dict[str, str], line: int, cache: str) -> Entry | None:
         raise LockError(msg)
     if checksum and not slash:
         checksum = f"{cache}/{checksum}"  # the cache key decides how a checksum is computed; compare like with like
-    git = bool(source) and (source.startswith(("git", "github:")) or bool(BERRY_GIT.search(source)))
+    git, pinned = _git_pin(source)
     return Entry(
         name=name,
         version=fields.get("version", ""),
@@ -174,5 +192,5 @@ def _berry_entry(fields: dict[str, str], line: int, cache: str) -> Entry | None:
         integrity=(f"berry{checksum}",) if checksum else (),
         expect=registry,
         git=git and source.startswith(("https://", "git+https://")),
-        pinned=not git or bool(BERRY_COMMIT.search(source)),
+        pinned=pinned,
     )

@@ -66,6 +66,7 @@ def package_lock(text: str) -> list[Entry]:
 def _v2(lines: Lines, packages: dict) -> list[Entry]:
     root = packages.get("", {})
     direct = {n for key in DIRECT_KEYS if isinstance(root, dict) for n in (root.get(key) or {})}
+    aliases = _aliases(packages)
     found = []
     for key, raw in packages.items():
         if not isinstance(raw, dict):
@@ -74,27 +75,34 @@ def _v2(lines: Lines, packages: dict) -> list[Entry]:
         nested = key.count(MODULES) > 1
         if MODULES not in key or raw.get("link") is True or (raw.get("inBundle") is True and nested):
             continue  # the root, a workspace folder, a symlink, or a package shipped inside a dependency's tarball
-        name = _installed_name(packages, key, raw)
+        name = _installed_name(aliases, key, raw)
         transitive = nested or key.rsplit(MODULES, 1)[1] not in direct
         line = lines(json.dumps(key))
         found.append(_source_entry(name, str(raw.get("version", "")), raw, line, transitive=transitive))
     return found
 
 
-def _installed_name(packages: dict, key: str, raw: dict) -> str:
-    """The package a node_modules folder holds: its folder name, unless its parent declares it an npm: alias.
+def _aliases(packages: dict) -> set[tuple[str, str]]:
+    """(folder, package) for every npm: alias any package in the lock declares; npm hoists an alias anywhere."""
+    found = set()
+    for raw in packages.values():
+        for key in DIRECT_KEYS:
+            deps = raw.get(key) if isinstance(raw, dict) else None
+            for folder, spec in deps.items() if isinstance(deps, dict) else ():
+                if isinstance(spec, str) and spec.startswith("npm:"):
+                    found.add((folder, split_spec(spec[4:])[0]))
+    return found
+
+
+def _installed_name(aliases: set[tuple[str, str]], key: str, raw: dict) -> str:
+    """The package a node_modules folder holds: its folder name, unless the lock declares that npm: alias.
 
     A `name` field alone does not count: npm installs whatever the lock resolves, so a forged name would let a
     registry URL for another package pass as this one's.
     """
-    parent, _, folder = key.rpartition(MODULES)
-    declared = packages.get(parent.removesuffix("/"), {})
+    folder = key.rsplit(MODULES, 1)[1]
     named = raw.get("name")
-    if not isinstance(named, str) or named == folder or not isinstance(declared, dict):
-        return folder
-    specs = [(declared.get(k) or {}).get(folder) for k in DIRECT_KEYS if isinstance(declared.get(k), dict)]
-    aliased = any(isinstance(spec, str) and spec.startswith(f"npm:{named}@") for spec in specs)
-    return named if aliased else folder
+    return named if isinstance(named, str) and (folder, named) in aliases else folder
 
 
 def _v1(lines: Lines, deps: object, depth: int) -> list[Entry]:

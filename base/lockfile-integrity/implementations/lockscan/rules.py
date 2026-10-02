@@ -115,12 +115,32 @@ def replaced(old: set[str], new: set[str], *, strict: bool) -> bool:
     per file, and a new wheel adds one). Across algorithms: the strongest one dropped (a sha512 replaced by a
     sha1). A new algorithm beside the old ones (a sha1 lock upgraded to sha512) is not a replacement.
     """
+    if any("|" in value for value in old | new):
+        return _file_replaced(old, new)
     before, after = _by_algo(old), _by_algo(new)
     for algo in before.keys() & after.keys():
         removed, added = before[algo] - after[algo], after[algo] - before[algo]
         if (removed or added) if strict else (removed and added):
             return True
     return bool(new) and 0 <= _strongest(after) < _strongest(before)
+
+
+def _file_replaced(old: set[str], new: set[str]) -> bool:
+    """Per-file hashes ('file|hash', PyPI): a file whose hash changed, in any algorithm, or a file swapped for another.
+
+    A file only added (a newly published wheel) or only removed is not a replacement.
+    """
+    before: dict[str, set[str]] = {}
+    after: dict[str, set[str]] = {}
+    for value in old:
+        name, _, digest_ = value.partition("|")
+        before.setdefault(name, set()).add(digest_)
+    for value in new:
+        name, _, digest_ = value.partition("|")
+        after.setdefault(name, set()).add(digest_)
+    if any(before[name] != after[name] for name in before.keys() & after.keys()):
+        return True
+    return bool(before.keys() - after.keys()) and bool(after.keys() - before.keys())
 
 
 def _hashes(entries: list[Entry]) -> dict[str, tuple[set[str], int, str]]:
@@ -141,7 +161,7 @@ def delta_findings(path: str, entries: list[Entry], base: list[Entry]) -> list[F
         if replaced(old, hashes, strict=eco not in LOOSE_ECOS):
             message = f"{ident} was already locked with a different hash: the same version must keep its hash"
             found.append(Finding(CHANGED, f"{CHANGED}|{ident}|{digest(' '.join(sorted(hashes)))}", path, line, message))
-        elif old and hashes and not _by_algo(old).keys() & _by_algo(hashes).keys():
+        elif old and hashes and "|" not in next(iter(hashes)) and not _by_algo(old).keys() & _by_algo(hashes).keys():
             rekeyed.append((ident, line, hashes))
     if rekeyed:
         # every old hash dropped for one under another algorithm or cache key: an upgrade, or a way past the compare

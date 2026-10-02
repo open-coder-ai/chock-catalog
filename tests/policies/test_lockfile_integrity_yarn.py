@@ -175,3 +175,22 @@ def test_berry_refuses_a_checksum_under_another_cache_key() -> None:
     text = f'__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"a@npm:1":\n  version: 1.0.0\n  resolution: "a@npm:1.0.0"\n  checksum: 9/{"c" * 64}\n'
     with pytest.raises(model.LockError, match="cache key"):
         yarn.yarn_lock(text)
+
+
+@pytest.mark.parametrize(
+    ("resolution", "pinned"),
+    [
+        (f"a@https://github.com/x/a.git#head=main&x=#commit={SHA40}", False),
+        ("a@https://github.com/x/a#main", False),
+        ("a@https://github.com/x/a", False),
+        (f"a@https://github.com/x/a#{SHA40}", True),
+        (f"a@https://github.com/x/a.git#commit={SHA40}&tag=v1", False),
+        (f"a@https://github.com/x/a.git#commit={SHA40}&commit={SHA40}", False),
+        (f"a@https://github.com/x/a.git#commi%74={SHA40}", True),
+        ("a@https://github.com/x/a/tarball/v1", True),
+    ],
+)
+def test_berry_reads_selectors_as_a_query_string(resolution: str, pinned: bool) -> None:
+    text = f'__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"a":\n  version: 1.0.0\n  resolution: "{resolution}"\n'
+    (entry,) = yarn.yarn_lock(text)
+    assert entry.pinned is pinned

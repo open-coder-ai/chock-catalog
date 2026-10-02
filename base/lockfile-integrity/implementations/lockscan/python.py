@@ -27,6 +27,13 @@ def _packages(document: dict) -> list[dict]:
     return packages
 
 
+def per_file(files: list[tuple[str, object]]) -> tuple[tuple[str, ...], bool]:
+    """(hashes, weak) keyed by file name ('name|algo:hex'), so a hash swapped on one file is seen whatever its algorithm."""
+    hashes, weak = prefixed([h for _, h in files])
+    keyed = tuple(sorted({f"{name}|{h.lower()}" for name, h in files if isinstance(h, str) and h.lower() in hashes}))
+    return keyed, weak
+
+
 def _fragment_pin(url: str) -> bool:
     """A git URL as uv and Cargo lock it: the resolved commit follows '#'."""
     return bool(COMMIT.fullmatch(url.rpartition("#")[2])) if "#" in url else False
@@ -45,8 +52,8 @@ def poetry_lock(text: str) -> list[Entry]:
         if kind in LOCAL_SOURCES:
             continue
         files = pkg.get("files", legacy.get(name, legacy.get(name.lower(), [])))
-        hashes = [f.get("hash") for f in files if isinstance(f, dict)] if isinstance(files, list) else []
-        integrity, weak = prefixed(hashes)
+        files = [f for f in files if isinstance(f, dict)] if isinstance(files, list) else []
+        integrity, weak = per_file([(str(f.get("file", "")), f.get("hash")) for f in files])
         git = kind == "git"
         found.append(
             Entry(
@@ -77,7 +84,7 @@ def uv_lock(text: str) -> list[Entry]:
             continue  # the project itself, a workspace member or a folder; no source at all is judged as no URL
         files = [pkg.get("sdist")] + (pkg.get("wheels") if isinstance(pkg.get("wheels"), list) else [])
         files = [f for f in files if isinstance(f, dict)]
-        integrity, weak = prefixed([f.get("hash") for f in files])
+        integrity, weak = per_file([(str(f.get("url", "")).rsplit("/", 1)[-1], f.get("hash")) for f in files])
         git = "git" in source
         url = str(source.get("git") or source.get("registry") or source.get("url") or "")
         name = str(pkg.get("name", ""))
