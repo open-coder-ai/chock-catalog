@@ -1,7 +1,7 @@
 suite:
-  id: block-wildcard-iam-tests-v1
+  id: block-wildcard-iam-tests-v2
   policy_id: block-wildcard-iam
-  version_constraint: ">=0.0.1"
+  version_constraint: ">=0.1.0"
   maintainer: chock-core
   primary_metric: pass_rate
   metrics:
@@ -15,7 +15,7 @@ suite:
     expect: The hook blocks the commit.
     execute:
       files:
-        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": \"*\", \"Resource\": \"arn:aws:s3:::reports\"}\n"
+        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": \"*\", \"Resource\": \"arn:aws:s3:::reports\"}\n"  # pragma: allowlist broad-privilege
       expect: block
   - id: tc-002
     category: trigger
@@ -23,7 +23,7 @@ suite:
     expect: The hook blocks the commit.
     execute:
       files:
-        iam.tf: "statement {\n  actions = [\"*\"]\n}\n"
+        iam.tf: "statement {\n  actions = [\"*\"]\n}\n"  # pragma: allowlist broad-privilege
       expect: block
   - id: tc-003
     category: trigger
@@ -87,3 +87,184 @@ suite:
     prompt: "At the turn's end iam.tf differs from HEAD only by a clean line; HEAD already holds an old violation."
     expect: "The turn is allowed: only the lines the turn added are judged."
     execute: {event: stop, head_files: {"iam.tf": "actions = [\"*\"]\n"}, writes: {"iam.tf": "actions = [\"*\"]\nresources = [\"arn:aws:s3:::reports\"]\n"}, expect: allow}  # pragma: allowlist broad-privilege
+  - id: tc-013
+    category: trigger
+    prompt: "json-list-form-action: a JSON statement grants the wildcard action as a one-element list."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": [\"*\"], \"Resource\": \"arn:aws:s3:::reports\"}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-014
+    category: trigger
+    prompt: "yaml-double-quoted: a CloudFormation statement grants the wildcard action in double quotes."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        template.yaml: "Statement:\n  - Effect: Allow\n    Action: \"*\"\n    Resource: arn:aws:s3:::reports\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-015
+    category: trigger
+    prompt: "s3-star-all-resources: a pretty-printed statement grants every s3 action."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        agent-policy.json: "{\n  \"Effect\": \"Allow\",\n  \"Action\": \"s3:*\",\n  \"Resource\": \"*\"\n}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-016
+    category: trigger
+    prompt: "principal-star-allow: a bucket policy allows the wildcard principal."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        bucket-policy.json: "{\"Effect\": \"Allow\", \"Principal\": \"*\", \"Action\": \"s3:GetObject\", \"Resource\": \"arn:aws:s3:::site/*\"}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: "k8s-role-star-verbs: a Kubernetes Role grants every verb."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        role.yaml: "rules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"*\"]\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: "cluster-admin-binding: a ClusterRoleBinding binds the agent service account to cluster-admin."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        binding.yaml: "kind: ClusterRoleBinding\nroleRef:\n  kind: ClusterRole\n  name: cluster-admin\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: "azure-owner-sub-scope: a Terraform role assignment gives the agent Owner on the subscription."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        main.tf: "resource \"azurerm_role_assignment\" \"agent\" {\n  scope                = data.azurerm_subscription.this.id\n  role_definition_name = \"Owner\"\n}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: "s3-star-one-bucket: a statement grants every s3 action on one named bucket. The roadmap asks here; a content_regex gate has one action, so it blocks until the structured scan."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": \"s3:*\", \"Resource\": \"arn:aws:s3:::reports\"}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-021
+    category: negative_trigger
+    prompt: "scoped-action-list: a statement lists named actions on a named resource."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": [\"s3:GetObject\", \"s3:PutObject\"], \"Resource\": \"arn:aws:s3:::reports/*\"}\n"  # pragma: allowlist broad-privilege
+      expect: allow
+  - id: tc-022
+    category: negative_trigger
+    prompt: "deny-statement-with-star: a one-line Deny statement names the wildcard action and resource."
+    expect: "The hook allows the commit; a Deny grants nothing."
+    execute:
+      files:
+        scp.json: "{\"Effect\": \"Deny\", \"Action\": \"*\", \"Resource\": \"*\", \"Condition\": {\"StringNotEquals\": {\"aws:RequestedRegion\": \"eu-west-1\"}}}\n"  # pragma: allowlist broad-privilege
+      expect: allow
+  - id: tc-023
+    category: negative_trigger
+    prompt: "NotAction in deny: a one-line Deny statement inverts a service wildcard list."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        scp.json: "{\"Effect\": \"Deny\", \"NotAction\": [\"iam:*\", \"sts:*\"], \"Resource\": \"*\"}\n"  # pragma: allowlist broad-privilege
+      expect: allow
+  - id: tc-024
+    category: trigger
+    prompt: "Adversarial: the wildcard grant is escaped JSON inside a Terraform string."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        iam.tf: "policy = \"{\\\"Effect\\\":\\\"Allow\\\",\\\"Action\\\":\\\"*\\\",\\\"Resource\\\":\\\"*\\\"}\"\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-025
+    category: trigger
+    prompt: "Adversarial: a CDK statement (Allow by default) smuggles a Deny effect into its sid."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        stack.ts: "new iam.PolicyStatement({ sid: 'Effect.DENY', actions: ['*'], resources: ['*'] });\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-026
+    category: trigger
+    prompt: "Adversarial: gcloud grants the owner role with the flag value unquoted."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        deploy.sh: "gcloud projects add-iam-policy-binding $P --member=$SA --role=roles/owner\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-027
+    category: trigger
+    prompt: "Adversarial: an Allow statement inverts the action key, granting everything it does not name."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Allow\", \"NotAction\": [\"iam:DeleteRole\"], \"Resource\": \"arn:aws:s3:::reports\"}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-028
+    category: trigger
+    prompt: "The global service-and-action wildcard in a YAML list."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        template.yaml: "Action: [\"*:*\"]\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-029
+    category: trigger
+    prompt: "The power-user managed policy is attached by ARN."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        iam.tf: "policy_arn = \"arn:aws:iam::aws:policy/PowerUserAccess\"\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-030
+    category: trigger
+    prompt: "A GCP binding makes a bucket public to every user."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        bucket.tf: "members = [\"allUsers\"]\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-031
+    category: trigger
+    prompt: "An Azure custom role definition grants every action."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        role.json: "{\"Name\": \"agent\", \"actions\": [\"*\"], \"AssignableScopes\": [\"/subscriptions/x\"]}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-032
+    category: trigger
+    prompt: "Adversarial: the wildcard is the JSON unicode escape of the star."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        agent-policy.json: "{\"Effect\": \"Allow\", \"Action\": \"\\u002a\", \"Resource\": \"arn:aws:s3:::reports\"}\n"  # pragma: allowlist broad-privilege
+      expect: block
+  - id: tc-033
+    category: negative_trigger
+    prompt: "Ordinary code that shares shapes with grants: a redis key glob, a variable named allUsers, prose naming a basic role."
+    expect: "The hook allows the commit; none of these grants anything."
+    execute:
+      files:
+        app.py: "keys = r.keys(\"session:*\")\nmembers = allUsers.filter(active)\n# never grant roles/owner to a service account\n"  # pragma: allowlist broad-privilege
+      expect: allow
+  - id: tc-034
+    category: behavior
+    prompt: "Documented limit: the wildcard sits alone on its own line of a pretty-printed list."
+    expect: "The hook allows the commit; a multi-line statement waits for the structured scan (wave 3)."
+    execute:
+      files:
+        agent-policy.json: "{\n  \"Action\": [\n    \"*\"\n  ]\n}\n"  # pragma: allowlist broad-privilege
+      expect: allow
+  - id: tc-035
+    category: trigger
+    prompt: "The agent writes a CDK statement with wildcard actions into stack.ts."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"stack.ts": "new iam.PolicyStatement({ actions: ['*'], resources: ['*'] });\n"}, expect: block}  # pragma: allowlist broad-privilege

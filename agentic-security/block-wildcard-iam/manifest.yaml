@@ -1,14 +1,19 @@
 id: block-wildcard-iam
 name: "Block Wildcard IAM"
-version: "0.0.4"
+version: "0.1.0"
 description: >
-  Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or
-  Resource in IAM policy documents, AdministratorAccess attachment, GCP
-  roles/owner or roles/editor, and Terraform wildcard action/resource lists.
-  An agent's identity design stays with the advisory owasp-asi03 policy; this
-  blocks the grants whose blast radius is everything. Escape:
-  'pragma: allowlist broad-privilege' on the same line, honoured at commit; also runs at agent tool-use,
-  where it counts only when that exact line is already committed in HEAD.
+  Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a
+  wildcard action, resource or principal in string or list form and either quote
+  style (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on
+  s3, iam, sts, kms and ec2, Allow with an inverted action or resource key,
+  administrator, power-user and IAM-admin managed policies, GCP owner and editor
+  roles and public members, Kubernetes RBAC wildcards and cluster-admin bindings,
+  Azure wildcard actions and Owner. A Deny written on one line passes. Friction,
+  not a security boundary: grants split across lines, partial wildcards, YAML
+  aliases or tags, unicode-escaped keys and runtime-built grants pass, and a Deny
+  split across lines is still refused. Escape: 'pragma: allowlist broad-privilege'
+  on the same line, honoured at commit; at agent tool-use it counts only when that
+  exact line is already committed in HEAD.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -23,20 +28,56 @@ hook:
     "on": [commit, tool_use]
     action: block
     message: >
-      Broad privilege grant detected. Scope Action and Resource to what the task
-      needs, or a person adds 'pragma: allowlist broad-privilege' on the same line
-      for a reviewed exception (in the agent it counts only when that exact line is already committed
-      in HEAD, so an agent asks a person). Strict JSON cannot carry the pragma; narrow the grant
-      or manage that document in Terraform/YAML.
+      Broad privilege grant detected. Name the actions and resources the task needs
+      (no wildcard action, resource or principal, no whole-service wildcard, no admin
+      managed policy, owner role, public member or cluster-admin binding), or a person adds
+      'pragma: allowlist broad-privilege' on the same line for a reviewed exception (in
+      the agent it counts only when that exact line is already committed in HEAD, so an
+      agent asks a person). Strict JSON cannot carry the pragma; narrow the grant, or
+      keep that document in Terraform/YAML.
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+broad-privilege'
-      # The single-character class ([A]) keeps the fully-literal ARN alternative from
-      # matching its own source text in this manifest and in the compiled gate.json,
-      # while matching identical real content. Without it, committing this policy
-      # folder tripped the policy's own gate (#32).
+      # Verbose mode: whitespace is ignored and an unescaped hash starts a comment. Each
+      # line is judged alone. The single-character classes ([A], [5]) keep the literal
+      # alternatives from matching their own source here and in the compiled gate.json (#32).
       content_pattern: |-
-        "(Action|Resource)"\s*:\s*"\*"|(Action|Resource):\s*'\*'|arn:aws:iam::aws:policy/Administrator[A]ccess|["']roles/(owner|editor)["']|(actions|resources)\s*=\s*\[\s*"\*"\s*\]
+        (?x)
+        # A Deny statement written on one line, with no Allow on it, grants nothing.
+        ^(?!(?=.*(?<![^\s{,(])(?:[Ee]ffect|"[Ee]ffect"|'[Ee]ffect'|\\"[Ee]ffect\\")\s*[:=]\s*
+            (?:"Deny"|'Deny'|\\"Deny\\"|Deny\b|(?:\w+\.)*Effect\.DENY\b))(?!.*(?i:allow)))
+        (?:
+        # Allow with an inverted key grants everything the key does not name.
+          (?=.*(?:\b[Ee]ffect\\?["']?\s*[:=]\s*\\?["']?Allow\b|\bEffect\.ALLOW\b))
+          .*(?<![\w.-])\\?["']?Not(?:Action|Resource|Principal)\\?["']?\s*[:=]
+        | .*?(?:
+        # A grant key whose value is the wildcard, or a list holding it.
+            (?<![\w.-])\\?["']?
+            (?:Action|Resource|Principal|AWS|actions|resources|Actions|dataActions|DataActions|verbs|apiGroups|identifiers)
+            \\?["']?\s*[:=]\s*
+            (?:\\?["']?(?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?\\?["']?(?=\s*(?:[,;})\]\#]|$))
+              |\[[^\][]*?(?<=[\[,\s])\\?["']?(?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?\\?["']?\s*[,\]])
+        # A whole-service wildcard on the services that reach privilege or every resource.
+          | (?:["'\[,:=]|^\s*-)\s*\\?["']?(?i:s3|iam|sts|kms|ec2):(?:\*|\\u002[aA])\\?["']?(?![\w*:/.-])
+        # Managed policies that grant administrator, power-user or IAM-admin rights.
+          | :iam::aws:policy/(?:Administrator[A]ccess|PowerUser[A]ccess|IAMFull[A]ccess)\b
+          | \\?["'](?:Administrator[A]ccess|PowerUser[A]ccess|IAMFull[A]ccess)\\?["']
+        # GCP primitive roles.
+          | (?:["'=]|\brole\\?["']?\s*:\s*|--role\s+)\\?["']?roles/(?:owner|editor)(?![\w./-])
+        # GCP public members.
+          | \bmembers?\\?["']?\s*[:=]\s*\[?[^\][]{0,200}?\\?["']all(?:Authenticated)?Users\\?["']
+          | --member[=\s]\s*\\?["']?all(?:Authenticated)?Users\b
+          | ^\s*(?:-\s*\\?["']?|\\?["'])all(?:Authenticated)?Users\\?["']?\s*,?\s*$
+          | \ball(?:Authenticated)?Users:(?:R|W|O|objectViewer|objectAdmin|objectCreator|legacy\w+)\b
+        # Kubernetes cluster-admin bindings.
+          | --clusterrole[=\s]\s*\\?["']?cluster-admin(?![\w@.-])
+          | \bname\\?["']?\s*[:=]\s*\\?["']?cluster-admin\\?["']?\s*(?:[,}\#]|$)
+        # Azure Owner, by name or by its built-in role id.
+          | \brole_?[Dd]efinition_?[Nn]ame\\?["']?\s*[:=]\s*\\?["']Owner\\?["']
+          | --role[=\s]\s*\\?["']?Owner(?![\w-])
+          | 8e3af657-a8ff-443c-a75c-2fe8c4bcb63[5]
+          )
+        )
 
 compliance:
   owasp_asi:
@@ -48,7 +89,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-13T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -77,3 +118,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "v2, single-line forms (roadmap HP05; closes the probed misses of defect 4.5 #2): list forms and either quote style or bare YAML for the wildcard action, resource and principal keys, escaped JSON inside strings and the unicode-escaped star; global and whole-service wildcards on s3, iam, sts, kms and ec2; Allow with NotAction, NotResource or NotPrincipal; PowerUserAccess and IAMFullAccess beside AdministratorAccess, in any partition and by bare name; unquoted GCP owner/editor in gcloud flags and YAML bindings; allUsers and allAuthenticatedUsers members; Kubernetes RBAC verbs, resources and apiGroups wildcards and cluster-admin bindings; Azure wildcard actions and dataActions and Owner by name or built-in id. A Deny statement on one line with no Allow on it now passes. Service wildcards and PowerUserAccess block rather than ask: a content_regex gate has one action, so the roadmap's ask tier for them waits for the structured iam-policy-scan (wave 3), as do multi-line statements."
