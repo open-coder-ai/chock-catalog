@@ -9,6 +9,7 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
+from iamscan.access import split_lines
 from iamscan.files import scan_file
 from iamscan.model import Finding
 
@@ -93,7 +94,7 @@ def sidecar_waivers(event: str, writes: dict[str, str], read: Callable[[str], st
 
 
 def pragma_waived(
-    finding: Finding, text: str, event: str, head: Callable[[str], str | None], spent: dict[str, Counter]
+    finding: Finding, lines: list[str], event: str, head: Callable[[str], str | None], spent: dict[str, Counter]
 ) -> bool:
     """Whether a reviewed pragma sits on a line the finding names, or on the comment-only line above one.
 
@@ -101,7 +102,6 @@ def pragma_waived(
     file, and the same grant (its id) must be one HEAD's copy holds, so a pragma cannot be reused for a different
     grant; `spent` counts the HEAD grants already excused, so a twin is not excused by one pragma.
     """
-    lines = text.splitlines()
     waiver_lines = _pragma_lines(lines, finding.anchors)
     if not waiver_lines:
         return False
@@ -110,7 +110,7 @@ def pragma_waived(
     before = head(finding.path)
     if before is None:
         return False
-    old = {line.strip() for line in before.splitlines()}
+    old = {line.strip() for line in split_lines(before)}
     if not any(lines[n - 1].strip() in old for n in waiver_lines):
         return False
     left = spent.setdefault(finding.path, Counter(f.key for f in scan_file(finding.path, before)))

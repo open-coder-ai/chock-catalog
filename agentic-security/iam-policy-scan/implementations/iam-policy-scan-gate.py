@@ -12,6 +12,7 @@ from pathlib import Path
 # treats an exit it did not ask for as a refusal, never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from iamscan.access import split_lines
 from iamscan.files import scan_file
 from iamscan.model import BLOCK, Finding
 from iamscan.waivers import HUMAN_EVENTS, SidecarError, committed, pragma_waived, sidecar_waivers
@@ -41,12 +42,10 @@ def judged(payload: dict) -> list[Finding]:
     writes = {str(p).replace("\\", "/"): t for p, t in (payload.get("writes") or {}).items() if isinstance(t, str)}
     head = committed(root)
     spent: dict[str, Counter] = {}
-    found = [
-        finding
-        for path in sorted(writes)
-        for finding in scan_file(path, writes[path])
-        if not pragma_waived(finding, writes[path], event, head, spent)
-    ]
+    found = []
+    for path in sorted(writes):
+        lines = split_lines(writes[path])
+        found += [f for f in scan_file(path, writes[path]) if not pragma_waived(f, lines, event, head, spent)]
     if not found:
         return []
     # The sidecar is read only when something needs it, so a broken one cannot refuse a write that holds no grant.

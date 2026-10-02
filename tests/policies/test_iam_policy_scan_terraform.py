@@ -189,8 +189,8 @@ def test_a_terraform_file_that_names_a_grant_and_cannot_be_read_is_refused() -> 
     assert rules("main.tf", 'resource "x" "y" {\n  Effect = "Allow\n') == [("iam-unreadable", BLOCK)]
 
 
-def test_a_terraform_file_that_cannot_be_read_and_names_no_grant_is_not_judged() -> None:
-    assert rules("main.tf", 'resource "x" "y" {\n  # statement\n  foo = \n') == []
+def test_a_terraform_file_that_cannot_be_read_and_names_no_grant_word_is_not_judged() -> None:
+    assert rules("main.tf", 'resource "x" "y" {\n  foo = \n') == []
 
 
 TFJSON = {

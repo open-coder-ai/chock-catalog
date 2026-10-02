@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import bisect
 import hashlib
+import json
 import re
 from pathlib import PurePosixPath
 
@@ -10,21 +12,19 @@ from chock_scan import hcl, jsonc, yamlpath
 from chock_scan.hcl_json import parse_json
 
 from iamscan import azure, hclread, tree
+from iamscan.access import LINE_BREAK, unescaped
 from iamscan.model import BLOCK, Finding, signature
-from iamscan.walk import Scan, Spot
+from iamscan.walk import LOCATABLE, Scan, Spot, number
 
 #: A file this gate never opens unless its text mentions something a grant is made of.
-#: What a file must say before failing to parse counts as hiding a grant, rather than being some other file.
-GRANT_SHAPED = re.compile(
-    r"(?is)\beffect\b.{0,60}?\ballow\b|\bkind\b[\"']?\s*[:=]\s*[\"']?(?:cluster)?role|roleassignments"
-    r"|azurerm_role_assignment|\bnotaction\b|\bprincipal\b[\"']?\s*[:=]|aws_iam_policy_document"
-    r"|\b(?:actions?|verbs)\b[\"']?\s*[:=]\s*[\[\"'*]"
-)
-MAX_CHARS = 1 << 20  # the readers refuse more; a file this big that mentions a grant is refused, not skipped
-ESCAPE = re.compile(r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})|\\U([0-9a-fA-F]{8})")
 PREFILTER = re.compile(
     r"(?i)effect|principal|notaction|\bstatement\b|\bverbs\b|rolebinding|clusterrole|roleassignment|azurerm_role"
 )
+MAX_CHARS = 1 << 20  # the readers refuse more; a file this big that mentions a grant is refused, not skipped
+MAX_FINDINGS = 1000  # past this, judging and placing each one is itself a way to stall the hook
+LOCKFILE = re.compile(r"(?i)(?:^|/)[^/]*(?:-lock\.(?:json|ya?ml)|\.lock|\.lockb)$")
+STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
+COLON = re.compile(r"\s*:")
 TEMPLATE = re.compile(r"\{\{|\{%")
 DIRECTIVE_LINE = re.compile(r"\s*(?:\{\{.*\}\}|\{%.*%\})\s*")
 HCL = frozenset({".tf", ".tfvars", ".hcl", ".tofu"})
@@ -51,7 +51,7 @@ def kind_of(path: str) -> str | None:
 def scan_file(path: str, text: str) -> list[Finding]:
     """Every broad grant in one file, or a single `iam-unreadable` finding when a file that mentions grants cannot be read."""
     kind = kind_of(path)
-    if kind is None or not PREFILTER.search(_unescaped(text)):
+    if kind is None or not PREFILTER.search(unescaped(text)):
         return []
     if kind == "template":  # a CloudFormation .template is JSON or YAML
         kind = "json" if text.lstrip("\ufeff \t\r\n").startswith("{") else "yaml"
@@ -61,19 +61,17 @@ def scan_file(path: str, text: str) -> list[Finding]:
             msg = f"larger than {MAX_CHARS} characters"
             raise ValueError(msg)
         _READERS[kind](text, scan)
+        if len(scan.found) > MAX_FINDINGS:
+            msg = f"more than {MAX_FINDINGS} grants in one file"
+            raise ValueError(msg)
     except READ_ERRORS as exc:
-        if len(text) <= MAX_CHARS and not GRANT_SHAPED.search(_unescaped(text)):
-            return scan.found
-        found = [f for f in scan.found if f.rule != "iam-unreadable"]
+        if len(text) > MAX_CHARS and LOCKFILE.search(path):
+            return []
+        found = [] if len(scan.found) > MAX_FINDINGS else [f for f in scan.found if f.rule != "iam-unreadable"]
         # The id holds the text, so any change to a file that cannot be read is new: an old refusal never excuses an edit.
         sig = signature([kind, hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()])
         return [*found, Finding("iam-unreadable", BLOCK, path, getattr(exc, "line", None) or 1, sig, (1,))]
     return scan.found
-
-
-def _unescaped(text: str) -> str:
-    """The text with \\uXXXX, \\xXX and \\UXXXXXXXX escapes decoded, so a key spelled with them is still seen."""
-    return ESCAPE.sub(lambda m: chr(int(next(g for g in m.groups() if g), 16)), text) if "\\" in text else text
 
 
 def neutralize(text: str) -> str:
@@ -85,10 +83,11 @@ def neutralize(text: str) -> str:
 def _json(text: str, scan: Scan) -> None:
     document = jsonc.loads(text)
     root = document.value
-    schema = next((v for k, v in root.items() if k == "$schema"), "") if isinstance(root, dict) else ""
-    scan.subscription_deployment = isinstance(schema, str) and azure.SUBSCRIPTION_SCHEMA in schema.lower()
+    schema = next((v for k, v in root.items() if str(k).lower() == "$schema"), "") if isinstance(root, dict) else ""
+    scan.subscription_deployment = isinstance(schema, str) and azure.BROAD_SCHEMA.search(schema) is not None
     for dup in document.duplicates:
         scan.duplicate(str(dup.path[-1]), 1)
+    scan.numbering = number(root)
     scan.walk(root)
     _locate(scan, text)
 
@@ -122,19 +121,39 @@ def _hcl(text: str, scan: Scan) -> None:
 
 
 def _bicep(text: str, scan: Scan) -> None:
-    for line in azure.bicep_assignments(text):
+    lines = azure.bicep_assignments(text)
+    if len(lines) > azure.MAX_BICEP_RESOURCES:
+        msg = "more role assignments than the gate reads"
+        raise ValueError(msg)
+    for line in lines:
         scan.add("azure-subscription-owner", BLOCK, ["bicep", line], Spot(line, "roleDefinitionId", (line,)))
+
+
+def _key_spots(text: str) -> dict[str, list[int]]:
+    """Offsets of each locatable key in document order: every string with a colon after it, comments blanked first."""
+    clean = jsonc.strip(text)
+    spots: dict[str, list[int]] = {}
+    for match in STRING.finditer(clean):
+        if not COLON.match(clean, match.end()):
+            continue
+        name = json.loads(match.group()).lower()  # the file parsed, so every string in it is valid
+        if name in LOCATABLE:
+            spots.setdefault(name, []).append(match.start())
+    return spots
 
 
 def _locate(scan: Scan, text: str) -> None:
     """Give JSON findings the line of the key they are about: the n-th such key in the file, as the walk counted it."""
+    if not any(f.nth >= 0 for f in scan.found):
+        return
+    spots = _key_spots(text)
+    starts = [m.end() for m in LINE_BREAK.finditer(text)]
     located = []
     for found in scan.found:
-        if found.hint and found.nth >= 0:
-            spots = [m.start() for m in re.finditer(rf'"{re.escape(found.hint)}"\s*:', text, re.I)]
-            if found.nth < len(spots):
-                line = text.count("\n", 0, spots[found.nth]) + 1
-                found = Finding(found.rule, found.tier, found.path, line, found.sig, (line,), found.hint, found.nth)  # noqa: PLW2901
+        where = spots.get(found.hint.lower(), [])
+        if found.nth >= 0 and found.nth < len(where):
+            line = bisect.bisect_right(starts, where[found.nth]) + 1
+            found = Finding(found.rule, found.tier, found.path, line, found.sig, (line,), found.hint, found.nth)  # noqa: PLW2901
         located.append(found)
     scan.found = located
 

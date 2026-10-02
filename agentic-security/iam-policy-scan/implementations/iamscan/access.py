@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
+
+ESCAPE = re.compile(r"\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})|\\U([0-9a-fA-F]{8})")
+LINE_BREAK = re.compile(r"\r\n|\r|\n")
 
 
 def entries(node: dict, name: str) -> list:
@@ -32,3 +36,20 @@ def key_names(value: object) -> Iterator[str]:
     elif isinstance(value, list | tuple):
         for v in value:
             yield from key_names(v)
+
+
+def unescaped(text: str) -> str:
+    """The text with \\uXXXX, \\xXX and \\UXXXXXXXX escapes decoded (one that is no character stays as written)."""
+    return ESCAPE.sub(_decode, text) if "\\" in text else text
+
+
+def _decode(match: re.Match) -> str:
+    try:
+        return chr(int(next(g for g in match.groups() if g), 16))
+    except (ValueError, OverflowError):
+        return match.group()
+
+
+def split_lines(text: str) -> list[str]:
+    """Lines as the readers count them: LF, CRLF and a lone CR end one, nothing else does."""
+    return LINE_BREAK.split(text)

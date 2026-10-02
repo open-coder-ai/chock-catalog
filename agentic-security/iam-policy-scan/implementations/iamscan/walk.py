@@ -8,6 +8,7 @@ from typing import NamedTuple
 from chock_scan import jsonc
 
 from iamscan import aws, azure, k8s
+from iamscan.access import unescaped
 from iamscan.model import BLOCK, Finding, signature
 
 MAX_DEPTH = 200
@@ -26,7 +27,7 @@ LOCATABLE = frozenset(
         "roledefinitionid",
     }
 )
-LOOKS_LIKE_POLICY = re.compile(r'(?is)^\s*\{.*"(?:Statement|Effect|rules|kind)"')
+LOOKS_LIKE_POLICY = re.compile(r'(?is)^\s*\{.*\\*"(?:Statement|Effect|rules|kind)\\*"')
 #: Keys whose repeated occurrence in one mapping hides a value from one of the loaders that read it.
 GUARDED_KEYS = frozenset(
     {"effect", "action", "notaction", "resource", "notresource", "principal", "notprincipal", "condition", "statement",
@@ -50,8 +51,7 @@ class Scan:
         self.path = path
         self.found: list[Finding] = []
         self.subscription_deployment = subscription_deployment
-        self._ticks: dict[str, int] = {}
-        self._counting = True
+        self.numbering: dict[int, dict[str, int]] = {}
 
     def add(self, rule: str, tier: str, subject: object, spot: Spot) -> None:
         self.found.append(
@@ -87,19 +87,8 @@ class Scan:
     def _anchors(self, *lines: int, span: tuple[int, int] | None) -> tuple[int, ...]:
         return tuple(sorted({*lines, *(range(span[0], span[1] + 1) if span else ())}))
 
-    def _tick(self, node: dict) -> dict[str, int]:
-        """Number each locatable key of this mapping among all such keys seen so far in the file, in document order."""
-        if not self._counting:
-            return {}
-        out = {}
-        for key in node:
-            name = key.lower() if isinstance(key, str) else ""
-            if name in LOCATABLE:
-                out[name] = self._ticks[name] = self._ticks.get(name, -1) + 1
-        return out
-
     def _mapping(self, node: dict, line: int, span: tuple[int, int] | None) -> None:
-        nth = self._tick(node)
+        nth = self.numbering.get(id(node), {})
         for hit in aws.judge(node):
             at = _hint_line(getattr(node, "keylines", {}), hit.hint, line)
             self.add(
@@ -124,7 +113,10 @@ class Scan:
 
     def embedded(self, text: str, line: int, span: tuple[int, int] | None, embed: int) -> None:
         """Open JSON held in a string; `embed` counts strings opened inside strings, not how deep the file nests."""
-        if embed >= EMBED_DEPTH or not LOOKS_LIKE_POLICY.match(text):
+        if not LOOKS_LIKE_POLICY.match(unescaped(text)):
+            return
+        if embed >= EMBED_DEPTH:
+            self.unreadable("a JSON policy inside strings inside strings is nested past what the gate opens", line)
             return
         try:
             document = jsonc.loads(text)
@@ -133,11 +125,29 @@ class Scan:
             return
         for dup in document.duplicates:
             self.duplicate(str(dup.path[-1]), line)
-        counting, self._counting = self._counting, False
-        try:
-            self.walk(document.value, line, span, 0, embed + 1)
-        finally:
-            self._counting = counting
+        self.walk(document.value, line, span, 0, embed + 1)
+
+
+def number(root: object) -> dict[int, dict[str, int]]:
+    """For each mapping, which occurrence in the text each locatable key is: counted key by key in document order."""
+    ticks: dict[str, int] = {}
+    out: dict[int, dict[str, int]] = {}
+
+    def go(node: object) -> None:
+        if isinstance(node, dict):
+            mine = {}
+            for key, value in node.items():
+                name = key.lower() if isinstance(key, str) else ""
+                if name in LOCATABLE:
+                    mine[name] = ticks[name] = ticks.get(name, -1) + 1
+                go(value)
+            out[id(node)] = mine
+        elif isinstance(node, list | tuple):
+            for value in node:
+                go(value)
+
+    go(root)
+    return out
 
 
 def _hint_line(keylines: dict, hint: str, fallback: int) -> int:

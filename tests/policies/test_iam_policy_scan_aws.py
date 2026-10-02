@@ -185,10 +185,12 @@ def test_json_inside_a_json_string_is_read() -> None:
     assert rules("plan.json", json.dumps({"policy": inner})) == [("iam-admin-grant", BLOCK)]
 
 
-def test_json_inside_a_string_inside_a_string_is_read_to_a_fixed_depth() -> None:
+def test_json_inside_a_string_inside_a_string_is_read_to_a_fixed_depth_then_refused() -> None:
     inner = json.dumps({"Statement": [ADMIN]})
-    deep = json.dumps({"a": json.dumps({"b": json.dumps({"c": json.dumps({"d": inner})})})})
-    assert rules("plan.json", deep) == []
+    three = json.dumps({"a": json.dumps({"b": json.dumps({"c": inner})})})
+    assert rules("plan.json", three) == [("iam-admin-grant", BLOCK)]
+    four = json.dumps({"a": json.dumps({"b": json.dumps({"c": json.dumps({"d": inner})})})})
+    assert rules("plan.json", four) == [("iam-unreadable", BLOCK)]
 
 
 def test_a_json_string_that_looks_like_a_policy_but_is_cut_is_refused() -> None:
@@ -244,6 +246,7 @@ YAML_CASES = {
         "Policies:\n  - Statement:\n      - Effect: Allow\n        Action: s3:*\n        Resource: '*'\n",
         [("iam-service-wildcard", BLOCK)],
     ),
+    "unreadable-yaml-that-names-a-statement": ("statement: [a: b]\n", [("iam-unreadable", BLOCK)]),
     "json-in-yaml-string": (
         'policy: \'{"Statement":[{"Effect":"Allow","Action":"*","Resource":"*"}]}\'\n',
         [("iam-admin-grant", BLOCK)],
@@ -258,7 +261,6 @@ YAML_ALLOWED = {
     "scoped": "Statement:\n  - Effect: Allow\n    Action:\n      - s3:GetObject\n    Resource: arn:aws:s3:::b/*\n",
     "deny": "Statement:\n  - Effect: Deny\n    Action: '*'\n    Resource: '*'\n",
     "not-a-policy": "name: x\nsteps:\n  - run: echo statement\n",
-    "unrelated-parse-error": "statement: [a: b]\n",
 }
 
 
