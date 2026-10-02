@@ -18,16 +18,20 @@ from mechanism import CEILING, EVENT_SCRIPT, GATE, GUARD, NONE
 FILES = ("SECURITY.md", "CONTRIBUTING.md")
 #: One line, no markup inside: an unclosed or nested marker then shows up as a stray one.
 MARKER = re.compile(r"<!-- gen:(?P<key>[a-z-]+) -->(?P<value>[^<\n]*)<!-- /gen -->")
-STRAY = re.compile(r"<!--\s*/?\s*gen\b|\bgen\s*-->", re.I)
+#: Any gen token left once the valid markers are gone is a marker spelled some other way.
+STRAY = re.compile(r"\bgen\s*:|/\s*gen\b", re.I)
+#: Markup a reader does not see, which must not separate a number from its noun.
+_INVISIBLE = re.compile(r"<!--.*?-->|<[^>\n]*>|&\w+;|[*_]", re.S)
 _WORDS = (
     "two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
     "sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety"
 )
-#: A number, as digits or words (emphasis allowed), then up to four words, then a noun that counts
-#: policies; the gaps may be line breaks, since prose wraps.
+#: A number, as digits or words, then up to four words, then a noun that counts policies; read
+#: with markup removed, and the gaps may be line breaks, since prose wraps.
 HAND_COUNT = re.compile(
-    rf"(?<![\w.#-])[*_]*(?:\d+|(?:{'|'.join(_WORDS.split())})(?:-\w+)?)\b[*_]*"
-    r"(?:[\s-]+[\w`()*_/-]+){0,4}?[\s-]+(?:polic\w*|advisor\w*|enforced[\w-]*|guards?|gates?)\b",
+    rf"(?<![\w.#-])(?:\d+|(?:{'|'.join(_WORDS.split())})(?:-\w+)?)\b"
+    r"(?:[\s-]+[\w`()/,-]+){0,4}?[\s-]+"
+    r"(?:polic\w*|advisor\w*|enforced[\w-]*|best-effort|guards?|gates?|(?:hook\s+)?programs?)\b",
     re.I,
 )
 
@@ -62,9 +66,10 @@ def render(text: str, known: dict[str, str]) -> tuple[str, list[str]]:
     filled = MARKER.sub(lambda m: f"<!-- gen:{m['key']} -->{known.get(m['key'], m['value'])}<!-- /gen -->", text)
     outside = MARKER.sub("", filled)
     problems += [f"line {_line(outside, m)}: malformed or unclosed gen marker" for m in STRAY.finditer(outside)]
-    for hit in HAND_COUNT.finditer(outside):
+    visible = _INVISIBLE.sub(lambda m: " " + "\n" * m[0].count("\n"), outside)
+    for hit in HAND_COUNT.finditer(visible):
         problems.append(
-            f"line {_line(outside, hit)}: hand-written count {' '.join(hit[0].split())!r}; use a gen marker"
+            f"line {_line(visible, hit)}: hand-written count {' '.join(hit[0].split())!r}; use a gen marker"
         )
     return filled, problems
 

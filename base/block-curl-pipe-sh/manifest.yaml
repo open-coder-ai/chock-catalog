@@ -3,7 +3,7 @@ name: "Block Curl-Pipe-Shell"
 version: "0.0.6"
 description: >
   Best-effort: refuses curl/wget/lynx/aria2c/iwr/irm piped into
-  sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node (path-qualified, quoted, in a subshell, after
+  sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node (by path, quoted, in a subshell, after
   bare sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash <(curl ...), `| iex`. Probed
   misses: fetch right after a quote (bash -c "curl ...", ssh), eval "$(curl ...)", source
   <(curl ...), wrapper options (sudo -u, env VAR=, /usr/bin/env), doas,
@@ -42,7 +42,7 @@ changelog:
 - version: 0.0.6
   date: '2026-10-02'
   changes:
-  - "Disclosure, no behaviour change: the description names the bypasses the guard was probed to allow -- a fetch directly after the opening quote of a quoted command (bash -c, sh -c, ssh, docker exec; a fetch later in the quoted text is caught), eval of a command substitution, source or dot of a process substitution, a wrapper carrying options (sudo -u, env VAR=, /usr/bin/env), doas, a pipe into csh, tcsh, mksh, lua, php, pwsh, deno, busybox, su -c or a variable-named shell, and download-then-run -- in place of the generic 'aliases, variables, obfuscation'. The wrappers it does see through are now said to be bare ones. tests/policies/test_stated_limits.py fails if the guard starts catching one (so the text is updated) or the text stops naming one. The closing fixes are HP03."
+  - "Disclosure, no behaviour change: the description names the bypasses the guard was probed to allow -- a fetch directly after the opening quote of a quoted command (bash -c, sh -c, ssh, docker exec; a fetch later in the quoted text is caught), eval of a command substitution, source or dot of a process substitution, a wrapper carrying options (sudo -u, env VAR=, /usr/bin/env), doas, a pipe into csh, tcsh, mksh, lua, php, pwsh, deno, busybox, su -c or a variable-named shell, and download-then-run -- in place of the generic 'aliases, variables, obfuscation'. The wrappers it does see through are now said to be bare ones. Also probed and allowed, beyond the 500-character description: a fetcher written by path (/usr/bin/curl) or backslash-escaped, a pipeline led by echo or printf with no ; && || in the command, a fetch after a background &, a backtick substitution inside bash -c, and a here-string of a command substitution. tests/policies/test_stated_limits.py fails if the guard starts catching one (so the text is updated) or the text stops naming one. The closing fixes are HP03."
 - version: 0.0.5
   date: '2026-09-30'
   changes:

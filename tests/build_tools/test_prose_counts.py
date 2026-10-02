@@ -76,7 +76,17 @@ def test_check_mode_writes_nothing_and_reports_drift(catalog: Path) -> None:
             "<!-- gen:policies -->6<!-- /gen -->\nsays. Twenty-two of the forty-two\npolicies here are advisory\n",
             "line 2: hand-written count 'Twenty-two of the forty-two policies'",
         ),
-        ("<!-- gen:policies -->6<!-- /gen -->\n**22** policies\n", "hand-written count '**22** policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n**22** policies\n", "hand-written count '22 policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\nAnother 7 are best-effort\n", "hand-written count '7 are best-effort'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n9 hook programs\n", "hand-written count '9 hook programs'"),
+        (
+            "<!-- gen:policies -->6<!-- /gen -->\n48 published, signed policies\n",
+            "hand-written count '48 published, signed policies'",
+        ),
+        ("<!-- gen:policies -->6<!-- /gen -->\n22&nbsp;policies\n", "hand-written count '22 policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n<b>22</b> policies\n", "hand-written count '22 policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n22 <!-- x\n --> policies\n", "line 2: hand-written count"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n<!--- gen:advisory --->12<!--- /gen --->\n", "line 2: malformed"),
         ("<!-- gen:policies -->6<!-- /gen -->\n22 (of 42) policies\n", "hand-written count '22 (of 42) policies'"),
         (
             "<!-- gen:policies -->6<!-- /gen -->\n22 of the published catalog policies\n",
