@@ -140,9 +140,13 @@ block-unpinned-agent-components  [deterministic]
   PASS  tc-044                             authored  gate exit 0
   PASS  tc-045                             authored  gate exit 0
   PASS  tc-046                             authored  Unpinned agent component detected. Pin an exact version or digest (…
+  PASS  tc-047                             authored  Unpinned agent component detected. Pin an exact version or digest (…
+  PASS  tc-048                             authored  Unpinned agent component detected. Pin an exact version or digest (…
+  PASS  tc-049                             authored  Unpinned agent component detected. Pin an exact version or digest (…
+  PASS  tc-050                             authored  gate exit 0
   score 1.00
 
-5 policies: 46 pass, 41 skipped
+5 policies: 50 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

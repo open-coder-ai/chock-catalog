@@ -107,8 +107,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 46
-  eval_executed: 46
+  eval_cases: 50
+  eval_executed: 50
   description: 'Gate for the line-visible slice of ASI04: agent components fetched at a floating version.
     Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and
     pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs;
