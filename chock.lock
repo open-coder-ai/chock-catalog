@@ -30,9 +30,9 @@
       "id": "block-invisible-unicode",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "5eb98043cea85921bdee701c98d3be038efcb36d16e8ca60f9fa2f7b4045c718",
+      "sha256": "1201d4eb43b462d98045009a9142f111626921deb7bdc3fa3973a1128f173b90",
       "source": "local",
-      "artifacts_sha256": "402938537b64c7e62035544849e55e524612488c834963d35694db0c7f963e2d"
+      "artifacts_sha256": "e5ed5291b4a230f56da984bfafc8500a17257cde3e3177da81008a4610633081"
     },
     {
       "id": "block-no-verify",
@@ -119,9 +119,8 @@
       "version": "0.0.1",
       "managed": false,
       "sha256": "e2616ab80403087fd4d50581cc9934509428c63180d7cdfcd90fc0eb93625584",
-      "source": ".",
-      "artifacts_sha256": "2dce4330f9a44f6ac4f47f6375114cd11aa9c35a9e7a926817624a25c5c8b54c",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "2dce4330f9a44f6ac4f47f6375114cd11aa9c35a9e7a926817624a25c5c8b54c"
     },
     {
       "id": "protect-ci-workflows",
