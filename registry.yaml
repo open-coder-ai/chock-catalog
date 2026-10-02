@@ -723,3 +723,17 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: review-like-a-red-team
+  path: base/review-like-a-red-team
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: rule text only
+  enforces: advisory
+  eval_cases: 10
+  eval_executed: 0
+  description: 'trigger: finishing or committing a diff that touches code, build or CI config, dependencies
+    or agent config; a plan adding a handler, parser, auth path, crypto or sink; an ask-tier gate finding.
+    Self-review of the diff in twelve red-team techniques, triaged by references/triage.json, reported
+    as findings with exploit scenarios. Advisory: refuses nothing, writes no waiver, lowers no gate.'

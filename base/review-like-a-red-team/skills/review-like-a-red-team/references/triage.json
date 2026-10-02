@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "as_of": "2026-10-01",
+  "source": {
+    "r11": "open-coder-ai/org-plan:discovery/2026-10-01-security-research-11-mythos-and-security-review.md",
+    "r12": "open-coder-ai/org-plan:discovery/2026-10-01-security-research-12-model-review-techniques-to-deterministic-guards.md",
+    "sr-command": "https://raw.githubusercontent.com/anthropics/claude-code-security-review/main/.claude/commands/security-review.md",
+    "sr-readme": "https://github.com/anthropics/claude-code-security-review",
+    "claude-security": "https://support.claude.com/en/articles/14661296-use-claude-security",
+    "roadmap": "open-coder-ai/org-plan:chock/plan/security-coverage-roadmap.md"
+  },
+  "use": "Advisory triage data for model or human security review of a diff (EP-17). It orders, filters and words a review report. It is never a waiver: no entry clears a gate finding, changes a gate verdict, or keeps a path out of a gate. A finding a gate raised is cleared only by a person's committed waiver. Wording changes are caught by review, not by the loader.",
+  "verdicts": {
+    "high": "deny",
+    "medium": "ask",
+    "low": "allow"
+  },
+  "report_min_confidence": 8,
+  "rank_tier": {
+    "1": "off",
+    "2": "off",
+    "3": "off",
+    "4": "ask",
+    "5": "ask"
+  },
+  "never_excluded": {
+    "dirs": [".agents", ".amazonq", ".chock", ".claude", ".clinerules", ".codex", ".continue", ".cursor", ".devin", ".gemini", ".git", ".githooks", ".github", ".grok", ".husky", ".junie", ".kimi-code", ".kiro", ".roo", ".tabnine", ".vscode", ".windsurf", "evals", "implementations", "skill", "skills"],
+    "names": [".aider.conf.yml", ".clinerules", ".cursorrules", ".mcp.json", ".pre-commit-config.yaml", ".windsurfrules", "AGENTS.md", "AGENTS.override.md", "CLAUDE.local.md", "CLAUDE.md", "CONVENTIONS.md", "GEMINI.md", "SKILL.md", "codex.md", "conf.py", "conftest.py", "copilot-instructions.md", "manifest.yaml", "noxfile.py", "package.json", "pyproject.toml", "pytest.ini", "setup.cfg", "setup.py", "suite.yaml", "tox.ini", "triage.json", "triage_tables.py"]
+  },
+  "path_exclusions": [
+    {
+      "id": "tests",
+      "dirs": ["tests", "test", "__tests__", "testdata"],
+      "names": ["test_*.py", "*_test.py", "*_test.go", "*.test.js", "*.test.ts", "*.spec.js", "*.spec.ts", "*Test.java", "*Tests.java"],
+      "text": "Test code does not ship to production. CI-facing test and build config (conftest.py, pytest.ini, tox.ini, setup.py, package.json, and the like) stays in scope, and a real secret in a test file is still a finding (scan-secrets judges every path).",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "docs",
+      "dirs": ["docs"],
+      "names": [],
+      "text": "Human documentation under docs/ is not shipped code. Agent instruction files and a docs build config (conf.py) are never excluded, wherever they sit.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "generated",
+      "dirs": ["__generated__"],
+      "names": ["*.pb.go", "*_pb2.py", "*_pb2_grpc.py", "*.min.js"],
+      "text": "Generated output is reviewed at its generator; report the generator input instead.",
+      "source": ["r12"]
+    },
+    {
+      "id": "vendored",
+      "dirs": ["vendor", "third_party", "node_modules"],
+      "names": [],
+      "text": "Vendored code is reviewed upstream; a pinned version known to be compromised is still a finding.",
+      "source": ["r12"]
+    }
+  ],
+  "finding_exclusions": [
+    {
+      "id": "denial-of-service",
+      "text": "Denial of service, rate limiting, and memory or CPU exhaustion.",
+      "unless": "the exhaustion is unbounded agent or model spend",
+      "source": ["sr-command", "roadmap"]
+    },
+    {
+      "id": "generic-validation",
+      "text": "Input validation that is missing but has no proven security impact.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "workflow-input",
+      "text": "Workflow inputs a person supplies when starting a CI run.",
+      "unless": "the workflow can be started by an untrusted actor (a fork pull request, an issue or comment event, or a run chained from one)",
+      "source": ["sr-command", "r11"]
+    },
+    {
+      "id": "theoretical-race",
+      "text": "Races and timing issues with no concrete path to a security effect.",
+      "unless": "a secret, token or signature is compared in non-constant time",
+      "source": ["sr-command", "roadmap"]
+    },
+    {
+      "id": "outdated-dependency",
+      "text": "A dependency that is merely behind its latest release.",
+      "unless": "the version is on a known-compromised list, or a security bump updated one manifest and left another on the old version",
+      "source": ["sr-command", "roadmap"]
+    },
+    {
+      "id": "safe-rust-memory",
+      "text": "Memory-safety issues in safe Rust.",
+      "unless": "the code is inside an unsafe block or reinterprets raw memory",
+      "source": ["sr-command", "roadmap"]
+    },
+    {
+      "id": "log-spoofing",
+      "text": "Log spoofing or log-line injection.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "path-only-ssrf",
+      "text": "Server-side request forgery where the attacker controls only the path, not the host or scheme.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "regex-injection",
+      "text": "Regex injection. Catastrophic backtracking is denial of service and falls under that exclusion.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "missing-audit-log",
+      "text": "A missing audit log.",
+      "source": ["sr-command"]
+    }
+  ],
+  "precedents": [
+    {
+      "id": "env-and-cli-trusted",
+      "text": "Environment variables and command-line flags are trusted input.",
+      "unless": "a model, a tool result or a CI event payload fills them",
+      "source": ["sr-command", "roadmap"]
+    },
+    {
+      "id": "uuid-unguessable",
+      "text": "Random (version 4) UUIDs can be assumed unguessable.",
+      "unless": "the id is time-based, sequential or derived from user data",
+      "source": ["sr-command", "roadmap"]
+    },
+    {
+      "id": "client-side-auth",
+      "text": "A missing permission check in client-side code is not a finding; the server must enforce it.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "framework-autoescape",
+      "text": "Templates and UI frameworks that escape output by default are XSS only where code uses the framework's explicit raw-HTML bypass.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "logging-urls",
+      "text": "Logging URLs is safe; logging a high-value secret in plaintext is a finding.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "medium-only-if-concrete",
+      "text": "Report a MEDIUM finding only when it is obvious and concrete.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "notebook-and-script-injection",
+      "text": "Command injection in notebooks and local shell scripts is rarely exploitable.",
+      "unless": "the script runs in CI on event data, or as a package install or lifecycle hook",
+      "source": ["sr-command", "roadmap"]
+    }
+  ],
+  "not_adopted": [
+    {
+      "id": "secrets-on-disk",
+      "upstream": "secrets or sensitive data stored on disk",
+      "why": "A secret in a tracked file is a finding here: scan-secrets refuses it at commit.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "user-content-in-prompts",
+      "upstream": "user content in AI prompts",
+      "why": "Untrusted content reaching a model or a tool sink is in scope (injection-defense; record 12 section 8).",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "lack-of-hardening",
+      "upstream": "lack of hardening measures",
+      "why": "A removed or missing hard mitigation is a finding (record 12 sections 5 and 7).",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "documentation-files",
+      "upstream": "documentation files",
+      "why": "Agent instruction and skill files are executable for an agent; only docs/ is excluded, and never_excluded wins.",
+      "source": ["sr-command"]
+    },
+    {
+      "id": "open-redirect",
+      "upstream": "open redirect vulnerabilities",
+      "why": "An open redirect on an auth or OAuth flow leaks tokens; Claude Security lists it as a finding type.",
+      "source": ["sr-readme", "claude-security"]
+    }
+  ]
+}
