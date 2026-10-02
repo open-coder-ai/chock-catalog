@@ -28,6 +28,9 @@ LOOSE = re.compile(
 )
 #: A double-quoted key whose colon may sit on a later line, or that follows a `/* */` comment.
 SPLIT_KEY = re.compile(r"""(?:(?<![^\s{,\[])|(?<=\*/))("(?:[^"\\\n]|\\.)*+")\s*+:""")
+EXPLICIT = re.compile(r"(?<![^\s{,\[])\?[ \t]")
+#: In loose_keys: a key this reader cannot name, which may be any key (also an alias's leading `*`).
+UNNAMED = "*"
 ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|.)", re.DOTALL)
 SIMPLE = {"0": "\0", "a": "\a", "b": "\b", "t": "\t", "n": "\n", "v": "\v", "f": "\f", "r": "\r", "e": "\x1b"}
 SIMPLE |= {"N": "\x85", "_": "\xa0", "L": "\u2028", "P": "\u2029"}
@@ -58,13 +61,33 @@ def units(text: str) -> list[Unit]:
 
 
 def loose_keys(text: str) -> set[str]:
-    """Every key-like token anywhere outside a full-line comment, at any depth, quoted or not."""
+    """Every key-like token anywhere outside a full-line comment, at any depth, quoted or not.
+
+    An alias key is replaced by its anchor's scalar; UNNAMED is in the set when some key cannot be
+    named (an alias it cannot resolve, an explicit `?` key), since that key may be any key.
+    """
     keys: set[str] = set()
+    anchors: dict[str, str | None] = {}
     for line in LINES.split(text):
         if not line.lstrip().startswith("#"):
             keys.update(unquote(m.group(1)) for m in LOOSE.finditer(line))
+            if "&" in line:
+                record_anchors(anchors, line)
+            if EXPLICIT.search(line):
+                keys.add(UNNAMED)
     keys.update(unquote(m.group(1)) for m in SPLIT_KEY.finditer(text))
+    for alias in [key for key in keys if key.startswith(UNNAMED)]:
+        keys.discard(alias)
+        keys.add(anchors.get(alias[1:]) or UNNAMED)
     return keys
+
+
+def record_anchors(anchors: dict[str, str | None], line: str) -> None:
+    """Anchors this line may set; a name seen twice (or in a quoted or block scalar) is unnamed from then on."""
+    for anchor in ANCHOR.finditer(line):
+        scalar = ANCHORED.match(line, anchor.end())
+        name = anchor.group(1)
+        anchors[name] = None if name in anchors or not scalar else unquote(scalar.group(1))
 
 
 def unquote(token: str) -> str:
@@ -131,15 +154,8 @@ class _Reader:
             if content and content[0] != "#" and not (self.root is None and body[0] == "%"):
                 self._line(len(line) - len(body), body)
             if "&" in line and not content.startswith("#"):
-                self._anchors(line)
+                record_anchors(self.anchors, line)
         return [Unit(frozenset(keys.names), keys.opaque) for keys in self.units]
-
-    def _anchors(self, line: str) -> None:
-        """Anchors this line may set; a name seen twice (or in a quoted or block scalar) is unnamed from then on."""
-        for anchor in ANCHOR.finditer(line):
-            scalar = ANCHORED.match(line, anchor.end())
-            name = anchor.group(1)
-            self.anchors[name] = None if name in self.anchors or not scalar else unquote(scalar.group(1))
 
     def _line(self, col: int, body: str) -> None:
         if self.root is None or col < self.root:

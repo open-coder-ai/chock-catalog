@@ -13,8 +13,10 @@ BOM = chr(0xFEFF)
 H, M, L = "high", "medium", "low"
 K8S = "apiVersion: v1\nkind: Pod\n"
 #: An unnamed key could be any key, so every kind it would complete stays a low candidate.
-OPAQUE = {"kubernetes": L, "cloudformation": L, "openapi": L, "compose": L, "mcp-config": L}
-SINGLE = {k: v for k, v in OPAQUE.items() if k != "kubernetes"}  # one unnamed key alone completes one-key kinds
+#: A key this reader cannot name may be any key, so every mapped kind stays a low candidate.
+ANY = dict.fromkeys(
+    ("kubernetes", "cloudformation", "openapi", "compose", "github-actions", "ansible", "mcp-config"), L
+)
 
 CASES = {
     # kubernetes
@@ -41,23 +43,33 @@ CASES = {
     "k8s-anchored-key": ("&a apiVersion: v1\n&b kind: Pod\n", {"kubernetes": H}),
     "k8s-alias-key-resolved": ("x: &k kind\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
     "k8s-alias-key-quoted-anchor": ("x: &k 'kind'\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
-    "k8s-alias-key-unresolved": ("apiVersion: v1\n*k : Pod\n", OPAQUE),
+    "k8s-alias-key-unresolved": ("apiVersion: v1\n*k : Pod\n", ANY),
     "k8s-alias-glued-colon": ("x: &k kind\napiVersion: v1\n*k: Pod\n", {"kubernetes": H}),
     "alias-through-tagged-anchor": ("x-n: &k !!str services\n*k :\n  web: {}\n", {"compose": M}),
-    "alias-through-block-anchor": ("x-n: &k >-\n  services\n*k :\n  web: {}\n", SINGLE),
-    "alias-through-multi-word-anchor": ("x: &k foo bar\n*k : 1\n", SINGLE),
+    "alias-through-block-anchor": ("x-n: &k >-\n  services\n*k :\n  web: {}\n", ANY),
+    "alias-through-multi-word-anchor": ("x: &k foo bar\n*k : 1\n", ANY),
     "alias-through-anchored-key": ("x:\n  &k kind: 1\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
     "anchor-reused-in-comment": ("x: &k kind\n# &k nope\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
     "anchor-reused-in-string": (
         "x: &k kind\ny: 'a &k nope, b'\napiVersion: v1\n*k : Pod\n",
-        SINGLE | {"kubernetes": L},
+        ANY,
     ),
     "anchor-reused-in-block": (
         "x: &k kind\ns: |\n  run &k nope\napiVersion: v1\n*k : Pod\n",
-        SINGLE | {"kubernetes": L},
+        ANY,
     ),
-    "anchor-hash-without-space": ("x: &k kind#x\napiVersion: v1\n*k : Pod\n", SINGLE | {"kubernetes": L}),
+    "anchor-hash-without-space": ("x: &k kind#x\napiVersion: v1\n*k : Pod\n", ANY),
     "anchor-then-comment": ("x: &k kind # c\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
+    "alias-in-flow-mapping": ("{metadata: {name: &k kind}, *k : ConfigMap, apiVersion: v1}", {"kubernetes": L}),
+    "alias-in-flow-compose": ("{x-n: &s services, *s : {web: {image: nginx}}}", {"compose": L}),
+    "alias-in-flow-play": ("- {name: &h hosts, *h : all, tasks: [{debug: {msg: hi}}]}", {"ansible": L}),
+    "alias-in-flow-mcp": ("{x: &m mcpServers, *m : {}}", {"mcp-config": L}),
+    "alias-through-merge": ("x: &k kind\nb: &b\n  *k : ConfigMap\n<<: *b\napiVersion: v1\n", {"kubernetes": L}),
+    "alias-unresolved-nested": ("a:\n  *zz : 1\n", ANY),
+    "explicit-key-in-flow": (
+        "{ ? apiVersion\n  : v1,\n  ? kind\n  : ConfigMap }",
+        ANY,
+    ),
     "anchor-in-flow": ("x: [&k kind, b]\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
     "json-then-yaml-document": ("{}\n---\n" + K8S, {"kubernetes": H}),
     "tab-only-line-in-indented-root": ("  apiVersion: v1\n\t\n  kind: Pod\n", {"kubernetes": H}),
@@ -65,8 +77,8 @@ CASES = {
     "jsonc-comment-touching-key": ('{\n  /* c */"mcpServers": {}\n}', {"mcp-config": L}),
     "json-colon-on-next-line": ('{\n // c\n "mcpServers"\n  : {}\n}', {"mcp-config": L}),
     "k8s-alias-value-not-key": ("apiVersion: v1\nx:\n- *k\n", {}),
-    "k8s-explicit-key": ("apiVersion: v1\n? kind\n: Pod\n", OPAQUE),
-    "two-unnamed-keys": ("? a\n? b\nhosts: x\n", OPAQUE | {"github-actions": L, "ansible": L}),
+    "k8s-explicit-key": ("apiVersion: v1\n? kind\n: Pod\n", ANY),
+    "two-unnamed-keys": ("? a\n? b\nhosts: x\n", ANY),
     "k8s-flow-mapping": ("{apiVersion: v1, kind: Pod}\n", {"kubernetes": L}),
     "k8s-json": ('{\n  "apiVersion": "v1",\n  "kind": "Pod"\n}\n', {"kubernetes": H}),
     "k8s-json-escaped-key": ('{"apiVersion": "v1", "\\u006bind": "Pod"}', {"kubernetes": H}),
@@ -174,7 +186,7 @@ def test_candidates_are_ranked_and_carry_their_signal(sn: ModuleType) -> None:
 def test_signals_name_what_matched(sn: ModuleType) -> None:
     signals = {
         "openapi: 3\n*k : Pod\n": "top-level openapi",
-        "apiVersion: v1\n*k : Pod\n": "top-level AWSTemplateFormatVersion, some keys unnamed",
+        "apiVersion: v1\n*k : Pod\n": "hosts+tasks anywhere, or a key it cannot name",
         "a:\n  apiVersion: v1\n  kind: Pod\n": "apiVersion+kind anywhere",
         "RUN x\nFROM a\n": "FROM and build instruction lines",
         "FROM a\n": "first instruction FROM",

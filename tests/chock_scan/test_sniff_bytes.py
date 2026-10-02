@@ -140,6 +140,7 @@ SHEBANGS = {
     "#!/usr/bin/env 'zsh'": ("zsh",),
     '#!/usr/bin/env -S PATH="/usr/bin" bash -e': ("bash", "-e"),
     "#!": (),
+    "#!" + " " * 5000 + "/bin/sh": (),
     "#!   ": (),
     "# !/bin/sh": (),
     " #!/bin/sh": (),
@@ -193,6 +194,7 @@ def test_every_shell_is_a_shell(sn: ModuleType, name: str) -> None:
         ("#!/usr/bin/env", {"script"}),
         ("#!/usr/bin/shellcheck", {"script"}),
         ("#!/usr/bin/ssh", {"script"}),
+        ("#!/bin/BASH", {"script", "shell"}),
     ],
 )
 def test_what_is_and_is_not_a_shell(sn: ModuleType, line: str, kinds: set[str]) -> None:

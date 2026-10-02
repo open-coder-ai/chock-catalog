@@ -8,7 +8,8 @@ No candidate is an explicit unknown; a file over the limit is an explicit too-la
 Signals, read over the whole text (no first-N-lines window: padding cannot push a key out of view).
 Keys are top-level: of a YAML document's root mapping, of a root sequence item, or of JSON's root
 object. `low` is the same keys found anywhere outside full-line comments (nested, split across
-documents, in a flow mapping, JSON with comments, a trailing comment), or a unit whose keys this
+documents, in a flow mapping, JSON with comments, a trailing comment, through an alias), any
+key-like token this reader cannot name anywhere (which may be any key), or a unit whose keys this
 reader cannot all name (an explicit `?` key, an alias of an anchor not one simple scalar, or reused),
 since such a key may be any key.
   kubernetes      high: apiVersion + kind
@@ -39,7 +40,7 @@ import re
 from collections import deque
 from typing import NamedTuple
 
-from .sniff_keys import Unit, loose_keys, units
+from .sniff_keys import UNNAMED, Unit, loose_keys, units
 
 LIMIT = 1 << 20
 MAX_LIMIT = 1 << 26
@@ -76,7 +77,9 @@ SHELL = re.compile(r"(?:a|ba|da|k|mk|pdk|lk|ok|lok|o|z|ya|po|rba|c|tc|fi|hu|bo|j
 MULTICALL = frozenset({"busybox", "toybox"})
 ENV_VALUE = frozenset("uCP")
 ENV_QUOTES = re.compile(r"""["']""")
-DIRECTIVE = re.compile(r"#[ \t]*([A-Za-z]+)[ \t]*=[ \t]*(\S*)[ \t]*")
+DIRECTIVE = re.compile(r"#[ \t]*+([A-Za-z]++)[ \t]*+=[ \t]*+(\S*+)[ \t]*+")
+#: The kernel reads at most 256 bytes of a #! line (BINPRM_BUF_SIZE); more is never an interpreter.
+SHEBANG_MAX = 4096
 DOCKER_BODY = frozenset({"RUN", "CMD", "ENTRYPOINT", "COPY", "ADD"})
 
 
@@ -136,7 +139,7 @@ def sniff(data: bytes, limit: int = LIMIT) -> Sniff:
 
 def interpreter(text: str) -> tuple[str, ...]:
     """The command a `#!` first line runs, through `env` and its options (`-S` included), and its words."""
-    first = text.split("\n", 1)[0].rstrip("\r")
+    first = text[:SHEBANG_MAX].split("\n", 1)[0].rstrip("\r")
     if not first.startswith("#!"):
         return ()
     words = first[2:].split()
@@ -176,14 +179,13 @@ def _long_option(word: str, queue: deque[str]) -> None:
 
 def _short_options(flags: str, queue: deque[str]) -> None:
     for at, flag in enumerate(flags):
-        rest = flags[at + 1 :]
         if flag in ENV_VALUE:
-            if not rest and queue:
+            if at + 1 == len(flags) and queue:
                 queue.popleft()
             return
         if flag == "S":
-            if rest:
-                queue.appendleft(rest)
+            if at + 1 < len(flags):
+                queue.appendleft(flags[at + 1 :])
             return
 
 
@@ -209,7 +211,7 @@ def _encoding(data: bytes) -> tuple[str, int]:
 
 
 def _candidates(text: str) -> list[Candidate]:
-    found = _mapped(text, units(text))
+    found = _mapped(text, list(dict.fromkeys(units(text))))  # distinct, in order: a file of `- ` lines holds one
     instructions = _instructions(text)
     if _first_is_from(instructions):
         found.append(Candidate("dockerfile", HIGH, "first instruction FROM"))
@@ -219,7 +221,7 @@ def _candidates(text: str) -> list[Candidate]:
         found.append(Candidate("script", HIGH, f"#! {command[0]}"))
         if _is_shell(command):
             found.append(Candidate("shell", HIGH, f"#! {' '.join(command[:2])}"))
-        elif any(SHELL.fullmatch(_base(word)) for word in command[1:]):
+        elif any(SHELL.fullmatch(_base(word).lower()) for word in command[1:]):
             found.append(Candidate("shell", LOW, "a shell named later in the #! line"))
     return found
 
@@ -240,6 +242,8 @@ def _mapped(text: str, found_units: list[Unit]) -> list[Candidate]:
         loose = loose_keys(text) if loose is None else loose
         if set(keys) <= loose:
             out.append(Candidate(kind, LOW, f"{signal} anywhere"))
+        elif UNNAMED in loose:
+            out.append(Candidate(kind, LOW, f"{signal} anywhere, or a key it cannot name"))
     return out
 
 
@@ -279,4 +283,4 @@ def _docker_lines(lines: list[str]) -> bool:
 
 def _is_shell(command: tuple[str, ...]) -> bool:
     name = command[1] if command[0] in MULTICALL and len(command) > 1 else command[0]
-    return SHELL.fullmatch(_base(name)) is not None
+    return SHELL.fullmatch(_base(name).lower()) is not None
