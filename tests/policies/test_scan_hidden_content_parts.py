@@ -8,6 +8,7 @@ from policies.hiddenkit import readers
 css = readers["css"]
 colours = readers["colours"]
 html = readers["markup"]
+frames = readers["frames"]
 text = readers["markdown"]
 urls = readers["links"]
 vocab = readers["vocab"].vocab()
@@ -214,7 +215,7 @@ def test_self_closing_is_ignored_on_html_elements_only() -> None:
 
 
 def test_hidden_text_is_keyed_by_all_of_it(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(html, "KEPT_TEXT", 3)
+    monkeypatch.setattr(frames, "KEPT_TEXT", 3)
     ((_, _, _, shown, one),) = html.collect("<p hidden>abcdef<b>gh</b></p>").hidden
     ((_, _, _, _, two),) = html.collect("<p hidden>abcdef<b>gX</b></p>").hidden
     assert shown == "abc"

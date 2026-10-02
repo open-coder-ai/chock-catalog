@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import sys
 import time
@@ -16,14 +17,11 @@ from pathlib import Path, PurePosixPath
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from hiddenscan import inline as hidden_inline  # noqa: E402
-from hiddenscan import liberal as hidden_code  # noqa: E402
 from hiddenscan import links as hidden_urls  # noqa: E402
 from hiddenscan import markdown as hidden_text  # noqa: E402
 from hiddenscan import markup as hidden_html  # noqa: E402
-from hiddenscan import spans  # noqa: E402 -- after the path and cache setup
+from hiddenscan import readings, spans  # noqa: E402 -- after the path and cache setup
 from hiddenscan import word as hidden_docx  # noqa: E402
-from hiddenscan.htmlspec import RAW_TEXT_ELEMENTS  # noqa: E402
 from hiddenscan.vocab import normalized, vocab  # noqa: E402
 
 ALLOW, BLOCK, UNREADABLE, ASK, WARN = 0, 1, 2, 3, 4
@@ -40,7 +38,6 @@ DEADLINE = 10.0
 #: Would block once promoted: a secret-bearing beacon, a URL dictionary, and a file the run had no time to
 #: read (it may hold either, so running out of time never softens the verdict).
 #: Elements whose content this Python's HTML parser reads as raw text (the list varies by release).
-RAW_TEXT = re.compile(rf"<(?:{'|'.join(RAW_TEXT_ELEMENTS)})(?![A-Za-z0-9-])", re.IGNORECASE)
 BLOCKING = hidden_urls.BLOCKING | {"not-judged"}
 SHOWN = 50
 MARKDOWN = {".md", ".mdx", ".markdown", ".mdc"}
@@ -127,30 +124,22 @@ def _url_findings(path: str, urls: dict[tuple[int, str], int]) -> list[dict]:
     return out
 
 
-def text_findings(path: str, text: str, kind: str) -> list[dict]:
+class Late(Exception):  # noqa: N818 -- a signal, not an error
+    """The deadline passed while a file was being read."""
+
+
+def text_findings(path: str, text: str, kind: str, until: float = math.inf) -> list[dict]:
     """Every hidden comment, hidden element, KaTeX trick, data-carrying URL and HTML data URI in one file.
 
     In Markdown, URLs are read with code blanked (code is shown, not fetched), and tags and comments from the
     text with only the '<' of code removed, so code inside a comment or an HTML block still counts."""
     scan = spans.blank_code(text) if kind == "markdown" else text
     tags = spans.tag_view(text, scan) if kind == "markdown" else text
-    views = [(tags, tags, False)]
-    if kind == "markdown":  # what a renderer may read two ways is read both ways: each reading's findings count
-        views = [
-            (view, html, False)
-            for view in dict.fromkeys([tags, spans.escaped_view(tags)])
-            for html in dict.fromkeys([view, spans.closed_view(text, view)])
-        ]
-        flat = spans.flat_view(tags)
-        if flat != tags or RAW_TEXT.search(tags):  # otherwise the flat reading is the first one
-            views += [(tags, html, True) for html in dict.fromkeys([flat, spans.closed_view(text, flat)])]
-        if (written := hidden_inline.view(text, tags)) != tags:  # paragraphs as a renderer writes them
-            views += [(written, html, False) for html in dict.fromkeys([written, spans.closed_view(text, written)])]
-        if (code := hidden_code.view(text, tags)) != tags:  # what may be code read as code, nothing swallowing
-            flat = spans.flat_view(code)
-            views += [(code, html, True) for html in dict.fromkeys([flat, spans.closed_view(text, flat)])]
+    views = readings.markdown(text, tags) if kind == "markdown" else [(tags, tags, False)]
     out: dict[tuple, list[dict]] = {}
     for reading in views:  # per finding, as many as the reading that found the most: counts stay counts
+        if time.monotonic() > until:
+            raise Late
         found: dict[tuple, list[dict]] = {}
         for f in _view_findings(path, scan, kind, reading):
             found.setdefault((f["line"], f["rule"], f["key"]), []).append(f)
@@ -246,9 +235,13 @@ def findings(payload: dict) -> list[dict]:
             out.append(_finding(path, 1, "too-large", raw, message))
         elif kind and isinstance(text, str):
             lines, seen = text.split("\n"), {}
-            out += [
-                f for f in text_findings(path, text, kind) if not (event in WAIVABLE and waived(f, lines, event, seen))
-            ]
+            try:
+                found = text_findings(path, text, kind, until=started + DEADLINE)
+            except Late:
+                message = f"not finished: the gate's {DEADLINE:.0f}-second share of its budget ran out first"
+                out.append({**_finding(path, 1, "not-judged", "late", message), "new": True})
+                continue
+            out += [f for f in found if not (event in WAIVABLE and waived(f, lines, event, seen))]
     return out
 
 

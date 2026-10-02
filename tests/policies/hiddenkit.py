@@ -18,6 +18,8 @@ READERS = (
     "liberal",
     "inline",
     "htmlspec",
+    "frames",
+    "readings",
     "colours",
     "css",
     "word",

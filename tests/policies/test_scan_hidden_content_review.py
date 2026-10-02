@@ -239,6 +239,6 @@ def test_files_past_the_deadline_are_reported_as_would_block(monkeypatch: pytest
 
 def test_smallest_files_are_judged_first(monkeypatch: pytest.MonkeyPatch) -> None:
     order: list[str] = []
-    monkeypatch.setattr(gate, "text_findings", lambda path, *_: order.append(path) or [])
+    monkeypatch.setattr(gate, "text_findings", lambda path, *_, **__: order.append(path) or [])
     gate.findings({"event": "commit", "writes": {"a.md": "x" * 9, "b.md": "x", "c.md": "x" * 5}})
     assert order == ["b.md", "c.md", "a.md"]

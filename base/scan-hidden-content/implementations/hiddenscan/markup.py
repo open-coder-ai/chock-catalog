@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 import bisect
-import hashlib
 import re
-import unicodedata
-from dataclasses import dataclass, field
 from html.parser import HTMLParser
-from typing import Any
 
 from hiddenscan import css as hidden_css
-from hiddenscan.htmlspec import COMMENT_END, FOREIGN, SCOPE, SPECIAL, TABLE_PARTS, VOID
-from hiddenscan.vocab import visible
+from hiddenscan.frames import Collected, Frame, feed, words
+from hiddenscan.htmlspec import BUTTON_SCOPE, CLOSES_P, COMMENT_END, FOREIGN, SCOPE, SPECIAL, TABLE_PARTS, VOID
 
 #: Attributes whose URL the renderer fetches by itself: loading the page is the request.
 EMBED_ATTRS = {
@@ -36,27 +32,7 @@ NOT_DRAWN = "SVG metadata, defs, symbol, clipPath or mask (not drawn as text)"
 NOT_DRAWN_TAGS = {"metadata", "defs", "symbol", "clippath", "mask"}
 #: These hide text from some readers only; they count once the text is this long.
 LONG_ONLY = {ARIA: 100}
-KEPT_TEXT = 2000
 OFF_SVG = -999
-
-
-@dataclass
-class Frame:
-    tag: str
-    line: int
-    reason: str | None
-    background: str | None
-    text: list[str] = field(default_factory=list)
-    size: int = 0
-    kept: int = 0
-    digest: Any = field(default_factory=hashlib.sha256)
-
-
-@dataclass
-class Collected:
-    urls: list[tuple[int, str, bool]] = field(default_factory=list)  # (line, URL, fetched without a click)
-    hidden: list[tuple[int, str, str, str, str]] = field(default_factory=list)  # (line, tag, reason, shown, key)
-    data_html: list[int] = field(default_factory=list)
 
 
 def _srcset(value: str) -> list[str]:
@@ -90,9 +66,10 @@ def hidden_selectors(sheets: list[str]) -> dict[str, str]:
 class Collector(HTMLParser):
     """Collects attribute URLs, hidden elements with their text, and hidden rules in style elements."""
 
-    def __init__(self, *, xml: bool, rules: dict[str, str]) -> None:
+    def __init__(self, *, xml: bool, rules: dict[str, str], sticky: bool = False) -> None:
         super().__init__(convert_charrefs=True)
         self.xml, self.rules = xml, rules
+        self.sticky = sticky  # a hiding element ends only at its own end tag, never implicitly
         self.out = Collected()
         self.stack: list[Frame] = []
         # Bookkeeping that keeps each tag O(1): open positions per tag name, the open frames that hide,
@@ -100,6 +77,9 @@ class Collector(HTMLParser):
         self.where: dict[str, list[int]] = {}
         self.hiding: list[Frame] = []
         self.foreign = 0
+        # A <body> or <html> start tag that hides, wherever it stands: a browser gives the page its attributes.
+        self.page: tuple[int, str, str] | None = None
+        self.texts: list[str] = []
 
     def parse_comment(self, i: int, *_: object) -> int:
         """A comment read as a browser reads it, whatever html.parser's release: <!--> and <!---> are empty
@@ -181,19 +161,31 @@ class Collector(HTMLParser):
         # The background behind the text, when an element declares one. Unset, an HTML page is white; an SVG
         # paints its background with shapes this reader does not place, so there it stays unknown.
         under = self.stack[-1].background if self.stack else None
-        if tag in TABLE_PARTS and not self.where.get("table") and not (self.xml or self.foreign):
+        if tag in TABLE_PARTS and not (
+            self.where.get("table") or self.where.get("template") or self.xml or self.foreign
+        ):
             return  # a browser drops a table part outside a table
+        if (
+            tag in CLOSES_P
+            and not (self.xml or self.foreign or self.sticky)
+            and self._last({"p"}) > self._last(BUTTON_SCOPE)
+        ):
+            self.handle_endtag("p")  # a block start tag closes an open <p>, as a browser closes it
         reason, behind = self._reason(tag, named, under)
+        if tag in ("body", "html") and reason and not self.xml:
+            self.page = self.page or (line, tag, reason)
+        latent = None
         if any(f.reason not in LONG_ONLY or reason in LONG_ONLY for f in self.hiding):
-            reason = None  # already inside hidden text: the outer element is the finding
+            latent, reason = reason, None  # already inside hidden text: the outer element is the finding
         # Outside SVG and XML a browser ignores `/>` on an element that is not void.
         if tag not in VOID and (push or not (self.xml or self.foreign or tag in FOREIGN)):
-            frame = Frame(tag, line, reason, behind)
+            frame = Frame(tag, line, reason, behind, latent=latent)
             self.where.setdefault(tag, []).append(len(self.stack))
             self.stack.append(frame)
             self.foreign += tag in FOREIGN
             if reason:
                 self.hiding.append(frame)
+                self.out.hiding_seen = True
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._open(tag, attrs, push=True)
@@ -201,8 +193,9 @@ class Collector(HTMLParser):
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self._open(tag, attrs, push=False)
 
-    def _special(self) -> int:
-        return max((self.where[t][-1] for t in SPECIAL if self.where.get(t)), default=-1)
+    def _last(self, names: set[str]) -> int:
+        """Where the innermost open element of these names stands on the stack, or -1."""
+        return max((self.where[t][-1] for t in names if self.where.get(t)), default=-1)
 
     def handle_endtag(self, tag: str) -> None:
         if not self.where.get(tag):
@@ -211,31 +204,35 @@ class Collector(HTMLParser):
         barrier = max((self.where[t][-1] for t in SCOPE if self.where.get(t) and t != tag), default=-1)
         if not self.xml and tag not in SCOPE and barrier > cut:
             return  # an end tag outside the open table cell is ignored, as browsers ignore it
-        if not self.xml and tag not in SPECIAL and self._special() > cut:
+        if not self.xml and tag not in SPECIAL and self._last(SPECIAL) > cut:
             return  # nor does one close an element under a special one (a <pre>, a <div>) still open
+        held: list[Frame] = []
         while len(self.stack) > cut:
             frame = self.stack.pop()
             self.where[frame.tag].pop()
             self.foreign -= frame.tag in FOREIGN
             if frame.reason:
                 self.hiding.pop()
-            self._finish(frame)
+            if self.sticky and (frame.reason or frame.latent) and len(self.stack) > cut:
+                held.append(frame)  # closed implicitly: a browser may rebuild it (a formatting element)
+            else:
+                self._finish(frame)
+        for frame in reversed(held):
+            frame.reason = frame.reason or frame.latent
+            self.where[frame.tag].append(len(self.stack))
+            self.stack.append(frame)
+            self.foreign += frame.tag in FOREIGN
+            self.hiding.append(frame)
 
     def handle_data(self, data: str) -> None:
         if self.stack and self.stack[-1].tag in ("style", "script"):
             if self.stack[-1].tag == "style":
                 self._style(data)
             return  # a style sheet or a script is not text a reader sees
-        words = None
+        self.texts.append(data)
+        normal = words(data) if self.hiding else ""
         for frame in self.hiding:
-            words = (
-                words if words is not None else "".join(unicodedata.normalize("NFKC", visible(data)).casefold().split())
-            )
-            frame.size += len(words)
-            frame.digest.update(words.encode("utf-8", "surrogatepass"))
-            if frame.kept < KEPT_TEXT:
-                frame.text.append(data[: KEPT_TEXT - frame.kept])
-                frame.kept += len(frame.text[-1])
+            feed(frame, data, normal)
 
     def _style(self, sheet: str) -> None:
         line = self.getpos()[0]
@@ -255,18 +252,33 @@ class Collector(HTMLParser):
 
     def close(self) -> None:
         super().close()
+        if self.page:
+            text = "".join(self.texts)
+            page = Frame(self.page[1], self.page[0], self.page[2], None)
+            feed(page, text, words(text))
+            self._finish(page)
         for frame in reversed(self.stack):
             self._finish(frame)
         self.stack, self.where, self.hiding = [], {}, []
 
 
-def collect(text: str, *, xml: bool = False, flat: bool = False) -> Collected:
-    """Flat: no element holds its content as raw text (htmlspec.RAW_TEXT_ELEMENTS), a reading in which nothing
-    swallows the markup after it."""
+def _parse(text: str, *, xml: bool, flat: bool, sticky: bool) -> Collected:
     sheets = [sheet for _, sheet in style_blocks(text)]
-    parser = Collector(xml=xml, rules=hidden_selectors(sheets))
+    parser = Collector(xml=xml, rules=hidden_selectors(sheets), sticky=sticky)
     if flat:
         parser.CDATA_CONTENT_ELEMENTS = parser.RCDATA_CONTENT_ELEMENTS = ()  # type: ignore[misc]
     parser.feed(text)
     parser.close()
     return parser.out
+
+
+def collect(text: str, *, xml: bool = False, flat: bool = False) -> Collected:
+    """Flat: no element holds its content as raw text (htmlspec.RAW_TEXT_ELEMENTS), a reading in which nothing
+    swallows the markup after it. Where an element hides text, HTML is read again with each hiding element
+    open until its own end tag: how a browser rebuilds a formatting element after an implied end is not
+    modelled, and that reading only reports more."""
+    out = _parse(text, xml=xml, flat=flat, sticky=False)
+    if out.hiding_seen and not xml:
+        known = set(out.hidden)
+        out.hidden += [h for h in _parse(text, xml=xml, flat=flat, sticky=True).hidden if h not in known]
+    return out

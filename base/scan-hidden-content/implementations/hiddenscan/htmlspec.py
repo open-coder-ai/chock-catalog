@@ -128,6 +128,53 @@ SPECIAL = set(
         "desc",
     ]
 )
+#: Start tags that close an open <p> in button scope (13.2.6.4.7). Not table: in quirks mode a <p> stays open
+#: around it, so closing it there could end hidden text early.
+CLOSES_P = set(
+    [
+        "address",
+        "article",
+        "aside",
+        "blockquote",
+        "center",
+        "details",
+        "dialog",
+        "dir",
+        "div",
+        "dl",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "header",
+        "hgroup",
+        "main",
+        "menu",
+        "nav",
+        "ol",
+        "p",
+        "search",
+        "section",
+        "summary",
+        "ul",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "pre",
+        "listing",
+        "form",
+        "plaintext",
+        "hr",
+        "xmp",
+        "li",
+        "dd",
+        "dt",
+    ]
+)
+BUTTON_SCOPE = SCOPE | {"button"}
 #: Elements whose content html.parser reads as raw text in this Python release.
 RAW_TEXT_ELEMENTS = (*HTMLParser.CDATA_CONTENT_ELEMENTS, *getattr(HTMLParser, "RCDATA_CONTENT_ELEMENTS", ()))
 #: Where a browser ends a comment.

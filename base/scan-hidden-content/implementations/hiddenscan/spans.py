@@ -12,14 +12,13 @@ from __future__ import annotations
 
 import re
 
-from hiddenscan.blocks import BREAK, CODE, HTML, TEXT, classify
+from hiddenscan.blocks import ATTRIBUTE, BREAK, CODE, HTML, TEXT, classify
 
 TICKS = re.compile(r"(\\*)(`+)")
 PIPE = re.compile(r"(?<!\\)\|")
 #: An inline tag or autolink as CommonMark defines them (6.6, 6.5): an open or closing tag with valid
 #: attributes, or a scheme followed by a URL without spaces. Brackets inside one are not link text; any other
 #: `<...>`, such as `a < b ... c > d`, is text.
-ATTRIBUTE = r"""\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:[^\s"'=<>`]+|'[^'\n]*'|"[^"\n]*"))?"""
 INLINE_TAG = rf"<[A-Za-z][A-Za-z0-9-]*(?:{ATTRIBUTE})*\s*/?>|</[A-Za-z][A-Za-z0-9-]*\s*>|<[A-Za-z][A-Za-z0-9.+-]{{1,31}}:[^\s<>]*>"
 #: Tokens of link text: an escape, an inline tag or autolink, an image or link opener, a closer followed by a
 #: destination, and a blank line (which ends any open link text).
@@ -102,7 +101,7 @@ def closed_view(text: str, view: str) -> str:
     (class="language-x") end an attribute value left open: each such line is opened with "'> here. Which
     lines those are is not certain, so the gate reads this view beside the view as written."""
     raw = text.split("\n")
-    lines, kinds = view.split("\n"), classify(raw)
+    lines, kinds = view.split("\n"), classify(raw, least_html=True)
     return "\n".join(
         line if kind == HTML and at and kinds[at - 1] == HTML and raw[at - 1].strip() else "\"'>" + line
         for at, (line, kind) in enumerate(zip(lines, kinds, strict=True))

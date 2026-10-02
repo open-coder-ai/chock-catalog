@@ -108,6 +108,11 @@ CLOSES_PARAGRAPH = re.compile(
 )
 #: List and block quote markers before a line's content: an HTML block opens after them as well.
 MARKERS = re.compile(r"^(?:[ \t]*(?:>|(?:[-+*]|\d{1,9}[.)])(?=[ \t])))*")
+#: CommonMark's tag grammar (6.6): an attribute, and a complete open or closing tag alone on its line, which
+#: is what a type 7 HTML block opens with.
+ATTRIBUTE = r"""\s+[A-Za-z_:][\w.:-]*(?:\s*=\s*(?:[^\s"'=<>`]+|'[^'\n]*'|"[^"\n]*"))?"""
+COMPLETE_TAG = re.compile(rf"(?:<[A-Za-z][A-Za-z0-9-]*(?:{ATTRIBUTE})*\s*/?>|</[A-Za-z][A-Za-z0-9-]*\s*>)[ \t]*")
+SETEXT_ONLY = re.compile(r"^ {0,3}(?:=+|--)[ \t]*$")
 CODE_INDENT, LIST_INDENT = 4, 2
 CODE, HTML, TEXT, BREAK = "code", "html", "text", "break"
 
@@ -134,16 +139,18 @@ def _indent(line: str) -> int:
     return width
 
 
-def _html(line: str, *, paragraph: bool) -> tuple[str, ...] | str | None:
-    """What ends the HTML block `line` opens ("" when it ends on that line), or None when it opens none."""
+def _html(line: str, *, paragraph: bool, complete: bool = False) -> tuple[str, ...] | str | None:
+    """What ends the HTML block `line` opens ("" when it ends on that line), or None when it opens none.
+    Complete: a type 7 line must be a whole tag, as CommonMark requires; else any tag-like start counts."""
     line = line[MARKERS.match(line).end() :]
     for start, end in HTML_ENDS:
-        if found := start.match(line):
-            return "" if _ends(line, end, found.end()) else end
+        if start.match(line):
+            return "" if _ends(line, end) else end  # the end may overlap the start: <!--> is a whole comment
     # A type 7 block (a tag not on CommonMark's block list) cannot interrupt a paragraph.
-    if (tag := HTML_OTHER.match(line)) and (tag.group(1).lower() in BLOCK_TAGS or not paragraph):
-        return "blank"
-    return None
+    if not (tag := HTML_OTHER.match(line)):
+        return None
+    whole = not complete or COMPLETE_TAG.fullmatch(line.strip(" \t")) is not None
+    return "blank" if tag.group(1).lower() in BLOCK_TAGS or (not paragraph and whole) else None
 
 
 def _continues(inside: tuple[str, ...] | str, line: str) -> tuple[str, ...] | str | None:
@@ -230,13 +237,16 @@ def classify(lines: list[str], *, least_html: bool = False) -> list[str]:
         # code, and whether a tag ends a GFM table is up to the renderer.
         elif (
             ends := _html(
-                line, paragraph=_in_paragraph(paragraph=paragraph, doubtful=contained or piped, least_html=least_html)
+                line,
+                paragraph=_in_paragraph(paragraph=paragraph, doubtful=contained or piped, least_html=least_html),
+                complete=least_html,
             )
         ) is not None:
             inside, paragraph, column, quotes = ends or None, False, _column(line), _quotes(line)
             kinds.append(HTML)
         else:
             piped = (paragraph and piped) or "|" in line
-            paragraph = not CLOSES_PARAGRAPH.match(line)
+            # === or -- underlines an open paragraph, and with none open is a paragraph's text.
+            paragraph = not paragraph if SETEXT_ONLY.match(line) else not CLOSES_PARAGRAPH.match(line)
             kinds.append(TEXT)
     return kinds

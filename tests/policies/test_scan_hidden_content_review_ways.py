@@ -101,6 +101,25 @@ SPAN = f"<span hidden>{RUN}</span>"
         ("a.md", f"> <div>\n> {OPEN}\n    {CLOSE}\n- {RUN}\n", "hidden-comment"),
         ("a.md", f"<div>\n{OPEN}\n```\n?>\n\n```\n{CLOSE}\n```\n\n{RUN}\n", "hidden-comment"),
         ("a.md", f"- <div>\n  {OPEN}\n\n```\n--!>\n```\n{CLOSE}\n```\n- {RUN}\n", "hidden-comment"),
+        # Round 11: a type 7 line must be a complete tag; a stray <body> or <html> carries its attributes to the
+        # page; a block start tag closes an open <p>.
+        ("a.md", f'<a title="x\n1. {SPAN}\n', "hidden-style"),
+        ("a.md", f'<a title="x\n# {SPAN}\n', "hidden-style"),
+        ("a.md", f'<a title="x\n- {SPAN}\n', "hidden-style"),
+        ("docs/x.html", f"<p>{RUN}</p>\n<body hidden>\n", "hidden-style"),
+        ("docs/x.html", f'<html><body><p>{RUN}</p></body></html>\n<html style="display:none">\n', "hidden-style"),
+        ("docs/x.html", f"<p><div hidden></p>{RUN}</div>", "hidden-style"),
+        ("a.md", f"<p><div hidden></p>{RUN}</div>\n", "hidden-style"),
+        ("docs/x.html", f"<p hidden><table><tr><td>{RUN}</td></tr></table>", "hidden-style"),
+        ("docs/x.html", f"<p hidden><button><div>{RUN}</div></button></p>", "hidden-style"),
+        # A browser rebuilds a hiding formatting element after an implied end: read as open to its own end tag.
+        ("docs/x.html", f"<section hidden><code style='display:none'></section>{RUN}</button>", "hidden-style"),
+        ("docs/x.html", f"<dd hidden><s hidden><nobr></dd>{RUN}", "hidden-style"),
+        ("docs/x.html", f"<p>x<em><small hidden><caption hidden><h1></div>{RUN}", "hidden-style"),
+        ("docs/x.html", f"<i style='display:none'><small hidden></i></tt>{RUN}", "hidden-style"),
+        ("docs/x.html", f"<template><caption style='display:none'>{RUN}</caption></template>", "hidden-style"),
+        ("a.md", f'===\n</span>\n\\<\n<a title="x\n  {SPAN}\n', "hidden-style"),
+        ("a.md", f'<!-->\n<a title="x\n<td>\n1. <p hidden>{RUN}</p>\n', "hidden-style"),
     ],
 )
 def test_review_bypass_is_reported(path: str, text: str, rule: str) -> None:
@@ -151,6 +170,9 @@ def test_where_html_is_not_certain_least_html_reads_text() -> None:
     assert classify(["<div>", "<!--", "", "-->"], least_html=True) == ["html", "html", "break", "text"]
     assert classify(["- a", "<span>"]) == ["text", "html"]
     assert classify(["- a", "<span>"], least_html=True) == ["text", "text"]
+    assert classify(["===", "<span>"], least_html=True) == ["text", "text"]  # no paragraph to underline
+    assert classify(["a", "===", "<span>"], least_html=True) == ["text", "text", "html"]
+    assert classify(["<!-->", "x"]) == ["html", "text"]  # the end overlaps the start
     # A line left of the content of a list item's or quote's HTML block may end the container: text.
     assert classify(["> <div>", "> <!--", "-->"], least_html=True) == ["html", "html", "text"]
     assert classify(["- <div>", "  <!--", "  -->", "x"], least_html=True) == ["html", "html", "html", "text"]
@@ -160,3 +182,12 @@ def test_where_html_is_not_certain_least_html_reads_text() -> None:
 
 def test_a_block_start_closes_an_open_tag_and_attribute_value() -> None:
     assert readers["spans"].closed_view("a\n", "a\n") == "\"'>a\n\"'>"
+
+
+def test_a_file_the_deadline_overtakes_between_readings_is_would_block(monkeypatch: pytest.MonkeyPatch) -> None:
+    ticks = iter([0.0, 0.0, 100.0])  # the start, the check before the file, the check before its first reading
+    monkeypatch.setattr(gate.time, "monotonic", lambda: next(ticks, 100.0))
+    (found,) = gate.findings({"event": "commit", "writes": {"a.md": f"{SPAN}\n"}})
+    assert (found["rule"], found.get("new")) == ("not-judged", True)
+    assert found["message"].startswith("[would block]")
+    assert "not finished" in found["message"]
