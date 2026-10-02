@@ -135,6 +135,9 @@ SHEBANGS = {
     "#!/bin/busybox sh": ("busybox", "sh"),
     "#!/usr/bin/python3 -u": ("python3", "-u"),
     "#!/usr/bin/env node": ("node",),
+    '#!/usr/bin/env -S "bash" -e': ("bash", "-e"),
+    "#!/usr/bin/env -S\\_bash": ("bash",),
+    "#!/usr/bin/env 'zsh'": ("zsh",),
     "#!": (),
     "#!   ": (),
     "# !/bin/sh": (),
@@ -152,6 +155,7 @@ def test_shebang_interpreter(sn: ModuleType, line: str, expected: tuple[str, ...
 @pytest.mark.parametrize(
     "name",
     [
+        *("ksh93", "bash5.2", "bash-5.2", "hush", "bosh", "jsh", "osh", "oksh", "loksh"),
         "sh",
         "bash",
         "dash",
@@ -192,3 +196,10 @@ def test_every_shell_is_a_shell(sn: ModuleType, name: str) -> None:
 )
 def test_what_is_and_is_not_a_shell(sn: ModuleType, line: str, kinds: set[str]) -> None:
     assert sn.sniff(f"{line}\n".encode()).kinds() == kinds
+
+
+@pytest.mark.parametrize("line", ["#!/usr/bin/sudo bash", "#!/usr/bin/nice -n 5 sh", "#!/usr/bin/env doas zsh"])
+def test_a_shell_behind_a_wrapper_is_a_low_shell(sn: ModuleType, line: str) -> None:
+    result = sn.sniff(f"{line}\n".encode())
+    assert {c.kind: c.confidence for c in result.candidates} == {"script": "high", "shell": "low"}
+    assert result.candidates[1].signal == "a shell named later in the #! line"

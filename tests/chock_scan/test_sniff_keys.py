@@ -36,7 +36,8 @@ def test_units_of_yaml_documents_and_sequences(sk: ModuleType) -> None:
 def test_units_of_json(sk: ModuleType) -> None:
     assert sk.units('{"a": 1, "b": {"c": 2}}') == [sk.Unit(frozenset({"a", "b"}), 0)]
     assert sk.units('[{"a": 1}, 2, {"b": 3}]') == [sk.Unit(frozenset({"a"}), 0), sk.Unit(frozenset({"b"}), 0)]
-    assert sk.units('{"a": 1} trailing') == [sk.Unit(frozenset({"a"}), 0)]
+    trailing = [sk.Unit(frozenset({"a"}), 0), sk.Unit(frozenset(), 0)]  # the rest is read as YAML too
+    assert sk.units('{"a": 1} trailing') == trailing
     assert sk.units("[1, 2]") == []
     assert sk.units("[1e999, {}]") == [sk.Unit(frozenset(), 0)]
     not_json = [sk.Unit(frozenset(), 0)]  # read as YAML: one root line that names no key

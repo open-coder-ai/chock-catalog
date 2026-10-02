@@ -171,6 +171,12 @@ HOSTILE = {
     "space-colons": lambda n: "a" + " :" * (n // 2 - 1),
     "comment-marks": lambda n: "a" + " #" * (n // 2 - 1),
     "anchors": lambda n: "&a " * (n // 3),
+    "ampersands": lambda n: "&" * n,
+    "ampersand-names": lambda n: "&a" * (n // 2),
+    "anchored-tags": lambda n: "&a " + "!t " * (n // 3 - 1),
+    "type-colons": lambda n: "Resources: 1\nType:" * (n // 18),
+    "split-keys": lambda n: '"a"\n' * (n // 4),
+    "docker-continuations": lambda n: "FROM a\nRUN " + "x\\\n" * (n // 3 - 4),
     "aliases": lambda n: "*a :\n" * (n // 5),
     "tags": lambda n: "!t " * (n // 3),
     "dashes": lambda n: "- " * (n // 2),
@@ -189,8 +195,13 @@ HOSTILE = {
 
 @pytest.mark.parametrize("make", HOSTILE.values(), ids=HOSTILE.keys())
 def test_a_hostile_file_at_the_limit_is_read_in_bounded_time(sn: ModuleType, make: object) -> None:
-    data = make(LIMIT).encode("utf-8")[:LIMIT]  # type: ignore[operator]
-    started = time.perf_counter()
-    result = sn.sniff(data)
-    assert time.perf_counter() - started < 10, "linear work on 1 MiB takes about a second; quadratic takes minutes"
-    _check_invariants(sn, result, len(data))
+    """Quadrupling the input must not take ~16x as long; a slow machine passes, a quadratic does not."""
+    small, big = (make(size).encode("utf-8")[:size] for size in (LIMIT // 4, LIMIT))  # type: ignore[operator]
+    took = []
+    for data in (small, big):
+        started = time.perf_counter()
+        result = sn.sniff(data)
+        took.append(time.perf_counter() - started)
+        _check_invariants(sn, result, len(data))
+    assert took[1] < 1 or took[1] < 10 * took[0], took
+    assert took[1] < 60, took

@@ -9,10 +9,11 @@ Signals, read over the whole text (no first-N-lines window: padding cannot push 
 Keys are top-level: of a YAML document's root mapping, of a root sequence item, or of JSON's root
 object. `low` is the same keys found anywhere outside full-line comments (nested, split across
 documents, in a flow mapping, JSON with comments, a trailing comment), or a unit whose keys this
-reader cannot all name (an explicit `?` key, an alias it cannot resolve), which may be any key.
+reader cannot all name (an explicit `?` key, an alias of an anchor that is not one simple scalar),
+since such a key may be any key.
   kubernetes      high: apiVersion + kind
   cloudformation  high: AWSTemplateFormatVersion, or Transform with AWS::Serverless in the text
-                  medium: Resources with a `Type: AWS::` value in the text
+                  medium: Resources with a `Type: X::Y::` value in the text; low: Resources
   openapi         high: openapi, or swagger
   compose         medium: services
   github-actions  high: on + jobs
@@ -20,8 +21,11 @@ reader cannot all name (an explicit `?` key, an alias it cannot resolve), which 
   mcp-config      high: mcpServers
   dockerfile      high: the first instruction (after parser directives, comments and ARG) is FROM
                   low: a FROM line and a RUN, CMD, ENTRYPOINT, COPY or ADD line anywhere
-  script          high: a `#!` first line;  shell  high: a shebang naming a shell, through env
-Not seen: a script with no shebang, and keys a `<<` merge brings in (found only as `low`).
+  script          high: a `#!` first line
+  shell           high: the #! command is a shell (through env, its options and -S quoting)
+                  low: a later word of the #! line is a shell (sudo bash, nice sh)
+Not seen: a script with no shebang; a GitHub composite action, an Ansible task file or an
+import_playbook file (none has its kind's keys); keys a `<<` merge brings in are found only as low.
 Bytes are read with their BOM's encoding (UTF-8/16/32), else UTF-16/32 by YAML's NUL pattern,
 else UTF-8. `content` is binary when the text holds a NUL, undecodable when the bytes are not
 valid in that encoding; both are still sniffed (lossily, and also as UTF-8 when the encoding was
@@ -52,13 +56,14 @@ BOMS = (
     (codecs.BOM_UTF16_BE, "utf-16-be"),
 )
 SERVERLESS = re.compile(r"AWS::Serverless")
-AWS_TYPE = re.compile(r"""\bType["']?[ \t]*:[ \t]*["']?AWS::""")
+RESOURCE_TYPE = re.compile(r"""\bType["']?\s*+:\s*+["']?[A-Za-z0-9]++::[A-Za-z0-9]++::""")
 #: (kind, confidence, keys one unit must hold, pattern the whole text must also match)
 MAPPED = (
     ("kubernetes", HIGH, ("apiVersion", "kind"), None),
     ("cloudformation", HIGH, ("AWSTemplateFormatVersion",), None),
     ("cloudformation", HIGH, ("Transform",), SERVERLESS),
-    ("cloudformation", MEDIUM, ("Resources",), AWS_TYPE),
+    ("cloudformation", MEDIUM, ("Resources",), RESOURCE_TYPE),
+    ("cloudformation", LOW, ("Resources",), None),
     ("openapi", HIGH, ("openapi",), None),
     ("openapi", HIGH, ("swagger",), None),
     ("compose", MEDIUM, ("services",), None),
@@ -67,9 +72,10 @@ MAPPED = (
     *(("ansible", MEDIUM, ("hosts", key), None) for key in ("roles", "pre_tasks", "post_tasks", "handlers")),
     ("mcp-config", HIGH, ("mcpServers",), None),
 )
-SHELL = re.compile(r"(?:a|ba|da|k|mk|pdk|lk|ok|z|ya|po|rba|c|tc|fi)?sh[\d.]*")
+SHELL = re.compile(r"(?:a|ba|da|k|mk|pdk|lk|ok|lok|o|z|ya|po|rba|c|tc|fi|hu|bo|j)?sh[-\d.]*+")
 MULTICALL = frozenset({"busybox", "toybox"})
 ENV_VALUE = frozenset("uCP")
+ENV_QUOTING = re.compile(r"""\\_|["']""")
 DIRECTIVE = re.compile(r"#[ \t]*([A-Za-z]+)[ \t]*=[ \t]*(\S*)[ \t]*")
 DOCKER_BODY = frozenset({"RUN", "CMD", "ENTRYPOINT", "COPY", "ADD"})
 
@@ -142,8 +148,11 @@ def interpreter(text: str) -> tuple[str, ...]:
 
 
 def _after_env(words: list[str]) -> tuple[str, ...]:
-    """The command env runs: options, their values and NAME=VALUE pairs skipped; `-S` splits on."""
-    queue = deque(words)
+    """The command env runs: options, their values and NAME=VALUE pairs skipped; `-S` splits on.
+
+    Quotes and `\\_` are dropped first, as `env -S` would: a quoted shell name is still that shell.
+    """
+    queue = deque(ENV_QUOTING.sub(" ", " ".join(words)).split())
     while queue:
         word = queue.popleft()
         if word == "--":
@@ -201,15 +210,17 @@ def _encoding(data: bytes) -> tuple[str, int]:
 
 def _candidates(text: str) -> list[Candidate]:
     found = _mapped(text, units(text))
-    lines = text.split("\n")
-    if _first_instruction_is_from(lines):
+    instructions = _instructions(text)
+    if _first_is_from(instructions):
         found.append(Candidate("dockerfile", HIGH, "first instruction FROM"))
-    elif _docker_lines(lines):
+    elif _docker_lines(instructions + text.split("\n")):
         found.append(Candidate("dockerfile", LOW, "FROM and build instruction lines"))
     if command := interpreter(text):
         found.append(Candidate("script", HIGH, f"#! {command[0]}"))
         if _is_shell(command):
             found.append(Candidate("shell", HIGH, f"#! {' '.join(command[:2])}"))
+        elif any(SHELL.fullmatch(_base(word)) for word in command[1:]):
+            found.append(Candidate("shell", LOW, "a shell named later in the #! line"))
     return found
 
 
@@ -232,9 +243,10 @@ def _mapped(text: str, found_units: list[Unit]) -> list[Candidate]:
     return out
 
 
-def _first_instruction_is_from(lines: list[str]) -> bool:
-    escape, directives, continued = "\\", True, False
-    for raw in lines:
+def _instructions(text: str) -> list[str]:
+    """Dockerfile logical lines: parser directives read, comments and blank lines dropped, continuations joined."""
+    escape, directives, held, out = "\\", True, [], []
+    for raw in text.split("\n"):
         line = raw.strip()
         if directives and (directive := DIRECTIVE.fullmatch(line)):
             if directive.group(1).lower() == "escape" and directive.group(2) in ("\\", "`"):
@@ -243,13 +255,20 @@ def _first_instruction_is_from(lines: list[str]) -> bool:
         directives = False
         if not line or line.startswith("#"):
             continue
-        if continued:
-            continued = line.endswith(escape)
-            continue
-        word = line.split(None, 1)
-        if word[0].upper() != "ARG":
+        segment = raw.rstrip() if held else line
+        if segment.endswith(escape):
+            held.append(segment[:-1])
+        else:
+            out.append("".join([*held, segment]))
+            held = []
+    return [*out, "".join(held)] if held else out
+
+
+def _first_is_from(instructions: list[str]) -> bool:
+    for instruction in instructions:
+        word = instruction.split(None, 1)
+        if word and word[0].upper() != "ARG":
             return word[0].upper() == "FROM" and len(word) > 1
-        continued = line.endswith(escape)
     return False
 
 

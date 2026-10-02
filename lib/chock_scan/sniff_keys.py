@@ -1,8 +1,9 @@
 """The top-level keys of YAML or JSON text, read line by line without a YAML parser, for the content sniffer.
 
 A unit is the root mapping of one YAML document, or one mapping item of a root sequence (an Ansible
-play), or the root object of JSON text. Keys this reader cannot name (an alias with no anchor it
-can see, an explicit `?` key) are counted as opaque, so the sniffer can stay suspicious of them.
+play), or the root object of JSON text. Keys this reader cannot name (an explicit `?` key, an
+alias of an anchor that is not one simple scalar on its line) are counted as opaque, so the
+sniffer can stay suspicious of them.
 """
 
 from __future__ import annotations
@@ -15,14 +16,18 @@ BOM = "\ufeff"
 #: YAML's line breaks (1.1 adds NEL, LS and PS); str.splitlines would also split at \v, \f and \x1c-\x1e.
 LINES = re.compile("\r\n|[\r\n\x85\u2028\u2029]")
 DOC_MARK = re.compile(r"(?:---|\.\.\.)(?:\s|$)")
-PROPS = re.compile(r"(?:[!&]\S*[ \t]+)+")
+PROPS = re.compile(r"(?:[!&]\S*+[ \t]++)+")
 QUOTED = re.compile(r"""("(?:[^"\\]|\\.)*+"|'(?:[^']|'')*+')[ \t]*:""")
 ALIAS = re.compile(r"\*([^\s,\[\]{}]+)")
-SCALAR = r"""("(?:[^"\\\n]|\\.)*+"|'(?:[^'\n]|'')*+'|[^\s,\[\]{}#'"][^\s,\[\]{}#]*+)"""
-ANCHOR = re.compile(r"&([^\s,\[\]{}]+)[ \t]+" + SCALAR)
+SCALAR = r"""("(?:[^"\\\n]|\\.)*+"|'(?:[^'\n]|'')*+'|[^\s,\[\]{}#'"|>!&*](?:[^\s,\[\]{}#:]|:(?=[^\s,\[\]{}]))*+)"""
+ANCHOR = re.compile(r"&([^\s,\[\]{}&]++)")
+#: The scalar an anchor names, when it is one whole simple scalar (tags dropped); else the anchor is unknown.
+ANCHORED = re.compile(r"[ \t]++(?:![^\s]*+[ \t]++)*+" + SCALAR + r"(?=[ \t]*+(?:[,\]}:#]|$))")
 LOOSE = re.compile(
-    r"""(?<![^\s{,\[])("(?:[^"\\\n]|\\.)*+"|'(?:[^'\n]|'')*+'|[^\s"'{}\[\],:#][^\s"'{}\[\],:]*+)[ \t]*:"""
+    r"""(?<![^\s{,\[/])("(?:[^"\\\n]|\\.)*+"|'(?:[^'\n]|'')*+'|[^\s"'{}\[\],:#][^\s"'{}\[\],:]*+)[ \t]*:"""
 )
+#: A JSON-style key whose colon may sit on a later line (`"key"` newline `: value`).
+SPLIT_KEY = re.compile(r"""(?<![^\s{,\[/])("(?:[^"\\\n]|\\.)*+")\s*+:""")
 ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|.)", re.DOTALL)
 SIMPLE = {"0": "\0", "a": "\a", "b": "\b", "t": "\t", "n": "\n", "v": "\v", "f": "\f", "r": "\r", "e": "\x1b"}
 SIMPLE |= {"N": "\x85", "_": "\xa0", "L": "\u2028", "P": "\u2029"}
@@ -41,10 +46,12 @@ def units(text: str) -> list[Unit]:
     """The mappings whose keys say what a YAML or JSON file is, in document order."""
     body = text.strip()
     if body[:1] in ("{", "["):
-        found = _json_units(body)
-        if found is not None:
+        found, rest = _json_units(body)
+        if found is not None and not rest.strip():
             return found
-    out: list[Unit] = []
+    else:
+        found = None
+    out: list[Unit] = found or []
     for document in _documents(text):
         out += _Reader().read(document)
     return out
@@ -56,6 +63,7 @@ def loose_keys(text: str) -> set[str]:
     for line in LINES.split(text):
         if not line.lstrip().startswith("#"):
             keys.update(unquote(m.group(1)) for m in LOOSE.finditer(line))
+    keys.update(unquote(m.group(1)) for m in SPLIT_KEY.finditer(text))
     return keys
 
 
@@ -76,14 +84,14 @@ def _escape(match: re.Match[str]) -> str:
     return SIMPLE.get(code, code)
 
 
-def _json_units(body: str) -> list[Unit] | None:
-    """The root object (or each object in a root array) of JSON text, trailing bytes ignored; None if not JSON."""
+def _json_units(body: str) -> tuple[list[Unit] | None, str]:
+    """The root object (or each object in a root array) of leading JSON, and the text after it; None if not JSON."""
     try:
-        value = json.JSONDecoder().raw_decode(body)[0]
+        value, end = json.JSONDecoder().raw_decode(body)
     except (ValueError, RecursionError):
-        return None
+        return None, body
     items = value if isinstance(value, list) else [value]
-    return [Unit(frozenset(item), 0) for item in items if isinstance(item, dict)]
+    return [Unit(frozenset(item), 0) for item in items if isinstance(item, dict)], body[end:]
 
 
 def _documents(text: str) -> list[list[str]]:
@@ -109,7 +117,7 @@ class _Reader:
     """Collects the keys at the root indentation of one document, and of each root sequence item."""
 
     def __init__(self) -> None:
-        self.anchors: dict[str, str] = {}
+        self.anchors: dict[str, str | None] = {}
         self.units: list[_Keys] = []
         self.root: int | None = None
         self.mapping: _Keys | None = None
@@ -119,9 +127,13 @@ class _Reader:
     def read(self, lines: list[str]) -> list[Unit]:
         for line in lines:
             body = line.lstrip(" ")
-            if body and body[0] != "#" and not (self.root is None and body[0] == "%"):
+            content = body.lstrip(" \t")
+            if content and content[0] != "#" and not (self.root is None and body[0] == "%"):
                 self._line(len(line) - len(body), body)
-            self.anchors.update((m.group(1), unquote(m.group(2))) for m in ANCHOR.finditer(line))
+            if "&" in line:
+                for anchor in ANCHOR.finditer(line):
+                    scalar = ANCHORED.match(line, anchor.end())
+                    self.anchors[anchor.group(1)] = unquote(scalar.group(1)) if scalar else None
         return [Unit(frozenset(keys.names), keys.opaque) for keys in self.units]
 
     def _line(self, col: int, body: str) -> None:
@@ -160,8 +172,8 @@ class _Reader:
         if not (name.endswith(":") or rest[:1] == ":"):
             return
         for candidate in (name, name.rstrip(":")):
-            if candidate in self.anchors:
-                unit.names.add(self.anchors[candidate])
+            if (value := self.anchors.get(candidate)) is not None:
+                unit.names.add(value)
                 return
         unit.opaque += 1
 

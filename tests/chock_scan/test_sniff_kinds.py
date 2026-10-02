@@ -14,6 +14,7 @@ H, M, L = "high", "medium", "low"
 K8S = "apiVersion: v1\nkind: Pod\n"
 #: An unnamed key could be any key, so every kind it would complete stays a low candidate.
 OPAQUE = {"kubernetes": L, "cloudformation": L, "openapi": L, "compose": L, "mcp-config": L}
+SINGLE = {k: v for k, v in OPAQUE.items() if k != "kubernetes"}  # one unnamed key alone completes one-key kinds
 
 CASES = {
     # kubernetes
@@ -42,6 +43,16 @@ CASES = {
     "k8s-alias-key-quoted-anchor": ("x: &k 'kind'\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
     "k8s-alias-key-unresolved": ("apiVersion: v1\n*k : Pod\n", OPAQUE),
     "k8s-alias-glued-colon": ("x: &k kind\napiVersion: v1\n*k: Pod\n", {"kubernetes": H}),
+    "alias-through-tagged-anchor": ("x-n: &k !!str services\n*k :\n  web: {}\n", {"compose": M}),
+    "alias-through-block-anchor": ("x-n: &k >-\n  services\n*k :\n  web: {}\n", SINGLE),
+    "alias-through-multi-word-anchor": ("x: &k foo bar\n*k : 1\n", SINGLE),
+    "alias-through-anchored-key": ("x:\n  &k kind: 1\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
+    "anchor-in-flow": ("x: [&k kind, b]\napiVersion: v1\n*k : Pod\n", {"kubernetes": H}),
+    "json-then-yaml-document": ("{}\n---\n" + K8S, {"kubernetes": H}),
+    "tab-only-line-in-indented-root": ("  apiVersion: v1\n\t\n  kind: Pod\n", {"kubernetes": H}),
+    "tab-comment-in-indented-root": ("  apiVersion: v1\n\t# c\n  kind: Pod\n", {"kubernetes": H}),
+    "jsonc-comment-touching-key": ('{\n  /* c */"mcpServers": {}\n}', {"mcp-config": L}),
+    "json-colon-on-next-line": ('{\n // c\n "mcpServers"\n  : {}\n}', {"mcp-config": L}),
     "k8s-alias-value-not-key": ("apiVersion: v1\nx:\n- *k\n", {}),
     "k8s-explicit-key": ("apiVersion: v1\n? kind\n: Pod\n", OPAQUE),
     "two-unnamed-keys": ("? a\n? b\nhosts: x\n", OPAQUE | {"github-actions": L, "ansible": L}),
@@ -63,7 +74,10 @@ CASES = {
     "cfn-other-transform": ("Transform: AWS::Include\n", {}),
     "cfn-resources": ("Resources:\n  B:\n    Type: AWS::S3::Bucket\n", {"cloudformation": M}),
     "cfn-resources-json": ('{"Resources": {"B": {"Type": "AWS::S3::Bucket"}}}', {"cloudformation": M}),
-    "cfn-resources-not-aws": ("Resources:\n  B:\n    Type: Custom\n", {}),
+    "cfn-resources-type-unknown": ("Resources:\n  B:\n    Type: Custom\n", {"cloudformation": L}),
+    "cfn-registry-type": ("Resources:\n  S:\n    Type: Alexa::ASK::Skill\n", {"cloudformation": M}),
+    "cfn-type-on-next-line": ("Resources:\n  B:\n    Type:\n      AWS::S3::Bucket\n", {"cloudformation": M}),
+    "cfn-json-escaped-type": ('{"Resources":{"B":{"Type":"\\u0041WS::S3::Bucket"}}}', {"cloudformation": L}),
     # openapi, compose, actions, mcp
     "openapi": ("openapi: 3.0.0\ninfo: {}\n", {"openapi": H}),
     "swagger": ('{"swagger": "2.0"}', {"openapi": H}),
@@ -119,6 +133,10 @@ DOCKER = {
     "from-only-not-first": ("junk line\nFROM a\n", {}),
     "crlf": ("FROM a\r\nRUN x\r\n", {"dockerfile": H}),
     "only-arg": ("ARG V=1\n", {}),
+    "keyword-split-by-continuation": ("FR\\\nOM alpine\nRU\\\nN x\n", {"dockerfile": H}),
+    "image-on-continuation": ("FROM\\\n alpine\nRUN\\\n x\n", {"dockerfile": H}),
+    "continuation-at-end": ("FROM a \\", {"dockerfile": H}),
+    "lone-continuation": ("\\\n", {}),
 }
 
 
