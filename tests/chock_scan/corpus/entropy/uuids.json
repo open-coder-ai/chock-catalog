@@ -1,0 +1,46 @@
+{
+  "projects": [
+    {
+      "id": "ad7b4176-0ebc-4be5-9b5d-ae4e4f397397",
+      "clientId": "34e2d3b9-b555-49fa-b71f-672a653f387f",
+      "tenant_id": "c04a4a4c-961d-4bc0-8136-49b2ed0e4528",
+      "requestToken": "75b00b15-628d-4935-8aaa-8e5002660c0a",
+      "api_key_id": "ce7bb22b-8941-4113-9673-92518a6243fd"
+    },
+    {
+      "id": "34e2d3b9-b555-49fa-b71f-672a653f387f",
+      "clientId": "c04a4a4c-961d-4bc0-8136-49b2ed0e4528",
+      "tenant_id": "75b00b15-628d-4935-8aaa-8e5002660c0a",
+      "requestToken": "ce7bb22b-8941-4113-9673-92518a6243fd",
+      "api_key_id": "3b9d226a-1008-49d1-85ac-b0685ae82b36"
+    },
+    {
+      "id": "c04a4a4c-961d-4bc0-8136-49b2ed0e4528",
+      "clientId": "75b00b15-628d-4935-8aaa-8e5002660c0a",
+      "tenant_id": "ce7bb22b-8941-4113-9673-92518a6243fd",
+      "requestToken": "3b9d226a-1008-49d1-85ac-b0685ae82b36",
+      "api_key_id": "e59d2552-8562-4a19-9460-09c165ef8db0"
+    },
+    {
+      "id": "75b00b15-628d-4935-8aaa-8e5002660c0a",
+      "clientId": "ce7bb22b-8941-4113-9673-92518a6243fd",
+      "tenant_id": "3b9d226a-1008-49d1-85ac-b0685ae82b36",
+      "requestToken": "e59d2552-8562-4a19-9460-09c165ef8db0",
+      "api_key_id": "8598853a-d554-4c05-a295-851242715046"
+    },
+    {
+      "id": "ce7bb22b-8941-4113-9673-92518a6243fd",
+      "clientId": "3b9d226a-1008-49d1-85ac-b0685ae82b36",
+      "tenant_id": "e59d2552-8562-4a19-9460-09c165ef8db0",
+      "requestToken": "8598853a-d554-4c05-a295-851242715046",
+      "api_key_id": "96de3dda-8194-455d-ba01-8e0c522c9583"
+    },
+    {
+      "id": "3b9d226a-1008-49d1-85ac-b0685ae82b36",
+      "clientId": "e59d2552-8562-4a19-9460-09c165ef8db0",
+      "tenant_id": "8598853a-d554-4c05-a295-851242715046",
+      "requestToken": "96de3dda-8194-455d-ba01-8e0c522c9583",
+      "api_key_id": "313b7e29-3673-474d-b06c-3a5a33adba6f"
+    }
+  ]
+}
