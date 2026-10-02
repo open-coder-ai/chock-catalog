@@ -13,7 +13,7 @@ FETCH = re.compile(
     r"|(?i:\b(?:downloadstring|downloadfile|downloaddata|webclient|httpclient|webrequest)\b)"
     r"|\b(?:https?|ftps?)://"
     r"|(?<![\w$-])(?:bunx|pnpx)(?![\w-])|\bnpm\s+exec\b|\b(?:pnpm|yarn)\s+dlx\b"
-    r"|(?<![\w$-])npx(?:\s+--?[\w-]+)*?\s+(?:--yes|-y|-p|--package)(?![\w-])"
+    r"|(?<![\w$-])npx(?:\s+-[\w-]*)*?\s+(?:--yes|-y|-p|--package)(?![\w-])"
     r"|(?<![\w.$])fetch\s*\(|\bhttps?\.(?:get|request)\s*\(|\brequire\(\s*['\"](?:node:)?https?['\"]\s*\)"
 )
 #: Base64 decoding, in a shell, in JS or in PowerShell (`-EncodedCommand <blob>`).
@@ -24,7 +24,7 @@ DECODE = re.compile(
 )
 #: Inline code: interpreter -e/-c/-r/-p flags, eval, PowerShell, child_process, Function constructors.
 EVAL = re.compile(
-    r"(?i)(?<![\w$-])(?:node|nodejs|bun)(?:\.exe)?(?:\s+--?[\w-]+(?:=\S+)?)*?\s+(?:-e|--eval|-p|--print|-pe)(?![\w-])"
+    r"(?i)(?<![\w$-])(?:node|nodejs|bun)(?:\.exe)?(?:\s+-[\w-]*(?:=\S+)?)*?\s+(?:-e|--eval|-p|--print|-pe)(?![\w-])"
     r"|(?<![\w$-])deno\s+eval\b"
     r"|(?<![\w$-])(?:python[\d.]*|py)(?:\.exe)?(?:\s+-[a-zA-Z]+)*?\s+-[a-zA-Z]*c(?![\w-])"
     r"|(?<![\w$-])(?:perl|ruby|lua)(?:\.exe)?(?:\s+-[a-zA-Z]+)*?\s+-[a-zA-Z]*[eE](?![\w-])"
