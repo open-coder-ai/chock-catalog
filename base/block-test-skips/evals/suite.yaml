@@ -232,3 +232,249 @@ suite:
     prompt: "At the turn's end a JavaScript focus marker is added inside a describe whose old skip HEAD held."
     expect: "The turn is blocked: the focus marker is a different line in the same block, so it is new."
     execute: {event: stop, head_files: {"src/a.test.ts": "describe('outer', () => {\n  it.skip('a', () => {\n    expect(f()).toBe(1);\n  });\n});\n"}, writes: {"src/a.test.ts": "describe('outer', () => {\n  it.skip('a', () => {\n    expect(f()).toBe(1);\n  });\n  it.only('b', () => {\n    expect(1).toBe(1);\n  });\n});\n"}, expect: block}
+  # v2 (0.1.0): the forms and paths the roadmap's HP07 adds, each refused, beside the ordinary code each must leave alone.
+  - id: tc-027
+    category: trigger
+    prompt: "A pytest test calls pytest.skip() at run time instead of asserting."
+    expect: "The commit is refused: a runtime skip hides the test as surely as a marker."
+    execute: {event: commit, files: {"tests/test_r.py": "import pytest\n\n\ndef test_r():\n    pytest.skip('broken upstream')\n    assert r() == 1\n"}, expect: block}
+  - id: tc-028
+    category: trigger
+    prompt: "A failing test is marked @pytest.mark.xfail without strict=True."
+    expect: "The commit is refused: a non-strict xfail turns a failure into a pass."
+    execute: {event: commit, files: {"tests/test_x.py": "import pytest\n\n\n@pytest.mark.xfail(reason='flaky')\ndef test_x():\n    assert x() == 1\n"}, expect: block}
+  - id: tc-029
+    category: trigger
+    prompt: "An RSpec example is turned into xit."
+    expect: "The commit is refused: spec/ and *_spec.rb are test paths."
+    execute: {event: commit, files: {"spec/models/user_spec.rb": "describe User do\n  xit 'saves' do\n    expect(user.save).to be true\n  end\nend\n"}, expect: block}
+  - id: tc-030
+    category: trigger
+    prompt: "A PHPUnit test calls markTestSkipped."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/UserTest.php": "<?php\nclass UserTest extends TestCase {\n    public function testSave() {\n        $this->markTestSkipped('later');\n    }\n}\n"}, expect: block}
+  - id: tc-031
+    category: trigger
+    prompt: "An xUnit test gains [Fact(Skip = ...)]."
+    expect: "The commit is refused: *Tests.cs is a test path."
+    execute: {event: commit, files: {"src/App.Tests/UserTests.cs": "public class UserTests {\n    [Fact(Skip = \"flaky\")]\n    public void Saves() { Assert.True(Save()); }\n}\n"}, expect: block}
+  - id: tc-032
+    category: trigger
+    prompt: "jest.config.js gains a testPathIgnorePatterns entry that hides a failing suite."
+    expect: "The commit is refused: each added ignore pattern is a new finding."
+    execute: {event: commit, head_files: {"jest.config.js": "module.exports = {\n  testPathIgnorePatterns: ['/node_modules/'],\n};\n"}, files: {"jest.config.js": "module.exports = {\n  testPathIgnorePatterns: ['/node_modules/', '/src/cart/'],\n};\n"}, expect: block}
+  - id: tc-033
+    category: behavior
+    prompt: "A person waives a reviewed, ticket-linked skip on its line and commits from their own shell."
+    expect: "The commit is allowed: a person's waiver on the line is honoured at commit."
+    execute: {event: commit, files: {"tests/test_gpu.py": "import pytest\n\n\n@pytest.mark.skipif(not has_gpu(), reason='GPU only')  # chock: allow test-skip -- OPS-412\ndef test_gpu():\n    assert run() == 1\n"}, expect: allow}
+  - id: tc-034
+    category: negative_trigger
+    prompt: "Application code outside any test path calls pytest.skip in a helper."
+    expect: "The commit is allowed: only test paths and runner configs are judged."
+    execute: {event: commit, files: {"src/app/plugin.py": "import pytest\n\n\ndef maybe():\n    pytest.skip('x')\n"}, expect: allow}
+  - id: tc-035
+    category: trigger
+    prompt: "A test is marked skipif(True)."
+    expect: "The commit is refused: an always-true condition is an unconditional skip."
+    execute: {event: commit, files: {"tests/test_s.py": "import pytest\n\n\n@pytest.mark.skipif(True, reason='x')\ndef test_s():\n    assert s()\n"}, expect: block}
+  - id: tc-036
+    category: trigger
+    prompt: "A test is marked xfail(strict=True, run=False)."
+    expect: "The commit is refused: run=False never runs the test, strict or not."
+    execute: {event: commit, files: {"tests/test_n.py": "import pytest\n\n\n@pytest.mark.xfail(strict=True, run=False)\ndef test_n():\n    assert n()\n"}, expect: block}
+  - id: tc-037
+    category: trigger
+    prompt: "A test module sets a module-level pytestmark list that skips every test in it."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/test_m.py": "import pytest\n\npytestmark = [pytest.mark.slow, pytest.mark.skip]\n\n\ndef test_m():\n    assert m()\n"}, expect: block}
+  - id: tc-038
+    category: trigger
+    prompt: "A test module calls pytest.skip(allow_module_level=True) at import."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/test_i.py": "import pytest\n\npytest.skip('not today', allow_module_level=True)\n\n\ndef test_i():\n    assert i()\n"}, expect: block}
+  - id: tc-039
+    category: trigger
+    prompt: "A Jest test is replaced by test.todo."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"src/cart.test.js": "test.todo('adds an item');\n"}, expect: block}
+  - id: tc-040
+    category: trigger
+    prompt: "A Vitest describe block becomes xdescribe."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"src/cart.spec.ts": "xdescribe('cart', () => {\n  it('adds', () => {\n    expect(add()).toBe(1);\n  });\n});\n"}, expect: block}
+  - id: tc-041
+    category: trigger
+    prompt: "A Jasmine test is focused with fit, which silently skips every other test."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"src/cart.test.ts": "describe('cart', () => {\n  fit('adds', () => {\n    expect(add()).toBe(1);\n  });\n});\n"}, expect: block}
+  - id: tc-042
+    category: trigger
+    prompt: "A JUnit test starts with assumeTrue(false)."
+    expect: "The commit is refused: a false assumption aborts the test as skipped."
+    execute: {event: commit, files: {"src/test/java/CartTest.java": "class CartTest {\n  @Test\n  void adds() {\n    assumeTrue(false);\n    assertEquals(1, add());\n  }\n}\n"}, expect: block}
+  - id: tc-043
+    category: trigger
+    prompt: "A Go test returns early under testing.Short() without calling Skip."
+    expect: "The commit is refused: a testing.Short() guard skips the test in short mode."
+    execute: {event: commit, files: {"cart/cart_test.go": "func TestAdd(t *testing.T) {\n\tif testing.Short() {\n\t\treturn\n\t}\n\tif add() != 1 {\n\t\tt.Fatal(\"add\")\n\t}\n}\n"}, expect: block}
+  - id: tc-044
+    category: trigger
+    prompt: "A Rust unit test inside a cfg(test) module in src/ is marked #[ignore]."
+    expect: "The commit is refused: every Rust file is judged, since #[ignore] only marks tests."
+    execute: {event: commit, files: {"src/cart.rs": "pub fn add() -> u8 { 1 }\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    #[ignore = \"slow\"]\n    fn adds() {\n        assert_eq!(super::add(), 1);\n    }\n}\n"}, expect: block}
+  - id: tc-045
+    category: trigger
+    prompt: "An RSpec example calls skip inside its body."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"spec/cart_spec.rb": "describe Cart do\n  it 'adds' do\n    skip 'later'\n    expect(cart.add).to eq(1)\n  end\nend\n"}, expect: block}
+  - id: tc-046
+    category: trigger
+    prompt: "pytest.ini gains addopts --deselect for a failing test."
+    expect: "The commit is refused: runner config that deselects a test hides it."
+    execute: {event: commit, head_files: {"pytest.ini": "[pytest]\naddopts = -ra\n"}, files: {"pytest.ini": "[pytest]\naddopts = -ra --deselect tests/test_cart.py::test_add\n"}, expect: block}
+  - id: tc-047
+    category: trigger
+    prompt: "pyproject.toml's pytest addopts gains -k 'not cart'."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"pyproject.toml": "[tool.pytest.ini_options]\naddopts = \"-ra -k 'not cart'\"\n"}, expect: block}
+  - id: tc-048
+    category: trigger
+    prompt: "A root conftest.py adds a failing module to collect_ignore."
+    expect: "The commit is refused: each collect_ignore entry is a finding."
+    execute: {event: commit, head_files: {"conftest.py": "collect_ignore = ['setup.py']\n"}, files: {"conftest.py": "collect_ignore = ['setup.py', 'tests/test_cart.py']\n"}, expect: block}
+  - id: tc-049
+    category: trigger
+    prompt: "conftest.py deselects failing tests in pytest_collection_modifyitems."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/conftest.py": "def pytest_collection_modifyitems(config, items):\n    items[:] = [item for item in items if 'cart' not in item.nodeid]\n"}, expect: block}
+  - id: tc-050
+    category: trigger
+    prompt: "A test module calls pytest.importorskip for a dependency the change made optional."
+    expect: "The commit is refused: importorskip skips the module when the import fails."
+    execute: {event: commit, files: {"tests/test_np.py": "import pytest\n\nnp = pytest.importorskip('numpy')\n\n\ndef test_np():\n    assert np.ones(1)[0] == 1\n"}, expect: block}
+  - id: tc-051
+    category: trigger
+    prompt: "A unittest test calls self.skipTest."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/test_u.py": "import unittest\n\n\nclass CartTest(unittest.TestCase):\n    def test_add(self):\n        self.skipTest('later')\n"}, expect: block}
+  - id: tc-052
+    category: trigger
+    prompt: "A test raises unittest.SkipTest."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/test_st.py": "from unittest import SkipTest\n\n\ndef test_st():\n    raise SkipTest('later')\n"}, expect: block}
+  - id: tc-053
+    category: trigger
+    prompt: "A parametrized case is skipped through pytest.param(marks=...)."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/test_p.py": "import pytest\n\n\n@pytest.mark.parametrize('n', [1, pytest.param(2, marks=pytest.mark.skip)])\ndef test_p(n):\n    assert n\n"}, expect: block}
+  - id: tc-054
+    category: trigger
+    prompt: "A Jest table test spread over lines ends in .skip after its each(...) table."
+    expect: "The commit is refused: the table is matched as a group, so the .skip after it is seen."
+    execute: {event: commit, files: {"src/sum.test.js": "test.each([\n  [1, 1, 2],\n  [1, 2, 3],\n]).skip('adds %i + %i', (a, b, sum) => {\n  expect(a + b).toBe(sum);\n});\n"}, expect: block}
+  - id: tc-055
+    category: trigger
+    prompt: "A concurrent Jest test is skipped with it.concurrent.skip."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"src/sum.test.js": "it.concurrent.skip('adds', async () => {\n  expect(1 + 1).toBe(2);\n});\n"}, expect: block}
+  - id: tc-056
+    category: trigger
+    prompt: "A Playwright test under e2e/ is marked test.fixme."
+    expect: "The commit is refused: e2e/ is a test path."
+    execute: {event: commit, files: {"e2e/checkout.ts": "test.fixme('pays', async ({ page }) => {\n  await page.goto('/');\n});\n"}, expect: block}
+  - id: tc-057
+    category: trigger
+    prompt: "A JUnit 5 test is made conditional with @EnabledIfEnvironmentVariable."
+    expect: "The commit is refused: a condition that is false in CI skips the test."
+    execute: {event: commit, files: {"src/test/java/PayTest.java": "class PayTest {\n  @Test\n  @EnabledIfEnvironmentVariable(named = \"PAY\", matches = \"on\")\n  void pays() {}\n}\n"}, expect: block}
+  - id: tc-058
+    category: trigger
+    prompt: "A Kotlin test class named *Test.kt gains @Ignore."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"app/src/main/kotlin/CartTest.kt": "class CartTest {\n    @Ignore\n    @Test\n    fun adds() {}\n}\n"}, expect: block}
+  - id: tc-059
+    category: trigger
+    prompt: "An XCTest throws XCTSkip."
+    expect: "The commit is refused: Tests/ is a test path."
+    execute: {event: commit, files: {"Tests/CartTests/CartTests.swift": "final class CartTests: XCTestCase {\n    func testAdd() throws {\n        throw XCTSkip(\"later\")\n    }\n}\n"}, expect: block}
+  - id: tc-060
+    category: trigger
+    prompt: "An NUnit test gains [Ignore] in its attribute list."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"Tests/CartTests.cs": "public class CartTests {\n    [Test, Ignore(\"later\")]\n    public void Adds() {}\n}\n"}, expect: block}
+  - id: tc-061
+    category: trigger
+    prompt: "A PHPUnit test calls markTestIncomplete."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/CartTest.php": "<?php\nclass CartTest extends TestCase {\n    public function testAdd() {\n        $this->markTestIncomplete();\n    }\n}\n"}, expect: block}
+  - id: tc-062
+    category: edge
+    prompt: "Adversarial: the skip marker is reached through an import alias (from pytest import mark as m; @m.skip)."
+    expect: "The commit is refused: names are resolved through the module's imports."
+    execute: {event: commit, files: {"tests/test_alias.py": "from pytest import mark as m\n\n\n@m.skip\ndef test_alias():\n    assert a()\n"}, expect: block}
+  - id: tc-063
+    category: edge
+    prompt: "Adversarial: the skip is fetched by string with getattr(pytest.mark, 'skip')."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/test_ga.py": "import pytest\n\nlater = getattr(pytest.mark, 'skip')\n\n\ndef test_ga():\n    assert g()\n"}, expect: block}
+  - id: tc-064
+    category: edge
+    prompt: "Adversarial: unittest's skip is imported under another name and used as a decorator."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tests/test_un.py": "from unittest import skip as later\n\n\n@later('x')\ndef test_un():\n    assert u()\n"}, expect: block}
+  - id: tc-065
+    category: edge
+    prompt: "Adversarial: jest.config.js's testPathIgnorePatterns gains a regex literal rather than a string."
+    expect: "The commit is refused: a list entry that is not a string is judged as the whole list."
+    execute: {event: commit, files: {"jest.config.js": "module.exports = { testPathIgnorePatterns: [/cart/] };\n"}, expect: block}
+  - id: tc-066
+    category: edge
+    prompt: "Adversarial: a multi-line skip decorator spreads its reason over several lines."
+    expect: "The commit is refused: the syntax tree sees the decorator, not one line of text."
+    execute: {event: commit, files: {"tests/test_ml.py": "import pytest\n\n\n@pytest.mark.skipif(\n    True,\n    reason='x',\n)\ndef test_ml():\n    assert m()\n"}, expect: block}
+  - id: tc-067
+    category: negative_trigger
+    prompt: "A known bug is marked @pytest.mark.xfail(strict=True)."
+    expect: "The commit is allowed: a strict xfail fails the run as soon as the test passes, so nothing is hidden."
+    execute: {event: commit, files: {"tests/test_bug.py": "import pytest\n\n\n@pytest.mark.xfail(strict=True, reason='BUG-7')\ndef test_bug():\n    assert bug() == 1\n"}, expect: allow}
+  - id: tc-068
+    category: negative_trigger
+    prompt: "Test titles say skip and pending in plain words, in RSpec and in Jest."
+    expect: "The commit is allowed: string contents are not code."
+    execute: {event: commit, files: {"spec/order_spec.rb": "describe Order do\n  it 'returns pending orders' do\n    expect(Order.pending).to eq([])\n  end\nend\n", "src/steps.test.js": "it('can skip optional steps', () => {\n  expect(wizard.skip(1)).toBe(2);\n});\n"}, expect: allow}
+  - id: tc-069
+    category: negative_trigger
+    prompt: "tox.ini installs with pip --ignore-installed."
+    expect: "The commit is allowed: only pytest's own --ignore and --ignore-glob count."
+    execute: {event: commit, files: {"tox.ini": "[testenv]\ncommands_pre = pip install --ignore-installed -r requirements.txt\ncommands = pytest -ra\n"}, expect: allow}
+  - id: tc-070
+    category: negative_trigger
+    prompt: "A new jest.config.js restates Jest's default ignore pattern."
+    expect: "The commit is allowed: /node_modules/ is Jest's default, so restating it hides nothing."
+    execute: {event: commit, files: {"jest.config.js": "module.exports = {\n  testPathIgnorePatterns: ['/node_modules/'],\n};\n"}, expect: allow}
+  - id: tc-071
+    category: negative_trigger
+    prompt: "A test file calls a model's fit method and documents pytest.skip in a docstring."
+    expect: "The commit is allowed: neither a method named fit nor a docstring skips anything."
+    execute: {event: commit, files: {"tests/test_model.py": "def test_fit():\n    \"\"\"Do not use pytest.skip here.\"\"\"\n    assert model.fit(data) is model\n", "src/model.test.js": "it('fits', () => {\n  expect(model.fit(data)).toBe(model);\n});\n"}, expect: allow}
+  - id: tc-072
+    category: behavior
+    prompt: "A commit reorders jest's existing ignore patterns over several lines."
+    expect: "The commit is allowed: each pattern is keyed by its value, so a moved pattern is old."
+    execute: {event: commit, head_files: {"jest.config.js": "module.exports = { testPathIgnorePatterns: ['/node_modules/', '/fixtures/'] };\n"}, files: {"jest.config.js": "module.exports = {\n  testPathIgnorePatterns: [\n    '/fixtures/',\n    '/node_modules/',\n  ],\n};\n"}, expect: allow}
+  - id: tc-073
+    category: trigger
+    prompt: "The agent writes a collect_ignore entry into conftest.py."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"conftest.py": "collect_ignore = ['tests/test_cart.py']\n"}, expect: block}
+  - id: tc-074
+    category: trigger
+    prompt: "At the turn's end pyproject.toml carries a --deselect HEAD lacked."
+    expect: "The turn is blocked."
+    execute: {event: stop, head_files: {"pyproject.toml": "[tool.pytest.ini_options]\naddopts = \"-ra\"\n"}, writes: {"pyproject.toml": "[tool.pytest.ini_options]\naddopts = \"-ra --deselect tests/test_cart.py::test_add\"\n"}, expect: block}
+  - id: tc-075
+    category: negative_trigger
+    prompt: "An unrelated edit to pyproject.toml keeps the --deselect HEAD already held."
+    expect: "The commit is allowed: only what the change adds is judged."
+    execute: {event: commit, head_files: {"pyproject.toml": "[project]\nname = \"a\"\n\n[tool.pytest.ini_options]\naddopts = \"--deselect tests/test_a.py::test_x\"\n"}, files: {"pyproject.toml": "[project]\nname = \"a\"\nversion = \"2\"\n\n[tool.pytest.ini_options]\naddopts = \"--deselect tests/test_a.py::test_x\"\n"}, expect: allow}

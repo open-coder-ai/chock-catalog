@@ -1,13 +1,12 @@
 id: block-test-skips
 name: "Block Test Skips"
-version: "0.0.4"
+version: "0.1.0"
 description: >
-  Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip,
-  it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test
-  files. Runs: commit, agent write, turn's end. Only what the change adds is judged. Waiver:
-  'chock: allow test-skip' same line. Person's commit: honoured. Agent (write, turn's end, an
-  agent's commit: CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already
-  in HEAD; it asks a person.
+  Blocks newly added test skips, focus markers and runner options that hide tests: pytest/unittest skips,
+  non-strict xfail, importorskip; JS skip/only/todo/fixme, x/f prefixes; JUnit Disabled/Assume; Go Skip, Short();
+  Rust ignore; RSpec, PHPUnit, C#, Swift skips; --deselect/-k not, collect_ignore, jest testPathIgnorePatterns.
+  Runs: commit, agent write, turn's end; only additions judged. Friction: computed names evade it. Waiver: 'chock:
+  allow test-skip' same line; agent: only if in HEAD.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -22,7 +21,8 @@ hook:
     "on": [commit, tool_use]
     action: block
     message: >
-      Test skip or focus marker (.only) added. Fix the test or the code instead of skipping it. A person may waive a
+      Test skip, focus marker (.only) or test-hiding runner option added. Fix the test or the code instead of
+      skipping, focusing or deselecting it. A person may waive a
       reviewed skip with 'chock: allow test-skip' on the line and commit from their own shell;
       in the agent a waiver counts only for a line already committed in HEAD, so an agent asks
       the person rather than writing the pragma itself.
@@ -32,7 +32,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -61,3 +61,8 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Wording only, verdicts unchanged: the description names the turn's end among where the gate runs (commit, agent write, turn's end), uses the one waiver phrasing and defines an agent's commit as CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env, not CHOCK_AGENT_COMMIT alone (the same fix in the 0.0.2 entry). The gate message names focus markers (.only). The description fits the 500-char budget."
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "v2 (roadmap HP07). Python is read from the syntax tree, with imports resolved: markers anywhere (decorator, `pytestmark`, `pytest.param(marks=...)`, `add_marker`), `skipif`, `xfail` unless `strict=True` without `run=False`, runtime `pytest.skip`/`xfail`/`importorskip` (module level included), `skipTest`, `SkipTest`, `unittest.skip*`/`expectedFailure`, aliases (`from pytest import mark as m`, `from unittest import skip as later`) and `getattr(..., 'skip')`. A file that does not parse is read as text. Other languages by extension: JS/TS `skip/only/todo/fixme/skipIf/runIf` on any it/describe/test chain (`it.concurrent.skip`, `describe.skip.each`), `.each(table).skip` matched as a group, `it/test.fails`, `x`/`f` prefixes (`xtest`, `fit`, `fdescribe`), mocha `this.skip()`; JVM `@Disabled*`, `@Ignore*`, `@EnabledIf/On/For*`, `Assume*`/`assume*`/`assumingThat`, TestNG `enabled = false`/`SkipException`, Kotest `xtest`/`config(enabled = false)`; Go any `.Skip*()` and `testing.Short()`; Rust `#[ignore]` and `cfg_attr(..., ignore)` in every .rs file (the attribute only marks tests); Ruby `x`/`f` prefixes, `skip`, `pending`, `:skip`/`skip:`/`focus:` metadata; PHPUnit `markTestSkipped/Incomplete`; C# `[Fact/Theory(Skip=)]`, `[Ignore]`, `[Explicit]`, `Skip.If`, `Assert.Ignore/Inconclusive`, `Assume.*`; Swift `XCTSkip*`, `XCTExpectFailure`, `.disabled(`. String literals are blanked first, so a title that says skip is not one. A test-path file with any other extension keeps v1's pattern. Runner configs anywhere by base name: pytest.ini, pyproject.toml, setup.cfg, tox.ini lines with `--deselect`, `--ignore`/`--ignore-glob` (not `--ignore-installed`) or `-k ... not`; conftest.py `collect_ignore`/`collect_ignore_glob` entries, `pytest_ignore_collect`, and item removal or `pytest_deselected` in `pytest_collection_modifyitems`; jest.config.* and package.json `testPathIgnorePatterns`, one finding per entry (Jest's default `/node_modules/` aside), the whole list when an entry is not a string. Test paths widen beyond protect-test-integrity's (kept as `TEST_PATH`) to `[Tt]ests/`, `[Ss]pecs/`, e2e/, cypress/, playwright/, `*_spec.rb`, `*_test.rb`, `*Test(s).java/kt/kts/groovy/scala/cs/php/swift`, `*.test.*`, `*.spec.*`. Keys stay rule + enclosing test + normalized line (a list entry keys by its value), so a moved skip or a reordered pattern is old. Eval cases tc-027 to tc-075."
+  - "Limits (not caught): names built at run time (`getattr` with a computed string, `eval`, `importlib`); a skip in a helper module outside the test paths and runner configs; `-m 'not ...'` marker deselection and `-k <name>` positive selection; an addopts list split one option per line (`\"-k\",` then `\"not x\"`); `xfail_strict` in the ini is not read (every non-strict xfail is refused); vitest `exclude`, jest `testMatch`/`modulePathIgnorePatterns`/`--testPathIgnorePatterns` on the command line; CI workflow steps that pass `--deselect`; Pest `->skip()` (Laravel collections share the name), PHPUnit `#[Requires*]`; a skip on a line whose string literal spans lines. A waiver is a comment on the finding's line, which package.json cannot carry and an INI value (pytest.ini, setup.cfg, tox.ini) may read as an argument: a person moves the setting to jest.config.js or pyproject.toml to waive it. Friction, not a security boundary."
