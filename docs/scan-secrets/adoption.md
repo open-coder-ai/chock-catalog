@@ -126,9 +126,16 @@ scan-secrets  [deterministic]
   PASS  tc-030                             authored  Potential secret detected in this change. Remove credentials and ro…
   PASS  tc-031                             authored  Potential secret detected in this change. Remove credentials and ro…
   PASS  tc-032                             authored  gate exit 0
+  PASS  tc-042                             authored  gate exit 0
+  PASS  tc-043                             authored  gate exit 0
+  PASS  tc-044                             authored  gate exit 0
+  PASS  tc-045                             authored  gate exit 0
+  PASS  tc-047                             authored  gate exit 0
+  PASS  tc-049                             authored  gate exit 0
+  PASS  tc-050                             authored  gate exit 0
   score 1.00
 
-5 policies: 32 pass, 41 skipped
+5 policies: 39 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

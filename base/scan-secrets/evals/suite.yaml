@@ -250,3 +250,65 @@ suite:
     prompt: "At the turn's end creds.py differs from HEAD only by a clean line; HEAD already holds an old violation."
     expect: "The turn is allowed: only the lines the turn added are judged."
     execute: {event: stop, head_files: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'\n"}, writes: {"creds.py": "KEY = 'AKI\u0041IOSFODNN7EXAMPLE'\nprint('ready')\n"}, expect: allow}  # pragma: allowlist secret
+  - id: tc-042
+    category: negative_trigger
+    prompt: A commit adds an environment-specific dotenv template (.env.local.example).
+    expect: The hook allows it; 0.0.9 blocked any .env.<x>.example by path.
+    execute:
+      files:
+        .env.local.example: "DATABASE_URL=postgres://localhost/dev\n"
+      expect: allow
+  - id: tc-043
+    category: negative_trigger
+    prompt: A commit adds config that takes every credential from a reference, not a literal.
+    expect: The hook allows ${VAR}, $VAR, {{ template }}, os.environ and process.env forms.
+    execute:
+      files:
+        config.json: "{\"password\": \"${DB_PASSWORD}\", \"apiKey\": \"{{ .Values.apiKey }}\"}\n"
+        app.yaml: "client_secret: $OAUTH_CLIENT_SECRET_V2\n"
+        settings.py: "password = os.environ.get('DB_PASSWORD')\n"
+        index.js: "const accessToken = process.env.ACCESS_TOKEN_2;\n"
+      expect: allow
+  - id: tc-044
+    category: negative_trigger
+    prompt: A commit adds config whose credential values are placeholders.
+    expect: The hook allows changeme, YOUR_API_KEY, <token> and ******** placeholders.
+    execute:
+      files:
+        config.json: "{\"password\": \"changeme\", \"api_key\": \"YOUR_API_KEY_HERE_123\"}\n"
+        app.yaml: "access_token: \"<access-token-2>\"\nprivate_key: \"**************\"\n"
+      expect: allow
+  - id: tc-045
+    category: negative_trigger
+    prompt: A commit adds a SOPS-encrypted secrets file.
+    expect: The hook allows ENC[...] values; they are ciphertext, not credentials.
+    execute:
+      files:
+        secrets.enc.yaml: "password: ENC[AES256_GCM,data:abc123def456ghi789=,iv:xyz0,tag:abc0,type:str]\n"
+      expect: allow
+  - id: tc-047
+    category: negative_trigger
+    prompt: A commit adds ordinary code whose names mention keys, tokens and passwords.
+    expect: The hook allows type annotations, local URIs, lengths and prompted passwords.
+    execute:
+      files:
+        sign.py: "def sign(private_key: Ed25519PrivateKey, password_min_length: int = 12):\n    pass\n"
+        compose.yaml: "url: postgres://postgres:postgres@localhost:5432/db\n"
+        run.sh: "mysql -h db -P 3306 -u root -p app\ndocker login -u bot --password-stdin registry.io\n"
+      expect: allow
+  - id: tc-049
+    category: adversarial
+    prompt: A credential is split so that the key and the value sit on different lines.
+    expect: Documented miss -- the gate judges one line at a time, so the commit is allowed.
+    execute:
+      files:
+        app.yaml: "client_secret:\n  Zq8x7Wv6Ut5Sr4Qp3On2\n"
+      expect: allow
+  - id: tc-050
+    category: adversarial
+    prompt: A credential is committed base64-encoded inside a generic field.
+    expect: Documented miss -- an encoded value without a credential name is not matched; the entropy tier is planned.
+    execute:
+      files:
+        blob.yaml: "data: Z2xwYXQtRVhBTVBMRTBOT1RBUkVBTDBUT0tFTg==\n"
+      expect: allow

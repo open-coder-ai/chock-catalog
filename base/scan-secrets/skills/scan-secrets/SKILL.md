@@ -1,6 +1,6 @@
 ---
 name: scan-secrets
-description: "Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks, key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore). Runs: commit, agent write, turn's end. Not yet caught: quoted-colon forms (\"password\": \"...\", api_key: \"...\"), access_token=, client_secret=. Waiver: '# pragma: allowlist secret' same line (path hit: anywhere in the file). Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never. Agent asks a person."
+description: "Blocks credentials: vendor token shapes (AWS, GitHub, GitLab, Slack, OpenAI, Hugging Face, ...), JWTs, private-key and PGP blocks, key/token/secret/password values in code, JSON, YAML, .env and HCL, URI credentials, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: values split over lines or encoded, digitless bare values, values shaped like references or placeholders. Pragma '# pragma: allowlist secret' same line; agent: only if in HEAD."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Scan Secrets
 
-Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks, key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore). Runs: commit, agent write, turn's end. Not yet caught: quoted-colon forms ("password": "...", api_key: "..."), access_token=, client_secret=. Waiver: '# pragma: allowlist secret' same line (path hit: anywhere in the file). Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never. Agent asks a person.
+Blocks credentials: vendor token shapes (AWS, GitHub, GitLab, Slack, OpenAI, Hugging Face, ...), JWTs, private-key and PGP blocks, key/token/secret/password values in code, JSON, YAML, .env and HCL, URI credentials, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: values split over lines or encoded, digitless bare values, values shaped like references or placeholders. Pragma '# pragma: allowlist secret' same line; agent: only if in HEAD.
 
 ```
 on(commit|tool_use): block(content_regex) scan=added_lines forbidden_path_regex(regex) allowlist_pragma=#\s*pragma:\s*allowlist\s+secret content_pattern(regex)

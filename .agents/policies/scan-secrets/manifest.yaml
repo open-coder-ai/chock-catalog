@@ -1,13 +1,12 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.0.9"
+version: "0.1.0"
 description: >
-  Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks,
-  key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore).
-  Runs: commit, agent write, turn's end. Not yet caught: quoted-colon forms ("password": "...",
-  api_key: "..."), access_token=, client_secret=. Waiver: '# pragma: allowlist secret' same line
-  (path hit: anywhere in the file). Person's commit: honoured. Agent: only if in HEAD; MCP
-  gateway: never. Agent asks a person.
+  Blocks credentials: vendor token shapes (AWS, GitHub, GitLab, Slack, OpenAI, Hugging Face, ...),
+  JWTs, private-key and PGP blocks, key/token/secret/password values in code, JSON, YAML, .env and
+  HCL, URI credentials, Authorization literals, CLI password flags; files by path (.env*, keys).
+  Misses: values split over lines or encoded, digitless bare values, values shaped like references
+  or placeholders. Pragma '# pragma: allowlist secret' same line; agent: only if in HEAD.
 artifact: hook
 enforcement: block
 mandatory: true
@@ -27,12 +26,81 @@ hook:
     params:
       scan: added_lines
       # .env plus environment-specific variants (.env.production, .env.local, .env.staging)
-      # but NOT the committed templates (.env.example/.sample/.template/.dist/.defaults),
-      # which carry placeholders, not real secrets.
-      forbidden_path_regex: '(\.env(\.(?!(sample|example|template|dist|defaults)$)[^/]+)?|\.(pem|key|p12|pfx|jks|keystore))$'
+      # but NOT a committed template: a name whose last suffix is .example/.sample/.template/
+      # .dist/.defaults (.env.example, .env.local.example), which carries placeholders.
+      forbidden_path_regex: '(\.env(?![^/]*\.(sample|example|template|dist|defaults)$)(\.[^/]+)?|\.(pem|key|p12|pfx|jks|keystore))$'
       allowlist_pragma: '#\s*pragma:\s*allowlist\s+secret'
       content_pattern: |-
-        (?i)((AKIA|ASIA)[0-9A-Z]{16}|gh[oprsu]_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{22,}|xox[bpas]-[0-9A-Za-z-]{10,}|(sk|rk)_live_[0-9A-Za-z]{16,}|sk-proj-[0-9A-Za-z_-]{20,}|sk-ant-[0-9A-Za-z_-]{20,}|sk-[0-9A-Za-z]{20,}|AIza[0-9A-Za-z_-]{35}|npm_[0-9A-Za-z]{36}|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|password\s*=\s*["'][^"'\s]{12,}["']|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}|password\s*[=:]\s*[^\s"'${}]{12,})
+        (?ix)
+        # v1 shapes, unchanged
+        (AKIA|ASIA)[0-9A-Z]{16}
+        |gh[oprsu]_[0-9A-Za-z]{36}
+        |github_pat_[0-9A-Za-z_]{22,}
+        |xox[bpas]-[0-9A-Za-z-]{10,}
+        |(sk|rk)_live_[0-9A-Za-z]{16,}
+        |sk-proj-[0-9A-Za-z_-]{20,}
+        |sk-ant-[0-9A-Za-z_-]{20,}
+        |sk-[0-9A-Za-z]{20,}
+        |AIza[0-9A-Za-z_-]{35}
+        |npm_[0-9A-Za-z]{36}
+        |SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}
+        |eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*
+        |api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
+        |secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
+        |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
+        |password\s*=\s*["'][^"'\s]{12,}["']
+        |(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}
+        # v1 bare password, now silent on SOPS, vault:, Terraform references and environment lookups
+        |password\s*[=:]\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]*(?:env|getenv|environ)[.(\[])[^\s"'${}]{12,}
+        # private keys: any PEM label ending PRIVATE KEY (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS8), PGP armor
+        |-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE\ KEY(?:\ BLOCK)?-----
+        # key, token, secret and password names, any case and separator, in JSON, YAML, env, HCL, Go, Ruby, PHP
+        |(?:api[_.-]?key|secret[_.-]?(?:access[_.-]?)?key|access[_.-]?key|(?:client|consumer|jwt)[_.-]?secret
+           |(?:auth|access|refresh|api|bearer)[_.-]?token|private[_.-]?key|passw(?:or)?d|passphrase)
+         ["'`]?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?P<kv_quote>["'`])?
+         (?!(?:\$|\{\{|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/|/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
+           |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef|[\w.]*(?:env|getenv|environ)[.(\[]
+           |your|my[_-]|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo\b|none\b|null\b|insert|enter))
+         (?(kv_quote)(?=[^"'`\s]*[^a-z._\-"'`\s])[^"'`\s]{12,}["'`]
+           |(?=[A-Za-z0-9/+=_~-]*\d)(?![A-Za-z0-9/+=_~-]*(?-i:Key|Token|Secret|Passw|Type|Str|Bytes|Cred))
+            [A-Za-z0-9/+=_~-]{16,}(?=[\s,;)\]}]|$))
+        # credentials in a URI: scheme://user:password@host, not localhost or example hosts, not a placeholder
+        |\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"]*):(?!(?P=uri_user)@)
+         (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token|example|dummy|redacted|placeholder)@))
+         [^\s/:@'"]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
+        # Authorization header literals
+        |\bauthorization["'`]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]+(?:["'`\s,;)]|$))
+         (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example))[A-Za-z0-9._~+/-]{12,}
+        # passwords passed on a command line
+        |\bcurl\b.{0,200}\s(?:-u|--user)[=\s]+["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+        |\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)[=\s]+["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+        |\bmysql(?:dump|admin|sh)?\b.{0,200}\s(?-i:-p)(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+        |\bsshpass\s+(?-i:-p)\s*["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+        # vendor token shapes (case-sensitive)
+        |(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})
+        |(?-i:\bGR1348941[0-9A-Za-z_-]{20,})
+        |(?-i:\b(?:hf|api_org)_[A-Za-z0-9]{34}\b)
+        |(?-i:\bya29\.[0-9A-Za-z_-]{20,})
+        |(?-i:hooks\.slack\.com/(?:services|workflows|triggers)/[A-Za-z0-9]{8,}/[A-Za-z0-9/]{16,})
+        |(?-i:\bxox[er]-[0-9A-Za-z-]{10,}|\bxoxe\.xox[bp]-[0-9A-Za-z-]{10,}|\bxapp-\d-[0-9A-Za-z-]{10,})
+        |(?-i:\bSK[0-9a-f]{32}\b)
+        |(?-i:\bdapi[0-9a-f]{32}\b)
+        |(?-i:\bdp\.(?:pt|st|sa|said|ct|scim|audit)\.(?:[a-z0-9_-]{2,35}\.)?[0-9A-Za-z]{40,})
+        |(?-i:\bpul-[0-9a-f]{40}\b)
+        |(?-i:\bhv[sbr]\.[0-9A-Za-z_-]{24,})
+        |(?-i:\bshp(?:at|ca|pa|ss)_[0-9a-fA-F]{32}\b)
+        |(?-i:\bsntry[usai]_[0-9A-Za-z+/=_]{40,})
+        |(?-i:\bglsa_[0-9A-Za-z]{32}_[0-9a-fA-F]{8}\b|\bglc_[0-9A-Za-z+/]{32,})
+        |(?-i:\bdo[por]_v1_[0-9a-f]{64}\b)
+        |(?-i:\blin_(?:api|oauth)_[0-9A-Za-z]{40}\b)
+        |(?-i:\bntn_[0-9A-Za-z]{40,}|\bsecret_[0-9A-Za-z]{43}\b)
+        |(?-i:\bpplx-[0-9A-Za-z]{48}\b)
+        |(?-i:\bpscale_(?:tkn|oauth|pw)_[0-9A-Za-z_=.-]{32,})
+        |(?-i:\bPMAK-[0-9a-f]{24}-[0-9a-f]{34}\b)
+        |(?-i:\bHRKU-[0-9A-Za-z_-]{36,})
+        |(?-i:\bpypi-[0-9A-Za-z_-]{85,})
+        |(?-i:\brubygems_[0-9a-f]{48}\b)
+        |(?-i:\bsk-(?:svcacct|admin)-[0-9A-Za-z_-]{20,})
 
 compliance:
   mitre_atlas:
@@ -43,7 +111,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -57,6 +125,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "v2 regex tier (roadmap HP01; the files and entropy tiers are separate policies, not this one). The content_pattern is now a verbose, commented regex (one alternative per line, so no line of this manifest matches it). Every 0.0.9 alternative is kept; the bare password one no longer fires on a value starting ENC[ (SOPS), vault:, a Terraform reference (var., local., data., module., each., self.) or an environment lookup (os.environ, getenv(, process.env., ENV[). Added: (1) key, token, secret and password names (api key, secret key, access key, AWS secret access key, client/consumer/JWT secret, auth/access/refresh/API/bearer token, private key, password, passwd, passphrase) in any case and separator, with = : := => ?= and an optional quote round the name, so JSON, YAML, .env, HCL, Go, Ruby and PHP forms are judged; a quoted value of 12+ characters with a digit or symbol, or a bare value of 16+ with a digit; values that start like a reference or a placeholder (${, $VAR, {{, <, ENC[, vault:, a path, your, example, changeme, ...) and bare values naming a type (Key, Token, Type, ...) are not judged. (2) credentials in a URI (scheme://user:password@host) unless the host is localhost or an example host, the password is a placeholder or equals the user name. (3) Authorization Bearer, Basic and Token literals. (4) passwords on a command line: curl -u/--user, docker/podman/oras login -p/--password, mysql -p<value>, sshpass -p. (5) any PEM label ending PRIVATE KEY (ENCRYPTED, PKCS8) and the PGP private-key armor header. (6) vendor shapes: GitLab tokens and runner registration token, Hugging Face, Google OAuth access token, Slack webhook URL, xoxe/xapp tokens, Twilio API key, Databricks, Doppler, Pulumi, Vault, Shopify, Sentry, Grafana, DigitalOcean, Linear, Notion, Perplexity, PlanetScale, Postman, Heroku, PyPI, RubyGems, OpenAI service-account and admin keys. The forbidden-path regex now spares a dotenv template whose last suffix is a template word (.env.local.example, .env.production.sample), which it blocked before. Stripe test keys stay unmatched: the roadmap asks for them as ask, and a content_regex gate has one action. The description now lists what is caught and what is missed."
 - version: 0.0.9
   date: '2026-09-30'
   changes:
