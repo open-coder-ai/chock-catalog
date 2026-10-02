@@ -25,6 +25,8 @@ COMPACT = re.compile(r"\bnever\s*\([^()]{0,120}\)\s*:\s*(?:\S+\s+){0,2}$")
 #: dash or double dash, a closing double quote, and/then/so. A comma ends it too, unless what follows continues a list ending in or/nor.
 CUT = re.compile(r"[)\]:;|>\u2192\u21d2\u27f6]|\s--?\s|\b(?:and|then|so)\b")
 #: A colon or dash that joins a send verb to its destination when "to" (into, at, onto, via) sits beside it.
+#: At most this many joiners are crossed, so a run of them costs linear time.
+JOIN_HOPS = 2
 JOINER = re.compile(r"\s*(?::|-{1,2})")
 TO_WORD = re.compile(r"\b(?:to|into|at|onto|via)\b")
 LIST_OR = re.compile(r"\b(?:or|nor)\b")
@@ -92,7 +94,11 @@ class Doc:
         """Where a send verb's clause ends, carried past a colon or dash that joins it to its destination
         ("to: https://...", "-- to https://...")."""
         end, limit = self.clause_end(pos), min(self.ends[self.index(pos)], pos + 2 * LOOKBACK)
-        while end < limit and JOINER.match(self.text, end) and TO_WORD.search(self.text, max(pos, end - 8), end + 8):
+        for _ in range(JOIN_HOPS):
+            if not (
+                end < limit and JOINER.match(self.text, end) and TO_WORD.search(self.text, max(pos, end - 8), end + 8)
+            ):
+                break
             end = max(end + 1, self.clause_end(end + 1))
         return min(end, limit)
 

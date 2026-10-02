@@ -23,6 +23,8 @@ BLOCK_START = re.compile(
 #: A table's delimiter row; `|` lines start their own statements only in a run that has one (a soft-wrapped
 #: line that happens to start with `|` continues its paragraph, as an autolink `<https://...>` does).
 TABLE_DELIMITER = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$")
+#: A front-matter line that starts a new key (not indented, not a list item).
+FRONT_KEY = re.compile(r"^[^\s#-][^:]*:")
 #: A blockquote prefix: its lines are read as a container, so a wrapped quoted paragraph is still one paragraph.
 QUOTE = re.compile(r"^ {0,3}((?:>[ \t]?)+)")
 #: A fenced line continued on the next: a trailing backslash, pipe or && (the backslash is dropped on joining).
@@ -132,13 +134,23 @@ def statements(text: str) -> list[Statement]:
     """Every statement in a markdown-like instruction file, in order."""
     lines = lines_of(text)
     front = _front_matter_end(lines)
-    out = [
-        Statement(n, n, line.strip(), normalize(line), code=False)
-        for n, line in enumerate(lines[:front], 1)
-        if line.strip() and n not in (1, front)
-    ]
+    out = _front_matter(lines, front)
     out += _body(lines, front)
     return [piece for st in out for piece in _pieces(st)]
+
+
+def _front_matter(lines: list[str], front: int) -> list[Statement]:
+    """One statement group per front-matter key: a key's indented continuation lines and block-scalar body
+    (description: > ...) belong to it."""
+    out: list[Statement] = []
+    parts: list[tuple[int, str]] = []
+    for number, line in enumerate(lines[1 : max(front - 1, 1)], 2):
+        if FRONT_KEY.match(line):
+            _flush(parts, out)
+        if line.strip():
+            parts.append((number, line))
+    _flush(parts, out)
+    return out
 
 
 def _body(lines: list[str], skip: int) -> list[Statement]:
@@ -159,7 +171,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
         if fence is not None:
             fence = _fenced(line, number, fence, code, out)
             continue
-        if depths[k] != depth:
+        if depths[k] != depth and not _lazy(depths[k], parts, line):
             _flush(parts, out)
             depth = depths[k]
         if (opener := FENCE.match(line)) or not line.strip() or BLOCK_START.match(line) or k in tables:
@@ -174,6 +186,11 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     _flush(parts, out)
     _flush_code(code, out)
     return out
+
+
+def _lazy(depth: int, parts: list[tuple[int, str]], line: str) -> bool:
+    """A line outside the quote that continues a quoted paragraph (CommonMark's lazy continuation)."""
+    return depth == 0 and bool(parts) and bool(line.strip()) and not (FENCE.match(line) or BLOCK_START.match(line))
 
 
 def _table_rows(lines: list[str]) -> set[int]:

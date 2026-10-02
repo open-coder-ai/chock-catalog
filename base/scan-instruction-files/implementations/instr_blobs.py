@@ -15,6 +15,11 @@ from chock_scan import entropy
 
 MIN_BLOB = 80
 #: A wrapped blob's lines: each one at least this long and nothing but base64 characters.
+#: A run of 40+ base64 characters that ends a line, the start of a wrapped blob; the run that starts the line
+#: after the wrapped lines ends it; a quote or list prefix in front of a wrapped line is set aside.
+TAIL = re.compile(r"(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{40,}={0,2}\s*$")
+HEAD = re.compile(r"[A-Za-z0-9+/_-]+={0,2}")
+PREFIX = re.compile(r"^\s*(?:>\s?)*(?:[-*+]\s+|\d{1,9}[.)]\s+)?")
 WRAPPED_LINE = re.compile(r"\s*([A-Za-z0-9+/_-]{40,}={0,2})\s*")
 B64 = re.compile(r"(?<![A-Za-z0-9+/_-])[A-Za-z0-9+/_-]{%d,}={0,2}(?![A-Za-z0-9+/_=-])" % MIN_BLOB)
 DATA_URI = re.compile(r"(?i)data:[a-z0-9.+/-]*(?:;[a-z0-9=._-]+)*;base64,\s*$")
@@ -65,19 +70,40 @@ def _runs(lines: list[str]) -> list[tuple[int, int, str, str, bool]]:
     carry = False  # a data: URI payload that ran to the end of the previous line continues on this one
     while n < len(lines):
         previous = lines[n - 1] if n else ""
-        if WRAPPED_LINE.fullmatch(lines[n]):
-            end = n
-            while end + 1 < len(lines) and WRAPPED_LINE.fullmatch(lines[end + 1]):
-                end += 1
-            joined = "".join(line.strip() for line in lines[n : end + 1])
-            if end > n and len(joined) >= MIN_BLOB:
-                out.append((n + 1, end + 1, joined, "", DATA_URI.search(previous[-BEFORE:]) is not None))
-                n = end + 1
-                continue
+        if (chain := _chain(lines, n)) is not None:
+            end, joined, before = chain
+            data = DATA_URI.search(before) or (not before.strip() and DATA_URI.search(previous[-BEFORE:]))
+            out.append((n + 1, end + 1, joined, before, bool(data)))
+            n = end + 1
+            continue
         found, carry = _line_runs(lines[n], n + 1, previous, carry=carry)
         out += found
         n += 1
     return out
+
+
+def _chain(lines: list[str], n: int) -> tuple[int, str, str] | None:
+    """A blob wrapped over lines from line `n`: a 40+ character run that ends the line, base64-only lines
+    after it (behind any quote or list prefix), and the run that starts the line after them. (last line
+    index, joined run, text before the run on its first line), or None when nothing follows or it is short."""
+    tail = TAIL.search(lines[n])
+    if tail is None:
+        return None
+    parts, end = [tail.group().strip()], n
+    while end + 1 < len(lines):
+        inner = PREFIX.sub("", lines[end + 1])
+        if whole := WRAPPED_LINE.fullmatch(inner):
+            parts.append(whole.group(1))
+            end += 1
+            continue
+        if head := HEAD.match(inner):
+            parts.append(head.group())
+            end += 1
+        break
+    joined = "".join(parts)
+    if end == n or len(joined) < MIN_BLOB:
+        return None
+    return end, joined, lines[n][max(0, tail.start() - BEFORE) : tail.start()]
 
 
 def _line_runs(

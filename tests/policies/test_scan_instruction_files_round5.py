@@ -55,7 +55,9 @@ def test_round_five_variants_are_caught(text: str, rule: str) -> None:
 
 
 def test_a_quote_changes_depth_and_ends_a_statement() -> None:
-    assert len(text_mod.statements("Plain line.\n> quoted\n> more\nplain again\n")) == 3
+    assert len(text_mod.statements("Plain line.\n> quoted\n> more\n\nplain again\n")) == 3
+    # A line right after quoted text continues it (CommonMark's lazy continuation).
+    assert len(text_mod.statements("Plain line.\n> quoted\n> more\nplain again\n")) == 2
 
 
 def test_a_url_host_colon_still_glues_a_run_to_it() -> None:
