@@ -62,13 +62,15 @@ def pem_blocks(text: str) -> list[Finding]:
         ends.setdefault(match[1], []).append(match.start())
     found = []
     for index, match in enumerate(starts):
-        limit = min(starts[index + 1].start() if index + 1 < len(starts) else len(text), match.end() + MAX_BODY)
+        following = starts[index + 1].start() if index + 1 < len(starts) else len(text)
         same = ends.get(match[1], [])
         at = bisect.bisect_left(same, match.end())
-        closing = [end for end in same[at : at + MAX_ENDS] if end < limit]
-        # An END forged straight after BEGIN must not cut the body short: try each END up to the next BEGIN.
-        for end, terminated in [*((end, True) for end in closing), (limit, False)]:
-            body = text[match.end() : end]
+        # Every END before the next BEGIN closes the block, however far away (padding must not push it out
+        # of reach); the body read is bounded by MAX_BODY. A forged END straight after BEGIN is passed over.
+        closing = [end for end in same[at : at + MAX_ENDS] if end < following]
+        cap = match.end() + MAX_BODY
+        for end, terminated in [*((end, True) for end in closing), (following, False)]:
+            body = text[match.end() : min(end, cap)]
             if body_size(body, terminated=terminated) >= MIN_BODY:
                 level = ASK if encrypted(match[1], body, terminated=terminated) else BLOCK
                 found.append(

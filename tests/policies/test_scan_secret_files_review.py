@@ -179,3 +179,17 @@ def test_review_round_five_many_begin_end_pairs_stay_linear() -> None:
     started = time.monotonic()
     sbf_judge.judge("x.txt", f"{BEGIN}\n{END}\n" * 60000)
     assert time.monotonic() - started < 10
+
+
+def test_review_round_six_padding_past_the_body_limit_does_not_hide_the_end() -> None:
+    body = base64.b64encode(random.Random(6).randbytes(48)).decode()  # noqa: S311 -- a fixed fake body
+    lines = [body[i : i + 39] for i in range(0, len(body), 39)] + ["A" * 64] * 1000
+    text = f"{BEGIN}\n" + "\n".join(lines) + f"\n{END}\n"
+    assert {f.rule for f in sbf_judge.judge("keys/k.pem", text)} == {"sbf-private-key-files"}
+
+
+def test_review_round_six_padding_interleaved_between_key_lines_is_measured_out() -> None:
+    body = base64.b64encode(random.Random(7).randbytes(48)).decode()  # noqa: S311 -- a fixed fake body
+    lines = [line for i in range(0, len(body), 8) for line in (body[i : i + 8], "A" * 64)]
+    text = f"{BEGIN}\n" + "\n".join(lines) + f"\n{END}\n"
+    assert {f.rule for f in sbf_judge.judge("keys/k.pem", text)} == {"sbf-private-key-files"}

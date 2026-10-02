@@ -144,11 +144,15 @@ def body_size(block: str, *, terminated: bool = True) -> int:
     Placeholder text between the armor lines (`Paste your key here`, a row of X) is base64 letters too,
     but no key body is that orderly: key bytes score about 5.3-5.9 bits per character (hex about 4).
     """
-    body = "".join(body_lines(block, terminated=terminated))
+    tokens = body_lines(block, terminated=terminated)
+    body = "".join(tokens)
     floor = HEX_BITS if HEX.fullmatch(body) else RANDOM_BITS_BODY
+    # Padding tokens of one repeated character (decoded as ignored zero bytes) are measured out, so they
+    # cannot dilute key lines interleaved with them; they still count towards the size.
+    measured = "".join(token for token in tokens if not REPEAT.fullmatch(token))
     # Any window of key bytes counts: padding (a run of A, which decodes to ignored zero bytes) must not
     # dilute a real key under the floor. Prose and placeholder windows stay under it.
-    windows = (body[at : at + WINDOW] for at in range(0, max(len(body) - WINDOW, 0) + 1, WINDOW // 4))
+    windows = (measured[at : at + WINDOW] for at in range(0, max(len(measured) - WINDOW, 0) + 1, WINDOW // 4))
     return len(body) if any(entropy.shannon(window) >= floor for window in windows) else 0
 
 
