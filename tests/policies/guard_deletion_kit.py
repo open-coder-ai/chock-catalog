@@ -29,6 +29,7 @@ def shipped() -> Iterator[None]:
 
 
 with shipped():
+    from chock_scan import data_table
     from diffshape import changes, hunks, judge, scope, shapes
 
 TABLE = shapes.load(IMPL / "data" / "shapes.json")
@@ -56,6 +57,8 @@ __all__ = [
     "SCOPE",
     "TABLE",
     "Path",
+    "data_table",
+    "shipped",
     "changes",
     "hunks",
     "judge",
