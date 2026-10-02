@@ -1,16 +1,16 @@
 # Agent Permissions Scan
 
-`agent-permissions-scan` · rule · enforces
+`agent-permissions-scan` · rule · advises
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `agent-permissions-scan.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 43 total, 43 executable |
+| **Mechanism** | rule text |
+| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
+| **Compiles to** | `ambient-rule` |
+| **Eval cases** | 43 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,24 +25,24 @@ Permission grants an agent's config can hold that a line-based pattern cannot ju
 
 ## How it works
 
-A guard script, `implementations/agent-permissions-scan.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
-
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```text
 agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vscode/settings.json|.cursor/cli.json|opencode.json|.aider.conf.yml|.continue/**): grant named, scoped actions only
 never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve; never(remove): deny entry; observe: warns at commit+tool_use, enforce later
 ```
 
+It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/agent-permissions-scan/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+An **ambient rule**. `recompile` writes `.chock/compiled/agent-permissions-scan/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
 
 ## Installing it
 
 ```bash
 chock add agent-permissions-scan
-chock sync .
+chock sync --repo .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:
