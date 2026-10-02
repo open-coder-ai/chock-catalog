@@ -369,13 +369,14 @@ suite:
   - id: tc-029
     category: behavior
     prompt: The agent adds a chock waiver comment to silence another policy's finding.
-    expect: 'The write asks a person: a chock waiver is a suppression marker as well.'
+    expect: 'This gate allows it: chock''s own waivers are judged by the engine, which honours an agent-added
+      waiver only when that line is already committed in HEAD, so the other policy still refuses.'
     execute:
       event: tool_use
       writes:
         tests/test_a.py: "import pytest\n\n\n@pytest.mark.skip  # chock: allow test-skip\ndef test_a():\n\
           \    pass\n"
-      expect: ask
+      expect: allow
   - id: tc-030
     category: behavior
     prompt: 'Adversarial: the nosec marker hides after other text in a C-style block comment.'
@@ -398,6 +399,30 @@ suite:
           \    steps:\n      - uses: github/codeql-action/analyze@v3\n"
       expect: ask
   - id: tc-032
+    category: negative_trigger
+    prompt: A commit adds a policy description that quotes a marker without a comment opener before it.
+    expect: 'The commit is allowed: a marker quoted in prose is not a comment a scanner reads.'
+    execute:
+      event: commit
+      files:
+        policy/manifest.yaml: "description: >\n  Waiver: 'pragma: allowlist secret' on the same line;\
+          \ checkov:skip is not honoured.\n"
+      expect: allow
+  - id: tc-033
+    category: behavior
+    prompt: 'Adversarial: a hadolint ignore is written in mixed case after a Dockerfile comment opener.'
+    expect: 'The commit asks a person: the inline markers are matched case-insensitively where the scanner
+      is.'
+    execute:
+      event: commit
+      files:
+        Dockerfile: '# HadoLint Ignore=DL3002
+
+          USER root
+
+          '
+      expect: ask
+  - id: tc-034
     category: edge
     prompt: A person reviewed the false positive and keeps the marker.
     expect: 'A person commits from their own shell with CHOCK_ALLOW=scan-suppression-markers for that

@@ -731,10 +731,10 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 32
-  eval_executed: 31
+  eval_cases: 34
+  eval_executed: 33
   description: 'Asks a person before a change adds a scanner suppression: inline ignore markers (bandit,
     gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag,
-    zizmor, gitleaks, detect-secrets, chock waivers, CodeQL, Java/C#/Rust security allows), scanner
-    ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs:
-    commit, agent write, turn''s end; CI annotates. Line-local, friction not a boundary.'
+    zizmor, gitleaks, detect-secrets, CodeQL, Java/C#/Rust security allows), scanner ignore files and
+    skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent
+    write, turn''s end; CI annotates. Line-local, friction not a boundary.'

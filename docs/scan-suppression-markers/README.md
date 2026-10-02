@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 32 total, 31 executable |
+| **Eval cases** | 34 total, 33 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Asks a person before a change adds a scanner suppression: inline ignore markers (bandit, gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag, zizmor, gitleaks, detect-secrets, chock waivers, CodeQL, Java/C#/Rust security allows), scanner ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent write, turn's end; CI annotates. Line-local, friction not a boundary.
+Asks a person before a change adds a scanner suppression: inline ignore markers (bandit, gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag, zizmor, gitleaks, detect-secrets, CodeQL, Java/C#/Rust security allows), scanner ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent write, turn's end; CI annotates. Line-local, friction not a boundary.
 
 ## What it solves
 

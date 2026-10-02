@@ -1,6 +1,6 @@
 ---
 name: scan-suppression-markers
-description: "Asks a person before a change adds a scanner suppression: inline ignore markers (bandit, gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag, zizmor, gitleaks, detect-secrets, chock waivers, CodeQL, Java/C#/Rust security allows), scanner ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent write, turn's end; CI annotates. Line-local, friction not a boundary."
+description: "Asks a person before a change adds a scanner suppression: inline ignore markers (bandit, gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag, zizmor, gitleaks, detect-secrets, CodeQL, Java/C#/Rust security allows), scanner ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent write, turn's end; CI annotates. Line-local, friction not a boundary."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Scan Suppression Markers
 
-Asks a person before a change adds a scanner suppression: inline ignore markers (bandit, gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag, zizmor, gitleaks, detect-secrets, chock waivers, CodeQL, Java/C#/Rust security allows), scanner ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent write, turn's end; CI annotates. Line-local, friction not a boundary.
+Asks a person before a change adds a scanner suppression: inline ignore markers (bandit, gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag, zizmor, gitleaks, detect-secrets, CodeQL, Java/C#/Rust security allows), scanner ignore files and skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent write, turn's end; CI annotates. Line-local, friction not a boundary.
 
 ```
 on(commit|tool_use): ask(script) script=scan-suppression-markers-gate.py
