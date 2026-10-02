@@ -211,6 +211,10 @@ def test_every_name_in_a_header_must_be_the_package_installed() -> None:
     url = "https://registry.yarnpkg.com/evil-pad/-/evil-pad-1.3.1.tgz"
     classic = f'evil-pad@^1.3.1, left-pad@^1.3.1:\n  version "1.3.1"\n  resolved "{url}"\n  integrity {h()}\n'
     assert rules_of("yarn.lock", classic) == [model.NPM_ALIAS]
+    bare = classic.replace(", ", ",", 1)  # yarn's tokenizer ends an unquoted spec at the comma alone
+    assert rules_of("yarn.lock", bare) == [model.NPM_ALIAS]
+    quoted = classic.replace("evil-pad@^1.3.1, left-pad@^1.3.1", '"evil-pad@^1.3.1","left-pad@^1.3.1"')
+    assert rules_of("yarn.lock", quoted) == [model.NPM_ALIAS]
     plain = f'evil-pad@^1.3.0, evil-pad@^1.3.1:\n  version "1.3.1"\n  resolved "{url}"\n  integrity {h()}\n'
     assert rules_of("yarn.lock", plain) == []
     berry = (

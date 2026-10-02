@@ -22,6 +22,8 @@ ARCHIVE_URL = "__archiveUrl"
 BERRY_GIT = re.compile(r"^(?:git[+:]|github:)|\.git/?$|^https://github\.com/[^/]+/[^/]+/?$", re.IGNORECASE)
 SELECTORS = frozenset({"commit", "head", "tag", "semver"})
 PERCENT = re.compile(r"%([0-9A-Fa-f]{2})")
+#: Classic header specs as yarn's tokenizer splits them: a comma outside quotes ends one, spaces or not.
+HEADER_PART = re.compile(r'\s*(?:"(?:[^"\\]|\\.)*"|[^,"]+)')
 #: Classic: a field is indented two spaces, a nested map's entries four. Berry: (entry, field) paths.
 FIELD, NESTED, BERRY_FIELD = 2, 4, 2
 
@@ -57,7 +59,8 @@ def _classic_blocks(text: str) -> list[tuple[list[str], dict[str, str], int]]:
             msg = f"line {number} is not a yarn.lock entry, field or comment"
             raise LockError(msg)
         if indent == 0:
-            blocks.append(([_unquote(spec.strip()) for spec in line[:-1].split(", ")], {}, number))
+            specs = [_unquote(part.strip()) for part in HEADER_PART.findall(line[:-1]) if part.strip()]
+            blocks.append((specs, {}, number))
             nested = False
         elif not blocks or indent not in (FIELD, NESTED) or (indent == NESTED and not nested):
             msg = f"line {number} is indented where no entry or field holds it"
