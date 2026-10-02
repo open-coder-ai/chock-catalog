@@ -274,6 +274,8 @@ function baselineOf(r){
   return c && RANK[c] !== undefined && RANK[c] < RANK[d] ? c : d;
 }
 function isWeak(r, v){ return (RANK[v] ?? RANK.allow) > RANK[baselineOf(r)]; }
+/* an unticked row is unspoken: it falls to the pack default, a weakening when something stricter stood */
+function rowWeak(r){ const k = "rule:"+r[0]; return state.excluded[k] ? isWeak(r, defaultOf(r)) : isWeak(r, state.answers[k]); }
 /* a quality rule left at allow, where nothing stricter stood, is silence: written out, it would read as a loosening */
 function isSilent(r, v){ return v === "allow" && baselineOf(r) === "allow"; }
 const LS_KEY = "chock-security-setup:" + (AGENT || "agent");
@@ -413,7 +415,7 @@ function highestTopicVisited(){
   let t = 0; queue.forEach(q => { if (q.kind !== "info" && q.kind !== "verdict" && state.answers[q.id] !== undefined) t = Math.max(t, q.topic); });
   return (state.returning || state.reviewReached) ? REVIEW : Math.max(t, topicOf(state.i));
 }
-function weakened(){ return RULES.filter(r => !state.excluded["rule:"+r[0]] && isWeak(r, state.answers["rule:"+r[0]])); }
+function weakened(){ return RULES.filter(rowWeak); }
 function atDeny(){ return RULES.filter(r => (state.excluded["rule:"+r[0]] ? defaultOf(r) : state.answers["rule:"+r[0]]) === "deny").length; }
 
 function renderTrack(){
@@ -594,7 +596,7 @@ function row(qd, extra){
   const key = qd.id;
   const off = !!state.excluded[key];
   const v = state.answers[key];
-  const weak = qd.kind === "verdict" && !off && isWeak(qd.rule, v);
+  const weak = qd.kind === "verdict" && rowWeak(qd.rule);
   const r = document.createElement("div"); r.className = "rrow" + (off ? " off" : "") + (weak ? " weak" : "");
   const sub = qd.kind === "verdict" ? `<code>${esc(qd.rule[0])}</code>` : esc(qd.short);
   r.innerHTML = `<input type="checkbox" ${off?"":"checked"} aria-label="include ${esc(qd.short)}">
@@ -604,7 +606,7 @@ function row(qd, extra){
   r.querySelector("input").onchange = e => {
     if (e.target.checked) delete state.excluded[key]; else state.excluded[key] = true;
     r.classList.toggle("off", !e.target.checked);
-    r.classList.toggle("weak", e.target.checked && qd.kind === "verdict" && isWeak(qd.rule, state.answers[key]));
+    r.classList.toggle("weak", qd.kind === "verdict" && rowWeak(qd.rule));
     refreshJson(); renderStats(); saveState(); };
   r.querySelector(".editlink").onclick = () => jumpToQuestion(qd.id);
   return r;
