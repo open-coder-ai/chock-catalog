@@ -65,6 +65,21 @@ def test_a_guard_removed_while_moving_the_file_out_of_scope_is_still_read(repo: 
     assert code == 3 and "src/api.py" in err
 
 
+def test_a_pragma_planted_outside_the_scope_cannot_be_moved_in_to_waive_a_later_removal(repo: Path) -> None:
+    line = "    if not user.admin: raise Denied  # pragma: allowlist guard-removal\n"
+    body = "def f(user):\n" + line + "    work()\n"
+    stage(repo, {"tests/planted.py": body})
+    assert run(repo, "agent-commit")[0] == 0  # out of scope: nothing reads it yet
+    scriptkit.git(repo, "commit", "-qm", "plant")
+    scriptkit.git(repo, "mv", "tests/planted.py", "src/planted.py")
+    code, err = run(repo, "agent-commit")
+    assert code == 3 and "moved here from tests/planted.py" in err
+    assert run(repo, "commit") == (0, "")  # a person's move is theirs to make
+    scriptkit.git(repo, "commit", "-qm", "move")
+    stage(repo, {"src/planted.py": "def f(user):\n    work()\n"})
+    assert run(repo, "commit") == (0, "")  # after a person's move, the committed pragma is theirs
+
+
 def test_an_absolute_write_path_is_judged_and_one_outside_the_repo_is_refused(repo: Path) -> None:
     scriptkit.write(repo, {"Makefile": MAKE_GONE})  # a post-write hook: disk already holds the text
     assert run(repo, "tool_use", {str(repo / "Makefile"): MAKE_GONE})[0] == 1

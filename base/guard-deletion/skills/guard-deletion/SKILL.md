@@ -1,6 +1,6 @@
 ---
 name: guard-deletion
-description: "trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check, row-level security or narrow file mode, or swaps one for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit."
+description: "trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check or row-level security, or swaps one of those or a narrow file mode for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Guard Deletion and Mitigation Removal
 
-trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check, row-level security or narrow file mode, or swaps one for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.
+trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check or row-level security, or swaps one of those or a narrow file mode for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.
 
 ```
 on(commit|tool_use): block(script) script=guard-deletion-gate.py

@@ -183,8 +183,8 @@
       "id": "file-mode",
       "label": "restrictive file mode",
       "trigger": "replaced-by-weak",
-      "removed": "(?i)\\b(?:chmod\\w*|fchmod|FileMode|mkdir\\w*|MkdirAll|OpenFile|WriteFile|defaultMode|\\bmode\\b|umask)\\b.{0,60}\\b0?o?[0-7][0-7][0145]\\b",
-      "weak": "(?i)\\b(?:chmod\\w*|fchmod|FileMode|mkdir\\w*|MkdirAll|OpenFile|WriteFile|defaultMode|\\bmode\\b|umask)\\b.{0,60}\\b0?o?(?:[0-7][0-7][2367])\\b|\\b(?:chmod)\\b.{0,30}\\b(?:[ugoa]*\\+w|a=rwx|[ugoa]+\\+rwx)\\b",
+      "removed": "(?i)\\b(?:chmod\\w*|fchmod|FileMode|mkdir\\w*|MkdirAll|OpenFile|WriteFile|defaultMode)\\b.{0,60}\\b0?o?[0-7][0-7][0145]\\b|\\bmode\\b\\W{0,4}0o?[0-7][0-7][0145]\\b",
+      "weak": "(?i)\\b(?:chmod\\w*|fchmod|FileMode|mkdir\\w*|MkdirAll|OpenFile|WriteFile|defaultMode)\\b.{0,60}\\b0?o?(?:[0-7][0-7][2367])\\b|\\bmode\\b\\W{0,4}0o?[0-7][0-7][2367]\\b|\\b(?:chmod)\\b.{0,30}\\b(?:[ugoa]*\\+w|a=rwx|[ugoa]+\\+rwx)\\b",
       "fix": "grant the narrowest mode that works (for example 750 or 640), never world-writable"
     }
   ]

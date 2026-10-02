@@ -271,3 +271,15 @@ suite:
         src/parse.c: "int f(int n) {\n  if (n > MAX) return -1;\n  return n;\n}\n"
       writes:
         src/parse.c: "int f(int n) {\n  return n;\n}\n\u0000"
+  - id: tc-023
+    category: negative_trigger
+    prompt: "The agent changes the status code returned beside a variable named mode; no file mode is involved."
+    expect: "The write proceeds: a number on a line with the word mode is not a file-mode swap."
+    provenance: authored
+    execute:
+      event: tool_use
+      expect: allow
+      head_files:
+        app/api.py: "def reply(mode):\n    return render(mode=mode), 404\n"
+      writes:
+        app/api.py: "def reply(mode):\n    return render(mode=mode), 403\n"

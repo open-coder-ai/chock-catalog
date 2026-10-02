@@ -148,6 +148,8 @@ BLOCKED = [
     (["os.chmod(p, 0o600)"], ["os.chmod(p, 0o777)"], "file-mode"),
     (["  defaultMode: 0640"], ["  defaultMode: 0666"], "file-mode"),
     (["chmod 755 run.sh"], ["chmod a+w run.sh"], "file-mode"),
+    (["  mode: 0640"], ["  mode: 0666"], "file-mode"),
+    (["os.makedirs(p, mode=0o700)"], ["os.makedirs(p, mode=0o777)"], "file-mode"),
 ]
 
 
@@ -174,6 +176,9 @@ KEPT = [
     ([], ["chmod 777 /tmp/x"]),
     ([], ["r = requests.get(u, verify=False)"]),
     ([], ["CFLAGS += -fno-stack-protector"]),
+    (["    mode='a'; return 404"], ["    mode='b'; return 403"]),  # a status code beside the word mode
+    (["retry mode 100"], ["retry mode 202"]),
+    (["umask 077"], ["umask 000"]),  # umask digits mean the reverse of chmod's; not read
 ]
 
 

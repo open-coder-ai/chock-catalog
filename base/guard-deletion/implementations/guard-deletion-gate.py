@@ -26,6 +26,7 @@ PRAGMA = re.compile(
 )
 WAIVER_NAMES = {judge.GUARD_RULE: "guard-removal", judge.MITIGATION_RULE: "mitigation-removal"}
 MOVE_ADVICE = "a person confirms the move keeps its checks, or keep the file where the checks are judged"
+MOVE_IN_ADVICE = "a person confirms the move, or keep the file where it was"
 PRAGMA_ADVICE = "remove it; a person who reviewed the removal adds the pragma"
 MAX_CHANGED_LINES = 20000
 MAX_CHANGED_CHARS = 1 << 20
@@ -87,13 +88,18 @@ def moved(hunk: Hunk) -> set[str]:
     return {raw.strip() for raw in hunk.removed}
 
 
-def moves(hunks: list[Hunk], in_scope: dict[str, tuple[str, ...]]) -> list[judge.Finding]:
-    """A file moved from a judged path to one that is not: its guards leave the gate's sight."""
+def moves(hunks: list[Hunk], in_scope: dict[str, tuple[str, ...]], *, inward: bool = False) -> list[judge.Finding]:
+    """Moves out of scope always, and into it when `inward` (an agent's event): that launders a pragma."""
     seen = {(h.old, h.path) for h in hunks if h.old and h.old != h.path}
-    return [
+    out = [
         judge.Finding(judge.GUARD_RULE, new, 1, "moved-out-of-scope", f"a file moved here from {old}", MOVE_ADVICE)
         for old, new in sorted(seen)
         if scope.in_scope(old, in_scope) and not scope.in_scope(new, in_scope)
+    ]
+    return out + [
+        judge.Finding(judge.GUARD_RULE, new, 1, "moved-into-scope", f"a file moved here from {old}", MOVE_IN_ADVICE)
+        for old, new in sorted(seen)
+        if inward and scope.in_scope(new, in_scope) and not scope.in_scope(old, in_scope)
     ]
 
 
@@ -152,7 +158,7 @@ def main() -> int:
         return ASK
     waived = make_waiver(root, event)
     started = time.monotonic()
-    findings = moves(raw_hunks, in_scope)
+    findings = moves(raw_hunks, in_scope, inward=event not in HUMAN_EVENTS)
     findings += [] if event in HUMAN_EVENTS else agent_pragmas(hunks, table)
     for hunk in hunks:
         if time.monotonic() - started > BUDGET:
