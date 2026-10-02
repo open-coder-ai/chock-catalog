@@ -8,14 +8,46 @@ from chock_shellparse import abbreviates, flags_of, git_parts
 from pathconf import code_key, config
 from pathmatch import DYNAMIC, values
 
+# Every git command (porcelain and plumbing, as `git help -a` lists them); any other word is a user alias, or `git-NAME` from the PATH.
+_BUILTIN = frozenset(
+    (
+        *("add", "am", "annotate", "apply", "archive", "bisect", "blame", "branch", "bundle", "cat-file", "check-attr"),
+        *("check-ignore", "check-ref-format", "checkout", "checkout-index", "cherry", "cherry-pick", "clean", "clone"),
+        *(
+            "column",
+            "commit",
+            "commit-graph",
+            "commit-tree",
+            "config",
+            "count-objects",
+            "credential",
+            "describe",
+            "diff",
+        ),
+        *("diff-files", "diff-index", "diff-tree", "difftool", "fast-export", "fast-import", "fetch", "filter-branch"),
+        *("fmt-merge-msg", "for-each-ref", "for-each-repo", "format-patch", "fsck", "gc", "get-tar-commit-id", "grep"),
+        *("hash-object", "help", "hook", "index-pack", "init", "interpret-trailers", "log", "ls-files", "ls-remote"),
+        *("ls-tree", "mailinfo", "mailsplit", "maintenance", "merge", "merge-base", "merge-file", "merge-index"),
+        *("merge-tree", "mergetool", "mktag", "mktree", "multi-pack-index", "mv", "name-rev", "notes", "pack-objects"),
+        *("pack-refs", "patch-id", "prune", "prune-packed", "pull", "push", "range-diff", "read-tree", "rebase"),
+        *("reflog", "remote", "repack", "replace", "rerere", "reset", "restore", "rev-list", "rev-parse", "revert"),
+        *("rm", "send-email", "shortlog", "show", "show-branch", "show-index", "show-ref", "sparse-checkout", "stash"),
+        *("status", "stripspace", "submodule", "switch", "symbolic-ref", "tag", "unpack-file", "unpack-objects"),
+        *("update-index", "update-ref", "update-server-info", "var", "verify-commit", "verify-pack", "verify-tag"),
+        *("version", "whatchanged", "worktree", "write-tree", "gui", "citool", "instaweb", "daemon", "web--browse"),
+        *("upload-pack", "receive-pack", "upload-archive", "remote-ext", "request-pull", "scalar", "cvsimport", "svn"),
+    )
+)
+
 
 def git(w: Any, args: list[str], env: dict[str, str]) -> bool:
     """checkout, restore, rm, mv overwrite or delete worktree files; `restore` and `rm` always take paths."""
     if any("core.hookspath" in a.lower() for a in args) and not {"--get", "--list", "-l"} & set(args):
         return True
     sub, conf, rest = git_parts(args)
+    alias = bool(sub) and sub not in _BUILTIN and w.hit(w.text)  # an alias the line does not define may run anything
     fused = [a[2:] for a in args[: len(args) - len(rest)] if a.startswith("-c") and "=" in a]  # `-ckey=value`
-    if any(code_key(c.split("=", 1)[0]) for c in (*conf, *fused)):
+    if alias or any(code_key(c.split("=", 1)[0]) for c in (*conf, *fused)):
         return True
     if sub == "config":
         return config(w, rest, env)

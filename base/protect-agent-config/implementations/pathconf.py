@@ -40,19 +40,25 @@ _LONG = {
 }
 _SUBCOMMANDS = frozenset(("set", "unset", "get", "list", "edit", "rename-section", "remove-section"))
 _SHORT_VALUE = "ft"  # `-f FILE` and `-t TYPE` take the rest of the word, or the next word
-# Git commands an alias can name and still run no program of the agent's choosing; `submodule` (foreach), `bisect` (run),
-# `filter-branch`, `difftool`, `mergetool`, `grep -O`, `help` and a name that is not here are left out.
+# Git commands an alias can name and still run no program of the agent's choosing. Left out: `config` (a later `git NAME` writes
+# any key unguarded), `clone`, `fetch`, `pull`, `push`, `ls-remote` (`--upload-pack`, `--receive-pack`, `-u`, `-c`), `rebase` (`-x`
+# in any spelling), `archive`, `init` (`--template`), `submodule` (foreach), `bisect` (run), `filter-branch`, `difftool`,
+# `mergetool`, `grep -O`, `help` and a name that is not here (it would run `git-NAME` from the PATH).
 _GIT_COMMANDS = frozenset(
     (
-        *("add", "am", "annotate", "apply", "archive", "blame", "branch", "bundle", "cat-file", "checkout", "cherry"),
-        *("cherry-pick", "clean", "clone", "commit", "config", "count-objects", "describe", "diff", "fetch"),
-        *("format-patch", "fsck", "gc", "hash-object", "init", "log", "ls-files", "ls-remote", "ls-tree"),
-        *("merge", "merge-base", "mv", "name-rev", "notes", "pull", "push", "range-diff", "rebase", "reflog"),
+        *("add", "am", "annotate", "apply", "blame", "branch", "bundle", "cat-file", "checkout", "cherry"),
+        *("cherry-pick", "clean", "commit", "count-objects", "describe", "diff"),
+        *("format-patch", "fsck", "gc", "hash-object", "log", "ls-files", "ls-tree"),
+        *("merge", "merge-base", "mv", "name-rev", "notes", "range-diff", "reflog"),
         *("remote", "repack", "replace", "reset", "restore", "rev-list", "rev-parse", "revert", "rm", "shortlog"),
         *("show", "show-branch", "sparse-checkout", "stash", "status", "switch", "symbolic-ref", "tag", "worktree"),
         *("update-index", "update-ref", "whatchanged", "diff-tree", "diff-files", "diff-index", "prune"),
     )
 )
+# Options that make a command named in an alias run a program: `-x` in any bundle (`rebase`), `--exec`, `--upload-pack`, `--receive-pack`,
+# `--template`, `--run`, `--ext-diff`, each by any spelling that starts the same; and for `merge` a strategy (`git-merge-NAME`).
+_RUNNING = re.compile(r"-(?:[A-Za-z]*x|-(?:ex|upl|rec|tem|run|ext)[a-z-]*)")
+_STRATEGY = re.compile(r"-(?:s|X)|--str")
 _KEY_ENV = re.compile(r"GIT_CONFIG_KEY_\d+")
 _LETTERS = re.compile(r"[A-Za-z]{1,3}")
 
@@ -115,15 +121,21 @@ def _bundle(arg: str, following: str, flags: set[str], files: list[str]) -> int:
 
 def harmless_alias(key: str, value: str) -> bool:
     """Whether an alias value runs no program: it starts with a git command that takes no program (a name that is not one
-    would run `git-NAME` from the PATH), and a `!` shell alias, a leading option (`-c`) or an `--exec` option is none of that."""
+    would run `git-NAME` from the PATH), and a `!` shell alias, a leading option (`-c`) or an option that runs one is none of that."""
     words = value.split()
     return (
         key.lower().startswith("alias.")
         and not DYNAMIC.search(value)
         and words[:1] != []
         and words[0] in _GIT_COMMANDS
-        and not any(w == "-x" or w.startswith("--exec") for w in words)
+        and not any(_RUNNING.match(w) or (words[0] == "merge" and _STRATEGY.match(w)) for w in words[1:])
     )
+
+
+def _names(w: Any, value: str, env: dict[str, str]) -> bool:
+    """Whether an alias value names a protected path, or a folder holding one (`--output=` or `-o` at a config folder)."""
+    words = [t for t in re.split(r"[\s=]+", value) if t and not t.startswith("-")]
+    return w.hit(value) or any(w.reaches(t, env, parents=True, whole=True) for t in words)
 
 
 def config(w: Any, args: list[str], env: dict[str, str]) -> bool:
@@ -143,4 +155,4 @@ def config(w: Any, args: list[str], env: dict[str, str]) -> bool:
     if sections:
         return any(name.split(".")[0].lower() in _SECTIONS or DYNAMIC.search(name) for name in words)
     key, value = (*words, "", "")[:2]
-    return code_key(key) and (unsetting or not harmless_alias(key, value))
+    return code_key(key) and (unsetting or not harmless_alias(key, value) or _names(w, value, env))

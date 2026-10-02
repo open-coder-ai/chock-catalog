@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import codecs
 import re
+from collections import deque
 
 from chock_shellparse.parse import Cmd
+from pathescape import decode
 
 _DIRECTIVE = re.compile(r"%(?:%|[-+ #0]*(?:\d+|\*)?(?:\.(?:\d+|\*))?[A-Za-z])")
 _ECHO_FLAGS = re.compile(r"-[neE]+")
@@ -14,29 +15,44 @@ _ECHO_ESCAPES = re.compile(r"-[nE]*e[neE]*")
 _SCRIPTLIKE = re.compile(r"[\s;&|<>$()`]")
 
 
-def decode(text: str) -> str:
-    """Backslash escapes as `printf` and `echo -e` read them."""
-    return codecs.decode(text, "unicode_escape", "replace")
-
-
-def render(fmt: str, args: list[str]) -> str:
-    """What `printf FORMAT ARGS` prints: the format applied to the arguments, over again while arguments are left."""
+def render(fmt: str, args: list[str]) -> tuple[str, bool]:
+    """What `printf FORMAT ARGS` prints (the format applied over again while arguments are left), and whether every escape was known."""
     out: list[str] = []
-    queue = list(args)
+    queue = deque(args)
+    sure = True
     while True:
         used, at = False, 0
         for found in _DIRECTIVE.finditer(fmt):
-            out.append(decode(fmt[at : found.start()]))
+            piece = decode(fmt[at : found.start()], "fmt")
+            out.append(piece.text)
+            sure &= piece.known
             at = found.end()
             if found[0] == "%%":
                 out.append("%")
                 continue
             used = True
-            arg = queue.pop(0) if queue else ""
-            out.append(decode(arg) if found[0].endswith("b") else arg)
-        out.append(decode(fmt[at:]))
+            arg = queue.popleft() if queue else ""
+            if not found[0].endswith("b"):
+                out.append(arg)
+                continue
+            piece = decode(arg, "b")
+            out.append(piece.text)
+            sure &= piece.known
+            if piece.stop:  # `\c` in a `%b` argument ends all output
+                return "".join(out), sure
+        piece = decode(fmt[at:], "fmt")
+        out.append(piece.text)
+        sure &= piece.known
         if not (used and queue):
-            return "".join(out)
+            return "".join(out), sure
+
+
+def _echoed(text: str) -> tuple[list[str], bool]:
+    """The texts `echo -e` can print: bash reads an octal escape only as a zero and up to three digits, other shells' echo any `NNN` too."""
+    strict, loose = decode(text, "echo"), decode(text, "b")
+    return list(
+        dict.fromkeys([text, strict.text, loose.text])
+    ), strict.known and loose.known and strict.text == loose.text
 
 
 def shown(cmd: Cmd, docs: dict[str, str]) -> tuple[list[str], bool]:
@@ -51,10 +67,16 @@ def shown(cmd: Cmd, docs: dict[str, str]) -> tuple[list[str], bool]:
         words = cmd.args[cmd.args[:1] == ["--"] :]
         if words[:1] == ["-v"]:
             return [], exact  # `printf -v x ...` assigns; it prints nothing
-        return ([render(words[0], words[1:])] if words else []), exact
+        if not words:
+            return [], exact
+        text, sure = render(words[0], words[1:])
+        return [text], exact and sure
     words = [a for a in cmd.args if not _ECHO_FLAGS.fullmatch(a)]
     text = " ".join(words)
-    return ([text, decode(text)] if any(_ECHO_ESCAPES.fullmatch(a) for a in cmd.args) else [text]), exact
+    if not any(_ECHO_ESCAPES.fullmatch(a) for a in cmd.args):
+        return [text], exact
+    found, sure = _echoed(text)
+    return found, exact and sure
 
 
 def strings(cmds: list[Cmd], docs: dict[str, str]) -> list[str]:

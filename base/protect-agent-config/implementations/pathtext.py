@@ -7,6 +7,7 @@ from collections.abc import Callable
 from typing import NamedTuple
 
 from chock_shellparse.parse import _QUOTED, _unquote
+from pathescape import decode
 from pathmatch import FRESH
 
 SUBST = "$__subst__"
@@ -15,8 +16,6 @@ _DOC = re.compile(r"<<(-?)[ \t]*(['\"]?)([^\s'\"<>;&|()]+)\2")
 _DECLARE = re.compile(r"(?:declare|local|readonly|typeset)[ \t]+(?:-[A-Za-z]+[ \t]+)*")
 _DUP = re.compile(r"&[ \t]*(?:\d+-?|-)(?![\w$])")
 _BACKTICKS = re.compile(r"`((?:[^`\\]|\\.)*)(?:`|$)")
-_ESCAPE = re.compile(r"\\(x[0-9a-fA-F]{1,2}|[0-7]{1,3}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|c.|.)", re.DOTALL)
-_SIMPLE = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b", "f": "\f", "v": "\v"}
 _RANGE = re.compile(r"(-?\d+)\.\.(-?\d+)|([A-Za-z])\.\.([A-Za-z])")
 _LIMIT = 128
 # `mktemp` with only these options, and a template (if any) under $TMPDIR, names a fresh path.
@@ -60,16 +59,7 @@ def matching(text: str, start: int) -> int:
 
 def ansi_c(body: str) -> str:
     """The text of `$'...'` with its backslash escapes decoded (`\\x2e`, `\\056`, `\\u002e`, `\\n`)."""
-
-    def one(found: re.Match[str]) -> str:
-        code = found[1]
-        if code[0] in "xuU" and len(code) > 1:
-            return chr(int(code[1:], 16)) if int(code[1:], 16) else ""
-        if code[0] in "01234567":
-            return chr(int(code, 8) & 255) if int(code, 8) & 255 else ""
-        return _SIMPLE.get(code, code[-1])
-
-    return _ESCAPE.sub(one, body)
+    return decode(body, "ansi").text
 
 
 class _Text:

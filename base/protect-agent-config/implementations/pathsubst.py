@@ -47,6 +47,10 @@ _EXPANSION = re.compile(r"\$\{(\w+):?=")
 _LEAD = frozenset(("do", "then", "else", "elif", "if", "while", "until", "!", "command", "builtin", "time"))
 _DECLARING = frozenset(("declare", "typeset", "local", "export", "readonly"))
 _OPERATOR = re.compile(r"(?:[-+*/%&|^]|<<|>>)?=")
+_DYNAMIC = re.compile(r"[$`]")
+_BINDERS = frozenset(
+    ("read", "mapfile", "readarray", "for", "select", "printf", "let", "getopts", "unset", *_DECLARING)
+)
 _STEP = re.compile(r"([A-Za-z_]\w*)(?:\+\+|--)")
 _MANY = 2  # a count that is not 1: the variable is set more than by its one assignment
 _DEPTH = 4
@@ -85,6 +89,10 @@ class _Seen:
             self.counts[found[1]] += 1
             words.pop(0)
         if words:
+            self.opaque |= (
+                _DYNAMIC.search(words[0]) is not None
+            )  # a command named by a variable can be any of the below
+            self.opaque |= _hides(words[0], words[1:])
             self.command(words[0], words[1:], depth)
             self.arithmetic(words)
 
@@ -93,6 +101,7 @@ class _Seen:
         found = _STEP.fullmatch(words[0])
         if found or (len(words) > 1 and _OPERATOR.fullmatch(words[1])):
             self.rebind([found[1] if found else words[0]])
+            self.opaque |= _DYNAMIC.search(words[0]) is not None  # `(( $n = 1 ))` sets the variable $n names
 
     def command(self, name: str, args: list[str], depth: int) -> None:
         plain = [a for a in args if not a.startswith("-")]
@@ -108,12 +117,15 @@ class _Seen:
             self.rebind(re.findall(r"[A-Za-z_]\w*", " ".join(args)))
         elif name in ("getopts", "unset"):
             self.rebind(_identifiers(plain[name == "getopts" :]))
-        elif name == "eval":
-            self.opaque |= any(c in a for a in args for c in "$`")  # computed text can set anything
+        elif name in ("eval", "trap"):
+            body = (
+                " ".join(args) if name == "eval" else _trapped(args)
+            )  # a trap body runs later: on a signal, or before each command
+            self.opaque |= name == "eval" and any(c in a for a in args for c in "$`")  # computed text can set anything
             if depth >= _DEPTH:
                 self.opaque = True  # nested too deep to read
                 return
-            inner = bindings(" ".join(args), depth + 1)
+            inner = bindings(body, depth + 1)
             self.counts.update(inner.counts)
             self.refs |= inner.refs
             self.opaque |= inner.opaque
@@ -131,6 +143,37 @@ class _Seen:
             self.counts[found[1]] += 1 if equals else 0
             if reference:
                 self.refs.update((found[1], *_identifiers([value])))
+
+
+def _targets(name: str, args: list[str]) -> list[str]:
+    """The words of a binder that name the variable it sets (the words a `$` in would make the variable unknown)."""
+    plain = [a for a in args if not a.startswith("-")]
+    if name == "printf":
+        return _printf(args)
+    if name in ("for", "select"):
+        return args[:1]
+    if name in ("getopts", "unset"):
+        return plain[name == "getopts" :]
+    if name == "let":
+        return args
+    if name in _DECLARING:
+        reference = any(a.startswith("-") and not a.startswith("--") and "n" in a for a in args)
+        return [part for a in plain for part in (a.partition("=")[0], a.partition("=")[2] if reference else "")]
+    skipped = {
+        args[k + 1] for k, a in enumerate(args[:-1]) if a in ("-p", "-i", "-d", "-C")
+    }  # a prompt, a text, a delimiter, a callback
+    return [a for a in args if a not in skipped and a != "--"]
+
+
+def _trapped(args: list[str]) -> str:
+    """The body of `trap BODY SIGNAL...` (empty for `trap -p`, `trap -l` and `trap - SIGNAL`)."""
+    words = args[args[:1] == ["--"] :]
+    return "" if not words or words[0] in ("-", "-p", "-l") else words[0]
+
+
+def _hides(name: str, args: list[str]) -> bool:
+    """Whether a binder's variable is given by `$n`, `${n}` or a substitution: it binds a variable the line does not name."""
+    return name in _BINDERS and any(_DYNAMIC.search(a) for a in _targets(name, args))
 
 
 def _identifiers(words: list[str]) -> list[str]:

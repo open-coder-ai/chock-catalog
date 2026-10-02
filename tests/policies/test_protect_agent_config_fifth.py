@@ -197,7 +197,7 @@ def test_only_an_alias_of_a_plain_git_command_runs_no_program(key: str, value: s
     ],
 )
 def test_printf_applies_its_format_to_its_arguments(fmt: str, args: list[str], printed: str) -> None:
-    assert feed.render(fmt, args) == printed
+    assert feed.render(fmt, args)[0] == printed
 
 
 def _cmd(name: str, *args: str, writes: list[str] | None = None, reads: list[str] | None = None) -> SimpleNamespace:
