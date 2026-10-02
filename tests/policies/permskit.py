@@ -8,6 +8,7 @@ from pathlib import Path
 from policies import scriptkit
 
 POLICY, NAME = "agent-permissions-scan", "agent-permissions-scan.py"
+__all__ = ["CLAUDE", "NAME", "POLICY", "keys", "load", "mod", "payload", "rules", "sidecar", "walk"]
 
 
 def _owned(name: str) -> bool:
