@@ -14,6 +14,9 @@ MAX_STATEMENT = 4000
 OVERLAP = 500
 #: A fence opener: up to three spaces, then three or more backticks or tildes.
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
+#: A fence indented more than this is a fence only inside a list item (else it is indented text or code).
+MAX_FENCE_INDENT = 3
+LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d{1,9}[.)])\s")
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, rule or front matter.
 BLOCK_START = re.compile(
     r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|---+\s*$|===+\s*$|<(?:!--|/?(?i:address|article|aside|blockquote"
@@ -160,32 +163,66 @@ def _front_matter(lines: list[str], front: int) -> list[Statement]:
     return out
 
 
+class _Fence(NamedTuple):
+    """An open fence: its marker, and the quote depth and indent of its opener (a container that ends closes it)."""
+
+    mark: str
+    depth: int
+    indent: int
+
+
+def _opener(line: str, *, in_list: bool) -> re.Match[str] | None:
+    """A fence opener: indented 4+ spaces only inside a list item, and a backtick fence's info string holding
+    no backtick (else it is a code span)."""
+    m = FENCE.match(line)
+    if m is None or (_indent(line) > MAX_FENCE_INDENT and not in_list):
+        return None
+    return None if m.group(1)[0] == "`" and "`" in line.strip()[len(m.group(1)) :] else m
+
+
+def _listing(line: str, *, in_list: bool) -> bool:
+    """Whether a list item's content goes on after `line`: a list marker starts one, a non-blank line back at
+    the margin ends it, and a blank or indented line keeps the current state."""
+    if not line.strip():
+        return in_list
+    return bool(LIST_ITEM.match(line)) or (in_list and _indent(line) > 0)
+
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
 def _body(lines: list[str], skip: int) -> list[Statement]:
     """The statements after the front matter: paragraphs, list items, table rows and headings, and fenced
     code lines (a continued line joined with the next). A blockquote is a container: its prefix is set
-    aside and a statement ends only where the quote depth changes."""
+    aside and a statement ends only where the quote depth changes; a fence closes with its container."""
     out: list[Statement] = []
     parts: list[tuple[int, str]] = []
     whole: list[tuple[int, str]] = []  # the paragraph across hard breaks, judged whole as well
     code: list[tuple[int, str]] = []
-    fence: str | None = None
+    fence: _Fence | None = None
     quoted = [QUOTE.match(line) for line in lines[skip:]]
     inner = [line[m.end() :] if m else line for line, m in zip(lines[skip:], quoted, strict=True)]
     depths = [m.group(1).count(">") if m else 0 for m in quoted]
     tables = _table_rows(inner)
-    depth = 0
+    depth, in_list = 0, False
     for k, line in enumerate(inner):
         number = skip + 1 + k
         if fence is not None:
-            fence = _fenced(line, number, fence, code, out)
-            continue
+            if depths[k] >= fence.depth and not (line.strip() and _indent(line) < fence.indent):
+                fence = fence if _fenced(line, number, fence.mark, code, out) else None
+                continue
+            _flush_code(code, out)
+            fence = None
+        in_list = _listing(line, in_list=in_list)
         if depths[k] != depth and not _lazy(depths[k], parts, line):
             _end(parts, whole, out)
             depth = depths[k]
-        if (opener := FENCE.match(line)) or not line.strip() or BLOCK_START.match(line) or k in tables:
+        opener = _opener(line, in_list=in_list)
+        if opener or not line.strip() or BLOCK_START.match(line) or k in tables:
             _end(parts, whole, out)
             if opener:
-                fence = opener.group(1)
+                fence = _Fence(opener.group(1), depths[k], _indent(line))
             if opener or not line.strip():
                 continue
         parts.append((number, line))
@@ -200,12 +237,13 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
 
 
 def _end(parts: list[tuple[int, str]], whole: list[tuple[int, str]], out: list[Statement]) -> None:
-    """End a paragraph: its last part and, when a hard break split it, the whole paragraph again, so a hard
-    break cuts a negation's reach in one reading and cannot split a phrase or a command in the other."""
-    split = len(whole) > len(parts)
+    """End a paragraph: its last part and, where a hard break split it, the sentences that span the break,
+    so a hard break cuts a negation's reach in one reading and cannot split a phrase or a command in the
+    other. A sentence that crosses no break is emitted once (a second copy would count twice)."""
+    breaks = [n for n, line in whole if HARD_BREAK.search(line)]
     _flush(parts, out)
-    if split:
-        _flush(whole, out)
+    if breaks:
+        out.extend(st for st in _sentences(whole) if any(st.first <= n < st.last for n in breaks))
     whole.clear()
 
 
