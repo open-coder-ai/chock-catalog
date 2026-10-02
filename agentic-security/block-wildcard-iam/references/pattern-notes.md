@@ -16,18 +16,20 @@ suite holds the literal forms.
 | wildcard value on a grant key: Action, Resource, Principal (and its AWS, Federated, Service, CanonicalUser keys), Terraform/CDK actions, resources, identifiers, Azure actions and dataActions, Kubernetes verbs, resources, apiGroups | string or one-line list; double, single or no quotes; JSON, YAML, HCL, CDK, Python kwargs; escaped JSON inside a string; the JSON unicode escape of the star; the global service-and-action wildcard |
 | whole-service wildcard on s3, iam, sts, kms, ec2 | on an action key (string or one-line list), or alone as a list element line; service prefix in any case |
 | Allow with NotAction, NotResource or NotPrincipal | the effect and the inverted key on one line |
-| administrator, power-user and IAM-admin AWS managed policies | ARN in any partition; the name on a policy-name key or flag, in SAM Policies, or as a YAML list item |
+| administrator, power-user and IAM-admin AWS managed policies | ARN in any partition; the name on a policy-name key or flag, in SAM Policies, or alone as a YAML list item |
 | CDK wildcard principal | the any-principal and star-principal constructors |
 | GCP owner and editor basic roles | quoted, as a gcloud role flag value, as a YAML role value |
 | GCP public members (all users, all authenticated users) | quoted in a members value, a YAML member key, gcloud member flag, YAML list item, gsutil iam and acl grants |
 | Kubernetes cluster-admin binding | kubectl clusterrole flag, a one-line roleRef, a name line that is not a list item |
-| Azure Owner | role definition name in HCL or ARM/Bicep, az role assignment, or the built-in role id in any case |
+| Azure Owner | role definition name in HCL or ARM/Bicep, az role assignment create, or the built-in role id in any case |
 
 ## What passes
 
 - A single strict-JSON Deny statement on one line (an SCP region lock, a
   deny-insecure-transport bucket policy): one object whose first key is Effect
-  Deny, with no other effect, statement, backslash escape or allow on the line.
+  Deny, every later object the value of a key, and no other effect, statement,
+  backslash escape, code character (parenthesis, semicolon, hash), Kubernetes or
+  Azure grant key, or allow on the line.
   JSON is the format that cannot carry the pragma; a Deny in YAML, HCL or CDK is
   refused and takes the pragma, because a comment or default-Allow statement
   could otherwise fake one.
@@ -35,7 +37,7 @@ suite holds the literal forms.
 - Prose and ordinary code: key globs with a service prefix outside an action key,
   search match-all queries, a variable named after public members, a basic role
   named in a sentence, a policy name compared or listed in code, a kubeconfig
-  user named cluster-admin.
+  user list item named cluster-admin, listing or deleting an Owner assignment.
 
 ## Known blind spots (friction, not a security boundary)
 
@@ -57,7 +59,12 @@ suite holds the literal forms.
 - False positives that take the pragma (or narrowing): a wildcard resource on
   describe/list-only actions, admission-webhook and policy-engine rules with
   wildcard apiGroups/resources, generic `actions`/`resources` keys in app code.
-- Cost is linear: about a second per megabyte of a single hostile line.
+- More false positives: a kubeconfig context or ClusterRole metadata whose name
+  line is cluster-admin; quoted text that merely spells a wildcard grant; a log
+  string shaped like a gsutil grant; the Owner role id as a bare string; the
+  Service and CanonicalUser principal keys outside a Principal.
+- Every scan that looks ahead is bounded (200 to 300 characters), so cost stays
+  linear: about a second per megabyte of a single hostile line.
 
 ## The JSON pragma limitation
 

@@ -144,12 +144,12 @@ policies:
     action, resource or principal in string or list form, any quote style (JSON, YAML, Terraform, CDK,
     escaped JSON), whole-service wildcards on s3, iam, sts, kms and ec2 actions, Allow with an inverted
     key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public
-    members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-object
-    strict-JSON Deny is exempt. Friction, not a security boundary: grants split across lines, partial
-    wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants pass; other
-    Deny forms and admission-webhook wildcards are refused. Escape: ''pragma: allowlist broad-privilege''
-    on the same line, honoured at commit; at agent tool-use only when that exact line is already committed
-    in HEAD.'
+    members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-line
+    strict-JSON AWS Deny statement is exempt. Friction, not a security boundary: grants split across
+    lines, partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants
+    pass; other Deny forms and admission-webhook wildcards are refused. Escape: ''pragma: allowlist
+    broad-privilege'' on the same line, honoured at commit; at agent tool-use only when that exact line
+    is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
   version: 0.0.4

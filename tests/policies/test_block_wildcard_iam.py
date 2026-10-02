@@ -134,6 +134,12 @@ BLOCKED = [
     r'"Principal": {"Federated": "*"}',
     r"roleRef: {kind: ClusterRole, name: cluster-admin}",
     r"roleDefinitionName: Owner",
+    r'    {"Effect": "Deny", "apiGroups": ["*"], "resources": ["*"], "verbs": ["*"]},',
+    r'{"Effect": "Deny", "rules": [ "x", {"apiGroups": ["*"], "resources": ["*"], "verbs": ["*"]}]}',
+    r'{"Effect": "Deny", "x": 1, "permissions": [ "", {"actions": ["*"]}]}',
+    r'{"Effect": "Deny", "Action": "x:Y", "Resource": "x"}; grant(actions=["*"], resource_arns=["*"])  # }',
+    r'{"Effect": "Deny", "Action": "x:Y", "Resource": "x", "_": grant(actions=["*"], resource_arns=["*"])}',
+    r'{"Effect": "Deny", "Action": "x:Y", "Resource": "x"} {"Action": "*", "Resource": "*"}',
 ]
 
 ALLOWED = [
@@ -196,10 +202,23 @@ ALLOWED = [
     r'    "allUsers",',
     r"python manage.py createuser --role Owner bob",
     r'{"Effect": "Deny", "Action": "*", "Resource": "*", "Condition": {"StringNotEquals": {"aws:RequestedRegion": "eu-west-1"}}},',
+    r"- AdministratorAccess is too broad",
+    r"az role assignment list --role Owner",
+    r"az role assignment delete --assignee $SP --role Owner",
 ]
 
-# Each took 40 to 50 seconds before the list scans stopped at the next bracket.
-PATHOLOGICAL = ['"Action": [' * 10000, "members: [" * 10000, "members: " * 20000, "[ ," * 100000, "a" * 1000000]
+# Each took 10 to 50 seconds before every look-ahead scan was bounded.
+PATHOLOGICAL = [
+    '"Action": [' * 10000,
+    "members: [" * 10000,
+    "members: " * 20000,
+    "[ ," * 100000,
+    "a" * 1000000,
+    " Policies:" * 8000,
+    " roleRef:" * 8000,
+    " role_ref {" * 8000,
+    " az role assignment create" * 6000,
+]
 
 
 @pytest.mark.parametrize("line", BLOCKED)
