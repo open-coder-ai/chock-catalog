@@ -229,3 +229,21 @@ def test_a_push_events_before_commit_is_the_range_start(tmp_path: Path, monkeypa
         assert changes.ci_range(root) == want
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(tmp_path / "missing.json"))
     assert changes.ci_range(root) == ["HEAD^1", "HEAD"]
+
+
+def test_ci_range_in_process_for_a_shallow_checkout_and_a_push_that_starts_at_head(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = scriptkit.init_repo(tmp_path / "s", {"a": "1\n"})
+    scriptkit.write(source, {"a": "2\n"})
+    scriptkit.git(source, "commit", "-qam", "two")
+    shallow = tmp_path / "shallow"
+    scriptkit.git(tmp_path, "clone", "-q", "--depth", "1", f"file://{source}", str(shallow))
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
+    with pytest.raises(changes.ChangeError, match="shallow"):
+        changes.ci_range(shallow)
+    event = tmp_path / "e.json"
+    event.write_text(json.dumps({"before": changes.git(source, "rev-parse", "HEAD").strip()}))
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event))
+    assert changes.ci_range(source) == ["HEAD^1", "HEAD"]
