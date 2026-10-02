@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import re
 
 import pytest
@@ -23,15 +24,21 @@ REFUSED = {
         "childProcess . exec(cmd)",
         "require('child_process').exec(userCmd)",
         "require('node:child_process').exec(userCmd)",
+        "child_process?.exec(cmd)",
+        "cp.exec?.(cmd)",
+        "require(`child_process`).exec(cmd)",
     ],
     "implicit-shell CWE-78": [
         "status, out = subprocess.getstatusoutput(cmd)",
         "commands.getoutput(cmd)",
+        "os . system(c)",
+        "await asyncio.create_subprocess_shell(cmd)",
+    ],
+    "os-exec-spawn CWE-78": [
         "os.execvp(prog, args)",
         "os.execve(path, args, env)",
         "os.spawnlp(os.P_WAIT, prog, prog)",
         "os.posix_spawn(path, argv, env)",
-        "await asyncio.create_subprocess_shell(cmd)",
     ],
     "runtime-exec CWE-78": ["Process p = Runtime.getRuntime().exec(cmd);", "rt.getRuntime() .exec(cmd)"],
     "shell-mode CWE-78": [
@@ -39,6 +46,9 @@ REFUSED = {
         "spawn(cmd, { shell: true })",
         'spawn(cmd, {"shell": true})',
         'subprocess.run(cmd, **{"shell": True})',
+        "subprocess.run(cmd, shell=TrueX)",
+        "subprocess.run(['sh', '-c', cmd])",
+        'execFile("bash", ["-c", cmd])',
     ],
     "shell-eval-expansion CWE-78": [
         'eval "$cmd"',
@@ -46,10 +56,13 @@ REFUSED = {
         'eval "export $name=$value"',
         'eval "${args[@]}"',
         "eval $@",
+        'eval -- "$x"',
     ],
     "eval-exec-receiver CWE-95": [
         "window.eval(src)",
         "globalThis.eval(src)",
+        "global.eval(src)",
+        "window?.eval(src)",
         "builtins.exec(src)",
         "__builtins__.eval(s)",
     ],
@@ -58,6 +71,8 @@ REFUSED = {
         "(0, eval)(src)",
         "window['eval'](src)",
         'cp["execSync"](cmd)',
+        "window[`eval`](src)",
+        "globalThis['Function'](body)",
         "const e = eval;",
         "eval?.(src)",
     ],
@@ -77,12 +92,14 @@ REFUSED = {
         "vm.runInThisContext(src)",
         "new vm.Script(src)",
         "vm.compileFunction(b)",
+        "require('vm').runInNewContext(src)",
     ],
     "dynamic-import CWE-470": [
         "mod = __import__(name)",
         "__import__('os').system(cmd)",
         "importlib.import_module(name)",
         'import_module(f"plugins.{name}")',
+        "importlib.import_module('os').system(c)",
     ],
     "deserialize CWE-502": [
         "obj = jsonpickle.decode(blob)",
@@ -90,6 +107,8 @@ REFUSED = {
         "obj = cPickle.load(fh)",
         "db = shelve.open(path)",
         "u = pickle.Unpickler(fh)",
+        "pickle . loads(b)",
+        "marshal . loads(b)",
     ],
     "yaml-unsafe CWE-502": [
         "data = yaml.unsafe_load(fh)",
@@ -98,12 +117,16 @@ REFUSED = {
         "cfg = yaml.load(fh, Loader=MySafeLoader)",
         "docs = yaml.load_all(fh)",
         "y = YAML(typ='unsafe')",
+        "data = yaml.full_load(fh)",
     ],
     "model-load CWE-502": [
         "model = torch.load(path)",
         "model = torch.load(path, map_location='cpu')",
         "model = torch.load(path)  # weights_only=True",
         "arr = np.load(path, allow_pickle=True)",
+        "arr = np.load(path, allow_pickle=1)",
+        "x = torch.load(p, weights_only=False); y = 'weights_only=True'",
+        "m = torch.load(open(p), weights_only=True)",
     ],
     "v1 rules, unchanged": [
         "result = eval(x)",
@@ -172,8 +195,59 @@ SPARED = {
         "vm.$emit('x')",
         "os.path.join(a, b)",
         "shell_open(path)",
+        "interactive_shell: true",
+        '"login_shell": true,',
+        "has_shell=1",
+        "obj.cp.exec(x)",
+        "my_commands.getoutput()",
     ],
 }
+
+
+# Tokens drawn from the v1 sinks, joined at random: a seeded search for any v1 refusal v2 lets through.
+FUZZ_TOKENS = [
+    "eval",
+    "exec",
+    "(",
+    ")",
+    "_",
+    ".",
+    "shell",
+    "=",
+    "True",
+    "os",
+    "system",
+    "popen",
+    "subprocess",
+    "getoutput",
+    "pickle",
+    "load",
+    "loads",
+    "marshal",
+    "yaml",
+    "SafeLoader",
+    "CSafeLoader",
+    "Loader",
+    "execSync",
+    "new",
+    "Function",
+    "x",
+    "1",
+    "$",
+    ",",
+    "'",
+    "#",
+    "My",
+    "-",
+    ":",
+    "`",
+    "cp",
+    "commands",
+    "Unsafe",
+    " ",
+    "\t",
+    '"',
+]
 
 
 def _cases(table: dict[str, list[str]]) -> list:
@@ -200,3 +274,10 @@ def test_every_cwe_the_rules_name_is_claimed() -> None:
     claimed = {c["control"] for c in manifest["compliance"]["cwe"]}
     named = {rule.split()[-1] for rule in REFUSED if rule.split()[-1].startswith("CWE-")}
     assert named == claimed
+
+
+def test_a_seeded_fuzz_finds_no_v1_refusal_that_v2_allows() -> None:
+    rnd = random.Random(7)  # noqa: S311 -- a reproducible fuzz, not a secret
+    for _ in range(200_000):
+        line = "".join(rnd.choice(FUZZ_TOKENS) for _ in range(rnd.randint(1, 12)))
+        assert not V1.search(line) or PATTERN.search(line), line
