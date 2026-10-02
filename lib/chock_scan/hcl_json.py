@@ -17,7 +17,6 @@ import bisect
 import json
 import re
 from collections.abc import Callable
-from json import decoder, scanner
 from typing import NamedTuple
 
 from .hcl import COMPUTED, Attribute, Block
@@ -100,7 +99,7 @@ class _Reader:
         dec = json.JSONDecoder(object_pairs_hook=_Pairs, parse_constant=_no_constant)
         dec.parse_object = _located_object
         dec.parse_array = _located_array
-        scan = _located(scanner.py_make_scanner(dec))
+        scan = _located(json.scanner.py_make_scanner(dec))
         start = len(self.text) - len(self.text.lstrip(JSON_WS))
         try:
             node, _ = scan(self.text, start)
@@ -250,11 +249,11 @@ def _located(scan: Scan) -> Callable[[str, int], tuple[_Node, int]]:
 
 
 def _located_object(s_and_end: tuple[str, int], strict: bool, scan_once: Scan, *hooks: object) -> tuple[object, int]:  # noqa: FBT001 -- json's callback signature
-    return decoder.JSONObject(s_and_end, strict, _located(scan_once), *hooks)
+    return json.decoder.JSONObject(s_and_end, strict, _located(scan_once), *hooks)
 
 
 def _located_array(s_and_end: tuple[str, int], scan_once: Scan) -> tuple[object, int]:
-    return decoder.JSONArray(s_and_end, _located(scan_once))
+    return json.decoder.JSONArray(s_and_end, _located(scan_once))
 
 
 def _no_constant(name: str) -> object:
