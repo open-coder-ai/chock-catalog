@@ -47,7 +47,7 @@ def _holder(body: str, resolve: Resolve | None) -> str:
     return (resolve(body) if resolve else None) or SUBST
 
 
-def _matching(text: str, start: int) -> int:
+def matching(text: str, start: int) -> int:
     """The index after the `)` that closes the `(` at `start` (the end of the text when there is none)."""
     depth, at = 0, start
     while at < len(text):
@@ -113,10 +113,10 @@ class _Text:
             self.other(char)
 
     def other(self, char: str) -> None:
-        if self.starts("$((") and self.text[_matching(self.text, self.at + 1) - 1] == ")":
-            self.emit("0", _matching(self.text, self.at + 1) - self.at)
+        if self.starts("$((") and self.text[matching(self.text, self.at + 1) - 1] == ")":
+            self.emit("0", matching(self.text, self.at + 1) - self.at)
         elif self.starts("$("):
-            end = _matching(self.text, self.at + 1)
+            end = matching(self.text, self.at + 1)
             self.bodies.append(self.text[self.at + 2 : end].removesuffix(")"))
             self.emit(_holder(self.bodies[-1], self.resolve), end - self.at)
         elif char == "`" and (found := _BACKTICKS.match(self.text, self.at)):
@@ -162,7 +162,7 @@ class _Text:
             self.bodies_of_documents()
             self.clause = len(self.out)
         elif char == "(" and self.starts("((") and not self.clause_text():
-            self.emit(":", _matching(self.text, self.at) - self.at)
+            self.emit(":", matching(self.text, self.at) - self.at)
         else:
             self.emit(char)
             if char in ";|&(":

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import ntpath
 import os
 import re
 from collections.abc import Iterator
 
 from chock_shellparse.parse import Cmd
+from pathmatch import DRIVE
 
 CD = frozenset(("cd", "chdir", "pushd", "set-location", "sl", "push-location"))
 PUSH = frozenset(("pushd", "push-location"))
@@ -42,9 +44,11 @@ GUARD_DIRS = re.compile(r"(?:^|/)\.agents(?:/policies(?:/[^/]+)?)?$")
 
 
 def ancestors(path: str) -> Iterator[str]:
+    """The path and each folder above it; a drive-letter path is read as Windows reads it, on any system."""
+    split = ntpath.dirname if DRIVE.match(path) else os.path.dirname
     while True:
         yield path
-        parent = os.path.dirname(path)
+        parent = split(path)
         if parent == path:
             return
         path = parent

@@ -11,10 +11,10 @@ from chock_shellparse import flags_of
 from chock_shellparse.parse import _SHELLS, _WINPATH, Cmd, _parse, _Scan, is_powershell
 from pathconf import route
 from pathgit import git
-from pathmatch import DYNAMIC, FRESH, expand, values
+from pathmatch import DRIVE, DYNAMIC, FRESH, expand, values
 from pathreach import Reach
 from pathscript import Scripts
-from pathsubst import PWD, rebound, resolver
+from pathsubst import PWD, bindings, resolver
 from pathtext import SUBST, scan
 from pathwin import windows
 from pathwords import (
@@ -50,7 +50,7 @@ class _Walk(Reach, Scripts):
         *,
         ps: bool,
     ) -> None:
-        self.hit, self.normal, self.ps, self.text = hit, normalise, ps, ""
+        self.hit, self.normal, self.ps, self.text = hit, normalise, ps, ""  # the setter reads the bindings of the text
         self.base = next((d for d in ancestors(start) if os.path.exists(os.path.join(d, ".git"))), start)
         self.root = self.normal(self.base)
         self.stack: list[str | None] = []
@@ -91,6 +91,15 @@ class _Walk(Reach, Scripts):
             "uniq": self._uniq,
         }
 
+    @property
+    def text(self) -> str:
+        """The command line being judged; setting it reads where each variable is bound, once."""
+        return self._text
+
+    @text.setter
+    def text(self, value: str) -> None:
+        self._text, self.bound = value, bindings(value)
+
     def _chdir(self, cmd_name: str, args: list[str], env: dict[str, str]) -> None:
         if cmd_name in PUSH:
             self.stack.append(self.cwd)
@@ -129,7 +138,7 @@ class _Walk(Reach, Scripts):
         handler = self.handlers.get(name) or (self.code if is_interpreter(name) else None)
         return handler is not None and handler(cmd)
 
-    def step(self, cmd: Cmd, prev: Cmd | None, nxt: Cmd | None, *, unparsed: bool) -> bool:
+    def step(self, cmd: Cmd, prev: Cmd | None, *, unparsed: bool) -> bool:
         if nested(cmd):  # a script the reader did not unwrap: it cannot be judged, so it is refused
             return True
         if cmd.name in CD:
@@ -137,7 +146,7 @@ class _Walk(Reach, Scripts):
         elif cmd.name in POP:
             self.cwd = self.stack.pop() if self.stack else None
         elif (cmd.name in _SHELLS or cmd.name in (".", "source")) and self.stdin(cmd):
-            return self.fed(cmd, prev, nxt)
+            return self.fed(cmd, prev)
         else:
             return self.command(cmd) or (unparsed and writes(cmd.name, cmd.writes))
         return False
@@ -148,13 +157,10 @@ class _Walk(Reach, Scripts):
         if any(self.loose(payload) for payload in env_scripts(text)):
             return True
         cmds = _parse(text, {}, ps=ps, depth=0)[0]
-        for at, cmd in enumerate(cmds):
+        for cmd in cmds:
             self.prev = prev
             self.unsure.update(bound(cmd))
-            if any(
-                self.step(c, prev, cmds[at + 1] if at + 1 < len(cmds) else None, unparsed=unparsed)
-                for c in self.variants(cmd)
-            ):
+            if any(self.step(c, prev, unparsed=unparsed) for c in self.variants(cmd)):
                 return True
             self.wrote |= writes(cmd.name, cmd.writes)
             self.history.append(self.cwd)
@@ -166,7 +172,10 @@ class _Walk(Reach, Scripts):
 
         A value that holds `$PWD` was read where the line was, which may be any directory it has been in: one command each.
         """
-        env = {k: SUBST if v.startswith(FRESH) and rebound(k, self.text) else v for k, v in cmd.env.items()}
+        env = {
+            k: SUBST if (v.startswith(FRESH) or k in self.bound.refs) and self.bound.rebound(k) else v
+            for k, v in cmd.env.items()
+        }
         late = cmd.name not in CD and cmd.name not in POP and any(PWD.search(v) for v in env.values())
         where = dict.fromkeys([self.cwd, *self.history] if late else [self.cwd])
         return [cmd._replace(env={**self.pinned(at), **env}) for at in where]
@@ -189,9 +198,9 @@ class _Walk(Reach, Scripts):
         self.depth, scanned = depth, scan(text, self.resolve)
         self.docs.update(scanned.docs)
         for body in scanned.bodies:
-            shown = self.literal(body)
-            self.outputs += shown or []
-            self.unseen |= shown is None
+            printed, exact = self.shown(body)
+            self.outputs += printed
+            self.unseen |= not exact
         start, stack = self.cwd, list(self.stack)
         if self.run(scanned.outer, ps=self.ps):
             return True
@@ -210,7 +219,8 @@ class _Walk(Reach, Scripts):
 
 def refuses(raw: str, protected: tuple[str, ...], hit: Callable[[str], bool], normalise: Normalise) -> bool:
     """Whether a command line writes, deletes, moves or links a protected path or a directory holding one, or may."""
-    start = os.path.abspath(os.environ.get("CHOCK_HOOK_CWD") or os.getcwd())
+    start = os.environ.get("CHOCK_HOOK_CWD") or os.getcwd()
+    start = start if DRIVE.match(start) else os.path.abspath(start)
     ps = is_powershell(raw)
     views = [raw.replace("\\", "/").replace("`", "")] if ps else list(dict.fromkeys([raw, _WINPATH.sub("/", raw)]))
     for view in views:

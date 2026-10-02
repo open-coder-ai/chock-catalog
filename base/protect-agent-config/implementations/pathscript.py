@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
-import codecs
 import os
 import re
 import shlex
 from collections.abc import Callable
 
 from chock_shellparse.parse import Cmd, _parse
+from pathfeed import shown, strings
 from pathmatch import DYNAMIC
-from pathtext import scan
+from pathtext import matching, scan
 from pathwords import PRODUCERS
 from pathwrap import unwrap
 from pathwriters import interpreter
 
+_GROUP = re.compile(r"[})]\s*\|")
 _STDIN = re.compile(r"/dev/(?:stdin|fd/\d+)|/proc/self/fd/\d+")
 
 
@@ -82,15 +83,11 @@ class Scripts:
         lead = "".join(f"{k}={shlex.quote(v)}; " for k, v in cmd.env.items())
         return any(self.sub(lead + text) for text in scripts)
 
-    def produced(self, prev: Cmd | None) -> list[str]:
-        """The script text a command writes to the shell after it, when it is plain text."""
+    def produced(self, prev: Cmd | None) -> tuple[list[str], bool]:
+        """The script text the command before a shell prints, and whether the line shows exactly that text."""
         if prev is None or prev.name not in PRODUCERS:
-            return []
-        if prev.name == "cat":
-            return [self.docs[r] for r in prev.reads if r in self.docs]
-        words = [a for a in prev.args if not re.fullmatch(r"-[neE]+", a)]
-        text = words[0] if prev.name == "printf" and words else " ".join(words)
-        return [codecs.decode(text, "unicode_escape", "replace") if prev.name == "printf" else text]
+            return [], True
+        return shown(prev, self.docs)
 
     def stdin(self, cmd: Cmd) -> bool:
         """A shell, `source` or `.` that reads its script from standard input (or a process substitution)."""
@@ -99,24 +96,42 @@ class Scripts:
             return not files or _STDIN.fullmatch(files[0]) is not None
         return "-s" in cmd.args or not files or _STDIN.fullmatch(files[0]) is not None
 
-    def fed(self, cmd: Cmd, prev: Cmd | None, nxt: Cmd | None = None) -> bool:
-        """A shell that reads its script from standard input: here-string, here-document, or the command before it
-        (`<(cmd)` shows as the command after); a script the line does not show is refused when it names a protected path."""
-        scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(prev)
-        scripts = scripts or (self.produced(nxt) if "<(" in self.text else [])
-        if not scripts:
-            self.blind = True
-            return self.hit(self.text)
-        return any(self.sub(text) for text in scripts)
+    def fed(self, cmd: Cmd, prev: Cmd | None) -> bool:
+        """A shell that reads its script from standard input: a here-string or here-document, the command before it, each `<(cmd)`.
 
-    def literal(self, body: str) -> list[str] | None:
-        """The text a substitution body prints when it is one `echo`, `printf` or `cat <<DOC` the line shows."""
+        Only one plain `echo`, `printf` or `cat <<DOC` is read as the script. Any other producer (a list, a group, a
+        command the line does not show) has every literal string judged as a script, and the line is refused when it names a
+        protected path anywhere: a decoy command before the real text must not hide it.
+        """
+        scripts = [self.docs[r] for r in cmd.reads if r in self.docs]
+        found, exact = self.produced(prev)
+        if found and _GROUP.search(self.text):
+            exact = False  # `{ echo real; echo decoy; } | sh`: the command before the pipe is not the whole producer
+        scripts += found
+        for text, sure in self.process_bodies():
+            scripts += text
+            exact &= sure
+        if scripts and exact:
+            return any(self.sub(text) for text in scripts)
+        self.blind = True
+        return any(self.sub(text) for text in scripts) or self.hit(self.text)
+
+    def process_bodies(self) -> list[tuple[list[str], bool]]:
+        """What each `<(...)` of the line prints."""
+        found, at = [], self.text.find("<(")
+        while at >= 0:
+            end = matching(self.text, at + 1)
+            found.append(self.shown(self.text[at + 2 : end].removesuffix(")")))
+            at = self.text.find("<(", at + 2)
+        return found
+
+    def shown(self, body: str) -> tuple[list[str], bool]:
+        """The text a substitution body prints: exact for one `echo`, `printf` or `cat <<DOC`, else its literal strings."""
         scanned = scan(body, self.resolve)
-        self.docs.update(scanned.docs)
         cmds = _parse(scanned.outer, {}, ps=self.ps, depth=0)[0]
         if len(cmds) == 1 and not cmds[0].writes and cmds[0].name in PRODUCERS:
-            return self.produced(cmds[0])
-        return None
+            return shown(cmds[0], scanned.docs)
+        return strings(cmds, scanned.docs), False
 
     def computed(self) -> bool:
         """A command named by a substitution (`eval "$(echo ...)"`, `bash -c "$(cat <<E ...)"`): its text is judged
@@ -124,5 +139,5 @@ class Scripts:
         return any(self.sub(text) for text in self.outputs) or (self.unseen and self.hit(self.text))
 
     def code(self, cmd: Cmd) -> bool:
-        scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(self.prev)
+        scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(self.prev)[0]
         return interpreter(self, cmd.args, cmd.env, scripts)

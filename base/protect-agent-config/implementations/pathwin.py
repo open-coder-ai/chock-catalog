@@ -50,6 +50,7 @@ def windows(w: Any, name: str, args: list[str], env: dict[str, str]) -> bool:
     if name == "robocopy":
         named = any(w.reaches(posixpath.join(target, f), env) for f in files)
         return holds and (not files or named or bool(flags & {"/mir", "/purge"}))
-    if flags & {"/e", "/s", "/i", "/t"} or any(c in source for c in "*?") or source.endswith("/"):
+    folder = "." not in posixpath.basename(source) or w.is_dir(source, env)  # a name with no extension may be a folder
+    if flags & {"/e", "/s", "/i", "/t"} or any(c in source for c in "*?") or source.endswith("/") or folder:
         return holds
     return dest(w, "cp", [source, target], env) or (target.endswith("/") and holds)  # a folder: whatever it holds

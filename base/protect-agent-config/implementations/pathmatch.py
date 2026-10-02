@@ -11,7 +11,9 @@ FRESH = "$__mktemp__"
 _VARIABLE = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
 _NESTING = 4
 _STARS = 6
-_PIECE = re.compile(r"\$(?:\{[^}]*\}|\w+|[@*#?!$-])")
+PIECE = re.compile(r"\$(?:\{[^}]*\}|\w+|[@*#?!$-])")
+# A Windows path with a drive letter, as Windows gives the repository folder (`C:\Users\me`) and a path word once its slashes are turned (`C:/Users/me`).
+DRIVE = re.compile(r"[A-Za-z]:(?:[\\/]|$)")
 
 
 def expand(token: str, env: dict[str, str], _depth: int = 0) -> str:
@@ -107,7 +109,7 @@ def pattern(path: str, *, loose: bool) -> re.Pattern[str]:
     out, at = ["(?:.*/)?" if loose else ""], 0
     while at < len(path):
         char = path[at]
-        piece = _PIECE.match(path, at) if char == "$" else None
+        piece = PIECE.match(path, at) if char == "$" else None
         close = _close(path, at) if char == "[" else -1
         cls = _bracket(path[at + 1 : close]) if close > 0 else ""
         if char in "*?[" and (at == 0 or path[at - 1] == "/") and not (cls and _dot(cls)):

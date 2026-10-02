@@ -7,11 +7,12 @@ import posixpath
 import re
 from collections.abc import Callable
 
-from pathmatch import DYNAMIC, FRESH, expand, pattern
+from pathmatch import DRIVE, DYNAMIC, FRESH, PIECE, expand, pattern
 from pathtext import braces
 from pathwords import GUARD_DIRS
 
 _LEAD = re.compile(r"\$(?:\{(\w+)\}|(\w+))/(?=.)")
+_CURRENT = re.compile(r"%CD%", re.IGNORECASE)
 _ONLY = re.compile(r"\$(?:\{[^}]*\}|\w+)")
 
 
@@ -38,7 +39,7 @@ class Reach:
 
     def _path(self, token: str, env: dict[str, str]) -> tuple[str, bool]:
         """The token as a repo-relative, normalised path, and whether the directory it is relative to is unknown."""
-        word = expand(token, env).replace("\\", "/")
+        word = _CURRENT.sub(".", expand(token, env)).replace("\\", "/")
         if word == "~" or word.startswith("~/"):
             word = os.path.expanduser(word).replace("\\", "/")
         if word.startswith(
@@ -47,7 +48,10 @@ class Reach:
             return (FRESH if ".." not in word.split("/") else "$__subst__"), False
         if word.startswith("$"):
             return self.normal(posixpath.normpath(word)), False
-        if word.startswith("/"):
+        if word.startswith("/") or DRIVE.match(word):
+            word = (
+                self.root[:2] + word if word.startswith("/") and DRIVE.match(self.root) else word
+            )  # `\Users`: this drive
             return self._within(self.normal(posixpath.normpath(word))), False
         path = self.normal(posixpath.normpath(posixpath.join(self.cwd or "", word)))
         if path == ".." or path.startswith("../"):
@@ -64,7 +68,11 @@ class Reach:
 
     def _holds(self, path: str, *, exact: bool = False) -> bool:
         """Whether a path is the repository folder (or, unless `exact`, one of its ancestors): they hold every protected path."""
-        there = path if path.startswith("/") else self.normal(posixpath.normpath(posixpath.join(self.root, path)))
+        there = (
+            path
+            if path.startswith("/") or DRIVE.match(path)
+            else self.normal(posixpath.normpath(posixpath.join(self.root, path)))
+        )
         return self.root == there or (not exact and self.root.startswith(there.rstrip("/") + "/"))
 
     def at_root(self, token: str, env: dict[str, str]) -> bool:
@@ -92,6 +100,10 @@ class Reach:
         path, loose = self._path(token, env)
         if path == FRESH:
             return False
+        if "$" in path and any(self.hit(part) for part in PIECE.split(path) if part):
+            return (
+                True  # whatever the variable or substitution holds, the plain text around it can name a protected path
+            )
         if not (loose or DYNAMIC.search(path)):
             return (
                 self.hit(path)

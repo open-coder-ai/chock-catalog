@@ -82,7 +82,7 @@ def test_a_repository_path_the_guard_cannot_write_into_text_is_left_unknown() ->
     ],
 )
 def test_a_mktemp_variable_stays_fresh_only_while_nothing_else_names_it(name: str, text: str, rebound: bool) -> None:
-    assert subst.rebound(name, text) is rebound
+    assert subst.bindings(text).rebound(name) is rebound
 
 
 def test_dollar_pwd_follows_the_directory_it_was_read_in(_repo_root: Path) -> None:
