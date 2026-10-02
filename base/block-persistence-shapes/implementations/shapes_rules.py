@@ -41,14 +41,14 @@ def program(word: str) -> str:
     return PINNED.sub("", word.replace("\\", "/").rsplit("/", 1)[-1].lower())
 
 
-def hop(name: str, args: list[str], tab: dict) -> tuple[str, list[str]] | None:
+def hop(name: str, args: list[str], tab: dict, *, eager: bool) -> tuple[str, list[str]] | None:
     """The program behind a python -m, shell script, npx-style launcher or `npm exec`, or None when `name` runs."""
     if name.startswith("python") and "-m" in args[:-1]:
         at = args.index("-m")
         return args[at + 1].lower(), args[at + 2 :]
     where = indexes(args, frozenset(tab["value_flags"].get(name, ())))
     loose = bool(where) and where[0] > 0 and args[where[0] - 1].startswith("-")
-    runner = [] if loose else tab["runners"].get(name, ())
+    runner = [] if loose and not eager else tab["runners"].get(name, ())
     words = next((w.split() for w in runner if [args[i] for i in where[: len(w.split())]] == w.split()), [])
     if words:
         where = where[len(words) :]
@@ -57,10 +57,11 @@ def hop(name: str, args: list[str], tab: dict) -> tuple[str, list[str]] | None:
     return (program(args[where[0]]), args[where[0] + 1 :]) if where else None
 
 
-def resolve(cmd: Cmd, tab: dict) -> tuple[str, list[str]]:
+def resolve(cmd: Cmd, tab: dict, *, eager: bool) -> tuple[str, list[str]]:
+    """The program a command runs through launchers; `eager` reads a word after any option as a runner word."""
     name, args = cmd.name, cmd.args
     for _ in range(HOPS):
-        step = hop(name, args, tab)
+        step = hop(name, args, tab, eager=eager)
         if step is None:
             break
         name, args = step
@@ -107,8 +108,15 @@ def verb_at(rule: dict, pos: list[str], heads: set[str], loose: list[bool]) -> t
 
 
 def judge(cmd: Cmd, tab: dict) -> tuple[str, str] | None:
-    """(level, reason) of the first rule this command matches, or None."""
-    name, args = resolve(cmd, tab)
+    """(level, reason) of the first rule this command matches, or None; both readings of a runner word are tried."""
+    for eager in (False, True):
+        found = match(*resolve(cmd, tab, eager=eager), tab)
+        if found:
+            return found
+    return None
+
+
+def match(name: str, args: list[str], tab: dict) -> tuple[str, str] | None:
     bare = name.removesuffix(".cmd").removesuffix(".bat")
     where = indexes(args, frozenset(tab["value_flags"].get(bare, ())))
     pos = [args[i].lower() for i in where]

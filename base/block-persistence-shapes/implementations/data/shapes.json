@@ -223,7 +223,10 @@
       "-p",
       "--publish-url",
       "--config-file",
-      "--python"
+      "--python",
+      "--with",
+      "--from",
+      "--with-requirements"
     ],
     "gem": [
       "--host",
@@ -297,6 +300,18 @@
       "--package",
       "-c",
       "--call"
+    ],
+    "uvx": [
+      "--from",
+      "--with",
+      "--python",
+      "-p",
+      "--index",
+      "--index-url"
+    ],
+    "pipx": [
+      "--spec",
+      "--python"
     ]
   },
   "launchers": [
