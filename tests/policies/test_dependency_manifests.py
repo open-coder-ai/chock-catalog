@@ -216,7 +216,7 @@ def test_node_modules_manifests_are_not_the_projects_own(repo: Path) -> None:
 
 
 def test_an_unreadable_lockfile_beside_a_manifest_is_still_refused(repo: Path) -> None:
-    deep = '{"x": ' + "[" * 5000 + "]" * 5000 + "}"
+    deep = '{"x": ' + "[" * 300_000 + "]" * 300_000 + "}"
     writes = {"package.json": '{"dependencies": {"requests": "1"}}', "package-lock.json": deep}
     code, document, _ = run(repo, writes)
     assert (code, [item["path"] for item in document["findings"]]) == (3, ["package-lock.json"])
