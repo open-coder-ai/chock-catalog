@@ -203,6 +203,7 @@ CASES = [
     ("echo ${#arr[@]} ${a:-{b}} > n.txt", OK),
     ("eval eval eval eval eval touch foo.", BLOCK),
     ("eval " * 60 + "touch ok", BLOCK),
+    ("eval " * 15000, BLOCK),
     ("echo $(case $x in a) touch 'a;b';; esac)", BLOCK),
     ("echo $(case $x in a) echo ok;; esac) > out.txt", OK),
     ("echo " + " ".join(f"$(date +%s{i})" for i in range(65)), OK),

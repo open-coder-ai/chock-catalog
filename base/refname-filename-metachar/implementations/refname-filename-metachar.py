@@ -26,16 +26,20 @@ TARGET_FLAGS = ("-t", "--target-directory")
 PS_FLAGS = ("-path", "-literalpath", "-name", "-newname", "-destination", "-filepath")
 PS_VALUE_FLAGS = frozenset((*PS_FLAGS, "-value", "-itemtype", "-type", "-encoding", "-filter", "-include", "-exclude"))
 # Bounds on what one command line may hold; past any of them the line is refused, never passed unread.
-MAX_DEPTH, MAX_SCRIPTS, MAX_TEXT, LONG_UNBALANCED = 8, 512, 1_000_000, 4096
+MAX_DEPTH, MAX_SCRIPTS, MAX_TEXT, MAX_PARSED, LONG_UNBALANCED = 8, 512, 1_000_000, 1_000_000, 4096
 TOO_DEEP = "command line holds more nested script than this guard judges, so a name in it cannot be checked."
 UNCLOSED = "command line opens a substitution it never closes, so a name after it cannot be checked."
 UNBALANCED = "command line is long and its quoting does not balance, so a name in it cannot be checked in time."
 _SCRIPTS: list[str] = []  # bash -c and eval scripts met while parsing, judged after the line that holds them
 _PARSE = shellparse._parse
+_PARSED = [0]  # characters chock_shellparse has read for this command line, bounded by MAX_PARSED
 
 
 def _parse_marked(text: str, env: dict[str, str], *, ps: bool, depth: int) -> tuple[list[Cmd], dict[str, str]]:
     """chock_shellparse's reader, with each bash -c or eval script's expansions marked before it is read."""
+    _PARSED[0] += len(text)
+    if _PARSED[0] > MAX_PARSED:
+        raise TooDeepError
     if depth:
         text, inner = mark_expansions(text, powershell=ps)
         _SCRIPTS.extend(inner)
@@ -133,6 +137,7 @@ def _scripts(cmds: list[Cmd], inner: list[str]) -> list[str]:
 def check(raw: str) -> str | None:
     """The reason the command creates a misreadable name, or None."""
     pending, seen, budget = [(raw, 0)], set(), MAX_TEXT
+    _PARSED[0] = 0
     while pending:
         script, depth = pending.pop(0)
         if script in seen:
@@ -143,14 +148,14 @@ def check(raw: str) -> str | None:
             return TOO_DEEP
         try:
             text, inner = mark_expansions(script, powershell=is_powershell(script))
+            if len(text) > LONG_UNBALANCED and shellparse._Scan(text).run() is None:
+                return UNBALANCED  # the parser's fallback for unbalanced quoting slows quadratically
+            _SCRIPTS.clear()
+            cmds = commands(text)
         except TooDeepError:
             return TOO_DEEP
         except UnreadableError:
             return UNCLOSED
-        if len(text) > LONG_UNBALANCED and shellparse._Scan(text).run() is None:
-            return UNBALANCED  # the parser's fallback for unbalanced quoting slows quadratically
-        _SCRIPTS.clear()
-        cmds = commands(text)
         pending += [(inner_script, depth + 1) for inner_script in _scripts(cmds, inner)]
         found = [item for cmd in cmds for item in named(cmd) if item[2]]
         if found:
