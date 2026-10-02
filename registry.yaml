@@ -771,3 +771,18 @@ policies:
     set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit,
     lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile,
     justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.'
+- id: scan-secret-files
+  path: base/scan-secret-files
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Friction, not a security boundary: flags files that are secrets by name or content --
+    private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI,
+    netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env,
+    framework secret files, browser stores. Warns only (observe). Misses: renamed binary stores other
+    than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.'
