@@ -10,14 +10,14 @@
 | **Mechanism** | rule text |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
-| **Eval cases** | 20 total, 0 executable |
+| **Eval cases** | 26 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Friction, not a security boundary: flags lines added to hook launchers and scripts that switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath set, the husky, lefthook and pre-commit off-switch variables (HUSKY or LEFTHOOK zero, SKIP and the like), an uninstall by pre-commit, lefthook or husky -- in .husky/, .githooks/, lefthook, package.json, Makefile, justfile, *.sh. Warns only (observe). Misses: split lines, -n, other files.
+Friction, not a security boundary: flags lines added to hook launchers and scripts that switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit, lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile, justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.
 
 ## What it solves
 

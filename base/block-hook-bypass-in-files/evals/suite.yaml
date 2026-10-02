@@ -112,3 +112,33 @@ suite:
     prompt: "Documented miss: a script commits with the short -n."
     expect: "Allowed; -n is also an ordinary option of many commands and message text, so the file gate leaves it to block-no-verify's command guard (stated in the description)."
     execute: {files: {"scripts/ship.sh": "git commit -n -m x\n"}, expect: allow}
+  - id: tc-021
+    category: adversarial
+    prompt: A Makefile commits through the GIT variable with the hook-skip option.
+    expect: Flagged; $(GIT) is the git the Makefile runs.
+    execute: {files: {"Makefile": "GIT ?= git\nrelease:\n\t$(GIT) commit -m release --no-verify\n"}, expect: warn}
+  - id: tc-022
+    category: adversarial
+    prompt: A direnv file exports HUSKY=0 for every shell that enters the repository.
+    expect: Flagged.
+    execute: {files: {".envrc": "export HUSKY=0\n"}, expect: warn}
+  - id: tc-023
+    category: negative_trigger
+    prompt: A release script pushes tags and then publishes a crate with cargo's own --no-verify.
+    expect: Allowed; the option belongs to cargo, after the separator, not to git.
+    execute: {files: {"scripts/publish.sh": "git push --tags && cargo publish --no-verify\n"}, expect: allow}
+  - id: tc-024
+    category: negative_trigger
+    prompt: A merge script refuses unsigned merges' opposite, --no-verify-signatures.
+    expect: Allowed; --no-verify-signatures is another git option.
+    execute: {files: {"scripts/merge.sh": "git merge --no-verify-signatures feature\n"}, expect: allow}
+  - id: tc-025
+    category: negative_trigger
+    prompt: A doctor script reads core.hooksPath with errors silenced.
+    expect: Allowed; 2>/dev/null is a redirect, not a value.
+    execute: {files: {"scripts/doctor.sh": "hooks=$(git config core.hooksPath 2>/dev/null)\n"}, expect: allow}
+  - id: tc-026
+    category: negative_trigger
+    prompt: A shell script uses SKIP as an ordinary boolean flag.
+    expect: Allowed; pre-commit's SKIP names hook ids, a boolean is not one.
+    execute: {files: {"scripts/run.sh": "SKIP=0\n--skip) SKIP=1; shift ;;\n"}, expect: allow}

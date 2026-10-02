@@ -114,9 +114,15 @@ block-hook-bypass-in-files  [deterministic]
   PASS  tc-018                             authored  This line switches git hooks off for everyone who runs this file (a…
   PASS  tc-019                             authored  gate exit 0
   PASS  tc-020                             authored  gate exit 0
+  PASS  tc-021                             authored  gate: warning: This line switches git hooks off for everyone who ru…
+  PASS  tc-022                             authored  gate: warning: This line switches git hooks off for everyone who ru…
+  PASS  tc-023                             authored  gate exit 0
+  PASS  tc-024                             authored  gate exit 0
+  PASS  tc-025                             authored  gate exit 0
+  PASS  tc-026                             authored  gate exit 0
   score 1.00
 
-5 policies: 20 pass, 41 skipped
+5 policies: 26 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
