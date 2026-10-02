@@ -115,7 +115,8 @@ def _make_spans(text: str) -> list[tuple[int, int]]:
             spans.append((pos + cut, pos + len(line)))
             in_comment = True
         carry = odd_backslashes(line)
-        in_comment = in_comment and carry
+        # A recipe line is the shell's: its comment ends at the newline whatever the backslash does.
+        in_comment = in_comment and carry and not recipe
         pos += len(line) + 1
     return spans
 

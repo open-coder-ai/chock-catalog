@@ -187,6 +187,14 @@ def test_odd_payload_is_undecided_not_a_crash(stdin: str) -> None:
     assert "Traceback" not in err
 
 
+@pytest.mark.parametrize("root", ["\u0000", "\ud800"])
+def test_unjudgeable_payload_is_undecided(root: str) -> None:
+    stdin = json.dumps({"event": "commit", "repo_root": root, "writes": {"Makefile": "x\n"}})
+    code, _out, err = run(stdin)
+    assert code == 2, err
+    assert "refusing rather than allowing" in err
+
+
 def test_empty_payload_allows() -> None:
     assert run("{}")[0] == 0
 
@@ -222,6 +230,8 @@ def test_the_shipped_table_loads_and_is_dated() -> None:
 
 def test_the_gate_is_fast_on_hostile_lines() -> None:
     start = time.monotonic()
+    for text in ("[" + " " * 20000 + "x\n", "[a" + " " * 100000, "[a" + "\t" * 100000 + "]x"):
+        found("Cargo.toml", text)
     found("Cargo.toml", "profile.release " * 20000)
     found("Cargo.toml", "profile . release " * 20000)
     assert time.monotonic() - start < 10

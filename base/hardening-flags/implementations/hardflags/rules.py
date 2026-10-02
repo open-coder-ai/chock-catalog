@@ -26,7 +26,7 @@ REQUIRED = frozenset(
     }
 )
 ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-HEADER = re.compile(r"^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*$")
+HEADER = re.compile(r"\[\[?[\w.\"'*\- \t]+\]\]?")
 
 
 @dataclass(frozen=True)
@@ -98,8 +98,8 @@ def load(path: Path = TABLE) -> list[Entry]:
 
 def section_of(line: str, current: str) -> str:
     """The TOML table a line opens (quotes and spaces dropped), or the table already open."""
-    if m := HEADER.match(line):
-        return re.sub(r"[\s\"']", "", m.group(1))
+    if HEADER.fullmatch(stripped := line.strip()):
+        return re.sub(r"[\s\"'\[\]]", "", stripped)
     return current
 
 

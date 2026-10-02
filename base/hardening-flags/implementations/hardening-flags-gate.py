@@ -22,7 +22,7 @@ from hardflags.logical import JOINED, logical_lines
 #: (name or path pattern, kind). The first match wins; every other file is not scanned.
 KINDS = (
     (re.compile(r"(^|/)(CMakeLists\.txt|[^/]+\.cmake)$"), "cmake"),
-    (re.compile(r"(^|/)((GNUmakefile|[Mm]akefile)(\.(am|in|inc|local|common))?|[^/]+\.mk)$"), "make"),
+    (re.compile(r"(^|/)((GNUmakefile|[Mm]akefile)(\.(am|in|inc|local|common|config))?|[^/]+\.mk)$"), "make"),
     (re.compile(r"(^|/)meson\.build$"), "meson"),
     (re.compile(r"(^|/)configure\.ac$"), "autoconf"),
     (re.compile(r"(^|/)(Cargo\.toml|\.cargo/config(\.toml)?)$"), "toml"),
@@ -122,7 +122,11 @@ def main() -> int:
     if not isinstance(writes, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in writes.items()):
         print("hardening-flags: the gate JSON has no writes map of text", file=sys.stderr)
         return 2
-    found = findings(payload, entries)
+    try:
+        found = findings(payload, entries)
+    except (ValueError, OSError, RecursionError):
+        print("hardening-flags: the gate JSON could not be judged; refusing rather than allowing", file=sys.stderr)
+        return 2
     print(json.dumps({"findings": found}))
     code = verdict(found, entries)
     if code:

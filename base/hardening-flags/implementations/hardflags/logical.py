@@ -8,7 +8,7 @@ from hardflags.blank import SHELL_KINDS, odd_backslashes
 JOINED = SHELL_KINDS | {"make"}
 BRACKETS = {"cmake": "(", "meson": "([{", "toml": "[{", "rust": "([{"}
 CLOSERS = {"(": ")", "[": "]", "{": "}"}
-MAX_LINES = 64
+MAX_LINES = 5000
 
 Logical = tuple[str, list[int]]
 

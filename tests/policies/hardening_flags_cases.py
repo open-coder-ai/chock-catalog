@@ -53,7 +53,7 @@ MAKE = [
     ("Makefile", "app:\n\t$(CC) -O2 -o $@ $< # -no-pie\n", []),
     ("Makefile", 'app:\n\techo "# -no-pie"\n', ["no-pie"]),
     ("Makefile", "app:\n\tcc a.c \\\n  -no-pie\n", ["no-pie"]),
-    ("Makefile", "app:\n\tcc a.c # \\\n  -no-pie\n", []),
+    ("Makefile", "app:\n\tcc a.c # \\\n  -no-pie\n", ["no-pie"]),
     ("GNUmakefile", "X = -fno-pie\n", ["no-pie-codegen"]),
     ("sub/rules.mk", "X = -fno-PIE\n", ["no-pie-codegen"]),
     ("makefile", "X = -fno-pic -pie -fpie\n", []),
@@ -89,6 +89,12 @@ MAKE = [
         ["rust-overflow-checks-flag", "rust-relocation-model-static"],
     ),
     ("Makefile", "RUSTFLAGS = -C overflow-checks=on -C relocation-model=pic\n", []),
+    ("Makefile", "all:\n\t@echo hi # note \\\n\t gcc -fno-stack-protector a.c\n", ["no-stack-protector"]),
+    ("Makefile.config", "X = -no-pie\n", ["no-pie"]),
+    ("Makefile", "X = -Db_pie=false\n", ["meson-pie-off"]),
+    ("build.sh", "meson setup build -Db_pie=false\n", ["meson-pie-off"]),
+    ("Makefile", "X = -fno-\\\n" + "\\\n" * 70 + "stack-protector\n", ["no-stack-protector"]),
+    ("CMakeLists.txt", 'target_link_options(t PRIVATE "-z;execstack")\n', ["execstack"]),
 ]
 SHELL = [
     ("build.sh", "go build -ldflags '-extldflags \"-static -no-pie\"' ./...\n", ["no-pie"]),

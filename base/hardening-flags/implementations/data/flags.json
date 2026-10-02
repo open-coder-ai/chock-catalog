@@ -73,7 +73,7 @@
     "go",
     "rust"
    ],
-   "pattern": "(?<![\\w-])-z[ \\t,\\\"']*(?:-Xlinker[ \\t\\\"',]*|-Wl,)?[\\\"']?execstack(?![\\w-])",
+   "pattern": "(?<![\\w-])-z[ \\t,;\\\"']*(?:-Xlinker[ \\t\\\"',]*|-Wl,)?[\\\"']?execstack(?![\\w-])",
    "what": "marks the stack executable (-z execstack)"
   },
   {
@@ -84,7 +84,7 @@
     "go",
     "rust"
    ],
-   "pattern": "(?<![\\w-])-z[ \\t,\\\"']*(?:-Xlinker[ \\t\\\"',]*|-Wl,)?[\\\"']?norelro(?![\\w-])",
+   "pattern": "(?<![\\w-])-z[ \\t,;\\\"']*(?:-Xlinker[ \\t\\\"',]*|-Wl,)?[\\\"']?norelro(?![\\w-])",
    "what": "turns RELRO off (-z norelro)"
   },
   {
@@ -128,7 +128,7 @@
     "go",
     "rust"
    ],
-   "pattern": "(?<![\\w-])(?:pie[ \\t]*:[ \\t]*false|b_pie[ \\t]*=[ \\t]*false)(?![\\w-])",
+   "pattern": "(?:(?<![\\w-])|(?<=-D))(?:pie[ \\t]*:[ \\t]*false|b_pie[ \\t]*=[ \\t]*false)(?![\\w-])",
    "what": "turns position-independent executables off in meson (pie: false, b_pie=false)"
   },
   {

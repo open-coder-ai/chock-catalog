@@ -69,6 +69,8 @@ def test_sections_and_hits() -> None:
     assert mod.rules.section_of("[profile.release]", "x") == "profile.release"
     assert mod.rules.section_of('[[bin."a b"]]', "x") == "bin.ab"
     assert mod.rules.section_of("name = 1", "x") == "x"
+    assert mod.rules.section_of('["a", "b"]', "x") == "x"
+    assert mod.rules.section_of("  [profile.dev]  ", "x") == "profile.dev"
     entry = ENTRIES[0]
     assert list(mod.rules.hits(ENTRIES, frozenset({"kernel"}), "-fno-stack-protector", "")) == []
     assert [e.id for e, _ in mod.rules.hits(ENTRIES, frozenset({"c"}), "-fno-stack-protector", "")] == [entry.id]
