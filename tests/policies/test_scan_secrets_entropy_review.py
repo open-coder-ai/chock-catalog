@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import string
+import time
 
 import pytest
 from chock_scan.libmods import rng
@@ -119,8 +120,6 @@ def test_an_annotation_needs_a_statement_start_so_a_case_label_keeps_its_key() -
 
 
 def test_a_long_line_of_annotation_lookalikes_is_rewritten_in_linear_time() -> None:
-    import time
-
     line = ("a:" + " " * 998) * 1000
     start = time.perf_counter()
     gate.values.source.rewrite(line, language="ts")

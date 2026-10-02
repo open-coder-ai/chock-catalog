@@ -7,17 +7,17 @@
 | | |
 | :--- | :--- |
 | **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | rule text |
+| **Mechanism** | warn-only `script` gate |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
-| **Eval cases** | 25 total, 0 executable |
+| **Eval cases** | 25 total, 25 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Friction, not a security boundary: flags secrets scan-secrets' patterns miss -- high-entropy values of 16-150 characters assigned to secret-like keys, GitHub and npm tokens whose checksum verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid card numbers. Warns only (observe). Misses: values split across lines, over 150 characters, cut short by # or & when unquoted, under other key names, or written like code (a.b(), ALL_CAPS, word names, URLs, paths).
+Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy values (16-150 chars) assigned to secret-like keys, GitHub/npm tokens whose checksum verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split across lines, over 150 characters, cut short by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parentheses or concatenation, or in XML.
 
 ## What it solves
 
@@ -25,17 +25,15 @@ scan-secrets refuses vendor prefixes and a fixed set of assignment patterns, so 
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
 
-```text
+On a finding it prints:
 
-```
-
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+> Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose structure checks out, or a card number. Move it to an environment variable or a secret store and reference it; rotate it if it was ever real. A person who has checked a test value keeps it with 'pragma: allowlist secret' on the same line (a person's commit, push or CI honours it; in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
 
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/scan-secrets-entropy/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/scan-secrets-entropy/` for each surface its `on` names (the git hook, the agent's write path), and the ambient rule beside it. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

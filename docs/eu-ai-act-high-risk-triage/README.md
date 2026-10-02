@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | rule text |
+| **Mechanism** | warn-only `content_regex` gate |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
-| **Eval cases** | 11 total, 0 executable |
+| **Eval cases** | 11 total, 4 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,18 +25,22 @@ A ranking or eligibility model that lands in an Annex III domain -- hiring, cred
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `content_regex` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+
+On a finding it prints:
+
+> Possible EU AI Act Annex III high-risk domain (scoring, ranking or screening of people). Name the domain and the provider or deployer role, and get an owner for Articles 9-15 before this ships. This only flags: the domain call is the repo owner's.
+
+The rule text ships alongside, in the agent's ambient context:
 
 ```text
 on_touch(Annex III domain: biometrics|critical_infra|education|employment|essential_services|credit|insurance|law_enforcement|migration|justice|elections): flag + name(domain) + require owner for Art 9-15 (risk_mgmt, data_governance, tech_doc, logging, human_oversight, accuracy_robustness_cybersecurity)
 never(silently add): high_risk capability; decision belongs to the repo owner; see .agents/policies/eu-ai-act-high-risk-triage/references/annex-iii.md
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/eu-ai-act-high-risk-triage/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/eu-ai-act-high-risk-triage/` for each surface its `on` names (the git hook, the agent's write path), and the ambient rule beside it. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 
