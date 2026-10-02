@@ -17,6 +17,15 @@ SHA = "8f4b7f84864484a7bf31766abe9204da3cbe65b3"
 DIGEST = "sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412"
 
 REFUSED = [
+    "  - {?#c",
+    "  - {name: x, ?#c",
+    "  [?#c",
+    "    ?uses",
+    '    ?"uses"',
+    "    ?&a",
+    "    ?#c",
+    "    ?*u",
+    "uu: &u !!str uses",
     "env: {K: &.k uses}",
     "  k: &k image",
     "  - {?*k : a}",
@@ -123,7 +132,6 @@ SILENT = [
     "          grep -oE '[?&]code=[^&]+' | head -1",
     "          sed 's/[?*]//g' file",
     "          grep -E '^([0-9]+,?|none)$' x",
-    '          re.sub(r"[?#]", "", s)',
     "          *.log",
     "          *item*",
     '        "C:\\Users\\me"',
