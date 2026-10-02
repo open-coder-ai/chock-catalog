@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import bisect
 import re
-from re import Pattern
 from typing import Any
 
 from instr_blocks import FENCE, Fence, nest, open_fence, table_rows
@@ -133,7 +132,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     return out
 
 
-def _opening(line: str, depth: int, items: list[int], html: Pattern[str] | str | None) -> tuple[Fence | None, Any]:
+def _opening(line: str, depth: int, items: list[int], html: re.Pattern[str] | str | None) -> tuple[Fence | None, Any]:
     """The fence `line` opens, if any, and the HTML block state after it. A fence is sure when every renderer
     reads it as one: opened at the margin, outside any list, quote or HTML block."""
     opened = open_fence(line, depth, items)

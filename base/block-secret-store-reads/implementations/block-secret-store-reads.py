@@ -6,6 +6,8 @@
 # Exit 1 refuses, exit 3 asks (the first line printed is the prompt), exit 0 stays silent.
 # Friction, not a boundary: scripts, variables the parser cannot see and indirect reads are out of reach.
 
+from __future__ import annotations
+
 import codecs
 import os
 import re
@@ -15,14 +17,14 @@ import warnings
 from collections.abc import Iterator
 from itertools import takewhile
 
+FAULT: ImportError | None = None
 try:
     import secret_paths as store
     import secret_printers as printers
     import secret_readers as readers
     from chock_shellparse import Cmd, commands, flags_of, git_parts, operands
-except ImportError as exc:  # a missing shared module is a fault, never a verdict
-    print(f"block-secret-store-reads: internal error ({type(exc).__name__}); command not checked", file=sys.stderr)
-    sys.exit(2)
+except ImportError as exc:  # a missing shared module is a fault, never a verdict; run() reports it
+    FAULT = exc
 
 BLOCK, ASK = 1, 3
 Verdict = tuple[int, str] | None
@@ -180,6 +182,11 @@ def check(raw: str) -> Verdict:
 
 def run(argv: list[str]) -> int:
     """Exit 1 blocks, 3 asks, 2 reports a guard fault (never a verdict), 0 allows."""
+    if FAULT is not None:
+        print(
+            f"block-secret-store-reads: internal error ({type(FAULT).__name__}); command not checked", file=sys.stderr
+        )
+        return 2
     try:
         result = check(os.environ.get("CHOCK_RAW_COMMAND") or shlex.join(argv))
     except Exception as exc:  # noqa: BLE001 -- a guard fault must not look like a block

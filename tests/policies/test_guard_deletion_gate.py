@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -107,10 +108,13 @@ def test_a_person_waiver_at_commit_clears_one_line_and_is_not_honoured_for_the_o
 
 
 def test_ci_judges_the_tip_commit_when_no_base_is_named(repo: Path) -> None:
-    assert run(repo, "ci") == (0, "")  # the root commit removes nothing
+    clean = {
+        k: v for k, v in os.environ.items() if k != "GITHUB_BASE_REF"
+    }  # a CI runner names a base; this test names none
+    assert run(repo, "ci", env=clean) == (0, "")  # the root commit removes nothing
     stage(repo, {"src/api.py": API_GONE})
     scriptkit.git(repo, "commit", "-q", "-m", "drop check")
-    code, err = run(repo, "ci")
+    code, err = run(repo, "ci", env=clean)
     assert code == 3 and "src/api.py" in err
 
 
