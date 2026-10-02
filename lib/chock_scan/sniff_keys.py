@@ -29,7 +29,7 @@ LOOSE = re.compile(
 #: A double-quoted key whose colon may sit on a later line, or that follows a `/* */` comment.
 SPLIT_KEY = re.compile(r"""(?:(?<![^\s{,\[])|(?<=\*/))("(?:[^"\\\n]|\\.)*+")\s*+:""")
 #: An explicit `?` key: first on its line (after indentation or `- `), or first in a flow entry.
-EXPLICIT = re.compile(r"(?:^[ \t]*+(?:-[ \t]++)*+|[{,\[][ \t]*+)\?(?:[ \t]|$)")
+EXPLICIT = re.compile(r"^[ \t]*+(?:-[ \t]++)*+\?(?![^ \t])|[{,\[][ \t]*+\?(?![^ \t])")
 #: In loose_keys: a key this reader cannot name, which may be any key (a real key spelled so only adds lows).
 UNNAMED = "\0unnamed"
 ESCAPE = re.compile(r"\\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}|.)", re.DOTALL)
