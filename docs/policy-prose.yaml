@@ -583,6 +583,19 @@ block-unguarded-agent-spawn:
     a program or a flag there and an eval case beside it. A sandbox you have proven safe is a reason to edit this policy in
     your own copy, not to run the flag past it.
 
+block-secret-store-reads:
+  solves: |
+    A prompt-injected or careless agent can read a developer's credentials with one ordinary command: `cat ~/.npmrc`,
+    `base64 ~/.aws/credentials`, `tar czf x.tgz ~/.ssh`, `gh auth token`. Once the value is in the transcript it
+    can be sent anywhere, and the supply-chain worms of 2025 (s1ngularity, Shai-Hulud) did exactly this with the
+    victim's own agent CLI. This guard refuses the read before it runs and tells the agent to ask the person for
+    the one value it needs. Template files, listings and public keys stay readable.
+  customise: |
+    The stores, readers and token printers are one data file, `implementations/data/secret_stores.json`
+    (365-day freshness, checked in CI); add a path or a reader there and an eval case beside it. A store that is a
+    directory needs no per-file rows. `relative` says whether a bare relative name may match (`always`, `code` for
+    interpreter text only, `never`). Nothing waives a refusal in-band: the person runs the command themselves.
+
 agentic-code-security:
   solves: |
     The OWASP Top 10 for Agentic Applications lists what goes wrong when an agent is built carelessly, and most of
