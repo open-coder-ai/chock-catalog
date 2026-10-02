@@ -176,3 +176,22 @@ def test_the_deepest_allowed_nesting_is_refused_cleanly_not_by_the_stack(yp: Mod
     text = "".join(" " * i + "- " for i in range(0, 400, 2))
     with pytest.raises(yp.ParseError, match="nested deeper than 64"):
         yp.scan(text, max_depth=yp.MAX_DEPTH)
+
+
+@pytest.mark.parametrize(
+    "char",
+    [" ", "~", "\xa0", "퟿", "", "﻾", "＀", "�", "\U00010000", "\U0010ffff"],
+    ids=lambda c: f"U+{ord(c):04X}",
+)
+def test_the_edges_of_every_printable_range_are_accepted(yp: ModuleType, char: str) -> None:
+    assert yp.scan(f"a: x{char}y\n")
+
+
+@pytest.mark.parametrize(
+    "char",
+    ["\x08", "\x0b", "\x0c", "\x1f", "\x7f", "\x80", "\x9f", "\ud800", "\udfff", "﻿", "￿"],
+    ids=lambda c: f"U+{ord(c):04X}",
+)
+def test_the_characters_just_outside_each_range_are_refused(yp: ModuleType, char: str) -> None:
+    with pytest.raises(yp.ParseError, match=rf"character U\+{ord(char):04X} is not allowed"):
+        yp.scan(f"a: x{char}y\n")
