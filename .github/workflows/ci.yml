@@ -169,7 +169,7 @@ jobs:
       # adoption PRs never touch this workflow. Read it into the job env for the checkout below;
       # anything but one full 40-hex commit SHA fails here, before checkout resolves it as a name.
       - name: Read the framework pin
-        run: python3 tools/framework_ref.py read
+        run: python3 -I tools/framework_ref.py read
 
       # Check out the framework at the pinned ref this catalog is validated against.
       - name: Check out the framework
@@ -182,7 +182,7 @@ jobs:
 
       # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
       - name: The framework checkout is the pinned commit
-        run: python3 tools/framework_ref.py verify .framework
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock and the lint tooling
         run: |
@@ -292,7 +292,7 @@ jobs:
           cache-dependency-path: .framework-ref
 
       - name: Read the framework pin
-        run: python3 tools/framework_ref.py read
+        run: python3 -I tools/framework_ref.py read
 
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -304,7 +304,7 @@ jobs:
 
       # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
       - name: The framework checkout is the pinned commit
-        run: python3 tools/framework_ref.py verify .framework
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock
         run: pip install ./.framework
@@ -384,7 +384,7 @@ jobs:
             requirements/test.txt
 
       - name: Read the framework pin
-        run: python3 tools/framework_ref.py read
+        run: python3 -I tools/framework_ref.py read
 
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -396,7 +396,7 @@ jobs:
 
       # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
       - name: The framework checkout is the pinned commit
-        run: python3 tools/framework_ref.py verify .framework
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock and the test tooling
         run: |
@@ -441,7 +441,7 @@ jobs:
           cache-dependency-path: .framework-ref
 
       - name: Read the framework pin
-        run: python3 tools/framework_ref.py read
+        run: python3 -I tools/framework_ref.py read
 
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -453,7 +453,7 @@ jobs:
 
       # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
       - name: The framework checkout is the pinned commit
-        run: python3 tools/framework_ref.py verify .framework
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock
         run: pip install ./.framework

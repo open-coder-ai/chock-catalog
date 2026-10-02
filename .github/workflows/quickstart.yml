@@ -34,7 +34,7 @@ jobs:
       # divergent install path -- and so it works at all pre-launch, before `chock` is
       # a name PyPI recognises.
       - name: Read the framework pin
-        run: python3 tools/framework_ref.py read
+        run: python3 -I tools/framework_ref.py read
 
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -46,7 +46,7 @@ jobs:
 
       # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
       - name: The framework checkout is the pinned commit
-        run: python3 tools/framework_ref.py verify .framework
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install chock
         run: pip install ./.framework

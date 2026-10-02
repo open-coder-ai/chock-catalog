@@ -18,11 +18,12 @@ UNTRUSTED_REFS = ("github.event.pull_request.head.sha", "github.event.pull_reque
 
 FRAMEWORK_REF = re.compile(r"framework[_-]?ref", re.IGNORECASE)
 PINS = {"${{ env.FRAMEWORK_REF }}", "${{ inputs.framework_ref }}"}
-TOOL = "python3 tools/framework_ref.py"
+TOOL = "python3 -I tools/framework_ref.py"
 BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
 HEXISH = re.compile(r"[0-9a-fA-F]{7,64}")
 # A verify step is its command and the ref it checks: shell, working-directory or extra env could neuter it.
 VERIFY_KEYS = {"name", "id", "run", "env"}
+ENV_RISK = re.compile(r".*PATH$|PYTHON|GIT_", re.IGNORECASE)
 
 
 def _triggers(workflow: dict) -> set:
@@ -95,7 +96,8 @@ def framework_checkouts(name: str, workflow: dict) -> list[str]:
     """A checkout by FRAMEWORK_REF is validated before it and its HEAD proven to be that commit right after.
 
     A checkout of another repository at anything else must name a literal, non-hex branch, which reads as
-    mutable. Not seen: steps after the verify step, composite actions, reusable workflows, `run: git clone`.
+    mutable. Not seen: steps after the verify step, composite actions, reusable workflows, `run: git clone`,
+    a `container:` image, and PATH or env an earlier `run:` writes to $GITHUB_PATH/$GITHUB_ENV.
     """
     problems = []
     for job_id, job in (workflow.get("jobs") or {}).items():
@@ -110,6 +112,10 @@ def framework_checkouts(name: str, workflow: dict) -> list[str]:
                 problems += [f"{where}: {p}" for p in _checkout_problems(steps, index)]
                 if (workflow.get("defaults") or {}).get("run") or (job.get("defaults") or {}).get("run"):
                     problems.append(f"{where}: `defaults.run` can change the shell or directory its verify runs in")
+                if risky := sorted(
+                    k for k in {**(workflow.get("env") or {}), **(job.get("env") or {})} if ENV_RISK.match(k)
+                ):
+                    problems.append(f"{where}: job or workflow env {risky} can change which git or python verify runs")
             elif "repository" in params and (not BRANCH.fullmatch(ref) or HEXISH.fullmatch(ref)):
                 problems.append(
                     f"{where} of {params['repository']}: a pin goes through FRAMEWORK_REF and its verify step; "

@@ -14,9 +14,9 @@ from trees import ROOT
 CHECKOUT = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
 ENV_PIN = "${{ env.FRAMEWORK_REF }}"
 INPUT_PIN = "${{ inputs.framework_ref }}"
-READ = {"name": "Read the framework pin", "run": "python3 tools/framework_ref.py read"}
-CHECK = {"run": "python3 tools/framework_ref.py check", "env": {"FRAMEWORK_REF": INPUT_PIN}}
-VERIFY = {"run": "python3 tools/framework_ref.py verify .framework"}
+READ = {"name": "Read the framework pin", "run": "python3 -I tools/framework_ref.py read"}
+CHECK = {"run": "python3 -I tools/framework_ref.py check", "env": {"FRAMEWORK_REF": INPUT_PIN}}
+VERIFY = {"run": "python3 -I tools/framework_ref.py verify .framework"}
 INSTALL = {"run": "pip install ./.framework"}
 SHA = "5c9350738729a2cf1c40f5851628384751cae484"
 
@@ -47,6 +47,21 @@ def test_every_framework_checkout_here_is_found_and_guarded() -> None:
     assert found >= 8
 
 
+@pytest.mark.parametrize("key", ["PATH", "PYTHONPATH", "pythonhome", "GIT_DIR", "LD_LIBRARY_PATH"])
+@pytest.mark.parametrize("where", ["workflow", "job"])
+def test_env_that_redirects_git_or_python_fails(key: str, where: str) -> None:
+    job = {"steps": [READ, _checkout(), VERIFY]}
+    workflow = {"jobs": {"j": job}}
+    (workflow if where == "workflow" else job)["env"] = {key: ".framework", "FORCE_COLOR": "1"}
+    problems = check_workflows.framework_checkouts("w.yml", workflow)
+    assert any(f"[{key!r}]" in p for p in problems), problems
+
+
+def test_ordinary_env_around_a_framework_checkout_passes() -> None:
+    job = {"env": {"PIP_NO_INPUT": "1"}, "steps": [READ, _checkout(), VERIFY]}
+    assert check_workflows.framework_checkouts("w.yml", {"env": {"FORCE_COLOR": "1"}, "jobs": {"j": job}}) == []
+
+
 def test_defaults_run_around_a_framework_checkout_fails() -> None:
     for where in ("workflow", "job"):
         job = {"steps": [READ, _checkout(), VERIFY]}
@@ -69,7 +84,7 @@ def test_defaults_run_around_a_framework_checkout_fails() -> None:
         (
             READ,
             {"uses": CHECKOUT, "with": {"repository": "o/r", "ref": ENV_PIN}},
-            {"run": "python3 tools/framework_ref.py verify ."},
+            {"run": "python3 -I tools/framework_ref.py verify ."},
         ),
     ],
 )
@@ -82,10 +97,13 @@ def test_guarded_checkouts_pass(steps: tuple[dict, ...]) -> None:
     [
         ((_checkout(), VERIFY), "no earlier step refuses a non-SHA ref"),
         ((_checkout(), READ, VERIFY), "no earlier step refuses a non-SHA ref"),
-        ((READ, _checkout()), "the next step is not `python3 tools/framework_ref.py verify .framework`"),
+        ((READ, _checkout()), "the next step is not `python3 -I tools/framework_ref.py verify .framework`"),
         ((READ, _checkout(), INSTALL, VERIFY), "the next step is not"),
-        ((READ, _checkout(), {"run": "python3 tools/framework_ref.py verify ."}), "the next step is not"),
-        ((READ, _checkout(), {"run": "python3 tools/framework_ref.py verify .framework || true"}), "the next step is"),
+        ((READ, _checkout(), {"run": "python3 -I tools/framework_ref.py verify ."}), "the next step is not"),
+        (
+            (READ, _checkout(), {"run": "python3 -I tools/framework_ref.py verify .framework || true"}),
+            "the next step is",
+        ),
         ((READ, _checkout(), {**VERIFY, "if": "false"}), "can be skipped"),
         ((READ, _checkout(), {**VERIFY, "continue-on-error": True}), "can be skipped"),
         ((READ, _checkout(), {**VERIFY, "env": {"FRAMEWORK_REF": INPUT_PIN}}), "not the ref checked out"),
