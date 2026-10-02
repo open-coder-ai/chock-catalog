@@ -13,8 +13,9 @@ GUARD_RULE = "guard-deletion"
 MITIGATION_RULE = "mitigation-removal"
 #: Longer lines are cut here, so a pathological line cannot make a pattern run long.
 MAX_LINE = 1000
-COMMENT_ONLY = re.compile(r"^(?:#(?!(?:define|undef)\b)|//|/\*|\*|--|<!--|;)")
-IMPORT_ONLY = re.compile(r"^(?:import|from\s+\S+\s+import|using|use|#include)\b")
+COMMENT_ONLY = re.compile(r"^(?:#(?!(?:define|undef)\b)|//|/\*|\*|--|<!--|;(?=\s|$))")
+IMPORT_ONLY = re.compile(r"^(?:import|from\s+\S+\s+import|using)\s+[\w.:\\*,{} \t'\"/@-]+;?$")
+LEADING_BLOCK = re.compile(r"^(?:/\*.*?\*/|\*/)\s*")
 STRINGS = re.compile(r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'")
 TRAILING_COMMENT = re.compile(r"\s(?:#|//|--\s).*$")
 #: waived(hunk, the removed lines the finding rests on, rule) -> True when a pragma waives the rule there.
@@ -33,9 +34,13 @@ class Finding:
 
 
 def code_of(raw: str) -> str:
-    """The line without its trailing comment; empty when the whole line is a comment."""
-    text = raw.strip()[:MAX_LINE]
-    return "" if COMMENT_ONLY.match(text) or IMPORT_ONLY.match(text) else TRAILING_COMMENT.sub("", text)
+    """The line without its trailing comment; empty when the whole line is a comment or an import."""
+    text = LEADING_BLOCK.sub("", raw.strip()[:MAX_LINE])
+    if COMMENT_ONLY.match(text) or IMPORT_ONLY.match(text):
+        return ""
+    masked = STRINGS.sub(lambda m: "x" * len(m.group()), text)
+    cut = TRAILING_COMMENT.search(masked)
+    return text[: cut.start()] if cut else text
 
 
 def _fires(fam: Mitigation, carried: list[int], weaker: list[int], added: list[str]) -> bool:
@@ -74,7 +79,7 @@ def _guards(hunk: Hunk, shapes: Shapes, waived: Waived, rem: list[str], add: lis
             removed_hits.setdefault(guard.group, {})[(guard.id, guard.label)] = None
     found: list[Finding] = []
     for group, hits in removed_hits.items():
-        bare = add if group == "registration" else [STRINGS.sub('""', code) for code in add]
+        bare = add if group in ("registration", "tls") else [STRINGS.sub('""', code) for code in add]
         if any(g.group == group and g.pattern.search(code) for g in shapes.guards for code in bare):
             continue
         advice = "keep the check, or put its replacement in the same hunk"

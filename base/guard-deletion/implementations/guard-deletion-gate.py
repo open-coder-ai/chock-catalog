@@ -21,10 +21,14 @@ HUMAN_EVENTS = frozenset({"commit", "ci"})
 STAGED_EVENTS = frozenset({"commit", "agent-commit"})
 EVENTS = STAGED_EVENTS | {"ci", "tool_use"}
 BUDGET = 20.0
-PRAGMA = re.compile(r"pragma:\s*allowlist\s+(guard-removal|mitigation-removal)\b", re.IGNORECASE)
+PRAGMA = re.compile(
+    r"(?:#|//|--|/\*|;|<!--)\s*pragma:\s*allowlist\s+(guard-removal|mitigation-removal)\b", re.IGNORECASE
+)
 WAIVER_NAMES = {judge.GUARD_RULE: "guard-removal", judge.MITIGATION_RULE: "mitigation-removal"}
+MOVE_ADVICE = "a person confirms the move keeps its checks, or keep the file where the checks are judged"
 PRAGMA_ADVICE = "remove it; a person who reviewed the removal adds the pragma"
 MAX_CHANGED_LINES = 20000
+MAX_CHANGED_CHARS = 1 << 20
 SHOWN = 12
 OVERSIZE = (
     "guard-deletion: the change is too large to read line by line (over {limit} changed lines in judged files), "
@@ -78,6 +82,21 @@ def shaped(table: shapes.Shapes, raw: str) -> bool:
     )
 
 
+def moved(hunk: Hunk) -> set[str]:
+    """The removed lines of a hunk, stripped: a pragma line that only moved or was reindented is not new."""
+    return {raw.strip() for raw in hunk.removed}
+
+
+def moves(hunks: list[Hunk], in_scope: dict[str, tuple[str, ...]]) -> list[judge.Finding]:
+    """A file moved from a judged path to one that is not: its guards leave the gate's sight."""
+    seen = {(h.old, h.path) for h in hunks if h.old and h.old != h.path}
+    return [
+        judge.Finding(judge.GUARD_RULE, new, 1, "moved-out-of-scope", f"a file moved here from {old}", MOVE_ADVICE)
+        for old, new in sorted(seen)
+        if scope.in_scope(old, in_scope) and not scope.in_scope(new, in_scope)
+    ]
+
+
 def agent_pragmas(hunks: list[Hunk], table: shapes.Shapes) -> list[judge.Finding]:
     """A waiver pragma an agent's change adds to a guard or mitigation line: only a person adds one."""
     return [
@@ -85,7 +104,7 @@ def agent_pragmas(hunks: list[Hunk], table: shapes.Shapes) -> list[judge.Finding
             judge.GUARD_RULE, h.path, h.line, "agent-pragma", "a waiver pragma added by the agent", PRAGMA_ADVICE
         )
         for h in hunks
-        if any(PRAGMA.search(raw) and shaped(table, raw) for raw in h.added)
+        if any(PRAGMA.search(raw) and shaped(table, raw) and raw.strip() not in moved(h) for raw in h.added)
     ]
 
 
@@ -119,23 +138,22 @@ def main() -> int:
         known_event(event)
         table = shapes.load(HERE / "data" / "shapes.json")
         in_scope = scope.load(HERE / "data" / "scope.json")
-        hunks = [
-            h
-            for h in collect(payload, root, event)
-            if scope.in_scope(h.path, in_scope) or scope.in_scope(h.old, in_scope)
-        ]
+        raw_hunks = collect(payload, root, event)
+        hunks = [h for h in raw_hunks if scope.in_scope(h.path, in_scope) or scope.in_scope(h.old, in_scope)]
     except (TableError, changes.ChangeError, ValueError, AttributeError, TypeError) as exc:
         print(
             f"guard-deletion: could not read the change ({type(exc).__name__}: {exc}); refusing to guess",
             file=sys.stderr,
         )
         return UNJUDGED
-    if sum(len(h.removed) + len(h.added) for h in hunks) > MAX_CHANGED_LINES:
+    sizes = [(len(h.removed) + len(h.added), sum(map(len, h.removed)) + sum(map(len, h.added))) for h in hunks]
+    if sum(n for n, _ in sizes) > MAX_CHANGED_LINES or sum(c for _, c in sizes) > MAX_CHANGED_CHARS:
         print(OVERSIZE.format(limit=MAX_CHANGED_LINES), file=sys.stderr)
         return ASK
     waived = make_waiver(root, event)
     started = time.monotonic()
-    findings = [] if event in HUMAN_EVENTS else agent_pragmas(hunks, table)
+    findings = moves(raw_hunks, in_scope)
+    findings += [] if event in HUMAN_EVENTS else agent_pragmas(hunks, table)
     for hunk in hunks:
         if time.monotonic() - started > BUDGET:
             print(

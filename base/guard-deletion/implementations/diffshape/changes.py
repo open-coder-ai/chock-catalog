@@ -16,6 +16,7 @@ DIFF = [
     "--src-prefix=a/", "--dst-prefix=b/",
 ]  # fmt: skip
 #: Branch names reach git as `origin/<name>`; anything else in the variable is not a base.
+EVENT_LIMIT = 1 << 20
 SHA = re.compile(r"[0-9a-f]{40}")
 BASE_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 
@@ -59,7 +60,8 @@ def staged(root: Path) -> list[Hunk]:
 def _pushed_before() -> str:
     """The commit a push event started from, read from the CI's event file; empty when there is none."""
     try:
-        before = json.loads(Path(os.environ.get("GITHUB_EVENT_PATH", "")).read_text(encoding="utf-8")).get("before")
+        with Path(os.environ.get("GITHUB_EVENT_PATH", "")).open(encoding="utf-8") as handle:
+            before = json.loads(handle.read(EVENT_LIMIT)).get("before")
     except (OSError, ValueError, AttributeError):
         return ""
     return before if isinstance(before, str) and SHA.fullmatch(before) and set(before) != {"0"} else ""
@@ -79,8 +81,15 @@ def ci_range(root: Path) -> list[str] | None:
         return [f"{ref}...HEAD"]
     before = _pushed_before()
     if before and _resolves(root, before):
-        return [f"{before}...HEAD"]
-    return ["HEAD^1", "HEAD"] if _resolves(root, "HEAD^1") else None
+        head = git(root, "rev-parse", "HEAD").strip()
+        if git(root, "rev-parse", before).strip() != head:
+            return [f"{before}...HEAD"]
+    if _resolves(root, "HEAD^1"):
+        return ["HEAD^1", "HEAD"]
+    if git(root, "rev-parse", "--is-shallow-repository").strip() == "true":
+        msg = "a shallow checkout has no parent to compare with; fetch more history (actions/checkout fetch-depth: 0)"
+        raise ChangeError(msg)
+    return None
 
 
 def in_range(root: Path) -> list[Hunk]:
@@ -91,6 +100,7 @@ def in_range(root: Path) -> list[Hunk]:
 
 def committed(root: Path, path: str) -> str:
     """The text of `path` at HEAD, or "" when HEAD does not have it."""
+    git(root, "rev-parse", "--git-dir")  # a repository git cannot read is an error, not an empty HEAD
     try:
         return git(root, "show", f"HEAD:./{path}")
     except ChangeError:

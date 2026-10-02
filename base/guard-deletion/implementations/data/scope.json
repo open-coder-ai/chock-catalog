@@ -11,7 +11,8 @@
     "fixtures",
     "evals",
     "docs",
-    "doc"
+    "doc",
+    "vendor"
   ],
   "dirs": [
     "tests",
@@ -19,7 +20,6 @@
     "testdata",
     "__fixtures__",
     "__mocks__",
-    "vendor",
     "node_modules",
     "third_party"
   ],
@@ -49,6 +49,20 @@
     ".md",
     ".mdx",
     ".rst",
-    ".adoc"
+    ".adoc",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".ico",
+    ".pdf",
+    ".zip",
+    ".gz",
+    ".woff",
+    ".woff2",
+    ".ttf",
+    ".eot",
+    ".mp4",
+    ".webp"
   ]
 }

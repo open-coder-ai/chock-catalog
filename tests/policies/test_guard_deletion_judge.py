@@ -264,3 +264,18 @@ def test_a_removed_line_too_long_to_read_asks_unless_waived() -> None:
     long = "x = 1; " * 200
     assert verdict([long], []) == [(GUARD, "long-line")]
     assert verdict([long + " # pragma: allowlist guard-removal"], [], waived=waiver(human=True)) == []
+
+
+def test_unrelated_words_and_a_documented_tls_fix_do_not_refuse_correct_code() -> None:
+    assert (
+        verdict(
+            ["h['Content-Security-Policy'] = \"default-src 'self'\""],
+            ["h['Content-Security-Policy'] = \"default-src 'self'\"; deliver()"],
+        )
+        == []
+    )
+    csp = "Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'"
+    assert verdict([csp], [csp.replace("'self' 'unsafe", "'self' 'nonce-x' 'unsafe")]) == []
+    assert verdict(["r = get(u, verify=True)"], ["r = get(u, verify='/etc/ca.pem')"]) == []
+    assert verdict(["r = get(u, verify=True)"], ["r = get(u, verify=CA_BUNDLE)"]) == []
+    assert verdict(["import os, html", "from a import b"], []) == []

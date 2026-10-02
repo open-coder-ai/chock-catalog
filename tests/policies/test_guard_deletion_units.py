@@ -44,13 +44,16 @@ def test_content_that_looks_like_a_file_header_is_content() -> None:
     assert (hunk.removed, hunk.added) == (("-- ENABLE ROW LEVEL SECURITY",), ("++ b",))
 
 
-def test_a_deleted_file_is_named_by_its_old_path_and_a_pure_rename_has_no_hunks() -> None:
+def test_a_deleted_file_is_named_by_its_old_path_and_a_pure_rename_is_a_move_note() -> None:
     gone = "diff --git a/m.js b/m.js\ndeleted file mode 100644\n--- a/m.js\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-app.use(auth)\n-x\n"
     (hunk,) = hunks.parse_patch(gone)
     assert (hunk.path, hunk.line, hunk.removed, hunk.added) == ("m.js", 1, ("app.use(auth)", "x"), ())
-    assert (
-        hunks.parse_patch("diff --git a/o.py b/n.py\nsimilarity index 100%\nrename from o.py\nrename to n.py\n") == []
-    )
+    rename = "diff --git a/o.py b/n.py
+similarity index 100%
+rename from o.py
+rename to n.py
+"
+    assert hunks.parse_patch(rename) == [hunks.Hunk("n.py", 1, (), (), "o.py")]
 
 
 def test_a_quoted_path_is_unquoted_and_the_no_newline_marker_is_skipped() -> None:
@@ -68,7 +71,7 @@ def test_scope_skips_tests_docs_and_vendored_code() -> None:
         "web/app.spec.ts",
         "docs/x.py",
         "README.md",
-        "a/vendor/b.py",
+        "vendor/b.py",
         "a.min.js",
         "conftest.py",
     ]
@@ -198,11 +201,11 @@ def test_a_baseline_that_cannot_be_read_falls_back_to_head(tmp_path: Path, monke
 
 
 def test_a_hunk_is_judged_when_either_side_of_a_move_is_in_scope() -> None:
-    (hunk,) = hunks.parse_patch(
+    move, hunk = hunks.parse_patch(
         "diff --git a/src/a.py b/vendor/a.py\nsimilarity index 90%\nrename from src/a.py\nrename to vendor/a.py\n"
         "--- a/src/a.py\n+++ b/vendor/a.py\n@@ -2 +2,0 @@\n-    if x is None: return\n"
     )
-    assert (hunk.path, hunk.old) == ("vendor/a.py", "src/a.py")
+    assert (hunk.path, hunk.old, move.old) == ("vendor/a.py", "src/a.py", "src/a.py")
     assert changes.repo_path(Path("/r"), "/r/a/../b.py") == "b.py"
     for bad in ("/elsewhere/x.py", "../x.py", ".."):
         with pytest.raises(changes.ChangeError, match="outside the repository"):

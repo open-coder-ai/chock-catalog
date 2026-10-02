@@ -41,7 +41,7 @@
       "id": "middleware-registration",
       "group": "registration",
       "label": "a middleware or request-filter registration",
-      "pattern": "\\b(?:app|router|server|api|application|bp|blueprint)\\.use\\s*\\(|\\bMIDDLEWARE(?:_CLASSES)?\\s*=|\\badd_middleware\\s*\\(|\\b\\w{0,40}Middleware\\b(?!\\s*[},;]?\\s*(?:from\\b|$))|\\bbefore_(?:request|action|filter)\\b|\\.(?:UseAuthentication|UseAuthorization|UseHttpsRedirection|UseHsts|UseCors)\\s*\\(|\\b(?:helmet|csurf)\\s*\\("
+      "pattern": "\\b(?:app|router|server|api|application|bp|blueprint)\\.use\\s*\\(|\\bMIDDLEWARE(?:_CLASSES)?\\s*=|\\badd_middleware\\s*\\(|\\b\\w{0,40}Middleware\\b|^\\s*use\\s+[A-Z]\\w*|\\bbefore_(?:request|action|filter)\\b|\\.(?:UseAuthentication|UseAuthorization|UseHttpsRedirection|UseHsts|UseCors)\\s*\\(|\\b(?:helmet|csurf)\\s*\\("
     },
     {
       "id": "sanitizer-call",
@@ -59,7 +59,7 @@
       "id": "tls-verify-true",
       "group": "tls",
       "label": "TLS verification set on",
-      "pattern": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|\\bcheck_hostname\\s*=\\s*True\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b"
+      "pattern": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|\\bcheck_hostname\\s*=\\s*True\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b|\\bverify\\s*=\\s*(?!False\\b|false\\b|None\\b|0\\b)[\\\"'\\w]"
     }
   ],
   "mitigations": [
@@ -113,31 +113,32 @@
       "id": "hsts",
       "label": "Strict-Transport-Security response header",
       "trigger": "removed",
-      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bstrict[-_]transport[-_]security|secure_hsts_seconds\\b",
-      "kept": "(?i)^(?!.*(?:max-age\\s*=\\s*0\\b)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bstrict[-_]transport[-_]security|secure_hsts_seconds\\b",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:strict[-_]transport[-_]security|secure_hsts_seconds)\\b",
+      "kept": "(?i)^(?!.*(?:max-age\\s*=\\s*[\\\"']?0+\\b|secure_hsts_seconds\\s*=\\s*[\\\"']?0+\\b)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:strict[-_]transport[-_]security|secure_hsts_seconds)\\b",
       "fix": "keep the Strict-Transport-Security header set, or set it again in the same hunk"
     },
     {
       "id": "csp",
       "label": "Content-Security-Policy response header",
       "trigger": "removed",
-      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bcontent[-_]security[-_]policy\\b",
-      "kept": "(?i)^(?!.*(?:unsafe-inline|unsafe-eval|default-src\\s+\\*)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bcontent[-_]security[-_]policy\\b",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:content[-_]security[-_]policy)\\b",
+      "kept": "(?i)^(?!.*(?:(?:script-src|default-src)\\b[^;]*(?:'unsafe-(?:inline|eval)'|\\*)|Report-Only)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:content[-_]security[-_]policy)\\b",
       "fix": "keep the Content-Security-Policy header set, or set it again in the same hunk"
     },
     {
       "id": "x-frame-options",
       "label": "X-Frame-Options response header",
       "trigger": "removed",
-      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bx[-_]frame[-_]options\\b",
-      "kept": "(?i)^(?!.*(?:ALLOWALL|ALLOW-FROM)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bx[-_]frame[-_]options\\b",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]frame[-_]options)\\b",
+      "kept": "(?i)^(?!.*(?:ALLOWALL|ALLOW-FROM)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]frame[-_]options)\\b",
       "fix": "keep the X-Frame-Options header set, or set it again in the same hunk"
     },
     {
       "id": "x-content-type-options",
       "label": "X-Content-Type-Options response header",
       "trigger": "removed",
-      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)\\w*\\b).*\\bx[-_]content[-_]type[-_]options|secure_content_type_nosniff\\b",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]content[-_]type[-_]options|secure_content_type_nosniff)\\b",
+      "kept": "(?i)^(?!.*(?:secure_content_type_nosniff\\s*=\\s*False|[\\\"']none[\\\"'])|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]content[-_]type[-_]options|secure_content_type_nosniff)\\b",
       "fix": "keep the X-Content-Type-Options header set, or set it again in the same hunk"
     },
     {
@@ -165,7 +166,7 @@
       "id": "tls-verify",
       "label": "TLS certificate verification",
       "trigger": "replaced-by-weak",
-      "removed": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b|\\bcheck_hostname\\s*=\\s*True\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?1\\b",
+      "removed": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b|\\bcheck_hostname\\s*=\\s*True\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?1\\b|\\bssl\\.CERT_REQUIRED\\b",
       "weak": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:False|false|0)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*false\\b|\\bInsecureSkipVerify\\s*:\\s*true\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:0|false)\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?0\\b|\\bcheck_hostname\\s*=\\s*False\\b|\\bCERT_NONE\\b",
       "fix": "keep verification on and trust the issuing CA with a bundle path instead"
     },
