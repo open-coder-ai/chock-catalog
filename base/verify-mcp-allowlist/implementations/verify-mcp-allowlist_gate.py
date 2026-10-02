@@ -33,7 +33,7 @@ FOOTER = (
 )
 OBSERVED_FOOTER = (
     "These findings only warn for now: pin the launcher to an exact version or image digest, run no shell command line, "
-    "use https, and give credentials as references such as ${VAR}."
+    "use https, give credentials as references such as ${VAR}, and drop denied options, old versions and broad enables."
 )
 
 

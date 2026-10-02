@@ -3,8 +3,8 @@
 "exec" "$(command -v python3 || command -v python)" "$0" "$@"
 # fmt: on
 # Gate MCP server configuration as protected content: `<agent> mcp add` and a shell write to a dedicated MCP config are
-# refused unless every server they name is on the allowlist (.chock/mcp-allowlist.json, as HEAD holds it) and passes the
-# pin, shell, https, credential and option rules. A shell write to the allowlist or to this guard's source is refused.
+# refused unless every server they name is on the allowlist (.chock/mcp-allowlist.json, as HEAD holds it). The pin, shell,
+# https, credential and option rules are the gate's, and only warn. A shell write to the allowlist or this guard is refused.
 
 import json
 import os
@@ -42,7 +42,8 @@ VALUE_FLAGS = frozenset(
         "--header-env",
     }
 )
-PACKAGE_RUNNERS = frozenset({"npx", "bunx", "pnpx", "uvx"})
+PACKAGE_RUNNERS = frozenset({"npx", "bunx", "pnpx", "uvx", "npm", "pnpm", "yarn", "bun"})
+BARE_AGENTS = frozenset({"claude", "codex", "gemini", "cursor-agent"})
 PACKAGE_AGENT = re.compile(r"(?:^|/)(claude-code|codex|gemini-cli)(?:@[^/@]*)?$")
 PACKAGE_NAMES = {"claude-code": "claude", "codex": "codex", "gemini-cli": "gemini"}
 LIST_FLAGS = {"-e": "env", "--env": "env", "-H": "header", "--header": "header"}
@@ -129,7 +130,8 @@ def added_server(cmd: Cmd) -> tuple[str, object] | None:
     agent = cmd.name if cmd.name in ADD_VERBS else None
     if cmd.name in PACKAGE_RUNNERS:
         found = next((m for arg in cmd.args if (m := PACKAGE_AGENT.search(arg))), None)
-        agent = PACKAGE_NAMES[found.group(1)] if found else None
+        bare = next((arg for arg in cmd.args if arg in BARE_AGENTS), None)
+        agent = PACKAGE_NAMES[found.group(1)] if found else bare
     if agent is None:
         return None
     # `mcp` may follow global options (`claude --model x mcp add ...`), so the first `mcp <verb>` pair is the one.
