@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from refname_rules import ADVICE, describe, problems, shown  # noqa: E402
+from refname_rules import ADVICE, describe, problems, shown
 
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"', re.DOTALL)
 QUOTED_REASON = "a control character, a double quote or a backslash (git prints it quoted)"
@@ -45,7 +45,9 @@ def main() -> int:
     try:
         found = findings(json.load(sys.stdin))
     except Exception as exc:  # noqa: BLE001 -- a fault must not read as a verdict
-        print(f"refname-filename-metachar-gate: internal error ({type(exc).__name__}); paths not checked", file=sys.stderr)
+        print(
+            f"refname-filename-metachar-gate: internal error ({type(exc).__name__}); paths not checked", file=sys.stderr
+        )
         return 2
     print(json.dumps({"findings": found}))
     if not found:

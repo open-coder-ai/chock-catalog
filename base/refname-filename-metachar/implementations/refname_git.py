@@ -58,7 +58,9 @@ SWITCH = Spec(
     frozenset(),
 )
 WORKTREE = Spec(
-    _set("--force --detach --checkout --no-checkout --lock --reason --orphan --quiet --track --no-track --guess-remote"),
+    _set(
+        "--force --detach --checkout --no-checkout --lock --reason --orphan --quiet --track --no-track --guess-remote"
+    ),
     "bB",
     _set("--reason"),
     frozenset(),
@@ -138,31 +140,56 @@ def _refspec_destination(refspec: str, *, needs_colon: bool) -> str:
     return dst if src else ""
 
 
+def _branch_or_tag(sub: str, rest: list[str], _doc: str) -> list[str]:
+    spec = BRANCH if sub == "branch" else TAG
+    flags, operands, _ = parse(rest, spec)
+    if flags & spec.skip:
+        return []
+    renames = sub == "branch" and flags & {"-m", "-M", "-c", "-C", "--move", "--copy"}
+    return operands[-1:] if renames else operands[:1]
+
+
+def _checkout_or_switch(sub: str, rest: list[str], _doc: str) -> list[str]:
+    creators = {"-b", "-B", "-c", "-C", "--orphan", "--create", "--force-create"}
+    return [value for name, value in parse(rest, CHECKOUT if sub == "checkout" else SWITCH)[2] if name in creators]
+
+
+def _worktree(_sub: str, rest: list[str], _doc: str) -> list[str]:
+    if rest[:1] != ["add"]:
+        return []
+    return [value for name, value in parse(rest[1:], WORKTREE)[2] if name in ("-b", "-B")]
+
+
+def _push_or_fetch(sub: str, rest: list[str], _doc: str) -> list[str]:
+    spec = PUSH if sub == "push" else FETCH
+    flags, operands, _ = parse(rest, spec)
+    if flags & spec.skip:
+        return []
+    found = (_refspec_destination(ref, needs_colon=sub == "fetch") for ref in operands[1:])
+    return [ref for ref in found if ref]
+
+
+def _update_ref(_sub: str, rest: list[str], doc: str) -> list[str]:
+    flags, operands, _ = parse(rest, UPDATE_REF)
+    if "--stdin" in flags:
+        lines = (line.split() for line in doc.splitlines())
+        return [words[1] for words in lines if len(words) > 1 and words[0] in ("create", "update")]
+    return [] if flags & UPDATE_REF.skip else operands[:1]
+
+
+_READERS = {
+    "branch": _branch_or_tag,
+    "tag": _branch_or_tag,
+    "checkout": _checkout_or_switch,
+    "switch": _checkout_or_switch,
+    "worktree": _worktree,
+    "push": _push_or_fetch,
+    "fetch": _push_or_fetch,
+    "update-ref": _update_ref,
+}
+
+
 def created_refs(sub: str, rest: list[str], doc: str) -> list[str]:
-    """Every ref name `git <sub> <rest...>` would create or point somewhere new."""
-    if sub in ("branch", "tag"):
-        flags, operands, _ = parse(rest, BRANCH if sub == "branch" else TAG)
-        if flags & (BRANCH if sub == "branch" else TAG).skip:
-            return []
-        renames = sub == "branch" and flags & {"-m", "-M", "-c", "-C", "--move", "--copy"}
-        return operands[-1:] if renames else operands[:1]
-    if sub in ("checkout", "switch"):
-        spec = CHECKOUT if sub == "checkout" else SWITCH
-        creators = {"-b", "-B", "-c", "-C", "--orphan", "--create", "--force-create"}
-        return [value for name, value in parse(rest, spec)[2] if name in creators]
-    if sub == "worktree" and rest[:1] == ["add"]:
-        return [value for name, value in parse(rest[1:], WORKTREE)[2] if name in ("-b", "-B")]
-    if sub in ("push", "fetch"):
-        spec = PUSH if sub == "push" else FETCH
-        flags, operands, _ = parse(rest, spec)
-        if flags & spec.skip:
-            return []
-        found = (_refspec_destination(ref, needs_colon=sub == "fetch") for ref in operands[1:])
-        return [ref for ref in found if ref]
-    if sub == "update-ref":
-        flags, operands, _ = parse(rest, UPDATE_REF)
-        if "--stdin" in flags:
-            lines = (line.split() for line in doc.splitlines())
-            return [words[1] for words in lines if len(words) > 1 and words[0] in ("create", "update")]
-        return [] if flags & UPDATE_REF.skip else operands[:1]
-    return []
+    """Every ref name `git <sub> <rest...>` would create or point somewhere new; the heredoc feeds --stdin."""
+    reader = _READERS.get(sub)
+    return reader(sub, rest, doc) if reader else []

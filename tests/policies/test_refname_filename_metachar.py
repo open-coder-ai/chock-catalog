@@ -116,7 +116,9 @@ def test_a_shown_name_is_escaped_and_bounded() -> None:
 
 
 def run_gate(writes: dict[str, str]) -> tuple[int, dict, str]:
-    proc = scriptkit.run_script_full(POLICY, "refname-filename-metachar-gate.py", Path.cwd(), json.dumps({"writes": writes}))
+    proc = scriptkit.run_script_full(
+        POLICY, "refname-filename-metachar-gate.py", Path.cwd(), json.dumps({"writes": writes})
+    )
     return proc.returncode, json.loads(proc.stdout), proc.stderr
 
 
@@ -236,7 +238,11 @@ def test_the_hook_refuses_a_real_push_of_a_sha_named_branch(tmp_path: Path) -> N
     hook.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}"\n', encoding="utf-8")
     hook.chmod(0o755)
     refused = subprocess.run(
-        [scriptkit.GIT, "push", "-q", str(remote), f"HEAD:refs/heads/{SHA1}"], cwd=work, capture_output=True, text=True
+        [scriptkit.GIT, "push", "-q", str(remote), f"HEAD:refs/heads/{SHA1}"],
+        cwd=work,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert refused.returncode != 0
     assert "full commit id" in refused.stderr

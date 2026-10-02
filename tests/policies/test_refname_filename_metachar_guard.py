@@ -90,10 +90,10 @@ CASES = [
     ("cat 'a;b'", OK),
     ("rm -rf 'old;dir'", OK),
     # Substitution syntax counts when spelled literally; unquoted, the shell expands it.
-    ("git checkout -b \"x\\$(id)\"", BLOCK),
+    ('git checkout -b "x\\$(id)"', BLOCK),
     ("touch 'x${IFS}y'", BLOCK),
-    ("touch \"$HOME/x\" \"${OUT}/y\"", OK),
-    ("git checkout -b \"feat/${TICKET}\"", OK),
+    ('touch "$HOME/x" "${OUT}/y"', OK),
+    ('git checkout -b "feat/${TICKET}"', OK),
     ("bash -c \"git tag 'v1;x'\"", BLOCK),
 ]
 

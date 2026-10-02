@@ -12,6 +12,7 @@ import os
 import re
 import shlex
 import sys
+from itertools import pairwise
 
 from chock_shellparse import Cmd, commands, git_parts
 from refname_git import created_refs
@@ -30,7 +31,7 @@ LITERAL = re.compile(r"'[^']*(?:\$[({'\"]|\$IFS|`)[^']*'|\\[$`]")
 
 def _ps_paths(args: list[str]) -> list[str]:
     """A cmdlet's -Path/-Name/-Destination values, spaced (`-Path x`) or glued (`-Path:x`)."""
-    found = [value for flag, value in zip(args, args[1:], strict=False) if flag.lower() in PS_PATH_FLAGS]
+    found = [value for flag, value in pairwise(args) if flag.lower() in PS_PATH_FLAGS]
     glued = (arg.split(":", 1) for arg in args if ":" in arg)
     return found + [value for flag, value in glued if flag.lower() in PS_PATH_FLAGS]
 

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from refname_rules import describe, ref_problems, shown  # noqa: E402
+from refname_rules import describe, ref_problems, shown
 
 FIELDS = 4  # git's fixed pre-push line: local ref, local sha, remote ref, remote sha
 
@@ -36,7 +36,10 @@ def run(stdin: str) -> int:
     try:
         reasons = refused(stdin.splitlines())
     except Exception as exc:  # noqa: BLE001 -- say what failed instead of a bare traceback
-        print(f"refname-filename-metachar-pre-push: internal error ({type(exc).__name__}); push not checked", file=sys.stderr)
+        print(
+            f"refname-filename-metachar-pre-push: internal error ({type(exc).__name__}); push not checked",
+            file=sys.stderr,
+        )
         return 2
     for reason in reasons:
         print(f"BLOCKED: {reason}", file=sys.stderr)
