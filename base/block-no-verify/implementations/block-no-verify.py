@@ -71,6 +71,8 @@ FALLBACK = re.compile(
 Verdict = tuple[int, str] | None
 TOO_DEEP = "this command nests aliases or scripts too deeply to read; ask the person to run it."
 SCRIPT_RUNNERS = frozenset(("fish", "busybox", "iex", "invoke-expression"))  # run a script the lexer does not unwrap
+SCRIPT_FLAG = re.compile(r"-[a-z]*c[a-z]*|--command(?:=.*)?", re.DOTALL)
+UNREAD = "this line leaves a here-document open, so what it sets for later commands cannot be read; ask the person."
 
 
 def is_override(name: str) -> bool:
@@ -112,8 +114,17 @@ def overrides_set(raw: str) -> list[str]:
     text = raw
     for pattern, repl in REWRITES:
         text = pattern.sub(repl, text)
-    cmds = commands(f"{text}\ntrue")
-    return [name.upper() for cmd, after in zip(cmds, [*cmds[1:], None], strict=True) for name in set_by(cmd, after)]
+    cmds = ended(text, "true")
+    return [name.upper() for cmd, after in pairwise([*cmds, None]) for name in set_by(cmd, after)]
+
+
+def ended(text: str, word: str) -> list[Cmd]:
+    """The line's commands with `word` run last, so it shows what the line leaves set. A here-document left open
+    swallows a next line, so `word` also goes on the last line; [] when neither reaches it."""
+    for joined in (f"{text}\n{word}", f"{text} ;{word}"):
+        if (cmds := commands(joined)) and cmds[-1].name == word:
+            return cmds
+    return []
 
 
 def via(where: str, script: str, found: Verdict) -> Verdict:
@@ -138,7 +149,9 @@ def run_alias(cmd: Cmd, sub: str, rest: list[str], text: str, depth: int) -> Ver
 
 def config_verdicts(pairs: list[tuple[str, str]], env: dict[str, str], depth: int) -> list[Verdict]:
     """core.hooksPath set, or an alias defined, by config this command (or the environment it leaves) carries."""
-    found: list[Verdict] = [(BLOCK, f"core.hooksPath set disables every hook, exactly as --no-verify does. {FIX}")]
+    found: list[Verdict] = [
+        (BLOCK, f"setting core.hooksPath replaces the hooks git runs, so it can switch every one off. {FIX}")
+    ]
     found = found if any(key == HOOKS_KEY for key, _ in pairs) else []
     for name, texts in aliases(pairs, env).items():
         for text in texts:
@@ -187,7 +200,11 @@ def judge(cmd: Cmd, depth: int, kept: dict[str, str]) -> Verdict:
         name = inner[0].replace("\\", "/").rsplit("/", 1)[-1].lower().removesuffix(".exe")
         return judge(cmd._replace(name=name, args=inner[1:]), depth, kept)
     if cmd.name in SCRIPT_RUNNERS:
-        script = " ".join(cmd.args[cmd.args.index("-c") + 1 :] if "-c" in cmd.args else cmd.args)
+        at = next((i for i, a in enumerate(cmd.args) if SCRIPT_FLAG.fullmatch(a)), -1)
+        script = (
+            " ".join([cmd.args[at].partition("=")[2]] if "=" in cmd.args[at] else cmd.args[at + 1 :]) if at >= 0 else ""
+        )
+        script = script or " ".join(cmd.args)
         return via(cmd.name, script, check(script, depth + 1))
     kept.update(declared(cmd.name, cmd.args))
     env = {**kept, **cmd.env}
@@ -213,7 +230,9 @@ def check(raw: str, depth: int = 0) -> Verdict:
             "command themselves with it changed."
         )
     kept: dict[str, str] = {}
-    return strictest([judge(cmd, depth, kept) for cmd in commands(f"{raw}\n{END}")])
+    cmds = ended(raw, END)
+    found = [judge(cmd, depth, kept) for cmd in cmds or commands(raw)]
+    return strictest([*found, None if cmds else (ASK, UNREAD)])
 
 
 def each_shell(raw: str) -> Verdict:

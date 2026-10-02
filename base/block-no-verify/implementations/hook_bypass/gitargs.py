@@ -22,6 +22,7 @@ THIS_REPO = frozenset((".git", "./.git", "$PWD/.git", "${PWD}/.git", "$(pwd)/.gi
 UNSETTING = frozenset(("--unset", "--unset-all", "unset"))
 READING = frozenset(("--get", "--get-all", "--get-regexp", "-l", "--list", "--remove-section", *UNSETTING))
 READ_VERBS = frozenset(("get", "list", "unset", "remove-section", "rename-section", "edit"))
+DEFAULTS = frozenset(("$HOME/.config", "${HOME}/.config", "~/.config"))  # XDG_CONFIG_HOME at its default moves nothing
 _COUNT = re.compile(r"\s*\+?(\d+)")  # git reads GIT_CONFIG_COUNT with strtoul: blanks and a + sign are accepted
 
 
@@ -46,8 +47,11 @@ def config_writes(rest: list[str]) -> list[tuple[str, str]]:
 
 
 def unsets_hooks(rest: list[str]) -> bool:
-    """`git config --unset core.hooksPath`: for husky and other managers that install through hooksPath, an uninstall."""
-    return bool(UNSETTING & set(rest)) and any(arg.lower() == HOOKS_KEY for arg in rest)
+    """`git config --unset core.hooksPath` or `--remove-section core`: for husky and other managers that install
+    through hooksPath, an uninstall."""
+    lowered = [arg.lower() for arg in rest]
+    removing = bool({"--remove-section", "remove-section"} & set(lowered)) and "core" in lowered
+    return removing or (bool(UNSETTING & set(lowered)) and HOOKS_KEY in lowered)
 
 
 def this_repo(path: str) -> bool:
@@ -91,13 +95,13 @@ def asks_for(sub: str, rest: list[str], args: list[str], env: dict[str, str], pa
     keys = [key for key, _ in [*pairs, *(config_writes(rest) if sub == "config" else [])] if ASK_KEYS.fullmatch(key)]
     hooked = sub in HOOK_SUBS
     others = git_dirs(args, env) if hooked else []
-    files = [name for name in CONFIG_FILE_ENV if name in env] if hooked else []
+    files = [name for name in CONFIG_FILE_ENV if name in env and env[name] not in DEFAULTS] if hooked else []
     reasons = (
         (
             sub in PLUMBING and not ({"-d", "--delete"} & set(rest)),
             f"git {sub} writes commits or refs without running any hook",
         ),
-        (sub == "config" and unsets_hooks(rest), "unsetting core.hooksPath uninstalls hooks a manager put there"),
+        (sub == "config" and unsets_hooks(rest), "removing core.hooksPath uninstalls hooks a manager put there"),
         (bool(keys), f"git {sub} with {''.join(keys[:1])} runs config or commands this guard cannot read"),
         (
             bool(others),
@@ -114,6 +118,6 @@ def env_asks(env: dict[str, str]) -> str:
         return (
             f"{others[0]} left set points later git commands at another repository's hooks; a person must confirm it."
         )
-    if files := [name for name in CONFIG_FILE_ENV if name in env and name not in ("HOME",)]:
+    if files := [name for name in CONFIG_FILE_ENV if name in env and name != "HOME" and env[name] not in DEFAULTS]:
         return f"{files[0]} left set makes later git commands read a config file that can set core.hooksPath; a person must confirm it."
     return ""

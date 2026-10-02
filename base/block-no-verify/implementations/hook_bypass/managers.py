@@ -1,6 +1,7 @@
 """Hook managers' own off switches (husky, lefthook, pre-commit), their uninstall commands, and spellings the lexer drops."""
 
 import re
+import shlex
 from itertools import pairwise
 
 # Each variable makes the hook manager skip its hooks (HUSKY/LEFTHOOK only when not 1/true; the rest when non-empty).
@@ -31,6 +32,10 @@ PS_PATH = re.compile(r"env:/?(\w+)$", re.IGNORECASE)
 # PowerShell `$env:NAME = v` for the variables read here, rewritten to the NAME=v the lexer knows.
 WATCHED = r"HUSKY\w*|LEFTHOOK\w*|SKIP|PRE_COMMIT_ALLOW_NO_CONFIG|GIT_\w+|HOME|XDG_CONFIG_HOME"
 PS_ASSIGN = re.compile(rf"\$\{{?env:({WATCHED})\}}?\s*[+.]?=\s*", re.IGNORECASE)
+DOTNET_SET = re.compile(
+    rf"\[(?:System\.)?Environment\]::SetEnvironmentVariable\(\s*['\"]({WATCHED})['\"]\s*,\s*['\"]?([^'\",)]*)['\"]?[^)]*\)",
+    re.IGNORECASE,
+)
 # bash ANSI-C ($'..') and locale ($"..") quoting: the shell hands the program the plain text.
 ANSI_C = re.compile(r"\$'((?:[^'\\]|\\.)*)'", re.DOTALL)
 LOCALE = re.compile(r'\$"((?:[^"\\]|\\.)*)"', re.DOTALL)
@@ -67,19 +72,24 @@ def declared(name: str, args: list[str]) -> dict[str, str]:
     return {key: value or "1" for key, value in pairs}
 
 
+def program(word: str) -> str:
+    """A word as the program it names: path, .exe and a version or extras spec dropped (pre-commit==3.7 is pre-commit)."""
+    return re.sub(r"(@.*|==.*|\[.*|\.exe)$", "", word.replace("\\", "/").rsplit("/", 1)[-1].lower())
+
+
 def launched(name: str, args: list[str]) -> list[str]:
-    """The command a launcher runs (npx, pnpm exec, uv run, pipx run, python -m ...), as words; [] when none."""
-    words = [name, *args]
-    while words and (words[0].lower() in LAUNCHERS or PYTHON.fullmatch(words[0]) or words[0].startswith("-")):
-        words = words[1:]
-    return words if len(words) <= len(args) else []
+    """What a launcher (npx, pnpm exec, uv run, pipx run, python -m ...) runs, from the first word that is git or a
+    hook manager, so a launcher option's value cannot hide it; [] when the command is no launcher or runs neither."""
+    if not (name.lower() in LAUNCHERS or PYTHON.fullmatch(name)):
+        return []
+    at = next((i for i, word in enumerate(args) if program(word) in MANAGERS | {"git"}), -1)
+    return [program(args[at]), *args[at + 1 :]] if at >= 0 else []
 
 
 def uninstalls(name: str, args: list[str]) -> str:
     """`pre-commit|lefthook|husky uninstall`, also behind a launcher; else ''."""
-    words = launched(name, args) or [name, *args]
-    tool = re.sub(r"(@.*|\.exe)$", "", words[0].replace("\\", "/").rsplit("/", 1)[-1].lower())
-    return f"{tool} uninstall" if tool in MANAGERS and "uninstall" in words[1:] else ""
+    words = launched(name, args) or [program(name), *args]
+    return f"{words[0]} uninstall" if words[0] in MANAGERS and "uninstall" in words[1:] else ""
 
 
 def _unescape(code: str) -> str:
@@ -99,4 +109,5 @@ def _ansi(match: re.Match[str]) -> str:
 def normalise(text: str) -> str:
     """Spellings the lexer does not read, rewritten to ones it does; quoted text stays data either way."""
     text = LOCALE.sub(lambda m: f'"{m.group(1)}"', ANSI_C.sub(_ansi, text))
+    text = DOTNET_SET.sub(lambda m: f"{m.group(1).upper()}={shlex.quote(m.group(2))}", text)
     return PS_ASSIGN.sub(lambda m: f"{m.group(1).upper()}=", text)

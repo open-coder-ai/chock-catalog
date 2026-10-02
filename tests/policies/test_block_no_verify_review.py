@@ -94,6 +94,26 @@ ROWS: list[tuple[str, int]] = [
     ("git -c core.hooksPath=/dev/null checkout main", BLOCK),
     ("LEFTHOOK_CONFIG=/dev/null git commit -m x", BLOCK),
     ("uv run pytest -n auto", OK),
+    # round 2: an open here-document, launcher option values, remove-section, fish --command, .NET setter
+    ("export HUSKY=0 <<y", BLOCK),
+    ("export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null <<y", BLOCK),
+    ("export CHOCK_ALLOW=1 <<y", BLOCK),
+    ("cat <<y\nexport HUSKY=0", ASK),  # the open body hides what the line leaves set
+    ("cat <<EOF\nhello\nEOF", OK),
+    ("uv run --python 3.12 git commit -n -m x", BLOCK),
+    ("pnpm --filter app exec git commit -n -m x", BLOCK),
+    ("uvx --from pre-commit==3.7 pre-commit uninstall", BLOCK),
+    ("uvx --from pre-commit pre-commit run --all-files", OK),
+    ("npx --version", OK),
+    ("git config --global --remove-section core", ASK),
+    ("git config remove-section core", ASK),
+    ("git config --remove-section alias", OK),
+    ("fish --command='git commit --no-verify -m x'", BLOCK),
+    ("fish -ic 'git commit -n -m x'", BLOCK),
+    ("fish --command 'git status'", OK),
+    ("[Environment]::SetEnvironmentVariable('HUSKY','0'); git commit -m x", BLOCK),
+    ("[Environment]::SetEnvironmentVariable('GIT_DIR','C:/o.git'); git commit -m x", ASK),
+    ("export XDG_CONFIG_HOME=$HOME/.config", OK),
     ("fish -c 'git status'", OK),
 ]
 
