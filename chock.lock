@@ -91,6 +91,14 @@
       "artifacts_sha256": "a9ca6fe7299501888ceda6de50eda231af958f77fdb2a02be2b23503a9bdc04c"
     },
     {
+      "id": "guard-memory-writes",
+      "version": "0.0.1",
+      "managed": false,
+      "sha256": "b9ca5f944e076042ca7bb87978a236fde324f403bdd1526a0b2ae8a846bd8846",
+      "source": "local",
+      "artifacts_sha256": "ae1a81d4e93cf442f0d5c6b896b365e03165fc51e8573e75cdd20be35a22ab73"
+    },
+    {
       "id": "injection-defense",
       "version": "0.0.1",
       "managed": false,
@@ -150,9 +158,9 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "3c6785233c3a685275e7078880bd6f1f131c079ec73ec4b17e63d5e066a2377b",
+      "sha256": "64a61c3c65f3662c58a6d91c9894704a93cea89879c3731d734852c2a2ab0045",
       "source": "local",
-      "artifacts_sha256": "a0509dd836d30742e9b4c76063687e0c7ed2b3020b0297ca33d046b543aa1416"
+      "artifacts_sha256": "6840e8558f7043ad1eb33759f13a38edc17d46f1ad2bccc41068aac49a96c059"
     },
     {
       "id": "token-efficiency",

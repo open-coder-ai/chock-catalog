@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "guard-memory-writes",
+  "version": "0.0.6",
+  "description": "Refuses agent-memory writes holding what memory must never hold: pasted git history (diff, hunk, commit, index lines), a fenced code block over 20 lines, a duplicate line, or a secret (scan-secrets' pattern). Judges only memory files (MEMORY.md at any depth, CLAUDE.local.md, .claude/memory/**, memory/**/*.md; at agent tool-use also ~/.claude/projects/*/memory/**, ~/.claude/CLAUDE.md, /memories/**) and only what the change adds. No waiver. Structural checks only.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}
