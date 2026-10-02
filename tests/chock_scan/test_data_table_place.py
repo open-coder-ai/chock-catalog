@@ -82,7 +82,8 @@ def test_arithmetic_and_recursion_in_a_check_are_table_errors(dt_: ModuleType, t
     def check(_doc: dict) -> list[str]:
         raise exc
 
-    assert _problems(dt_, write(tmp_path / "t.json", table()), check=check)[0].startswith("payload check failed")
+    path = write(tmp_path / "t.json", table())
+    assert _problems(dt_, path, check=check)[0].startswith("payload check failed")
 
 
 def test_many_unknown_keys_are_capped_and_escaped(dt_: ModuleType, tmp_path: Path) -> None:
@@ -120,4 +121,5 @@ def test_every_scheme_but_a_standalone_https_is_refused(dt_: ModuleType, tmp_pat
 
 @pytest.mark.parametrize("source", ["https://a.b", "see https://a.b and (https://c.d)", "MITRE, https://a.b/x"])
 def test_https_urls_inside_a_citation_pass(dt_: ModuleType, tmp_path: Path, source: str) -> None:
-    assert dt_.load(write(tmp_path / "t.json", table(source=source)), kind="curated", schema=1, keys=ROWS)
+    path = write(tmp_path / "t.json", table(source=source))
+    assert dt_.load(path, kind="curated", schema=1, keys=ROWS)
