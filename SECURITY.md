@@ -79,7 +79,7 @@ cover, is in the framework's
   enforces nothing until someone runs `chock sync`.
 - **<!-- gen:advisory -->26<!-- /gen --> of the <!-- gen:policies -->56<!-- /gen --> policies are advisory.** They compile to text an agent reads and may or
   may not follow. Their eval cases report as `skipped`, never as passing. Another
-  <!-- gen:best-effort -->9<!-- /gen --> are best-effort: they run inside the agent (before a command, or on a tool call,
+  <!-- gen:best-effort -->10<!-- /gen --> are best-effort: they run inside the agent (before a command, or on a tool call,
   where some only warn) only on agents whose hooks `chock sync` wires, and fail open if the
   hook crashes. The other <!-- gen:enforced-at-commit -->21<!-- /gen --> are enforced
   by a git hook, within the two limits above. `tools/gen_registry.py` writes these counts
