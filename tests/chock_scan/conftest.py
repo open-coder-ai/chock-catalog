@@ -40,3 +40,9 @@ def sn(request: pytest.FixtureRequest) -> ModuleType:
 def sk(request: pytest.FixtureRequest) -> ModuleType:
     """The sniff_keys module, from lib/ and from every copy a policy ships."""
     return load_package(request.param, "sniff_keys")
+
+
+@pytest.fixture(params=HCL_SOURCES, ids=HCL_IDS)
+def m(request: pytest.FixtureRequest) -> SimpleNamespace:
+    """chock_scan's HCL modules, from lib/ and from every copy a policy ships."""
+    return load_hcl(request.param)
