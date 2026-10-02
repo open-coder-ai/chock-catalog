@@ -114,7 +114,11 @@ def raw_cr(root: Path, event: str, writes: dict[str, str]) -> dict[str, Collecto
     out: dict[str, Collector] = {}
     for path in sorted(p for p in writes if _GIT_CONFIGS.search(normalized(p))):
         spec = f":./{path}" if event in ("commit", "agent-commit") else f"HEAD:./{path}"
-        if _LONE_CR.search(_git_bytes(root, "show", spec)):
+        raw = _git_bytes(root, "show", spec)
+        if raw is None and writes[path]:
+            message = "its raw blob cannot be read to check for a lone carriage return, so it is refused"
+            out.setdefault(path, Collector("")).add("dev-unparseable", "raw-unreadable", message)
+        elif raw and _LONE_CR.search(raw):
             rule = "dev-gitmodules-untrusted" if normalized(path).endswith(".gitmodules") else "dev-gitconfig-exec"
             out.setdefault(path, Collector("")).add(
                 rule, "carriage-return", "a carriage return inside a line (CVE-2025-48384)"
@@ -122,7 +126,8 @@ def raw_cr(root: Path, event: str, writes: dict[str, str]) -> dict[str, Collecto
     return out
 
 
-def _git_bytes(root: Path, *args: str) -> bytes:
+def _git_bytes(root: Path, *args: str) -> bytes | None:
+    """git's stdout, or None when git cannot run or fails."""
     try:
         proc = subprocess.run(  # noqa: S603 -- a fixed git argv; paths are arguments, never shell words
             ["git", *args],  # noqa: S607 -- git from PATH, as the runner's own
@@ -131,8 +136,8 @@ def _git_bytes(root: Path, *args: str) -> bytes:
             check=False,
         )
     except OSError:
-        return b""
-    return proc.stdout if proc.returncode == 0 else b""
+        return None
+    return proc.stdout if proc.returncode == 0 else None
 
 
 def _git(root: Path, *args: str) -> str:
@@ -190,4 +195,13 @@ def link_findings(links: dict[str, str]) -> dict[str, Collector]:
 def untracked(root: Path) -> dict[str, str]:
     """Files on disk git does not track yet (at tool use, what this turn wrote before this write), by path."""
     names = [p for p in _git(root, "ls-files", "-o", "--exclude-standard", "-z").split("\0") if p]
-    return {normalized(p): "untracked" for p in names}
+    return {normalized(p): _disk_text(root / p) for p in names}
+
+
+def _disk_text(path: Path) -> str:
+    """A file's text for its digest (first 1 MiB); a file that cannot be read is keyed as such."""
+    try:
+        with path.open("rb") as handle:
+            return handle.read(1 << 20).decode("utf-8", "replace")
+    except OSError:
+        return "<unreadable>"

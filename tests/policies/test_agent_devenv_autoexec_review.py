@@ -208,7 +208,7 @@ def test_review_git_extras_and_simple_git_hooks() -> None:
         '[gpg "ssh"]\n\tdefaultKeyCommand = id',
         '[submodule "x"]\n\tupdate = !id',
     ):
-        assert rules(".gitconfig", line + "\n") == [("dev-gitconfig-exec", B)]
+        assert rules(".gitconfig", line + "\n", "tool_use") == [("dev-gitconfig-exec", B)]
     hooks = {"simple-git-hooks": {"pre-commit": "npx lint-staged", "post-merge": "npm ci", "preserveUnused": True}}
     assert sorted(rules("package.json", as_json(hooks))) == [("dev-hook-launchers", A), ("dev-hook-launchers", B)]
     assert rules(".gitattributes", "*.doc diff=astextplain\n*.ipynb diff=jupyternotebook\n") == []
@@ -224,3 +224,32 @@ def test_raw_blob_without_git_and_non_string_hook_values(tmp_path: Path) -> None
     raw_cr = gate.sys.modules["devenv.scan"].raw_cr
     assert raw_cr(tmp_path / "missing", "commit", {".gitmodules": ""}) == {}
     assert rules(".cursor/hooks.json", as_json({"hooks": {"stop": [{"command": 5, "bash": ["x"]}]}})) == []
+
+
+def test_rereview_raw_blob_unreadable_is_refused(tmp_path: Path) -> None:
+    raw_cr = gate.sys.modules["devenv.scan"].raw_cr
+    [collector] = raw_cr(tmp_path / "missing", "commit", {".gitmodules": "[x]\n"}).values()
+    assert [f.rule for f in collector.found] == ["dev-unparseable"]
+
+
+def test_rereview_untracked_script_content_is_in_the_key(tmp_path: Path) -> None:
+    repo = scriptkit.init_repo(tmp_path / "r", {"README": "x"})
+    hook = as_json({"hooks": {"Stop": [{"hooks": [{"command": "sh tools/new.sh"}]}]}})
+    scriptkit.write(repo, {"tools/new.sh": "echo one\n"})
+    before = {f["key"] for f in found({SETTINGS: hook}, event="tool_use", root=repo)}
+    scriptkit.write(repo, {"tools/new.sh": "echo two\n"})
+    (repo / "tools" / "dangling").symlink_to("nowhere")
+    after = {f["key"] for f in found({SETTINGS: hook}, event="tool_use", root=repo)}
+    assert len(after - before) == 1
+
+
+@pytest.mark.parametrize(
+    "setting",
+    [
+        {"x.allowlistPath": "./bin/tool"},
+        {"x.command": "./tools/run.json"},
+        {"chat.tools.autoApprove": False, "a.path": "./b/c"},
+    ],
+)
+def test_rereview_approval_words_and_data_values_do_not_hide_programs(setting: dict) -> None:
+    assert rules(".vscode/settings.json", as_json(setting)) == [("dev-exec-path-settings", B)]

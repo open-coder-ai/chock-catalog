@@ -58,8 +58,12 @@ WAIVED = (
 
 
 def test_a_persons_waiver_counts_at_commit(tmp_path: Path) -> None:
-    assert run({".gitconfig": WAIVED}, tmp_path, env=env_for())[0] == 0
-    assert run({".gitconfig": WAIVED}, tmp_path, event="ci", env=env_for())[0] == 0
+    repo = scriptkit.init_repo(tmp_path / "r", {"README": "x"})
+    scriptkit.write(repo, {".gitconfig": WAIVED})
+    scriptkit.git(repo, "add", "-A")
+    assert run({".gitconfig": WAIVED}, repo, env=env_for())[0] == 0
+    scriptkit.git(repo, "commit", "-q", "-m", "waived")
+    assert run({".gitconfig": WAIVED}, repo, event="ci", env=env_for())[0] == 0
 
 
 def test_an_agent_waiver_counts_only_when_committed(tmp_path: Path) -> None:
@@ -84,7 +88,7 @@ def test_a_waiver_inside_a_value_does_not_count(tmp_path: Path) -> None:
 
 def test_a_waiver_for_another_rule_or_not_on_a_comment_line_does_not_count(tmp_path: Path) -> None:
     text = "[core]\n\tpager = less # chock: allow dev-gitmodules-untrusted\n\tx = chock: allow dev-gitconfig-exec\n\teditor = vi\n"
-    assert len(found({".gitconfig": text}, root=tmp_path)) == 2
+    assert len(found({".gitconfig": text}, event="tool_use", root=tmp_path)) == 2
 
 
 def test_waiver_honoured_in_an_agent_event_without_git(tmp_path: Path) -> None:

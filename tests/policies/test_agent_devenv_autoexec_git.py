@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 import pytest
-from policies.devenvkit import gate, rules
+from policies import devenvkit
+from policies.devenvkit import gate
+
+
+def rules(path: str, text: str) -> list[tuple[str, str]]:
+    """At tool use: the text is judged as written, without the raw-blob read commit adds (test_..._review)."""
+    return devenvkit.rules(path, text, "tool_use")
+
 
 MODULES, ATTRS, CONFIG = "dev-gitmodules-untrusted", "dev-gitattributes-filter", "dev-gitconfig-exec"
 B = "block"

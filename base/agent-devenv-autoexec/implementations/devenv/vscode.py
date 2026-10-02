@@ -114,7 +114,7 @@ def _truthy(leaf: object) -> bool:
 
 
 def _approval(c: Collector, path: tuple, leaf: object, spot: str, line: int) -> bool:
-    """An auto-approval setting: True when the path is one (reported or not), so other checks skip it."""
+    """Report an auto-approval setting; True only when one was reported, so every other check still sees the rest."""
     parts = [str(p).lower() for p in path]
     at = next((i for i, p in enumerate(parts) if any(word in p for word in _APPROVAL)), None)
     if at is None:
@@ -127,14 +127,16 @@ def _approval(c: Collector, path: tuple, leaf: object, spot: str, line: int) -> 
         terminal = "terminal" in ".".join(parts[: at + 1])
         broad = not terminal or pattern is None or bool(_REGEX_ALL.match(pattern))
         c.add(AUTO, f"{spot}={leaf}", f"auto-approval at {spot}", severity=BLOCK if broad else ASK, line=line)
-    return True
+        return True
+    return False
 
 
 def _exec_setting(low: str, leaf: str) -> bool:
     last = low.rsplit(".", 1)[-1]
     if ".alternatetools." in f".{low}." or _TERMINAL.match(low):
         return True
-    return bool(_EXEC_KEY.search(last)) and not _DATA_KEY.search(last) and not _DATA_VALUE.search(leaf.strip())
+    data_value = last.endswith("path") and _DATA_VALUE.search(leaf.strip())
+    return bool(_EXEC_KEY.search(last)) and not _DATA_KEY.search(last) and not data_value
 
 
 def settings(c: Collector, config: object, where: str = "settings") -> None:
