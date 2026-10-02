@@ -24,6 +24,12 @@ def test_the_2025_list_has_ten_entries_with_excessive_agency_at_llm06() -> None:
         ({}, "note: (LLM03 Excessive Agency)", "text calls Excessive Agency LLM03; in the 2025 list it is LLM06"),
         ({}, "Anchors: excessive agency, LLM03", "text calls excessive agency LLM03; in the 2025 list it is LLM06"),
         ({}, "LLM10: Prompt Injection", "text calls Prompt Injection LLM10; in the 2025 list it is LLM01"),
+        ({}, "LLM03 \u2014 Excessive Agency", "text calls Excessive Agency LLM03; in the 2025 list it is LLM06"),
+        ({}, "LLM03/Excessive Agency", "text calls Excessive Agency LLM03; in the 2025 list it is LLM06"),
+        ({}, "LLM03.\n    Excessive Agency", "text calls Excessive Agency LLM03; in the 2025 list it is LLM06"),
+        ({}, "LLM3 Excessive Agency", "text calls Excessive Agency LLM03; in the 2025 list it is LLM06"),
+        ({"OWASP-LLM-2023": ["LLM08"]}, "", "compliance key 'OWASP-LLM-2023': name the edition, 'owasp_llm_2025'"),
+        ({"owasp_llm_2025": None}, "", "owasp_llm_2025: 'None' is not an LLM01..LLM10 id"),
     ],
 )
 def test_a_wrong_claim_is_named(compliance: dict, text: str, problem: str) -> None:
@@ -36,6 +42,8 @@ def test_a_wrong_claim_is_named(compliance: dict, text: str, problem: str) -> No
         ({}, ""),
         ({"compliance": None}, "no LLM ids here"),
         ({"compliance": {"owasp_asi": ["ASI03"]}}, "LLM06 (Excessive Agency), Supply Chain (LLM03)"),
+        ({}, "anchors LLM01, Excessive Agency (LLM06)"),
+        ({}, "LLM6 \u2013 Excessive Agency"),
         (
             {"compliance": {"owasp_llm_2025": ["LLM01", {"control": "LLM06", "coverage": "partial"}]}},
             "OWASP LLM01/ASI01",

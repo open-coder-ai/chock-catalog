@@ -72,6 +72,22 @@ def test_check_mode_writes_nothing_and_reports_drift(catalog: Path) -> None:
             "hand-written count '48 published policies'",
         ),
         ("<!-- gen:policies -->6<!-- /gen -->\nnine are enforced\n", "hand-written count 'nine are enforced'"),
+        (
+            "<!-- gen:policies -->6<!-- /gen -->\nsays. Twenty-two of the forty-two\npolicies here are advisory\n",
+            "line 2: hand-written count 'Twenty-two of the forty-two policies'",
+        ),
+        ("<!-- gen:policies -->6<!-- /gen -->\n**22** policies\n", "hand-written count '**22** policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n22 (of 42) policies\n", "hand-written count '22 (of 42) policies'"),
+        (
+            "<!-- gen:policies -->6<!-- /gen -->\n22 of the published catalog policies\n",
+            "hand-written count '22 of the published catalog policies'",
+        ),
+        ("<!-- gen:policies-->42<!-- /gen --> policies\n", "line 1: malformed or unclosed gen marker"),
+        ("<!-- gen:Policies -->42<!-- /gen --> policies\n", "line 1: malformed or unclosed gen marker"),
+        (
+            "<!-- gen:policies -->6<!-- /gen -->\n<!-- gen:advisory -->20 of\n\ntext\n<!-- gen:policies -->48<!-- /gen -->\n",
+            "line 2: malformed or unclosed gen marker",
+        ),
     ],
 )
 def test_a_file_that_could_drift_is_stale_and_left_unwritten(catalog: Path, text: str, problem: str) -> None:
@@ -83,7 +99,14 @@ def test_a_file_that_could_drift_is_stale_and_left_unwritten(catalog: Path, text
 
 @pytest.mark.parametrize(
     "line",
-    ["The three rules", "eleven of them, including Claude Code", "within 7 days", "Three merged pull requests"],
+    [
+        "The three rules",
+        "eleven of them, including Claude Code",
+        "within 7 days",
+        "Three merged pull requests",
+        "see PR #12 policy",
+        "One folder per policy",
+    ],
 )
 def test_counts_of_other_things_are_not_policy_counts(line: str) -> None:
     assert prose_counts.render(f"<!-- gen:policies -->1<!-- /gen -->\n{line}\n", {"policies": "1"})[1] == []

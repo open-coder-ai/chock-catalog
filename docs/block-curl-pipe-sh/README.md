@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Best-effort guard: refuses a download piped into a shell or interpreter (curl, wget, lynx, aria2c, iwr/irm into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node; bare, path-qualified or quoted; in a subshell or behind sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash <(curl ...), `| iex`. Probed misses: fetch inside a quoted command (bash -c "...", ssh host "..."), eval "$(curl ...)", source <(curl ...), pipe into php/pwsh/deno/busybox/su -c/$SHELL, download then run. Friction only.
+Best-effort: refuses curl/wget/lynx/aria2c/iwr/irm piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node (path-qualified, quoted, in a subshell, after bare sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash <(curl ...), `| iex`. Probed misses: fetch right after a quote (bash -c "curl ...", ssh), eval "$(curl ...)", source <(curl ...), wrapper options (sudo -u, env VAR=, /usr/bin/env), doas, csh/tcsh/mksh/lua/php/pwsh/deno/busybox, su -c, $SHELL, download then run. Friction only.
 
 ## What it solves
 

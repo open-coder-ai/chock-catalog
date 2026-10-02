@@ -16,15 +16,18 @@ from mechanism import CEILING, EVENT_SCRIPT, GATE, GUARD, NONE
 
 #: The prose files whose counts this module owns.
 FILES = ("SECURITY.md", "CONTRIBUTING.md")
-MARKER = re.compile(r"<!-- gen:(?P<key>[a-z-]+) -->(?P<value>.*?)<!-- /gen -->", re.S)
+#: One line, no markup inside: an unclosed or nested marker then shows up as a stray one.
+MARKER = re.compile(r"<!-- gen:(?P<key>[a-z-]+) -->(?P<value>[^<\n]*)<!-- /gen -->")
+STRAY = re.compile(r"<!--\s*/?\s*gen\b|\bgen\s*-->", re.I)
 _WORDS = (
     "two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
     "sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety"
 )
-#: A number, as digits or words, then up to three words, then a noun that counts policies.
+#: A number, as digits or words (emphasis allowed), then up to four words, then a noun that counts
+#: policies; the gaps may be line breaks, since prose wraps.
 HAND_COUNT = re.compile(
-    rf"\b(?:\d+|(?:{'|'.join(_WORDS.split())})(?:-\w+)?)\b(?:[ -][\w`-]+){{0,3}}[ -]"
-    r"(?:polic\w*|advisor\w*|enforced[\w-]*|guards?|gates?)\b",
+    rf"(?<![\w.#-])[*_]*(?:\d+|(?:{'|'.join(_WORDS.split())})(?:-\w+)?)\b[*_]*"
+    r"(?:[\s-]+[\w`()*_/-]+){0,4}?[\s-]+(?:polic\w*|advisor\w*|enforced[\w-]*|guards?|gates?)\b",
     re.I,
 )
 
@@ -58,10 +61,16 @@ def render(text: str, known: dict[str, str]) -> tuple[str, list[str]]:
         problems.append("no generated count markers (<!-- gen:KEY -->N<!-- /gen -->)")
     filled = MARKER.sub(lambda m: f"<!-- gen:{m['key']} -->{known.get(m['key'], m['value'])}<!-- /gen -->", text)
     outside = MARKER.sub("", filled)
-    for number, line in enumerate(outside.splitlines(), 1):
-        if hit := HAND_COUNT.search(line):
-            problems.append(f"line {number}: hand-written count {hit.group(0)!r}; use a gen marker")
+    problems += [f"line {_line(outside, m)}: malformed or unclosed gen marker" for m in STRAY.finditer(outside)]
+    for hit in HAND_COUNT.finditer(outside):
+        problems.append(
+            f"line {_line(outside, hit)}: hand-written count {' '.join(hit[0].split())!r}; use a gen marker"
+        )
     return filled, problems
+
+
+def _line(text: str, match: re.Match) -> int:
+    return text.count("\n", 0, match.start()) + 1
 
 
 def update(root: Path, *, write: bool) -> list[str]:

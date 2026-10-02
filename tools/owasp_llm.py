@@ -25,8 +25,12 @@ LLM_2025 = {
 }
 _NAME = "|".join(re.escape(name) for name in LLM_2025.values())
 #: An id written beside a name, either way round: "LLM06 (Excessive Agency)", "Excessive Agency, LLM06".
+#: Joiners between an id and its name; a comma only after the name, since "LLM01, Excessive Agency
+#: (LLM06)" lists two entries.
+_AFTER_ID = "[\\s(:./\u2013\u2014-]{0,6}"
+_AFTER_NAME = "[\\s(:,./\u2013\u2014-]{0,6}"
 _PAIR = re.compile(
-    rf"\b(?P<id>LLM\d\d)\b[\s(:,-]{{0,4}}(?P<name>{_NAME})|(?P<name2>{_NAME})[\s(:,-]{{0,4}}(?P<id2>LLM\d\d)\b",
+    rf"\b(?P<id>LLM\d{{1,2}})\b{_AFTER_ID}(?P<name>{_NAME})|(?P<name2>{_NAME}){_AFTER_NAME}(?P<id2>LLM\d{{1,2}})\b",
     re.I,
 )
 
@@ -35,18 +39,25 @@ def _control(claim: Any) -> str:
     return str(claim.get("control") if isinstance(claim, dict) else claim)
 
 
+def _id(raw: str) -> str:
+    """LLM6 and llm06 are both LLM06."""
+    return f"LLM{int(raw[3:]):02d}"
+
+
 def problems(manifest: dict[str, Any], text: str) -> list[str]:
     """What is wrong with the policy's LLM claims: an unknown key or id, or an id under another's name."""
     found = []
     for key, claims in (manifest.get("compliance") or {}).items():
-        if key.startswith("owasp_llm") and key != KEY:
+        if re.sub(r"[^a-z]", "", key.lower()).startswith(("owaspllm", "llm")) and key != KEY:
             found.append(f"compliance key {key!r}: name the edition, {KEY!r}")
         elif key == KEY:
             found += [
-                f"{KEY}: {_control(c)!r} is not an LLM01..LLM10 id" for c in claims if _control(c) not in LLM_2025
+                f"{KEY}: {_control(c)!r} is not an LLM01..LLM10 id"
+                for c in claims or [None]
+                if _control(c) not in LLM_2025
             ]
     for match in _PAIR.finditer(text):
-        llm_id = (match["id"] or match["id2"]).upper()
+        llm_id = _id(match["id"] or match["id2"])
         name = match["name"] or match["name2"]
         if LLM_2025.get(llm_id, "").lower() != name.lower():
             want = next(i for i, n in LLM_2025.items() if n.lower() == name.lower())

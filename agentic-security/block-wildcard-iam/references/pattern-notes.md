@@ -31,7 +31,8 @@ fails once the gate starts catching it, so this list is corrected rather than le
 
 - A star as an element of a JSON list for Action or Resource, rather than a bare string.
 - Service and global wildcards: s3, iam or any service followed by colon-star, and star-colon-star.
-- YAML Action or Resource with a double-quoted star, or a bare unquoted star.
+- YAML Action or Resource with a double-quoted star, a bare unquoted star, a star in a
+  flow list, or a space before the colon.
 - Terraform `jsonencode` statements, written as HCL `Action = ...` assignments.
 - A star Principal, in either the string or the `{"AWS": ...}` form.
 - The PowerUserAccess managed policy.
