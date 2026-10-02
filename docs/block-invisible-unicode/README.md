@@ -10,7 +10,7 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 61 total, 61 executable |
+| **Eval cases** | 69 total, 69 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->

@@ -61,8 +61,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 61
-  eval_executed: 61
+  eval_cases: 69
+  eval_executed: 69
   description: 'Blocks hidden Unicode in added lines: bidi, tag and plane-14 chars, word joiner, chained
     invisibles, zero-width/joiners/fillers by ASCII, mid-line BOM, LRM/RLM outside RTL text, selectors
     after ASCII, private-use runs of 16+. Allows emoji, RTL/Indic/Thai/CJK text, line-start BOM. Not

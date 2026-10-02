@@ -472,3 +472,67 @@ suite:
         .gitattributes: "AGENTS.md -diff\n"
         AGENTS.md: "Be brief.\U000E0061\U000E0062\U000E0063\U000E0064\U000E0065\n"
       expect: allow
+  - id: tc-062
+    category: trigger
+    prompt: "A combining grapheme joiner sits inside an ASCII identifier, making a second is_admin that looks identical."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        roles.py: "def is_adm\u034Fin():\n"
+      expect: block
+  - id: tc-063
+    category: trigger
+    prompt: "Unassigned specials U+FFF0 and shorthand format controls U+1BCA0 follow ASCII text."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        a.txt: "ok\uFFF0 and\U0001BCA0\n"
+      expect: block
+  - id: tc-064
+    category: trigger
+    prompt: "A single variation selector is the whole content of a string that looks empty."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        check.py: "if s == \"\uFE01\":\n"
+      expect: block
+  - id: tc-065
+    category: trigger
+    prompt: "Three supplementary private-use characters outside the Nerd Font range (plane 16)."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        a.txt: "x \U00100000\U00100001\U00100002\n"
+      expect: block
+  - id: tc-066
+    category: trigger
+    prompt: "An RLM closes an ASCII string; the only RTL text on the line is a Hebrew point in a comment."
+    expect: "The hook blocks the commit; points and number signs do not count as RTL letters."
+    execute:
+      files:
+        auth.py: "if u == \"admin\u200F\":  # x\u05C4\n"
+      expect: block
+  - id: tc-067
+    category: negative_trigger
+    prompt: "Hebrew UI text puts RLM then LRM before a parenthesised Latin word; Persian puts ZWNJ then RLM."
+    expect: "The hook allows the commit; a pair of bidi marks on a line of RTL prose is ordinary."
+    execute:
+      files:
+        locales/he.txt: "\u05E9\u05DC\u05D5\u05DD \u200F\u200E(C++) \u0645\u06CC\u200C\u200F x\n"
+      expect: allow
+  - id: tc-068
+    category: negative_trigger
+    prompt: "Mongolian text with a free variation selector before a vowel separator, and an emoji digit with no keycap."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        mn.txt: "\u1828\u1820\u180B\u180E\u1820 Step 1\uFE0F go\n"
+      expect: allow
+  - id: tc-069
+    category: behavior
+    prompt: "ICU-style locale data writes an LRM literally on a line with no right-to-left letter."
+    expect: "The hook blocks the commit (documented); a person waives the line or writes the escape."
+    execute:
+      files:
+        locale.yaml: "pattern: \"\u200E+972 \u200F\"\n"
+      expect: block
