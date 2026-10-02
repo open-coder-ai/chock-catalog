@@ -1,0 +1,167 @@
+suite:
+  id: hardening-flags-tests-v1
+  policy_id: hardening-flags
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # Every case runs through the policy's script gate, staged in a throwaway repository.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: "A CMake change adds -fno-stack-protector to target_compile_options."
+    expect: "The commit is refused: the stack protector is switched off."
+    execute: {"event": "commit", "head_files": {"CMakeLists.txt": "project(app C)\nadd_executable(app main.c)\n"}, "files": {"CMakeLists.txt": "project(app C)\nadd_executable(app main.c)\ntarget_compile_options(app PRIVATE -O2 -fno-stack-protector)\n"}, "expect": "block"}
+  - id: tc-002
+    category: trigger
+    prompt: "A Makefile sets -D_FORTIFY_SOURCE=0 in CFLAGS."
+    expect: "The commit is refused: FORTIFY_SOURCE is set to zero."
+    execute: {"event": "commit", "files": {"Makefile": "CFLAGS = -O2 -Wall -D_FORTIFY_SOURCE=0\nall:\n\t$(CC) $(CFLAGS) -o app main.c\n"}, "expect": "block"}
+  - id: tc-003
+    category: trigger
+    prompt: "A link line gains -Wl,-z,execstack."
+    expect: "The commit is refused: the stack is made executable."
+    execute: {"event": "commit", "files": {"Makefile": "LDFLAGS += -Wl,-z,execstack\n"}, "expect": "block"}
+  - id: tc-004
+    category: trigger
+    prompt: "A kernel config fragment turns the stack protector off."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {"kernel/hardening.config": "# CONFIG_STACKPROTECTOR is not set\n"}, "expect": "block"}
+  - id: tc-005
+    category: trigger
+    prompt: "A Go release script links with -extldflags -no-pie."
+    expect: "The commit is refused: the Go binary is linked non-PIE."
+    execute: {"event": "commit", "files": {"scripts/release.sh": "go build -ldflags '-extldflags \"-static -no-pie\"' -o app ./cmd/app\n"}, "expect": "block"}
+  - id: tc-006
+    category: trigger
+    prompt: "A Cargo config selects the static relocation model."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {".cargo/config.toml": "[build]\nrustflags = [\"-C\", \"relocation-model=static\"]\n"}, "expect": "block"}
+  - id: tc-007
+    category: trigger
+    prompt: "A release profile turns Rust overflow checks off."
+    expect: "The commit asks a person: release overflow checks are a judgement call."
+    execute: {"event": "commit", "files": {"Cargo.toml": "[package]\nname = \"app\"\n\n[profile.release]\nopt-level = 3\noverflow-checks = false\n"}, "expect": "ask"}
+  - id: tc-008
+    category: negative_trigger
+    prompt: "A change adds -fstack-protector-strong."
+    expect: "The commit passes: a hardening flag is added, not removed."
+    execute: {"event": "commit", "files": {"CMakeLists.txt": "project(app C)\nadd_executable(app main.c)\ntarget_compile_options(app PRIVATE -fstack-protector-strong -D_FORTIFY_SOURCE=2)\n"}, "expect": "allow"}
+  - id: tc-009
+    category: negative_trigger
+    prompt: "A change moves the optimisation level from -O1 to -O2."
+    expect: "The commit passes: an optimisation level is not a hardening setting."
+    execute: {"event": "commit", "head_files": {"Makefile": "CFLAGS = -O1 -Wall\n"}, "files": {"Makefile": "CFLAGS = -O2 -Wall\n"}, "expect": "allow"}
+  - id: tc-010
+    category: negative_trigger
+    prompt: "A debug profile turns overflow checks off and release aborts on panic."
+    expect: "The commit passes: only the release profile is judged and panic abort is not a finding."
+    execute: {"event": "commit", "files": {"Cargo.toml": "[profile.dev]\noverflow-checks = false\n\n[profile.release]\npanic = \"abort\"\n"}, "expect": "allow"}
+  - id: tc-011
+    category: negative_trigger
+    prompt: "A Makefile only mentions the flag in a comment."
+    expect: "The commit passes: comments are not read."
+    execute: {"event": "commit", "files": {"Makefile": "# never build with -fno-stack-protector or -no-pie\nCFLAGS = -O2\n"}, "expect": "allow"}
+  - id: tc-012
+    category: behavior
+    prompt: "A reviewed line carries the pragma waiver, committed by a person."
+    expect: "The commit passes: the person waived the line."
+    execute: {"event": "commit", "files": {"Makefile": "CFLAGS += -fno-stack-protector # pragma: allowlist hardening-flag\n"}, "expect": "allow"}
+  - id: tc-013
+    category: behavior
+    prompt: "The agent writes a waived line that HEAD did not hold."
+    expect: "The write is refused: in the agent a waiver counts only for a line already in HEAD."
+    execute: {"event": "tool_use", "writes": {"Makefile": "CFLAGS += -fno-stack-protector # pragma: allowlist hardening-flag\n"}, "expect": "block"}
+  - id: tc-014
+    category: behavior
+    prompt: "The agent rewrites a file whose waived line HEAD already held."
+    expect: "The write passes: the waived line is old."
+    execute: {"event": "tool_use", "head_files": {"Makefile": "CFLAGS += -fno-stack-protector # pragma: allowlist hardening-flag\n"}, "writes": {"Makefile": "CC = gcc\nCFLAGS += -fno-stack-protector # pragma: allowlist hardening-flag\n"}, "expect": "allow"}
+  - id: tc-015
+    category: behavior
+    prompt: "A commit leaves an existing -fno-stack-protector alone and adds an unrelated flag."
+    expect: "The commit passes: only added settings are judged."
+    execute: {"event": "commit", "head_files": {"Makefile": "CFLAGS = -fno-stack-protector -Wall\n"}, "files": {"Makefile": "CFLAGS = -fno-stack-protector -Wall\nLDFLAGS = -s\n"}, "expect": "allow"}
+  - id: tc-016
+    category: behavior
+    prompt: "A commit copies an existing -fno-stack-protector to a second target."
+    expect: "The commit is refused: the file holds the setting twice and HEAD held it once."
+    execute: {"event": "commit", "head_files": {"Makefile": "A_FLAGS = -fno-stack-protector\n"}, "files": {"Makefile": "A_FLAGS = -fno-stack-protector\nB_FLAGS = -fno-stack-protector\n"}, "expect": "block"}
+  - id: tc-017
+    category: behavior
+    prompt: "At the turn's end a file holds a new -no-pie."
+    expect: "The turn is blocked."
+    execute: {"event": "stop", "head_files": {"Makefile": "LDFLAGS =\n"}, "writes": {"Makefile": "LDFLAGS = -no-pie\n"}, "expect": "block"}
+  - id: tc-018
+    category: trigger
+    prompt: "The flag follows a backslash continuation in a Makefile variable."
+    expect: "The commit is refused: continuations are joined."
+    execute: {"event": "commit", "files": {"Makefile": "CFLAGS = -O2 -Wall \\\n    -Wextra \\\n    -fno-stack-protector\n"}, "expect": "block"}
+  - id: tc-019
+    category: trigger
+    prompt: "The CMake flag is a quoted argument on its own line."
+    expect: "The commit is refused: quotes are not read as part of the flag."
+    execute: {"event": "commit", "files": {"CMakeLists.txt": "target_compile_options(app PRIVATE\n  \"-Wall\"\n  \"-fno-stack-protector\"\n)\n"}, "expect": "block"}
+  - id: tc-020
+    category: trigger
+    prompt: "A recipe line compiles with -fno-stack-protector."
+    expect: "The commit is refused: recipe lines are read."
+    execute: {"event": "commit", "files": {"Makefile": "app: main.c\n\t$(CC) -O2 -fno-stack-protector -o $@ $<\n"}, "expect": "block"}
+  - id: tc-021
+    category: trigger
+    prompt: "A CMake variable switches position independent code off."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {"cmake/flags.cmake": "set(CMAKE_POSITION_INDEPENDENT_CODE OFF)\n"}, "expect": "block"}
+  - id: tc-022
+    category: trigger
+    prompt: "A Dockerfile exports CGO_CFLAGS with the flag."
+    expect: "The commit is refused: a Go build's C flags are read."
+    execute: {"event": "commit", "files": {"Dockerfile": "FROM golang:1.23\nENV CGO_CFLAGS=\"-O2 -fno-stack-protector\"\nRUN go build ./...\n"}, "expect": "block"}
+  - id: tc-023
+    category: trigger
+    prompt: "A GoReleaser file passes -extldflags=-no-pie."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {".goreleaser.yaml": "builds:\n  - ldflags:\n      - -s -w -extldflags=-no-pie\n"}, "expect": "block"}
+  - id: tc-024
+    category: trigger
+    prompt: "A build script passes a Rust link argument pair for execstack."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {".cargo/config.toml": "[build]\nrustflags = [\"-C\", \"link-arg=-z\", \"-C\", \"link-arg=execstack\"]\n"}, "expect": "block"}
+  - id: tc-025
+    category: trigger
+    prompt: "build.rs emits -no-pie as a link argument."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {"build.rs": "fn main() {\n    println!(\"cargo:rustc-link-arg=-no-pie\");\n}\n"}, "expect": "block"}
+  - id: tc-026
+    category: trigger
+    prompt: "A defconfig turns KASLR off with =n."
+    expect: "The commit is refused."
+    execute: {"event": "commit", "files": {"arch/arm64/configs/board_defconfig": "CONFIG_RANDOMIZE_BASE=n\n"}, "expect": "block"}
+  - id: tc-027
+    category: negative_trigger
+    prompt: "A kernel config uses an uppercase N, which the kernel does not read as off."
+    expect: "The commit passes: kernel config is case-sensitive."
+    execute: {"event": "commit", "files": {"board_defconfig": "CONFIG_STACKPROTECTOR=N\n# config_randomize_base is not set\n"}, "expect": "allow"}
+  - id: tc-028
+    category: negative_trigger
+    prompt: "A file outside the scanned build names carries the flag."
+    expect: "The commit passes: only the named build files are scanned (a documented limit)."
+    execute: {"event": "commit", "files": {"docs/flags.txt": "CFLAGS = -fno-stack-protector\n", "src/flags.py": "FLAGS = ['-fno-stack-protector']\n"}, "expect": "allow"}
+  - id: tc-029
+    category: negative_trigger
+    prompt: "-U_FORTIFY_SOURCE is followed by the level it is redefined to."
+    expect: "The commit passes: the usual redefinition idiom keeps FORTIFY_SOURCE on."
+    execute: {"event": "commit", "files": {"Makefile": "CFLAGS = -O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3\n"}, "expect": "allow"}
+  - id: tc-030
+    category: negative_trigger
+    prompt: "-z noexecstack and a full-RELRO link line."
+    expect: "The commit passes: these harden."
+    execute: {"event": "commit", "files": {"Makefile": "LDFLAGS = -Wl,-z,noexecstack -Wl,-z,relro,-z,now -pie\n"}, "expect": "allow"}
+  - id: tc-031
+    category: negative_trigger
+    prompt: "build.rs names a flag only in a line comment."
+    expect: "The commit passes."
+    execute: {"event": "commit", "files": {"build.rs": "// -C relocation-model=static was tried and dropped\nfn main() {}\n"}, "expect": "allow"}

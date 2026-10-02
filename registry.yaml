@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: hardening-flags
+  path: base/hardening-flags
+  version: 0.1.0
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 31
+  eval_executed: 31
+  description: 'Blocks added settings that weaken compiler, linker, Rust or kernel hardening, in CMake,
+    Make, meson, configure.ac, Cargo, build.rs, Go release scripts, Dockerfiles and kernel config: no
+    stack protector, FORTIFY_SOURCE off, non-PIE, execstack, norelro, CET off, kernel KASLR/RWX off.
+    Asks on Rust release overflow-checks off, /dev/mem. Misses flags set by environment, generated files,
+    toolchain defaults. Runs: commit, agent write, turn''s end, CI. Waiver: ''pragma: allowlist hardening-flag''.'

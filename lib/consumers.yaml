@@ -10,6 +10,8 @@ base/block-unapproved-egress:
   chock_shellparse: [args, parse, targets, writes]
 base/block-unguarded-agent-spawn:
   chock_shellparse: [args, parse, targets, writes]
+base/hardening-flags:
+  chock_scan: [data_table, safe_read]
 base/protect-agent-config:
   chock_shellparse: [args, parse, targets, writes]
 base/protect-ci-workflows:

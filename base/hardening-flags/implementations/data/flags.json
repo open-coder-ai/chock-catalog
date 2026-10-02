@@ -1,0 +1,252 @@
+{
+ "schema": 1,
+ "kind": "curated",
+ "as_of": "2026-10-02",
+ "source": {
+  "r12": "open-coder-ai/org-plan:discovery/2026-10-01-security-research-12-model-review-techniques-to-deterministic-guards.md",
+  "gcc": "https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html",
+  "kernel": "https://docs.kernel.org/security/self-protection.html",
+  "rustc": "https://doc.rust-lang.org/rustc/codegen-options/index.html",
+  "cmake": "https://cmake.org/cmake/help/latest/prop_tgt/POSITION_INDEPENDENT_CODE.html"
+ },
+ "entries": [
+  {
+   "id": "no-stack-protector",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-fno-stack-protector(?![\\w-])",
+   "what": "turns the stack protector (canaries) off"
+  },
+  {
+   "id": "undefine-fortify-source",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-U[ \\t]*_FORTIFY_SOURCE(?!\\w)(?![^\\n]{0,400}-D[ \\t]*_FORTIFY_SOURCE=[1-9])",
+   "what": "undefines FORTIFY_SOURCE and does not define it again (-U then -D=1..3 on the same line is the usual redefinition idiom and passes)"
+  },
+  {
+   "id": "fortify-source-zero",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?:-D[ \\t]*|(?<!\\w))_FORTIFY_SOURCE=0+(?![\\w.])",
+   "what": "sets FORTIFY_SOURCE to 0 (checked libc calls off)"
+  },
+  {
+   "id": "no-pie",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-{1,2}no-pie(?![\\w-])",
+   "what": "links a non-PIE executable (also Go -extldflags and CGO_LDFLAGS, Rust -C link-arg)"
+  },
+  {
+   "id": "no-pie-codegen",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-fno-(?:pie|PIE)(?![\\w-])",
+   "what": "compiles without position-independent executable code"
+  },
+  {
+   "id": "execstack",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-z(?:[ \\t]*,[ \\t]*|[ \\t]*)(?:-Xlinker[ \\t]+|-Wl,)?execstack(?![\\w-])",
+   "what": "marks the stack executable (-z execstack)"
+  },
+  {
+   "id": "norelro",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-z(?:[ \\t]*,[ \\t]*|[ \\t]*)(?:-Xlinker[ \\t]+|-Wl,)?norelro(?![\\w-])",
+   "what": "turns RELRO off (-z norelro)"
+  },
+  {
+   "id": "cf-protection-none",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-fcf-protection=none(?![\\w-])",
+   "what": "turns control-flow protection (CET) off"
+  },
+  {
+   "id": "no-shstk",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-mno-shstk(?![\\w-])",
+   "what": "turns the CET shadow stack off"
+  },
+  {
+   "id": "cmake-position-independent-code-off",
+   "tier": "block",
+   "langs": [
+    "c",
+    "go",
+    "rust"
+   ],
+   "pattern": "(?:(?<!\\w)|(?<=-D))(?:CMAKE_)?POSITION_INDEPENDENT_CODE(?:[ \\t]+|(?::BOOL)?=[ \\t]*)[\\\"']?(?i:off|false|no|n|0|ignore|notfound|[\\w-]*-notfound)(?![\\w-])",
+   "what": "sets POSITION_INDEPENDENT_CODE off"
+  },
+  {
+   "id": "rust-relocation-model-static",
+   "tier": "block",
+   "langs": [
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-C[ \\t\\\"',]*relocation-model=static(?![\\w-])",
+   "what": "builds Rust with the static (non-PIE) relocation model"
+  },
+  {
+   "id": "rust-link-arg-z-weaken",
+   "tier": "block",
+   "langs": [
+    "rust"
+   ],
+   "pattern": "link-args?=-z\\b[ \\t\\\"',]*(?:-C[ \\t\\\"',=]*)?link-args?=(?:execstack|norelro)(?![\\w-])",
+   "what": "passes -z execstack or -z norelro to the linker as separate Rust link arguments"
+  },
+  {
+   "id": "kernel-stackprotector-off",
+   "tier": "block",
+   "langs": [
+    "kernel"
+   ],
+   "pattern": "^[ \\t]*(?:#[ \\t]*CONFIG_STACKPROTECTOR[ \\t]+is not set|CONFIG_STACKPROTECTOR=n)[ \\t]*(?:#.*)?$",
+   "what": "turns the kernel stack protector off"
+  },
+  {
+   "id": "kernel-strict-rwx-off",
+   "tier": "block",
+   "langs": [
+    "kernel"
+   ],
+   "pattern": "^[ \\t]*(?:#[ \\t]*CONFIG_STRICT_KERNEL_RWX[ \\t]+is not set|CONFIG_STRICT_KERNEL_RWX=n)[ \\t]*(?:#.*)?$",
+   "what": "turns off write-xor-execute kernel mappings"
+  },
+  {
+   "id": "kernel-kaslr-off",
+   "tier": "block",
+   "langs": [
+    "kernel"
+   ],
+   "pattern": "^[ \\t]*(?:#[ \\t]*CONFIG_RANDOMIZE_BASE[ \\t]+is not set|CONFIG_RANDOMIZE_BASE=n)[ \\t]*(?:#.*)?$",
+   "what": "turns kernel address randomization off"
+  },
+  {
+   "id": "kernel-hardened-usercopy-off",
+   "tier": "block",
+   "langs": [
+    "kernel"
+   ],
+   "pattern": "^[ \\t]*(?:#[ \\t]*CONFIG_HARDENED_USERCOPY[ \\t]+is not set|CONFIG_HARDENED_USERCOPY=n)[ \\t]*(?:#.*)?$",
+   "what": "turns hardened usercopy bounds checks off"
+  },
+  {
+   "id": "kernel-fortify-source-off",
+   "tier": "block",
+   "langs": [
+    "kernel"
+   ],
+   "pattern": "^[ \\t]*(?:#[ \\t]*CONFIG_FORTIFY_SOURCE[ \\t]+is not set|CONFIG_FORTIFY_SOURCE=n)[ \\t]*(?:#.*)?$",
+   "what": "turns kernel FORTIFY_SOURCE off"
+  },
+  {
+   "id": "rust-overflow-checks-release",
+   "tier": "ask",
+   "langs": [
+    "rust"
+   ],
+   "pattern": "^\\s*(?:[\\w\\\"'*.-]+\\.)?overflow-checks\\s*=\\s*false\\b",
+   "what": "disables integer overflow checks in the release profile",
+   "section": "^profile\\.release(?:\\.|$)"
+  },
+  {
+   "id": "rust-overflow-checks-release-dotted",
+   "tier": "ask",
+   "langs": [
+    "rust"
+   ],
+   "pattern": "\\bprofile\\s*\\.\\s*release\\b[^=\\n]*?\\boverflow-checks\\s*=\\s*false\\b",
+   "what": "disables integer overflow checks in the release profile"
+  },
+  {
+   "id": "rust-overflow-checks-release-inline",
+   "tier": "ask",
+   "langs": [
+    "rust"
+   ],
+   "pattern": "^\\s*release\\s*=\\s*\\{[^}\\n]*\\boverflow-checks\\s*=\\s*false\\b",
+   "what": "disables integer overflow checks in the release profile",
+   "section": "^profile$"
+  },
+  {
+   "id": "rust-overflow-checks-env",
+   "tier": "ask",
+   "langs": [
+    "rust"
+   ],
+   "pattern": "CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS[ \\t]*=[ \\t]*[\\\"']?(?i:false)\\b",
+   "what": "disables integer overflow checks in the release profile through the environment"
+  },
+  {
+   "id": "rust-overflow-checks-flag",
+   "tier": "ask",
+   "langs": [
+    "rust"
+   ],
+   "pattern": "(?<![\\w-])-C[ \\t\\\"',]*overflow-checks=(?:off|no|false|n)(?![\\w-])",
+   "what": "turns integer overflow checks off for every profile"
+  },
+  {
+   "id": "kernel-devmem",
+   "tier": "ask",
+   "langs": [
+    "kernel"
+   ],
+   "pattern": "^[ \\t]*CONFIG_DEVMEM=y[ \\t]*(?:#.*)?$",
+   "what": "exposes /dev/mem"
+  },
+  {
+   "id": "kernel-strict-devmem-off",
+   "tier": "ask",
+   "langs": [
+    "kernel"
+   ],
+   "pattern": "^[ \\t]*(?:#[ \\t]*CONFIG_STRICT_DEVMEM[ \\t]+is not set|CONFIG_STRICT_DEVMEM=n)[ \\t]*(?:#.*)?$",
+   "what": "lets /dev/mem map any memory range"
+  }
+ ]
+}
