@@ -34,7 +34,7 @@ def html_step(state: re.Pattern[str] | str | None, line: str) -> re.Pattern[str]
         start = next((end for begin, end in STARTS if begin.match(line)), None)
         if start is None:
             return None
-        state, line = start, line[3:]  # the end marker must follow the start (<!-- --> on one line)
+        state = start  # the start line itself may hold the end marker (<!-- --> on one line)
     if state == BLANK:
         return None if not line.strip() else BLANK
     return None if state.search(line) else state

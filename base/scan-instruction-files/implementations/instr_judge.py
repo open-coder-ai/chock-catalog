@@ -243,15 +243,9 @@ class Doc:
         }
         closes, cmds = sorted(self.statements_with(self.p["fake_trust_close"])), sorted(commands)
         counted = [k for k, st in enumerate(self.sts) if not st.echo]  # a fence's prose reading repeats its lines
-        out, opened, covered = [], set(), -1  # a tag inside a block already reported adds nothing
+        out, opened, covered = [], set(), -1  # a block inside one already reported adds nothing
         for i, m in self.matches(rule.phrase):
-            if (
-                i <= covered
-                or i in opened
-                or m.group()[0] not in "<["
-                or CLOSING_TAG.match(m.group())
-                or self.prohibited(m.start())
-            ):
+            if i in opened or m.group()[0] not in "<[" or CLOSING_TAG.match(m.group()) or self.prohibited(m.start()):
                 continue
             opened.add(i)
             last = i
@@ -260,6 +254,8 @@ class Doc:
                 last = counted[at] if at < len(counted) else len(self.sts) - 1
                 if (c := bisect.bisect_right(closes, i)) < len(closes):
                     last = min(last, closes[c])
+            if last <= covered:
+                continue
             if (c := bisect.bisect_left(cmds, i)) < len(cmds) and cmds[c] <= last:
                 span = self.sts[i : last + 1]
                 region = Statement(
