@@ -101,6 +101,7 @@ checks (pytest and the staged adopter) while you iterate; `--check-only` writes 
 What it regenerates, in this order -- the order is load-bearing:
 
 ```bash
+python tools/gen_lib_copies.py                      # lib/ modules into each policy that lists them
 chock plugin build --repo . --policies-dir <tree>   # each tree in tools/trees.py: Agent Plugins output
 chock sync --repo .                                 # only on drift; the lockfile hashes packaged files
 python tools/gen_registry.py                        # registry.yaml rows; README badges, ladder, eval cells
@@ -120,8 +121,9 @@ framework moves.
 What it then checks, as CI does -- fast checks in parallel, then the slow ones:
 
 ```bash
-python tools/check_registry.py             # registry facts match the policies on disk
+python tools/check_registry.py             # registry facts match the policies on disk (and lib/ copies)
 python tools/gen_registry.py --check       # ... and are what the generator writes
+python tools/gen_lib_copies.py --check     # every lib/ copy declared and byte-equal to its source
 python tools/check_installed.py            # an installed policy never leads its base/ source (behind: warning)
 python tools/check_readme.py               # README counts match what is in the trees
 python tools/gen_policy_docs.py --check    # docs match the manifests they describe
