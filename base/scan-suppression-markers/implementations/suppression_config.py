@@ -58,7 +58,8 @@ SOFT_FAIL = re.compile(
     r"(?:[\"']?(?:true|yes|on)\b|\{|[>|]-?\s*$|(?:#.*)?$)|"
     r"\bexit-code\s*:\s*[\"']?0\b|\bshell\s*:\s*bash\s+\+e\b|;\s*true\s*(?:#.*)?$|"
     r"\|\|\s*(?:\{\s*)?(?:(?:command|builtin)\s+)?(?:(?:/usr)?/bin/)?(?:true|:|exit\s+0)(?=$|[\s;)#&|'\"}])|"
-    r"(?<!\|)\|(?!\|)\s*(?:true|:)(?=$|[\s;)#&|'\"}])|"
+    r"(?<!\|)\|&?(?!\|)\s*(?:\{\s*)?(?:(?:command|builtin)\s+)?(?:(?:/usr)?/bin/)?(?:true|:|exit\s+0)"
+    r"(?=$|[\s;)#&|'\"}])|"
     r"--soft-fail\b|--exit-code[ =][\"']?0\b|--exit-zero\b|--ignore-on-exit\b|(?:^|\s)--?no-fail(?![\w-])|--no-exit-codes\b",
     re.IGNORECASE,
 )
@@ -67,7 +68,7 @@ _ECHO_FALLBACK = re.compile(r"\|\|\s*(?:echo|printf)\b")
 _SET_PLUS_E = re.compile(r"\bset\s+\+e\b")
 #: A word every soft-fail shape above contains; a CI file without one has nothing to judge.
 _CI_PREFILTER = re.compile(
-    r"\|\||\|\s*(?:true|:)|continue|allow_failure|soft[-_]fail|set\s+\+e|bash\s+\+e|exit-code|exit-zero|ignore-on-exit|no-fail|"
+    r"\|\||\|&?\s*(?:\{\s*)?(?:(?:command|builtin)\s+)?(?:(?:/usr)?/bin/)?(?:true|:|exit)|continue|allow_failure|soft[-_]fail|set\s+\+e|bash\s+\+e|exit-code|exit-zero|ignore-on-exit|no-fail|"
     r"no-exit-codes|_disabled|;\s*true"
 )
 _SHELL_PLUS_E = re.compile(r"\bshell\s*:\s*bash\s+\+e\b")

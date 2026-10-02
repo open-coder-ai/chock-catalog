@@ -264,3 +264,15 @@ def test_any_inline_eslint_config_naming_a_security_rule_asks(text: str) -> None
 )
 def test_a_scan_piped_into_true_asks(command: str, asks: bool) -> None:
     assert bool(rules(W, J + f"      - run: {command}\n")) == asks
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["bandit | /bin/true", "bandit | command true", "bandit | { true; }", "bandit | exit 0", "bandit |& true"],
+)
+def test_every_pipe_into_a_no_op_asks(command: str) -> None:
+    assert rules(W, J + f"      - run: {command}\n")
+
+
+def test_text_after_an_eslint_config_comment_closes_is_not_its_config() -> None:
+    assert mod.file_findings("a.js", "/* es" + "lint quotes: 0 */ const s = '\\u00e9'; // security/foo\n") == []

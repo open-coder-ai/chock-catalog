@@ -26,7 +26,7 @@ from suppression_markers import (  # noqa: E402
 
 ALLOW, ASK, UNREADABLE = 0, 3, 2
 #: Past this many findings the document is one finding marked new: always asked, never compared, so
-#: a huge ignore list cannot flood the engine's output or its time budget.
+#: a huge write cannot flood the engine's output or its time budget.
 MAX_FINDINGS = 10000
 SHOWN = 50
 

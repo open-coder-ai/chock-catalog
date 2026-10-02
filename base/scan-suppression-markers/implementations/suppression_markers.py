@@ -188,7 +188,8 @@ def _hit(line: str, anchor: re.Pattern[str], tail: re.Pattern[str] | None, opene
     if tail is None or not anchors:
         return bool(anchors)
     for here, after in zip(anchors, [*anchors[1:], None], strict=True):
-        stop = min(here.end() + WINDOW, after.start() if after else len(line))
+        close = line.find("*/", here.end())  # a block comment's rules end where it closes
+        stop = min(here.end() + WINDOW, after.start() if after else len(line), close if close >= 0 else len(line))
         if tail.search(line[here.end() : stop]):
             return True
     return False
