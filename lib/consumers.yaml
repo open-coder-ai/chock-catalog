@@ -8,10 +8,13 @@ base/block-no-verify:
   chock_shellparse: [args, parse, targets, writes]
 base/block-unapproved-egress:
   chock_shellparse: [args, parse, targets, writes]
+  chock_scan: [hostmatch, hosts, idn, safe_read, urls]
 base/ci-github-actions-security:
   chock_scan: [data_table, safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/block-unguarded-agent-spawn:
   chock_shellparse: [args, parse, targets, writes]
+base/dockerfile-compose-security:
+  chock_scan: [yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/protect-agent-config:
   chock_shellparse: [args, parse, targets, writes]
 base/protect-ci-workflows:
@@ -22,3 +25,9 @@ base/rtk-dangerous-actions-blocker:
   chock_shellparse: [args, parse, targets, writes]
 base/verify-mcp-allowlist:
   chock_shellparse: [args, parse, targets, writes]
+base/agent-devenv-autoexec:
+  chock_scan: [jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+base/package-lifecycle-scripts:
+  chock_scan: [safe_read]
+base/lockfile-integrity:
+  chock_scan: [hostmatch, hosts, idn, jsonc, urls, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]

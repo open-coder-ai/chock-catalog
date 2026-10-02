@@ -1,4 +1,4 @@
-# Block Bidi and Tag Unicode
+# Block Invisible Unicode
 
 `block-invisible-unicode` · hook · enforces
 
@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 14 total, 14 executable |
+| **Eval cases** | 72 total, 72 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Blocks bidi override/embed/isolate controls (U+202A-202E, U+2066-2069; Trojan Source, CVE-2021-42574) and Unicode tag characters (U+E0001-E007F), which smuggle instructions. NOT matched: ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ, LRM/RLM. Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist invisible-unicode' same line. Person's commit: honoured. Agent: only if that line is already in HEAD; MCP gateway: never. Agent asks a person.
+Blocks hidden Unicode in added lines: bidi, tag and plane-14 chars, word joiner, chained invisibles, zero-width/joiners/fillers by ASCII, mid-line BOM, LRM/RLM outside RTL text, selectors after ASCII, private-use runs of 16+. Allows emoji, RTL/Indic/Thai/CJK text, line-start BOM. Not caught: homoglyphs, a joiner between non-ASCII, binary files and text after U+2028 at commit. Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist invisible-unicode' same line; agent: HEAD only.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Bidi-control or Unicode tag characters detected in this change. They change how code reads to a human or hide instructions an agent will still obey. Remove them. Waiver: 'pragma: allowlist invisible-unicode' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma.
+> Hidden Unicode detected in this change: a bidi control, a tag character, a word joiner, two invisible characters in a row, a zero-width character, joiner or filler beside ASCII, a BOM after the start of a line, a direction mark outside right-to-left text, a variation selector after ASCII, or a long private-use run. It changes how code reads to a human or hides instructions an agent will still obey. Remove it; where the character is meant, write it as an escape sequence instead. Waiver: 'pragma: allowlist invisible-unicode' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma.
 
 ## Which primitive it becomes
 

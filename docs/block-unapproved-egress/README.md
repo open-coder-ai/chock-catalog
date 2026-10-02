@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `block-unapproved-egress.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 49 total, 49 executable |
+| **Eval cases** | 145 total, 145 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod) that UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*, -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact or .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a person. A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.
+Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet, scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:. Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation.
 
 ## What it solves
 
@@ -30,8 +30,8 @@ A guard script, `implementations/block-unapproved-egress.py`, run before the age
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-block(egress): fetch(curl|wget|iwr|irm) + upload(-d|--data*|--json|-F|-T|--upload-file|-X POST|PUT|PATCH|-Body|-InFile) to host NOT in allowlist; curl -K|--config refused
-allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; no marker or pragma passes: ask_person
+block(egress): curl|wget|iwr upload, nc|socat|telnet, scp|rsync|sftp, ssh host cmd, aws s3|gsutil|az blob, git push|remote add <url> to host NOT in .chock/egress-allowlist.txt (default: registries); $(..)|$VAR in URL or hostname; write ~/.curlrc|~/.wgetrc; unusable allowlist file = refuse; curl -K refused
+ask: interpreter HTTP one-liner, gh gist|--body-file, curl --proxy|--resolve|Host:. allow: GET, allowlisted host, git push origin; floor_not_sandbox; no pragma passes: ask_person
 ```
 
 ## Which primitive it becomes
@@ -54,7 +54,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The allowlist IS the policy. `ALLOWED_HOSTS` ships with package registries and code hosting; add your org's own upload targets (log sinks, artifact stores, internal APIs). Be honest about the ceiling: this is a tool-time floor, not a network sandbox. Combined short flags, obfuscated payloads, non-standard clients and egress via a language runtime all remain reachable -- containing a determined adversary needs real sandboxing, and a reviewed exception rides in the diff via `pragma: allowlist egress` on the line.
+The allowlist IS the policy. It ships as a default list of package and container registries; to change it, a person writes `.chock/egress-allowlist.txt` (one host per line, `*.example.com` for subdomains), which replaces the default whole. A broken file refuses every upload until it is fixed. Be honest about the ceiling: this is a tool-time floor, not a network sandbox. Non-standard clients, pipes into raw sockets and egress via a language runtime remain reachable -- containing a determined adversary needs real sandboxing -- and no pragma passes a command: ask the person to run it.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

@@ -1,16 +1,16 @@
 # CI GitHub Actions Security
 
-`ci-github-actions-security` · rule · enforces
+`ci-github-actions-security` · rule · advises
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
 | **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | guard script `ci-github-actions-security-gate.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 43 total, 43 executable |
+| **Mechanism** | rule text |
+| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
+| **Compiles to** | `ambient-rule` |
+| **Eval cases** | 43 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,23 +25,23 @@ An agent that writes CI writes the workflow most likely to be attacked. Text fro
 
 ## How it works
 
-A guard script, `implementations/ci-github-actions-security-gate.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
-
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```text
 
 ```
 
+It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/ci-github-actions-security/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+An **ambient rule**. `recompile` writes `.chock/compiled/ci-github-actions-security/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
 
 ## Installing it
 
 ```bash
 chock add ci-github-actions-security
-chock sync .
+chock sync --repo .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:

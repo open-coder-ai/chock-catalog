@@ -1,0 +1,348 @@
+suite:
+  id: dockerfile-compose-security-tests-v1
+  policy_id: dockerfile-compose-security
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # The gate ships at action: warn (rollout observe, D15): a trigger expects `warn`, never `block`.
+  # Every executable case runs the script gate in a throwaway repository. URLs are under example.com.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A commit adds a Dockerfile whose only stage is built FROM an untagged image.
+    expect: Warned (dk-from-floating); the build pulls whatever the registry tags as default that day.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM ubuntu\nUSER 1000\n"
+      expect: warn
+  - id: tc-002
+    category: negative_trigger
+    prompt: A commit adds a Dockerfile pinned by digest, built FROM an earlier stage, running as a non-root user.
+    expect: Allowed; a stage name is not an image and the base is pinned.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM golang:1.23@sha256:0000000000000000000000000000000000000000000000000000000000000000 AS build\nRUN go build -o /app .\nFROM build AS test\nRUN go test ./...\nFROM gcr.io/distroless/static:nonroot@sha256:1111111111111111111111111111111111111111111111111111111111111111\nCOPY --from=build /app /app\nUSER 65532\n"
+      expect: allow
+  - id: tc-003
+    category: trigger
+    prompt: A FROM names a global ARG that has no default, so the image cannot be judged.
+    expect: Warned (dk-from-unresolved); an unknown image is never assumed pinned.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "ARG BASE\nFROM ${BASE}\nUSER 1000\n"
+      expect: warn
+  - id: tc-004
+    category: adversarial
+    prompt: COPY --from names an external image rather than a stage, pulling it unpinned.
+    expect: Warned (dk-from-floating); only declared stage names and indexes are exempt.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY --from=nginx /etc/nginx /etc/nginx\nUSER 1000\n"
+      expect: warn
+  - id: tc-005
+    category: trigger
+    prompt: The final stage of a multi-stage Dockerfile switches back to USER root.
+    expect: Warned (dk-last-user-root).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\nRUN id\nUSER root\n"
+      expect: warn
+  - id: tc-006
+    category: adversarial
+    prompt: The root user is hidden behind an ARG default in the final stage.
+    expect: Warned; the ARG resolves to root.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nARG RUNAS=0\nUSER ${RUNAS}\n"
+      expect: warn
+  - id: tc-007
+    category: adversarial
+    prompt: A download is piped into sh across a line continuation, so no single line shows both halves.
+    expect: Warned (dk-fetch-exec); continuation lines are joined before the rule reads them.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -fsSL https://get.example.com/install.sh \\\n    | sh\nUSER 1000\n"
+      expect: warn
+  - id: tc-008
+    category: adversarial
+    prompt: The same split fetch-exec is written inside a RUN heredoc.
+    expect: Warned; heredoc bodies are read as the RUN's script.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN <<EOF\nset -e\nwget -qO- https://get.example.com/install.sh \\\n  | bash\nEOF\nUSER 1000\n"
+      expect: warn
+  - id: tc-009
+    category: negative_trigger
+    prompt: A RUN downloads to a file, verifies its checksum and only then runs it.
+    expect: Allowed.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -fsSLo /tmp/i.sh https://get.example.com/install.sh \\\n && echo \"0000  /tmp/i.sh\" | sha256sum -c - \\\n && sh /tmp/i.sh\nUSER 1000\n"
+      expect: allow
+  - id: tc-010
+    category: trigger
+    prompt: A RUN turns off certificate checks with curl -k and pip's trusted-host flag.
+    expect: Warned (dk-tls-off).
+    provenance: authored
+    execute:
+      files:
+        Containerfile: "FROM python:3.12@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -fsSLk https://example.com/x -o x && pip install --trusted-host pypi.example.com app\nUSER 1000\n"
+      expect: warn
+  - id: tc-011
+    category: trigger
+    prompt: An apt install skips signature checks.
+    expect: Warned (dk-signature-bypass).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM debian:12@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN apt-get update && apt-get install -y --allow-unauthenticated tool\nUSER 1000\n"
+      expect: warn
+  - id: tc-012
+    category: trigger
+    prompt: A secret-named ENV holds a literal value.
+    expect: Warned (dk-secret-arg-env); build history keeps every ENV.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: |
+          FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          ENV DB_PASSWORD=hunter2
+          USER 1000
+      expect: warn
+  - id: tc-013
+    category: negative_trigger
+    prompt: A secret-named ARG has no default and the secret arrives through a BuildKit secret mount.
+    expect: Allowed.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nARG NPM_TOKEN\nRUN --mount=type=secret,id=npmrc,target=/root/.npmrc npm ci\nUSER 1000\n"
+      expect: allow
+  - id: tc-014
+    category: trigger
+    prompt: A COPY puts an SSH private key and the .env file into the image.
+    expect: Warned (dk-copy-secrets).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY id_rsa .env /root/\nUSER 1000\n"
+      expect: warn
+  - id: tc-015
+    category: trigger
+    prompt: An ADD fetches a git repository by branch, not commit.
+    expect: Warned (dk-add-remote).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nADD git@github.com:example/tool.git#main /src\nUSER 1000\n"
+      expect: warn
+  - id: tc-016
+    category: trigger
+    prompt: A RUN step asks BuildKit for a privileged build sandbox.
+    expect: Warned (dk-run-insecure).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN --security=insecure mount -t tmpfs none /mnt\nUSER 1000\n"
+      expect: warn
+  - id: tc-017
+    category: behavior
+    prompt: chmod 777 and a setuid bit are added (ask tier).
+    expect: Warned (dk-chmod-setuid).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN chmod -R 777 /app && chmod u+s /usr/local/bin/tool\nUSER 1000\n"
+      expect: warn
+  - id: tc-018
+    category: behavior
+    prompt: sudo, an SSH server and a root password are added to the image.
+    expect: Warned (dk-sudo-sshd, dk-chpasswd).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM debian:12@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN apt-get install -y openssh-server && echo 'root:pw' | chpasswd\nEXPOSE 22\nUSER 1000\n"
+      expect: warn
+  - id: tc-019
+    category: behavior
+    prompt: A git clone builds from a moving branch, and an ONBUILD RUN is added.
+    expect: Warned (dk-git-clone-unpinned, dk-onbuild-run).
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN git clone --branch main https://example.com/tool.git\nONBUILD RUN make\nUSER 1000\n"
+      expect: warn
+  - id: tc-020
+    category: trigger
+    prompt: A compose service runs privileged with the Docker socket mounted.
+    expect: Warned (cm-privileged-caps, cm-docker-sock); the container owns the host.
+    provenance: authored
+    execute:
+      files:
+        compose.yaml: "services:\n  agent:\n    image: example/agent:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    privileged: true\n    volumes:\n      - /var/run/docker.sock:/var/run/docker.sock\n"
+      expect: warn
+  - id: tc-021
+    category: adversarial
+    prompt: cap_add ALL and an unconfined seccomp profile arrive through a YAML anchor merged with <<.
+    expect: Warned; aliases and merge keys are expanded before the rules read the service.
+    provenance: authored
+    execute:
+      files:
+        docker-compose.yml: "x-defaults: &defaults\n  cap_add: [ALL]\n  security_opt: [\"seccomp:unconfined\"]\nservices:\n  app:\n    <<: *defaults\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+      expect: warn
+  - id: tc-022
+    category: trigger
+    prompt: A compose service shares the host network and pid namespaces and mounts ~/.ssh.
+    expect: Warned (cm-host-namespaces, cm-sensitive-mount).
+    provenance: authored
+    execute:
+      files:
+        compose.yml: "services:\n  dev:\n    image: example/dev:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    network_mode: host\n    pid: host\n    volumes:\n      - ${HOME}/.ssh:/root/.ssh:ro\n"
+      expect: warn
+  - id: tc-023
+    category: trigger
+    prompt: A compose database publishes its port on every interface with a literal password.
+    expect: Warned (cm-ports-all-interfaces, cm-literal-secrets).
+    provenance: authored
+    execute:
+      files:
+        compose.yaml: |
+          services:
+            db:
+              image: postgres:16@sha256:0000000000000000000000000000000000000000000000000000000000000000
+              environment:
+                POSTGRES_PASSWORD: hunter2
+              ports:
+                - "5432:5432"
+      expect: warn
+  - id: tc-024
+    category: negative_trigger
+    prompt: An ordinary compose file with pinned images, loopback ports, named volumes and env references.
+    expect: Allowed.
+    provenance: authored
+    execute:
+      files:
+        compose.yaml: |
+          services:
+            web:
+              build: .
+              image: example/web
+              ports: ["8080:80"]
+              volumes: [./src:/src, /etc/localtime:/etc/localtime:ro]
+            db:
+              image: postgres:16@sha256:0000000000000000000000000000000000000000000000000000000000000000
+              environment:
+                POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+              ports: ["127.0.0.1:5432:5432"]
+              volumes: [db:/var/lib/postgresql/data]
+              cap_drop: [ALL]
+              security_opt: [no-new-privileges:true]
+          volumes:
+            db: {}
+      expect: allow
+  - id: tc-025
+    category: behavior
+    prompt: A compose service uses an untagged image (ask tier).
+    expect: Warned (cm-image-floating).
+    provenance: authored
+    execute:
+      files:
+        compose.yaml: "services:\n  cache:\n    image: redis\n    ports: [\"127.0.0.1:6379:6379\"]\n"
+      expect: warn
+  - id: tc-026
+    category: adversarial
+    prompt: A compose file uses an alias with no anchor, which no loader reads one way.
+    expect: Warned (cm-unreadable); an unreadable security config is reported, never passed.
+    provenance: authored
+    execute:
+      files:
+        compose.yaml: "services:\n  app:\n    <<: *missing\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+      expect: warn
+  - id: tc-027
+    category: behavior
+    prompt: A change edits a Dockerfile that already ran as root at HEAD, touching only an unrelated line.
+    expect: Allowed; only findings the change adds are judged.
+    provenance: authored
+    execute:
+      head_files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN echo one\n"
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN echo two\n"
+      expect: allow
+  - id: tc-028
+    category: behavior
+    prompt: A person keeps a reviewed root final stage with a waiver comment above it and commits.
+    expect: Allowed at the person's commit.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\n# chock: allow dk-last-user-root\nUSER root\n"
+      expect: allow
+  - id: tc-029
+    category: adversarial
+    prompt: The agent writes the same waiver itself while editing the file.
+    expect: Warned; in the agent a waiver counts only for a line already committed in HEAD.
+    provenance: authored
+    execute:
+      event: tool_use
+      writes:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\n# chock: allow dk-last-user-root\nUSER root\n"
+      expect: warn
+  - id: tc-030
+    category: negative_trigger
+    prompt: A markdown page quotes a privileged compose snippet and a root Dockerfile.
+    expect: Allowed; only Dockerfiles and compose files are read.
+    provenance: authored
+    execute:
+      files:
+        docs/containers.md: "Never write `privileged: true` or `USER root` in a final stage.\n"
+      expect: allow
+  - id: tc-031
+    category: adversarial
+    prompt: A one-line RUN pipes a download into sh in a repository where block-fetch-exec-in-files is not installed.
+    expect: Warned (dk-fetch-exec); the bundle defers only to a sibling gate that is installed and reads the file.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN wget -qO- https://get.example.com/install.sh | sh\nUSER 1000\n"
+      expect: warn
+  - id: tc-032
+    category: adversarial
+    prompt: A quoted "<<EOF" in an earlier RUN tries to swallow the root final stage as a heredoc body.
+    expect: Warned (dk-last-user-root); a heredoc opens only at an unquoted word start.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\nRUN echo \"x<<EOF\"\nUSER root\n"
+      expect: warn
+  - id: tc-033
+    category: adversarial
+    prompt: A USER 1000 line sits inside a heredoc opened as "cat << EOF" (a space after the angle brackets), so Docker never runs it.
+    expect: Warned (dk-last-user-root); heredocs are read as BuildKit reads them.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN cat << EOF > /etc/motd\nhello\nUSER 1000\nEOF\n"
+      expect: warn
+  - id: tc-034
+    category: adversarial
+    prompt: A chmod 777 is split across a line continuation in the middle of the command name.
+    expect: Warned (dk-chmod-setuid); continuation lines join as BuildKit joins them, with no space.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN ch\\\nmod 777 /srv\nUSER 1000\n"
+      expect: warn
