@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 12 total, 12 executable |
+| **Eval cases** | 54 total, 54 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest" arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists; signature and provenance stay with the advisory owasp-asi04 policy. Escape: 'pragma: allowlist unpinned' on the same line, honoured at commit; also runs at agent tool-use, where it counts only when that exact line is already committed in HEAD.
+Gate for the line-visible slice of ASI04: agent components fetched at a floating version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo installs; git+ installs and requirements, and github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Unpinned agent component detected. Pin the version (name@1.2.3, image:tag) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception (a person's; in the agent it counts only when that exact line is already committed in HEAD, so an agent asks a person).
+> Unpinned agent component detected. Pin an exact version or digest (name@1.2.3, image:1.27.1 or image@sha256:..., a 40-hex commit for git+ and github: refs, cargo install name@1.2.3, no pip --pre) so what runs tomorrow is what was reviewed today, or add 'pragma: allowlist unpinned' on the same line for a deliberate exception (a person's; in the agent it counts only when that exact line is already committed in HEAD, so an agent asks a person).
 
 ## Which primitive it becomes
 

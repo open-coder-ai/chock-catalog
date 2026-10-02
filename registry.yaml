@@ -101,20 +101,19 @@ policies:
     A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
-  version: 0.0.5
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 12
-  eval_executed: 12
-  description: 'Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned
-    version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest"
-    arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists;
-    signature and provenance stay with the advisory owasp-asi04 policy. Escape: ''pragma: allowlist
-    unpinned'' on the same line, honoured at commit; also runs at agent tool-use, where it counts only
-    when that exact line is already committed in HEAD.'
+  eval_cases: 54
+  eval_executed: 54
+  description: 'Gate for the line-visible slice of ASI04: agent components fetched at a floating version.
+    Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and
+    pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs;
+    pip --pre; go install at latest; unversioned cargo installs; git+ installs and requirements, and
+    github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
   version: 0.1.0
