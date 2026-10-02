@@ -50,14 +50,16 @@ def test_write_makes_the_declared_copies_and_check_then_passes(cat: Path) -> Non
     assert changed == [f"base/one/implementations/pkg/{n}.py" for n in ("__init__", "a", "b")]
     assert sorted(p.name for p in _copy(cat).iterdir()) == ["__init__.py", "a.py", "b.py"]
     assert gen_lib_copies.problems(cat) == []
-    assert gen_lib_copies.write(cat) == ([], [])
+    result = gen_lib_copies.write(cat)
+    assert result == ([], [])
 
 
 def test_an_edited_copy_is_drift_and_write_restores_it(cat: Path) -> None:
     gen_lib_copies.write(cat)
     _put(_copy(cat) / "b.py", "x = 2  # fixed in the copy only\n")
     assert gen_lib_copies.problems(cat) == ["base/one/implementations/pkg/b.py: differs from lib/pkg/b.py"]
-    assert gen_lib_copies.write(cat) == (["base/one/implementations/pkg/b.py"], [])
+    result = gen_lib_copies.write(cat)
+    assert result == (["base/one/implementations/pkg/b.py"], [])
     assert (_copy(cat) / "b.py").read_text(encoding="utf-8") == SHARED["b.py"]
 
 
@@ -68,7 +70,8 @@ def test_a_file_lib_does_not_have_is_drift_and_write_removes_it(cat: Path) -> No
     assert gen_lib_copies.problems(cat) == [
         "base/one/implementations/pkg/c.py: not in lib/ (remove it, or add it there)"
     ]
-    assert gen_lib_copies.write(cat) == (["base/one/implementations/pkg/c.py (removed)"], [])
+    result = gen_lib_copies.write(cat)
+    assert result == (["base/one/implementations/pkg/c.py (removed)"], [])
     assert gen_lib_copies.problems(cat) == []
 
 
@@ -94,7 +97,8 @@ def test_a_symlinked_copy_file_is_replaced_by_a_real_file(cat: Path, tmp_path_fa
     (_copy(cat) / "b.py").unlink()
     (_copy(cat) / "b.py").symlink_to(outside)
     assert gen_lib_copies.problems(cat) == ["base/one/implementations/pkg/b.py: missing (copy of lib/pkg/b.py)"]
-    assert gen_lib_copies.write(cat) == (["base/one/implementations/pkg/b.py"], [])
+    result = gen_lib_copies.write(cat)
+    assert result == (["base/one/implementations/pkg/b.py"], [])
     assert not (_copy(cat) / "b.py").is_symlink()
     assert outside.read_text(encoding="utf-8") == "x = 1\n"
 
@@ -113,7 +117,8 @@ def test_a_symlink_on_the_way_to_a_copy_is_refused_and_nothing_is_touched_throug
         "base/one/implementations/pkg: reached through a symlink; a copy and its implementations/ are real folders"
     )
     assert problem in gen_lib_copies.problems(cat)
-    assert gen_lib_copies.write(cat)[0] == []
+    result = gen_lib_copies.write(cat)
+    assert result[0] == []
     assert sorted(p.relative_to(outside).as_posix() for p in outside.rglob("*")) == [
         "pkg",
         "pkg/precious.txt",
@@ -125,7 +130,8 @@ def test_a_symlink_on_the_way_to_a_copy_is_refused_and_nothing_is_touched_throug
 def test_a_file_where_a_copy_folder_goes_is_refused(cat: Path, blocker: str) -> None:
     _put(cat / "base" / "one" / blocker, "")
     assert f"base/one/{blocker}: a file where a folder goes" in gen_lib_copies.problems(cat)
-    assert gen_lib_copies.write(cat)[0] == []
+    result = gen_lib_copies.write(cat)
+    assert result[0] == []
 
 
 @pytest.mark.parametrize("module", ["../helper", "../../tools/x", "a/b", "a.b", "", "b "])
@@ -134,7 +140,8 @@ def test_a_module_name_that_is_not_an_identifier_is_refused_and_nothing_is_writt
     _put(cat / "base" / "one" / "implementations" / "one.sh", "guard")
     _declare(cat, f"base/one:\n  pkg: [{module!r}]\n")
     assert "base/one: pkg: must list module names (plain identifiers)" in "\n".join(gen_lib_copies.problems(cat))
-    assert gen_lib_copies.write(cat)[0] == []
+    result = gen_lib_copies.write(cat)
+    assert result[0] == []
     assert (cat / "base" / "one" / "implementations" / "one.sh").read_text(encoding="utf-8") == "guard"
 
 
@@ -197,7 +204,8 @@ def test_a_list_missing_an_imported_module_is_refused(cat: Path) -> None:
 def test_a_malformed_declaration_is_refused(cat: Path, consumers: str, problem: str) -> None:
     _declare(cat, consumers)
     assert gen_lib_copies.problems(cat)[0].startswith(problem)
-    assert gen_lib_copies.write(cat)[0] == []
+    result = gen_lib_copies.write(cat)
+    assert result[0] == []
 
 
 def test_a_symlinked_policy_folder_is_refused(cat: Path) -> None:
