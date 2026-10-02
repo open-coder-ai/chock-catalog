@@ -135,6 +135,12 @@ ROWS: list[tuple[str, int]] = [
     ("git commit -m \"$(cat <<'EOF'\nsay \"hi\nEOF\n)\" $'\\x2dn'", BLOCK),
     ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" $"-n"', BLOCK),
     ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" {-n,}', BLOCK),
+    ("git commit -m \"$(cat <<'EOF'\nsay \"hi\nEOF\n)\" $'-'n", BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" $"-"n', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" $"-"\\n', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" {-\\n,}', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" "-""-"\'n\'"o"\'-\'"v""e"\\r$\'\\x69\'fy', BLOCK),
+    ("git am -m \"$(cat <<'EOF'\nsay \"hi\nEOF\n)\" $'-'n x.patch", BLOCK),
     ("fish -c 'git status'", OK),
 ]
 
