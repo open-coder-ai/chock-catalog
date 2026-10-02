@@ -105,6 +105,7 @@ per-hook trust review before its hooks run.
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
 | [`agent-devenv-autoexec`](docs/agent-devenv-autoexec/) | warns (never blocks; observe rollout) when a change adds what a dev tool runs on its own: agent hooks and env overrides, auto-approval, VS Code folder-open tasks, devcontainer initializeCommand, shell-entry and git hook files, git exec config | 50/50 |
+| [`package-lifecycle-scripts`](docs/package-lifecycle-scripts/) | warns (never blocks; observe rollout) on a new or changed install- or build-time hook -- npm install/prepare scripts, setup.py cmdclass, build.rs, MSBuild Exec, gemspec extensions -- and on git or URL dependencies with no commit pin | 28/28 |
 
 <details>
 <summary>21 advisory policies — expand</summary>
