@@ -61,3 +61,22 @@ def test_anchors_do_not_cross_documents(sk: ModuleType) -> None:
 def test_loose_keys(sk: ModuleType) -> None:
     text = 'a: 1\n  "b": 2\n# c: 3\n{d: 4, "e":5, [f: 6]}\nx:y\n  - g : 7\n'
     assert sk.loose_keys(text) == {"a", "b", "d", "e", "f", "x", "g"}
+
+
+@pytest.mark.parametrize(
+    ("line", "found"),
+    [
+        ("? a", True),
+        ("  ? a", True),
+        ("- ? a", True),
+        ("-   - ?\t", True),
+        ("{? a: 1}", True),
+        ("[a, ? b]", True),
+        ("{a: 1, ?", True),
+        ("a ? b", False),
+        ("a: ?x", False),
+        ("?a", False),
+    ],
+)
+def test_explicit_key_marker_is_first_on_its_line_or_in_a_flow_entry(sk: ModuleType, line: str, found: bool) -> None:
+    assert bool(sk.EXPLICIT.search(line)) is found

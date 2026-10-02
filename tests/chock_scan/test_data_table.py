@@ -146,7 +146,8 @@ def test_a_bad_envelope_is_refused_by_name(dt_: ModuleType, tmp_path: Path, over
 
 def test_every_envelope_problem_is_reported_at_once(dt_: ModuleType, tmp_path: Path) -> None:
     bad = table(schema=0, kind="x", as_of="soon", source="")
-    assert len(_problems(dt_, write(tmp_path / "t.json", bad))) == 4
+    path = write(tmp_path / "t.json", bad)
+    assert len(_problems(dt_, path)) == 4
 
 
 @pytest.mark.parametrize(
@@ -159,7 +160,8 @@ def test_every_envelope_problem_is_reported_at_once(dt_: ModuleType, tmp_path: P
     ],
 )
 def test_a_url_a_citation_or_an_object_of_either_is_a_source(dt_: ModuleType, tmp_path: Path, source: object) -> None:
-    assert dt_.load(write(tmp_path / "t.json", table(source=source)), kind="curated", schema=1, keys=ROWS)
+    path = write(tmp_path / "t.json", table(source=source))
+    assert dt_.load(path, kind="curated", schema=1, keys=ROWS)
 
 
 @pytest.mark.parametrize(
