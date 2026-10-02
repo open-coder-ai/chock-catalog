@@ -77,13 +77,19 @@ def _render(rng: random.Random, model: object) -> str:
         return open_ + gap() + ("," + gap()).join(parts) + tail + close
 
     if isinstance(model, tuple):
-        pairs = [
-            f"{json.dumps(k, ensure_ascii=rng.random() < 0.5)}{gap()}:{gap()}{_render(rng, v)}" for k, v in model[1]
-        ]
+        pairs = [f"{_key(rng, k)}{gap()}:{gap()}{_render(rng, v)}" for k, v in model[1]]
         return items(pairs, "{", "}")
     if isinstance(model, list):
         return items([_render(rng, v) for v in model], "[", "]")
     return json.dumps(model, ensure_ascii=rng.random() < 0.5)
+
+
+def _key(rng: random.Random, key: str) -> str:
+    """The key as JSON, sometimes with one character spelled as a \\u escape: still the same key."""
+    if key and rng.random() < 0.3:
+        at = rng.randrange(len(key))
+        return json.dumps(key[:at])[:-1] + f"\\u{ord(key[at]):04x}" + json.dumps(key[at + 1 :])[1:]
+    return json.dumps(key, ensure_ascii=rng.random() < 0.5)
 
 
 @pytest.mark.parametrize("seed", SEEDS)

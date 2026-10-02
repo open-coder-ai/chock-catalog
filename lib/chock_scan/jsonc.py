@@ -5,7 +5,10 @@ offsets, lines and columns in the result are those of the input. `loads` parses 
 stdlib `json` module and keeps the last of duplicate keys, as JSON.parse and jsonc-parser do, while
 listing every duplicate with all of its values.
 
-Fail closed: anything the loaders could read differently raises JsoncError rather than guessing.
+Fail closed: anything the loaders could read differently raises JsoncError rather than guessing,
+including a `__proto__` key (jsonc-parser and TypeScript assign keys, so it sets the prototype and its
+keys are inherited) and more than MAX_DUPLICATES repeated keys. A number too large for a float reads
+as inf, as it does in JavaScript; only the literals NaN and Infinity are refused.
 Limit: a superset of strict JSON. A file read here may be refused by a strict loader (comments or a
 trailing comma in a file parsed by JSON.parse alone), and a file a tolerant loader recovers from
 (jsonc-parser keeps going after an error) raises here.
@@ -21,6 +24,9 @@ LIMIT = 1 << 20
 MAX_DEPTH = 256
 #: Longer than any config number; a huge integer converts in quadratic time when sys int limits are lifted.
 MAX_VALUE = 1000
+#: Repeated keys reported per document; past it the report itself would be the amplification.
+MAX_DUPLICATES = 1000
+PROTO = "__proto__"
 BOM = "\ufeff"
 #: Line breaks TypeScript's scanner ends a `//` comment at, but jsonc-parser and strip-json-comments do not.
 AMBIGUOUS_BREAKS = "\u2028\u2029"
@@ -42,12 +48,12 @@ _INK = re.compile(r"[^\r\n]")
 class JsoncError(ValueError):
     """Text that cannot be read as JSONC; `pos` is an offset into the input (None when unknown), `line`/`col` 1-based."""
 
-    def __init__(self, msg: str, text: str, pos: int | None) -> None:
-        self.msg = msg
-        self.pos = pos
-        self.line, self.col = _line_col(text, pos) if pos is not None else (None, None)
-        where = f" at line {self.line} column {self.col}" if pos is not None else ""
-        super().__init__(f"{msg}{where}")
+    def __init__(self, msg: str, pos: int | None = None, line: int | None = None, col: int | None = None) -> None:
+        super().__init__(msg, pos, line, col)
+        self.msg, self.pos, self.line, self.col = msg, pos, line, col
+
+    def __str__(self) -> str:
+        return self.msg if self.pos is None else f"{self.msg} at line {self.line} column {self.col}"
 
 
 class Duplicate(NamedTuple):
@@ -73,7 +79,7 @@ def strip(text: str, limit: int = LIMIT) -> str:
     """
     if len(text) > limit:
         msg = f"larger than {limit} characters"
-        raise JsoncError(msg, text, None)
+        raise JsoncError(msg)
     blanks: list[tuple[int, int]] = [(0, 1)] if text.startswith(BOM) else []
     pos = len(BOM) if blanks else 0
     depth = 0
@@ -88,14 +94,14 @@ def strip(text: str, limit: int = LIMIT) -> str:
         elif kind != "space":
             if kind == "value" and end - pos > MAX_VALUE:
                 msg = f"a number or literal longer than {MAX_VALUE} characters"
-                raise JsoncError(msg, text, pos)
+                raise _error(msg, text, pos)
             if kind == "close" and comma is not None:
                 blanks.append((comma, comma + 1))
             comma = pos if kind == "comma" and last in {"value", "string", "close"} else None
-            depth += {"open": 1, "close": -1}.get(kind, 0)
+            depth = max(depth + {"open": 1, "close": -1}.get(kind, 0), 0)
             if depth > MAX_DEPTH:
                 msg = f"nested deeper than {MAX_DEPTH}"
-                raise JsoncError(msg, text, pos)
+                raise _error(msg, text, pos)
             last = kind
         pos = end
     return _blank(text, blanks)
@@ -108,24 +114,33 @@ def loads(text: str, limit: int = LIMIT) -> Document:
     """
     clean = strip(text, limit)
     found: dict[int, tuple[dict[str, object], list[tuple[str, tuple[object, ...]]]]] = {}
+    count = 0
 
     def pairs(items: list[tuple[str, object]]) -> dict[str, object]:
+        nonlocal count
         obj: dict[str, object] = {}
         seen: dict[str, list[object]] = {}
         for key, val in items:
+            if key == PROTO:
+                msg = f"a {PROTO} key sets the prototype for some loaders, hiding its keys"
+                raise ValueError(msg)
             seen.setdefault(key, []).append(val)
             obj[key] = val
         repeated = [(key, tuple(vals)) for key, vals in seen.items() if len(vals) > 1]
         if repeated:
             found[id(obj)] = (obj, repeated)
+            count += len(repeated)
+            if count > MAX_DUPLICATES:
+                msg = f"more than {MAX_DUPLICATES} duplicate keys"
+                raise ValueError(msg)
         return obj
 
     try:
         value = json.loads(clean, object_pairs_hook=pairs, parse_constant=_refuse_constant)
     except json.JSONDecodeError as exc:
-        raise JsoncError(exc.msg, text, exc.pos) from None
+        raise _error(exc.msg, text, exc.pos) from None
     except ValueError as exc:
-        raise JsoncError(str(exc), text, None) from None
+        raise JsoncError(str(exc)) from None
     duplicates: list[Duplicate] = []
     if found:
         _walk(value, [], found, duplicates)
@@ -136,20 +151,20 @@ def _trivia_end(text: str, kind: str, start: int, end: int) -> int:
     """Where a comment starting at `start` ends; an unterminated one, or one the loaders end differently, raises."""
     if kind == "open_string":
         msg = "unterminated string"
-        raise JsoncError(msg, text, start)
+        raise _error(msg, text, start)
     if kind == "block":
         end = text.find("*/", start + 2) + 2
         if end == 1:
             msg = "unterminated block comment"
-            raise JsoncError(msg, text, start)
+            raise _error(msg, text, start)
         return end
     for i, char in enumerate(text[start:end], start):
         if char in AMBIGUOUS_BREAKS:
             msg = f"U+{ord(char):04X} in a // comment ends it for some loaders only"
-            raise JsoncError(msg, text, i)
-    if text.startswith("\r", end) and not text.startswith("\r\n", end):
+            raise _error(msg, text, i)
+    if text.startswith("\r", end) and not text.startswith("\r\n", end) and end + 1 < len(text):
         msg = "a // comment ended by a lone CR ends there for some loaders only"
-        raise JsoncError(msg, text, end)
+        raise _error(msg, text, end)
     return end
 
 
@@ -192,6 +207,11 @@ def _walk(
             path.append(i)
             _walk(val, path, found, out)
             path.pop()
+
+
+def _error(msg: str, text: str, pos: int) -> JsoncError:
+    """A JsoncError at offset `pos` of `text`, with its line and column."""
+    return JsoncError(msg, pos, *_line_col(text, pos))
 
 
 def _line_col(text: str, pos: int) -> tuple[int, int]:

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import ast
+import copy
+import pickle
 import sys
 from types import ModuleType
 
@@ -122,6 +124,7 @@ def test_unterminated_or_ambiguous_text_raises_with_its_position(
 
 def test_a_line_comment_may_end_with_crlf_or_at_the_end_of_the_text(jsonc: ModuleType) -> None:
     assert jsonc.loads("// c\r\n[1] // d").value == [1]
+    assert jsonc.loads("[1] // d\r").value == [1]
     assert jsonc.loads('["\u2028 in a string is JSON"]').value == ["\u2028 in a string is JSON"]
     assert jsonc.loads("/* \u2028 */ [1]").value == [1]
 
@@ -164,8 +167,15 @@ def test_the_size_limit_is_inclusive_and_counts_characters(jsonc: ModuleType) ->
 
 def test_nesting_up_to_the_depth_cap_parses_and_one_more_is_refused(jsonc: ModuleType) -> None:
     deep = jsonc.MAX_DEPTH
-    assert jsonc.loads("[" * deep + "]" * deep).value is not None
-    assert jsonc.loads('{"a":' * deep + "1" + "}" * deep).value is not None
+    value: object = 1
+    for _ in range(deep):
+        value = {"a": value}
+    assert jsonc.loads('{"a":' * deep + "1" + "}" * deep).value == value
+    flat = jsonc.loads("[" * deep + "]" * deep).value
+    for _ in range(deep - 1):
+        assert isinstance(flat, list)
+        (flat,) = flat
+    assert flat == []
     with pytest.raises(jsonc.JsoncError, match=f"^nested deeper than {deep} at line 1 column {deep + 1}$"):
         jsonc.loads("[" * (deep + 1) + "]" * (deep + 1))
     assert jsonc.loads("[" + "[]," * 1000 + "[]]").value == [[]] * 1001
@@ -179,9 +189,10 @@ def test_a_number_or_literal_over_the_value_cap_is_refused(jsonc: ModuleType) ->
     assert len(jsonc.loads('["' + "x" * (cap * 10) + '"]').value[0]) == cap * 10
 
 
-def test_unbalanced_closers_do_not_hide_the_depth_cap(jsonc: ModuleType) -> None:
-    with pytest.raises(jsonc.JsoncError, match=r"^Expecting value at line 1 column 1$"):
-        jsonc.loads("]" * 10 + "[" * (jsonc.MAX_DEPTH + 5))
+def test_unbalanced_closers_do_not_lower_the_depth_cap(jsonc: ModuleType) -> None:
+    deep = jsonc.MAX_DEPTH
+    with pytest.raises(jsonc.JsoncError, match=f"^nested deeper than {deep} at line 1 column {deep + 11}$"):
+        jsonc.strip("]" * 10 + "[" * (deep + 1))
     with pytest.raises(jsonc.JsoncError):
         jsonc.loads("]]][[[")
 
@@ -192,3 +203,43 @@ def test_the_module_is_stdlib_only() -> None:
     names |= {n.module for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.module}
     assert names == {"__future__", "json", "re", "typing"}
     assert {n.split(".")[0] for n in names} <= set(sys.stdlib_module_names)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"__proto__": {"hooks": "evil"}}',
+        '{"compilerOptions": {"\\u005f_proto__": {"plugins": [{"name": "x"}]}}}',
+        '[{"__proto__": 1, "x": 2}]',
+        '{"__proto__": {}, "__proto__": {}}',
+    ],
+)
+def test_a_proto_key_is_refused_however_it_is_spelled(jsonc: ModuleType, text: str) -> None:
+    with pytest.raises(jsonc.JsoncError, match=r"^a __proto__ key sets the prototype"):
+        jsonc.loads(text)
+    assert jsonc.loads('{"__proto": 1, "proto__": 2, "x": "__proto__"}').duplicates == ()
+
+
+def test_duplicates_past_the_cap_are_refused_not_amplified(jsonc: ModuleType) -> None:
+    cap = jsonc.MAX_DUPLICATES
+    assert len(jsonc.loads("[" + ",".join(['{"a":1,"a":2}'] * cap) + "]").duplicates) == cap
+    with pytest.raises(jsonc.JsoncError, match=f"^more than {cap} duplicate keys$"):
+        jsonc.loads("[" + ",".join(['{"a":1,"a":2}'] * (cap + 1)) + "]")
+    deep = "[" * 255 + ",".join(['{"a":1,"a":1}'] * 70000) + "]" * 255
+    with pytest.raises(jsonc.JsoncError, match="duplicate keys"):
+        jsonc.loads(deep)
+
+
+def test_an_error_survives_pickle_and_copy(jsonc: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, jsonc.__name__, jsonc)  # the fixture loads by path; pickle imports by name
+    for text in ("[1", "[NaN]"):
+        with pytest.raises(jsonc.JsoncError) as info:
+            jsonc.loads(text)
+        for clone in (pickle.loads(pickle.dumps(info.value)), copy.copy(info.value)):  # noqa: S301 -- our own object
+            assert (str(clone), clone.msg, clone.pos, clone.line, clone.col) == (
+                str(info.value),
+                info.value.msg,
+                info.value.pos,
+                info.value.line,
+                info.value.col,
+            )
