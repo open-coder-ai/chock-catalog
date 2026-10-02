@@ -116,7 +116,7 @@ def test_random_credentials_are_almost_never_explained(alphabet: str, most: int)
     [
         "service_key: 123e4567-e89b-12d3-a456-426614174000\n",
         "client_secret: ${API_KEY}\n",
-        "client_secret: your-client-secret-goes-here-0042\n",
+        "client_secret: your-client-secret-goes-here-0042\n",  # pragma: allowlist secret
         'secret_hash: "sha256:' + "ab" * 32 + '"\n',
         "db_passwd: aaaaaaaaaaaaaaaaaaaaaaaa\n",
         "db_passwd: short\n",

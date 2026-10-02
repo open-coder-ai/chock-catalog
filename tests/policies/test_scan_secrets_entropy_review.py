@@ -86,7 +86,7 @@ def test_code_and_regex_written_as_code_are_still_explained(value: str, shape: s
         ("cfg.py", f'api_key: str | None = "{V}"'),
         ("svc.ts", f'apiKey: string | undefined = "{V}";'),
         ("greet.py", f'token = f"{V}{{user.name}}"'),
-        ("login.ts", f"  password: '{base64.b64encode(V.encode()).decode()}'"),
+        ("login.ts", f"  password: '{base64.b64encode(V.encode()).decode()}'"),  # pragma: allowlist secret
         ("auth.py", f'headers = {{"Authorization": "SSWS {V}"}}'),
         ("auth.js", f'h.Authorization = "Token token={V}"'),
     ],
