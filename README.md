@@ -128,7 +128,8 @@ per-hook trust review before its hooks run.
 [`agent-devenv-autoexec`](docs/agent-devenv-autoexec/) ·
 [`package-lifecycle-scripts`](docs/package-lifecycle-scripts/) ·
 [`scan-hidden-content`](docs/scan-hidden-content/) ·
-[`agent-permissions-scan`](docs/agent-permissions-scan/)
+[`agent-permissions-scan`](docs/agent-permissions-scan/) ·
+[`opaque-blob-guard`](docs/opaque-blob-guard/)
 
 </details>
 

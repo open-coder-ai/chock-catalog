@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "roadmap": "open-coder-ai/org-plan chock/plan/security-coverage-roadmap.md, NP27 opaque-blob-guard",
+    "xz": "https://nvd.nist.gov/vuln/detail/CVE-2024-3094"
+  },
+  "dirs": [
+    "tests",
+    "test",
+    "fixtures",
+    "testdata",
+    "spec",
+    "m4",
+    "vendor",
+    "Tests",
+    "Test",
+    "Fixtures",
+    "TestData",
+    "Testdata",
+    "__tests__",
+    "__fixtures__",
+    "e2e",
+    "third_party",
+    "test_data"
+  ],
+  "gradle_wrapper": "gradle/wrapper",
+  "text_names": [
+    "configure",
+    "configure.ac",
+    "configure.in",
+    "configure.gnu",
+    "bootstrap",
+    "autogen.sh",
+    "ltmain.sh",
+    "libtool",
+    "config.status",
+    "Makefile",
+    "Makefile.in"
+  ],
+  "text_suffixes": [
+    ".m4",
+    ".am",
+    ".mk"
+  ],
+  "allowlist": ".chock/blob-allowlist.txt"
+}
