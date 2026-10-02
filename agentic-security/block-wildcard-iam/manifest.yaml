@@ -1,14 +1,13 @@
 id: block-wildcard-iam
 name: "Block Wildcard IAM"
-version: "0.0.4"
+version: "0.0.5"
 description: >
-  Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or
-  Resource in IAM policy documents, AdministratorAccess attachment, GCP
-  roles/owner or roles/editor, and Terraform wildcard action/resource lists.
-  An agent's identity design stays with the advisory owasp-asi03 policy; this
-  blocks the grants whose blast radius is everything. Escape:
-  'pragma: allowlist broad-privilege' on the same line, honoured at commit; also runs at agent tool-use,
-  where it counts only when that exact line is already committed in HEAD.
+  Commit and agent-write gate, 1-line slice of ASI03: IAM Action or Resource set to
+  a bare * (JSON double-quoted, YAML single-quoted), a one-element Terraform * list, the
+  AdministratorAccess ARN, quoted GCP roles/owner or roles/editor. Probed misses: * in a JSON
+  list, service wildcards (s3:*), YAML double-quoted or bare *, Terraform jsonencode, NotAction,
+  Principal *, PowerUser, multi-line lists, Azure Owner, K8s RBAC. Waiver: 'pragma: allowlist
+  broad-privilege' same line; agent: only if in HEAD.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -48,7 +47,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-13T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -77,3 +76,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+- version: 0.0.5
+  date: '2026-10-02'
+  changes:
+  - "Disclosure, no behaviour change: the description now names the forms the pattern was probed to miss -- a star inside a JSON list, service wildcards such as s3 star, a YAML double-quoted or bare star, Terraform jsonencode statements, NotAction, a Principal star, PowerUserAccess, multi-line lists, Azure Owner and Kubernetes RBAC wildcards -- instead of implying every wildcard grant is caught. references/pattern-notes.md lists the same misses, and tests/policies/test_stated_limits.py fails if the gate starts catching one (so the text is updated) or the text stops naming one. The closing fixes are HP05."

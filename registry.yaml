@@ -24,7 +24,7 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.0.5
+  version: 0.0.6
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -32,11 +32,12 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 34
   eval_executed: 34
-  description: 'Best-effort guard against piping a download into a shell or interpreter: curl, wget,
-    lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node,
-    bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout;
-    also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping
-    into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.'
+  description: 'Best-effort guard: refuses a download piped into a shell or interpreter (curl, wget,
+    lynx, aria2c, iwr/irm into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node; bare, path-qualified
+    or quoted; in a subshell or behind sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash <(curl
+    ...), `| iex`. Probed misses: fetch inside a quoted command (bash -c "...", ssh host "..."), eval
+    "$(curl ...)", source <(curl ...), pipe into php/pwsh/deno/busybox/su -c/$SHELL, download then run.
+    Friction only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
   version: 0.1.1
@@ -55,7 +56,7 @@ policies:
     pushes.
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
-  version: 0.0.5
+  version: 0.0.6
   artifact: hook
   enforcement: block
   mandatory: false
@@ -132,7 +133,7 @@ policies:
     at agent tool-use it counts only for a line already committed in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   mandatory: false
@@ -140,12 +141,12 @@ policies:
   enforces: enforced-at-commit
   eval_cases: 12
   eval_executed: 12
-  description: 'Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or Resource in
-    IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform
-    wildcard action/resource lists. An agent''s identity design stays with the advisory owasp-asi03
-    policy; this blocks the grants whose blast radius is everything. Escape: ''pragma: allowlist broad-privilege''
-    on the same line, honoured at commit; also runs at agent tool-use, where it counts only when that
-    exact line is already committed in HEAD.'
+  description: 'Commit and agent-write gate, 1-line slice of ASI03: IAM Action or Resource set to a
+    bare * (JSON double-quoted, YAML single-quoted), a one-element Terraform * list, the AdministratorAccess
+    ARN, quoted GCP roles/owner or roles/editor. Probed misses: * in a JSON list, service wildcards
+    (s3:*), YAML double-quoted or bare *, Terraform jsonencode, NotAction, Principal *, PowerUser, multi-line
+    lists, Azure Owner, K8s RBAC. Waiver: ''pragma: allowlist broad-privilege'' same line; agent: only
+    if in HEAD.'
 - id: code-safety
   path: base/code-safety
   version: 0.0.4
@@ -468,7 +469,7 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.7
+  version: 0.0.8
   artifact: hook
   enforcement: block
   mandatory: false

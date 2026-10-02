@@ -1,12 +1,13 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.0.5"
+version: "0.0.6"
 description: >
-  Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx,
-  aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node,
-  bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout;
-  also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping
-  into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.
+  Best-effort guard: refuses a download piped into a shell or interpreter (curl, wget, lynx,
+  aria2c, iwr/irm into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node; bare, path-qualified or
+  quoted; in a subshell or behind sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash
+  <(curl ...), `| iex`. Probed misses: fetch inside a quoted command (bash -c "...", ssh host
+  "..."), eval "$(curl ...)", source <(curl ...), pipe into php/pwsh/deno/busybox/su -c/$SHELL,
+  download then run. Friction only.
 artifact: rule
 enforcement: advise
 compliance:
@@ -24,7 +25,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -38,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.6
+  date: '2026-10-02'
+  changes:
+  - "Disclosure, no behaviour change: the description names the bypasses the guard was probed to allow -- a fetch inside a quoted command (bash -c, sh -c, ssh, docker exec), eval of a command substitution, source or dot of a process substitution, a pipe into php, pwsh, deno, busybox, su -c or a variable-named shell, and download-then-run -- in place of the generic 'aliases, variables, obfuscation'. tests/policies/test_stated_limits.py fails if the guard starts catching one (so the text is updated) or the text stops naming one. The closing fixes are HP03."
 - version: 0.0.5
   date: '2026-09-30'
   changes:

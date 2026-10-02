@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+import owasp_llm
 import yaml
 from mechanism import CEILING, classify
 
@@ -52,10 +53,14 @@ def main() -> int:
 
     wrong = []
     stale = []
+    claims = []
     for p in reg["policies"]:
         d = ROOT / p["path"]
-        m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
+        text = (d / "manifest.yaml").read_text(encoding="utf-8")
+        m = yaml.safe_load(text)
         kind, detail = classify(d, m)
+        # A framework id is a claim like any other: it names a real entry of the edition it cites.
+        claims += [f"{p['id']}: {problem}" for problem in owasp_llm.problems(m, text)]
         if p.get("mechanism") != detail or p.get("enforces") != CEILING[kind]:
             wrong.append(
                 f"{p['id']}: labelled {p.get('mechanism')!r}/{p.get('enforces')!r}, "
@@ -92,7 +97,11 @@ def main() -> int:
         print("registry facts do not match the policies:")
         for s in stale:
             print("  " + s)
-    if wrong or stale:
+    if claims:
+        print("framework claims name the wrong entry:")
+        for c in claims:
+            print("  " + c)
+    if wrong or stale or claims:
         return 1
     print(
         "mechanism, enforces, version, eval counts and descriptions match every policy"

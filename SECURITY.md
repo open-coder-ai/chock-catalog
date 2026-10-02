@@ -37,8 +37,9 @@ A policy's compiled output is not documentation. Installed via `chock add`, it b
 - a **guard** consulted before the adopter's coding agent runs a command, for the policies that
   ship an `implementations/` script.
 
-Two policies run their own program at commit rather than a declarative gate: `java-security`
-and `no-a11y-regression`, both Python.
+<!-- gen:hook-programs -->9<!-- /gen --> policies run a program they ship from a git hook, at commit or push, rather than
+a declarative gate:
+<!-- gen:hook-program-ids -->`agentic-code-security`, `block-destructive-commands`, `block-test-skips`, `guard-memory-writes`, `java-security`, `limit-diff-size`, `no-a11y-regression`, `protect-commit-privacy`, `verify-mcp-allowlist`<!-- /gen -->.
 
 So a change to a guard script in this repository runs on other people's machines.
 
@@ -76,6 +77,9 @@ cover, is in the framework's
   reason). On agents without hooks, and for a human at a terminal, nothing stops it.
 - **Git hooks live in `.git/hooks`, which is not cloned.** A fresh clone of an adopting repo
   enforces nothing until someone runs `chock sync`.
-- **Most policies are advisory** (twenty-two of the forty-two at this writing — the README
-  badges carry the current counts). They compile to text an agent reads and may or may
-  not follow. Their eval cases report as `skipped`, never as passing.
+- **<!-- gen:advisory -->20<!-- /gen --> of the <!-- gen:policies -->48<!-- /gen --> policies are advisory.** They compile to text an agent reads and may or
+  may not follow. Their eval cases report as `skipped`, never as passing. Another
+  <!-- gen:best-effort -->9<!-- /gen --> are best-effort guards: they run before an agent's command only on agents whose hooks
+  `chock sync` wires, and fail open if the hook crashes. The other <!-- gen:enforced-at-commit -->19<!-- /gen --> are enforced
+  by a git hook, within the two limits above. `tools/gen_registry.py` writes these counts
+  from `registry.yaml`, and CI fails when they drift.

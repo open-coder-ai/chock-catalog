@@ -30,6 +30,7 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> FakeRun:
     monkeypatch.setattr(regen_all, "run", stub)
     monkeypatch.setattr(regen_all.gen_registry, "update_registry", lambda: "registry.yaml already current")
     monkeypatch.setattr(regen_all.gen_registry, "update_readme", lambda: "README.md counts already current")
+    monkeypatch.setattr(regen_all.gen_registry, "update_prose", lambda: "SECURITY.md counts already current")
     monkeypatch.setattr(regen_all, "changed_policy_ids", lambda _base: {"pin-github-actions", "not-a-policy"})
     return stub
 

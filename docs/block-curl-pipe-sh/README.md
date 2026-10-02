@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node, bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout; also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.
+Best-effort guard: refuses a download piped into a shell or interpreter (curl, wget, lynx, aria2c, iwr/irm into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node; bare, path-qualified or quoted; in a subshell or behind sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash <(curl ...), `| iex`. Probed misses: fetch inside a quoted command (bash -c "...", ssh host "..."), eval "$(curl ...)", source <(curl ...), pipe into php/pwsh/deno/busybox/su -c/$SHELL, download then run. Friction only.
 
 ## What it solves
 
