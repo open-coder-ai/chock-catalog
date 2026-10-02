@@ -1,4 +1,11 @@
-"""scan-hidden-content: inputs shaped to make a reader quadratic stay linear and within the 30-second budget."""
+"""scan-hidden-content: inputs shaped to make a reader quadratic stay linear.
+
+Each shape is judged at an eighth and at half of the 1 MiB file cap: four times the input may take at most
+eight times as long (linear is four, quadratic sixteen). A ratio holds under coverage tracing and a loaded
+runner, where an absolute bound does not. The 30-second budget itself is held by the gate's per-run
+deadline (test_scan_hidden_content_review.py), which reports the files it did not reach instead of
+timing out; MAX_SECONDS only catches a run gone far beyond linear.
+"""
 
 from __future__ import annotations
 
@@ -8,10 +15,8 @@ import pytest
 from policies.hiddenkit import gate
 
 SIZE = gate.MAX_TEXT
-#: The engine's budget covers the change run and the baseline run; one run gets half, with room for tracing.
-BUDGET = 15.0
-#: Four times the input may take at most this many times as long: linear is 4, quadratic 16.
 GROWTH = 8.0
+MAX_SECONDS = 20.0
 
 SHAPES = {
     "unclosed tags": "<span>",
@@ -50,7 +55,7 @@ def run(shape: str, size: int, path: str) -> float:
 @pytest.mark.parametrize("path", ["a.md", "a.html"])
 @pytest.mark.parametrize("shape", sorted(SHAPES))
 def test_reader_stays_linear(shape: str, path: str) -> None:
-    quarter = run(shape, SIZE // 4, path)
-    full = run(shape, SIZE, path)
-    assert full < BUDGET, f"{shape} in {path}: {full:.1f}s"
-    assert full < max(quarter, 0.05) * GROWTH, f"{shape} in {path}: {quarter:.2f}s then {full:.2f}s"
+    small = run(shape, SIZE // 8, path)
+    large = run(shape, SIZE // 2, path)
+    assert large < MAX_SECONDS, f"{shape} in {path}: {large:.1f}s"
+    assert large < max(small, 0.05) * GROWTH, f"{shape} in {path}: {small:.2f}s then {large:.2f}s"
