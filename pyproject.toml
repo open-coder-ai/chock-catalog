@@ -38,7 +38,7 @@ source = [
 ]
 # The build tools written to this bar, by module name (tools/ is on pytest's pythonpath). Older tools
 # join as they are next changed; tests/build_tools/ holds their tests.
-source_pkgs = ["check_installed", "gen_lib_copies", "gen_registry", "regen_all"]
+source_pkgs = ["check_installed", "gen_lib_copies", "gen_registry", "lib_imports", "regen_all"]
 patch = ["subprocess"]
 
 [tool.coverage.report]

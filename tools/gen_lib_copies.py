@@ -12,19 +12,27 @@ is generated, and `--check` (run by check_registry.py and the tests) fails on an
 from __future__ import annotations
 
 import argparse
-import ast
 import hashlib
 import sys
 from pathlib import Path
 
 import yaml
-from trees import ROOT, TREES
+from lib_imports import INIT, closure_problems
+from trees import ROOT, TREES, policy_dirs
 
 LIB = "lib"
 CONSUMERS = "lib/consumers.yaml"
-INIT = "__init__"
 Decls = dict[str, dict[str, list[str]]]
-Need = tuple[str, str]
+
+
+class UniqueKeyLoader(yaml.SafeLoader):
+    """safe_load, but a key given twice is an error rather than the last one silently winning."""
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[object, object]:  # noqa: FBT001, FBT002 -- PyYAML's signature
+        keys = [self.construct_object(k, deep=deep) for k, _ in node.value]
+        if dupes := sorted({str(k) for k in keys if keys.count(k) > 1}):
+            raise yaml.constructor.ConstructorError(None, None, f"duplicate key {', '.join(dupes)}", node.start_mark)
+        return super().construct_mapping(node, deep=deep)
 
 
 def digest(path: Path) -> str:
@@ -42,6 +50,8 @@ def package_problems(pkgs: dict[str, Path], root: Path) -> list[str]:
     lib = root / LIB
     dirs = sorted(p for p in lib.iterdir() if p.is_dir()) if lib.is_dir() else []
     found = [f"{LIB}/{p.name}: a folder with no __init__.py" for p in dirs if p.name not in pkgs]
+    files = sorted(p for p in lib.iterdir() if not p.is_dir() and p.name != "consumers.yaml") if lib.is_dir() else []
+    found += [f"{LIB}/{p.name}: lib/ holds packages and consumers.yaml only" for p in files]
     for name, pkg in pkgs.items():
         if not name.isidentifier() or pkg.is_symlink():
             found.append(f"{LIB}/{name}: not a Python package name, or a symlink")
@@ -59,7 +69,7 @@ def load(root: Path, pkgs: dict[str, Path]) -> tuple[Decls, list[str]]:
     if not path.is_file():
         return {}, [f"{CONSUMERS}: missing"]
     try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        raw = yaml.load(path.read_text(encoding="utf-8"), Loader=UniqueKeyLoader)  # noqa: S506 -- a SafeLoader subclass
     except yaml.YAMLError as exc:
         return {}, [f"{CONSUMERS}: not YAML ({exc})"]
     if raw is None:
@@ -96,58 +106,12 @@ def policy_problems(root: Path, policy: object) -> list[str]:
 def module_problems(pkgs: dict[str, Path], pkg: object, modules: object) -> str | None:
     if pkg not in pkgs:
         return f"{pkg}: no such package under {LIB}/"
-    if not isinstance(modules, list) or not all(isinstance(m, str) for m in modules):
-        return f"{pkg}: must list module names"
+    if not isinstance(modules, list) or not all(isinstance(m, str) and m.isidentifier() for m in modules):
+        return f"{pkg}: must list module names (plain identifiers)"
     if len(set(modules)) != len(modules):
         return f"{pkg}: lists a module twice"
     absent = [m for m in modules if m == INIT or not (pkgs[str(pkg)] / f"{m}.py").is_file()]
     return f"{pkg}: no module {', '.join(absent)} (its __init__.py always ships)" if absent else None
-
-
-def imports(path: Path, pkg: str, pkgs: dict[str, Path]) -> set[Need]:
-    """The lib modules one module imports, as (package, module); (package, __init__) for the package."""
-    needs: set[Need] = set()
-    for node in ast.walk(ast.parse(path.read_bytes(), filename=str(path))):
-        if isinstance(node, ast.ImportFrom):
-            if node.level > 1:
-                msg = f"{path.name}: imports beyond its package (packages here are flat)"
-                raise ValueError(msg)
-            target = node.module or ""
-            if node.level:
-                target = f"{pkg}.{target}" if target else pkg
-            needs |= resolve(target, [a.name for a in node.names], pkgs)
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                needs |= resolve(alias.name, [], pkgs)
-    return needs
-
-
-def resolve(dotted: str, names: list[str], pkgs: dict[str, Path]) -> set[Need]:
-    head, _, rest = dotted.partition(".")
-    if head not in pkgs:
-        return set()
-    module = rest.split(".")[0] if rest else INIT
-    needs = {(head, INIT), (head, module)}
-    if module == INIT:
-        needs |= {(head, n) for n in names if (pkgs[head] / f"{n}.py").is_file()}
-    return needs
-
-
-def closure_problems(policy: str, used: dict[str, list[str]], pkgs: dict[str, Path]) -> list[str]:
-    """Every module a declared module imports must be declared too, or the copy fails at import."""
-    have = {(pkg, m) for pkg, modules in used.items() for m in [INIT, *modules]}
-    found = []
-    for pkg, module in sorted(have):
-        try:
-            needs = imports(pkgs[pkg] / f"{module}.py", pkg, pkgs)
-        except (SyntaxError, ValueError) as exc:
-            found.append(f"{LIB}/{pkg}/{module}.py: {exc}")
-            continue
-        found += [
-            f"{CONSUMERS}: {policy}: {pkg}.{module} imports {p}.{m}, which is not listed for it"
-            for p, m in sorted(needs - have)
-        ]
-    return found
 
 
 def expected(root: Path, decls: Decls, pkgs: dict[str, Path]) -> dict[Path, Path]:
@@ -161,8 +125,39 @@ def expected(root: Path, decls: Decls, pkgs: dict[str, Path]) -> dict[Path, Path
 
 
 def copy_dirs(root: Path, pkgs: dict[str, Path]) -> list[Path]:
-    """Every `implementations/<lib package>/` folder in a published tree, declared or not."""
-    return sorted(d for tree in TREES for pkg in pkgs for d in (root / tree).glob(f"*/implementations/{pkg}"))
+    """Every folder under a published `implementations/` named like a lib package, in any case or depth."""
+    names = {pkg.lower() for pkg in pkgs}
+    return sorted(
+        d
+        for tree in TREES
+        for impl in (root / tree).glob("*/implementations")
+        for d in [impl, *impl.rglob("*")]
+        if d.name.lower() in names and d.is_dir()
+    )
+
+
+def path_problems(root: Path, folders: set[Path]) -> list[str]:
+    """A copy folder is reached through real folders only: no symlink anywhere on the way, no file in the way."""
+    found = []
+    real = root.resolve()
+    for folder in sorted(folders):
+        rel = folder.relative_to(root)
+        if folder.resolve() != real / rel:
+            found.append(
+                f"{rel.as_posix()}: reached through a symlink; a copy and its implementations/ are real folders"
+            )
+        found += [
+            f"{step.relative_to(root).as_posix()}: a file where a folder goes"
+            for step in (folder.parent, folder)
+            if step.is_file()
+        ]
+    return found
+
+
+def guards(root: Path, policy: str) -> list[Path]:
+    """A policy's own scripts: they import the lib modules it ships, so those must be listed too."""
+    impl = root / policy / "implementations"
+    return sorted(p for p in impl.glob("*.py") if p.is_file()) if impl.is_dir() and not impl.is_symlink() else []
 
 
 def structure(root: Path) -> tuple[dict[Path, Path], list[str]]:
@@ -171,19 +166,16 @@ def structure(root: Path) -> tuple[dict[Path, Path], list[str]]:
     found = package_problems(pkgs, root)
     decls, more = load(root, pkgs)
     found += more
-    for policy, used in decls.items():
-        found += closure_problems(policy, used, pkgs)
+    every = {d.relative_to(root).as_posix(): {} for d in policy_dirs(root)}
+    for policy, used in (every | decls).items():
+        found += [f"{CONSUMERS}: {p}" for p in closure_problems(policy, used, pkgs, guards(root, policy))]
     want = expected(root, decls, pkgs)
     declared = {p.parent for p in want}
+    found += path_problems(root, declared)
     found += [
         f"{d.relative_to(root).as_posix()}: a lib copy no entry in {CONSUMERS} declares"
         for d in copy_dirs(root, pkgs)
         if d not in declared
-    ]
-    found += [
-        f"{d.relative_to(root).as_posix()}: a symlink; a copy is a real folder"
-        for d in sorted(declared)
-        if d.is_symlink()
     ]
     return want, found
 

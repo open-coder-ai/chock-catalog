@@ -1,6 +1,6 @@
 # Which lib/ modules each policy ships, copied into <policy>/implementations/<package>/ by
 # tools/gen_lib_copies.py. A package's __init__.py always ships; list every module the listed
-# ones import (the generator refuses a list that would fail at import). Edit lib/, never a copy.
+# ones and the policy's own scripts import (static imports are checked). Edit lib/, never a copy.
 # <tree>/<policy id>: {<package>: [<module>, ...]}
 base/block-destructive-commands:
   chock_shellparse: [args, parse, targets, writes]

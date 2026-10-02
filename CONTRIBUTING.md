@@ -136,7 +136,8 @@ python tools/check_effects.py              # a read_only guard does not actually
 python tools/check_a11y_rules.py && python tools/check_a11y_table.py
 ruff check .                               # the framework's own lint rule set, from pyproject.toml
 ruff format --check base/java-security tests tools/gen_java_security_contract.py \
-  tools/regen_all.py tools/gen_registry.py tools/check_installed.py
+  tools/regen_all.py tools/gen_registry.py tools/check_installed.py \
+  tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
 chock sync --repo . --check                # compiled artifacts match their manifests
 chock plugin build --repo . --policies-dir <tree> --check   # each tree
 # figures and brand card re-rendered and diffed

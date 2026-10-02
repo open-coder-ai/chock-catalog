@@ -110,9 +110,14 @@ def test_the_limit_is_inclusive_and_one_byte_over_is_refused(sr: ModuleType, tmp
         sr.read_text(path, limit=9)
     path.write_bytes(b"")
     assert sr.read_text(path, limit=0) == ""
-    with pytest.raises(ValueError, match="limit must be 0 or more"):
-        sr.read_text(path, limit=-1)
+    for bad in (-1, sr.MAX_LIMIT + 1, sys.maxsize):
+        with pytest.raises(ValueError, match="limit must be 0"):
+            sr.read_text(path, limit=bad)
     assert sr.LIMIT == 1 << 20
+    path.write_bytes(b"y" * (sr.CHUNK * 3 + 5))
+    assert sr.read_text(path, limit=sr.CHUNK * 3 + 5) == "y" * (sr.CHUNK * 3 + 5)
+    with pytest.raises(sr.UnreadableError, match="larger than"):
+        sr.read_text(path, limit=sr.CHUNK * 2)
 
 
 def test_the_default_limit_refuses_a_file_over_one_mebibyte(sr: ModuleType, tmp_path: Path) -> None:
@@ -141,6 +146,33 @@ def test_a_fifo_is_refused_without_blocking(sr: ModuleType, tmp_path: Path) -> N
 def test_an_endless_device_is_refused_not_read(sr: ModuleType) -> None:
     with pytest.raises(sr.UnreadableError, match="not a regular file"):
         sr.read_text("/dev/zero")
+
+
+@pytest.mark.skipif(not Path("/proc/self/mem").exists(), reason="no procfs on this platform")
+def test_a_read_error_is_unreadable_and_closes_the_file(sr: ModuleType) -> None:
+    before = len(os.listdir("/proc/self/fd"))
+    with pytest.raises(sr.UnreadableError, match="/proc/self/mem: "):
+        sr.read_text("/proc/self/mem")
+    assert len(os.listdir("/proc/self/fd")) == before
+
+
+def test_a_failing_fstat_is_unreadable(sr: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "f").write_text("x", encoding="utf-8")
+    closed: list[int] = []
+    real_close = os.close
+
+    def fstat(_fd: int) -> os.stat_result:
+        raise OSError(5, "Input/output error")
+
+    def close(fd: int) -> None:
+        closed.append(fd)
+        real_close(fd)
+
+    monkeypatch.setattr(sr.os, "fstat", fstat)
+    monkeypatch.setattr(sr.os, "close", close)
+    with pytest.raises(sr.UnreadableError, match="Input/output error"):
+        sr.read_text(tmp_path / "f")
+    assert len(closed) == 1
 
 
 def test_a_symlink_to_a_regular_file_is_read(sr: ModuleType, tmp_path: Path) -> None:

@@ -9,33 +9,16 @@ from pathlib import Path
 
 import gen_lib_copies
 import pytest
+from build_tools.libcat import SHARED, make
+from build_tools.libcat import copy as _copy
+from build_tools.libcat import declare as _declare
+from build_tools.libcat import put as _put
 from trees import ROOT
-
-SHARED = {"__init__.py": '"""pkg."""\n', "a.py": "from .b import x\n", "b.py": "x = 1\n", "c.py": "y = 2\n"}
 
 
 @pytest.fixture
 def cat(tmp_path: Path) -> Path:
-    """A catalog with one lib package and two policies, one consuming it."""
-    for name, text in SHARED.items():
-        _put(tmp_path / "lib" / "pkg" / name, text)
-    for pid in ("one", "two"):
-        _put(tmp_path / "base" / pid / "manifest.yaml", f"id: {pid}\n")
-    _declare(tmp_path, "base/one:\n  pkg: [a, b]\n")
-    return tmp_path
-
-
-def _put(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
-
-
-def _declare(root: Path, text: str) -> None:
-    _put(root / "lib" / "consumers.yaml", text)
-
-
-def _copy(root: Path, policy: str = "one") -> Path:
-    return root / "base" / policy / "implementations" / "pkg"
+    return make(tmp_path)
 
 
 def test_the_real_catalog_has_no_drift() -> None:
@@ -116,13 +99,62 @@ def test_a_symlinked_copy_file_is_replaced_by_a_real_file(cat: Path, tmp_path_fa
     assert outside.read_text(encoding="utf-8") == "x = 1\n"
 
 
-def test_a_symlinked_copy_folder_is_refused_and_nothing_is_written_through_it(cat: Path, tmp_path_factory) -> None:
+@pytest.mark.parametrize("linked", ["implementations", "implementations/pkg"])
+def test_a_symlink_on_the_way_to_a_copy_is_refused_and_nothing_is_touched_through_it(
+    cat: Path, tmp_path_factory, linked: str
+) -> None:
     outside = tmp_path_factory.mktemp("outside")
-    (cat / "base" / "one" / "implementations").mkdir(parents=True)
-    _copy(cat).symlink_to(outside, target_is_directory=True)
-    assert gen_lib_copies.problems(cat) == ["base/one/implementations/pkg: a symlink; a copy is a real folder"]
-    assert gen_lib_copies.write(cat) == ([], ["base/one/implementations/pkg: a symlink; a copy is a real folder"])
-    assert list(outside.iterdir()) == []
+    _put(outside / "pkg" / "precious.txt", "keep")
+    _put(outside / "precious.txt", "keep")
+    link = cat / "base" / "one" / linked
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(outside, target_is_directory=True)
+    problem = (
+        "base/one/implementations/pkg: reached through a symlink; a copy and its implementations/ are real folders"
+    )
+    assert problem in gen_lib_copies.problems(cat)
+    assert gen_lib_copies.write(cat)[0] == []
+    assert sorted(p.relative_to(outside).as_posix() for p in outside.rglob("*")) == [
+        "pkg",
+        "pkg/precious.txt",
+        "precious.txt",
+    ]
+
+
+@pytest.mark.parametrize("blocker", ["implementations", "implementations/pkg"])
+def test_a_file_where_a_copy_folder_goes_is_refused(cat: Path, blocker: str) -> None:
+    _put(cat / "base" / "one" / blocker, "")
+    assert f"base/one/{blocker}: a file where a folder goes" in gen_lib_copies.problems(cat)
+    assert gen_lib_copies.write(cat)[0] == []
+
+
+@pytest.mark.parametrize("module", ["../helper", "../../tools/x", "a/b", "a.b", "", "b "])
+def test_a_module_name_that_is_not_an_identifier_is_refused_and_nothing_is_written(cat: Path, module: str) -> None:
+    _put(cat / "lib" / "helper.py", "")
+    _put(cat / "base" / "one" / "implementations" / "one.sh", "guard")
+    _declare(cat, f"base/one:\n  pkg: [{module!r}]\n")
+    assert "base/one: pkg: must list module names (plain identifiers)" in "\n".join(gen_lib_copies.problems(cat))
+    assert gen_lib_copies.write(cat)[0] == []
+    assert (cat / "base" / "one" / "implementations" / "one.sh").read_text(encoding="utf-8") == "guard"
+
+
+def test_lib_holds_only_packages_and_the_declarations(cat: Path) -> None:
+    _put(cat / "lib" / "helper.py", "")
+    assert gen_lib_copies.problems(cat) == ["lib/helper.py: lib/ holds packages and consumers.yaml only"]
+
+
+def test_a_key_given_twice_is_refused(cat: Path) -> None:
+    _declare(cat, "base/one:\n  pkg: [a, b]\nbase/one:\n  pkg: [b]\n")
+    assert gen_lib_copies.problems(cat)[0].startswith("lib/consumers.yaml: not YAML (duplicate key base/one")
+    _declare(cat, "base/one:\n  pkg: [a, b]\n  pkg: [b]\n")
+    assert gen_lib_copies.problems(cat)[0].startswith("lib/consumers.yaml: not YAML (duplicate key pkg")
+
+
+@pytest.mark.parametrize("where", ["implementations/vendor/pkg", "implementations/PKG", "implementations/x/Pkg"])
+def test_a_copy_at_another_depth_or_case_is_refused(cat: Path, where: str) -> None:
+    gen_lib_copies.write(cat)
+    _put(cat / "base" / "two" / where / "__init__.py", "")
+    assert gen_lib_copies.problems(cat) == [f"base/two/{where}: a lib copy no entry in lib/consumers.yaml declares"]
 
 
 def test_an_undeclared_copy_is_refused(cat: Path) -> None:
@@ -137,50 +169,6 @@ def test_a_list_missing_an_imported_module_is_refused(cat: Path) -> None:
     assert gen_lib_copies.problems(cat) == [
         "lib/consumers.yaml: base/one: pkg.a imports pkg.b, which is not listed for it"
     ]
-
-
-@pytest.mark.parametrize(
-    ("source", "needs"),
-    [
-        ("from . import b\n", {"b"}),
-        ("from . import not_a_module\n", set()),
-        ("from pkg import b\n", {"b"}),
-        ("from pkg.b import x\n", {"b"}),
-        ("import pkg.b\n", {"b"}),
-        ("import pkg\n", set()),
-        ("import os\nfrom os import path\n", None),
-        ("def f():\n    from .b import x\n", {"b"}),
-    ],
-)
-def test_every_import_spelling_of_a_lib_module_is_followed(cat: Path, source: str, needs: set[str] | None) -> None:
-    _put(cat / "lib" / "pkg" / "c.py", source)
-    found = gen_lib_copies.imports(cat / "lib" / "pkg" / "c.py", "pkg", gen_lib_copies.packages(cat))
-    assert found == (set() if needs is None else {("pkg", "__init__"), *(("pkg", n) for n in needs)})
-
-
-def test_a_module_importing_another_lib_package_needs_that_package_listed(cat: Path) -> None:
-    _put(cat / "lib" / "other" / "__init__.py", "")
-    _put(cat / "lib" / "other" / "z.py", "")
-    _put(cat / "lib" / "pkg" / "b.py", "from other.z import q\n")
-    assert gen_lib_copies.problems(cat) == [
-        "lib/consumers.yaml: base/one: pkg.b imports other.__init__, which is not listed for it",
-        "lib/consumers.yaml: base/one: pkg.b imports other.z, which is not listed for it",
-    ]
-    _declare(cat, "base/one:\n  pkg: [a, b]\n  other: [z]\n")
-    gen_lib_copies.write(cat)
-    assert gen_lib_copies.problems(cat) == []
-
-
-@pytest.mark.parametrize(
-    ("source", "problem"),
-    [
-        ("from ..up import x\n", "lib/pkg/b.py: b.py: imports beyond its package (packages here are flat)"),
-        ("def (:\n", "lib/pkg/b.py: invalid syntax"),
-    ],
-)
-def test_a_module_that_cannot_be_read_for_imports_is_refused(cat: Path, source: str, problem: str) -> None:
-    _put(cat / "lib" / "pkg" / "b.py", source)
-    assert gen_lib_copies.problems(cat)[0].startswith(problem)
 
 
 @pytest.mark.parametrize(

@@ -57,6 +57,9 @@ FORMATTED = (
     "tools/regen_all.py",
     "tools/gen_registry.py",
     "tools/check_installed.py",
+    "tools/gen_lib_copies.py",
+    "tools/lib_imports.py",
+    "lib/chock_scan",
 )
 
 
