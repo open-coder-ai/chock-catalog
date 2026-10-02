@@ -6,6 +6,9 @@ base/block-destructive-commands:
   chock_shellparse: [args, parse, targets, writes]
 base/block-no-verify:
   chock_shellparse: [args, parse, targets, writes]
+base/block-secret-store-reads:
+  chock_scan: [data_table, safe_read]
+  chock_shellparse: [args, parse, targets, writes]
 base/block-unapproved-egress:
   chock_shellparse: [args, parse, targets, writes]
 base/block-unguarded-agent-spawn:

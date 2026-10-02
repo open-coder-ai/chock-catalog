@@ -22,6 +22,7 @@ source = [
     "base/block-destructive-commands/implementations",
     "base/block-no-verify/implementations",
     "base/block-unapproved-egress/implementations",
+    "base/block-secret-store-reads/implementations",
     "base/block-unguarded-agent-spawn/implementations",
     "base/protect-agent-config/implementations",
     "base/protect-ci-workflows/implementations",
