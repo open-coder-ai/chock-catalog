@@ -5,13 +5,17 @@ Runs as the policy's script gate: stdin is {"event", "repo_root", "writes": {pat
 2 is a fault in this check (the engine refuses then too). It prints a findings document keyed by the path, and the
 engine runs it again on the baseline text, which holds only paths that already existed, so a path the change adds or
 renames into is judged and one already tracked never blocks an edit to it. git quotes a path holding a control
-character, a double quote or a backslash ("a\\nb"); a quoted path is refused as such.
+character, a double quote or a backslash ("a\\nb"); a quoted path is refused as such. The engine trims the names
+it lists, so at a commit this gate also asks git for the added and renamed names NUL-separated, and judges one
+with a leading or trailing space as new.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,6 +24,8 @@ from refname_rules import ADVICE, describe, problems, shown
 
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"', re.DOTALL)
 QUOTED_REASON = "a control character, a double quote or a backslash (git prints it quoted)"
+COMMIT_EVENTS = ("commit", "agent-commit")
+GIT = shutil.which("git") or "git"
 
 
 def judge(path: str) -> list[tuple[str, str]]:
@@ -29,16 +35,30 @@ def judge(path: str) -> list[tuple[str, str]]:
     return problems(path)
 
 
+def padded_names(payload: dict) -> list[str]:
+    """At a commit, the added or renamed names that start or end in whitespace, which the engine's list trims."""
+    if payload.get("event") not in COMMIT_EVENTS or payload.get("baseline"):
+        return []
+    listing = subprocess.run(  # noqa: S603 -- read-only: the staged names, as git stores them
+        [GIT, "diff", "--cached", "--name-only", "-z", "--diff-filter=AR"],
+        cwd=payload.get("repo_root") or ".",
+        capture_output=True,
+        check=True,
+    )
+    names = listing.stdout.decode("utf-8", errors="replace").split("\0")
+    return [name for name in names if name != name.strip()]
+
+
+def _finding(path: str, reasons: list[tuple[str, str]], **extra: bool) -> dict:
+    safe = shown(path)
+    message = describe("file name", path, reasons).removesuffix(f" {ADVICE}")
+    return {"key": f"name|{safe}", "path": safe, "line": 1, "message": message, "rule": "filename", **extra}
+
+
 def findings(payload: dict) -> list[dict]:
     """One finding per refused path, keyed and shown by its escaped form so no control character reaches a terminal."""
-    found = []
-    for path in sorted(payload.get("writes", {})):
-        reasons = judge(path)
-        if reasons:
-            safe = shown(path)
-            message = describe("file name", path, reasons).removesuffix(f" {ADVICE}")
-            found.append({"key": f"name|{safe}", "path": safe, "line": 1, "message": message, "rule": "filename"})
-    return found
+    found = [_finding(path, reasons) for path in sorted(payload.get("writes", {})) if (reasons := judge(path))]
+    return found + [_finding(name, reasons, new=True) for name in padded_names(payload) if (reasons := judge(name))]
 
 
 def main() -> int:

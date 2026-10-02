@@ -12,7 +12,9 @@ ADVICE = (
 )
 _SUBST = re.compile(r"\$[({'\"]|\$IFS|`")
 _OPERATOR = re.compile(r"[;&|<>]")
-_DECODE = re.compile(r"base64\W{0,8}-{1,2}d(?:ecode)?(?![a-z])|b64decode|frombase64string", re.IGNORECASE)
+# A decode run as a command: `base64` then whitespace or an IFS expansion then -d/--decode, or a pipe into base64.
+# A name like `base64-decode.js` or `b64decode.py` is a module, not a command, and passes.
+_DECODE = re.compile(r"base64(?:\s|\$\{?IFS\}?)+-{1,2}d(?:ecode)?(?![a-z])|\|\s*base64", re.IGNORECASE)
 # Bidi marks, embeddings, overrides and isolates, by code point so this file never carries one.
 _BIDI = frozenset(map(chr, (0x200E, 0x200F, *range(0x202A, 0x202F), *range(0x2066, 0x206A))))
 _HEX = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}", re.IGNORECASE)
