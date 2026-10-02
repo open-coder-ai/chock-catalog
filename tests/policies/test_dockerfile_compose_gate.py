@@ -167,7 +167,7 @@ def test_unreadable_stdin_is_not_an_allow(tmp_path: Path) -> None:
 def test_unreadable_compose_message_has_no_cwe(tmp_path: Path) -> None:
     code, _, err = run({"compose.yaml": "a: *b\n"}, tmp_path)
     assert code == 1
-    assert "cm-unreadable (unreadable;" in err
+    assert "cm-unreadable (no CWE;" in err
 
 
 @pytest.mark.parametrize(

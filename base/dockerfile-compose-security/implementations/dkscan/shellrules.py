@@ -12,15 +12,16 @@ import bisect
 import re
 from collections.abc import Iterator
 
+from dkscan import limits
 from dkscan.dockerfile import Instr
 from dkscan.rules import Ctx, Hit
 
-SEP = r"(?:^|[\n;&|(`{\"']|\$\(|\b(?:then|do|else)\s|\s-exec(?:dir)?\s)\s{0,64}(?i:(?:ONBUILD\s+)?RUN(?:\s+--\S{1,256}){0,8}\s+)?"
+SEP = r"(?:^|[\n;&|(`{]|(?<![^\s\[,=(])[\"']|\$\(|\b(?:then|do|else)\s|\s-exec(?:dir)?\s)\s{0,64}(?i:(?:ONBUILD\s+)?RUN(?:\s+--\S{1,256}){0,32}\s+)?"
 WRAP = (
-    r"(?:(?:sudo|doas|env|exec|command|nohup|nice|time|stdbuf|xargs|timeout\s+\S{1,64})(?:\s+-{1,2}[\w-]{1,64}(?:=\S{0,128})?){0,8}\s+"
-    r"|[A-Za-z_]\w{0,64}=\S{0,128}\s+){0,8}"
+    r"(?:(?:sudo|doas|env|exec|command|nohup|nice|time|stdbuf|xargs|timeout\s+\S{1,64})(?:\s+-{1,2}[\w-]{1,64}(?:=\S{0,128})?){0,32}\s+"
+    r"|[A-Za-z_]\w{0,64}=\S{0,128}\s+){0,32}"
 )
-ARGS = r"[^;\n|&]{0,2048}?"
+ARGS = r"[^;\n|&]{0,4096}?"
 RUNS = r"(?:[^;\n|&]|&(?![&>])){0,4096}"
 
 
@@ -30,10 +31,10 @@ def prog(name: str) -> str:
 
 FETCH = r"curl|wget2?|aria2c|lynx|(?i:iwr|irm|invoke-webrequest|invoke-restmethod)"
 INTERP = r"(?:ba|z|da|k|a|c|tc|mk)?sh|fish|busybox\s+sh|python[0-9.]*|perl|ruby|node|php|lua|deno|bun|(?i:pwsh|powershell|iex|invoke-expression)"
-STDIN_TAIL = r"(?:(?=\s*(?:$|[;&|)\n\"'`]))|(?:\s+-\w{1,32}){0,8}?\s+(?:-s|--|-)(?=\s|$))"
+STDIN_TAIL = r"(?:(?=\s*(?:$|[;&|)\n\"'`]))|(?:\s+-\w{1,32}){0,32}?\s+(?:-s|--|-)(?=\s|$))"
 FETCH_EXEC = re.compile(
     rf"{prog(FETCH)}{RUNS}(?:\|(?!\|){RUNS}){{0,3}}?\|(?!\|)\s{{0,64}}{WRAP}[\"']?(?:\S{{0,128}}/)?(?:{INTERP})(?![\w.-]){STDIN_TAIL}"
-    rf"|{SEP}\s{{0,64}}(?:(?:ba|z|da|k|a)?sh|eval|source|\.)(?:\s+-\S{{1,64}}){{0,8}}\s+(?:<<<\s*|<\s*)?[\"']?(?:\$\(|<\(|`)\s*(?:sudo\s+)?(?:{FETCH})(?![\w-])"
+    rf"|{SEP}\s{{0,64}}(?:(?:ba|z|da|k|a)?sh|eval|source|\.)(?:\s+-\S{{1,64}}){{0,32}}\s+(?:<<<\s*|<\s*)?[\"']?(?:\$\(|<\(|`)\s*(?:sudo\s+)?(?:{FETCH})(?![\w-])"
     r"|(?i:\b(?:iex|invoke-expression)\s*\(*\s*(?:irm|iwr|invoke-webrequest|invoke-restmethod|new-object\s+(?:system\.)?net\.webclient))",
     re.MULTILINE,
 )
@@ -54,8 +55,8 @@ SIGNATURE = re.compile(
     re.MULTILINE,
 )
 SUDO = re.compile(
-    rf"{SEP}\s{{0,64}}(?:[A-Za-z_]\w{{0,64}}=\S{{0,128}}\s+){{0,8}}(?:\S{{0,128}}/)?sudo(?![\w.-])|\bopenssh-server\b"
-    r"|\b(?:install|add)\b[^;\n|&]{0,2048}?(?<![\w.-])(?:sudo|openssh)(?![\w.-])",
+    rf"{SEP}\s{{0,64}}(?:[A-Za-z_]\w{{0,64}}=\S{{0,128}}\s+){{0,32}}(?:\S{{0,128}}/)?sudo(?![\w.-])|\bopenssh-server\b"
+    r"|\b(?:install|add)\b[^;\n|&]{0,4096}?(?<![\w.-])(?:sudo|openssh)(?![\w.-])",
     re.MULTILINE,
 )
 PASSWORDS = re.compile(
@@ -64,14 +65,14 @@ PASSWORDS = re.compile(
     re.MULTILINE,
 )
 GIT_CLONE = re.compile(
-    rf"{prog('git')}(?:\s+-[cC]\s+\S{{1,256}}|\s+--[\w-]{{1,64}}(?:=\S{{0,256}})?){{0,8}}\s+clone\b", re.MULTILINE
+    rf"{prog('git')}(?:\s+-[cC]\s+\S{{1,256}}|\s+--[\w-]{{1,64}}(?:=\S{{0,256}})?){{0,32}}\s+clone\b", re.MULTILINE
 )
 #: A clone counts as pinned when a later checkout, switch, reset, fetch or --revision names a 40-hex commit.
 PINNED = re.compile(
     r"\b(?:checkout|switch|reset|fetch)\b[^;\n|&]{0,512}?(?<![0-9a-fA-F])[0-9a-fA-F]{40}(?![0-9a-fA-F])"
     r"|--revision[=\s][\"']?[0-9a-fA-F]{40}(?![0-9a-fA-F])"
 )
-CHMOD = re.compile(rf"{prog('chmod')}([^;\n|&]{{0,2048}})", re.MULTILINE)
+CHMOD = re.compile(rf"{prog('chmod')}([^;\n|&]{{0,4096}})", re.MULTILINE)
 INSTALL_MODE = re.compile(rf"{prog('install')}{ARGS}(?<!\S)-m\s*([^\s;&|]{{1,64}})", re.MULTILINE)
 WORDS = re.compile(r"[\s,\"'\[\]]+")
 NUMERIC = re.compile(r"[0-7]{3,5}")
@@ -129,9 +130,18 @@ ONCE = (
 )
 
 
+def judgeable(instr: Instr) -> Iterator[Hit]:
+    """A dk-unjudgeable finding when the text runs past what the patterns read in full."""
+    if why := limits.unjudgeable(instr.text):
+        yield _hit("dk-unjudgeable", instr, None, f"too large to judge: {why}")
+
+
 def run_hits(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
     """Every shell-text finding in a RUN (or ONBUILD RUN). A one-line fetch-exec is left to
     block-fetch-exec-in-files only where that gate is installed and reads the path."""
+    yield from judgeable(instr)
+    if len(instr.text) > limits.TEXT:
+        return
     for found in FETCH_EXEC.finditer(instr.text):
         if spans_lines(instr, found) or not ctx.fetch_exec_elsewhere:
             yield _hit("dk-fetch-exec", instr, found, "a download piped into an interpreter")

@@ -15,7 +15,7 @@ BAD_CAPS = frozenset({"ALL", "SYS_ADMIN", "NET_ADMIN", "SYS_PTRACE"})
 UNCONFINED = re.compile(r"(?:seccomp|apparmor|systempaths)\s*[:=]\s*unconfined|label\s*[:=]\s*disable", re.IGNORECASE)
 NAMESPACES = frozenset({"network_mode", "pid", "ipc", "userns_mode", "uts", "cgroup"})
 #: Container runtime sockets: each hands the container the host's runtime, as docker.sock does.
-SOCKETS = ("docker.sock", "podman.sock", "containerd.sock")
+SOCKETS = ("docker.sock", "podman.sock", "containerd.sock", "crio.sock")
 SENSITIVE = ("/etc", "/proc", "/sys", "/boot", "/dev", "/root", "~/.ssh", "~/.aws", "~/.kube", "/var/lib/docker")
 SOCKET_DIRS = frozenset({"/var", "/var/run", "/run"})
 EXEMPT = ("/etc/localtime", "/etc/timezone", "/etc/ssl/certs")
@@ -142,7 +142,7 @@ class Service:
             yield self.hit("cm-host-namespaces", row, f"{head}: host")
         elif head == "volumes":
             yield from self.volume(row, value)
-        elif head == "environment":
+        elif head in ("environment", "build"):
             yield from self.environment(row, value)
         elif head == "ports":
             yield from self.port(row, value)
@@ -156,10 +156,12 @@ class Service:
             yield self.hit(rule, row, f"host path mounted: {value}")
 
     def environment(self, row: Entry, value: str) -> Iterator[Hit]:
-        if len(row.path) != ITEM:
+        """environment and build.args entries: `KEY: value` (map) or `KEY=value` (list)."""
+        rest = row.path[1:] if row.path[0] == "environment" else row.path[2:]
+        if len(rest) != 1 or (row.path[0] == "build" and row.path[1] != "args"):
             return
-        listed = not isinstance(row.path[1], str)
-        name, eq, literal = value.partition("=") if listed else (str(row.path[1]), ":", value)
+        listed = not isinstance(rest[0], str)
+        name, eq, literal = value.partition("=") if listed else (str(rest[0]), ":", value)
         written = f"{name}={literal}" if listed else f"{name}: {literal}"
         if (
             eq
@@ -167,7 +169,7 @@ class Service:
             and secrets.is_literal(literal)
             and not secrets.scan_secrets_reads(written)
         ):
-            yield self.hit("cm-literal-secrets", row._replace(value=name), f"environment {name} holds a literal")
+            yield self.hit("cm-literal-secrets", row._replace(value=name), f"{row.path[0]} {name} holds a literal")
 
     def port(self, row: Entry, value: str) -> Iterator[Hit]:
         short = len(row.path) == ITEM and short_port(value)

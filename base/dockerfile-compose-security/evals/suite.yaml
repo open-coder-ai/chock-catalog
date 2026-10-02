@@ -328,3 +328,12 @@ suite:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\nRUN echo \"x<<EOF\"\nUSER root\n"
       expect: warn
+  - id: tc-033
+    category: adversarial
+    prompt: A USER 1000 line sits inside a heredoc opened as "cat << EOF" (a space after the angle brackets), so Docker never runs it.
+    expect: Warned (dk-last-user-root); heredocs are read as BuildKit reads them.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN cat << EOF > /etc/motd\nhello\nUSER 1000\nEOF\n"
+      expect: warn

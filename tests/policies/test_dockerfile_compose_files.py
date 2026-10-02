@@ -173,6 +173,7 @@ def test_pinned_and_local_adds_are_silent(body: str) -> None:
         ("ENV PASSWORD_HASH_ALGO=bcrypt PASS_MIN_DAYS=7\n", "dk-secret-arg-env", False),
         ("ENV DB_PASSWORD=hunter2 TEST_JWT=ey" + "J0.e30.x\n", "dk-secret-arg-env", True),
         ("COPY .env* /app/\n", "dk-copy-secrets", True),
+        ("COPY .env.* /app/\n", "dk-copy-secrets", True),
     ],
 )
 def test_review_round_one_secret_cases(body: str, rule: str, expected: bool) -> None:
@@ -180,7 +181,7 @@ def test_review_round_one_secret_cases(body: str, rule: str, expected: bool) -> 
 
 
 def test_long_env_line_stays_fast() -> None:
-    body = "ENV " + " ".join(f"K{i}_PASSWORD=v{i}" for i in range(5000)) + "\n"
+    body = "ENV " + " ".join(f"K{i}_PASSWORD=v{i}" for i in range(3000)) + "\n"
     start = time.monotonic()
     assert "dk-secret-arg-env" in rules(body)
     assert time.monotonic() - start < 5

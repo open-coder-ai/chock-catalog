@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable, Iterator
 from pathlib import PurePosixPath
 
-from dkscan import secrets, shellrules, stages
+from dkscan import limits, secrets, shellrules, stages
 from dkscan.dockerfile import Instr, split_flags
 from dkscan.rules import Ctx, Hit
 
@@ -18,7 +18,7 @@ REMOTE = re.compile(r"^(?:https?://|git@|git://|ssh://)", re.IGNORECASE)
 GIT_SOURCE = re.compile(r"^(?:git@|git://|ssh://)|\.git(?:#|$)", re.IGNORECASE)
 PINNED_GIT = re.compile(r"#[0-9a-fA-F]{40}(?::|$)")
 KEY_FILE = re.compile(
-    r"^(?:\.env[*?\[].*|\.env(?:\.(?!example$|sample$|template$|dist$|defaults$)[\w.-]+)?|id_(?:rsa|dsa|ecdsa|ed25519)|\.npmrc|\.pypirc|\.netrc"
+    r"^(?:\.env\.?[*?\[].*|\.env(?:\.(?!example$|sample$|template$|dist$|defaults$)[\w.-]+)?|id_(?:rsa|dsa|ecdsa|ed25519)|\.npmrc|\.pypirc|\.netrc"
     r"|\.git-credentials|\.pgpass|[\w.-]*\.(?:key|p12|pfx|jks|keystore)|[\w.-]*(?:key|priv)[\w.-]*\.pem)$",
     re.IGNORECASE,
 )
@@ -126,5 +126,8 @@ def instruction_hits(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
 
 
 def _env_like(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
+    if len(instr.text) > limits.TEXT:
+        yield from shellrules.judgeable(instr)
+        return
     yield from env_arg(instr)
     yield from shellrules.tls_hits(instr, ctx)

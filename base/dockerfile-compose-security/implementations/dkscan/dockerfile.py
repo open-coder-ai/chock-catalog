@@ -12,9 +12,9 @@ import json
 import re
 from typing import NamedTuple
 
+from dkscan import heredoc
+
 DIRECTIVE = re.compile(r"#[ \t]*([A-Za-z][A-Za-z0-9_-]*)[ \t]*=[ \t]*(\S*)[ \t]*")
-#: A heredoc opens only at the start of an unquoted shell word (`<<WORD`, `<<-WORD`, `3<<"WORD"`), as BuildKit reads it.
-HEREDOC = re.compile(r"\d*<<(?!<)(-?)([\"']?)([A-Za-z_][\w.-]*)\2")
 KEYWORD = re.compile(r"[ \t]*([A-Za-z]+)(?:[ \t]+|$)")
 FLAG = re.compile(r"--([\w-]+)(?:=(\S*))?(?:[ \t]+|$)")
 HEREDOC_KEYWORDS = frozenset({"RUN", "COPY", "ADD"})
@@ -116,27 +116,8 @@ def _logical(lines: list[str], index: int, esc: str) -> tuple[list[tuple[int, st
 
 
 def heredoc_words(text: str) -> list[tuple[bool, str]]:
-    """(strip tabs, word) for each heredoc opener: outside quotes, $((...)) and escapes, at a word's start."""
-    found: list[tuple[bool, str]] = []
-    at, quote = 0, ""
-    while at < len(text):
-        char = text[at]
-        if quote:
-            at += 2 if char == "\\" and quote == '"' else 1
-            quote = "" if char == quote else quote
-            continue
-        if text.startswith("$((", at):
-            close = text.find("))", at)
-            at = len(text) if close < 0 else close + 2
-            continue
-        opener = HEREDOC.match(text, at) if at == 0 or text[at - 1].isspace() else None
-        if opener:
-            found.append((opener.group(1) == "-", opener.group(3)))
-            at = opener.end()
-            continue
-        quote = char if char in "\"'" else ""
-        at += 2 if char == "\\" else 1
-    return found
+    """(strip tabs, terminator) for each heredoc the instruction line opens, as BuildKit reads it."""
+    return heredoc.openers(text)
 
 
 def _heredocs(lines: list[str], index: int, build: _Builder, keyword: str) -> int:

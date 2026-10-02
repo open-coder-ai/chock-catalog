@@ -174,10 +174,25 @@ def test_latest_image_is_left_to_block_unpinned_agent_components_where_installed
         ("    volumes: [/run/podman/podman.sock:/s]\n", "cm-docker-sock"),
         ("    volumes: [/run/containerd/containerd.sock:/s]\n", "cm-docker-sock"),
         ("    environment: [PGPASSWORD=hunter2]\n", "cm-literal-secrets"),
+        ("    volumes: [/var/run/crio/crio.sock:/s]\n", "cm-docker-sock"),
+        ("    build:\n      context: .\n      args:\n        NPM_TOKEN: abc123\n", "cm-literal-secrets"),
+        ("    build:\n      args: [NPM_TOKEN=abc123]\n", "cm-literal-secrets"),
     ],
 )
 def test_review_round_one_compose_cases(body: str, rule: str) -> None:
     assert rule in service(body)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "    build: .\n",
+        "    build:\n      context: .\n      labels: {API_TOKEN: abc123}\n      args:\n        NPM_TOKEN: ${NPM_TOKEN}\n",
+        "    environment: {PASSWORD_ENCODER: bcrypt, SECRET_MANAGER_REGION: eu-west-1, JWT_SECRET_ROTATION: 30d}\n",
+    ],
+)
+def test_review_round_two_correct_forms_stay_silent(body: str) -> None:
+    assert not service(body)
 
 
 def test_alias_fan_out_is_capped_across_documents() -> None:

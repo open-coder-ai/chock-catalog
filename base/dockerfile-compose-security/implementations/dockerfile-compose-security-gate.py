@@ -109,7 +109,7 @@ def findings(payload: dict) -> list[dict]:
                     "path": norm,
                     "line": hit.line,
                     "rule": hit.rule,
-                    "message": f"{hit.rule} ({rule.cwe or 'unreadable'}; {rule.refs}): {hit.why}. Fix: {rule.fix}",
+                    "message": f"{hit.rule} ({rule.cwe or 'no CWE'}; {rule.refs}): {hit.why}. Fix: {rule.fix}",
                 }
             )
     return found

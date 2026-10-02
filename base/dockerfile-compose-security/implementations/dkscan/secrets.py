@@ -53,6 +53,10 @@ NOT_SECRET_LAST = frozenset(
         "days",
         "age",
         "len",
+        "encoder",
+        "manager",
+        "region",
+        "rotation",
     }
 )
 #: A credential word glued to a prefix with no separator (PGPASSWORD, MYSQLPWD is too short to tell).

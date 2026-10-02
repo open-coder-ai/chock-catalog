@@ -237,6 +237,14 @@ _TABLE = (
         "publish on 127.0.0.1:host:container, or do not publish the port",
     ),
     (
+        "dk-unjudgeable",
+        "build",
+        ASK,
+        "",
+        "roadmap 2.6 trap 15 (a construct the gate cannot read in full is reported)",
+        "split the command into shorter commands or RUN steps",
+    ),
+    (
         "cm-unreadable",
         "compose-priv",
         DENY,
