@@ -70,7 +70,7 @@ def judged(path: str) -> bool:
 
 def file_hits(lex: Lexicon, text: str) -> list[Hit]:
     """Every rule that fires in one instruction file: statements, fake trust blocks and encoded blobs."""
-    hits = judge(lex, statements(text))
+    hits = [h._replace(verdict=ASK) if h.statement.capped else h for h in judge(lex, statements(text))]
     for blob in blobs(lines_of(text)):
         st = Statement(blob.first, blob.last, blob.run[:120], blob.run, code=True)
         hidden = blob.decoded is not None and (
@@ -165,7 +165,7 @@ def judge_file(lex: Lexicon, payload: dict, path: str, text: str) -> tuple[list[
     waive = str(payload.get("event", "")) == "commit"
     if len(text) > MAX_TEXT:
         # Too long to read in the budget: refused, so padding a file cannot turn a refusal into an ask.
-        if waive and WAIVER.search(text[: text.find("\n")] if "\n" in text else text):
+        if waive and WAIVER.search(lines_of(text)[0]):
             return [], False
         size = f"an instruction file over {MAX_TEXT} characters, too long to judge"
         oversize = _finding("oversize", size, path, Statement(1, 1, f"{len(text)} characters", text, code=False))
@@ -178,7 +178,7 @@ def judge_file(lex: Lexicon, payload: dict, path: str, text: str) -> tuple[list[
         return found, False
     old = before_text(payload, path, text)
     if old is not None and len(old) <= MAX_TEXT:
-        found += removed_guardrails(lex, path, old, len(text.splitlines()), text)
+        found += removed_guardrails(lex, path, old, len(lines_of(text.rstrip("\r\n"))), text)
         blocking -= Counter(_key(h.rule, h.statement.norm) for h in file_hits(lex, old) if h.verdict == BLOCK)
     return found, bool(blocking)
 

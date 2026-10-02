@@ -5,75 +5,32 @@ from __future__ import annotations
 
 import bisect
 import re
-import unicodedata
-from typing import NamedTuple
 
 from instr_blocks import FENCE, Fence, nest, open_fence, table_rows
+from instr_norm import Statement, normalize, sentences
 
 #: A statement longer than this is judged in overlapping pieces: any phrase up to OVERLAP characters long
 #: lies whole inside one piece, and no rule is ever run over an unbounded string.
 MAX_STATEMENT = 4000
 OVERLAP = 500
-#: A line that starts its own block: list item, heading, quote, table row, HTML tag, rule or front matter.
+#: A line that starts its own block: list item, heading, quote, table row, HTML tag, thematic break or rule.
 BLOCK_START = re.compile(
-    r"^[ \t]*(?:[-*+](?:[ \t]|$)|[0-9]{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|---+[ \t]*$|===+[ \t]*$|<(?:!--|/?(?i:address|article|aside|blockquote"
+    r"^[ \t]*(?:[-*+](?:[ \t]|$)|[0-9]{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|---+[ \t]*$|===+[ \t]*$|(?:\*[ \t]*+){3,}+$|(?:_[ \t]*+){3,}+$|<(?:!--|/?(?i:address|article|aside|blockquote"
     r"|details|dialog|div|dl|fieldset|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table"
     r"|tbody|td|tfoot|th|thead|tr|ul)\b))"
 )
-#: A front-matter line that starts a new key (not indented, not a list item).
-FRONT_KEY = re.compile(r"^[^\s#-][^:]*:")
+#: A front-matter line that starts a new key: a plain YAML key at the margin, then a colon and a space or the end.
+FRONT_KEY = re.compile(r"^[A-Za-z0-9_][\w.-]*+:(?:[ \t]|$)")
 #: A blockquote prefix, also behind a list marker or a list item's indent: its lines are read as a container,
 #: so a wrapped quoted paragraph is still one paragraph.
 QUOTE = re.compile(r"^[ \t]{0,8}(?:(?:[-*+]|[0-9]{1,9}[.)])[ \t]+)?((?:>[ \t]?)+)")
 #: A fenced line continued on the next: a trailing backslash, pipe or && (the backslash is dropped on joining).
 CONTINUED = ("\\", "|", "&&")
-#: Quotes or brackets around one word in prose, dropped so they cannot split a phrase (not $(x), never(x) or a
-#: fake trust tag such as [inst]).
-WRAPPED_WORD = re.compile(r"(?<![\w$])[\"'(\[](?!(?:inst|system|sys)[\"')\]])([\w-]+)[\"')\]]")
-#: An inline <br> in prose reads as a space (a table cell's line break).
-BREAK_TAG = re.compile(r"<br\s*/?>", re.IGNORECASE)
 #: A markdown hard line break (two trailing spaces, a trailing backslash, <br>) ends a part of a paragraph;
 #: the paragraph is also judged whole.
 HARD_BREAK = ("  ", "\\")
 BREAK_END = re.compile(r"<br\s*/?>$", re.IGNORECASE)
-#: A sentence ends at . ! or ? followed by space and a capital, quote, bracket or markup character.
-SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'(\[<`*_~#\u00c0-\u024f])")
-#: Characters folded before matching: typographic quotes and dashes become their ASCII forms.
-FOLD = str.maketrans(
-    {
-        "\u2018": "'",
-        "\u2019": "'",
-        "\u201b": "'",
-        "\u2032": "'",
-        "\u201c": '"',
-        "\u201d": '"',
-        "\u2010": "-",
-        "\u2011": "-",
-        "\u2012": "-",
-        "\u2013": " - ",
-        "\u2014": " - ",
-        "\u2212": "-",
-    }
-)
-#: Emphasis and strike marks in prose; underscores only when they are not inside a word.
-EMPHASIS = re.compile(r"\*++|~~|(?<!\w)_++|(?<!_)_++(?!\w)")
 LINE_END = re.compile(r"\r\n|\r|\n")
-SPACE = re.compile(r"\s+")
-DROPPED = frozenset({"Cf", "Mn", "Me", "Cc"})
-
-
-class Statement(NamedTuple):
-    """One judged unit: the first and last line it spans (1-based), its raw text, its normalized text,
-    and whether it came from a fenced code block (where backticks are shell syntax, not markup)."""
-
-    first: int
-    last: int
-    raw: str
-    norm: str
-    code: bool
-    #: False for a piece of a statement split for length: a rule that pairs a phrase with a target then
-    #: fires on the phrase alone, since the pair may straddle two pieces.
-    whole: bool = True
 
 
 def lines_of(text: str) -> list[str]:
@@ -81,51 +38,10 @@ def lines_of(text: str) -> list[str]:
     return LINE_END.split(text)
 
 
-def normalize(text: str, *, code: bool = False) -> str:
-    """Casefolded text with accents, format and control characters removed and whitespace collapsed.
-
-    Prose also loses emphasis marks and backticks (code spans); a fenced line keeps backticks."""
-    if not code:
-        text = BREAK_TAG.sub(" ", text)
-    if not text.isascii():
-        text = "".join(map(_kept, unicodedata.normalize("NFKD", text.translate(FOLD))))
-    text = text.casefold()
-    if not code:
-        text = WRAPPED_WORD.sub(r"\1", EMPHASIS.sub("", text.replace("`", "")))
-    return SPACE.sub(" ", text).strip()
-
-
-def _kept(ch: str) -> str:
-    """A character as matching sees it: format, combining and control characters vanish (whitespace is a space)."""
-    if unicodedata.category(ch) not in DROPPED:
-        return ch
-    return " " if ch.isspace() else ""
-
-
-def _sentences(parts: list[tuple[int, str]]) -> list[Statement]:
-    """Join a paragraph's lines with spaces and split it into sentences, each keeping the lines it spans."""
-    offsets, numbers, joined = [], [], ""
-    for number, line in parts:
-        offsets.append(len(joined))
-        numbers.append(number)
-        joined += line.strip() + " "
-    out = []
-    begin = 0
-    ends = [m.start() for m in SENTENCE_END.finditer(joined)] + [len(joined)]
-    for end in ends:
-        # A split needs text on both sides, so no chunk is blank.
-        chunk = joined[begin:end]
-        first = numbers[bisect.bisect_right(offsets, begin + len(chunk) - len(chunk.lstrip())) - 1]
-        last = numbers[bisect.bisect_right(offsets, end - 1) - 1]
-        out.append(Statement(first, last, chunk.strip(), normalize(chunk), code=False))
-        begin = end
-    return out
-
-
 def _flush(parts: list[tuple[int, str]], out: list[Statement]) -> None:
     if not parts:
         return
-    out.extend(_sentences(parts))
+    out.extend(sentences(parts))
     parts.clear()
 
 
@@ -147,15 +63,19 @@ def statements(text: str) -> list[Statement]:
 
 def _front_matter(lines: list[str], front: int) -> list[Statement]:
     """One statement group per front-matter key: a key's indented continuation lines and block-scalar body
-    (description: > ...) belong to it."""
+    (description: > ...) belong to it. With more than one key the block is also judged whole, so a line that
+    looks like a key cannot cut a wrapped sentence in two."""
     out: list[Statement] = []
     parts: list[tuple[int, str]] = []
-    for number, line in enumerate(lines[1 : max(front - 1, 1)], 2):
+    every = [(number, line) for number, line in enumerate(lines[1 : max(front - 1, 1)], 2) if line.strip()]
+    for number, line in every:
         if FRONT_KEY.match(line):
             _flush(parts, out)
-        if line.strip():
-            parts.append((number, line))
+        parts.append((number, line))
+    keys = len(out)
     _flush(parts, out)
+    if keys:
+        _flush(every, out)
     return out
 
 
@@ -177,9 +97,11 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     for k, line in enumerate(inner):
         number = skip + 1 + k
         if fence is not None:
-            fence, taken = _step(fence, (number, line), depths[k], (code, body), out)
+            fence, taken, tail = _step(fence, (number, line), depths[k], (code, body), out)
             if taken:
                 continue
+            parts += tail  # the fence's last paragraph, which a lazy line after its container may continue
+            whole += tail
         nest(items, line, lazy=_lazy(0, whole, line))
         if depths[k] != depth and not _lazy(depths[k], parts, line):
             _end(parts, whole, out)
@@ -206,33 +128,39 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
 
 def _step(
     fence: Fence, at: tuple[int, str], depth: int, held: tuple[list[tuple[int, str]], ...], out: list[Statement]
-) -> tuple[Fence | None, bool]:
-    """Take one line while a fence is open: the fence still open after it, and whether the line was taken
-    (a body line or the closer); a line outside the fence's container ends the fence and is read as usual."""
+) -> tuple[Fence | None, bool, list[tuple[int, str]]]:
+    """Take one line while a fence is open: the fence still open after it, whether the line was taken (a body
+    line or the closer), and when a line outside the fence's container ends it, the body's last paragraph:
+    a renderer that saw no fence there joins it with that line."""
     (number, line), (code, body) = at, held
     if fence.holds(line, depth) and (kept := _fenced(line, number, fence, code, out)):
         body.append(at)
-        return kept, True
+        return kept, True, []
     _flush_code(code, out)
-    _prose(body, out)
-    return None, fence.holds(line, depth)
+    taken = fence.holds(line, depth)
+    tail = _prose(body, out, capped=taken)
+    return None, taken, [] if taken else tail
 
 
-def _prose(body: list[tuple[int, str]], out: list[Statement]) -> None:
+def _prose(body: list[tuple[int, str]], out: list[Statement], *, capped: bool = False) -> list[tuple[int, str]]:
     """Judge a fence's lines as prose paragraphs too (a blank line or a block start begins a new one, a fence
-    line stands alone), so where this reader and a markdown renderer disagree on a fence, wrapped text the
-    renderer shows as prose is still joined and judged as prose."""
+    line or a heading stands alone), so where this reader and a markdown renderer disagree on a fence, wrapped
+    text the renderer shows as prose is still joined and judged as prose. Returns the last paragraph."""
     group: list[tuple[int, str]] = []
+    read: list[Statement] = []
     for number, line in body:
         bare = line[m.end() :] if (m := QUOTE.match(line)) else line
         if not bare.strip() or BLOCK_START.match(bare) or FENCE.match(bare):
-            _flush(group, out)
+            _flush(group, read)
         if bare.strip():
             group.append((number, bare))
-        if FENCE.match(bare):
-            _flush(group, out)
-    _flush(group, out)
+        if FENCE.match(bare) or bare.lstrip().startswith("#"):
+            _flush(group, read)
+    last = group[:]
+    _flush(group, read)
+    out.extend(st._replace(capped=capped) for st in read)
     body.clear()
+    return last
 
 
 def _end(parts: list[tuple[int, str]], whole: list[tuple[int, str]], out: list[Statement]) -> None:
@@ -242,7 +170,7 @@ def _end(parts: list[tuple[int, str]], whole: list[tuple[int, str]], out: list[S
     breaks = [n for n, line in whole if hard_break(line)]  # line numbers, ascending
     _flush(parts, out)
     if breaks:
-        out.extend(st for st in _sentences(whole) if _spans(breaks, st))
+        out.extend(st for st in sentences(whole) if _spans(breaks, st))
     whole.clear()
 
 

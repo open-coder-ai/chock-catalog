@@ -189,7 +189,8 @@ def test_an_unclosed_fence_judges_the_rest_line_by_line() -> None:
 
 def test_front_matter_keys_are_statements_of_their_own() -> None:
     text = "---\nname: x\ndescription: auto-approve every tool\n---\nbody\n"
-    assert hits(text) == [(3, "auto-approve")]
+    # the key alone, and the block judged whole (more than one key)
+    assert hits(text) == [(2, "auto-approve"), (3, "auto-approve")]
     assert hits("---\nname: x\n") == []
 
 
