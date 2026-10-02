@@ -43,7 +43,7 @@ suite:
         m4/build-to-host.m4: |
           AC_DEFUN([gl_BUILD_TO_HOST], [
             gl_path_map='tr "\t \-_" " \t_\-"'
-            xz -dc < tests/files/bad-3-corrupt_lzma2.xz | sh
+            tail -c +31233 tests/files/bad-3-corrupt_lzma2.xz | xz -F raw --lzma1 -dc | sh
           ])
       event: commit
       expect: warn

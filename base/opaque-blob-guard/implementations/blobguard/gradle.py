@@ -10,7 +10,7 @@ from blobguard.tables import Tables
 
 JAR = "gradle-wrapper.jar"
 PROPS = "gradle-wrapper.properties"
-SUM = re.compile(r"(?mi)^[ \t]*distributionSha256Sum[ \t]*[=:][ \t]*([0-9a-f]{64})[ \t]*$")
+SUM = re.compile(r"(?mi)^[ \t]*distributionSha256Sum[ \t]*[=:][ \t]*([0-9a-f]{64})[ \t\r]*$")
 
 
 def is_wrapper_jar(rel: str) -> bool:
@@ -32,7 +32,7 @@ def wrapper_hit(rel: str, blob: Blob, writes: dict[str, str], root: str, tables:
         return None
     props = posixpath.join(posixpath.dirname(rel), PROPS)
     new = _sum(writes.get(props))
-    old = read_git(root, f"HEAD:{props}")
+    old = read_git(root, f"HEAD:./{props}")
     if new is not None and new != _sum(old.head.decode("latin-1") if old else None):
         return None
     return f"{JAR} changed without a new distributionSha256Sum in {PROPS} (or a known hash)"

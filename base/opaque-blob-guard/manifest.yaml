@@ -2,11 +2,11 @@ id: opaque-blob-guard
 name: "Flag Opaque Blobs"
 version: "0.0.1"
 description: >
-  Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, test/, fixtures/,
-  testdata/, spec/, m4/, vendor/ or gradle/wrapper/: a file with an archive, executable or wasm signature
-  (any extension), a random-looking file over 100 KB, or a symlink out of the repo; or m4/configure/*.am
-  text that decodes and evaluates, or a changed gradle wrapper jar. Misses payloads elsewhere and
-  text-encoded ones under 100 KB. Friction, not a security boundary.
+  Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, fixtures/, testdata/,
+  spec/, m4/, vendor/, gradle/wrapper/: a file whose first bytes are an archive, executable,
+  wasm or database signature (any extension), a random-looking non-media file over 100 KB, or a symlink out
+  of the repo; m4/configure/Makefile text that decodes and evaluates; a gradle wrapper jar changed with no
+  new distributionSha256Sum. Misses text-encoded or prefixed payloads, other folders.
 artifact: rule
 enforcement: advise
 mandatory: false
@@ -32,6 +32,26 @@ applies_to:
   - "*/m4/*"
   - "vendor/*"
   - "*/vendor/*"
+  - "Tests/*"
+  - "*/Tests/*"
+  - "Test/*"
+  - "*/Test/*"
+  - "Fixtures/*"
+  - "*/Fixtures/*"
+  - "TestData/*"
+  - "*/TestData/*"
+  - "Testdata/*"
+  - "*/Testdata/*"
+  - "__tests__/*"
+  - "*/__tests__/*"
+  - "__fixtures__/*"
+  - "*/__fixtures__/*"
+  - "e2e/*"
+  - "*/e2e/*"
+  - "third_party/*"
+  - "*/third_party/*"
+  - "test_data/*"
+  - "*/test_data/*"
   - "gradle/wrapper/*"
   - "*/gradle/wrapper/*"
   - "configure"
@@ -40,8 +60,25 @@ applies_to:
   - "*/configure.ac"
   - "configure.in"
   - "*/configure.in"
+  - "configure.gnu"
+  - "*/configure.gnu"
+  - "bootstrap"
+  - "*/bootstrap"
+  - "autogen.sh"
+  - "*/autogen.sh"
+  - "ltmain.sh"
+  - "*/ltmain.sh"
+  - "libtool"
+  - "*/libtool"
+  - "config.status"
+  - "*/config.status"
+  - "Makefile"
+  - "*/Makefile"
+  - "Makefile.in"
+  - "*/Makefile.in"
   - "*.m4"
   - "*.am"
+  - "*.mk"
   - ".chock/blob-allowlist.txt"
 
 rule:
@@ -62,7 +99,7 @@ hook:
       the xz backdoor reached build scripts. Generate the data in the test setup or fetch it from a pinned,
       checksummed source; if the file must be committed, state why and have a person list '<sha256>  <path>'
       in .chock/blob-allowlist.txt. An agent asks a person: an entry written in the same agent change does
-      not count. This policy only warns while it is measured (rollout observe).
+      not count at tool use or in an agent's commit (keep the allowlist under code-owner review). This policy only warns while it is measured (rollout observe).
     params:
       script: opaque-blob-guard-gate.py
 

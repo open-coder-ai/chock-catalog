@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import posixpath
 from typing import NamedTuple
 
@@ -33,8 +34,10 @@ def in_blob_scope(rel: str, tables: Tables) -> bool:
 def normalize(path: str, root: str) -> str | None:
     """The repo-relative POSIX form of a path, or None when it names nothing inside the repository."""
     rel = posixpath.normpath(path.replace("\\", "/"))
-    if rel.startswith(root.rstrip("/") + "/"):
-        rel = rel[len(root.rstrip("/")) + 1 :]
+    for base in (root, os.path.realpath(root)):
+        if rel.startswith(base.rstrip("/") + "/"):
+            rel = rel[len(base.rstrip("/")) + 1 :]
+            break
     return None if rel.startswith(("/", "../")) or rel in {"..", "."} else rel
 
 
@@ -51,7 +54,7 @@ def _blobs(rel: str, text: str, root: str, event: str) -> tuple[list[Blob], list
     if event == "tool_use":
         found.append(from_bytes(text.encode("utf-8", "replace")))
     else:
-        found.append(read_git(root, f":{rel}"))
+        found.append(read_git(root, f":./{rel}"))
     distinct = {(blob.sha, blob.head): blob for blob in found if blob is not None}
     return list(distinct.values()), hits
 

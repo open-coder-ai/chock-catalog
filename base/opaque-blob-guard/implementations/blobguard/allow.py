@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import NamedTuple
 
-from blobguard.source import Link, Unreadable, read_disk, read_git
+from blobguard.source import read_git
 from blobguard.tables import Tables
 from chock_scan.safe_read import UnreadableError, decode
 
@@ -37,16 +37,13 @@ def parse(text: str) -> Allow:
 
 
 def load(root: str, tables: Tables, *, committed_only: bool) -> Allow:
-    """The allowlist, from the working tree, or from HEAD when an agent's change must not approve its own blob.
+    """The allowlist as staged, or as HEAD has it when an agent's change must not approve its own blob.
 
-    Absent means an empty list. Unreadable, too large, a symlink out of the repository or not UTF-8 text
-    means the whole list is refused.
+    The index, not the working tree, so an unstaged edit approves nothing. Absent means an empty list;
+    too large or not UTF-8 text means the whole list is refused.
     """
     rel = tables.allowlist
-    try:
-        blob = read_git(root, f"HEAD:{rel}") if committed_only else read_disk(root, rel)
-    except (Link, Unreadable) as exc:
-        return Allow(frozenset(), f"{rel}: {exc}")
+    blob = read_git(root, f"{'HEAD' if committed_only else ''}:./{rel}")
     if blob is None:
         return Allow(frozenset(), None)
     if blob.size > LIMIT:

@@ -14,12 +14,23 @@ SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 class Sig(NamedTuple):
-    """One signature: every (offset, bytes) pair must match; `non_text_within` also wants a non-text byte."""
+    """One signature: every (offset, bytes) pair must match; `nul_within` also wants a NUL byte in that many leading bytes."""
 
     name: str
     label: str
     at: tuple[tuple[int, bytes], ...]
-    non_text_within: int
+    nul_within: int
+
+
+class Rule(NamedTuple):
+    """A decode-and-evaluate shape: where `anchor` matches, `near` must match in the window before or after."""
+
+    id: str
+    why: str
+    anchor: re.Pattern[str]
+    near: re.Pattern[str]
+    window: int
+    before: bool
 
 
 class Tables(NamedTuple):
@@ -31,7 +42,7 @@ class Tables(NamedTuple):
     magic: tuple[Sig, ...]
     media: tuple[Sig, ...]
     entropy: dict
-    patterns: tuple[tuple[str, str, re.Pattern[str]], ...]
+    patterns: tuple[Rule, ...]
     known_wrappers: frozenset[str]
 
 
@@ -61,7 +72,7 @@ def _sigs(rows: list[dict]) -> tuple[Sig, ...]:
             row["name"],
             row.get("label", row["name"]),
             tuple((_offset(off), bytes.fromhex(hx)) for off, hx in row["at"]),
-            row.get("non_text_within", 0),
+            row.get("nul_within", 0),
         )
         for row in rows
     )
@@ -84,14 +95,24 @@ def _magic(doc: dict) -> list[str]:
     return []
 
 
-def _patterns(doc: dict) -> list[str]:
+def _rules(doc: dict) -> tuple[Rule, ...]:
+    """Rules from the table; a malformed row (or a bad regex) raises, and the loader reports a table problem."""
     _need(isinstance(doc["patterns"], list) and bool(doc["patterns"]), "patterns must not be empty")
+    rules = []
     for row in doc["patterns"]:
+        _need(isinstance(row["id"], str) and isinstance(row["why"], str), "a pattern needs an id and a reason")
+        _need((("before" in row) != ("after" in row)) and type(row["window"]) is int and row["window"] > 0, "window")
         try:
-            re.compile(row["regex"])
+            anchor = re.compile(row["anchor"])
+            near = re.compile(row.get("before") or row["after"])
         except re.error as exc:
             raise ValueError(str(exc)) from None
-        _need(isinstance(row["id"], str) and isinstance(row["why"], str), "a pattern needs an id and a reason")
+        rules.append(Rule(row["id"], row["why"], anchor, near, row["window"], "before" in row))
+    return tuple(rules)
+
+
+def _patterns(doc: dict) -> list[str]:
+    _rules(doc)
     return []
 
 
@@ -121,6 +142,6 @@ def load() -> Tables:
         magic=_sigs(magic["magic"]),
         media=_sigs(magic["media"]),
         entropy=magic["entropy"],
-        patterns=tuple((p["id"], p["why"], re.compile(p["regex"])) for p in rules["patterns"]),
+        patterns=_rules(rules),
         known_wrappers=frozenset(gradle["known_wrapper_sha256"]),
     )

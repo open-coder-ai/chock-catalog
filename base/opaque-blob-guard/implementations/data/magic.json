@@ -2,10 +2,7 @@
   "schema": 1,
   "kind": "curated",
   "as_of": "2026-10-02",
-  "source": {
-    "roadmap": "open-coder-ai/org-plan chock/plan/security-coverage-roadmap.md, NP27 opaque-blob-guard",
-    "signatures": "https://en.wikipedia.org/wiki/List_of_file_signatures"
-  },
+  "source": {"roadmap": "open-coder-ai/org-plan chock/plan/security-coverage-roadmap.md, NP27 opaque-blob-guard", "signatures": "https://en.wikipedia.org/wiki/List_of_file_signatures"},
   "magic": [
     {"name": "zip", "label": "zip or jar archive", "at": [[0, "504b0304"]]},
     {"name": "zip-empty", "label": "empty zip archive", "at": [[0, "504b0506"]]},
@@ -23,8 +20,16 @@
     {"name": "macho-32-le", "label": "Mach-O binary", "at": [[0, "cefaedfe"]]},
     {"name": "macho-64-le", "label": "Mach-O binary", "at": [[0, "cffaedfe"]]},
     {"name": "cafebabe", "label": "Java class or universal Mach-O binary", "at": [[0, "cafebabe"]]},
-    {"name": "pe", "label": "Windows PE executable", "at": [[0, "4d5a"]], "non_text_within": 64},
-    {"name": "wasm", "label": "WebAssembly module", "at": [[0, "0061736d"]]}
+    {"name": "pe", "label": "Windows PE executable", "at": [[0, "4d5a"]], "nul_within": 64},
+    {"name": "wasm", "label": "WebAssembly module", "at": [[0, "0061736d"]]},
+    {"name": "lz4", "label": "lz4 frame", "at": [[0, "04224d18"]]},
+    {"name": "compress", "label": "compress (.Z) stream", "at": [[0, "1f9d"]]},
+    {"name": "lzip", "label": "lzip stream", "at": [[0, "4c5a4950"]]},
+    {"name": "ar", "label": "ar archive (.a, .deb)", "at": [[0, "213c617263683e0a"]]},
+    {"name": "rpm", "label": "rpm package", "at": [[0, "edabeedb"]]},
+    {"name": "cab", "label": "cabinet archive", "at": [[0, "4d534346"]]},
+    {"name": "ole2", "label": "OLE2 compound document", "at": [[0, "d0cf11e0a1b11ae1"]]},
+    {"name": "sqlite", "label": "SQLite database", "at": [[0, "53514c69746520666f726d6174203300"]]}
   ],
   "media": [
     {"name": "png", "at": [[0, "89504e470d0a1a0a"]]},
@@ -32,7 +37,19 @@
     {"name": "gif87", "at": [[0, "474946383761"]]},
     {"name": "gif89", "at": [[0, "474946383961"]]},
     {"name": "webp", "at": [[0, "52494646"], [8, "57454250"]]},
-    {"name": "pdf", "at": [[0, "255044462d"]]}
+    {"name": "pdf", "at": [[0, "255044462d"]]},
+    {"name": "riff", "at": [[0, "52494646"]]},
+    {"name": "woff", "at": [[0, "774f4646"]]},
+    {"name": "woff2", "at": [[0, "774f4632"]]},
+    {"name": "ogg", "at": [[0, "4f676753"]]},
+    {"name": "mp3-id3", "at": [[0, "494433"]]},
+    {"name": "isobmff", "at": [[4, "66747970"]]},
+    {"name": "matroska", "at": [[0, "1a45dfa3"]]},
+    {"name": "ico", "at": [[0, "00000100"]]},
+    {"name": "tiff-le", "at": [[0, "49492a00"]]},
+    {"name": "tiff-be", "at": [[0, "4d4d002a"]]},
+    {"name": "ttf", "at": [[0, "0001000000"]]},
+    {"name": "otf", "at": [[0, "4f54544f"]]}
   ],
   "entropy": {"min_size": 102400, "window": 16384, "min_tail": 4096, "bits_per_byte": 7.5}
 }

@@ -90,7 +90,7 @@ def read_disk(root: str, rel: str) -> Blob | None:
 
 
 def read_git(root: str, spec: str) -> Blob | None:
-    """The git object `spec` names (`:path` for the index, `HEAD:path`); None when git or the object is missing."""
+    """The git object `spec` names (`:./path` for the index, `HEAD:./path`, relative to `root`); None if missing."""
     if GIT is None:
         return None
     try:

@@ -6,21 +6,23 @@ import posixpath
 import re
 
 from blobguard.source import Blob
-from blobguard.tables import Sig, Tables
+from blobguard.tables import Rule, Sig, Tables
 from chock_scan.entropy import shannon
 
 #: Past this many bytes a build text is not pattern-scanned (the patterns are bounded, the gate's clock is not).
 TEXT_CAP = 2 << 20
 CONTINUATION = re.compile(r"\\\r?\n")
-TEXT_CONTROLS = frozenset(b"\t\n\r\f")
+COMMENT = re.compile(r"(?m)^[ \t]*(?:#|dnl\b).*$")
+#: Anchors per rule past which a file is reported, not scanned: each anchor costs a bounded window search.
+MAX_ANCHORS = 50_000
 
 
 def _matches(data: bytes, sig: Sig) -> bool:
     if not all(data[off : off + len(part)] == part for off, part in sig.at):
         return False
-    if not sig.non_text_within:
+    if not sig.nul_within:
         return True
-    return any(b not in TEXT_CONTROLS and (b < 0x20 or b >= 0x80) for b in data[: sig.non_text_within])  # noqa: PLR2004
+    return b"\0" in data[: sig.nul_within]
 
 
 def magic(data: bytes, rel: str, tables: Tables) -> tuple[str, str] | None:
@@ -56,12 +58,25 @@ def is_build_text(rel: str, tables: Tables) -> bool:
 
 
 def text_hits(blob: Blob, tables: Tables) -> list[tuple[str, str, int]]:
-    """(rule id, reason, line) for each decode-and-evaluate pattern; a text past TEXT_CAP is one finding."""
+    """(rule id, reason, line) for each decode-and-evaluate shape; too large or too dense is one finding.
+
+    Comment lines are blanked (line numbers kept) and continuations joined. A rule is an anchor and a
+    bounded window around it, so the work is linear in the text whatever it holds.
+    """
     if blob.size > TEXT_CAP:
-        return [("text-too-large", f"over {TEXT_CAP} bytes, not scanned", 1)]
-    text = CONTINUATION.sub(" ", blob.head.decode("utf-8", "replace"))
+        return [("too-large", f"over {TEXT_CAP} bytes, not scanned", 1)]
+    text = COMMENT.sub("", CONTINUATION.sub(" ", blob.head.decode("utf-8", "replace")))
     seen: dict[tuple[str, int], str] = {}
-    for rule, why, pattern in tables.patterns:
-        for found in pattern.finditer(text):
-            seen.setdefault((rule, text.count("\n", 0, found.start()) + 1), why)
+    for rule in tables.patterns:
+        for count, found in enumerate(rule.anchor.finditer(text)):
+            if count >= MAX_ANCHORS:
+                return [("too-dense", f"over {MAX_ANCHORS} candidate spots for {rule.id}, not scanned", 1)]
+            if _near(rule, text, found):
+                seen.setdefault((rule.id, text.count("\n", 0, found.start()) + 1), rule.why)
     return [(rule, why, line) for (rule, line), why in sorted(seen.items(), key=lambda kv: (kv[0][1], kv[0][0]))]
+
+
+def _near(rule: Rule, text: str, found: re.Match[str]) -> bool:
+    if rule.before:
+        return rule.near.search(text, max(0, found.start() - rule.window), found.start()) is not None
+    return rule.near.match(text, found.start(), found.start() + rule.window) is not None

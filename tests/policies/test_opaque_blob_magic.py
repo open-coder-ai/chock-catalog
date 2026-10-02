@@ -33,6 +33,14 @@ SIGNATURES = {
     "cafebabe": b"\xca\xfe\xba\xbe\0\0\0\x34" + PAD,
     "pe": b"MZ\x90\x00\x03\x00" + PAD,
     "wasm": b"\0asm\x01\0\0\0" + PAD,
+    "lz4": b"\x04\x22\x4d\x18" + PAD,
+    "compress": b"\x1f\x9d\x90" + PAD,
+    "lzip": b"LZIP\x01" + PAD,
+    "ar": b"!<arch>\n" + PAD,
+    "rpm": b"\xed\xab\xee\xdb" + PAD,
+    "cab": b"MSCF" + PAD,
+    "ole2": b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + PAD,
+    "sqlite": b"SQLite format 3\0" + PAD,
 }
 
 
@@ -58,20 +66,21 @@ def test_cafebabe_is_labelled_by_extension(tmp_path: Path) -> None:
     assert labels["tests/lib.dylib"].startswith("Java class or universal Mach-O")
 
 
-def test_a_text_file_that_only_starts_with_mz_is_not_a_pe(tmp_path: Path) -> None:
-    assert check(tmp_path, {"tests/a.txt": "MZ-1234 is a ticket id\n"}) == []
+@pytest.mark.parametrize("text", ["MZ-1234 is a ticket id\n", "MZ Industries \u2014 notes\n"])
+def test_a_text_file_that_only_starts_with_mz_is_not_a_pe(tmp_path: Path, text: str) -> None:
+    assert check(tmp_path, {"tests/a.txt": text}) == []
 
 
 @pytest.mark.parametrize(
     "path",
-    ["tests/a.xz", "test/a.xz", "fixtures/a.xz", "testdata/a.xz", "spec/a.xz", "m4/a.xz", "vendor/a.xz",
+    ["tests/a.xz", "Tests/a.xz", "__tests__/a.xz", "e2e/a.xz", "third_party/a.xz", "test/a.xz", "fixtures/a.xz", "testdata/a.xz", "spec/a.xz", "m4/a.xz", "vendor/a.xz",
      "pkg/sub/tests/deep/a.xz", "gradle/wrapper/a.xz", "app/gradle/wrapper/a.xz"],
 )  # fmt: skip
 def test_scoped_folders_at_any_depth(tmp_path: Path, path: str) -> None:
     assert check(tmp_path, {path: SIGNATURES["xz"]}) == [(path, "opaque-magic")]
 
 
-@pytest.mark.parametrize("path", ["src/a.xz", "tests.xz", "docs/gradle/a.xz", "gradle/a.xz", "Tests/a.xz"])
+@pytest.mark.parametrize("path", ["src/a.xz", "tests.xz", "docs/gradle/a.xz", "gradle/a.xz", "TESTS/a.xz"])
 def test_the_same_bytes_elsewhere_are_not_judged(tmp_path: Path, path: str) -> None:
     assert check(tmp_path, {path: SIGNATURES["xz"]}) == []
 
@@ -99,8 +108,44 @@ def test_a_short_random_tail_is_not_a_window(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "head",
-    [b"\x89PNG\r\n\x1a\n", b"\xff\xd8\xff\xe0", b"GIF87a", b"GIF89a", b"RIFF\0\0\0\0WEBP", b"%PDF-1.7\n"],
-    ids=["png", "jpeg", "gif87", "gif89", "webp", "pdf"],
+    [
+        b"\x89PNG\r\n\x1a\n",
+        b"\xff\xd8\xff\xe0",
+        b"GIF87a",
+        b"GIF89a",
+        b"RIFF\0\0\0\0WEBP",
+        b"%PDF-1.7\n",
+        b"wOF2",
+        b"wOFF",
+        b"OggS",
+        b"ID3\x04",
+        b"\0\0\0\x18ftypmp42",
+        b"\x1a\x45\xdf\xa3",
+        b"\0\0\x01\0",
+        b"II*\0",
+        b"MM\0*",
+        b"\0\x01\0\0\0",
+        b"OTTO",
+    ],
+    ids=[
+        "png",
+        "jpeg",
+        "gif87",
+        "gif89",
+        "webp",
+        "pdf",
+        "woff2",
+        "woff",
+        "ogg",
+        "mp3",
+        "mp4",
+        "mkv",
+        "ico",
+        "tiff-le",
+        "tiff-be",
+        "ttf",
+        "otf",
+    ],
 )
 def test_media_is_exempt_from_the_entropy_rule_only(tmp_path: Path, head: bytes) -> None:
     assert check(tmp_path, {"fixtures/pic.bin": head + RANDOM(150_000)}) == []

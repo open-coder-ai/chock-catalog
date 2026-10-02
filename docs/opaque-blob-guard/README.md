@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, test/, fixtures/, testdata/, spec/, m4/, vendor/ or gradle/wrapper/: a file with an archive, executable or wasm signature (any extension), a random-looking file over 100 KB, or a symlink out of the repo; or m4/configure/*.am text that decodes and evaluates, or a changed gradle wrapper jar. Misses payloads elsewhere and text-encoded ones under 100 KB. Friction, not a security boundary.
+Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, fixtures/, testdata/, spec/, m4/, vendor/, gradle/wrapper/: a file whose first bytes are an archive, executable, wasm or database signature (any extension), a random-looking non-media file over 100 KB, or a symlink out of the repo; m4/configure/Makefile text that decodes and evaluates; a gradle wrapper jar changed with no new distributionSha256Sum. Misses text-encoded or prefixed payloads, other folders.
 
 ## What it solves
 
@@ -54,7 +54,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The signatures, scoped folders, entropy limits, build-text patterns and the known gradle wrapper hashes (empty by default, a list of lowercase sha256) live in `implementations/data/*.json`. A file that must stay is listed as `<sha256>  <path>` in `.chock/blob-allowlist.txt`: both must match, one malformed line ignores the whole list, and an agent's own change cannot approve its own blob (only entries already in HEAD count). Keep that file under code-owner review.
+The signatures, scoped folders, entropy limits, build-text patterns and the known gradle wrapper hashes (empty by default, a list of lowercase sha256) live in `implementations/data/*.json`. A file that must stay is listed as `<sha256>  <path>` in `.chock/blob-allowlist.txt`: both must match, one malformed line ignores the whole list, and at tool use and in an agent's commit only entries already in HEAD count, but a person's commit and CI read the staged list, so keep that file under code-owner review. Known limits: offset-0 signatures only (a prefixed archive, text-encoded data of any size, and known media headers followed by random bytes are missed); only the first 4 MiB is entropy-sampled; folders outside the scoped list are not judged; the runner quotes odd file names (a double quote or backslash) so such files may never reach the gate.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

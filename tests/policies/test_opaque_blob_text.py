@@ -37,9 +37,22 @@ def text_rules(tmp_path: Path, path: str, text: str) -> list[tuple[int, str]]:
         ("head -c 1024 tests/files/a.bin | sh", "text-slice-eval"),
         ("tail -c +31233 f | eval", "text-slice-eval"),
         ("dd if=f bs=1 skip=100 2>/dev/null | bash", "text-slice-eval"),
-        ('eval "$(cat tests/files/payload.txt)"', "text-eval-test-file"),
-        ("eval `xz -dc < testdata/p.xz`", "text-eval-test-file"),
-        ('eval "$(sed 1d fixtures/p.sh)"', "text-eval-test-file"),
+        ('eval "$(cat tests/files/payload.txt)"', "text-subst-eval"),
+        ("eval `xz -dc < testdata/p.xz`", "text-subst-eval"),
+        ('eval "$(sed 1d fixtures/p.sh)"', "text-subst-eval"),
+        ("cat b | xz -F raw --lzma1 -dc | sh", "text-decode-eval"),
+        ("xz --lzma1 -dc < b | /usr/bin/env bash", "text-decode-eval"),
+        ("zcat b | sudo sh", "text-decode-eval"),
+        ("lzcat b | python3", "text-decode-eval"),
+        ("xxd -r -p b | sh", "text-decode-eval"),
+        ("tail -c +31233 b | xz -F raw -dc | sh", "text-slice-eval"),
+        ("bash <(xz -dc f)", "text-subst-eval"),
+        ('sh -c "$(xz -dc f)"', "text-subst-eval"),
+        ('eval "$(zcat f)"', "text-subst-eval"),
+        (". <(base64 -d f)", "text-subst-eval"),
+        ('. "$srcdir/tests/files/x.sh"', "text-run-test-file"),
+        ("source tests/x.sh", "text-run-test-file"),
+        ("sh fixtures/run", "text-run-test-file"),
     ],
 )
 def test_decode_and_evaluate_shapes_ask(tmp_path: Path, line: str, rule: str) -> None:
@@ -58,24 +71,40 @@ def test_decode_and_evaluate_shapes_ask(tmp_path: Path, line: str, rule: str) ->
         "head -c 16 /dev/urandom | od",
         'eval "$(cat config.site)"',
         "echo eval | sh -n",
+        "echo \"$x\" | tr '\\012' ' ' | sed 1d",
+        'tr "\\t" " " | sed 1d',
+        "dd if=a of=b",
+        "xz -9 < f | sha256sum",
+        "# xz -d f | sh",
+        "dnl xz -d f | sh",
+        "bash ./build.sh",
     ],
 )
 def test_ordinary_autotools_text_is_allowed(tmp_path: Path, line: str) -> None:
     assert text_rules(tmp_path, "configure", f"#!/bin/sh\n{line}\n") == []
 
 
-def test_a_commented_out_pipeline_is_still_asked_about(tmp_path: Path) -> None:
-    assert text_rules(tmp_path, "configure", "# xz -d f | sh\n") == [(1, "text-decode-eval")]
-
-
 @pytest.mark.parametrize(
-    "path", ["configure", "sub/configure", "configure.ac", "configure.in", "Makefile.am", "src/a.m4", "aclocal.m4"]
+    "path",
+    [
+        "configure",
+        "sub/configure",
+        "configure.ac",
+        "configure.in",
+        "Makefile.am",
+        "src/a.m4",
+        "aclocal.m4",
+        "Makefile",
+        "libtool",
+        "rules.mk",
+        "bootstrap",
+    ],
 )
 def test_build_texts_are_judged_wherever_they_sit(tmp_path: Path, path: str) -> None:
     assert text_rules(tmp_path, path, "xz -d < f | sh\n") == [(1, "text-decode-eval")]
 
 
-@pytest.mark.parametrize("path", ["README.md", "src/main.sh", "tests/run.sh", "Makefile", "configure.txt"])
+@pytest.mark.parametrize("path", ["README.md", "src/main.sh", "tests/run.sh", "Rakefile", "configure.txt"])
 def test_other_files_are_not_build_text(tmp_path: Path, path: str) -> None:
     assert text_rules(tmp_path, path, "xz -d < f | sh\n") == []
 
@@ -92,7 +121,7 @@ def test_each_rule_reports_each_line_once(tmp_path: Path) -> None:
 
 def test_a_text_past_the_scan_cap_is_one_finding_not_a_pass(tmp_path: Path) -> None:
     text = "# padding\n" * 250_000 + "xz -d < f | sh\n"
-    assert text_rules(tmp_path, "m4/a.m4", text) == [(1, "text-text-too-large")]
+    assert text_rules(tmp_path, "m4/a.m4", text) == [(1, "text-too-large")]
 
 
 def test_invalid_utf8_is_still_scanned(tmp_path: Path) -> None:
@@ -100,9 +129,37 @@ def test_invalid_utf8_is_still_scanned(tmp_path: Path) -> None:
     assert [(f["line"], f["rule"]) for f in blobkit.run(gate, repo, ["m4/a.m4"])] == [(2, "text-decode-eval")]
 
 
-def test_a_hostile_line_of_decoders_is_scanned_in_bounded_time(tmp_path: Path) -> None:
-    text = "xz -d " * 40_000 + "\n" + 'tr "' * 40_000 + "\n"
-    assert text_rules(tmp_path, "m4/a.m4", text) == []
+@pytest.mark.parametrize(
+    "line",
+    [
+        "xz -" + "d" * 80_000,
+        "zcat |" * 80_000,
+        "xz -d | " * 60_000,
+        "dd | a " * 60_000,
+        'tr "' * 100_000,
+        "eval $(" * 60_000,
+    ],
+    ids=["long-option", "sinks", "decoder-sinks", "dd-sinks", "tr-quotes", "evals"],
+)
+def test_hostile_text_is_scanned_in_bounded_work(tmp_path: Path, line: str) -> None:
+    repo = blobkit.make_repo(tmp_path, {"m4/a.m4": line + "\n"})
+    found = blobkit.run(gate, repo, ["m4/a.m4"])
+    assert {f["rule"] for f in found} <= {
+        "text-decode-eval",
+        "text-slice-eval",
+        "text-subst-eval",
+        "text-too-dense",
+        "text-tr-swap-pipe",
+    }
+
+
+def test_too_many_candidate_spots_is_a_finding_not_a_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ns.detect, "MAX_ANCHORS", 5)
+    assert text_rules(tmp_path, "m4/a.m4", "| sh\n" * 6) == [(1, "text-too-dense")]
+
+
+def test_a_gap_wider_than_the_window_is_the_stated_limit(tmp_path: Path) -> None:
+    assert text_rules(tmp_path, "m4/a.m4", "xz -d " + " " * 2500 + "| sh\n") == []
 
 
 def test_the_text_rule_also_runs_in_a_blob_folder(tmp_path: Path) -> None:
@@ -123,6 +180,11 @@ def test_a_changed_wrapper_jar_alone_asks(tmp_path: Path) -> None:
 def test_the_zip_signature_alone_is_not_a_second_finding_for_a_wrapper_jar(tmp_path: Path) -> None:
     repo = blobkit.make_repo(tmp_path, {WRAPPER: JAR})
     assert blobkit.rules(blobkit.run(gate, repo, [WRAPPER])) == [(WRAPPER, "gradle-wrapper")]
+
+
+def test_crlf_properties_are_read(tmp_path: Path) -> None:
+    files = {WRAPPER: JAR, PROPS: f"distributionUrl=x\r\ndistributionSha256Sum={SUM_A}\r\n"}
+    assert wrapper(tmp_path, files, {PROPS: "distributionUrl=x\r\n"}) == []
 
 
 def test_a_new_sum_in_the_same_change_is_accepted(tmp_path: Path) -> None:

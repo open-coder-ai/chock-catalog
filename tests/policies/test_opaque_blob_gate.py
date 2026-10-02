@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import fnmatch
 import io
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -15,6 +17,7 @@ from trees import ROOT
 gate, ns = blobkit.load()
 POLICY = blobkit.POLICY
 DATA = ROOT / "base" / POLICY / "implementations" / "data"
+RULE = {"id": "x", "why": "y", "anchor": "x", "window": 5, "after": "x"}
 XZ = b"\xfd7zXZ\x00" + b"\0" * 24
 
 
@@ -74,16 +77,23 @@ def test_a_broken_table_means_nothing_was_judged(
         assert gate.main() == 2
     finally:
         ns.tables.load.cache_clear()
-    assert "data table is unusable" in capsys.readouterr().err
+    assert "nothing was judged" in capsys.readouterr().err
 
 
-def test_the_manifest_scope_is_the_scope_table() -> None:
+def test_the_manifest_globs_reach_every_scoped_path_and_only_those() -> None:
     table = json.loads((DATA / "scope.json").read_text(encoding="utf-8"))
-    globs = [g for d in table["dirs"] for g in (f"{d}/*", f"*/{d}/*")]
-    globs += [g for g in (f"{table['gradle_wrapper']}/*", f"*/{table['gradle_wrapper']}/*")]
-    globs += [g for n in table["text_names"] for g in (n, f"*/{n}")]
-    globs += [f"*{s}" for s in table["text_suffixes"]] + [table["allowlist"]]
-    assert scriptkit.manifest(POLICY)["applies_to"]["paths"] == globs
+    globs = scriptkit.manifest(POLICY)["applies_to"]["paths"]
+
+    def reached(path: str) -> bool:
+        return any(fnmatch.fnmatchcase(path, g) for g in globs)
+
+    wrapper = table["gradle_wrapper"]
+    paths = [f"{d}/a" for d in table["dirs"]] + [f"x/y/{d}/z/a" for d in table["dirs"]]
+    paths += [f"{wrapper}/a", f"app/{wrapper}/a", table["allowlist"]]
+    paths += [n for n in table["text_names"]] + [f"sub/{n}" for n in table["text_names"]]
+    paths += [f"a{s}" for s in table["text_suffixes"]] + [f"deep/er/a{s}" for s in table["text_suffixes"]]
+    assert [p for p in paths if not reached(p)] == []
+    assert not any(reached(p) for p in ["src/a.xz", "docs/a.md", "README.md", "gradle/a"])
 
 
 @pytest.mark.parametrize(
@@ -108,8 +118,10 @@ def test_the_manifest_scope_is_the_scope_table() -> None:
             id="entropy-bits",
         ),
         pytest.param("textrules.json", {"patterns": []}, id="no-patterns"),
-        pytest.param("textrules.json", {"patterns": [{"id": "x", "why": "y", "regex": "("}]}, id="bad-regex"),
-        pytest.param("textrules.json", {"patterns": [{"id": 1, "why": "y", "regex": "x"}]}, id="bad-id"),
+        pytest.param("textrules.json", {"patterns": [{**RULE, "anchor": "("}]}, id="bad-regex"),
+        pytest.param("textrules.json", {"patterns": [{**RULE, "id": 1}]}, id="bad-id"),
+        pytest.param("textrules.json", {"patterns": [{**RULE, "before": "x"}]}, id="both-windows"),
+        pytest.param("textrules.json", {"patterns": [{**RULE, "window": 0}]}, id="no-window"),
         pytest.param("gradle.json", {"known_wrapper_sha256": ["ABC"]}, id="bad-sha"),
     ],
 )
@@ -147,3 +159,19 @@ def test_the_engine_judges_an_agent_write_at_tool_use(tmp_path: Path) -> None:
     code, stderr = gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {"fixtures/a.dat": "PK\x03\x04abc"})
     assert code == 4
     assert "zip or jar archive" in stderr
+
+
+def test_a_fifo_is_refused_without_blocking(tmp_path: Path) -> None:
+    repo = blobkit.make_repo(tmp_path, {"README.md": "x\n"})
+    (repo / "tests").mkdir()
+    os.mkfifo(repo / "tests/pipe")
+    found = blobkit.run(gate, repo, ["tests/pipe"])
+    assert blobkit.rules(found) == [("tests/pipe", "unreadable")]
+    assert "not a regular file" in found[0]["message"]
+
+
+def test_a_folder_that_is_a_file_is_unreadable(tmp_path: Path) -> None:
+    repo = blobkit.make_repo(tmp_path, {"tests": "i am a file\n"})
+    assert blobkit.rules(blobkit.run(gate, repo, ["tests/a/b"], event="tool_use", writes={"tests/a/b": "x"})) == [
+        ("tests/a/b", "unreadable")
+    ]

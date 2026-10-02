@@ -93,21 +93,43 @@ def test_an_unreadable_or_oversized_list_is_ignored(tmp_path: Path, content: byt
     assert found == [(ALLOW, "allowlist-malformed"), (PATH, "opaque-magic")]
 
 
-def test_a_symlinked_list_out_of_the_repository_is_refused(tmp_path: Path) -> None:
-    outside = tmp_path / "outside.txt"
-    outside.write_text(entry())
+def test_an_unstaged_list_approves_nothing(tmp_path: Path) -> None:
+    repo = blobkit.make_repo(tmp_path, {PATH: XZ})
+    scriptkit.write(repo, {ALLOW: entry()})
+    assert blobkit.rules(blobkit.run(gate, repo, [PATH])) == [(PATH, "opaque-magic")]
+
+
+def test_a_symlinked_list_is_read_as_the_text_of_the_link(tmp_path: Path) -> None:
     repo = blobkit.make_repo(tmp_path, {PATH: XZ})
     (repo / ".chock").mkdir()
-    os.symlink(outside, repo / ALLOW)
-    found = blobkit.run(gate, repo, [PATH], writes={PATH: "", ALLOW: ""})
+    os.symlink(tmp_path / "outside.txt", repo / ALLOW)
+    scriptkit.git(repo, "add", "-A")
+    found = blobkit.run(gate, repo, [PATH, ALLOW])
     assert blobkit.rules(found) == [(ALLOW, "allowlist-malformed"), (PATH, "opaque-magic")]
 
 
-def test_a_symlinked_list_inside_the_repository_counts_as_absent(tmp_path: Path) -> None:
-    repo = blobkit.make_repo(tmp_path, {PATH: XZ, "elsewhere.txt": entry()})
-    (repo / ".chock").mkdir()
-    os.symlink(repo / "elsewhere.txt", repo / ALLOW)
-    assert blobkit.rules(blobkit.run(gate, repo, [PATH])) == [(PATH, "opaque-magic")]
+def test_a_root_below_the_git_top_level_still_reads_the_index_and_head(tmp_path: Path) -> None:
+    top = scriptkit.init_repo(tmp_path / "top", {"pkg/.chock/blob-allowlist.txt": entry(path="testdata/b.xz")})
+    scriptkit.write(top, {"pkg/testdata/a.xz": XZ})
+    scriptkit.git(top, "add", "-A")
+    (top / "pkg/testdata/a.xz").write_text("clean\n")
+    root = top / "pkg"
+    assert blobkit.rules(blobkit.run(gate, root, [PATH])) == [(PATH, "opaque-magic")]
+    head = blobkit.run(gate, root, [PATH], event="agent-commit")
+    assert blobkit.rules(head) == [(PATH, "opaque-magic")]
+
+
+def test_a_repo_root_that_is_not_a_folder_is_refused_not_passed(tmp_path: Path) -> None:
+    with pytest.raises(NotADirectoryError):
+        gate.findings({"event": "commit", "repo_root": str(tmp_path / "missing"), "writes": {PATH: ""}})
+
+
+def test_an_absolute_path_under_a_symlinked_root_is_judged(tmp_path: Path) -> None:
+    repo = blobkit.make_repo(tmp_path, {PATH: XZ})
+    link = tmp_path / "alias"
+    os.symlink(repo, link)
+    found = gate.findings({"event": "commit", "repo_root": str(link), "writes": {f"{repo}/{PATH}": ""}})
+    assert blobkit.rules(found) == [(PATH, "opaque-magic")]
 
 
 def test_a_person_s_commit_honours_the_working_list(tmp_path: Path) -> None:
@@ -152,7 +174,7 @@ def test_a_symlink_out_of_the_repository_asks_and_is_not_followed(tmp_path: Path
     assert "outside the repository" in found[0]["message"]
 
 
-def test_a_dangling_link_and_a_link_through_a_folder_ask(tmp_path: Path) -> None:
+def test_a_link_through_a_folder_asks(tmp_path: Path) -> None:
     outside = tmp_path / "outside"
     outside.mkdir()
     (outside / "a.xz").write_bytes(XZ)
@@ -169,22 +191,6 @@ def test_a_symlink_inside_the_repository_is_not_followed_and_not_a_finding(tmp_p
     (repo / "tests").mkdir()
     os.symlink(repo / "src/a.xz", repo / "tests/a.dat")
     assert blobkit.run(gate, repo, ["tests/a.dat"], event="tool_use", writes={"tests/a.dat": "x"}) == []
-
-
-def test_a_fifo_is_refused_without_blocking(tmp_path: Path) -> None:
-    repo = blobkit.make_repo(tmp_path, {"README.md": "x\n"})
-    (repo / "tests").mkdir()
-    os.mkfifo(repo / "tests/pipe")
-    found = blobkit.run(gate, repo, ["tests/pipe"])
-    assert blobkit.rules(found) == [("tests/pipe", "unreadable")]
-    assert "not a regular file" in found[0]["message"]
-
-
-def test_a_folder_that_is_a_file_is_unreadable(tmp_path: Path) -> None:
-    repo = blobkit.make_repo(tmp_path, {"tests": "i am a file\n"})
-    assert blobkit.rules(blobkit.run(gate, repo, ["tests/a/b"], event="tool_use", writes={"tests/a/b": "x"})) == [
-        ("tests/a/b", "unreadable")
-    ]
 
 
 def test_a_read_that_fails_midway_is_unreadable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

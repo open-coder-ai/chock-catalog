@@ -10,27 +10,37 @@
     {
       "id": "tr-swap-pipe",
       "why": "byte-swapping tr (escaped sets) piped onward",
-      "regex": "\\btr\\s+(?:\"[^\"\\n]{0,200}\\\\[-t\\\\x0-7][^\"\\n]{0,200}\"|'[^'\\n]{0,200}\\\\[-t\\\\x0-7][^'\\n]{0,200}')\\s+(?:\"[^\"\\n]{0,200}\"|'[^'\\n]{0,200}')\\s*\\|"
-    },
-    {
-      "id": "tr-swap-pipe",
-      "why": "byte-swapping tr (escaped sets) piped onward",
-      "regex": "\\btr\\s+(?:\"[^\"\\n]{0,200}\"|'[^'\\n]{0,200}')\\s+(?:\"[^\"\\n]{0,200}\\\\[-t\\\\x0-7][^\"\\n]{0,200}\"|'[^'\\n]{0,200}\\\\[-t\\\\x0-7][^'\\n]{0,200}')\\s*\\|"
+      "anchor": "\\btr[ \\t]+[\"']",
+      "window": 500,
+      "after": "tr[ \\t]+(?:\"[^\"\\n]*\\\\[-t][^\"\\n]*\"|'[^'\\n]*\\\\[-t][^'\\n]*')[ \\t]+(?:\"[^\"\\n]*\\\\[-t][^\"\\n]*\"|'[^'\\n]*\\\\[-t][^'\\n]*')[ \\t]*\\|"
     },
     {
       "id": "decode-eval",
-      "why": "a decompressor or decoder piped into a shell, eval, source or dot",
-      "regex": "\\b(?:xz\\s+-\\S*d\\S*|unxz|xzcat|lzma\\s+-\\S*d\\S*|unlzma|gzip\\s+-\\S*d\\S*|gunzip|zcat|bzip2\\s+-\\S*d\\S*|bunzip2|bzcat|zstd\\s+-\\S*d\\S*|unzstd|base64\\s+(?:-d|-D|--decode)|uudecode|openssl\\s+enc\\s+-d)\\b[^\\n]{0,2000}\\|\\s*(?:(?:\\S*/)?(?:sh|bash|dash|zsh|ksh)|eval|source|\\.)(?:\\s|;|$)"
+      "why": "a decompressor or decoder piped into a shell, interpreter, eval, source or dot",
+      "anchor": "\\|[ \\t]*(?:(?:\\S{0,40}/)?(?:env|sudo|exec|xargs)[ \\t]+)*(?:\\S{0,40}/)?(?:sh|bash|dash|zsh|ksh|python3?|perl|ruby|node)\\b|\\|[ \\t]*(?:eval|source|\\.)(?:[ \\t]|;|\\n|$)",
+      "window": 2000,
+      "before": "\\b(?:xz|lzma|gzip|bzip2|zstd|lz4|brotli)\\b[^|\\n]{0,80}?[ \\t]--?(?:\\w{0,8}d\\w{0,8}|decompress|uncompress)\\b|\\b(?:unxz|xzcat|unlzma|lzcat|gunzip|zcat|bunzip2|bzcat|unzstd|zstdcat|unlz4|lz4cat|uncompress|uudecode)\\b|\\bbase64[ \\t]+(?:-d|-D|--decode)|\\bopenssl[ \\t]+(?:enc|zlib)[ \\t]+-d|\\bxxd[ \\t]+-\\w*r|\\bunzip[ \\t]+-\\w*p|\\btar[ \\t]+-?\\w*x\\w*O"
     },
     {
       "id": "slice-eval",
-      "why": "a byte slice (head -c, tail -c, dd) piped into a shell, eval, source or dot",
-      "regex": "\\b(?:head\\s+-\\S*c\\S*|tail\\s+-\\S*c\\S*|dd)\\b[^\\n]{0,2000}\\|\\s*(?:(?:\\S*/)?(?:sh|bash|dash|zsh|ksh)|eval|source|\\.)(?:\\s|;|$)"
+      "why": "a byte slice (head -c, tail -c, dd) piped into a shell, interpreter, eval, source or dot",
+      "anchor": "\\|[ \\t]*(?:(?:\\S{0,40}/)?(?:env|sudo|exec|xargs)[ \\t]+)*(?:\\S{0,40}/)?(?:sh|bash|dash|zsh|ksh|python3?|perl|ruby|node)\\b|\\|[ \\t]*(?:eval|source|\\.)(?:[ \\t]|;|\\n|$)",
+      "window": 2000,
+      "before": "\\b(?:head|tail)[ \\t]+-\\w*c|\\bdd[ \\t]+\\w+="
     },
     {
-      "id": "eval-test-file",
-      "why": "eval of a command substitution that reads a test or fixture file",
-      "regex": "\\beval\\s+[\"']?(?:\\$\\(|`)[^\\n]{0,2000}(?:\\btests?|\\btestdata|\\bfixtures?)/"
+      "id": "subst-eval",
+      "why": "eval or a shell run over a command substitution that decodes data or reads a test file",
+      "anchor": "\\beval[ \\t]+[\"']?(?:\\$\\(|`)|(?<![\\w.-])(?:bash|sh|source|\\.)[ \\t]+<\\(|\\b(?:bash|sh)[ \\t]+-c[ \\t]+[\"']?\\$\\(",
+      "window": 1500,
+      "after": "[^\\n]{0,1500}?(?:\\b(?:xz|lzma|gzip|bzip2|zstd|lz4|brotli)\\b[^|\\n]{0,80}?[ \\t]--?(?:\\w{0,8}d\\w{0,8}|decompress|uncompress)\\b|\\b(?:unxz|xzcat|unlzma|lzcat|gunzip|zcat|bunzip2|bzcat|unzstd|zstdcat|unlz4|lz4cat|uncompress|uudecode)\\b|\\bbase64[ \\t]+(?:-d|-D|--decode)|\\bopenssl[ \\t]+(?:enc|zlib)[ \\t]+-d|\\bxxd[ \\t]+-\\w*r|\\bunzip[ \\t]+-\\w*p|\\btar[ \\t]+-?\\w*x\\w*O|(?:\\btests?|\\btestdata|\\bfixtures?)/)"
+    },
+    {
+      "id": "run-test-file",
+      "why": "a shell or source over a test or fixture file",
+      "anchor": "(?<![\\w./-])(?:source|sh|bash|\\.)[ \\t]+[\"']?",
+      "window": 200,
+      "after": "(?:source|sh|bash|\\.)[ \\t]+[\"']?[^\\s\"']{0,80}?(?:\\btests?|\\btestdata|\\bfixtures?)/"
     }
   ]
 }

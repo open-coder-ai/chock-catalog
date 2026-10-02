@@ -27,6 +27,8 @@ def findings(payload: dict) -> list[dict]:
         return []
     table = tables.load()
     root = str(payload.get("repo_root") or ".")
+    if not Path(root).is_dir():
+        raise NotADirectoryError(root)
     event = str(payload.get("event", ""))
     raw = payload.get("writes")
     writes = {
@@ -65,8 +67,8 @@ def main() -> int:
         return 2
     try:
         found = findings(payload if isinstance(payload, dict) else {})
-    except TableError as exc:
-        print(f"opaque-blob-guard: a data table is unusable, nothing was judged: {exc}", file=sys.stderr)
+    except (TableError, NotADirectoryError) as exc:
+        print(f"opaque-blob-guard: nothing was judged: {exc}", file=sys.stderr)
         return 2
     print(json.dumps({"findings": found}))
     if not found:
