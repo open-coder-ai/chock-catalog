@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 42 total, 42 executable |
+| **Eval cases** | 54 total, 54 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Blocks uses: of an action or reusable workflow at a movable ref (not a lowercase 40-hex SHA) and a docker:// image without @sha256, in quoted, JSON, flow, anchored and next-line forms; local ./ passes. Scope: .github/workflows/, .github/actions/, action.y*ml. Line regex, not a YAML parser: container/services image tags, impostor SHAs and a tag named like a SHA pass. Waiver: 'pragma: allowlist unpinned-action' same line. Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never.
+Blocks uses: of an action/reusable workflow at a movable ref (not a lowercase 40-hex SHA) and a docker:// image without @sha256, quoted, JSON or flow; an alias, escape or value off the uses line is refused. Local ./ passes. Scope: .github/workflows/, .github/actions/, action.y*ml. Line regex, no YAML parse: container image tags, impostor SHAs, a tag named as 40 hex pass. Waiver: 'pragma: allowlist unpinned-action' same line. Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA, a docker:// image has no @sha256: digest, or a line check cannot read the ref (an escape, an open quote). Pin it to the lowercase SHA or digest -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. Waiver: 'pragma: allowlist unpinned-action' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma.
+> Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA, a docker:// image has no @sha256: digest, or a line check cannot read the ref (an escape, an open quote, an alias, a value moved off the uses line). Pin it to the lowercase SHA or digest -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. Waiver: 'pragma: allowlist unpinned-action' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma.
 
 ## Which primitive it becomes
 

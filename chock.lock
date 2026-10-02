@@ -110,9 +110,9 @@
       "id": "pin-github-actions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "6be4e73b261716cea34c40b05bad01e389e72a66bd433a1bfba521f0458e55d6",
+      "sha256": "9b85766266f6fc8c41e84005ef4fd326764b76ad314fb6179a654f180a5e1bf8",
       "source": ".",
-      "artifacts_sha256": "923e715f7171bab37038f737fbec48313c11770cd071f3d3d6bd29fe54f52e9e",
+      "artifacts_sha256": "f740027d38b4bcf7713f28af621c479ed1a76dcc71f56eea3bf1419a1a1f4bb4",
       "source_commit": null
     },
     {
