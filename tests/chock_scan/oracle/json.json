@@ -574,5 +574,24 @@
    "x"
   ],
   "hcl": "ERR"
+ },
+ {
+  "name": "r3-repeated-key-keeps-file-order",
+  "src": "{\"resource\":{\"t\":{\"n\":{\"ingress\":null,\"content\":{\"a\":1},\"ingress\":{\"b\":2}}}}}",
+  "nested": {
+   "content": 0,
+   "ingress": 0
+  },
+  "attrs": [
+   "a",
+   "b"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:content[]|B",
+   "/0:resource[\"t\",\"n\"]/0:content[]|A|a|1",
+   "/0:resource[\"t\",\"n\"]/1:ingress[]|B",
+   "/0:resource[\"t\",\"n\"]/1:ingress[]|A|b|2"
+  ]
  }
 ]

@@ -165,18 +165,19 @@ class _Reader:
         for name, child in self.body_pairs(node):
             groups.setdefault(name, []).append(child)
         attributes: list[Attribute] = []
-        blocks: list[Block] = []
+        shapes: dict[int, int | None] = {}
         for name, children in groups.items():
             first = children[0]
-            shapes = [self.shape(kind, name, child) for child in children]
-            if len(children) > 1 and None in shapes:
+            shapes |= {id(child): self.shape(kind, name, child) for child in children}
+            if len(children) > 1 and any(shapes[id(child)] is None for child in children):
                 msg = f"duplicate key {name!r} (an argument set twice)"
                 raise self.fail(msg, children[1])
             value = self.value(first, depth + 1) if len(children) == 1 else COMPUTED
             attributes.append(Attribute(name, self.text[first.start : first.end], self.line(first.start), value))
-            for child, labels_of in zip(children, shapes, strict=True):
-                if labels_of is not None:
-                    blocks += self.blocks(name, child, labels_of, (), depth + 1)
+        blocks: list[Block] = []
+        for name, child in self.body_pairs(node):  # in file order, as HCL gives blocks
+            if (labels_of := shapes[id(child)]) is not None:
+                blocks += self.blocks(name, child, labels_of, (), depth + 1)
         return Block(kind, labels, self.line(node.start), tuple(attributes), tuple(blocks))
 
     def shape(self, parent: str, kind: str, node: _Node) -> int | None:
