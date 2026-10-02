@@ -101,7 +101,10 @@ def _literal(ctx: Ctx, number: int, name: str, value: str) -> None:
 def _gosumdb(ctx: Ctx, number: int, value: str) -> None:
     """GOSUMDB is `name`, `name+key` or `name+key url`: off, another database, its own key or URL all count.
     The caller has already set aside a value read from the environment or built from an expression."""
-    fields = value.split()
+    # Read from a command line (GOSUMDB=sum.golang.org; go build), the value ends at a command separator.
+    fields = re.split(r"[;&()]", value, maxsplit=1)[0].split()
+    if not fields:
+        return
     named = fields[0].split("+")[0].lower()
     if named == "off":
         add(ctx, TLS, number, ("GOSUMDB", "off"), "GOSUMDB=off turns checksum verification off for every module")

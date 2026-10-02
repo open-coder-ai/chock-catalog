@@ -29,12 +29,16 @@ WORD = re.compile(
 #: GOFLAGS-style flags after a bare value: a YAML plain scalar runs on, a shell passes them as words.
 FLAGS = re.compile(r"(?:[ \t]+--?[\w=.,${}-]+)*")
 #: Where a shell keeps going but a comment, a command separator or a flow collection ends the value.
-TERMINATOR = re.compile(r"[#;\]}]")
+TERMINATOR = re.compile(r"[#;&()\]}]")
 EXPANSION = re.compile(r"\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|\$\([^)\n]*\)")
 #: The leading part of an unclosed value that is certainly its own: no quote, expansion, escape or terminator.
 SIMPLE = re.compile(r"[A-Za-z0-9._/:@,|*?\[\]+=%~-]*")
 QUOTES = re.compile("[\"']")
 COMMAND_END = re.compile(r"[;&()]")
+SHELL_FILE = re.compile(
+    r"(?:\.(?:sh|bash|zsh|mk|envrc)|(?:^|/)(?:gnu)?makefile)$",
+    re.IGNORECASE,
+)
 YAML_JSON = re.compile(r"\.(?:ya?ml|json)$", re.IGNORECASE)
 MAX_CODEPOINT = 0x10FFFF
 ESCAPED = re.compile(r"\\(?:x([0-9A-Fa-f]{2})|u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8}))")
@@ -89,6 +93,11 @@ def _value(ctx: Ctx, raw: str, match: re.Match[str]) -> tuple[list[str] | None, 
         return _quoted(ctx, raw, pos, quote, outer)
     if outer:
         return _in_string(raw, pos, outer)
+    return _bare(ctx, raw, pos)
+
+
+def _bare(ctx: Ctx, raw: str, pos: int) -> tuple[list[str] | None, bool]:
+    """A value written as one bare shell word, with GOFLAGS-style flags after it."""
     word = WORD.match(raw, pos)[0]
     if len(word) > MAX_WORD:
         return None, False
@@ -103,6 +112,10 @@ def _value(ctx: Ctx, raw: str, match: re.Match[str]) -> tuple[list[str] | None, 
     cut = TERMINATOR.search(EXPANSION.sub(lambda m: "x" * len(m[0]), word))
     if cut is None:
         return [plain + tail], True
+    if cut[0] in ";&()" and SHELL_FILE.search(ctx.path):
+        # In a shell script or Makefile an unquoted ; & ( or ) ends the word: one reading only. (A Dockerfile
+        # ENV line is not shell, so there it stays uncertain.)
+        return [QUOTES.sub("", word[: cut.start()]) + tail], True
     # A shell keeps `a#,*` as one word; a comment, a command separator or a flow collection ends it there.
     return [plain + tail, QUOTES.sub("", word[: cut.start()]) + tail], False
 

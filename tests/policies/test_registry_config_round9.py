@@ -50,3 +50,25 @@ def test_two_readings_that_agree_report_one_finding() -> None:
 )
 def test_a_command_separator_ends_the_value_inside_a_string(text: str) -> None:
     assert rules("a.sh", text) == [B_TLS]
+
+
+@pytest.mark.parametrize(
+    ("text", "want"),
+    [
+        ('sh -c "GOSUMDB=sum.golang.google.cn; go mod download"\n', []),
+        ('sh -c "GOSUMDB=sum.golang.org&&go build"\n', []),
+        ("GOSUMDB=sum.golang.org; go mod download\n", []),
+        ("export GOSUMDB=sum.golang.google.cn; go build\n", []),
+        ('sh -c "GOSUMDB=off; go build"\n', [B_TLS]),
+        ("export GOPRIVATE=github.com&&go mod download\n", [B_TLS]),
+        ("GONOSUMDB=github.com& go build\n", [B_TLS]),
+        ("(export GOPRIVATE=github.com)\n", [B_TLS]),
+        ("export GOPROXY=https://proxy.golang.org,direct&&go build\n", []),
+    ],
+)
+def test_a_command_separator_ends_a_bare_or_sumdb_value(text: str, want: list[str]) -> None:
+    assert rules("a.sh", text) == want
+
+
+def test_a_sumdb_value_that_is_only_a_separator_is_empty() -> None:
+    assert rules(".github/workflows/x.yml", "env:\n  GOSUMDB: ;x\n") == ["reg-overrides-redirect"]
