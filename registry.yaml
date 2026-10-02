@@ -123,10 +123,10 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 48
-  eval_executed: 48
-  description: 'Commit and agent-write gate, greppable slice of ASI05: eval and exec (bare, global-receiver
-    and indirect forms), the Function constructor, string timers, exec-mode compile, import by computed
+  eval_cases: 54
+  eval_executed: 54
+  description: 'Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect
+    eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed
     name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml
     loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security
     boundary. Waiver ''pragma: allowlist exec'' on the line; in the agent only if already committed

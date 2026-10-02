@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 48 total, 48 executable |
+| **Eval cases** | 54 total, 54 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Commit and agent-write gate, greppable slice of ASI05: eval and exec (bare, global-receiver and indirect forms), the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD.
+Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD.
 
 ## What it solves
 

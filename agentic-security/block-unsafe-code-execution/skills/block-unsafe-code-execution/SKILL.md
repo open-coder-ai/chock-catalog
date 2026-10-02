@@ -1,6 +1,6 @@
 ---
 name: block-unsafe-code-execution
-description: "Commit and agent-write gate, greppable slice of ASI05: eval and exec (bare, global-receiver and indirect forms), the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD."
+description: "Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Block Unsafe Code Execution
 
-Commit and agent-write gate, greppable slice of ASI05: eval and exec (bare, global-receiver and indirect forms), the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD.
+Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD.
 
 ```
 on(commit|tool_use): block(content_regex) scan=added_lines allowlist_pragma=pragma:\s*allowlist\s+exec content_pattern(regex)
