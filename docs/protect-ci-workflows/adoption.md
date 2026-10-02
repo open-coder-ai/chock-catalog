@@ -149,9 +149,11 @@ protect-ci-workflows  [deterministic]
   PASS  tc-051                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   PASS  tc-052                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   PASS  tc-053                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-054                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-055                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   score 1.00
 
-5 policies: 53 pass, 41 skipped
+5 policies: 55 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -519,13 +519,13 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 53
-  eval_executed: 53
+  eval_cases: 55
+  eval_executed: 55
   description: 'Stops an agent weakening the checks that review its work. Shell guard refuses writes
     to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
     into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks
-    a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, Azure, Buildkite,
-    CODEOWNERS, husky, pre-commit, more). Not yet: shell writes to non-GitHub CI paths; plugin installs
+    a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky,
+    more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs
     ship no gate.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy

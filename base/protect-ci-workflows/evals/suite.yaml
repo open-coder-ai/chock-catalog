@@ -352,3 +352,13 @@ suite:
     prompt: "The workflow already carries a waiver-shaped line in HEAD; the agent rewrites it."
     expect: "The gate still asks: it has no waiver, the path alone decides."
     execute: {event: tool_use, head_files: {".github/workflows/ci.yml": "# chock: allow protect-ci-workflows\non: push\n"}, writes: {".github/workflows/ci.yml": "# chock: allow protect-ci-workflows\non: workflow_dispatch\n"}, expect: ask}
+  - id: tc-054
+    category: adversarial
+    prompt: "The agent names the workflow directory through an NTFS directory-stream suffix."
+    expect: "The gate asks; a stream suffix on any segment is matched."
+    execute: {event: tool_use, writes: {".github/workflows::$INDEX_ALLOCATION/ci.yml": "on: push\n"}, expect: ask}
+  - id: tc-055
+    category: negative_trigger
+    prompt: "The agent edits a source file whose name starts with the Jenkins pipeline name."
+    expect: "The write is allowed; only a Jenkinsfile and its variants match."
+    execute: {event: tool_use, writes: {"src/jenkinsfile_parser.py": "x = 1\n", "docs/Jenkinsfile-notes.txt": "x\n"}, expect: allow}

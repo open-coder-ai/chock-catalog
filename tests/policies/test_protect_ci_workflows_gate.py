@@ -36,12 +36,15 @@ PATHS = [
     "Jenkinsfile",
     "Jenkinsfile.release",
     "ci/Jenkinsfile",
+    "Jenkinsfile-prod.groovy",
+    "Jenkinsfile_nightly",
     ".circleci/config.yml",
     "azure-pipelines.yml",
     "azure-pipelines-release.yaml",
     ".azure-pipelines/build.yml",
     "bitbucket-pipelines.yml",
     ".buildkite/pipeline.yml",
+    "buildkite.yml",
     ".drone.yml",
     ".drone.jsonnet",
     ".drone.star",
@@ -59,6 +62,8 @@ PATHS = [
     ".lefthook.yaml",
     "lefthook-local.toml",
     ".githooks/pre-push",
+    ".lefthook/pre-commit/lint.sh",
+    ".lefthook-local/pre-push/x.sh",
     ".travis.yml",
     "action.yml",
     "tools/lint/action.yaml",
@@ -88,6 +93,9 @@ PATHS = [
     ".gitlab-ci.yml ",
     ".gitlab-ci.yml::$DATA",
     ".travis.yml:stream",
+    ".github::$INDEX_ALLOCATION/workflows/ci.yml",
+    ".github/workflows::$INDEX_ALLOCATION/ci.yml",
+    ".circleci:x/config.yml",
     "sub/repo/.github/workflows/ci.yml",
 ]
 UNRELATED = [
@@ -108,6 +116,9 @@ UNRELATED = [
     "reaction.yaml",
     "actions.yml",
     "Jenkins.md",
+    "jenkinsfile_parser.py",
+    "docs/Jenkinsfile-notes.txt",
+    "src/JenkinsfileReader.java",
     "docs/jenkins/setup.md",
     "gitlab-ci.md",
     "renovate.md",
@@ -152,7 +163,8 @@ def test_a_write_elsewhere_passes(repo: Path, path: str) -> None:
     assert gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {path: "new\n"}, {path: "new\n"}) == (0, "")
 
 
-def test_an_empty_or_whole_file_write_asks_too(repo: Path) -> None:
+def test_the_runner_asks_on_an_empty_or_whole_file_write(repo: Path) -> None:
+    # The runner asks on an empty write; the pinned adapter drops empty Write content first (a documented limit).
     for text in ("", "a\nb\n"):
         assert gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {".gitlab-ci.yml": text})[0] == runner.EXIT_ASK
 
@@ -215,8 +227,17 @@ def test_a_write_through_a_symlink_into_ci_config_is_judged_as_its_target(repo: 
         "buildspec" + ".gitlab-ci.yml:" * 5000 + "/",
         ".github" + " ." * 8000 + "/x",
         ".github/" + "./" * 8000 + "x",
+        ".github" + ":a" * 8000 + "/x",
     ],
-    ids=["jenkinsfile-suffix", "gitlab-stream", "cloudbuild-stream", "buildspec-stream", "dir-spaces", "dot-segments"],
+    ids=[
+        "jenkinsfile-suffix",
+        "gitlab-stream",
+        "cloudbuild-stream",
+        "buildspec-stream",
+        "dir-spaces",
+        "dot-segments",
+        "dir-stream",
+    ],
 )
 def test_a_long_hostile_path_is_matched_in_linear_time(path: str) -> None:
     gate = pattern()
