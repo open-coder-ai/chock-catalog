@@ -1,6 +1,6 @@
 id: block-unguarded-agent-spawn
 name: "Block Unguarded Agent Spawn"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
   bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never, danger-full-access;
@@ -26,7 +26,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T12:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -52,3 +52,8 @@ changelog:
   date: '2026-10-02'
   changes:
   - "Six more agents and more flags, each refused as before with the same message. codex `--ask-for-approval never` or `-a never` (also `=never`); aider `--yes-always` and `--yes`; copilot `--allow-all-tools`, `--allow-all` and `--yolo`; amp, cline, goose and opencode with the auto-approve flag family (`--dangerously-skip-permissions`, `--dangerously-allow-all`, `--yolo`, `--trust-all-tools`, `--auto-approve`, `--auto-approve-all`, `--allow-all-tools`, `--yes-always`, and `-y` for cline), and goose with `GOOSE_MODE=auto` in front of it; claude `--allowedTools` or `--allowed-tools` with a bare `*` or a `Tool(*)` or `Tool(:*)` wildcard, in the first value or a one-word later value (a scoped `Bash(git:*)` and a prompt after the list pass). `uvx` joins `npx`, `bunx` and `pnpx` as a wrapper the package name is read through, with `aider-chat`, `@github/copilot`, `@sourcegraph/amp`, `cline` and `opencode-ai` added to the packages; a `==version` suffix is dropped like `@version`. Every command of a pipeline or list is judged, as before. The flag lists are the ones each agent's documentation names; a flag spelled another way, a config file that turns approvals off, an alias or a wrapper script is not seen."
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Verification fixes: codex `-anever` and `-sdanger-full-access` (the value attached to the short flag, as clap reads it) are refused, and an agent named through a Windows launcher suffix (`claude.cmd`, `claude.exe`, `npx.cmd`) is read as the agent."
+  - "Known limits, stated here because they were probed: `pnpm dlx`, `yarn dlx`, `npm exec`, `bun x`, `pipx run` and `uv tool run` are not looked through (only npx, bunx, pnpx and uvx are); a program or flag built by a variable or `$(...)`, a here-string and a pipe into a shell are not read; wrappers other than the ones the shared parser knows (chrt, taskset, watch, script, busybox, firejail, flock) are not looked through; `codex -c approval_policy=never`, `-c sandbox_mode=danger-full-access` and `claude --settings` with a bypass mode are not read; a command of 400000 words takes the guard 6 to 10 seconds, and past the runner's 30s it is not checked."

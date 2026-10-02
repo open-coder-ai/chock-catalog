@@ -25,6 +25,7 @@ ADD_VERBS = {
     "codex": ("add",),
     "gemini": ("add",),
     "cursor-agent": ("add",),
+    "agent": ("add",),
 }
 VALUE_FLAGS = frozenset(
     {
@@ -43,7 +44,12 @@ VALUE_FLAGS = frozenset(
     }
 )
 PACKAGE_RUNNERS = frozenset({"npx", "bunx", "pnpx", "uvx", "npm", "pnpm", "yarn", "bun"})
-BARE_AGENTS = frozenset({"claude", "codex", "gemini", "cursor-agent"})
+BARE_AGENTS = frozenset({"claude", "codex", "gemini", "cursor-agent", "agent"})
+EXECUTABLE = re.compile(r"\.(?:exe|cmd|bat|ps1|com)$")
+SHELL_NAMES = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash"})
+INTERPRETERS = ("python", "perl", "ruby", "node", "php")
+CODE_FLAG = re.compile(r"-[A-Za-z]*[cepErR]|--(?:eval|print|command)")
+HELP_FLAGS = frozenset({"-h", "--help"})
 PACKAGE_AGENT = re.compile(r"(?:^|/)(claude-code|codex|gemini-cli)(?:@[^/@]*)?$")
 PACKAGE_NAMES = {"claude-code": "claude", "codex": "codex", "gemini-cli": "gemini"}
 LIST_FLAGS = {"-e": "env", "--env": "env", "-H": "header", "--header": "header"}
@@ -69,12 +75,12 @@ def is_guard(path: str) -> bool:
 
 
 def json_objects(text: str) -> list[dict]:
-    """Every JSON object a piece of text is, or holds between its first `{` and last `}`."""
+    """Every JSON object a piece of text is, or holds between its first `{` and last `}`; none when it nests too deep."""
     found = []
     for candidate in (text.strip(), text[text.find("{") : text.rfind("}") + 1]):
         try:
             value = json.loads(candidate)
-        except ValueError:
+        except (ValueError, RecursionError):
             continue
         if isinstance(value, dict):
             found.append(value)
@@ -127,8 +133,9 @@ def parse_add(args: list[str]) -> tuple[list[str], list[str], dict[str, list[str
 
 def added_server(cmd: Cmd) -> tuple[str, object] | None:
     """(name, entry) for an `<agent> mcp add*` command; ('', None) when it cannot be read; None when it is not one."""
-    agent = cmd.name if cmd.name in ADD_VERBS else None
-    if cmd.name in PACKAGE_RUNNERS:
+    name = EXECUTABLE.sub("", cmd.name.lower())
+    agent = name if name in ADD_VERBS else None
+    if name in PACKAGE_RUNNERS:
         found = next((m for arg in cmd.args if (m := PACKAGE_AGENT.search(arg))), None)
         bare = next((arg for arg in cmd.args if arg in BARE_AGENTS), None)
         agent = PACKAGE_NAMES[found.group(1)] if found else bare
@@ -139,7 +146,10 @@ def added_server(cmd: Cmd) -> tuple[str, object] | None:
     if at is None:
         return None
     verb = cmd.args[at + 1]
-    words, launch, lists, flags = parse_add(cmd.args[at + 2 :])
+    rest = cmd.args[at + 2 :]
+    if HELP_FLAGS & set(rest[: rest.index("--")] if "--" in rest else rest):
+        return None
+    words, launch, lists, flags = parse_add(rest)
     if verb == "add-from-claude-desktop" or not words:
         return "", None
     if verb == "add-json":
@@ -163,9 +173,39 @@ def judged(found: list[tuple[str, object]], allowed: tuple[allowlist.Allowed, ..
             problems = rules.judge(entry.from_config(name, config), allowed)
         except entry.EntryError as exc:
             return f"server {name!r}: {exc}, so it cannot be verified"
+        except RecursionError:
+            return f"server {name!r}: nested too deeply to read, so it cannot be verified"
         if refused := [message for rule, message in problems if rule in rules.ENFORCED]:
             return f"server {name!r}: {refused[0]}"
     return None
+
+
+def runs_code(cmd: Cmd) -> bool:
+    """Whether a command is an interpreter (python, node, perl, ruby, php) given code inline or on stdin."""
+    return cmd.name.startswith(INTERPRETERS) and (bool(cmd.doc) or any(CODE_FLAG.fullmatch(arg) for arg in cmd.args))
+
+
+def code_names(cmd: Cmd, names: tuple[str, ...]) -> bool:
+    """Whether the code an interpreter runs inline names one of these paths as a whole file name (any case, either slash)."""
+    if not runs_code(cmd):
+        return False
+    text = "\n".join((*cmd.args, cmd.doc)).lower().replace("\\", "/")
+    return any(re.search(rf"(?<![\w.-]){re.escape(name.lower())}(?![\w.-])", text) for name in names)
+
+
+def reads_script_from_stdin(cmd: Cmd) -> bool:
+    """A shell given a heredoc and no script file or `-c` text: the heredoc is what it runs."""
+    options = all(arg.startswith("-") and (arg.startswith("--") or "c" not in arg) for arg in cmd.args)
+    return cmd.name in SHELL_NAMES and bool(cmd.doc) and options
+
+
+def shell_input(cmds: list[Cmd]) -> list[Cmd]:
+    """The commands, plus those a shell runs from a heredoc given to it (`bash <<EOF`)."""
+    found = list(cmds)
+    for cmd in cmds:
+        if reads_script_from_stdin(cmd):
+            found += shell_input(commands(cmd.doc))
+    return found
 
 
 def repo_root() -> Path:
@@ -181,14 +221,15 @@ def repo_root() -> Path:
 
 def check(raw: str) -> str | None:
     """The reason a command changes MCP configuration outside the allowlist, or None."""
-    cmds = commands(raw)
-    if any(writes_files(cmd, is_guard) for cmd in cmds):
+    cmds = shell_input(commands(raw))
+    protected = (allowlist.PATH,)
+    if any(writes_files(cmd, is_guard) or code_names(cmd, protected) for cmd in cmds):
         return (
             "shell write to the MCP server allowlist is refused -- it is protected content, the same way "
             "protect-agent-config protects every policy's guard source. Ask the person to make the change."
         )
     adds = [added for cmd in cmds if (added := added_server(cmd)) is not None]
-    writing = any(writes_files(cmd, configs.is_dedicated) for cmd in cmds)
+    writing = any(writes_files(cmd, configs.is_dedicated) or code_names(cmd, configs.DEDICATED) for cmd in cmds)
     written = inline_servers(cmds) if writing else []
     if writing and not written:
         return NO_ENTRY
@@ -211,6 +252,9 @@ def run(argv: list[str]) -> int:
     """Exit 1 blocks, 2 reports a guard fault (never a verdict), 0 allows."""
     try:
         reason = check(os.environ.get("CHOCK_RAW_COMMAND") or shlex.join(argv))
+    except RecursionError:
+        print("BLOCKED: the command is nested too deeply to be read, so it cannot be verified.", file=sys.stderr)
+        return 1
     except Exception as exc:  # noqa: BLE001 -- a guard fault must not look like a block
         print(f"verify-mcp-allowlist: internal error ({type(exc).__name__}); command not checked", file=sys.stderr)
         return 2

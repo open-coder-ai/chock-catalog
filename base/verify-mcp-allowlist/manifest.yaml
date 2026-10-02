@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.5.0"
+version: "0.5.1"
 description: >
   Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host).
   Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate
@@ -44,7 +44,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-07T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T12:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -58,6 +58,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.1
+  date: '2026-10-02'
+  changes:
+  - "Verification fixes, all in the command guard: an `mcp add-json` entry or an inline config write padded with nesting deeper than the JSON reader's limit (about 1000 arrays) made the guard exit 2, which the runner reads as not checked, so the add passed; a recursion fault is now a refusal. Inline code that names a protected file (`python3 -c \"open('.mcp.json','w')...\"`, `node -e`, `perl -e`, a python heredoc) was refused in v1 and passed in 0.5.0, because the path test had become a whole-name match; it is refused again, and a file merely named like one (`foo.mcp.json`, `.mcp.json.bak`) is not. A heredoc handed to a shell (`bash <<EOF`) is read as commands. `claude.cmd`, `claude.exe` and cursor-agent's `agent` alias are read as the agent. `mcp add --help` and `-h` are help, not an add, and a help flag after `--` is still the server's own argument."
+  - "Known limits, stated here because they were probed: an approved server's `env` can swap the binary its allowlisted launcher runs (`PATH`, `NODE_OPTIONS`, `NPM_CONFIG_REGISTRY`, `LD_PRELOAD`, proxies) and its `cwd` is not judged; the PATH family only warns (exit 4, observed under D15), and the guard has no warning channel, so an `mcp add -e PATH=...` of an approved server passes silently; an allowlisted spec is the arguments joined by single spaces, so `[\"a b\"]` equals `[\"a\", \"b\"]`; the shell guard reads a program or verb written through a variable, `$(...)`, an alias or a here-string (`bash <<< ...`), and a wrapper it does not know (`chrt`, `taskset`, `watch`, `script -c`, `busybox`, `firejail`, `unbuffer`), as it reads none of them; an inline-code read of a protected file (`python3 -c \"open('.mcp.json').read()\"`) is refused like a write; a command line near a million characters takes the guard 15 to 40 seconds, and past the runner's 30s the guard is not checked; a Zed extension server, a `mcpServers` that is a list and Cline, Continue, Junie, Trae, Copilot and `.vscode/settings.json` configs are not read."
 - version: 0.5.0
   date: '2026-10-02'
   changes:

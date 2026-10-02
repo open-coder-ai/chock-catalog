@@ -292,3 +292,18 @@ suite:
     execute:
       command: "git commit -m 'drop copilot --allow-all-tools'"
       expect: allow
+  - id: tc-041
+    category: adversarial
+    prompt: "An agent writes codex's approval value attached to the short flag (-anever)."
+    expect: "The guard refuses; the attached short form is the same switch."
+    execute: {"command": "codex -anever exec 'fix it'", "expect": "block"}
+  - id: tc-042
+    category: adversarial
+    prompt: "An agent starts claude through the Windows launcher name claude.cmd with permissions off."
+    expect: "The guard refuses; the executable suffix does not hide the agent."
+    execute: {"command": "claude.cmd --dangerously-skip-permissions", "expect": "block"}
+  - id: tc-043
+    category: behavior
+    prompt: "An agent starts codex with approval on request."
+    expect: "The guard allows; only never switches approvals off."
+    execute: {"command": "codex -a on-request exec 'fix it'", "expect": "allow"}

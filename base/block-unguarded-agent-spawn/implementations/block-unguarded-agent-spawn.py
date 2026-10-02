@@ -39,6 +39,7 @@ GENERIC_FLAGS = (
     "--allow-all-tools",
     "--yes-always",
 )
+EXECUTABLE = re.compile(r"\.(?:exe|cmd|bat|ps1|com)$", re.IGNORECASE)
 TOOL_FLAGS = frozenset(("--allowedTools", "--allowed-tools"))
 WILDCARD_TOOL = re.compile(r"\*|[A-Za-z_][A-Za-z0-9_]*\(:?\*\)")
 Check = Callable[[Cmd, list[str]], str]
@@ -87,9 +88,11 @@ def codex(_cmd: Cmd, args: list[str]) -> str:
     for flag in ("--full-auto", "--yolo", "--dangerously-bypass-approvals-and-sandbox"):
         if has(args, flag):
             return f"codex {flag}"
-    if "never" in (value_of(args, "--ask-for-approval"), value_of(args, "-a")):
+    attached = {arg.lower() for arg in args}
+    if "never" in (value_of(args, "--ask-for-approval"), value_of(args, "-a")) or "-anever" in attached:
         return "codex --ask-for-approval never"
     unsandboxed = "danger-full-access" in (value_of(args, "--sandbox"), value_of(args, "-s"))
+    unsandboxed = unsandboxed or "-sdanger-full-access" in attached
     return "codex --sandbox danger-full-access" if unsandboxed else ""
 
 
@@ -140,11 +143,12 @@ AGENTS: dict[str, Check] = {
 
 def launched(cmd: Cmd) -> tuple[str, list[str]]:
     """(agent, its arguments) for a command that starts one, looking through `npx <package>`; else ('', [])."""
-    if cmd.name in AGENTS:
-        return cmd.name, cmd.args
+    name = EXECUTABLE.sub("", cmd.name)
+    if name in AGENTS:
+        return name, cmd.args
     words = [arg for arg in cmd.args if not arg.startswith("-")]
     package = re.sub(r"(?<=.)(?:@[^/@]*|==.*)$", "", words[0]) if words else ""
-    agent = PACKAGES.get(package) if cmd.name in LAUNCHERS else None
+    agent = PACKAGES.get(package) if name in LAUNCHERS else None
     return (agent, cmd.args[cmd.args.index(words[0]) + 1 :]) if agent else ("", [])
 
 

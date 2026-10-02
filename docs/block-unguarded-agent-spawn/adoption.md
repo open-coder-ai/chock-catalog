@@ -136,9 +136,12 @@ block-unguarded-agent-spawn  [deterministic]
   PASS  tc-038                             authored  guard exit 0
   PASS  tc-039                             authored  guard exit 0
   PASS  tc-040                             authored  guard exit 0
+  PASS  tc-041                             authored  BLOCKED: codex --ask-for-approval never starts a coding agent with …
+  PASS  tc-042                             authored  BLOCKED: claude --dangerously-skip-permissions starts a coding agen…
+  PASS  tc-043                             authored  guard exit 0
   score 1.00
 
-5 policies: 40 pass, 41 skipped
+5 policies: 43 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
