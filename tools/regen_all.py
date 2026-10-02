@@ -57,6 +57,8 @@ FORMATTED = (
     "tools/regen_all.py",
     "tools/gen_registry.py",
     "tools/check_installed.py",
+    "tools/owasp_llm.py",
+    "tools/prose_counts.py",
 )
 
 
@@ -124,7 +126,7 @@ def regenerate(base: str) -> int:
     print("== regenerate (dependency order)")
     rc = max([0] + [report(run(f"plugin build {tree}", plugin_build(tree))) for tree in TREES])
     rc = max(rc, sync())
-    for update in (gen_registry.update_registry, gen_registry.update_readme):
+    for update in (gen_registry.update_registry, gen_registry.update_readme, gen_registry.update_prose):
         start = time.monotonic()
         print(f"  ok   {time.monotonic() - start:6.1f}s  {update()}")
     steps: list[tuple[str, Cmd]] = [
@@ -162,7 +164,7 @@ def fast_checks(scratch: Path) -> list[tuple[str, Cmd]]:
         (name, [PY, f"tools/{script}", *args])
         for name, script, *args in (
             ("registry", "check_registry.py"),
-            ("registry + README counts --check", "gen_registry.py", "--check"),
+            ("registry, README and prose counts --check", "gen_registry.py", "--check"),
             ("installed policies vs their source", "check_installed.py"),
             ("readme", "check_readme.py"),
             ("policy docs --check", "gen_policy_docs.py", "--check"),

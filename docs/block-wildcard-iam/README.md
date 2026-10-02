@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or Resource in IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform wildcard action/resource lists. An agent's identity design stays with the advisory owasp-asi03 policy; this blocks the grants whose blast radius is everything. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit; also runs at agent tool-use, where it counts only when that exact line is already committed in HEAD.
+Commit and agent-write gate, 1-line slice of ASI03: IAM Action or Resource set to a bare * (JSON double-quoted, YAML single-quoted), a one-element Terraform * list, the AdministratorAccess ARN, quoted GCP roles/owner or roles/editor. Probed misses: * in a JSON list, service wildcards (s3:*), YAML double-quoted or bare *, Terraform jsonencode, NotAction, Principal *, PowerUser, multi-line lists, Azure Owner, K8s RBAC. Waiver: 'pragma: allowlist broad-privilege' same line; agent: only if in HEAD.
 
 ## What it solves
 
