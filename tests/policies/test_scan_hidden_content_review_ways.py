@@ -118,6 +118,13 @@ SPAN = f"<span hidden>{RUN}</span>"
         ("docs/x.html", f"<p>x<em><small hidden><caption hidden><h1></div>{RUN}", "hidden-style"),
         ("docs/x.html", f"<i style='display:none'><small hidden></i></tt>{RUN}", "hidden-style"),
         ("docs/x.html", f"<template><caption style='display:none'>{RUN}</caption></template>", "hidden-style"),
+        # Round 12: in SVG and MathML, script and style hold markup, not raw text; </form> leaves its children open.
+        ("docs/x.html", f"<svg><style><div hidden>{RUN}</div></style></svg>", "hidden-style"),
+        ("docs/x.html", f'<math><style><li style="display:none">{RUN}</li>', "hidden-style"),
+        ("docs/x.html", f"<svg><script><p hidden>{RUN}</p>", "hidden-style"),
+        ("docs/x.html", f"<form hidden><span></form>{RUN}", "hidden-style"),
+        ("a.md", f"<form hidden><span></form>{RUN}\n", "hidden-style"),
+        ("docs/x.html", f"<math></dt><col hidden>{RUN}x", "hidden-style"),
         ("a.md", f'===\n</span>\n\\<\n<a title="x\n  {SPAN}\n', "hidden-style"),
         ("a.md", f'<!-->\n<a title="x\n<td>\n1. <p hidden>{RUN}</p>\n', "hidden-style"),
     ],
@@ -191,3 +198,17 @@ def test_a_file_the_deadline_overtakes_between_readings_is_would_block(monkeypat
     assert (found["rule"], found.get("new")) == ("not-judged", True)
     assert found["message"].startswith("[would block]")
     assert "not finished" in found["message"]
+
+
+def test_what_the_gate_cannot_read_would_block() -> None:
+    big = "x" * (gate.MAX_TEXT + 1)
+    (found,) = gate.findings({"event": "commit", "writes": {"a.md": big}})
+    assert found["rule"] == "too-large"
+    assert found["message"].startswith("[would block]")
+    assert "docx-unreadable" in gate.BLOCKING
+
+
+def test_the_html_reader_checks_the_deadline_as_it_goes() -> None:
+    with pytest.raises(readers["frames"].Late):
+        readers["markup"].collect("<b>" * 600, until=0.0)
+    assert readers["markup"].collect("<b>" * 600).hidden == []

@@ -41,6 +41,8 @@ SHAPES = {
     "image openers": "![",
     "table cells": "|---|---|\n| `a | <!-- b --> ` |\n",
     "keyframes": "<style>@keyframes k{to{opacity:1}} .a{opacity:0;animation:k 1s}</style>",
+    "held hiding elements": "<div hidden><p><b hidden><i>x</div>",
+    "rebuilt formatting": "<span hidden><b><i><u>",
 }
 
 

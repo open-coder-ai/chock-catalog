@@ -229,3 +229,27 @@ def urls(css: str) -> list[tuple[int, str]]:
     """(offset, URL) of each `url()`, `@import` and `image-set()` in CSS text."""
     clean = unescape(css)
     return [(m.start(), next(g for g in m.group(2, 4, 6) if g is not None)) for m in URL_FUNC.finditer(clean)]
+
+
+def style_blocks(text: str) -> list[tuple[int, str]]:
+    """(offset, content) of each `<style>` element, found by plain search so the scan stays linear."""
+    lower, out, at = text.lower(), [], 0
+    while (start := lower.find("<style", at)) != -1:
+        opened = lower.find(">", start)
+        if opened == -1:
+            break
+        end = lower.find("</style", opened)
+        end = len(text) if end == -1 else end
+        out.append((opened + 1, text[opened + 1 : end]))
+        at = end
+    return out
+
+
+def hidden_selectors(sheets: list[str]) -> dict[str, str]:
+    """`.class` and `#id` names that a style rule anywhere in the file hides, with the reason."""
+    out: dict[str, str] = {}
+    for sheet in sheets:
+        for _, selector, decls in rules(sheet):
+            if not no_text(selector) and (reason := hidden(decls, None)):
+                out.update(dict.fromkeys(selector_targets(selector), reason))
+    return out

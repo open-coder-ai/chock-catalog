@@ -251,5 +251,5 @@ def test_style_element_lines() -> None:
 
 
 def test_style_blocks_are_found_without_a_parser() -> None:
-    assert html.style_blocks("<STYLE a=1>x</style><style>y") == [(11, "x"), (27, "y")]
-    assert html.style_blocks("<style") == []
+    assert css.style_blocks("<STYLE a=1>x</style><style>y") == [(11, "x"), (27, "y")]
+    assert css.style_blocks("<style") == []

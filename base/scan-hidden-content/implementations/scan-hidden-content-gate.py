@@ -22,6 +22,7 @@ from hiddenscan import markdown as hidden_text  # noqa: E402
 from hiddenscan import markup as hidden_html  # noqa: E402
 from hiddenscan import readings, spans  # noqa: E402 -- after the path and cache setup
 from hiddenscan import word as hidden_docx  # noqa: E402
+from hiddenscan.frames import Late  # noqa: E402
 from hiddenscan.vocab import normalized, vocab  # noqa: E402
 
 ALLOW, BLOCK, UNREADABLE, ASK, WARN = 0, 1, 2, 3, 4
@@ -38,7 +39,7 @@ DEADLINE = 10.0
 #: Would block once promoted: a secret-bearing beacon, a URL dictionary, and a file the run had no time to
 #: read (it may hold either, so running out of time never softens the verdict).
 #: Elements whose content this Python's HTML parser reads as raw text (the list varies by release).
-BLOCKING = hidden_urls.BLOCKING | {"not-judged"}
+BLOCKING = hidden_urls.BLOCKING | {"not-judged", "too-large", "docx-unreadable"}  # what it could not read
 SHOWN = 50
 MARKDOWN = {".md", ".mdx", ".markdown", ".mdc"}
 MARKUP = {".html", ".htm", ".xhtml", ".svg", ".xml"}
@@ -124,10 +125,6 @@ def _url_findings(path: str, urls: dict[tuple[int, str], int]) -> list[dict]:
     return out
 
 
-class Late(Exception):  # noqa: N818 -- a signal, not an error
-    """The deadline passed while a file was being read."""
-
-
 def text_findings(path: str, text: str, kind: str, until: float = math.inf) -> list[dict]:
     """Every hidden comment, hidden element, KaTeX trick, data-carrying URL and HTML data URI in one file.
 
@@ -141,7 +138,7 @@ def text_findings(path: str, text: str, kind: str, until: float = math.inf) -> l
         if time.monotonic() > until:
             raise Late
         found: dict[tuple, list[dict]] = {}
-        for f in _view_findings(path, scan, kind, reading):
+        for f in _view_findings(path, scan, kind, reading, until):
             found.setdefault((f["line"], f["rule"], f["key"]), []).append(f)
         for slot, same in found.items():
             if len(same) > len(out.get(slot, [])):
@@ -149,11 +146,13 @@ def text_findings(path: str, text: str, kind: str, until: float = math.inf) -> l
     return [f for same in out.values() for f in same]
 
 
-def _view_findings(path: str, scan: str, kind: str, reading: tuple[str, str, bool]) -> list[dict]:
+def _view_findings(path: str, scan: str, kind: str, reading: tuple[str, str, bool], until: float) -> list[dict]:
     tags, html, flat = reading  # comments are read in tags, elements in html
     lines, scan_lines = hidden_text.Lines(scan), scan.split("\n")
     words = vocab()
-    collected = hidden_html.collect(html, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"), flat=flat)
+    collected = hidden_html.collect(
+        html, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"), flat=flat, until=until
+    )
     out = _url_findings(path, _urls(scan, lines, kind, collected))
     bodies = [(at, body, "comment") for at, body in hidden_text.comments(tags)]
     if path.lower().endswith(".mdx"):

@@ -12,6 +12,10 @@ from hiddenscan.vocab import visible
 KEPT_TEXT = 2000
 
 
+class Late(Exception):  # noqa: N818 -- a signal, not an error
+    """The deadline passed while a file was being read."""
+
+
 @dataclass
 class Frame:
     tag: str
