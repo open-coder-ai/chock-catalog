@@ -37,9 +37,9 @@ A policy's compiled output is not documentation. Installed via `chock add`, it b
 - a **guard** consulted before the adopter's coding agent runs a command, for the policies that
   ship an `implementations/` script.
 
-<!-- gen:hook-programs -->9<!-- /gen --> policies run a program they ship from a git hook, at commit or push, rather than
+<!-- gen:hook-programs -->10<!-- /gen --> policies run a program they ship from a git hook, at commit or push, rather than
 a declarative gate:
-<!-- gen:hook-program-ids -->`agentic-code-security`, `block-destructive-commands`, `block-test-skips`, `guard-memory-writes`, `java-security`, `limit-diff-size`, `no-a11y-regression`, `protect-commit-privacy`, `verify-mcp-allowlist`<!-- /gen -->.
+<!-- gen:hook-program-ids -->`agentic-code-security`, `block-destructive-commands`, `block-test-skips`, `guard-memory-writes`, `java-security`, `limit-diff-size`, `no-a11y-regression`, `protect-commit-privacy`, `verify-dependency-exists`, `verify-mcp-allowlist`<!-- /gen -->.
 
 So a change to a guard script in this repository runs on other people's machines.
 

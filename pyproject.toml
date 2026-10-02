@@ -28,6 +28,7 @@ source = [
     "base/protect-commit-privacy/implementations",
     "base/rtk-dangerous-actions-blocker/implementations",
     "base/verify-mcp-allowlist/implementations",
+    "base/verify-dependency-exists/implementations",
     "agentic-security/agentic-code-security/implementations",
     "base/block-test-skips/implementations",
     "base/guard-memory-writes/implementations",

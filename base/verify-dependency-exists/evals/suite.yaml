@@ -88,3 +88,163 @@ suite:
     prompt: "At the turn's end requirements.txt differs from HEAD by a listed package; an old unlisted one is in HEAD."
     expect: "The turn is allowed: only dependencies the turn adds are judged."
     execute: {event: stop, head_files: {"requirements.txt": "legacy-unlisted==1.0.0\n"}, writes: {"requirements.txt": "legacy-unlisted==1.0.0\nrequests==2.31.0\n"}, expect: allow, repo_files: {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-010
+    category: trigger
+    prompt: "A new name is added to a [dependency-groups] table of pyproject.toml."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"pyproject.toml": "[project]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"requests\"]\n"}, "files": {"pyproject.toml": "[project]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"requests\"]\n\n[dependency-groups]\ndev = [\"pytest-evil\"]\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-011
+    category: trigger
+    prompt: "A new crate is added to [dev-dependencies] of Cargo.toml."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"Cargo.toml": "[package]\nname = \"app\"\n\n[dependencies]\nrequests = \"1\"\n"}, "files": {"Cargo.toml": "[package]\nname = \"app\"\n\n[dependencies]\nrequests = \"1\"\n\n[dev-dependencies]\nevil-crate = \"0.1\"\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-012
+    category: trigger
+    prompt: "A new gem is added to the Gemfile."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"Gemfile": "gem 'requests'\n"}, "files": {"Gemfile": "gem 'requests'\ngem 'evil-gem', '~> 1.0'\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-013
+    category: trigger
+    prompt: "A new module is added to the require block of go.mod."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"go.mod": "module example.com/app\n\ngo 1.22\n\nrequire (\n\trequests v1.0.0\n)\n"}, "files": {"go.mod": "module example.com/app\n\ngo 1.22\n\nrequire (\n\trequests v1.0.0\n\texample.com/evil v0.1.0\n)\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-014
+    category: adversarial
+    prompt: "package.json keeps a listed name but aliases it to a different package."
+    expect: "The commit is blocked: the aliased package is the one installed, and it is not listed."
+    execute: {"head_files": {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\"}}\n"}, "files": {"package.json": "{\"dependencies\": {\"requests\": \"npm:evil-requests@1.0.0\"}}\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-015
+    category: trigger
+    prompt: "A new name is added to extras_require in setup.cfg."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"setup.cfg": "[options]\ninstall_requires =\n    requests\n"}, "files": {"setup.cfg": "[options]\ninstall_requires =\n    requests\n\n[options.extras_require]\ndocs =\n    evil-docs\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-016
+    category: trigger
+    prompt: "A new coordinate is added to pom.xml."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"pom.xml": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><dependencies><dependency><groupId>org.requests</groupId><artifactId>requests</artifactId></dependency></dependencies></project>\n"}, "files": {"pom.xml": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><dependencies><dependency><groupId>org.requests</groupId><artifactId>requests</artifactId></dependency><dependency><groupId>com.evil</groupId><artifactId>evil</artifactId></dependency></dependencies></project>\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\norg.requests:requests\n"}}
+  - id: tc-017
+    category: trigger
+    prompt: "A new PackageReference is added to a csproj."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"app.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Requests\" Version=\"1.0\" /></ItemGroup></Project>\n"}, "files": {"app.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup><PackageReference Include=\"Requests\" Version=\"1.0\" /><PackageReference Include=\"Evil.Package\" Version=\"1.0\" /></ItemGroup></Project>\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-018
+    category: trigger
+    prompt: "A new package is added to the deps function of mix.exs."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"mix.exs": "defmodule App.MixProject do\n  def project, do: [app: :app, deps: deps()]\n\n  defp deps do\n    [\n      {:requests, \"~> 1.0\"}\n    ]\n  end\nend\n"}, "files": {"mix.exs": "defmodule App.MixProject do\n  def project, do: [app: :app, deps: deps()]\n\n  defp deps do\n    [\n      {:requests, \"~> 1.0\"},\n      {:evil_pkg, \"~> 0.1\"}\n    ]\n  end\nend\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-019
+    category: trigger
+    prompt: "A new package is added to dev_dependencies of pubspec.yaml."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"pubspec.yaml": "name: app\ndependencies:\n  requests: ^1.0.0\n"}, "files": {"pubspec.yaml": "name: app\ndependencies:\n  requests: ^1.0.0\ndev_dependencies:\n  evil_pkg: ^0.1.0\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-020
+    category: trigger
+    prompt: "A new .package(url:) is added to Package.swift."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"Package.swift": "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"App\", dependencies: [\n    .package(url: \"https://github.com/acme/requests.git\", from: \"1.0.0\"),\n])\n"}, "files": {"Package.swift": "// swift-tools-version:5.9\nimport PackageDescription\nlet package = Package(name: \"App\", dependencies: [\n    .package(url: \"https://github.com/acme/requests.git\", from: \"1.0.0\"),\n    .package(url: \"https://github.com/evil/evil.git\", from: \"1.0.0\"),\n])\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\ngithub.com/acme/requests\n"}}
+  - id: tc-021
+    category: trigger
+    prompt: "A new package is added to require-dev of composer.json."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"composer.json": "{\"require\": {\"php\": \">=8.1\", \"acme/requests\": \"^1.0\"}}\n"}, "files": {"composer.json": "{\"require\": {\"php\": \">=8.1\", \"acme/requests\": \"^1.0\"}, \"require-dev\": {\"evil/evil\": \"^1.0\"}}\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "acme/requests\n"}}
+  - id: tc-022
+    category: trigger
+    prompt: "A new name is added to requirements-dev.txt, which the old gate did not read."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"requirements-dev.txt": "requests==2.31.0\n"}, "files": {"requirements-dev.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-023
+    category: trigger
+    prompt: "A new name is added to a literal install_requires list in setup.py."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"setup.py": "from setuptools import setup\nsetup(name='app', install_requires=['requests'])\n"}, "files": {"setup.py": "from setuptools import setup\nsetup(name='app', install_requires=['requests', 'evil-setup'])\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-024
+    category: trigger
+    prompt: "A new coordinate is added to build.gradle."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"build.gradle": "dependencies {\n    implementation 'org.acme:requests:1.0'\n}\n"}, "files": {"build.gradle": "dependencies {\n    implementation 'org.acme:requests:1.0'\n    testImplementation 'com.evil:evil:1.0'\n}\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\norg.acme:requests\n"}}
+  - id: tc-025
+    category: adversarial
+    prompt: "pom.xml declares a DOCTYPE with an entity."
+    expect: "The commit is blocked: the file is refused unparsed, so no entity is expanded and no name can hide behind it."
+    execute: {"head_files": {"pom.xml": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"><dependencies><dependency><groupId>org.requests</groupId><artifactId>requests</artifactId></dependency></dependencies></project>\n"}, "files": {"pom.xml": "<?xml version=\"1.0\"?>\n<!DOCTYPE project [<!ENTITY xxe \"boom\">]>\n<project><dependencies><dependency><groupId>com.evil</groupId><artifactId>&xxe;</artifactId></dependency></dependencies></project>\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-026
+    category: adversarial
+    prompt: "requirements.txt arrives with a byte-order mark and CRLF line endings and adds an unlisted name."
+    expect: "The commit is blocked: the encoding does not hide the name."
+    execute: {"head_files": {"requirements.txt": "requests==2.31.0\r\n"}, "files": {"requirements.txt": "\ufeffrequests==2.31.0\r\nreqeusts==2.31.0\r\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-027
+    category: adversarial
+    prompt: "The agent writes an unlisted package into a Pipfile."
+    expect: "The write is refused."
+    execute: {"event": "tool_use", "head_files": {"Pipfile": "[packages]\nrequests = \"*\"\n"}, "writes": {"Pipfile": "[packages]\nrequests = \"*\"\nreqeusts = \"*\"\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-028
+    category: adversarial
+    prompt: "package.json adds an unlisted package through a nested yarn resolution."
+    expect: "The commit is blocked: the added name is not on the allowlist."
+    execute: {"head_files": {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\"}}\n"}, "files": {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\"}, \"resolutions\": {\"**/evil-pkg\": \"1.0.0\"}}\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-029
+    category: negative_trigger
+    prompt: "A listed name is added to a [dependency-groups] table."
+    expect: "The commit is allowed."
+    execute: {"head_files": {"pyproject.toml": "[project]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"requests\"]\n"}, "files": {"pyproject.toml": "[project]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"requests\"]\n\n[dependency-groups]\ndev = [\"requests>=2\"]\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-030
+    category: negative_trigger
+    prompt: "Only the version of a listed dev-dependency changes."
+    expect: "The commit is allowed."
+    execute: {"head_files": {"Cargo.toml": "[package]\nname = \"app\"\n\n[dependencies]\nrequests = \"1\"\n\n[dev-dependencies]\nrequests = \"1\"\n"}, "files": {"Cargo.toml": "[package]\nname = \"app\"\n\n[dependencies]\nrequests = \"1\"\n\n[dev-dependencies]\nrequests = \"2\"\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-031
+    category: negative_trigger
+    prompt: "A requirement spelled Foo_Bar is added and the allowlist lists foo-bar."
+    expect: "The commit is allowed: PEP 503 makes the two spellings one project."
+    execute: {"head_files": {"requirements.txt": "requests\n"}, "files": {"requirements.txt": "requests\nFoo_Bar==1.0\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\nfoo-bar\n"}}
+  - id: tc-032
+    category: negative_trigger
+    prompt: "A crate spelled serde_json is added and the allowlist lists serde-json."
+    expect: "The commit is allowed: Cargo treats - and _ alike."
+    execute: {"head_files": {"Cargo.toml": "[package]\nname = \"app\"\n\n[dependencies]\nrequests = \"1\"\n"}, "files": {"Cargo.toml": "[package]\nname = \"app\"\n\n[dependencies]\nrequests = \"1\"\nserde_json = \"1\"\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\nserde-json\n"}}
+  - id: tc-033
+    category: edge
+    prompt: "setup.py builds install_requires by concatenating lists, with an unlisted name in the second."
+    expect: "The commit is allowed: a computed list is not read, a documented limit."
+    execute: {"head_files": {"setup.py": "from setuptools import setup\nsetup(name='app', install_requires=['requests'])\n"}, "files": {"setup.py": "from setuptools import setup\nBASE = ['requests']\nsetup(name='app', install_requires=BASE + ['evil-setup'])\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-034
+    category: edge
+    prompt: "requirements.txt includes a file outside the repository that holds an unlisted name."
+    expect: "The commit is allowed: an include is followed only inside the change, never outside the repository."
+    execute: {"head_files": {"requirements.txt": "requests\n"}, "files": {"requirements.txt": "requests\n-r ../../outside.txt\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-035
+    category: edge
+    prompt: "A manifest holding an unlisted legacy name is reordered and reformatted."
+    expect: "The commit is allowed: only names the change adds are judged."
+    execute: {"head_files": {"package.json": "{\"dependencies\": {\"requests\": \"1\", \"legacy-unlisted\": \"1\"}}\n"}, "files": {"package.json": "{\n  \"dependencies\": {\n    \"legacy-unlisted\": \"1\",\n    \"requests\": \"1\"\n  }\n}\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-036
+    category: negative_trigger
+    prompt: "composer.json requires php and an extension besides a listed package."
+    expect: "The commit is allowed: platform requirements are not packages."
+    execute: {"head_files": {"composer.json": "{\"require\": {\"php\": \">=8.1\", \"acme/requests\": \"^1.0\"}}\n"}, "files": {"composer.json": "{\"require\": {\"php\": \">=8.1\", \"ext-json\": \"*\", \"acme/requests\": \"^1.0\"}}\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "acme/requests\n"}}
+  - id: tc-037
+    category: negative_trigger
+    prompt: "pubspec.yaml adds the flutter SDK dependency."
+    expect: "The commit is allowed: an SDK entry is not a package."
+    execute: {"head_files": {"pubspec.yaml": "name: app\ndependencies:\n  requests: ^1.0.0\n"}, "files": {"pubspec.yaml": "name: app\ndependencies:\n  requests: ^1.0.0\n  flutter:\n    sdk: flutter\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-038
+    category: negative_trigger
+    prompt: "go.mod adds a replace that points at a local directory."
+    expect: "The commit is allowed: a local path is not a package."
+    execute: {"head_files": {"go.mod": "module example.com/app\n\ngo 1.22\n\nrequire (\n\trequests v1.0.0\n)\n"}, "files": {"go.mod": "module example.com/app\n\ngo 1.22\n\nrequire (\n\trequests v1.0.0\n)\n\nreplace requests => ./vendor/requests\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-039
+    category: trigger
+    prompt: "package-lock.json gains a transitive package and no manifest changes."
+    expect: "The commit asks: an unlisted package entered through the lockfile alone."
+    execute: {"head_files": {"package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {\"version\": \"1.0.0\"}}}\n"}, "files": {"package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {\"version\": \"1.0.0\"}, \"node_modules/evil-transitive\": {\"version\": \"1.0.0\"}}}\n"}, "expect": "ask", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-040
+    category: negative_trigger
+    prompt: "package-lock.json gains a listed package."
+    expect: "The commit is allowed."
+    execute: {"head_files": {"package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {\"version\": \"1.0.0\"}}}\n"}, "files": {"package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {\"version\": \"1.0.0\"}, \"node_modules/Requests\": {\"version\": \"1.0.1\"}}}\n"}, "expect": "allow", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+  - id: tc-041
+    category: adversarial
+    prompt: "A commit adds an unlisted package to package.json and to its lockfile."
+    expect: "The commit is blocked, not asked: the manifest name is a block."
+    execute: {"head_files": {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\"}}\n", "package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {\"version\": \"1.0.0\"}}}\n"}, "files": {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\", \"evil-pkg\": \"1.0.0\"}}\n", "package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {\"version\": \"1.0.0\"}, \"node_modules/evil-pkg\": {\"version\": \"1.0.0\"}}}\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}

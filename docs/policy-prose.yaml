@@ -460,9 +460,19 @@ verify-dependency-exists:
     suggest packages that do not exist; an attacker who registers that name gets code
     execution in every repo that installs it.
   customise: >
-    The allowlist is the policy. `params.manifests` sets which files are watched, and
-    `params.allowlist_file` where the approved names live. This one ships disabled because
-    an empty allowlist blocks every dependency -- populate it first, then enable.
+    The allowlist is the policy: `.chock/dependency-allowlist.txt`, one name per line, `#` for notes, matched
+    after the ecosystem's own normalisation (`Foo_Bar` is `foo-bar`; a Cargo `-` is a `_`). It ships disabled
+    because an empty allowlist blocks every dependency. Seed it from what the repository already depends on --
+    `python .agents/policies/verify-dependency-exists/implementations/dependency-manifests.py --seed >
+    .chock/dependency-allowlist.txt` -- review it, then set `rollout: observe` in `.chock/config.yaml`, enable
+    the policy and read what it would have refused before promoting it. A new name in a manifest blocks; a name
+    that only a lockfile adds (a transitive dependency) asks. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET,
+    Go, Elixir, Dart and Swift manifests by parsing them, never running them. Limits: it checks that a name is
+    listed, never that it exists in a registry, and never a dependency's version or source (a listed name
+    pointed at another git URL passes); a dependency list built by code (a setup.py that concatenates lists, a
+    Gradle or Gemfile computed value, a Maven placeholder) is not read; an `-r` include is judged only when the
+    same change holds the included file; a file that cannot be parsed adds no names and prints a note, while an
+    XML manifest that declares a DOCTYPE or ENTITY is refused unparsed.
 
 verify-mcp-allowlist:
   solves: >
