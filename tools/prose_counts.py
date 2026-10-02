@@ -38,8 +38,8 @@ _NUMBER_WORDS = frozenset(
     }
 )
 #: Words, and numbers that are not part of a version, an issue (#12) or a decimal.
-_TOKEN = re.compile(r"[A-Za-z][\w'\u2019-]*|(?<![#.\w])\d+(?![.\w]\d)")
-_NOUN = re.compile(r"(?:polic|advisor|enforced|best-effort|guard|gate|program)", re.I)
+_TOKEN = re.compile(r"[A-Za-z][\w'\u2019-]*|(?<![#.A-Za-z0-9])\d+(?![.\w]\d)")
+_NOUN = re.compile(r"(?:polic|advisor|enforc|best-effort|effort|guard|gate|program)", re.I)
 #: How many words either side of a number a policy noun may sit and still make it a count.
 WINDOW = 5
 
