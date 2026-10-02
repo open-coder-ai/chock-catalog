@@ -42,6 +42,7 @@ def _lib_module() -> object:
 
 
 data_table = _lib_module()
+safe_read = importlib.import_module("_lib_chock_scan.safe_read")
 
 JAVA = "base/java-security/implementations/chock_security/data/"
 A11Y = "base/no-a11y-regression/implementations/data/"
@@ -78,6 +79,7 @@ LEGACY = {
 
 #: Not shipped and not tables: version control, the framework checkout CI makes, test fixtures.
 SKIP = frozenset({".git", ".framework", "node_modules", "tests"})
+SKIP_PARTS = frozenset((s,) for s in SKIP)
 
 
 def _fold(name: str) -> str:
@@ -97,14 +99,31 @@ def tables(root: Path = ROOT) -> list[Path]:
     return sorted(found)
 
 
+def links(root: Path = ROOT) -> list[Path]:
+    """Symlinked folders leading outside what `tables` scans: a table behind one would load unseen."""
+    real = root.resolve()
+    found: list[Path] = []
+    for dirpath, dirnames, _ in os.walk(root):
+        here = Path(dirpath)
+        if here == root:
+            dirnames[:] = [d for d in dirnames if d not in SKIP]
+        for d in dirnames:
+            target = (here / d).resolve()
+            if (here / d).is_symlink() and (
+                not target.is_relative_to(real) or target.relative_to(real).parts[:1] in SKIP_PARTS
+            ):
+                found.append(here / d)
+    return sorted(found)
+
+
 def _show(rel: str) -> str:
     return rel if rel.isprintable() else repr(rel)
 
 
 def _legacy(path: Path) -> list[str]:
     try:
-        doc = data_table.parse(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, data_table.TableError) as exc:
+        doc = data_table.parse(safe_read.read_text(path, data_table.LIMIT))
+    except (safe_read.UnreadableError, data_table.TableError) as exc:
         return [f"listed in LEGACY but unreadable ({exc})"]
     if keys := sorted(doc.keys() & {"as_of", "kind"}):
         return [f"listed in LEGACY but carries {', '.join(keys)}: check it as a table and delete the entry"]
@@ -126,7 +145,9 @@ def problems(today: dt.date, root: Path = ROOT) -> list[str]:
             data_table.check_fresh(doc, today, rel)
         except data_table.TableError as exc:
             out += [f"{_show(rel)}: {p}" for p in exc.problems]
-    return out + [f"{rel}: listed in LEGACY but not found; delete the entry" for rel in sorted(LEGACY.keys() - seen)]
+    out += [f"{rel}: listed in LEGACY but not found; delete the entry" for rel in sorted(LEGACY.keys() - seen)]
+    hidden = (_show(p.relative_to(root).as_posix()) for p in links(root))
+    return out + [f"{rel}: a symlinked folder leading outside the scan could hide a table" for rel in hidden]
 
 
 def _date(value: str) -> dt.date:

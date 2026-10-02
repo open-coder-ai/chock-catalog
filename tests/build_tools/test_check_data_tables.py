@@ -168,6 +168,7 @@ def test_symlinked_tables_and_data_folders_are_reported_not_followed(
     assert found == [
         "base/p/data: a table must be a *.json file directly in a folder named data",
         "data/link.json: a table and its data folder must not be symlinks",
+        "base/p/data: a symlinked folder leading outside the scan could hide a table",
     ]
 
 
@@ -192,3 +193,19 @@ def test_a_legacy_file_that_gains_an_envelope_or_breaks_fails(
     monkeypatch.setattr(cdt, "LEGACY", {"base/p/data/old.json": "x (pre-D7)"})
     (found,) = cdt.problems(DAY, cat)
     assert found.startswith(f"base/p/data/old.json: {problem}")
+
+
+def test_a_symlinked_folder_leading_outside_the_scan_is_reported(
+    cat: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    outside = tmp_path_factory.mktemp("impl")
+    _put(outside, "data/a.json", _table(as_of="2020-01-01"))
+    (cat / "base" / "p" / "implementations").symlink_to(outside, target_is_directory=True)
+    _put(cat, "tests/fixtures/data/b.json", _table(as_of="2020-01-01"))
+    (cat / "base" / "p" / "fixtures").symlink_to(cat / "tests" / "fixtures", target_is_directory=True)
+    _put(cat, "shared/data/c.json", _table())
+    (cat / "base" / "p" / "shared").symlink_to(cat / "shared", target_is_directory=True)
+    assert cdt.problems(DAY, cat) == [
+        f"base/p/{name}: a symlinked folder leading outside the scan could hide a table"
+        for name in ("fixtures", "implementations")
+    ]

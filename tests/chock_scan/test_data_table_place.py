@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from types import ModuleType
 
@@ -90,3 +91,16 @@ def test_many_unknown_keys_are_capped_and_escaped(dt_: ModuleType, tmp_path: Pat
     assert found.count("'k") == 10
     assert "\x1b" not in found
     assert "\\x1b" in found
+
+
+def test_a_path_through_dot_dot_is_refused(dt_: ModuleType, tmp_path: Path) -> None:
+    write(tmp_path / "t.json", table())
+    assert _problems(dt_, tmp_path / ".." / "data" / "t.json") == ["a table path must not hold .."]
+
+
+def test_a_long_run_of_scheme_characters_in_sources_is_linear(dt_: ModuleType, tmp_path: Path) -> None:
+    sources = {f"s{i}": "a" * 500 for i in range(16_000)}
+    path = write(tmp_path / "t.json", table(source=sources))
+    start = time.monotonic()
+    assert dt_.read(path)["source"] == sources
+    assert time.monotonic() - start < 2

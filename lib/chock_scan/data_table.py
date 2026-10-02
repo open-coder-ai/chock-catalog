@@ -8,8 +8,11 @@ re-label an IOC table as a longer-lived kind, add a key a consumer ignores, or p
 version. Nothing here returns an empty table for a broken one: every refusal raises.
 
 A table is a regular file named `*.json` directly in a folder named `data`, neither of them a
-symlink: exactly what tools/check_data_tables.py finds, so every table a guard loads is one CI
-judges for freshness. Duplicate keys are compared exactly as decoded: keys that differ only by
+symlink and its path holding no `..`: what tools/check_data_tables.py finds. Folders above `data`
+are not resolved here (an adopter's checkout may sit under a symlink); the catalog's CI instead
+reports any symlinked folder that leads outside what it scans, so every table a shipped guard
+loads is one CI judges for freshness. Sources are text, never fetched: the https rule refuses
+other `scheme://` URLs, not every string a browser might follow. Duplicate keys are compared exactly as decoded: keys that differ only by
 case, Unicode normalisation or invisible characters are distinct, so a consumer keyed by names
 normalises them itself.
 
@@ -40,7 +43,8 @@ SHOW = 80
 EPOCH = dt.date(2020, 1, 1)
 DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 URL = re.compile(r"https://[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:[/?#]\S*)?")
-SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
+#: The lookbehind starts a match only at a scheme's first character, so a long run stays linear.
+SCHEME = re.compile(r"(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*://")
 SOURCE_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 WORD = re.compile(r"[A-Za-z]{3}")
 
@@ -162,9 +166,11 @@ def envelope_problems(doc: dict) -> list[str]:
 
 
 def path_problems(path: str | os.PathLike[str]) -> list[str]:
-    """Why `path` is not where a table may be: `*.json` directly in `data/`, neither a symlink."""
+    """Why `path` is not where a table may be: `*.json` directly in `data/`, neither a symlink, no `..`."""
     name = os.fsdecode(path)
     folder = os.path.dirname(name)
+    if ".." in name.replace(os.sep, "/").split("/"):
+        return ["a table path must not hold .."]
     if not name.endswith(".json") or os.path.basename(folder) != "data":
         return ["a table must be a *.json file directly in a folder named data"]
     if os.path.islink(name) or os.path.islink(folder):
