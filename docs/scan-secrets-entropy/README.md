@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy values (16-150 chars) assigned to secret-like keys, GitHub/npm tokens whose checksum verifies, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split across lines, over 150 characters, cut short by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parentheses or concatenation, or in XML.
+Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy values (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test keys, Slack/AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split across lines, over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control characters.
 
 ## What it solves
 
