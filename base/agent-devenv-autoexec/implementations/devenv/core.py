@@ -80,23 +80,30 @@ def norm(value: object) -> str:
     return f"{text[:KEY_TEXT]}...#{digest}"
 
 
-def blank_strings(line: str) -> str:
-    """The line with every quoted string's contents removed, in one pass; a quote left open (a multi-line
-    string's first line) blanks the rest of the line, so nothing inside a value can read as a comment."""
+def blank_strings(text: str) -> str:
+    """The text with every string's contents removed in one pass, line breaks kept so lines still line up.
+
+    `\"\"\"...\"\"\"` and `\'\'\'...\'\'\'` span lines (TOML, Python); other quotes end at the line's end,
+    and a quote left open blanks the rest of that line. Nothing inside a value can read as a comment.
+    """
     out: list[str] = []
     quote = ""
-    index = 0
-    while index < len(line):
-        char = line[index]
+    index, size = 0, len(text)
+    while index < size:
+        char = text[index]
         if quote:
-            if char == "\\" and quote == '"':
-                index += 1
-            elif char == quote:
-                quote = ""
+            if char == "\n":
                 out.append(char)
+                quote = quote if len(quote) == len('"""') else ""
+            elif char == "\\" and quote[0] == '"':
+                index += text[index + 1 : index + 2] != "\n"
+            elif text.startswith(quote, index):
+                index += len(quote) - 1
+                quote = ""
+        elif char in "\"'":
+            quote = char * 3 if text.startswith(char * 3, index) else char
+            index += len(quote) - 1
         else:
-            if char in "\"'":
-                quote = char
             out.append(char)
         index += 1
     return "".join(out)

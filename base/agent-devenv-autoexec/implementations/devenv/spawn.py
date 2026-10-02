@@ -3,7 +3,8 @@
 The text is read once, character by character, as a shell reads it: quotes span lines and keep their
 words (a flag passed in quotes still counts) but not their separators; a backslash-newline joins lines;
 `;`, `|`, `&` and newlines end a statement, except the `&` of a redirect (`2>&1`, `&>`); `#` at the start
-of a word begins a comment. The time grows with the text, never with how it is quoted.
+of a word begins a comment. Each raw line is read too, so a quote the reader misjudges hides nothing.
+The time grows with the text, never with how it is quoted.
 """
 
 from __future__ import annotations
@@ -93,7 +94,16 @@ def unsafe(statement: str) -> bool:
 
 
 def spawns(c: Collector) -> None:
+    """Report a statement the shell reader finds, and also any raw line (quotes and comments left as written,
+    only a line that is wholly a comment skipped): a quote the reader counts that the file's language does not
+    (a heredoc, `$'...'`, a YAML plain value) can then hide nothing."""
+    seen: set[int] = set()
     for number, statement in statements(c.text):
         if unsafe(statement) or ("\\" in statement and unsafe(statement.replace("\\", ""))):
             message = "an agent CLI is started with its safety checks off"
             c.add("dev-agent-spawn", f"spawn={norm(statement.strip())}", message, line=number)
+            seen.add(number)
+    for number, line in enumerate(c.lines, 1):
+        if number not in seen and not line.lstrip().startswith("#") and unsafe(line):
+            message = "an agent CLI is started with its safety checks off"
+            c.add("dev-agent-spawn", f"spawn-line={norm(line.strip())}", message, line=number)

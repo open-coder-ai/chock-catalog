@@ -154,8 +154,43 @@ def test_round3_statement_reader() -> None:
     text = 'a "x;\\"y" 2>&1 b # c ; d\r\ne \\\n f; g < &h\n"open'
     assert statements(text) == [(1, 'a x "y 2>&1 b '), (2, "e   f"), (3, " g < "), (3, "h"), (4, "open")]
     assert rules("run.sh", "cl\\aude --yolo\n") == [("dev-agent-spawn", B)]
-    assert rules("run.sh", "# claude --yolo\necho claude; echo --yolo\n") == []
+    assert rules("run.sh", "# claude --yolo\n") == []
+    # The raw-line pass errs toward reporting: a flag later on the same line counts.
+    assert rules("run.sh", "echo claude; echo --yolo\n") == [("dev-agent-spawn", B)]
 
 
 def test_round3_doubled_and_back_separators_in_paths() -> None:
     assert scan.paths_in("sh tools//c.sh tools\\d.sh") == ["tools/c.sh", "tools/d.sh"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "cat <<EOF\ndon't\nEOF\nclaude '#' --dangerously-skip-permissions\n",
+        "echo $'it\\'s'\nclaude '#' --yolo\n",
+    ],
+)
+def test_round4_a_misjudged_quote_hides_no_spawn(text: str) -> None:
+    assert ("dev-agent-spawn", B) in rules("run.sh", text)
+
+
+def test_round4_a_misjudged_quote_in_a_workflow() -> None:
+    text = "jobs:\n  a:\n    steps:\n      - name: Don't\n        run: claude '#' --dangerously-skip-permissions\n"
+    assert rules(".github/workflows/a.yml", text) == [("dev-agent-spawn", B)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "[tasks.a]\nrun = '''./x.sh ' # chock: allow dev-shell-toolchain'''\n",
+        '[tasks.a]\nrun = """./x.sh " # chock: allow dev-shell-toolchain"""\n',
+        '[tasks.a]\nrun = """\n# chock: allow dev-shell-toolchain\n./x.sh"""\n',
+    ],
+)
+def test_round4_waivers_inside_multi_line_strings_never_count(text: str) -> None:
+    assert found({"mise.toml": text}, event="push")
+
+
+def test_blank_strings() -> None:
+    blank = gate.sys.modules["devenv.core"].blank_strings
+    assert blank('a "b\\"c" d \'e\n f\n"""x\ny""" z "q\\\nr') == "a  d \n f\n\n z \nr"

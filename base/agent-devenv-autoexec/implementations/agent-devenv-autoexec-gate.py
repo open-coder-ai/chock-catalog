@@ -45,7 +45,7 @@ def committed(root: Path, path: str) -> str:
     return proc.stdout.decode("utf-8", "replace") if proc.returncode == 0 else ""
 
 
-def waived(c: Collector, rule: str, line: int, head: frozenset[str] | None) -> bool:
+def waived(c: Collector, blanked: list[str], rule: str, line: int, head: frozenset[str] | None) -> bool:
     """`chock: allow <rule>` in a comment (outside quotes) on the finding's line or a comment line just above it.
 
     In the agent (`head` given) both the waiver line and the finding's line must already be committed, so
@@ -56,7 +56,8 @@ def waived(c: Collector, rule: str, line: int, head: frozenset[str] | None) -> b
         text = c.lines[number - 1] if 0 < number <= len(c.lines) else ""
         own_line = number == line or text.lstrip().startswith(("#", "//", ";", "<!--", "/*"))
         committed = head is None or (text in head and target in head)
-        if own_line and rule in _WAIVER.findall(blank_strings(text)) and committed:
+        bare = blanked[number - 1] if 0 < number <= len(blanked) else ""
+        if own_line and rule in _WAIVER.findall(bare) and committed:
             return True
     return False
 
@@ -76,11 +77,12 @@ def findings(payload: dict) -> list[dict]:
     person = by_person(event)
     found = []
     for path, c in sorted(collectors.items()):
-        head = None
-        if not person and _WAIVER.search(c.text):
-            head = frozenset(committed(root, path).split("\n"))
+        head, blanked = None, []
+        if _WAIVER.search(c.text):
+            blanked = blank_strings(c.text).split("\n")
+            head = None if person else frozenset(committed(root, path).split("\n"))
         for item in sorted(set(c.found), key=lambda f: (f.line, f.rule, f.detail)):
-            if _WAIVER.search(c.text) and waived(c, item.rule, item.line, head):
+            if blanked and waived(c, blanked, item.rule, item.line, head):
                 continue
             pack = RULES[item.rule][0]
             found.append(
