@@ -40,10 +40,11 @@ def test_the_real_tables_are_fresh_today() -> None:
     assert cdt.main([], ROOT) == 0
 
 
-def test_every_legacy_entry_exists_and_nothing_else_is_skipped() -> None:
+def test_every_legacy_entry_exists_and_is_rule_configuration_without_an_envelope() -> None:
     found = {p.relative_to(ROOT).as_posix() for p in cdt.tables(ROOT)}
     assert set(cdt.LEGACY) <= found
     assert all(reason.endswith("(pre-D7)") for reason in cdt.LEGACY.values())
+    assert all(cdt._legacy(ROOT / rel) == [] for rel in cdt.LEGACY)
 
 
 def test_tables_are_found_at_the_root_and_at_any_depth_in_a_policy_whatever_the_case(cat: Path) -> None:
@@ -51,7 +52,7 @@ def test_tables_are_found_at_the_root_and_at_any_depth_in_a_policy_whatever_the_
         _put(cat, rel, _table())
     for rel in ("data/sub/d.json", "base/p/data.json", "base/p/implementations/data/e.yaml", "tests/data/f.json"):
         _put(cat, rel, "{}")
-    assert sorted(p.name for p in cdt.tables(cat)) == ["a.json", "b.json", "c.JSON"]
+    assert sorted(p.name for p in cdt.tables(cat)) == ["a.json", "b.json", "c.JSON", "d.json"]
 
 
 def test_fresh_tables_pass_and_the_count_is_printed(cat: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -119,4 +120,75 @@ def test_the_script_runs_on_its_own() -> None:
     done = subprocess.run(
         [sys.executable, script, "--today", "2026-10-02"], capture_output=True, text=True, check=False
     )
-    assert (done.returncode, done.stdout) == (0, "data tables: 0 checked, fresh on 2026-10-02\n")
+    assert done.returncode == 0
+    assert done.stdout.startswith("data tables: ")
+    assert done.stdout.endswith(" checked, fresh on 2026-10-02\n")
+
+
+@pytest.mark.parametrize(
+    "rel",
+    [
+        "data/a.json5",
+        "data/a.jsonc",
+        "data/a.json ",
+        "data/sub/a.json",
+        "base/p/data.json/data/x/a.json",
+        "lib/pkg/data/sub/a.json",
+        ".agents/policies/p/data/sub/a.json",
+        "".join(map(chr, (0xFF24, 0xFF21, 0xFF34, 0xFF21))) + "/a.json",
+    ],
+)
+def test_a_table_anywhere_but_a_plain_data_folder_is_found_and_refused(cat: Path, rel: str) -> None:
+    _put(cat, rel, _table())
+    (found,) = cdt.problems(DAY, cat)
+    assert "a table must be a *.json file directly in a folder named data" in found
+
+
+def test_a_table_in_any_top_level_folder_is_judged(cat: Path) -> None:
+    _put(cat, "measurements/data/a.json", _table(as_of="2020-01-01"))
+    (found,) = cdt.problems(DAY, cat)
+    assert found.startswith("measurements/data/a.json: as_of 2020-01-01 is")
+
+
+def test_test_fixtures_and_the_framework_checkout_are_not_tables(cat: Path) -> None:
+    for top in ("tests", ".framework", ".git", "node_modules"):
+        _put(cat, f"{top}/data/a.json", "{}")
+    assert cdt.problems(DAY, cat) == []
+
+
+def test_symlinked_tables_and_data_folders_are_reported_not_followed(
+    cat: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    outside = tmp_path_factory.mktemp("outside")
+    _put(outside, "data/a.json", _table(as_of="2020-01-01"))
+    (cat / "base" / "p" / "data").symlink_to(outside / "data", target_is_directory=True)
+    _put(cat, "data/real.json", _table())
+    (cat / "data" / "link.json").symlink_to(outside / "data" / "a.json")
+    found = cdt.problems(DAY, cat)
+    assert found == [
+        "base/p/data: a table must be a *.json file directly in a folder named data",
+        "data/link.json: a table and its data folder must not be symlinks",
+    ]
+
+
+def test_a_newline_in_a_path_cannot_forge_an_output_line(cat: Path) -> None:
+    _put(cat, "data/a\nok.json", "{}")
+    (found,) = cdt.problems(DAY, cat)
+    assert found.startswith("'data/a\\nok.json': ")
+
+
+@pytest.mark.parametrize(
+    ("text", "problem"),
+    [
+        ('{"rules": [], "kind": "ioc"}', "listed in LEGACY but carries kind: check it as a table"),
+        ('{"as_of": "2026-01-01"}', "listed in LEGACY but carries as_of"),
+        ("not json", "listed in LEGACY but unreadable"),
+    ],
+)
+def test_a_legacy_file_that_gains_an_envelope_or_breaks_fails(
+    cat: Path, monkeypatch: pytest.MonkeyPatch, text: str, problem: str
+) -> None:
+    _put(cat, "base/p/data/old.json", text)
+    monkeypatch.setattr(cdt, "LEGACY", {"base/p/data/old.json": "x (pre-D7)"})
+    (found,) = cdt.problems(DAY, cat)
+    assert found.startswith(f"base/p/data/old.json: {problem}")

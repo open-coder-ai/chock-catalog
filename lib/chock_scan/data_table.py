@@ -7,6 +7,12 @@ The caller names the kind, schema version and payload keys it expects, so a data
 re-label an IOC table as a longer-lived kind, add a key a consumer ignores, or pass as another
 version. Nothing here returns an empty table for a broken one: every refusal raises.
 
+A table is a regular file named `*.json` directly in a folder named `data`, neither of them a
+symlink: exactly what tools/check_data_tables.py finds, so every table a guard loads is one CI
+judges for freshness. Duplicate keys are compared exactly as decoded: keys that differ only by
+case, Unicode normalisation or invisible characters are distinct, so a consumer keyed by names
+normalises them itself.
+
 Freshness is separate from loading on purpose: a stale table still holds what it held, so a
 guard keeps using it; the catalog's CI fails on it (tools/check_data_tables.py).
 """
@@ -15,6 +21,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import os
 import re
 from collections import Counter
@@ -28,10 +35,12 @@ ENVELOPE = frozenset({"schema", "kind", "as_of", "source"})
 LIMIT = 1 << 23
 MAX_DEPTH = 32
 MAX_SOURCE = 500
+SHOW = 80
 #: An as_of before this is a typo, not a snapshot this catalog took.
 EPOCH = dt.date(2020, 1, 1)
 DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 URL = re.compile(r"https://[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:[/?#]\S*)?")
+SCHEME = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://")
 SOURCE_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 WORD = re.compile(r"[A-Za-z]{3}")
 
@@ -56,7 +65,7 @@ def _pairs(pairs: list[tuple[str, object]]) -> dict:
     out = dict(pairs)
     if len(out) != len(pairs):
         counts = Counter(k for k, _ in pairs)
-        msg = "duplicate keys: " + ", ".join(sorted(repr(k) for k, n in counts.items() if n > 1)[:10])
+        msg = "duplicate keys: " + ", ".join(sorted(_show(k) for k, n in counts.items() if n > 1)[:10])
         raise ValueError(msg)
     return out
 
@@ -64,6 +73,20 @@ def _pairs(pairs: list[tuple[str, object]]) -> dict:
 def _constant(name: str) -> None:
     msg = f"{name} is not JSON"
     raise ValueError(msg)
+
+
+def _float(text: str) -> float:
+    value = float(text)
+    if not math.isfinite(value):
+        msg = f"{text[:20]} overflows to {value}"
+        raise ValueError(msg)
+    return value
+
+
+def _show(value: object) -> str:
+    """A key as it may appear in a message: escaped, and cut to SHOW characters."""
+    shown = repr(value)
+    return shown if len(shown) <= SHOW else shown[: SHOW - 3] + "..."
 
 
 def _depth(value: dict) -> int:
@@ -79,9 +102,10 @@ def _depth(value: dict) -> int:
 
 
 def parse(text: str, name: str = "<table>") -> dict:
-    """One JSON object: duplicate keys, NaN/Infinity, nesting past MAX_DEPTH and anything else raise TableError."""
+    """One JSON object: duplicate keys, NaN/Infinity (or a number that overflows to it), nesting past MAX_DEPTH
+    and anything else that is not plain JSON raise TableError."""
     try:
-        doc = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant)
+        doc = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant, parse_float=_float)
     except RecursionError:
         raise TableError(name, [f"nested deeper than {MAX_DEPTH}"]) from None
     except ValueError as exc:
@@ -96,6 +120,8 @@ def parse(text: str, name: str = "<table>") -> dict:
 def _source_text(where: str, value: object) -> list[str]:
     if not isinstance(value, str) or not 0 < len(value) <= MAX_SOURCE or not value.isprintable():
         return [f"{where} must be 1..{MAX_SOURCE} printable characters"]
+    if value != value.strip() or any(m != "https://" for m in SCHEME.findall(value)):
+        return [f"{where} must have no outer spaces, and no URL scheme but https://"]
     if value.lower().startswith("http"):
         return [] if URL.fullmatch(value) else [f"{where} must be an https:// URL with a host and no spaces"]
     return [] if WORD.search(value) else [f"{where} must be an https:// URL or a citation in words"]
@@ -106,8 +132,9 @@ def _source(value: object) -> list[str]:
         return _source_text("source", value)
     if not value:
         return ["source must not be an empty object"]
-    out = [f"source id '{k}' must be kebab-case" for k in value if not SOURCE_ID.fullmatch(k)]
-    return out + [p for k, v in value.items() for p in _source_text(f"source.{k}", v)]
+    if bad := [k for k in value if not SOURCE_ID.fullmatch(k)]:
+        return [f"source id {_show(k)} must be kebab-case" for k in bad[:10]]
+    return [p for k, v in value.items() for p in _source_text(f"source.{k}", v)]
 
 
 def as_of(doc: dict) -> dt.date | None:
@@ -134,9 +161,22 @@ def envelope_problems(doc: dict) -> list[str]:
     return out + _source(doc["source"])
 
 
-def read(path: str | os.PathLike[str], limit: int = LIMIT) -> dict:
-    """A table file parsed and its envelope checked (payload unchecked: that is the consumer's `load`)."""
+def path_problems(path: str | os.PathLike[str]) -> list[str]:
+    """Why `path` is not where a table may be: `*.json` directly in `data/`, neither a symlink."""
     name = os.fsdecode(path)
+    folder = os.path.dirname(name)
+    if not name.endswith(".json") or os.path.basename(folder) != "data":
+        return ["a table must be a *.json file directly in a folder named data"]
+    if os.path.islink(name) or os.path.islink(folder):
+        return ["a table and its data folder must not be symlinks"]
+    return []
+
+
+def read(path: str | os.PathLike[str], limit: int = LIMIT) -> dict:
+    """A table file, its place and its envelope checked. The kind and payload are not: a guard uses `load`."""
+    name = os.fsdecode(path)
+    if found := path_problems(path):
+        raise TableError(name, found)
     try:
         doc = parse(read_text(path, limit), name)
     except UnreadableError as exc:
@@ -158,16 +198,20 @@ def load(
 
     `keys` is the exact set of payload keys (beside the envelope); `check`, when given, returns
     every problem in the payload and runs only once the keys are right; a check that raises
-    LookupError, TypeError, ValueError or AttributeError on a malformed payload becomes a TableError.
+    LookupError, TypeError, ValueError, AttributeError, ArithmeticError or RecursionError on a
+    malformed payload becomes a TableError.
     ValueError (not TableError) means a caller error: an unknown kind, a non-integer schema, or
-    payload keys that reuse an envelope key.
+    payload keys reusing an envelope key; TypeError, keys given as one string.
     """
-    if kind not in KINDS:
+    if not isinstance(kind, str) or kind not in KINDS:
         msg = f"kind must be one of {', '.join(sorted(KINDS))}, not {kind!r}"
         raise ValueError(msg)
     if type(schema) is not int:
         msg = f"schema must be an int, not {schema!r}"
         raise ValueError(msg)
+    if isinstance(keys, str):
+        msg = f"keys must be a collection of key names, not the string {keys!r}"
+        raise TypeError(msg)
     want = frozenset(keys)
     if clash := sorted(want & ENVELOPE):
         msg = f"payload keys must not be envelope keys: {', '.join(clash)}"
@@ -180,7 +224,7 @@ def load(
     if missing := sorted(want - doc.keys()):
         out.append(f"missing keys: {', '.join(missing)}")
     if unknown := sorted(doc.keys() - want - ENVELOPE):
-        out.append(f"unknown keys: {', '.join(map(repr, unknown))}")
+        out.append(f"unknown keys: {', '.join(map(_show, unknown[:10]))}")
     if not out and check is not None:
         out = _checked(check, doc)
     if out:
@@ -192,7 +236,7 @@ def _checked(check: Check, doc: dict) -> list[str]:
     try:
         found = check(doc)
         return [found] if isinstance(found, str) else [str(p) for p in found]
-    except (LookupError, TypeError, ValueError, AttributeError) as exc:
+    except (LookupError, TypeError, ValueError, AttributeError, ArithmeticError, RecursionError) as exc:
         return [f"payload check failed: {type(exc).__name__}: {exc}"]
 
 

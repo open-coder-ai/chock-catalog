@@ -18,7 +18,17 @@ from trees import ROOT
 from .dtcommon import IDS, SOURCES, load_module, rng, table, write
 
 SEEDS = range(60)
+ENV = '{"schema": 1, "kind": "curated", "as_of": "2026-01-15", '
+
 AS_OF = dt.date(2026, 1, 15)
+
+
+@pytest.fixture
+def tmp_path(tmp_path: Path) -> Path:
+    """A `data` folder: the only place the loader reads a table from."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    return folder
 
 
 @pytest.fixture(params=SOURCES, ids=IDS)
@@ -142,10 +152,11 @@ def test_every_json_file_in_the_repo_parses_or_is_refused_explicitly(dt_: Module
         "{" + ",".join(f'"k{i}": [{i}]' for i in range(200_000)) + "}",
         "{" + ",".join(f'"k": {i}' for i in range(200_000)) + "}",
         '{"schema": 1, "kind": "curated", "as_of": "2026-01-15", "source": "' + "a" * 2_000_000 + '"}',
-        '{"source": "https://' + "a." * 500_000 + '"}',
-        '{"source": "https://a' + "-" * 1_000_000 + ' "}',
+        ENV + '"source": "https://' + "a." * 240 + '"}',
+        ENV + '"source": {' + ",".join(f'"s{i}": "https://a{"-" * 480} b"' for i in range(2000)) + "}}",
+        ENV + '"source": "' + "see http://" * 45 + '"}',
     ],
-    ids=["deep", "escapes", "wide", "duplicates", "long-source", "url-dots", "url-dashes"],
+    ids=["deep", "escapes", "wide", "duplicates", "long-source", "url-dots", "url-dashes", "url-repeats"],
 )
 def test_pathological_input_is_judged_in_bounded_time(dt_: ModuleType, tmp_path: Path, text: str) -> None:
     path = write(tmp_path / "t.json", text)

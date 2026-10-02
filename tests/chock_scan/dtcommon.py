@@ -16,7 +16,7 @@ SOURCES = sorted(
     | {p.parent for tree in TREES for p in (ROOT / tree).glob("*/implementations/chock_scan/data_table.py")}
 )
 IDS = [s.relative_to(ROOT).as_posix() for s in SOURCES]
-CORPUS = Path(__file__).parent / "data_tables"
+CORPUS = Path(__file__).parent / "data_tables" / "data"
 
 
 def load_module(package: Path) -> ModuleType:

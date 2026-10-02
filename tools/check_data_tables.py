@@ -4,11 +4,15 @@
     python tools/check_data_tables.py                     # today's date: what CI runs
     python tools/check_data_tables.py --today 2027-01-31  # any date, for a deterministic check
 
-A table is any `data/*.json` at the root or at any depth under a published policy. Each is read
-by lib/chock_scan/data_table.py: envelope (schema, kind, as_of, source) and freshness (ioc 120
-days, top-n and curated 365). Only the envelope is checked here; the payload belongs to the
+A candidate is any file whose name holds `.json` under a folder named `data` (compared after
+NFKC and case folding), and any symlink named `data`, anywhere in the repository but SKIP;
+symlinks are reported, not followed. Each is read by lib/chock_scan/data_table.py, which refuses
+anything but a regular `*.json` directly in `data/`, so a table cannot sit where this check does
+not look: place, envelope (schema, kind, as_of, source) and freshness (ioc 120 days, top-n and
+curated 365). Only the envelope is checked here; the payload belongs to the
 consumer, which loads the table with its own keys and checks. A pre-D7 rule-configuration file
-is listed in LEGACY with its reason; a listed path that is gone fails, so the list only shrinks.
+is listed in LEGACY with its reason; a listed path that is gone, or that gained an envelope key,
+fails, so the list only shrinks.
 """
 
 from __future__ import annotations
@@ -17,10 +21,12 @@ import argparse
 import datetime as dt
 import importlib
 import importlib.util
+import os
 import sys
+import unicodedata
 from pathlib import Path
 
-from trees import ROOT, policy_dirs
+from trees import ROOT
 
 
 def _lib_module() -> object:
@@ -70,33 +76,56 @@ LEGACY = {
 }
 
 
+#: Not shipped and not tables: version control, the framework checkout CI makes, test fixtures.
+SKIP = frozenset({".git", ".framework", "node_modules", "tests"})
+
+
+def _fold(name: str) -> str:
+    return unicodedata.normalize("NFKC", name).casefold()
+
+
 def tables(root: Path = ROOT) -> list[Path]:
-    """Every data/*.json at the root and under each published policy, at any depth."""
-    found = {p for d in root.iterdir() if d.is_dir() for p in d.glob("*") if _is_table(p)}
-    for policy in policy_dirs(root):
-        found |= {p for p in policy.rglob("*") if _is_table(p)}
+    """Every candidate table under `root` (see the module docstring), without following symlinks."""
+    found: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        if here == root:
+            dirnames[:] = [d for d in dirnames if d not in SKIP]
+        found += [here / d for d in dirnames if _fold(d) == "data" and (here / d).is_symlink()]
+        if "data" in map(_fold, here.relative_to(root).parts):
+            found += [here / f for f in filenames if ".json" in _fold(f)]
     return sorted(found)
 
 
-def _is_table(path: Path) -> bool:
-    """Case-blind, so `Data/x.JSON` cannot slip past the check on a case-sensitive filesystem."""
-    return path.parent.name.casefold() == "data" and path.suffix.casefold() == ".json"
+def _show(rel: str) -> str:
+    return rel if rel.isprintable() else repr(rel)
+
+
+def _legacy(path: Path) -> list[str]:
+    try:
+        doc = data_table.parse(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, data_table.TableError) as exc:
+        return [f"listed in LEGACY but unreadable ({exc})"]
+    if keys := sorted(doc.keys() & {"as_of", "kind"}):
+        return [f"listed in LEGACY but carries {', '.join(keys)}: check it as a table and delete the entry"]
+    return []
 
 
 def problems(today: dt.date, root: Path = ROOT) -> list[str]:
-    """Every table that is malformed or stale on `today`, and every LEGACY entry that is gone."""
+    """Every table that is misplaced, malformed or stale on `today`, and every LEGACY entry that is wrong."""
     out: list[str] = []
     seen: set[str] = set()
     for path in tables(root):
         rel = path.relative_to(root).as_posix()
         seen.add(rel)
         if rel in LEGACY:
+            out += [f"{rel}: {p}" for p in _legacy(path)]
             continue
         try:
             doc = data_table.read(path)
             data_table.check_fresh(doc, today, rel)
         except data_table.TableError as exc:
-            out += [f"{rel}: {p}" for p in exc.problems]
+            out += [f"{_show(rel)}: {p}" for p in exc.problems]
     return out + [f"{rel}: listed in LEGACY but not found; delete the entry" for rel in sorted(LEGACY.keys() - seen)]
 
 

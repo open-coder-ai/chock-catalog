@@ -18,6 +18,14 @@ RLO = chr(0x202E)
 ZWSP = chr(0x200B)
 
 
+@pytest.fixture
+def tmp_path(tmp_path: Path) -> Path:
+    """A `data` folder: the only place the loader reads a table from."""
+    folder = tmp_path / "data"
+    folder.mkdir()
+    return folder
+
+
 @pytest.fixture(params=SOURCES, ids=IDS)
 def dt_(request: pytest.FixtureRequest) -> ModuleType:
     return load_module(request.param)
@@ -113,14 +121,21 @@ def test_many_duplicates_are_named_once_and_capped(dt_: ModuleType) -> None:
         ({"source": "line\nbreak"}, "printable"),
         ({"source": 42}, "source must be"),
         ({"source": ["https://example.org"]}, "source must be"),
-        ({"source": "http://example.org/x"}, "https:// URL"),
+        ({"source": "http://example.org/x"}, "no URL scheme but https://"),
+        ({"source": "see http://evil.example"}, "no URL scheme but https://"),
+        ({"source": "ftp://evil.example"}, "no URL scheme but https://"),
+        ({"source": "xhttps://evil.example"}, "no URL scheme but https://"),
+        ({"source": " https://example.org"}, "no outer spaces"),
+        ({"source": "a citation "}, "no outer spaces"),
         ({"source": "https://"}, "https:// URL"),
         ({"source": "https://example.org/a b"}, "https:// URL"),
-        ({"source": "HTTPS://localhost"}, "https:// URL"),
+        ({"source": "HTTPS://localhost"}, "no URL scheme but https://"),
+        ({"source": "https://localhost"}, "https:// URL with a host"),
         ({"source": "12-34"}, "a citation in words"),
         ({"source": {}}, "source must not be an empty object"),
         ({"source": {"Bad Id": "https://example.org"}}, "source id 'Bad Id' must be kebab-case"),
-        ({"source": {"a": "http://example.org"}}, "source.a must be an https:// URL"),
+        ({"source": {"a": "http://example.org"}}, "source.a must have no outer spaces, and no URL scheme"),
+        ({"source": {"X" * 200: "https://a.b"}}, "source id '" + "X" * 76 + "..." + " must be kebab-case"),
         ({"source": {"a": None}}, "source.a must be 1..500"),
     ],
 )
@@ -212,7 +227,8 @@ def test_an_unreadable_file_is_a_table_error(dt_: ModuleType, tmp_path: Path, co
 
 def test_a_missing_file_a_folder_and_an_oversized_file_are_table_errors(dt_: ModuleType, tmp_path: Path) -> None:
     assert "unreadable" in _problems(dt_, tmp_path / "absent.json")[0]
-    assert "not a regular file" in _problems(dt_, tmp_path)[0]
+    (tmp_path / "dir.json").mkdir()
+    assert "not a regular file" in _problems(dt_, tmp_path / "dir.json")[0]
     path = write(tmp_path / "t.json", table())
     with pytest.raises(dt_.TableError, match="larger than 10 bytes"):
         dt_.read(path, limit=10)
