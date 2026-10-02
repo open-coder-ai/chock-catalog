@@ -273,3 +273,13 @@ suite:
     prompt: "build.gradle adds an unlisted coordinate on a developmentOnly configuration."
     expect: "The commit is blocked."
     execute: {"head_files": {"build.gradle": "dependencies {\n    implementation 'org.acme:requests:1.0'\n}\n"}, "files": {"build.gradle": "dependencies {\n    implementation 'org.acme:requests:1.0'\n    developmentOnly 'com.evil:evil:1'\n}\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\norg.acme:requests\n"}}
+  - id: tc-048
+    category: trigger
+    prompt: "go.mod adds a module that differs from the listed one only in letter case."
+    expect: "The commit is blocked: Go module paths are case-sensitive, so the lowercase path is another module."
+    execute: {"event": "commit", "head_files": {"go.mod": "module example.com/app\n\ngo 1.22\n\nrequire github.com/BurntSushi/toml v1.0.0\n"}, "files": {"go.mod": "module example.com/app\n\ngo 1.22\n\nrequire (\n\tgithub.com/BurntSushi/toml v1.0.0\n\tgithub.com/burntsushi/toml v1.0.0\n)\n"}, "repo_files": {".chock/dependency-allowlist.txt": "github.com/BurntSushi/toml\n"}, "expect": "block"}
+  - id: tc-049
+    category: negative_trigger
+    prompt: "package.json adds a listed package and its lockfile gains the transitive packages that brings."
+    expect: "The commit is allowed: with a manifest change beside it, the lockfile's transitive names are not asked about."
+    execute: {"event": "commit", "head_files": {"package.json": "{\"dependencies\": {}}\n", "package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}}}\n"}, "files": {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\"}}\n", "package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {}, \"node_modules/its-transitive\": {}}}\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "allow"}

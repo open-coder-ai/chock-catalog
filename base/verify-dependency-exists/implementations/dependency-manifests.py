@@ -36,12 +36,12 @@ ADVICE = (
 
 
 def load_allowlist(root: Path) -> list[str]:
-    """Allowlist entries, lowercased; blank lines and `#` comments are dropped, and a missing file is an empty list."""
+    """Allowlist entries as written; blank lines and `#` comments are dropped, and a missing file is an empty list."""
     try:
         text = safe_read.read_text(root / ALLOWLIST)
     except safe_read.UnreadableError:
         return []
-    lines = (line.split(" #", 1)[0].strip().lower() for line in text.splitlines())
+    lines = (line.split(" #", 1)[0].strip() for line in text.splitlines())
     return [line for line in lines if line and not line.startswith("#")]
 
 
@@ -93,13 +93,24 @@ def targets(writes: dict[str, str]) -> dict[str, Family]:
     return found
 
 
+def covers(manifest_dir: str, lock_dir: str) -> bool:
+    """Whether a manifest in `manifest_dir` is one the lockfile in `lock_dir` pins (the same folder, or a workspace below)."""
+    return lock_dir in ("", manifest_dir) or manifest_dir.startswith(lock_dir + "/")
+
+
 def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict], list[str]]:
-    """(manifest findings, lockfile findings, notes about files that could not be read)."""
+    """(manifest findings, lockfile findings, notes about files that could not be read).
+
+    A lockfile is asked about only when no manifest of its ecosystem changed beside it: with one, the manifest's
+    names are the judgement and the lock's transitive names are what installing them brings.
+    """
     manifest: list[dict] = []
     locks: list[dict] = []
     notes: list[str] = []
     writes = {path.replace("\\", "/"): text for path, text in payload.get("writes", {}).items()}
-    for path, fam in sorted(targets(writes).items()):
+    found = targets(writes)
+    manifest_dirs = [(fam.eco, posixpath.dirname(path)) for path, fam in found.items() if not fam.lock]
+    for path, fam in sorted(found.items()):
         text = writes[path]
         try:
             names = read_names(fam, text)
@@ -115,6 +126,8 @@ def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict], list
             notes.append(
                 f"{path}: could not be read as {fam.kind} ({type(exc).__name__}); its dependencies were not checked"
             )
+            continue
+        if fam.lock and any(eco == fam.eco and covers(each, posixpath.dirname(path)) for eco, each in manifest_dirs):
             continue
         lines = [] if fam.lock else text.lower().splitlines()
         for name in names:

@@ -73,7 +73,7 @@ def test_allowlist_lines_tolerate_comments_blanks_bom_and_crlf(tmp_path: Path) -
     root = scriptkit.init_repo(tmp_path / "r", {})
     (root / ".chock").mkdir()
     (root / ALLOWLIST).write_bytes(b"\xef\xbb\xbf# approved\r\nrequests  # http client\r\n\r\n  Flask \r\n")
-    assert mod.load_allowlist(root) == ["requests", "flask"]
+    assert mod.load_allowlist(root) == ["requests", "Flask"]
 
 
 def test_an_allowlist_that_is_not_utf8_lists_nothing(tmp_path: Path) -> None:
@@ -92,6 +92,24 @@ def test_each_ecosystem_normalises_the_allowlist_its_own_way() -> None:
     assert ("py", "scope-pkg") not in allowed
 
 
+def test_case_sensitive_ecosystems_compare_names_as_written() -> None:
+    allowed = mod.Allowed(["github.com/BurntSushi/toml", "Org.Acme:Core", "Flask", "Newtonsoft.Json"])
+    assert ("go", "github.com/BurntSushi/toml") in allowed
+    assert ("go", "github.com/burntsushi/toml") not in allowed
+    assert ("maven", "Org.Acme:Core") in allowed
+    assert ("maven", "org.acme:core") not in allowed
+    assert ("py", "flask") in allowed
+    assert ("nuget", "newtonsoft.json") in allowed
+
+
+def test_a_go_module_that_differs_only_in_case_is_a_new_name(tmp_path: Path) -> None:
+    root = scriptkit.init_repo(tmp_path / "r", {ALLOWLIST: "github.com/BurntSushi/toml\n"})
+    ok = run(root, {"go.mod": "module m\nrequire github.com/BurntSushi/toml v1.0.0\n"})
+    squat = run(root, {"go.mod": "module m\nrequire github.com/burntsushi/toml v1.0.0\n"})
+    assert (ok[0], keys(ok[1])) == (0, [])
+    assert (squat[0], keys(squat[1])) == (1, ["go|github.com/burntsushi/toml"])
+
+
 def test_a_name_in_two_tables_of_one_file_is_one_finding(repo: Path) -> None:
     text = '[project]\ndependencies = ["evil"]\n[dependency-groups]\ndev = ["Evil"]\n'
     assert keys(run(repo, {"pyproject.toml": text})[1]) == ["py|evil"]
@@ -105,16 +123,46 @@ def test_a_lockfile_name_alone_asks(repo: Path) -> None:
     assert "pinned in the lockfile" in err
 
 
-def test_a_manifest_name_beside_a_lockfile_name_blocks(repo: Path) -> None:
+def test_a_manifest_name_beside_a_lockfile_name_blocks_and_only_the_manifest_is_judged(repo: Path) -> None:
     writes = {
         "package.json": '{"dependencies": {"evil": "1"}}',
-        "package-lock.json": '{"packages": {"node_modules/evil": {}}}',
+        "package-lock.json": '{"packages": {"node_modules/evil": {}, "node_modules/its-transitive": {}}}',
     }
     code, document, err = run(repo, writes)
-    assert code == 1
-    assert sorted(item["path"] for item in document["findings"]) == ["package-lock.json", "package.json"]
+    assert (code, [item["path"] for item in document["findings"]]) == (1, ["package.json"])
     assert "Unlisted dependency refused" in err
-    assert "package-lock.json" not in err
+
+
+def test_a_listed_manifest_addition_does_not_ask_about_its_lockfile_transitives(repo: Path) -> None:
+    writes = {
+        "package.json": '{"dependencies": {"requests": "2"}}',
+        "package-lock.json": '{"packages": {"node_modules/requests": {}, "node_modules/its-transitive": {}}}',
+    }
+    assert run(repo, writes)[:2] == (0, {"findings": []})
+
+
+@pytest.mark.parametrize(
+    ("manifest", "lock", "asks"),
+    [
+        ("package.json", "package-lock.json", False),
+        ("web/package.json", "package-lock.json", False),
+        ("package.json", "web/package-lock.json", True),
+        ("web/package.json", "api/package-lock.json", True),
+        ("Cargo.toml", "package-lock.json", True),
+        ("go.mod", "go.sum", False),
+        ("pyproject.toml", "uv.lock", False),
+    ],
+)
+def test_a_lockfile_is_covered_by_a_manifest_of_its_ecosystem_in_its_folder_or_below(
+    repo: Path, manifest: str, lock: str, asks: bool
+) -> None:
+    body = {"go.sum": "example.com/new v1.0.0 h1:x=\n", "uv.lock": '[[package]]\nname = "new"\n'}
+    lock_text = body.get(lock, '{"packages": {"node_modules/new": {}}}')
+    manifest_text = {"package.json": "{}", "go.mod": "module m\n", "Cargo.toml": "", "pyproject.toml": ""}[
+        manifest.rsplit("/", 1)[-1]
+    ]
+    code, document, _ = run(repo, {manifest: manifest_text, lock: lock_text})
+    assert (code, [item["path"] for item in document["findings"]]) == ((3, [lock]) if asks else (0, []))
 
 
 def test_a_doctype_is_a_finding_so_no_name_hides_behind_it(repo: Path) -> None:
@@ -173,14 +221,11 @@ def test_node_modules_manifests_are_not_the_projects_own(repo: Path) -> None:
     assert run(repo, writes)[:2] == (0, {"findings": []})
 
 
-def test_a_lockfile_ask_becomes_a_block_beside_a_manifest_finding_in_the_same_run(repo: Path) -> None:
-    writes = {
-        "package.json": '{"dependencies": {"legacy": "1"}}',
-        "package-lock.json": '{"packages": {"node_modules/new": {}}}',
-    }
+def test_an_unreadable_lockfile_beside_a_manifest_is_still_refused(repo: Path) -> None:
+    deep = '{"x": ' + "[" * 5000 + "]" * 5000 + "}"
+    writes = {"package.json": '{"dependencies": {"requests": "1"}}', "package-lock.json": deep}
     code, document, _ = run(repo, writes)
-    assert code == 1
-    assert sorted(item["path"] for item in document["findings"]) == ["package-lock.json", "package.json"]
+    assert (code, [item["path"] for item in document["findings"]]) == (3, ["package-lock.json"])
 
 
 def test_files_that_are_not_manifests_are_ignored(repo: Path) -> None:
