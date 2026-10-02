@@ -9,6 +9,9 @@ base/block-no-verify:
 base/block-secret-store-reads:
   chock_scan: [data_table, safe_read]
   chock_shellparse: [args, parse, targets, writes]
+base/block-persistence-shapes:
+  chock_shellparse: [args, parse, targets, writes]
+  chock_scan: [data_table, safe_read]
 base/block-unapproved-egress:
   chock_shellparse: [args, parse, targets, writes]
   chock_scan: [hostmatch, hosts, idn, safe_read, urls]

@@ -598,6 +598,16 @@ block-secret-store-reads:
     (365-day freshness, checked in CI); add a path or a reader there and an eval case beside it. A store that is a
     directory needs no per-file rows. `relative` says whether a bare relative name may match (`always`, `code` for
     interpreter text only, `never`). Nothing waives a refusal in-band: the person runs the command themselves.
+block-persistence-shapes:
+  solves: |
+    Publishing a package, making a repository public, or leaving something running after the session ends are
+    the steps a supply-chain worm takes next, and each is one shell line an agent can be talked into. This guard
+    reads the command and refuses publishes, registry-auth edits, user services, launch agents, scheduled jobs,
+    Run keys, ssh login keys, runner registration, sudoers edits, setuid bits and detached downloads. It asks
+    before a release or a new remote. It is friction on the command text, not a security boundary.
+  customise: |
+    The verbs, flags and paths are data in `implementations/data/shapes.json`; add a program or a path there and an
+    eval case beside it. Keep the `as_of` date current, since CI fails the table a year after it.
 
 agentic-code-security:
   solves: |
