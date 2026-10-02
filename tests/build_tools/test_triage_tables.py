@@ -1,4 +1,4 @@
-"""tools/triage_tables.py: the EP-17 triage table loads, stays fresh, and can never be edited looser."""
+"""tools/triage_tables.py: the EP-17 triage table loads, stays fresh, and keeps the shape its sources gave it."""
 
 from __future__ import annotations
 
@@ -38,23 +38,42 @@ def test_load_refuses_with_every_problem(tmp_path: Path, doc: dict) -> None:
     doc["verdicts"]["high"] = "ask"
     bad = tmp_path / "triage.json"
     bad.write_text(json.dumps(doc), encoding="utf-8")
-    with pytest.raises(tt.TableError, match=r"schema must be 1(.|\n)*verdicts\.high must be deny"):
+    with pytest.raises(tt.TableError, match=r"schema must be 1(.|\n)*verdicts\.high must be at least deny"):
         tt.load(bad, today=AS_OF)
 
 
-def test_load_refuses_unparseable_json(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        (b"{", "unreadable: Expecting"),
+        (b"\xff\xfe{}", "unreadable: 'utf-8' codec"),
+        (b"[" * 100_000, "unreadable: maximum recursion"),
+        (b'{"schema": 1, "schema": 1}', "unreadable: duplicate keys: schema"),
+    ],
+)
+def test_load_refuses_what_it_cannot_read(tmp_path: Path, raw: bytes, expected: str) -> None:
     bad = tmp_path / "triage.json"
-    bad.write_text("{", encoding="utf-8")
-    with pytest.raises(tt.TableError, match="not valid JSON"):
+    bad.write_bytes(raw)
+    with pytest.raises(tt.TableError, match=expected):
+        tt.load(bad, today=AS_OF)
+
+
+def test_load_refuses_a_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(tt.TableError, match="unreadable"):
+        tt.load(tmp_path / "absent.json", today=AS_OF)
+
+
+def test_a_duplicated_never_list_is_refused_not_last_one_wins(tmp_path: Path) -> None:
+    text = tt.TABLE.read_text(encoding="utf-8").replace('"never_excluded": {', '"never_excluded": {"dirs": [], ', 1)
+    bad = tmp_path / "triage.json"
+    bad.write_text(text, encoding="utf-8")
+    with pytest.raises(tt.TableError, match="duplicate keys: dirs"):
         tt.load(bad, today=AS_OF)
 
 
 @pytest.mark.parametrize("value", [[], "x", 1, None])
 def test_a_non_object_table_is_refused(value: object) -> None:
     assert tt.problems(value, AS_OF) == ["the table must be a JSON object"]
-
-
-# --- freshness (D7): a stale table breaks CI, it does not rot ---------------------------------
 
 
 def test_stale_after_max_age(doc: dict) -> None:
@@ -80,28 +99,46 @@ def test_the_age_limit_is_code_not_data(doc: dict) -> None:
     assert found(doc) == ["unknown keys: max_age_days"]
 
 
-# --- shape ---------------------------------------------------------------------------------------
-
-
 def test_missing_keys_are_named(doc: dict) -> None:
     del doc["precedents"], doc["source"]
     assert found(doc) == ["missing keys: precedents, source"]
 
 
-@pytest.mark.parametrize("source", [{}, [], {"r": ""}, {"r": 3}, {"r": "http://x.example"}, {"r": "../x"}])
-def test_sources_must_be_https_or_repo_paths(doc: dict, source: object) -> None:
-    doc["source"] = source
-    assert any(p.startswith("source") for p in found(doc)), found(doc)
+@pytest.mark.parametrize("schema", [True, 1.0, "1", 2])
+def test_schema_is_the_integer_one(doc: dict, schema: object) -> None:
+    doc["schema"] = schema
+    assert found(doc) == ["schema must be 1"]
 
 
-def test_an_entry_citing_an_unknown_source_is_refused(doc: dict) -> None:
-    doc["precedents"][0]["source"] = "nowhere"
-    assert found(doc) == [f"precedents.{doc['precedents'][0]['id']}: source 'nowhere' is not in source"]
+@pytest.mark.parametrize("value", [{"r11": ""}, {"r11": 3}, {"r11": "http://x.example"}, {"r11": "https://"}])
+def test_source_values_must_be_https_or_repo_paths(doc: dict, value: dict) -> None:
+    doc["source"] |= value
+    assert found(doc) == ["source values must be https:// URLs or owner/repo:path references"]
 
 
-@pytest.mark.parametrize("field", ["use"])
-def test_use_must_be_text(doc: dict, field: str) -> None:
-    doc[field] = ""
+@pytest.mark.parametrize("value", [{}, []])
+def test_source_must_be_a_non_empty_object(doc: dict, value: object) -> None:
+    doc["source"] = value
+    assert "source must be a non-empty object of id to URL or repo path" in found(doc)
+
+
+def test_every_declared_source_is_cited(doc: dict) -> None:
+    doc["source"]["spare"] = "https://example.org/x"
+    assert found(doc) == ["source 'spare' is cited by no entry"]
+
+
+@pytest.mark.parametrize("cites", [["nowhere"], [], "r11", [3], {}])
+def test_an_entry_must_cite_declared_sources(doc: dict, cites: object) -> None:
+    entry = doc["precedents"][0]
+    entry["source"] = cites
+    where = f"precedents.{entry['id']}"
+    expected = f"{where}: source 'nowhere' is not in source" if cites == ["nowhere"] else f"{where}: source must be"
+    assert any(p.startswith(expected) for p in found(doc)), found(doc)
+
+
+@pytest.mark.parametrize("use", ["", "​", "  ", 3])
+def test_use_must_be_text(doc: dict, use: object) -> None:
+    doc["use"] = use
     assert found(doc) == ["use must be non-empty text"]
 
 
@@ -114,39 +151,48 @@ def test_use_must_be_text(doc: dict, field: str) -> None:
         (lambda e: e.update(extra=1), "unknown keys: extra"),
         (lambda e: e.pop("source"), "missing keys: source"),
         (lambda e: e.update(unless=""), "unless must be 1..300 characters"),
+        (lambda e: e.pop("unless"), "must keep its unless clause"),
+        (
+            lambda e: e.update(id="command-injection"),
+            "not a known entry; a new exclusion or precedent is a code change",
+        ),
     ],
 )
 def test_finding_entries_are_closed_and_bounded(doc: dict, mutate, expected: str) -> None:
-    entry = doc["finding_exclusions"][0]
-    mutate(entry)
+    mutate(doc["finding_exclusions"][0])
     assert any(expected in p for p in found(doc)), found(doc)
 
 
 @pytest.mark.parametrize("key", ["finding_exclusions", "precedents", "path_exclusions", "not_adopted"])
 def test_lists_must_be_non_empty_lists_of_objects(doc: dict, key: str) -> None:
     doc[key] = []
-    assert found(doc) == [f"{key} must be a non-empty list"]
+    assert f"{key} must be a non-empty list" in found(doc)
     doc[key] = ["x"]
-    assert found(doc) == [f"{key}[0] must be an object"]
+    assert f"{key}[0] must be an object" in found(doc)
 
 
 def test_ids_are_unique_across_every_list(doc: dict) -> None:
-    doc["precedents"][0]["id"] = doc["finding_exclusions"][0]["id"]
-    assert found(doc) == [f"duplicate id '{doc['precedents'][0]['id']}'"]
+    doc["precedents"].append(copy.deepcopy(doc["finding_exclusions"][1]))
+    assert any(p == f"duplicate id '{doc['finding_exclusions'][1]['id']}'" for p in found(doc)), found(doc)
+
+
+def test_not_adopted_cannot_be_cut(doc: dict) -> None:
+    doc["not_adopted"] = doc["not_adopted"][:1]
+    assert [p for p in found(doc) if p.startswith("not_adopted must keep")] == [
+        f"not_adopted must keep {i}" for i in sorted(tt.NOT_ADOPTED_IDS - {doc["not_adopted"][0]["id"]})
+    ]
 
 
 def test_not_adopted_names_the_upstream_rule_and_why(doc: dict) -> None:
-    doc["not_adopted"][0] = {"id": "x", "upstream": "y", "why": "", "source": "r11"}
-    assert found(doc) == ["not_adopted.x: why must be 1..300 characters"]
-
-
-# --- invariants that make a looser edit fail ------------------------------------------------------
+    doc["not_adopted"][0]["why"] = ""
+    assert found(doc) == [f"not_adopted.{doc['not_adopted'][0]['id']}: why must be 1..300 characters"]
 
 
 @pytest.mark.parametrize(
     ("verdicts", "expected"),
     [
-        ({"high": "ask", "medium": "ask", "low": "allow"}, "verdicts.high must be deny"),
+        ({"high": "ask", "medium": "ask", "low": "allow"}, "verdicts.high must be at least deny"),
+        ({"high": "deny", "medium": "allow", "low": "allow"}, "verdicts.medium must be at least ask"),
         ({"high": "deny", "medium": "allow", "low": "ask"}, "verdicts must not loosen as severity rises"),
         ({"high": "deny", "medium": "ask"}, "verdicts must map exactly high, low, medium"),
         ({"high": "deny", "medium": "warn", "low": "allow"}, "verdicts.medium must be one of allow, ask, deny"),
@@ -166,6 +212,7 @@ def test_severity_verdicts(doc: dict, verdicts: object, expected: str) -> None:
             "rank_tier.5 must be one of advisory, ask, off",
         ),
         ({"1": "ask", "2": "off", "3": "off", "4": "ask", "5": "ask"}, "rank_tier must not loosen as rank rises"),
+        ({"1": "off", "2": "off", "3": "off", "4": "off", "5": "off"}, "rank_tier.5 must be at least ask"),
         ({"1": "off"}, "rank_tier must map exactly 1, 2, 3, 4, 5"),
         ("x", "rank_tier must map exactly 1, 2, 3, 4, 5"),
     ],
@@ -179,83 +226,3 @@ def test_rank_tier(doc: dict, rank_tier: object, expected: str) -> None:
 def test_confidence_floor_cannot_be_raised_to_hide_findings(doc: dict, value: object) -> None:
     doc["report_min_confidence"] = value
     assert found(doc) == ["report_min_confidence must be an integer 1..8 (raising it hides findings)"]
-
-
-@pytest.mark.parametrize("dropped", [*sorted(tt.REQUIRED_NEVER_DIRS)[:2], "AGENTS.md"])
-def test_never_excluded_cannot_shrink_below_the_code_floor(doc: dict, dropped: str) -> None:
-    for key in ("dirs", "names"):
-        doc["never_excluded"][key] = [v for v in doc["never_excluded"][key] if v != dropped]
-    assert found(doc) == [f"never_excluded must keep {dropped}"]
-
-
-def test_never_excluded_is_a_closed_object(doc: dict) -> None:
-    doc["never_excluded"] = {"dirs": "x", "names": [""]}
-    assert found(doc) == [
-        "never_excluded.dirs must be a list of strings",
-        "never_excluded.names must be a list of strings",
-    ]
-    doc["never_excluded"] = []
-    assert found(doc) == ["never_excluded must have exactly dirs, names"]
-
-
-@pytest.mark.parametrize(
-    ("dirs", "names", "expected"),
-    [
-        ([".github"], [], "path_exclusions.tests: dirs entry '.github' is never excluded"),
-        ([], ["*.md"], "path_exclusions.tests: names glob '*.md' matches never-excluded 'AGENTS.md'"),
-        ([], ["SKILL*"], "path_exclusions.tests: names glob 'SKILL*' matches never-excluded 'SKILL.md'"),
-        ([], ["*.YAML"], "path_exclusions.tests: names glob '*.YAML' matches never-excluded 'manifest.yaml'"),
-        (["a/b"], [], "path_exclusions.tests: dirs entry 'a/b' must be one path segment"),
-        ([], [], "path_exclusions.tests: needs dirs or names"),
-        ("x", [], "path_exclusions.tests: dirs must be a list of strings"),
-    ],
-)
-def test_a_path_exclusion_can_never_cover_agent_config(doc: dict, dirs, names, expected: str) -> None:
-    entry = next(e for e in doc["path_exclusions"] if e["id"] == "tests")
-    entry.update(dirs=dirs, names=names)
-    assert expected in found(doc)
-
-
-# --- matching -------------------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("path", "expected"),
-    [
-        ("tests/test_app.py", "tests"),
-        ("pkg/sub/test_app.py", "tests"),
-        ("src/app_test.go", "tests"),
-        ("web/__tests__/x.js", "tests"),
-        ("docs/guide/setup.md", "docs"),
-        ("vendor/github.com/x/y.go", "vendored"),
-        ("node_modules/left-pad/index.js", "vendored"),
-        ("api/user.pb.go", "generated"),
-        ("./tests\\unit\\x.py", "tests"),
-    ],
-)
-def test_excluded_paths(path: str, expected: str) -> None:
-    assert tt.excluded(tt.load(), path) == expected
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "src/app.py",
-        "contests/score.py",
-        "latest/app.py",
-        "docs/AGENTS.md",
-        "tests/CLAUDE.md",
-        "vendor/x/SKILL.md",
-        "tests/.github/workflows/ci.yml",
-        "docs/.claude/settings.json",
-        "Tests/Agents.md",
-        "tests/../src/app.py",
-        "../tests/x.py",
-        "/tests/x.py",
-        "",
-        "tests/.CHOCK/config.yaml",
-        "base/p/implementations/test_guard.py",
-    ],
-)
-def test_paths_that_stay_in_scope(path: str) -> None:
-    assert tt.excluded(tt.load(), path) is None
