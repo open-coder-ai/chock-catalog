@@ -2,11 +2,36 @@
 
 from __future__ import annotations
 
+import sys
+from types import ModuleType
+
 import pytest
 from policies import scriptkit
 
 NAME = "registry-config-gate.py"
-mod = scriptkit.load("registry-config", NAME)
+SCAN = "chock_scan"
+
+
+def load_gate() -> tuple[ModuleType, dict[str, ModuleType]]:
+    """The gate and its reg_* modules, imported against the chock_scan copy it ships. tests/chock_scan is
+    also a package named chock_scan, so any already imported is set aside and put back afterwards, and the
+    folder the gate puts on sys.path is taken off again."""
+    saved = {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] == SCAN}
+    for name in [n for n in sys.modules if n.startswith("reg_")]:
+        # A second load (xdist may import this file under two names) must not reuse readers bound to the first copy.
+        del sys.modules[name]
+    path = list(sys.path)
+    try:
+        gate = scriptkit.load("registry-config", NAME)
+    finally:
+        sys.path[:] = path
+        for name in [n for n in sys.modules if n.split(".")[0] == SCAN]:
+            del sys.modules[name]
+        sys.modules.update(saved)
+    return gate, {name: sys.modules[name] for name in ("reg_core", "reg_hosts")}
+
+
+mod, MODULES = load_gate()
 
 # Credentials in fixtures are short and dotted so no secret scanner reads them as real ones.
 LIT = "lit3.d9f"

@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: registry-config
+  path: base/registry-config
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 50
+  eval_executed: 50
+  description: 'Refuses package-manager config that redirects installs or weakens them: literal tokens,
+    http or unlisted registry hosts (parsed, so lookalike and userinfo spellings fail), TLS or checksum
+    checks off, install scripts on (npm, Yarn, pnpm, Bun, pip, uv, Poetry, conda, Go, Cargo, NuGet,
+    Maven, Bundler, Composer, Hex, Dependabot); asks on extra indexes, replaces, no cooldown. Added
+    only. Ship observe first. Friction, not a boundary.'

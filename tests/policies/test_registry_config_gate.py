@@ -5,13 +5,15 @@ from __future__ import annotations
 import io
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
-import reg_core
-import reg_hosts
 from policies import gatekit, scriptkit
-from policies.test_registry_config import B_HTTP, B_SCRIPTS, B_TLS, B_UNREAD, LIT, NAME, mod, rules
+from policies.test_registry_config import B_HTTP, B_SCRIPTS, B_TLS, B_UNREAD, LIT, MODULES, NAME, mod, rules
+
+reg_core = MODULES["reg_core"]
+reg_hosts = MODULES["reg_hosts"]
 
 POLICY = "registry-config"
 EVIL_NPMRC = "min-release-age=3\nregistry=https://npm.corp.example/\n"
@@ -187,3 +189,16 @@ def test_the_manifest_declares_a_blocking_script_gate() -> None:
     gate = scriptkit.manifest(POLICY)["hook"]["gate"]
     assert (gate["kind"], gate["action"], gate["params"]["script"]) == ("script", "block", NAME)
     assert sorted(gate["on"]) == ["commit", "tool_use"]
+
+
+def test_the_shipped_script_runs_as_a_program() -> None:
+    script = scriptkit.script_path(POLICY, NAME)
+    proc = subprocess.run(
+        [sys.executable, str(script)],
+        input=payload({".npmrc": "strict-ssl=false\n"}),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 1
+    assert [f["rule"] for f in json.loads(proc.stdout)["findings"]] == [B_TLS, "reg-cooldown-absent"]

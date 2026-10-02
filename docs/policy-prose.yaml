@@ -556,3 +556,21 @@ agentic-code-security:
     waived by a human reviewer with `# chock: allow <rule-id>` (`//` in JavaScript); the agent's own waiver is
     refused, and a JSON config, which has no comments, is waived in the selection file. The rule catalogue in
     `references/rule-catalogue.md` lists every rule with its weakness, ASI entry and fix.
+registry-config:
+  solves: |
+    One line in a package manager's config decides where every dependency comes from and how it is checked: a
+    registry or index URL, a source replacement, a TLS or checksum switch, a setting that lets dependencies run
+    install scripts, a token written into the file. An agent fixing an install error can change any of them, and
+    the change looks like configuration, not code. This gate reads those files for npm, Yarn, pnpm, Bun, pip, uv,
+    Poetry, PDM, pipenv, conda, Go, Cargo, NuGet, Maven, Bundler, Composer, Hex, CocoaPods, SwiftPM, Dependabot and
+    Renovate, and refuses what the change adds: clear-text or unlisted registry hosts (URLs are parsed and hosts
+    normalised, so a lookalike or userinfo spelling does not pass for an allowed host), verification turned off,
+    install scripts turned on and literal credentials. Extra indexes, replaces and redirects, and a missing release
+    cooldown ask a person instead. Settings already committed stay quiet.
+  customise: |
+    Ship it under `rollout: observe` in .chock/config.yaml first, read the gate log, and move to enforce once the
+    findings it records are the ones you want refused. An internal mirror is allowed by a person adding its host
+    (or `*.` and a domain) to `.chock/registry-hosts.txt` in a reviewed commit; the gate reads that file from HEAD
+    only, and a change to it asks. A finding that asks (an extra index, a replace, a missing cooldown) is kept by a
+    person committing from their own shell with CHOCK_ALLOW=registry-config for that one commit. To stop judging
+    the policy, list it under policies.disabled.
