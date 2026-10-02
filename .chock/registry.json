@@ -345,9 +345,9 @@
       {
         "id": "scan-secrets",
         "artifact": "hook",
-        "version": "0.0.9",
+        "version": "0.1.0",
         "name": "Scan Secrets",
-        "description": "Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks, key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore). Runs: commit, agent write, turn's end. Not yet caught: quoted-colon forms (\"password\": \"...\", api_key: \"...\"), access_token=, client_secret=. Waiver: '# pragma: allowlist secret' same line (path hit: anywhere in the file). Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never. Agent asks a person.",
+        "description": "Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values. Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.",
         "path": ".agents/policies/scan-secrets",
         "manifest": "manifest.yaml",
         "trust_tier": "community",

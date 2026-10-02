@@ -110,10 +110,9 @@
       "id": "pin-github-actions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "5b861f87739161945dadb9b34db0b7f2910ed5bfe179afa9a0a3381653d72766",
-      "source": ".",
-      "artifacts_sha256": "79ddfab425510ecba79c97fc652688c1ac0e0e63cc4be38524c299f6678ef12b",
-      "source_commit": null
+      "sha256": "07a396492ea043e506b7df87cf4864c1075b2f24922c2331cd2ab823962b4baf",
+      "source": "local",
+      "artifacts_sha256": "79ddfab425510ecba79c97fc652688c1ac0e0e63cc4be38524c299f6678ef12b"
     },
     {
       "id": "protect-agent-config",
@@ -151,9 +150,9 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "0f1d55320ec25757398471e9a5f3a8037acbe09519da7e979d5d589b8541e0b9",
+      "sha256": "47ff46faf00e86089e79b868077ac2443e75bb879af7224190477d0c65e3360f",
       "source": "local",
-      "artifacts_sha256": "03d7151bae8c6343fb090375426b8d99e65b62728663db9a590bdc876b776fc4"
+      "artifacts_sha256": "6840e8558f7043ad1eb33759f13a38edc17d46f1ad2bccc41068aac49a96c059"
     },
     {
       "id": "token-efficiency",

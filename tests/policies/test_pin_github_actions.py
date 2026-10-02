@@ -162,7 +162,7 @@ SILENT = [
     "      - {uses: ./x, with: {email: a@b.c}}",
     '      - uses: "./.github/actions/x"',
     f"uses: docker://alpine@{DIGEST}",
-    f'uses: "docker://alpine:3.19@{DIGEST}"',
+    f'uses: "docker://alpine:3.19@{DIGEST}"',  # pragma: allowlist secret
     f"  image: docker://alpine@{DIGEST}",
     f"uses: 'docker://alpine@{DIGEST}'",
     "  image: Dockerfile",
@@ -182,7 +182,7 @@ SILENT = [
     "      - run: echo reuses: a/b@c",
     "      - run: printf '\\x40'",
     "      - run: sed -i 's/a\\/b/c/' f",
-    "      - run: curl -u user:pass@host https://x/?a=1&b=2",
+    "      - run: curl -u user:pass@host https://x/?a=1&b=2",  # pragma: allowlist secret
     "    env:",
     "      FOO: bar@baz",
     "    runs-on: ubuntu-latest",

@@ -1,6 +1,6 @@
 id: guard-memory-writes
 name: "Guard Memory Writes"
-version: "0.0.5"
+version: "0.0.6"
 description: >
   Refuses agent-memory writes holding what memory must never hold: pasted git history (diff, hunk,
   commit, index lines), a fenced code block over 20 lines, a duplicate line, or a secret
@@ -35,7 +35,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -68,3 +68,7 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Description only, within the 500-char budget; scope, checks and gate unchanged."
+- version: 0.0.6
+  date: '2026-10-02'
+  changes:
+  - "The secret check follows scan-secrets 0.1.0: its content_pattern is copied verbatim (now a verbose, commented regex), so a memory file is also refused for quoted-colon JSON and YAML credentials, AWS secret access keys, credentials in URIs, Authorization header literals, passwords on a command line, PGP and encrypted private-key blocks, and the named-credential forms and vendor token shapes scan-secrets 0.1.0 adds. The URI-credentials alternative is the narrowed one (no unescaped backslash, # or ? in the userinfo; foo, foobar, bar, baz are placeholders). Scope, keys and gate unchanged."

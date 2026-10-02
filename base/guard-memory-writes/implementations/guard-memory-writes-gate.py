@@ -18,7 +18,87 @@ HISTORY = re.compile(
 )
 # scan-secrets' content_pattern, verbatim; tests/policies/test_guard_memory_writes.py fails on drift.
 SECRET = re.compile(
-    r"""(?i)((AKIA|ASIA)[0-9A-Z]{16}|gh[oprsu]_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{22,}|xox[bpas]-[0-9A-Za-z-]{10,}|(sk|rk)_live_[0-9A-Za-z]{16,}|sk-proj-[0-9A-Za-z_-]{20,}|sk-ant-[0-9A-Za-z_-]{20,}|sk-[0-9A-Za-z]{20,}|AIza[0-9A-Za-z_-]{35}|npm_[0-9A-Za-z]{36}|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|password\s*=\s*["'][^"'\s]{12,}["']|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}|password\s*[=:]\s*[^\s"'${}]{12,})"""
+    r"""(?ix)
+# v1 shapes, unchanged except where noted
+(AKIA|ASIA)[0-9A-Z]{16}
+|gh[oprsu]_[0-9A-Za-z]{36}
+|github_pat_[0-9A-Za-z_]{22,}
+|xox[bpas]-[0-9A-Za-z-]{10,}
+|(sk|rk)_live_[0-9A-Za-z]{16,}
+|sk-proj-[0-9A-Za-z_-]{20,}
+|sk-ant-[0-9A-Za-z_-]{20,}
+|sk-[0-9A-Za-z]{20,}
+|AIza[0-9A-Za-z_-]{35}
+|npm_[0-9A-Za-z]{36}
+|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}
+# JWT: segment lengths bounded so a hostile line is judged in linear time
+|eyJ[A-Za-z0-9_-]{0,512}\.[A-Za-z0-9_-]{0,16384}\.[A-Za-z0-9_-]*
+|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
+|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
+|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
+|password\s*=\s*["'][^"'\s]{12,}["']
+|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}
+# v1 bare password, now silent on SOPS, vault:, Terraform references and environment lookups
+|password\s*[=:]\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])[^\s"'${}]{12,}
+# private keys: any PEM label ending PRIVATE KEY (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS8), PGP armor
+|-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE\ KEY(?:\ BLOCK)?-----
+# key, token, secret and password names in any case and separator: JSON, YAML, env, HCL, Go, Ruby, PHP, Python, JS
+|(?:api[_.-]?key|secret[_.-]?(?:access[_.-]?)?key(?:[_.-]?base)?|access[_.-]?key
+   |(?:client|consumer|jwt|webhook|app|session|signing|cookie)[_.-]?secret
+   |(?:auth|access|refresh|api|bearer|bot)[_.-]?token|(?:private|signing|encryption|master)[_.-]?key
+   |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
+ ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?P<kv_quote>["'`])?
+ (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/
+   |/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
+   |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
+   |[\w.]{0,64}(?:env|getenv|environ)[.(\[]
+   |(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+(?:_[0-9]{1,3})?)["'`]
+   |(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+|[a-z]+[0-9]{0,3}(?:_[a-z]+[0-9]{0,3})+)(?:_[0-9]{1,3})?(?(kv_quote)(?!)|(?:[\s,;.()\]}]|$))
+   |(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)
+    (?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$)))
+ (?(kv_quote)(?=[^"'`\s]{0,128}[^a-z._\-"'`\s])(?![^"'`\s]{0,128}/[^"'`\s]{0,128}\.(?:txt|pem|key|crt|cer|json|ya?ml|env|cfg|conf|ini|p12|pfx|jks)["'`])
+    [^"'`\s]{12}
+   |(?=[A-Za-z0-9/+=_~-]{0,128}\d)(?![A-Za-z0-9/+=_~-]{0,128}(?-i:Key|Token|Secret|Passw|Type|Str|Bytes|Cred))
+    [A-Za-z0-9/+=_~-]{16})
+# credentials in a URI: scheme://user:password@host, not localhost or example hosts, not a placeholder;
+# userinfo has no unescaped \ # ? / (RFC 3986), so a URL parser test vector is not a login
+|\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"#?\\]*):(?!(?P=uri_user)@)
+ (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|foo(?:bar)?|bar|baz|changeme|token|example|dummy|redacted|placeholder)@))
+ [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
+# Authorization header literals
+|\bauthorization["'`]?\]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]{1,512}(?:["'`\s,;)]|$))
+ (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?:["'`\s,;)]|$)))
+ [A-Za-z0-9._~+/-]{12,}
+# passwords passed on a command line
+|\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+|\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+|\bmysql(?:dump|admin|sh)?\b.{0,200}\s(?-i:-p)["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+|\bsshpass\s+(?-i:-p)\s*["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+# vendor token shapes (case-sensitive)
+|(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})
+|(?-i:\bGR1348941[0-9A-Za-z_-]{20,})
+|(?-i:\b(?:hf|api_org)_[A-Za-z0-9]{34}\b)
+|(?-i:\bya29\.[0-9A-Za-z_-]{20,})
+|(?-i:hooks\.slack\.com/(?:services|workflows|triggers)/[A-Za-z0-9]{8,}/[A-Za-z0-9/]{16,})
+|(?-i:\bxox[er]-[0-9A-Za-z-]{10,}|\bxoxe\.xox[bp]-[0-9A-Za-z-]{10,}|\bxapp-\d-[0-9A-Za-z-]{10,})
+|(?-i:\bSK[0-9a-f]{32}\b)
+|(?-i:\bdapi[0-9a-f]{32}\b)
+|(?-i:\bdp\.(?:pt|st|sa|said|ct|scim|audit)\.(?:[a-z0-9_-]{2,35}\.)?[0-9A-Za-z]{40,})
+|(?-i:\bpul-[0-9a-f]{40}\b)
+|(?-i:\bhv[sbr]\.[0-9A-Za-z_-]{24,})
+|(?-i:\bshp(?:at|ca|pa|ss)_[0-9a-fA-F]{32}\b)
+|(?-i:\bsntry[usai]_[0-9A-Za-z+/=_]{40,})
+|(?-i:\bglsa_[0-9A-Za-z]{32}_[0-9a-fA-F]{8}\b|\bglc_[0-9A-Za-z+/]{32,})
+|(?-i:\bdo[por]_v1_[0-9a-f]{64}\b)
+|(?-i:\blin_(?:api|oauth)_[0-9A-Za-z]{40}\b)
+|(?-i:\bntn_[0-9A-Za-z]{40,}|\bsecret_[0-9A-Za-z]{43}\b)
+|(?-i:\bpplx-[0-9A-Za-z]{48}\b)
+|(?-i:\bpscale_(?:tkn|oauth|pw)_[0-9A-Za-z_=.-]{32,})
+|(?-i:\bPMAK-[0-9a-f]{24}-[0-9a-f]{34}\b)
+|(?-i:\bHRKU-[0-9A-Za-z_-]{36,})
+|(?-i:\bpypi-[0-9A-Za-z_-]{85,})
+|(?-i:\brubygems_[0-9a-f]{48}\b)
+|(?-i:\bsk-(?:svcacct|admin)-[0-9A-Za-z_-]{20,})"""
 )
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 BULLET = re.compile(r"^([-*+]|\d+[.)])\s+")

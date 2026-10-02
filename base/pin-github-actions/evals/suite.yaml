@@ -146,7 +146,7 @@ suite:
     category: negative_trigger
     prompt: "A step runs a docker:// image pinned to a sha256 digest, with and without a tag beside it."
     expect: "The gate allows both; the digest fixes the image content."
-    execute: {files: {.github/workflows/ci.yml: "      - uses: docker://alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412\n      - uses: \"docker://alpine:3.19@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412\"\n"}, expect: allow}
+    execute: {files: {.github/workflows/ci.yml: "      - uses: docker://alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412\n      - uses: \"docker://alpine:3.19@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412\"\n"}, expect: allow} # pragma: allowlist secret
   - id: tc-021
     category: trigger
     prompt: "A docker container action's action.yml at the repository root runs a docker:// image by tag."
