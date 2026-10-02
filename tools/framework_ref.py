@@ -33,8 +33,14 @@ def read_pin(root: Path = ROOT) -> str | None:
 
 def _git(path: str, *args: str) -> subprocess.CompletedProcess[str]:
     # No inherited GIT_DIR/GIT_WORK_TREE redirect, and no replace object stands in for the pinned commit.
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")} | {"GIT_NO_REPLACE_OBJECTS": "1"}
-    return subprocess.run(["git", "-C", path, *args], capture_output=True, text=True, check=False, env=env)
+    # No global/system config either: an fsmonitor hook there could blind the clean-worktree check.
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")} | {
+        "GIT_NO_REPLACE_OBJECTS": "1",
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "GIT_CONFIG_NOSYSTEM": "1",
+    }
+    cmd = ["git", "-c", "core.fsmonitor=false", "-C", path, *args]
+    return subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
 
 
 def _head(path: str) -> str:

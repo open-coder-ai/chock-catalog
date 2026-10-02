@@ -47,7 +47,9 @@ def test_every_framework_checkout_here_is_found_and_guarded() -> None:
     assert found >= 8
 
 
-@pytest.mark.parametrize("key", ["PATH", "PYTHONPATH", "pythonhome", "GIT_DIR", "LD_LIBRARY_PATH"])
+@pytest.mark.parametrize(
+    "key", ["PATH", "PYTHONPATH", "pythonhome", "GIT_DIR", "LD_LIBRARY_PATH", "LD_PRELOAD", "HOME", "XDG_CONFIG_HOME"]
+)
 @pytest.mark.parametrize("where", ["workflow", "job"])
 def test_env_that_redirects_git_or_python_fails(key: str, where: str) -> None:
     job = {"steps": [READ, _checkout(), VERIFY]}
@@ -57,8 +59,13 @@ def test_env_that_redirects_git_or_python_fails(key: str, where: str) -> None:
     assert any(f"[{key!r}]" in p for p in problems), problems
 
 
+def test_an_expression_valued_env_fails() -> None:
+    workflow = {"jobs": {"j": {"env": "${{ fromJSON(inputs.env) }}", "steps": [READ, _checkout(), VERIFY]}}}
+    assert any("fromJSON" in p for p in check_workflows.framework_checkouts("w.yml", workflow))
+
+
 def test_ordinary_env_around_a_framework_checkout_passes() -> None:
-    job = {"env": {"PIP_NO_INPUT": "1"}, "steps": [READ, _checkout(), VERIFY]}
+    job = {"env": {"pip_no_input": "1", "TZ": "UTC"}, "steps": [READ, _checkout(), VERIFY]}
     assert check_workflows.framework_checkouts("w.yml", {"env": {"FORCE_COLOR": "1"}, "jobs": {"j": job}}) == []
 
 

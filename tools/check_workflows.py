@@ -23,7 +23,8 @@ BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
 HEXISH = re.compile(r"[0-9a-fA-F]{7,64}")
 # A verify step is its command and the ref it checks: shell, working-directory or extra env could neuter it.
 VERIFY_KEYS = {"name", "id", "run", "env"}
-ENV_RISK = re.compile(r".*PATH$|PYTHON|GIT_", re.IGNORECASE)
+# Job/workflow env reaches the verify process (LD_PRELOAD, PATH, HOME, ...): only names known inert pass.
+INERT_ENV = {"FORCE_COLOR", "NO_COLOR", "PIP_NO_INPUT", "PIP_DISABLE_PIP_VERSION_CHECK", "TZ"}
 
 
 def _triggers(workflow: dict) -> set:
@@ -47,6 +48,13 @@ def _is_checkout(step: dict) -> bool:
 def _pin(step: dict) -> str:
     """The FRAMEWORK_REF a run step sees: its own env entry, else the job env the read step exported."""
     return str((step.get("env") or {}).get("FRAMEWORK_REF", "${{ env.FRAMEWORK_REF }}"))
+
+
+def _env_problems(scope: dict) -> list[str]:
+    env = scope.get("env") or {}
+    if not isinstance(env, dict):
+        return [str(env)]
+    return sorted(str(k) for k in env if str(k).upper() not in INERT_ENV)
 
 
 def _skippable(step: dict) -> bool:
@@ -112,10 +120,10 @@ def framework_checkouts(name: str, workflow: dict) -> list[str]:
                 problems += [f"{where}: {p}" for p in _checkout_problems(steps, index)]
                 if (workflow.get("defaults") or {}).get("run") or (job.get("defaults") or {}).get("run"):
                     problems.append(f"{where}: `defaults.run` can change the shell or directory its verify runs in")
-                if risky := sorted(
-                    k for k in {**(workflow.get("env") or {}), **(job.get("env") or {})} if ENV_RISK.match(k)
-                ):
-                    problems.append(f"{where}: job or workflow env {risky} can change which git or python verify runs")
+                if risky := _env_problems(workflow) + _env_problems(job):
+                    problems.append(
+                        f"{where}: job or workflow env {risky} reaches its verify step; allowed: {sorted(INERT_ENV)}"
+                    )
             elif "repository" in params and (not BRANCH.fullmatch(ref) or HEXISH.fullmatch(ref)):
                 problems.append(
                     f"{where} of {params['repository']}: a pin goes through FRAMEWORK_REF and its verify step; "
