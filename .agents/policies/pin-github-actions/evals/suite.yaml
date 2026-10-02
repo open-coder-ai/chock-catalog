@@ -130,3 +130,235 @@ suite:
     prompt: "At the turn's end .github/workflows/ci.yml differs from HEAD only by a clean line; HEAD already holds an old violation."
     expect: "The turn is allowed: only the lines the turn added are judged."
     execute: {event: stop, head_files: {".github/workflows/ci.yml": "      - uses: actions/checkout@v4\n"}, writes: {".github/workflows/ci.yml": "      - uses: actions/checkout@v4\n      - run: make test\n"}, expect: allow}  # pragma: allowlist unpinned-action
+  # HP14 (0.0.6). Each block case is a form the 0.0.5 pattern passed, or a pin it accepted that
+  # is not one; each allow case is the correct form beside it. One judged line per block case.
+  - id: tc-018
+    category: trigger
+    prompt: "A step runs a docker:// image by a tag (docker-uses-tag)."
+    expect: "The gate blocks; an image tag is re-pointable, only an @sha256 digest is a pin."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: docker://alpine:3.19\n"}, expect: block}
+  - id: tc-019
+    category: trigger
+    prompt: "A step runs a docker:// image with no tag at all, which resolves to latest."
+    expect: "The gate blocks."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: docker://ghcr.io/some-org/tool\n"}, expect: block}
+  - id: tc-020
+    category: negative_trigger
+    prompt: "A step runs a docker:// image pinned to a sha256 digest, with and without a tag beside it."
+    expect: "The gate allows both; the digest fixes the image content."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: docker://alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412\n      - uses: \"docker://alpine:3.19@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412\"\n"}, expect: allow}
+  - id: tc-021
+    category: trigger
+    prompt: "A docker container action's action.yml at the repository root runs a docker:// image by tag."
+    expect: "The gate blocks; a root action.yml is in scope and its image key is judged."
+    execute: {files: {action.yml: "runs:\n  using: docker\n  image: docker://alpine:3.19\n"}, expect: block}
+  - id: tc-022
+    category: adversarial
+    prompt: "An action.yml image value spells docker:// with escapes inside double quotes."
+    expect: "The gate blocks; an escaped image value cannot be read, so it is refused."
+    execute: {files: {action.yml: "runs:\n  using: docker\n  image: \"docker:\\/\\/alpine:3.19\"\n"}, expect: block}
+  - id: tc-023
+    category: trigger
+    prompt: "A job calls a reusable workflow in another repository at a branch (reusable-workflow-branch)."
+    expect: "The gate blocks."
+    execute: {files: {.github/workflows/ci.yml: "jobs:\n  call:\n    uses: some-org/shared/.github/workflows/build.yml@main\n"}, expect: block}
+  - id: tc-024
+    category: negative_trigger
+    prompt: "A job calls a reusable workflow at a full SHA, and a local reusable workflow with no ref."
+    expect: "The gate allows both."
+    execute: {files: {.github/workflows/ci.yml: "jobs:\n  a:\n    uses: some-org/shared/.github/workflows/build.yml@8f4b7f84864484a7bf31766abe9204da3cbe65b3\n  b:\n    uses: ./.github/workflows/build.yml\n"}, expect: allow}
+  - id: tc-025
+    category: adversarial
+    prompt: "A workflow written as JSON quotes the uses key (json-uses-tag)."
+    expect: "The gate blocks; a quoted key is still the uses key."
+    execute: {files: {.github/workflows/ci.yml: "{\"jobs\": {\"b\": {\"steps\": [{\"uses\": \"actions/checkout@v4\"}]}}}\n"}, expect: block}
+  - id: tc-026
+    category: negative_trigger
+    prompt: "A workflow written as JSON pins the action to a full SHA."
+    expect: "The gate allows it; the closing quote ends the SHA."
+    execute: {files: {.github/workflows/ci.yml: "{\"steps\": [{\"uses\": \"actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3\"}]}\n"}, expect: allow}
+  - id: tc-027
+    category: adversarial
+    prompt: "A step is a flow mapping naming an action by tag."
+    expect: "The gate blocks."
+    execute: {files: {.github/workflows/ci.yml: "      - {name: co, uses: actions/checkout@v4}\n"}, expect: block}
+  - id: tc-028
+    category: adversarial
+    prompt: "The uses key has a space before its colon, which YAML accepts."
+    expect: "The gate blocks."
+    execute: {files: {.github/workflows/ci.yml: "      - uses : actions/checkout@v4\n"}, expect: block}
+  - id: tc-029
+    category: negative_trigger
+    prompt: "A flow-mapping step pins the action to a full SHA and carries more keys after it."
+    expect: "The gate allows it; in a flow collection a comma or brace ends the SHA."
+    execute: {files: {.github/workflows/ci.yml: "      - {uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3, with: {fetch-depth: 0}}\n"}, expect: allow}
+  - id: tc-030
+    category: adversarial
+    prompt: "The tag sits in a YAML anchor on another key and the step uses an alias to it."
+    expect: "The gate blocks the alias; a uses value this line cannot see is refused."
+    execute: {files: {.github/workflows/ci.yml: "x-co: &co actions/checkout@v4\njobs:\n  b:\n    steps:\n      - uses: *co\n"}, expect: block}
+  - id: tc-031
+    category: adversarial
+    prompt: "The uses value carries an anchor before a tagged ref."
+    expect: "The gate blocks; node properties do not change the value."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: &co actions/checkout@v4\n"}, expect: block}
+  - id: tc-032
+    category: adversarial
+    prompt: "The uses value carries a YAML tag before a tagged ref."
+    expect: "The gate blocks."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: !!str actions/checkout@v4\n"}, expect: block}
+  - id: tc-033
+    category: adversarial
+    prompt: "The uses value is moved to the line after the key."
+    expect: "The gate blocks the empty key; a value off the uses line is refused."
+    execute: {files: {.github/workflows/ci.yml: "      - uses:\n          actions/checkout@v4\n"}, expect: block}
+  - id: tc-034
+    category: adversarial
+    prompt: "The uses value is a folded block scalar."
+    expect: "The gate blocks the block-scalar indicator."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: >-\n          actions/checkout@v4\n"}, expect: block}
+  - id: tc-035
+    category: adversarial
+    prompt: "The uses key is an explicit '?' key with the value on the next line."
+    expect: "The gate blocks; an explicit key may span lines."
+    execute: {files: {.github/workflows/ci.yml: "      - ? uses\n        : actions/checkout@v4\n"}, expect: block}
+  - id: tc-036
+    category: negative_trigger
+    prompt: "A run block lists a Go module and an npm package at movable versions on lines of their own."
+    expect: "The gate allows them; only the uses and image keys are judged."
+    execute: {files: {.github/workflows/ci.yml: "      - run: |\n          go install \\\n            golang.org/x/tools/gopls@latest\n          npx \\\n            @some-scope/tool@1.2.3\n"}, expect: allow}
+  - id: tc-037
+    category: adversarial
+    prompt: "The ref is a short SHA."
+    expect: "The gate blocks; only a full 40-hex SHA is a pin."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: actions/checkout@8f4b7f8\n"}, expect: block}
+  - id: tc-038
+    category: adversarial
+    prompt: "The ref is 40 hex characters in uppercase, which a tag can be named."
+    expect: "The gate blocks; a commit SHA is written in lowercase."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: actions/checkout@8F4B7F84864484A7BF31766ABE9204DA3CBE65B3\n"}, expect: block}
+  - id: tc-039
+    category: adversarial
+    prompt: "A full SHA has '#v4' glued to it with no space, so YAML reads it as part of the ref."
+    expect: "The gate blocks."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: actions/checkout@8f4b7f84864484a7bf31766abe9204da3cbe65b3#v4\n"}, expect: block}
+  - id: tc-040
+    category: adversarial
+    prompt: "A full SHA is followed by a comma and more ref characters in block context (a tag named <sha>,x)."
+    expect: "The gate blocks; outside a flow collection the comma is part of the ref."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: some-org/action@8f4b7f84864484a7bf31766abe9204da3cbe65b3,x\n"}, expect: block}
+  - id: tc-041
+    category: adversarial
+    prompt: "A full SHA ends in a closing brace in block context with no flow collection open (a tag named <sha>})."
+    expect: "The gate blocks; only inside a flow collection does the brace end the SHA."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: some-org/action@8f4b7f84864484a7bf31766abe9204da3cbe65b3}\n"}, expect: block}
+  - id: tc-042
+    category: adversarial
+    prompt: "The tag is the ref and a full SHA only appears in the trailing comment."
+    expect: "The gate blocks; a SHA in a comment pins nothing."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: actions/checkout@v4  # 8f4b7f84864484a7bf31766abe9204da3cbe65b3\n"}, expect: block}
+  - id: tc-043
+    category: negative_trigger
+    prompt: "A SHA pin keeps its version in a trailing comment, after that tag was moved upstream (the Trivy and tj-actions case)."
+    expect: "The gate allows it; the SHA keeps running the reviewed code whatever the tag now names."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: aquasecurity/trivy-action@8f4b7f84864484a7bf31766abe9204da3cbe65b3  # 0.28.0 (tag since moved)\n"}, expect: allow}
+  - id: tc-044
+    category: adversarial
+    prompt: "The ref starts with a character outside letters, digits and ._/- (owner/repo@+x)."
+    expect: "The gate blocks; any ref that is not a SHA is judged."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: some-org/action@+release\n"}, expect: block}
+  - id: tc-045
+    category: adversarial
+    prompt: "The path inside the action repository holds a space before the tagged ref."
+    expect: "The gate blocks; a plain value runs to the @ whatever its characters."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: some-org/repo/a b@main\n"}, expect: block}
+  - id: tc-046
+    category: adversarial
+    prompt: "A single-quoted path doubles a quote before the tagged ref."
+    expect: "The gate blocks; '' is an escaped quote inside the value."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: 'some-org/repo/x''y@main'\n"}, expect: block}
+  - id: tc-047
+    category: adversarial
+    prompt: "The uses value spells the @ as a YAML escape inside double quotes."
+    expect: "The gate blocks; this line check cannot read an escaped reference, so it refuses it."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: \"actions/checkout\\x40v4\"\n"}, expect: block}
+  - id: tc-048
+    category: adversarial
+    prompt: "A double-quoted uses value is left open and continues on the next line."
+    expect: "The gate blocks; a value split across lines cannot be read one line at a time."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: \"actions/\n          checkout@v4\"\n"}, expect: block}
+  - id: tc-049
+    category: adversarial
+    prompt: "The uses key itself is spelled with an escape in a double-quoted key."
+    expect: "The gate blocks; an escaped key cannot be ruled out as the uses key."
+    execute: {files: {.github/workflows/ci.yml: "      - \"u\\x73es\": actions/checkout@v4\n"}, expect: block}
+  - id: tc-050
+    category: adversarial
+    prompt: "A plain owner/repo uses value has no ref on its line."
+    expect: "The gate blocks; a remote action needs a ref, so a ref-less value is either broken or written somewhere this line check cannot see."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: actions/checkout\n"}, expect: block}
+  - id: tc-051
+    category: trigger
+    prompt: "A composite action's action.yml in a subfolder of an action repository uses a tag."
+    expect: "The gate blocks; action.yml at any depth is in scope."
+    execute: {files: {setup/action.yml: "runs:\n  using: composite\n  steps:\n    - uses: actions/setup-python@v5\n"}, expect: block}
+  - id: tc-052
+    category: negative_trigger
+    prompt: "A workflow names a step 'reuses: ...', sets an e-mail address and runs a container image by tag without docker://."
+    expect: "The gate allows it; none is a uses or docker:// reference (container image tags are a documented limit)."
+    execute: {files: {.github/workflows/ci.yml: "    container:\n      image: node:20\n    steps:\n      - name: \"reuses: some-org/action@main\"\n        run: git config user.email someone@example.com\n"}, expect: allow}
+  - id: tc-053
+    category: trigger
+    prompt: "The agent writes a docker:// step pinned by tag into .github/workflows/ci.yml."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {".github/workflows/ci.yml": "      - uses: docker://alpine:3.19\n"}, expect: block}
+  - id: tc-054
+    category: trigger
+    prompt: "At the turn's end .github/workflows/ci.yml holds a quoted-key uses at a tag that HEAD lacks."
+    expect: "The turn is blocked."
+    execute: {event: stop, head_files: {".github/workflows/ci.yml": "{\"steps\": []}\n"}, writes: {".github/workflows/ci.yml": "{\"steps\": [{\"uses\": \"actions/checkout@v4\"}]}\n"}, expect: block}
+  - id: tc-055
+    category: adversarial
+    prompt: "A flow-mapping step makes uses an explicit '?' key and puts its value on the next line."
+    expect: "The gate blocks the explicit key; it may span lines."
+    execute: {files: {.github/workflows/ci.yml: "      - { ? uses\n          : actions/checkout@v4 }\n"}, expect: block}
+  - id: tc-056
+    category: adversarial
+    prompt: "A flow-sequence pair spells the uses key with an escape inside double quotes."
+    expect: "The gate blocks; an escaped key after any separator cannot be ruled out as the uses key."
+    execute: {files: {.github/workflows/ci.yml: "    steps: [ \"u\\x73es\": actions/checkout@v4 ]\n"}, expect: block}
+  - id: tc-057
+    category: adversarial
+    prompt: "A flow-mapping action.yml puts the image value on the next line."
+    expect: "The gate blocks the docker:// value alone on its line."
+    execute: {files: {action.yml: "runs: {using: docker, image:\n  docker://alpine:3.19, args: [a]}\n"}, expect: block}
+  - id: tc-058
+    category: negative_trigger
+    prompt: "An action declares an input named image, and a github-script step uses a multi-line ternary."
+    expect: "The gate allows both; a nested image key and a ternary '?' are neither a docker:// value nor an explicit uses key."
+    execute: {files: {action.yml: "inputs:\n  image:\n    description: The image to scan\nruns:\n  using: composite\n  steps:\n    - run: |\n        x = ok\n          ? 'pr'\n          : 'push'\n      shell: bash\n"}, expect: allow}
+  - id: tc-059
+    category: adversarial
+    prompt: "An explicit '?' key carries only a comment on its line; the uses key and its value follow below."
+    expect: "The gate blocks the '?' line; the key it introduces is out of sight."
+    execute: {files: {.github/workflows/ci.yml: "      - ? # c\n          uses\n        : actions/checkout@v4\n"}, expect: block}
+  - id: tc-060
+    category: adversarial
+    prompt: "An action.yml image key has its value on the next line, a double-quoted scalar that spells docker:// with an escape."
+    expect: "The gate blocks the escaped scalar alone on its line."
+    execute: {files: {action.yml: "runs:\n  using: docker\n  image:\n    \"\\x64ocker://alpine\"\n"}, expect: block}
+  - id: tc-061
+    category: adversarial
+    prompt: "An anchor holds the word uses and an alias to it is used as a step's key."
+    expect: "The gate blocks the alias key."
+    execute: {files: {.github/workflows/ci.yml: "x-k: &k uses\nsteps:\n  - *k : actions/checkout@v4\n"}, expect: block}
+  - id: tc-062
+    category: behavior
+    prompt: "A workflow adds a line of more than 4 KB."
+    expect: "The gate refuses it unread; the cap bounds the cost of judging any line."
+    execute: {files: {.github/workflows/ci.yml: "      - run: echo aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"}, expect: block}
+  - id: tc-063
+    category: adversarial
+    prompt: "A flow-mapping step glues the explicit-key indicator to the uses key ({?uses: ...}), which the runner's YAML parser reads as a key."
+    expect: "The gate blocks; a '?' needs no space before a key inside a flow collection."
+    execute: {files: {.github/actions/setup/action.yml: "runs:\n  using: composite\n  steps:\n    - {?uses: some-org/action@main}\n"}, expect: block}

@@ -524,6 +524,9 @@ limit-diff-size:
 guard-memory-writes:
   solves: Agent memory rots when it fills with pasted diffs, whole code listings, repeated lines and, worst, credentials that then travel with the repository. This script judges only memory files and only what a change adds, and refuses those four things with a path and line for each.
   customise: The memory paths, the fenced-block limit and the git-history patterns are constants in `implementations/guard-memory-writes-gate.py`; the secret pattern is scan-secrets' verbatim, so update both together. There is no waiver.
+review-like-a-red-team:
+  solves: A gate can refuse the certain slice of a vulnerability shape and mark the uncertain slice as ask; nobody then reasons about the uncertain slice before the change lands. This skill hands the agent its own diff and its ask-tier findings with a twelve-step reviewer's method, triaged by a dated table of exclusions and precedents, and asks for a confirmed finding with an exploit scenario and a failing test, or a refutation left for a person. It is advisory and refuses nothing.
+  customise: The triage table is `skill/references/triage.json`, a copy of the catalog's `data/triage.json` that the catalog's tests hold byte-identical and validate. Its floors (paths never excluded, verdict and rank floors, the confidence ceiling) are checked by the catalog's `tools/triage_tables.py`, not in an adopter's repository, so a change belongs in a catalog pull request; a locally edited copy is unchecked.
 
 block-unguarded-agent-spawn:
   solves: |
@@ -556,6 +559,19 @@ agentic-code-security:
     waived by a human reviewer with `# chock: allow <rule-id>` (`//` in JavaScript); the agent's own waiver is
     refused, and a JSON config, which has no comments, is waived in the selection file. The rule catalogue in
     `references/rule-catalogue.md` lists every rule with its weakness, ASI entry and fix.
+scan-suppression-markers:
+  solves: 'An agent told to make a scanner pass can silence the scanner instead of fixing the finding:
+    an inline ignore marker, an entry in a scanner''s ignore file, or a CI security step told to pass
+    when it fails. This gate asks a person before such a change lands, so a suppression is a decision
+    a person made, not one an agent slipped into a diff. Only what the change adds is judged; suppressions
+    already committed stay quiet.'
+  customise: 'A reviewed false positive is kept by a person committing from their own shell with CHOCK_ALLOW=scan-suppression-markers
+    set for that one commit. Ship it under `rollout: observe` in .chock/config.yaml first, read the gate
+    log, and move to enforce once the asks it records are the ones you want asked. To stop judging the
+    policy, list it under policies.disabled.'
+block-hook-bypass-in-files:
+  solves: block-no-verify refuses an agent's command that skips git hooks, but not the same skip written into a file that runs later. A hook-skip option in a release script, core.hooksPath set by a package.json prepare script, HUSKY=0 or SKIP= in a Makefile, or an uninstall in a setup script switches the hooks off for everyone who runs it. This gate reads the lines a change adds to hook launchers, scripts and build files, and flags each such line. It warns while its false-positive rate is measured, then blocks.
+  customise: 'The scoped files are `applies_to.paths` in the manifest and the pattern is `content_pattern`; widen either there. A reviewed bypass is kept by a person with `pragma: allowlist hook-bypass` on the line (a JSON file such as package.json cannot carry it). In the agent a waiver counts only for a line already in HEAD.'
 ci-github-actions-security:
   solves: >-
     An agent that writes CI writes the workflow most likely to be attacked. Text from an issue or pull
