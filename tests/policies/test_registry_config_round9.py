@@ -37,3 +37,16 @@ def test_round_nine_cases(path: str, text: str, want: list[str]) -> None:
 def test_two_readings_that_agree_report_one_finding() -> None:
     found = mod.findings({"writes": {"a.sh": 'sh -c "GOSUMDB=off go build"\n'}})
     assert [f["rule"] for f in found] == [B_TLS]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'sh -c "GOPRIVATE=github.com; go mod download"\n',
+        'sh -c "GONOSUMDB=github.com/*; go mod download"\n',
+        'bash -c "GONOSUMCHECK=gitlab.com& go build"\n',
+        'sh -c "GOPRIVATE=github.com&&go build"\n',
+    ],
+)
+def test_a_command_separator_ends_the_value_inside_a_string(text: str) -> None:
+    assert rules("a.sh", text) == [B_TLS]

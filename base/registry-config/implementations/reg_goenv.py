@@ -34,6 +34,7 @@ EXPANSION = re.compile(r"\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|\$\([^)\n]*\)")
 #: The leading part of an unclosed value that is certainly its own: no quote, expansion, escape or terminator.
 SIMPLE = re.compile(r"[A-Za-z0-9._/:@,|*?\[\]+=%~-]*")
 QUOTES = re.compile("[\"']")
+COMMAND_END = re.compile(r"[;&()]")
 YAML_JSON = re.compile(r"\.(?:ya?ml|json)$", re.IGNORECASE)
 MAX_CODEPOINT = 0x10FFFF
 ESCAPED = re.compile(r"\\(?:x([0-9A-Fa-f]{2})|u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8}))")
@@ -126,7 +127,10 @@ def _in_string(raw: str, pos: int, outer: str) -> tuple[list[str] | None, bool]:
     # The first word ends at whitespace outside ${...} and ${{ ... }} expansions.
     masked = EXPANSION.sub(lambda m: "x" * len(m[0]), whole)
     space = re.search(r"\s", masked)
-    readings = [whole, whole[: space.start()] if space else whole]
+    # A command separator ends the assignment too (sh -c "GOPRIVATE=github.com; go build"); '|' does not,
+    # it separates GOPROXY's list.
+    command = COMMAND_END.search(masked)
+    readings = [whole, whole[: space.start()] if space else whole, whole[: command.start()] if command else whole]
     certain = end >= 0
     if end >= 0:
         after = raw[end + 1 : end + 1 + MAX_WORD]
