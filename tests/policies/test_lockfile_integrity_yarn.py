@@ -194,3 +194,14 @@ def test_berry_reads_selectors_as_a_query_string(resolution: str, pinned: bool) 
     text = f'__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"a":\n  version: 1.0.0\n  resolution: "{resolution}"\n'
     (entry,) = yarn.yarn_lock(text)
     assert entry.pinned is pinned
+
+
+def test_berry_flags_a_descriptor_resolved_to_another_package() -> None:
+    entry = (
+        '"left-pad@npm:^1.3.0, left-pad@npm:^1.3.1":\n  version: 1.3.1\n  resolution: "{}@npm:1.3.1"\n  checksum: 10c0/'
+        + "c" * 64
+        + "\n"
+    )
+    head = "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"
+    assert [e.alias for e in yarn.yarn_lock(head + entry.format("evil-pad"))] == [True]
+    assert [e.alias for e in yarn.yarn_lock(head + entry.format("left-pad"))] == [False]

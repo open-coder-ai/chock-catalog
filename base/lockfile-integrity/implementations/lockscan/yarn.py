@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import replace
 
 from chock_scan import yamlpath
 
@@ -130,7 +131,9 @@ def _berry(text: str) -> list[Entry]:
             msg = f"entry {key!r} has no resolution"
             raise LockError(msg)
         if entry := _berry_entry(fields, lines[key], cache):
-            found.append(entry)
+            # the descriptor names the package asked for; a resolution naming another one installs that instead
+            asked = split_spec(key.split(",", 1)[0].strip())[0]
+            found.append(replace(entry, alias=True) if asked != entry.name else entry)
     return found
 
 

@@ -225,3 +225,45 @@ def test_a_forged_alias_on_another_entry_does_not_pass_silently() -> None:
         forged["packages"].setdefault(declarer, {})["dependencies"] = {"left-pad": "npm:evil-pad@^1.3.1"}
         del forged["packages"]["node_modules/glob"]["dependencies"]
         assert rules_of("package-lock.json", json.dumps(forged)) == [model.NPM_ALIAS]
+
+
+def test_bun_flags_a_folder_holding_another_package() -> None:
+    def bun(packages: str) -> list:
+        return npm.bun_lock('{"lockfileVersion": 1, "packages": {%s}}' % packages)
+
+    swapped = bun(f'"left-pad": ["evil-pad@1.3.1", "", {{}}, "{h()}"]')
+    assert [(e.name, e.alias) for e in swapped] == [("evil-pad", True)]
+    nested = bun(f'"glob/@s/p": ["@s/p@1.0.0", "", {{}}, "{h()}"], "a/b": ["b@1.0.0", "", {{}}, "{h()}"]')
+    assert [e.alias for e in nested] == [False, False]
+    assert npm.folder_of("glob/@s/p") == "@s/p"
+
+
+def test_pnpm_flags_a_dependency_map_naming_another_package() -> None:
+    text = f"""lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      left-pad:
+        specifier: ^1.3.0
+        version: evil-pad@1.3.1
+      react-dom:
+        specifier: ^18
+        version: 18.0.0(react@18.0.0)
+      loc:
+        specifier: link:../loc
+        version: link:../loc
+
+packages:
+  evil-pad@1.3.1:
+    resolution: {{integrity: {h()}}}
+
+snapshots:
+  glob@10.0.0:
+    dependencies:
+      string-width-cjs: string-width@4.2.3
+      minimatch: 9.0.0
+"""
+    got = [(e.name, e.version) for e in pnpm.pnpm_lock(text) if e.alias]
+    assert got == [("evil-pad", "1.3.1"), ("string-width", "4.2.3")]
+    assert rules_of("pnpm-lock.yaml", text) == [model.NPM_ALIAS, model.NPM_ALIAS]

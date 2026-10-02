@@ -157,8 +157,16 @@ def bun_lock(text: str) -> list[Entry]:
         name, version = split_spec(raw[0])
         if version.startswith(LOCAL):
             continue
-        found.append(_bun_entry(name, version, raw, lines(json.dumps(key))))
+        entry = _bun_entry(name, version, raw, lines(json.dumps(key)))
+        # the key names the folder; a spec naming another package installs that one there, alias or not
+        found.append(replace(entry, alias=True) if folder_of(key) != name else entry)
     return found
+
+
+def folder_of(key: str) -> str:
+    """The package folder a nested key ends in: `a/b` -> b, `a/@s/b` -> @s/b."""
+    parts = key.split("/")
+    return "/".join(parts[-2:]) if len(parts) > 1 and parts[-2].startswith("@") else parts[-1]
 
 
 def _bun_entry(name: str, version: str, raw: list, line: int) -> Entry:

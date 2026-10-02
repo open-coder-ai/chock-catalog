@@ -1014,3 +1014,23 @@ suite:
 
           '
       expect: block
+  - id: tc-063
+    category: adversarial
+    prompt: A bun.lock keeps the left-pad key but its spec installs evil-pad from the registry.
+    expect: 'Held for a person: a folder that installs another package than its name is asked about.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.1\"\n  }\n}\n"
+        bun.lock: "{\n  \"lockfileVersion\": 1,\n  \"packages\": {\n    \"left-pad\": [\"evil-pad@1.3.1\", \"\", {}, \"sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==\"],\n  }\n}\n"
+      expect: ask
+  - id: tc-064
+    category: adversarial
+    prompt: A pnpm-lock.yaml importer resolves left-pad to evil-pad@1.3.1.
+    expect: 'Held for a person: a dependency map naming another package is asked about.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.1\"\n  }\n}\n"
+        pnpm-lock.yaml: "lockfileVersion: '9.0'\n\nimporters:\n  .:\n    dependencies:\n      left-pad:\n        specifier: ^1.3.1\n        version: evil-pad@1.3.1\n\npackages:\n  evil-pad@1.3.1:\n    resolution: {integrity: sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==}\n"
+      expect: ask

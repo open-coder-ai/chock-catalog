@@ -14,6 +14,9 @@ LOCAL_TYPES = frozenset({"directory", "path"})
 #: Path lengths: (packages, key), its fields, and resolution fields; importer and v5 root dependency names.
 ENTRY, FIELD, RESOLUTION = 2, 3, 4
 IMPORTER_DEP, ROOT_DEP = 4, 2
+#: Maps of dependency name to version, in importers, packages (v5/v6) and snapshots (v9).
+DEP_MAPS = frozenset({"dependencies", "devDependencies", "optionalDependencies"})
+ALIAS_DEPTH = 2
 
 
 def pnpm_lock(text: str) -> list[Entry]:
@@ -26,12 +29,15 @@ def pnpm_lock(text: str) -> list[Entry]:
         msg = "an alias, merge key or repeated key: a loader may read entries the scan cannot see"
         raise LockError(msg)
     direct: set[str] = set()
+    aliases: list[Entry] = []
     fields: dict[str, dict[str, str]] = {}
     lines: dict[str, int] = {}
     for node in nodes:
         path = node.path
         if _direct(path):
             direct.add(str(path[-1]))
+        if alias := _alias(path, node.value):
+            aliases.append(Entry(alias[0], alias[1], node.line, alias=True))
         if not path or path[0] != PACKAGES or len(path) < ENTRY:
             continue
         key = str(path[1])
@@ -40,7 +46,7 @@ def pnpm_lock(text: str) -> list[Entry]:
             fields.setdefault(key, {})
         elif len(path) == FIELD or (len(path) == RESOLUTION and path[2] == "resolution"):
             fields[key]["/".join(map(str, path[2:]))] = node.value
-    return [entry for key, got in fields.items() if (entry := _entry(key, got, lines[key], direct))]
+    return [entry for key, got in fields.items() if (entry := _entry(key, got, lines[key], direct))] + aliases
 
 
 def _direct(path: tuple[str | int, ...]) -> bool:
@@ -48,6 +54,23 @@ def _direct(path: tuple[str | int, ...]) -> bool:
     if len(path) == IMPORTER_DEP and path[0] == "importers":
         return path[2] in DIRECT_KEYS
     return len(path) == ROOT_DEP and path[0] in DIRECT_KEYS
+
+
+def _alias(path: tuple[str | int, ...], value: str) -> tuple[str, str] | None:
+    """(package, version) when a dependency map installs another package under this name (`left-pad: evil@1.0.0`)."""
+    if len(path) < ALIAS_DEPTH:
+        return None
+    if path[-1] == "version" and path[-3] in DEP_MAPS:
+        folder = str(path[-2])
+    elif path[-2] in DEP_MAPS:
+        folder = str(path[-1])
+    else:
+        return None
+    bare = value.split("(", 1)[0]
+    name, version = split_spec(bare)
+    if not version or version.startswith(("link:", "file:")) or name == folder or ":" in name:
+        return None
+    return name, version
 
 
 def _ident(key: str) -> tuple[str, str]:
