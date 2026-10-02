@@ -1,0 +1,73 @@
+id: scan-instruction-files
+name: "Scan Instruction Files"
+version: "0.0.1"
+description: >
+  Asks a person before a change adds injection text to an agent instruction file (AGENTS.md, CLAUDE.md,
+  GEMINI.md, Cursor/Windsurf/Cline/Roo/Kiro rules, Copilot instructions and prompts, SKILL.md, agent
+  commands): rule overrides, secrecy, auto-approve, hook or review bypass, fetch-and-run, remote
+  instructions, role swaps, fake system tags, removed guardrails. Refuses secret exfiltration and encoded
+  payloads. Added text only; English phrases; friction, not a boundary.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      This change adds text to an agent instruction file that an attacker would add: it overrides
+      standing rules, hides work from a person, approves tools or skips hooks and review without one,
+      downloads and runs code, follows remote instructions, recasts the agent's role, poses as a system
+      message, removes a guardrail statement, sends a secret somewhere, or hides a command in an encoded
+      blob. Write rules as prohibitions a person can review, and put setup steps in a reviewed script. A
+      person keeps a reviewed line by committing from their own shell: CHOCK_ALLOW=scan-instruction-files
+      for that one commit answers an ask, and 'chock: allow instruction-scan' on the line waives a
+      refusal; an agent asks the person and never sets either.
+    params:
+      script: scan-instruction-files-gate.py
+
+compliance:
+  owasp_asi:
+  - control: ASI01
+    coverage: partial
+    note: "asks before plain-text goal-hijack phrasing lands in an instruction file and refuses secret exfiltration and encoded payloads there; injection through fetched content, issues or tool output stays advisory (injection-defense)"
+  owasp_llm_2025:
+  - control: LLM01
+    coverage: partial
+    note: "Prompt Injection: judges the persistent carrier (committed instruction files) by English phrase lexicon; paraphrase, other languages and runtime content are not judged"
+  mitre_atlas:
+  - control: AML.T0051
+    coverage: partial
+    note: "LLM Prompt Injection, indirect via repository instruction files: lexicon heuristics at commit and on agent writes"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap NP02). A script gate over agent instruction files, judged by path, case-insensitively: AGENTS.md (and AGENT.md, AGENTS.override.md), CLAUDE.md, CLAUDE.local.md, GEMINI.md, SKILL.md and MEMORY.md anywhere; .cursorrules, .windsurfrules, .clinerules (file or folder), .roorules; .cursor/rules/, .windsurf/rules/, .roo/rules*/, .kiro/steering/, .continue/{rules,prompts}/, .amazonq/rules/, .augment/rules/, .trae/rules/, .codex/prompts/, .gemini/commands/, .claude/{commands,agents,skills,memory}/; .github/copilot-instructions.md and .github/{instructions,prompts,agents,chatmodes}/; *.instructions.md, *.prompt.md, *.chatmode.md, *.agent.md; .junie/guidelines.md; memory/*.md. chock's own `.agents/policies/` and `.chock/` copies are skipped: policy prose describes what it refuses."
+  - "Judged, on the text a change adds (a findings document the engine compares with the baseline run; key = rule + a hash of the normalized statement, never a line number, so a moved line is old and a second copy is new). The file is read as statements: soft-wrapped paragraph lines joined and split into sentences, each list item, heading and front-matter key on its own, fenced code line by line, statements over 4000 characters in overlapping pieces. Text is NFKD-normalized, casefolded, with format, combining and control characters, emphasis marks and code-span backticks removed, so a zero-width space, an accent, bold or a hard wrap does not hide a phrase. Asks (exit 3): overriding standing instructions, secrecy toward a person, auto-approving or trusting tools, permission-skip flags, acting on something risky without asking (only with a risky target in the same statement: push, deploy, delete, install, a download, secrets, any command), bypassing hooks, gates, review or chock itself (including --no-verify, SKIP=, CHOCK_ALLOW and rollout: observe), weakening failing tests, fetch-and-run (a download piped into a shell or interpreter, a shell running a download's output, process substitution of a download, a PowerShell download passed to iex, download-then-chmod), password-protected archives, following remote instructions, role reassignment, fake system/admin/trusted tags, an opaque base64 blob of 80+ characters (wrapped lines joined), and a guardrail statement (a mandate word and a guarded topic) the change deletes or rewords. Refuses (exit 1): a secret sent to a remote destination (a send verb whose clause names a secret file, env dump or secret variable, or whose next eight words name a credential, with a URL, host, e-mail or webhook in the statement; or a network tool fed a secret through a pipe, data flag or substitution; or DNS-shaped exfil), decoding base64 or hex straight into a shell or interpreter, a blob that decodes to a command or to text the rules flag, and a fake trust tag whose block (to its closing tag, at most 12 statements) runs a command. A prohibition earlier in the same clause discounts a match (never use --no-verify), except encouragers (do not hesitate to); a clause ends at sentence punctuation, a semicolon, or a comma before just/then/instead/but. A token sent in an Authorization header is not exfiltration."
+  - "Verdict per run: exit 1 when a refusal-class finding is new against the text before the change (the file on disk before a tool write, HEAD at commit and at the turn's end, which reaches the script as a tool write whose text is already on disk), else exit 3; the engine judges only new findings. An ask is refused at commit unless a person commits from their own shell with CHOCK_ALLOW=scan-instruction-files, asked at tool use, and a warning at the turn's end. A refusal is waived only by a person, with 'chock: allow instruction-scan' on a line of the statement or alone on the line above, honoured at a person's commit only (not at tool use, the turn's end, an agent's commit or CI). An instruction file over 262144 characters is not read: every change to it asks (keyed by its whole text). Unreadable stdin, a broken or missing lexicon (implementations/data/lexicon.json, a dated curated table loaded by chock_scan.data_table, with every vowel written as a JSON unicode escape so no attack phrase sits in the file verbatim) or git failing to run exit 2, which the runner treats as undecided and refuses."
+  - "Division of labour. protect-agent-config already refuses any agent Edit/Write or shell write to AGENTS.md, CLAUDE.md, GEMINI.md, copilot-instructions.md, .cursorrules and .windsurfrules, so for those files this gate adds the commit and the turn's-end check (a person's own edits, writes that got past the guard) and the content judgment; for the other paths here (rules folders, prompts, skills, commands, steering) it is the only check on content. block-invisible-unicode (HP15) owns hidden characters (tag, bidi, zero-width); this gate only strips them before matching. scan-hidden-content (NP01, not yet in the catalog) owns hidden HTML/CSS text and markdown image beacons; text inside an HTML comment is judged here like any other. block-curl-pipe-sh judges commands an agent runs; this gate judges instructions that tell an agent to run them. guard-memory-writes and NP20 own memory files; MEMORY.md and memory/*.md are also judged here. injection-defense stays the advisory rule for fetched content, issues and tool output."
+  - "Rollout (D15): ship under `rollout: observe` in .chock/config.yaml first and read the gate log before enforcing. Measured on this catalog: replaying the gate over all 302 non-merge commits of main against each parent, 1 commit was flagged (a reworded guardrail line in java-security's configure skill: a true ask); the chock engine repository's 418 commits flagged none; the 43 instruction files in the catalog, the engine and the planning repository, judged whole, produce no finding. The catalog's own generated skill pages (<tree>/<id>/skills/<id>/SKILL.md, derived from each manifest by chock plugin build) are skipped like `.agents/policies/`: they describe the patterns policies refuse."
+  - "Limits (probed, not caught): a non-English override (only English phrases are in the lexicon); a paraphrase the lexicon does not list (pay no attention to the earlier guidance); a homoglyph letter (Cyrillic o in ignore: block-invisible-unicode's confusable tier owns it); a negated framing that is not a prohibition (it would not hurt to bypass the hooks); an instruction split across list items or statements; a short encoded payload under 80 characters with no decode-and-run on the same statement; link text pointing at remote instructions (a markdown link labelled as the real instructions); a blob encoded twice; hex with a 0x prefix; anything outside the judged paths (a README an agent reads, MCP prompts served at run time). A removed or reworded guardrail is not judged in CI (the payload names no base), and in CI every refusal-class finding in a changed file counts as new. Friction, not a security boundary: a person reviewing every change to an instruction file is the control."

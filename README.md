@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="48 policies" src="https://img.shields.io/badge/policies-48-blue">
-<img alt="28 enforced" src="https://img.shields.io/badge/enforced-28-brightgreen">
+<img alt="49 policies" src="https://img.shields.io/badge/policies-49-blue">
+<img alt="29 enforced" src="https://img.shields.io/badge/enforced-29-brightgreen">
 <img alt="20 advisory" src="https://img.shields.io/badge/advisory-20-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -45,7 +45,7 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 19 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 20 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
 | `advisory` | text an agent reads and may or may not follow | 20 |
 
@@ -85,6 +85,7 @@ throwaway repo on every push.
 | [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `docker volume rm`, `aws s3 rm --recursive`, `gcloud … delete` | 81/81 |
 | [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | a shell write to `.mcp.json` adding an MCP server not on the allowlist, or changing an allowed server's command/args/url to point elsewhere (including one renamed to an allowed name) — the allowlist ships inside the guard script itself, protected the same way as any other policy's guard source; a matching entry passes without a human approval each time | 65/65 |
 | [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and `gh pr create`/`edit` bodies that narrate the development conversation (or leak a session link) instead of describing the change — a leak class that only exists once an agent authors the commit | 35/35 |
+| [`scan-instruction-files`](docs/scan-instruction-files/) | **Asks** a person before a change adds injection text to an agent instruction file (AGENTS.md, CLAUDE.md, rules, prompts, skills) -- rule overrides, secrecy, auto-approve, hook or review bypass, fetch-and-run, removed guardrails; refuses secret exfiltration and encoded payloads; only added text, English phrases, friction not a boundary | 30/31 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,
