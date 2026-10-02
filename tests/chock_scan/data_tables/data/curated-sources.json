@@ -1,0 +1,10 @@
+{
+  "schema": 2,
+  "kind": "curated",
+  "as_of": "2026-10-01",
+  "source": {
+    "sr-readme": "https://github.com/anthropics/claude-code-security-review",
+    "roadmap": "open-coder-ai/org-plan:chock/plan/security-coverage-roadmap.md"
+  },
+  "verdicts": {"high": "deny", "medium": "ask", "low": "allow"}
+}
