@@ -192,6 +192,17 @@ def test_pathological_values_are_fast(en: ModuleType, value: str) -> None:
         "sha1=Qz8pL2wXy7Kd3mNv9aBcD",
         "md5-Qz8pL2wXy7Kd3mNv9aBcD!",
         "data:Qz8pL2wXy7Kd3mNv9aBcD",  # review repro: `data:` without a mime and base64 marker
+        "data:text/plain;base64,UXo4cEwyd1h5N0tkM21Odjk=",  # round 2: only images and fonts
+        "$Qz8pL2wXy7Kd3mNv9",  # round 2: a reference prefix followed by a secret
+        "vault:Qz8p!L2wXy7Kd3mNv9",
+        "env(Qz8pL2wXy7Kd3mNv9",
+        "ENV[Qz8pL2wXy7Kd3mNv9",
+        "os.environQz8pL2wXy7Kd3mNv9",
+        "process.envQz8p!L2wXy7Kd3mNv9",
+        "getenv(Qz8pL2wXy7Kd3mNv9)",
+        "!Ref Qz8p!L2wXy7Kd3mNv9",
+        "arn:aws:secretsmanager:Qz8pL2wXy7Kd3mNv9",
+        "ENC[Qz8pL2wXy7Kd3mNv9]",
     ],
 )
 def test_reference_digest_and_data_shapes_inside_a_secret_allow_nothing(en: ModuleType, value: str) -> None:
@@ -203,12 +214,8 @@ def test_reference_digest_and_data_shapes_inside_a_secret_allow_nothing(en: Modu
 def test_random_printable_passwords_stay_suspicious(en: ModuleType, seed: int) -> None:
     # The alphabet generated passwords use: printable ASCII 33..126, so `$ < { % ( [` all occur.
     r = rng(seed)
-    value = tokens.draw(r, "".join(chr(c) for c in range(33, 127)), r.randrange(16, 65))
-    result = en.assess(value)
-    if result.reason == "placeholder":
-        assert en._PLACEHOLDER.search(value)  # a draw that happens to spell a stopword (documented)
-    else:
-        assert result.suspicious, (value, result)
+    value = tokens.draw(r, "".join(chr(c) for c in range(33, 127)), r.randrange(20, 65))
+    assert en.assess(value).suspicious, (value, en.assess(value))
 
 
 @pytest.mark.parametrize(
@@ -222,6 +229,12 @@ def test_random_printable_passwords_stay_suspicious(en: ModuleType, seed: int) -
         ("%(db_password)s", "short"),
         ("%(database_password_x)s", "reference"),
         ('System.getenv("DB_PASSWORD")', "reference"),
+        ("os.environ.get('DB_PASSWORD', '')", "reference"),
+        ("process.env['STRIPE_SECRET_KEY']", "reference"),
+        ("ENV.fetch('RAILS_MASTER_KEY')", "reference"),
+        ("arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/db-AbCdEf", "reference"),
+        ("!Sub '${DatabaseUser}-password'", "reference"),
+        ("data:font/woff2;base64,d09GMgABAAAAAAPc", "data-uri"),
         ("!GetAtt Database.Endpoint", "reference"),
     ],
 )

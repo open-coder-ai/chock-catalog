@@ -7,7 +7,7 @@ separators) is a secret noun, or two adjacent words are a key bigram (api key, c
 Limits, stated rather than hidden:
 - one line at a time: a key and value split across lines (YAML block scalars, continuation lines)
   are missed;
-- a quoted value (one to three quote characters, so Python and TOML triple quotes count) ends at the
+- a quoted value (one or three quote characters, so Python and TOML triple quotes count) ends at the
   next quote character of any kind, a bare one at whitespace or `,;&#)}]`; an escaped quote or a `#`
   ends a value early, and the prefix is judged only if it is still MIN_LEN long;
 - only space and tab count as blanks, at most 16 either side of the operator (a no-break space or a
@@ -34,15 +34,17 @@ MAX_LEN = 150
 #: A key starts only where no word character precedes it, so a long word is tried once, not at
 #: every offset; a key is at most 128 characters, at most 16 blanks sit either side of the operator
 #: and a value is read to at most MAX_LEN + 1 characters (enough to tell it is too long), so each offset costs a bounded amount (no nested
-#: quantifier can backtrack; every quantifier is possessive, so no offset re-scans its own key).
+#: quantifier can backtrack; the key, blanks and value are possessive, so no offset re-scans its own key).
 #: Keys may hold dots and dashes (`spring.datasource.password`, `api-key`). A YAML tag or anchor
-#: (`!!str`, `&a`) and an auth scheme word (`Bearer`, `Basic`, `Token`, `Bot`) before the value are skipped.
+#: (`!!str`, `&a`) and an auth scheme word (`Bearer`, `Basic`, `Token`, `Bot`) before the value are skipped;
+#: a skipped tag long enough to judge is yielded too, since `password = !s3cr3t x` may be the value.
 _ASSIGN = re.compile(
     r"""(?<![A-Za-z0-9_])(?P<kq>["'`]?)(?P<key>[A-Za-z_][A-Za-z0-9_.-]{0,127}+)(?P=kq)[ \t]{0,16}+(?::=|=>|[:=])"""
-    r"""[ \t]{0,16}+(?:(?:!{1,2}[\w./:-]{0,64}+|&[\w.-]{1,64}+)[ \t]{1,16}+){0,2}+"""
-    r"""(?:(?i:bearer|basic|token|bot)[ \t]{1,16}+)?+"""
-    r"""(?:(?P<q>["'`]{1,3}+)(?P<qval>[^"'`\r\n]{0,151}+)|(?P<val>[^\s"'`,;&#)}\]]{1,151}+))"""
+    r"""[ \t]{0,16}+(?P<tags>(?:(?:!{1,2}[\w./:-]{0,151}+|&[\w.-]{1,151}+)[ \t]{1,16}+){0,2})"""
+    r"""(?:(?P<q>(?P<qc>["'`])(?:(?P=qc){2})?+)(?:(?i:bearer|basic|token|bot)[ \t]{1,16}+)?+(?P<qval>[^"'`\r\n]{0,151}+)"""
+    r"""|(?:(?i:bearer|basic|token|bot)[ \t]{1,16}+)?+(?P<val>[^\s"'`,;&#)}\]]{1,151}+))"""
 )
+_WORD = re.compile(r"\S+")
 _WORDS = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])")
 _NOUNS = frozenset({
     "password", "passwords", "passwd", "pwd", "passphrase", "secret", "secrets", "token", "tokens",
@@ -88,8 +90,11 @@ def candidates(text: str) -> Iterator[Candidate]:
         seen: set[int] = set()
         while match := _ASSIGN.search(line, pos):
             pos = match.start() + 1
+            if not secret_key(match["key"]):
+                continue
             group = "qval" if match["q"] else "val"
-            value, column = match[group], match.start(group)
-            if column not in seen and MIN_LEN <= len(value) <= MAX_LEN and secret_key(match["key"]):
-                seen.add(column)
-                yield Candidate(number, column, match["key"], value)
+            spans = [(t.start() + match.start("tags"), t[0]) for t in _WORD.finditer(match["tags"])]
+            for column, value in [*spans, (match.start(group), match[group])]:
+                if column not in seen and MIN_LEN <= len(value) <= MAX_LEN:
+                    seen.add(column)
+                    yield Candidate(number, column, match["key"], value)

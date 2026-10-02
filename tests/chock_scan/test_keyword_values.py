@@ -157,10 +157,28 @@ def test_stdlib_only() -> None:
     ],
 )
 def test_review_forms_are_found(kv: ModuleType, form: str) -> None:
-    found = list(kv.candidates(form.format(v=VALUE)))
-    value = found[0].value if found else None
-    assert value is not None
-    assert value.endswith(VALUE)
+    assert [c.value for c in kv.candidates(form.format(v=VALUE))] == [VALUE]
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "password = !{v} # prod",
+        "password: !{v}  // c",
+        "password = !{v} x",
+        "password = &{v} x",
+        "password: !!str !{v} # c",
+    ],
+)
+def test_a_value_starting_with_a_tag_character_is_not_taken_for_a_tag(kv: ModuleType, form: str) -> None:
+    # round-2 review: a possessive tag group swallowed `!secret` and then lost it to trailing text
+    found = [c.value for c in kv.candidates(form.format(v=VALUE))]
+    assert len(found) == 1
+    assert found[0] in {"!" + VALUE, "&" + VALUE}
+
+
+def test_an_empty_quoted_value_reports_nothing_after_it(kv: ModuleType) -> None:
+    assert list(kv.candidates(f'password = "" # {VALUE}')) == []
 
 
 @pytest.mark.parametrize(

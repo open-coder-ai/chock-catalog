@@ -2,9 +2,9 @@
 
 check(token) picks the validator by prefix and returns a Check: CONFIRMED (a checksum built into
 the format verifies), FORMAT (the expected shape matches; the format carries no checksum), FAILED
-(a checksum or a published structure does not hold: the GitHub 40-character and npm CRC32, JWT
-structure, Luhn) or UNKNOWN (no validator applies, or a shape-only check does not match, since
-vendors publish prefixes, not lengths). luhn() and aws_secret_key() are called directly: neither
+(a checksum or a published structure does not hold: the GitHub and npm CRC32 on their 40-character
+form, JWT structure, Luhn) or UNKNOWN (no validator applies, or the token is not the shape a check
+is defined on, since vendors publish prefixes, not lengths). luhn() and aws_secret_key() are called directly: neither
 shape has a prefix to dispatch on.
 
 What a verdict is not: CONFIRMED says the token could have been issued, never that it is live
@@ -25,7 +25,6 @@ from typing import NamedTuple
 
 MAX_TOKEN = 1 << 14
 MAX_JWT_HEADER = 1 << 12
-GITHUB_LEN = 40
 #: ISO/IEC 7812-1 PAN lengths judged; MAX_CARD_TEXT bounds the spaced or dashed spelling.
 CARD_DIGITS = range(12, 20)
 MAX_CARD_TEXT = 64
@@ -71,7 +70,6 @@ UNKNOWN = Check("", Verdict.UNKNOWN, "")
 #: the prefix) and the alphabet order (digits, upper, lower) are not in the blog: they come from a
 #: third-party implementation (therootcompany/base62-token.js), whose published vector the tests pin.
 _GITHUB = re.compile(r"(gh[pousr])_([0-9A-Za-z]{30})([0-9A-Za-z]{6})")
-_GITHUB_ANY = re.compile(r"gh[pousr]_[0-9A-Za-z_]{36,251}")
 #: Fine-grained PATs: the prefix is documented; the 22 + `_` + 59 layout is observed, not published,
 #: so another layout is UNKNOWN.
 _GITHUB_PAT = re.compile(r"github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59}")
@@ -129,9 +127,12 @@ def _shape(token: str, pattern: re.Pattern[str], kind: str, source: str) -> Chec
 
 
 def _crc_token(token: str, pattern: re.Pattern[str], kind: str, source: str) -> Check:
-    """CONFIRMED when the 6-character tail is the base62 CRC32 of the 30 before it, else FAILED."""
+    """CONFIRMED when the 6-character tail is the base62 CRC32 of the 30 before it, FAILED when it is
+    not; UNKNOWN when the token is not the 40-character shape the checksum is defined on."""
     match = pattern.fullmatch(token)
-    ok = match is not None and base62_crc32(match[2]) == match[3]
+    if match is None:
+        return Check(kind, Verdict.UNKNOWN, source)
+    ok = base62_crc32(match[2]) == match[3]
     return Check(kind, Verdict.CONFIRMED if ok else Verdict.FAILED, source)
 
 
@@ -140,9 +141,6 @@ def _github(token: str) -> Check | None:
         return _shape(token, _GITHUB_PAT, "github-fine-grained", "github-fine-grained")
     if not re.match(r"gh[pousr]_", token):
         return None
-    if len(token) != GITHUB_LEN and _GITHUB_ANY.fullmatch(token):
-        # a longer form GitHub may issue (e.g. installation tokens); no published checksum to verify
-        return Check("github", Verdict.UNKNOWN, "github")
     return _crc_token(token, _GITHUB, "github", "github")
 
 

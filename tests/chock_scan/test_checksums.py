@@ -45,19 +45,19 @@ def test_crc_tokens_confirm_and_every_single_substitution_fails(cs: ModuleType, 
     at = r.randrange(4, 40)
     swapped = token[:at] + r.choice(tokens.BASE62.replace(token[at], "")) + token[at + 1 :]
     assert cs.check(swapped) == cs.Check(kind, cs.Verdict.FAILED, kind)
-    assert cs.check(token[:-1]).verdict is cs.Verdict.FAILED
+    assert cs.check(token[:-1]).verdict is cs.Verdict.UNKNOWN  # not the shape the checksum is defined on
 
 
-def test_crc_tokens_with_a_bad_shape_fail(cs: ModuleType) -> None:
-    for token in ["ghp_", "ghp_" + "a" * 35 + "-", "npm_" + "A" * 37, "npm_short"]:
-        assert cs.check(token).verdict is cs.Verdict.FAILED, token
+def test_crc_prefixes_with_another_shape_are_unknown_not_failed(cs: ModuleType) -> None:
+    for token in ["ghp_", "ghp_" + "a" * 35 + "-", "npm_" + "A" * 37, "npm_short", "npm_" + "a" * 35 + "-"]:
+        assert cs.check(token).verdict is cs.Verdict.UNKNOWN, token
     # six base62 digits can exceed 32 bits; such a tail never equals a CRC32
     assert cs.check("ghp_" + "a" * 30 + "zzzzzz").verdict is cs.Verdict.FAILED
 
 
 def test_longer_github_forms_are_unknown_not_failed(cs: ModuleType) -> None:
     assert cs.check("ghs_" + "A1b2_" * 20) == cs.Check("github", cs.Verdict.UNKNOWN, "github")
-    assert cs.check("ghs_" + "A" * 252).verdict is cs.Verdict.FAILED
+    assert cs.check("ghs_" + "A" * 252).verdict is cs.Verdict.UNKNOWN
 
 
 @pytest.mark.parametrize("seed", SEEDS[:20])

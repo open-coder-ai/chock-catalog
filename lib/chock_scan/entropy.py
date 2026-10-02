@@ -12,7 +12,8 @@ Limits, stated rather than hidden:
   secret that happens to contain one is missed;
 - a value that is wholly a reference form (`${X}`, `<...>`, `{{ x }}`, `ENC[...]`) is allowed, so a
   secret written as `<s3cr3t>` is missed; a reference form inside a longer value allows nothing;
-- digests and data: URIs are allowed only with a body of the algorithm's exact length or base64;
+- digests are allowed only with a body of the algorithm's exact length; data: URIs only as base64
+  images or fonts (their content is not decoded);
 - values longer than 150 characters are not judged here (reason "long"); blobs are NP27's.
 """
 
@@ -49,14 +50,19 @@ _DIGEST_BITS = {
 }
 _MAX_PAD = 2
 _B64BODY = re.compile(r"[0-9A-Za-z+/_-]+")
-_DATA_URI = re.compile(r"(?i)data:[a-z]+/[a-z0-9.+-]+(?:;[a-z0-9=._-]+)*;base64,[A-Za-z0-9+/]*={0,2}")
+_DATA_URI = re.compile(r"(?i)data:(?:image|font)/[a-z0-9.+-]+(?:;[a-z0-9=._-]+)*;base64,[A-Za-z0-9+/]*={0,2}")
 #: Roadmap HP01 (1) reference forms: interpolation, templating, env lookups, encrypted-at-rest markers.
 #: The WHOLE value must be the reference; a reference character inside a value proves nothing
 #: (generated passwords hold `$x`, `{{` and `<x>` often).
 _REFERENCE = re.compile(
-    r"\$\{[^{}]*\}|\$\([^()]*\)|\$[A-Za-z_][A-Za-z0-9_]*|\{\{[^{}]*\}\}|\{%[^%]*%\}|%\([A-Za-z0-9_]+\)s"
-    r"|<[^<>]*>|ENC\[[^\]]*\]|vault:\S+|(?:os\.environ|process\.env|(?:os\.|System\.)?getenv\(|env\(|ENV\[)\S*"
-    r"|!(?:Ref|Sub|GetAtt)\s\S+|arn:aws:secretsmanager:\S+"
+    r"\$\{[^{}]*\}|\$\([^()]*\)|\$[A-Z_][A-Z0-9_]*|\{\{[^{}]*\}\}|\{%[^%]*%\}|%\([A-Za-z0-9_]+\)s|<[^<>]*>"
+    r"|ENC\[AES256_GCM,[^\]]*\]|vault:[\w/.-]+(?:#\w+)?"
+    r"|os\.environ(?:\[[\"'][A-Za-z_]\w*[\"']\]|\.get\([\"'][A-Za-z_]\w*[\"'][^()]*\))"
+    r"|process\.env(?:\.[A-Za-z_]\w*|\[[\"'][A-Za-z_]\w*[\"']\])"
+    r"|(?:os\.|System\.)?getenv\([\"'][A-Za-z_]\w*[\"'][^()]*\)|env\([\"']?[A-Za-z_]\w*[\"']?[^()]*\)"
+    r"|ENV(?:\[[\"'][A-Za-z_]\w*[\"']\]|\.fetch\([\"'][A-Za-z_]\w*[\"'][^()]*\))"
+    r"|!Ref\s[A-Za-z][\w.]*|!GetAtt\s[A-Za-z][\w.]*|!Sub\s.*\$\{[\w.:-]+\}.*"
+    r"|arn:aws:secretsmanager:[a-z0-9-]+:\d{12}:secret:[\w/+=.@-]+"
 )
 #: Placeholder and documentation words; matched case-insensitively anywhere in the value. AWS's
 #: documented dummy key pair ends in EXAMPLE and EXAMPLEKEY, so it lands here too.
