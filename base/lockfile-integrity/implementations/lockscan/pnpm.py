@@ -67,7 +67,7 @@ def _alias(path: tuple[str | int, ...], value: str) -> tuple[str, str] | None:
     else:
         return None
     bare = value.split("(", 1)[0]
-    name, version = split_spec(bare)
+    name, version = _ident(bare) if bare.startswith("/") else split_spec(bare)
     if not version or version.startswith(("link:", "file:")) or name == folder or ":" in name:
         return None
     return name, version

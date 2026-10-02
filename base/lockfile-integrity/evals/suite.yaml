@@ -1034,3 +1034,13 @@ suite:
         package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.1\"\n  }\n}\n"
         pnpm-lock.yaml: "lockfileVersion: '9.0'\n\nimporters:\n  .:\n    dependencies:\n      left-pad:\n        specifier: ^1.3.1\n        version: evil-pad@1.3.1\n\npackages:\n  evil-pad@1.3.1:\n    resolution: {integrity: sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==}\n"
       expect: ask
+  - id: tc-065
+    category: adversarial
+    prompt: A classic yarn.lock block lists evil-pad first and left-pad second, so left-pad gets evil-pad's tarball.
+    expect: 'Held for a person: every spec in a header must name the package the block installs.'
+    execute:
+      event: commit
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.1\"\n  }\n}\n"
+        yarn.lock: "evil-pad@^1.3.1, left-pad@^1.3.1:\n  version \"1.3.1\"\n  resolved \"https://registry.yarnpkg.com/evil-pad/-/evil-pad-1.3.1.tgz\"\n  integrity sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==\n"
+      expect: ask

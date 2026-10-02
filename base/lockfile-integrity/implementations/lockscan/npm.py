@@ -125,7 +125,8 @@ def _v1(lines: Lines, deps: object, depth: int) -> list[Entry]:
             real = split_spec(version[4:])[0] if version.startswith("npm:") else name  # an alias installs this one
             # v1 records a git or URL dependency in `version`, with no `resolved`
             fields = {**raw, "resolved": version} if ":" in version and "resolved" not in raw else raw
-            found.append(_source_entry(real, version, fields, line, transitive=depth > 0))
+            entry = _source_entry(real, version, fields, line, transitive=depth > 0)
+            found.append(replace(entry, alias=True) if real != name else entry)
         found += _v1(lines, raw.get("dependencies") or {}, depth + 1)
     return found
 

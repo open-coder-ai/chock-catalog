@@ -43,9 +43,9 @@ def _unquote(value: str) -> str:
     return value
 
 
-def _classic_blocks(text: str) -> list[tuple[str, dict[str, str], int]]:
-    """(first spec of the header, its two-space fields, header line) per entry; LockError on any other shape."""
-    blocks: list[tuple[str, dict[str, str], int]] = []
+def _classic_blocks(text: str) -> list[tuple[list[str], dict[str, str], int]]:
+    """(specs of the header, its two-space fields, header line) per entry; LockError on any other shape."""
+    blocks: list[tuple[list[str], dict[str, str], int]] = []
     nested = False
     for number, raw in enumerate(text.splitlines(), 1):
         line = raw.rstrip("\r")
@@ -57,7 +57,7 @@ def _classic_blocks(text: str) -> list[tuple[str, dict[str, str], int]]:
             msg = f"line {number} is not a yarn.lock entry, field or comment"
             raise LockError(msg)
         if indent == 0:
-            blocks.append((_unquote(line[:-1].split(", ", 1)[0].strip()), {}, number))
+            blocks.append(([_unquote(spec.strip()) for spec in line[:-1].split(", ")], {}, number))
             nested = False
         elif not blocks or indent not in (FIELD, NESTED) or (indent == NESTED and not nested):
             msg = f"line {number} is indented where no entry or field holds it"
@@ -80,10 +80,18 @@ def _field(fields: dict[str, str], body: str, number: int) -> bool:
     return False
 
 
-def _classic(header: str, fields: dict[str, str], line: int) -> Entry | None:
-    name, spec = split_spec(header)
-    if spec.startswith("npm:"):
-        name = split_spec(spec[4:])[0]  # an alias installs the package it names
+def _installs(spec: str) -> tuple[str, str]:
+    """(folder name, package installed) for one header spec; `alias@npm:real@^1` installs real."""
+    name, wanted = split_spec(spec)
+    return name, split_spec(wanted[4:])[0] if wanted.startswith("npm:") else name
+
+
+def _classic(specs: list[str], fields: dict[str, str], line: int) -> Entry | None:
+    _, spec = split_spec(specs[0])
+    pairs = [_installs(s) for s in specs]
+    name = pairs[0][1]
+    # every spec in the header gets this one download: a name it does not install is a swap or an alias
+    swapped = any(folder != name or real != name for folder, real in pairs)
     resolved = fields.get("resolved")
     if resolved is None and (spec.startswith(FOLDER) or (spec.startswith("file:") and not spec.endswith(TARBALLS))):
         return None  # a folder in the repository: nothing is downloaded
@@ -102,6 +110,7 @@ def _classic(header: str, fields: dict[str, str], line: int) -> Entry | None:
         expect=download,
         weak=weak,
         tarball=True,
+        alias=swapped,
     )
 
 
@@ -132,8 +141,8 @@ def _berry(text: str) -> list[Entry]:
             raise LockError(msg)
         if entry := _berry_entry(fields, lines[key], cache):
             # the descriptor names the package asked for; a resolution naming another one installs that instead
-            asked = split_spec(key.split(",", 1)[0].strip())[0]
-            found.append(replace(entry, alias=True) if asked != entry.name else entry)
+            asked = {split_spec(descriptor.strip())[0] for descriptor in key.split(",")}
+            found.append(replace(entry, alias=True) if asked != {entry.name} else entry)
     return found
 
 

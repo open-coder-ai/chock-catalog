@@ -267,3 +267,8 @@ snapshots:
     got = [(e.name, e.version) for e in pnpm.pnpm_lock(text) if e.alias]
     assert got == [("evil-pad", "1.3.1"), ("string-width", "4.2.3")]
     assert rules_of("pnpm-lock.yaml", text) == [model.NPM_ALIAS, model.NPM_ALIAS]
+
+
+def test_pnpm_v5_dependency_values_are_read_as_paths() -> None:
+    text = f"lockfileVersion: 5.4\n\ndependencies:\n  left-pad: /evil-pad/1.3.1\n  ok: 1.0.0\n\npackages:\n  /evil-pad/1.3.1:\n    resolution: {{integrity: {h()}}}\n"
+    assert [(e.name, e.version) for e in pnpm.pnpm_lock(text) if e.alias] == [("evil-pad", "1.3.1")]

@@ -136,9 +136,9 @@ def test_classic_yarn_reads_a_field_written_with_a_colon() -> None:
 def test_an_npm_alias_is_judged_by_the_package_it_installs() -> None:
     url = "https://registry.npmjs.org/real/-/real-1.0.0.tgz"
     classic = f'alias@npm:real@^1.0.0:\n  version "1.0.0"\n  resolved "{url}"\n  integrity {h()}\n'
-    assert rules_of("yarn.lock", classic) == []
+    assert rules_of("yarn.lock", classic) == [model.NPM_ALIAS]  # judged as real, and asked about
     v1 = json.dumps({"dependencies": {"alias": {"version": "npm:real@1.0.0", "resolved": url, "integrity": h()}}})
-    assert rules_of("package-lock.json", v1) == []
+    assert rules_of("package-lock.json", v1) == [model.NPM_ALIAS]
 
 
 @pytest.mark.parametrize(
@@ -205,3 +205,16 @@ def test_berry_flags_a_descriptor_resolved_to_another_package() -> None:
     head = "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"
     assert [e.alias for e in yarn.yarn_lock(head + entry.format("evil-pad"))] == [True]
     assert [e.alias for e in yarn.yarn_lock(head + entry.format("left-pad"))] == [False]
+
+
+def test_every_name_in_a_header_must_be_the_package_installed() -> None:
+    url = "https://registry.yarnpkg.com/evil-pad/-/evil-pad-1.3.1.tgz"
+    classic = f'evil-pad@^1.3.1, left-pad@^1.3.1:\n  version "1.3.1"\n  resolved "{url}"\n  integrity {h()}\n'
+    assert rules_of("yarn.lock", classic) == [model.NPM_ALIAS]
+    plain = f'evil-pad@^1.3.0, evil-pad@^1.3.1:\n  version "1.3.1"\n  resolved "{url}"\n  integrity {h()}\n'
+    assert rules_of("yarn.lock", plain) == []
+    berry = (
+        '__metadata:\n  version: 8\n  cacheKey: 10c0\n\n"evil-pad@npm:^1.3.1, left-pad@npm:^1.3.1":\n'
+        f'  version: 1.3.1\n  resolution: "evil-pad@npm:1.3.1"\n  checksum: 10c0/{"c" * 64}\n'
+    )
+    assert [e.alias for e in yarn.yarn_lock(berry)] == [True]
