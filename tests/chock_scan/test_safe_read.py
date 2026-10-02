@@ -110,7 +110,7 @@ def test_the_limit_is_inclusive_and_one_byte_over_is_refused(sr: ModuleType, tmp
         sr.read_text(path, limit=9)
     path.write_bytes(b"")
     assert sr.read_text(path, limit=0) == ""
-    for bad in (-1, sr.MAX_LIMIT + 1, sys.maxsize):
+    for bad in (-1, sr.MAX_LIMIT + 1, sys.maxsize, 1.5, True, None):
         with pytest.raises(ValueError, match="limit must be 0"):
             sr.read_text(path, limit=bad)
     assert sr.LIMIT == 1 << 20

@@ -45,18 +45,29 @@ def packages(root: Path) -> dict[str, Path]:
     return {p.name: p for p in sorted(lib.iterdir()) if (p / f"{INIT}.py").is_file()} if lib.is_dir() else {}
 
 
+def ignored(path: Path) -> bool:
+    """Bytecode and OS litter in lib/ (.DS_Store and the like): never copied, so never a problem there."""
+    return path.name == "__pycache__" or path.name.startswith(".")
+
+
 def package_problems(pkgs: dict[str, Path], root: Path) -> list[str]:
     """A package is a real folder of flat .py files: anything else would be shipped by nobody."""
     lib = root / LIB
-    dirs = sorted(p for p in lib.iterdir() if p.is_dir()) if lib.is_dir() else []
+    if lib.is_symlink():
+        return [f"{LIB}: a symlink; lib/ is a real folder (CODEOWNERS routes review by its path)"]
+    dirs = sorted(p for p in lib.iterdir() if p.is_dir() and not ignored(p)) if lib.is_dir() else []
     found = [f"{LIB}/{p.name}: a folder with no __init__.py" for p in dirs if p.name not in pkgs]
-    files = sorted(p for p in lib.iterdir() if not p.is_dir() and p.name != "consumers.yaml") if lib.is_dir() else []
+    files = (
+        sorted(p for p in lib.iterdir() if not p.is_dir() and p.name != "consumers.yaml" and not ignored(p))
+        if lib.is_dir()
+        else []
+    )
     found += [f"{LIB}/{p.name}: lib/ holds packages and consumers.yaml only" for p in files]
     for name, pkg in pkgs.items():
         if not name.isidentifier() or pkg.is_symlink():
             found.append(f"{LIB}/{name}: not a Python package name, or a symlink")
         for entry in sorted(pkg.iterdir()):
-            if entry.name == "__pycache__":
+            if ignored(entry):
                 continue
             if entry.is_symlink() or not entry.is_file() or entry.suffix != ".py":
                 found.append(f"{LIB}/{name}/{entry.name}: a package holds only .py files, no symlinks or subfolders")
@@ -131,6 +142,7 @@ def copy_dirs(root: Path, pkgs: dict[str, Path]) -> list[Path]:
         d
         for tree in TREES
         for impl in (root / tree).glob("*/implementations")
+        if not impl.is_symlink()
         for d in [impl, *impl.rglob("*")]
         if d.name.lower() in names and d.is_dir()
     )
@@ -154,10 +166,15 @@ def path_problems(root: Path, folders: set[Path]) -> list[str]:
     return found
 
 
-def guards(root: Path, policy: str) -> list[Path]:
-    """A policy's own scripts: they import the lib modules it ships, so those must be listed too."""
+def guards(root: Path, policy: str, pkgs: dict[str, Path]) -> list[Path]:
+    """A policy's own scripts, at any depth outside its lib copies: what they import must be listed too."""
     impl = root / policy / "implementations"
-    return sorted(p for p in impl.glob("*.py") if p.is_file()) if impl.is_dir() and not impl.is_symlink() else []
+    if not impl.is_dir() or impl.is_symlink():
+        return []
+    names = {pkg.lower() for pkg in pkgs} | {"__pycache__"}
+    return sorted(
+        p for p in impl.rglob("*.py") if p.is_file() and not {d.lower() for d in p.relative_to(impl).parts[:-1]} & names
+    )
 
 
 def structure(root: Path) -> tuple[dict[Path, Path], list[str]]:
@@ -166,9 +183,15 @@ def structure(root: Path) -> tuple[dict[Path, Path], list[str]]:
     found = package_problems(pkgs, root)
     decls, more = load(root, pkgs)
     found += more
+    found += [
+        f"{impl.relative_to(root).as_posix()}: a symlink; implementations/ is a real folder"
+        for tree in TREES
+        for impl in sorted((root / tree).glob("*/implementations"))
+        if impl.is_symlink()
+    ]
     every = {d.relative_to(root).as_posix(): {} for d in policy_dirs(root)}
     for policy, used in (every | decls).items():
-        found += [f"{CONSUMERS}: {p}" for p in closure_problems(policy, used, pkgs, guards(root, policy))]
+        found += [f"{CONSUMERS}: {p}" for p in closure_problems(policy, used, pkgs, guards(root, policy, pkgs))]
     want = expected(root, decls, pkgs)
     declared = {p.parent for p in want}
     found += path_problems(root, declared)
@@ -234,7 +257,7 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
         found = problems(root)
     else:
         changed, found = write(root)
-        print("\n".join(f"wrote {path}" for path in changed) or "lib copies already current")
+        print("\n".join(f"wrote {path}" for path in changed) or ("" if found else "lib copies already current"))
     for problem in found:
         print(f"  {problem}", file=sys.stderr)
     if found:

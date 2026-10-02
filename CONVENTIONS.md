@@ -14,7 +14,8 @@ copy: python tools/gen_lib_copies.py  # writes <policy>/implementations/<package
 why_copies: plugins ship implementations/ whole and nothing else (no .chock/bin, no lib/)
 drift: gen_lib_copies.py --check, check_registry.py, tests/build_tools/test_gen_lib_copies.py
 refused: undeclared copy (any depth, any case) | edited copy | extra file | symlink on the way | module list missing a static import (of a listed module or the policy's own scripts)
-limits: importlib/__import__ not followed (lib/ uses static imports); a copy under a name no lib package has is not recognised
+limits: importlib/__import__ not followed (lib/ uses static imports); a copy under a name no lib package has is not recognised;
+        copies are found by folder name, so a lib package must not share a name with a folder under implementations/
 packages: chock_shellparse (command guards), chock_scan (file scanning; import modules, not the package)
 tests: run against every shipped copy (byte-equal to lib/): tests/chock_scan/ (also lib/), tests/policies/test_shellparse*.py
 runtime: stdlib only, like every guard

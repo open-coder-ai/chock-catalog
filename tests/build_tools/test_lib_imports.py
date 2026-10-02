@@ -83,3 +83,17 @@ def test_a_module_importing_another_lib_package_needs_that_package_listed(cat: P
 def test_a_module_that_cannot_be_read_for_imports_is_refused(cat: Path, source: str, problem: str) -> None:
     _put(cat / "lib" / "pkg" / "b.py", source)
     assert gen_lib_copies.problems(cat)[0].startswith(problem)
+
+
+def test_a_script_in_a_subfolder_of_implementations_is_checked_too(cat: Path) -> None:
+    _put(cat / "base" / "one" / "implementations" / "gate" / "rules" / "uses.py", "from pkg.c import y\n")
+    assert gen_lib_copies.problems(cat) == [
+        "lib/consumers.yaml: base/one: uses.py imports pkg.c, which is not listed for it"
+    ]
+
+
+def test_the_lib_copies_themselves_are_not_read_as_policy_scripts(cat: Path) -> None:
+    gen_lib_copies.write(cat)
+    _put(cat / "lib" / "pkg" / "c.py", "from pkg.b import x\n")
+    _put(cat / "base" / "one" / "implementations" / "__pycache__" / "junk.py", "from pkg.c import y\n")
+    assert gen_lib_copies.problems(cat) == []

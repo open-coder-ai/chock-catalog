@@ -41,7 +41,7 @@ def read_text(path: str | os.PathLike[str], limit: int = LIMIT) -> str:
 
     ValueError instead means a caller error: a limit outside 0..MAX_LIMIT, or a path holding NUL.
     """
-    if not 0 <= limit <= MAX_LIMIT:
+    if type(limit) is not int or not 0 <= limit <= MAX_LIMIT:
         msg = f"limit must be 0..{MAX_LIMIT}, not {limit}"
         raise ValueError(msg)
     name = os.fsdecode(path)
