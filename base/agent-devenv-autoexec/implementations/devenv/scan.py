@@ -8,17 +8,20 @@ import re
 import subprocess
 from pathlib import Path, PurePosixPath
 
-from devenv.core import BLOCK, Collector, Finding, norm
+from devenv.core import BLOCK, Collector, Finding, digest, norm
 from devenv.parse import UnreadableError
 from devenv.paths import SPAWN_ONLY, handler_for, normalized
 
-_AGENT_CLI = r"(?:claude|codex|gemini|cursor-agent|copilot|qwen|opencode|amp|aider|goose|crush|auggie|droid|kiro-cli)"
+_AGENT_CLI = (
+    r"(?:[\w@.~-]*[/\\])*(?:claude(?:-code)?|codex|gemini(?:-cli)?|cursor-agent|copilot|qwen(?:-code)?|opencode|amp"
+    r"|aider|goose|crush|auggie|droid|kiro-cli)"
+)
 _SPAWN = re.compile(
-    rf"(?i)(?<![\w./-]){_AGENT_CLI}(?:\.exe|\.cmd)?\b[^\n;&|]{{0,1000}}?\s(?:--dangerously-skip-permissions|"
+    rf"(?i)(?<![\w.@/\\-]){_AGENT_CLI}(?:\.exe|\.cmd)?\b[^\n;&|]{{0,1000}}?\s(?:--dangerously-skip-permissions|"
     r"--dangerously-bypass-approvals-and-sandbox|--permission-mode[= ]+['\"]?bypasspermissions|--yolo|--full-auto|"
     r"--approval-mode[= ]+['\"]?yolo|--allow-all-tools|--allow-all-paths|--yes-always|"
     r"(?:--sandbox|-s)[= ]+['\"]?danger-full-access)(?![\w-])"
-    r"|(?<![\w./-])(?:gemini\b[^\n;&|]{0,1000}?\s-y|cursor-agent\b[^\n;&|]{0,1000}?\s(?:-f|--force))(?![\w-])"
+    rf"|(?<![\w.@/\\-])(?:[\w@.~-]*[/\\])*(?:gemini(?:-cli)?\b[^\n;&|]{{0,1000}}?\s-y|cursor-agent\b[^\n;&|]{{0,1000}}?\s(?:-f|--force))(?![\w-])"
 )
 #: Agent and editor config folders: a command in one that runs a script kept in another is the keyv-worm shape.
 AGENT_DIRS = frozenset(
@@ -76,8 +79,12 @@ def _spawns(c: Collector) -> None:
             )
 
 
-def cross_references(collectors: dict[str, Collector], added: set[str]) -> None:
-    """A command that runs a file this change writes, or a script kept in another agent's folder."""
+def cross_references(collectors: dict[str, Collector], added: dict[str, str]) -> None:
+    """A command that runs a file this change writes, or a script kept in another agent's folder.
+
+    `added` maps each normalized path the change writes to its text; the key carries a digest of it,
+    so editing a script a reviewed hook already runs is new whenever the change also writes the hook.
+    """
     for path, c in collectors.items():
         home = normalized(path).split("/")
         own = next((part for part in home if part in AGENT_DIRS), None)
@@ -91,7 +98,41 @@ def cross_references(collectors: dict[str, Collector], added: set[str]) -> None:
                     message = f"command at {where} in {own} runs a script kept in {first}"
                 else:
                     continue
-                c.add("dev-cross-reference", f"{where}->{target}", message, line=line)
+                content = f"#{digest(added[target])}" if target in added else ""
+                c.add("dev-cross-reference", f"{where}->{target}{content}", message, line=line)
+
+
+_GIT_CONFIGS = re.compile(r"(?:^|/)(?:\.gitmodules|[^/]*\.gitconfig)$")
+_LONE_CR = re.compile(rb"\r(?!\n)")
+
+
+def raw_cr(root: Path, event: str, writes: dict[str, str]) -> dict[str, Collector]:
+    """At commit, push and CI the engine hands over text with line breaks normalized, which turns a lone
+    carriage return (the CVE-2025-48384 trick) into a line break; read those two files' raw blobs instead."""
+    if event not in ("commit", "agent-commit", "push", "ci"):
+        return {}
+    out: dict[str, Collector] = {}
+    for path in sorted(p for p in writes if _GIT_CONFIGS.search(normalized(p))):
+        spec = f":./{path}" if event in ("commit", "agent-commit") else f"HEAD:./{path}"
+        if _LONE_CR.search(_git_bytes(root, "show", spec)):
+            rule = "dev-gitmodules-untrusted" if normalized(path).endswith(".gitmodules") else "dev-gitconfig-exec"
+            out.setdefault(path, Collector("")).add(
+                rule, "carriage-return", "a carriage return inside a line (CVE-2025-48384)"
+            )
+    return out
+
+
+def _git_bytes(root: Path, *args: str) -> bytes:
+    try:
+        proc = subprocess.run(  # noqa: S603 -- a fixed git argv; paths are arguments, never shell words
+            ["git", *args],  # noqa: S607 -- git from PATH, as the runner's own
+            cwd=root,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return b""
+    return proc.stdout if proc.returncode == 0 else b""
 
 
 def _git(root: Path, *args: str) -> str:
@@ -108,23 +149,21 @@ def _git(root: Path, *args: str) -> str:
 
 
 def symlinks(root: Path, event: str, writes: dict[str, str]) -> dict[str, str]:
-    """Each written path that is a symlink, with its target: the index at commit, HEAD at push/ci, disk otherwise."""
+    """Each written path that is a symlink, with its target: the index at commit, HEAD at push/ci, and the disk
+    always, so a git that cannot answer (a wrong repo_root) still leaves the links on disk judged."""
     paths = sorted(writes)
-    if not paths:
-        return {}
-    if event in ("commit", "agent-commit", "push", "ci"):
-        args = (
-            ["ls-files", "-s", "-z", "--", *paths]
-            if event in ("commit", "agent-commit")
-            else ["ls-tree", "-z", "HEAD", "--", *paths]
-        )
-        links = {}
+    links: dict[str, str] = {}
+    if paths and event in ("commit", "agent-commit", "push", "ci"):
+        index = event in ("commit", "agent-commit")
+        args = ["ls-files", "-s", "-z", "--", *paths] if index else ["ls-tree", "-z", "HEAD", "--", *paths]
         for record in _git(root, *args).split("\0"):
             meta, _, name = record.partition("\t")
             if meta.startswith("120000"):
                 links[name] = writes.get(name, "")
-        return links
-    return {p: os.readlink(root / p) for p in paths if (root / p).is_symlink()}
+    for path in paths:
+        if path not in links and (root / path).is_symlink():
+            links[path] = os.readlink(root / path)
+    return links
 
 
 def link_findings(links: dict[str, str]) -> dict[str, Collector]:
@@ -148,6 +187,7 @@ def link_findings(links: dict[str, str]) -> dict[str, Collector]:
     return out
 
 
-def untracked(root: Path) -> set[str]:
-    """Files on disk git does not track yet: at tool use, what this turn wrote before this write."""
-    return {normalized(p) for p in _git(root, "ls-files", "-o", "--exclude-standard", "-z").split("\0") if p}
+def untracked(root: Path) -> dict[str, str]:
+    """Files on disk git does not track yet (at tool use, what this turn wrote before this write), by path."""
+    names = [p for p in _git(root, "ls-files", "-o", "--exclude-standard", "-z").split("\0") if p]
+    return {normalized(p): "untracked" for p in names}

@@ -516,3 +516,60 @@ suite:
           {"version": 1, "hooks": {"stop": [{"command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py; sh x.sh"}]}}
       event: commit
       expect: warn
+  - id: tc-046
+    category: adversarial
+    prompt: A dev container mounts the Docker socket through a --volume= runArgs item.
+    expect: The gate warns; flag=value forms are read like separate items.
+    execute:
+      files:
+        .devcontainer/devcontainer.json: |
+          {"image": "x/y:1", "runArgs": ["--volume=/var/run/docker.sock:/var/run/docker.sock"]}
+      event: commit
+      expect: warn
+  - id: tc-047
+    category: adversarial
+    prompt: A lefthook config written as JSON adds a post-checkout command.
+    expect: The gate warns; lefthook's JSON and TOML forms are read too.
+    execute:
+      files:
+        lefthook.json: |
+          {"post-checkout": {"commands": {"deps": {"run": "npm ci"}}}}
+      event: commit
+      expect: warn
+  - id: tc-048
+    category: adversarial
+    prompt: A folder-open task's npm script is changed while its label and runOn stay the same.
+    expect: The gate warns; anything the task runs with is part of its key.
+    execute:
+      head_files:
+        .vscode/tasks.json: |
+          {"version": "2.0.0", "tasks": [{"label": "dev", "type": "npm", "script": "dev", "runOptions": {"runOn": "folderOpen"}}]}
+      files:
+        .vscode/tasks.json: |
+          {"version": "2.0.0", "tasks": [{"label": "dev", "type": "npm", "script": "postinstall-evil", "runOptions": {"runOn": "folderOpen"}}]}
+      event: commit
+      expect: warn
+  - id: tc-049
+    category: adversarial
+    prompt: A mise config runs a command from a template when the file loads.
+    expect: The gate warns.
+    execute:
+      files:
+        mise.toml: |
+          [env]
+          TOKEN = "{{exec(command='./tools/get-token')}}"
+      event: commit
+      expect: warn
+  - id: tc-050
+    category: negative_trigger
+    prompt: GitHub's common .gitattributes template with text-conversion diff drivers.
+    expect: Nothing is reported.
+    execute:
+      files:
+        .gitattributes: |
+          * text=auto
+          *.doc diff=astextplain
+          *.pdf diff=astextplain
+          *.png binary
+      event: commit
+      expect: allow

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 
 from devenv.commands import env_overrides, run
-from devenv.core import Collector, dotted, norm, walk
+from devenv.core import Collector, digest, dotted, norm
 from devenv.parse import UnreadableError, front_matter, json_value, yaml_leaves
 
 HOOKS, ENV, APPROVE = "dev-claude-hooks", "dev-claude-env-override", "dev-mcp-autoapprove"
@@ -29,17 +30,34 @@ def truthy(value: object) -> bool:
     return value is True or (isinstance(value, str) and value.strip().lower() in ("true", "yes", "on", "1"))
 
 
+#: Hook fields that change how its command runs, so they belong in its key.
+CONTEXT_KEYS = ("cwd", "env", "shell", "workingDirectory", "args")
+
+
+def _nodes(value: object, path: tuple = ()) -> Iterator[tuple[tuple, dict]]:
+    if isinstance(value, dict):
+        yield path, value
+        for key, item in value.items():
+            yield from _nodes(item, (*path, key))
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from _nodes(item, (*path, index))
+
+
 def hook_commands(c: Collector, where: str, hooks: object) -> None:
-    """Every command or URL a hook table runs, whatever the vendor's nesting."""
-    for path, leaf in walk(hooks):
-        if not path or not isinstance(leaf, str):
-            continue
-        key = str(path[-1])
-        spot = f"{where}.{dotted(path)}"
-        if key in COMMAND_KEYS:
-            run(c, HOOKS, spot, leaf, "hook command")
-        elif key == "url":
-            c.add(HOOKS, f"{spot}={norm(leaf)}", f"HTTP hook at {spot}", line=c.line_of(leaf))
+    """Every command or URL a hook table runs, whatever the vendor's nesting; its cwd/env/shell are in the key
+    and its env is judged like settings env."""
+    for path, node in _nodes(hooks):
+        spot = f"{where}.{dotted(path)}" if path else where
+        context = {key: node[key] for key in CONTEXT_KEYS if key in node}
+        suffix = f"#{digest(context)}" if context else ""
+        for key in sorted(COMMAND_KEYS & set(node)):
+            if isinstance(node[key], str):
+                run(c, HOOKS, f"{spot}.{key}{suffix}", node[key], "hook command", line=c.line_of(node[key][:40]))
+        if isinstance(node.get("url"), str):
+            c.add(HOOKS, f"{spot}.url{suffix}={norm(node['url'])}", f"HTTP hook at {spot}", line=c.line_of(node["url"]))
+        if any(isinstance(node.get(key), str) for key in (*COMMAND_KEYS, "url")):
+            env_overrides(c, ENV, f"{spot}.env", node.get("env"))
 
 
 def approve(c: Collector, where: str, what: str, *, value: object = True) -> None:
@@ -68,7 +86,9 @@ def claude_settings(c: Collector) -> None:
 
 
 _INLINE = re.compile(r"!`([^`\n]+)`")
-_UNSCOPED = re.compile(r"(?i)^(?:bash|shell|powershell|\*)$")
+#: A tool granted without a scope: a bare shell, `*`, or any tool whose pattern matches everything.
+_UNSCOPED = re.compile(r"(?i)^(?:bash|shell|powershell|\*|[\w-]+\(\s*(?:\*|\*\*|\*:\*|/\*\*|\*\*/\*)?\s*\))$")
+_TOOL = re.compile(r"[\w*-]+(?:\([^)]*\))?")
 
 
 def claude_markdown(c: Collector) -> None:
@@ -80,8 +100,8 @@ def claude_markdown(c: Collector) -> None:
             key = str(path[0])
             spot = dotted(path)
             if key in ("allowed-tools", "tools"):
-                for tool in re.split(r"[,\s]+", value):
-                    if _UNSCOPED.fullmatch(tool.strip("'\"[]")):
+                for tool in _TOOL.findall(value):
+                    if _UNSCOPED.fullmatch(tool):
                         c.add(APPROVE, f"{key}={tool}", f"unscoped tool grant {tool} at {spot}", line=line + offset)
             elif key == "permissionMode" and value.strip() in ("bypassPermissions", "dontAsk"):
                 c.add(APPROVE, f"{key}={value}", f"permission prompts skipped at {spot}", line=line + offset)

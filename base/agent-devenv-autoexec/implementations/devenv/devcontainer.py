@@ -11,15 +11,65 @@ from devenv.vscode import extensions, settings
 
 RULE = "dev-devcontainer-init"
 LIFECYCLE = ("onCreateCommand", "updateContentCommand", "postCreateCommand", "postStartCommand", "postAttachCommand")
-_HOST_PATHS = re.compile(
-    r"(?i)(?:docker\.sock|/\.ssh\b|/\.aws\b|/\.kube\b|/\.config/gcloud|/\.gnupg|/\.docker\b|\$\{localenv:home\}"
-    r"|\$\{localenv:userprofile\}|(?:source|src)=/(?:,|$)|^/(?::|$))"
+#: A bind source that hands the container the host: the Docker socket, credential folders, the home or root folder.
+_HOST_SOURCE = re.compile(
+    r"(?i)docker\.sock|(?:^|[/\\])\.(?:ssh|aws|kube|gnupg|docker|azure|config[/\\]gcloud)(?:[/\\]|$)"
+    r"|^\$\{localenv:(?:home|userprofile)\}[/\\]?$|^~[/\\]?$|^/(?:etc|root|var/run|run|proc|sys|dev|home|users|var/lib/docker)?/?$"
 )
-_PRIVILEGED_ARG = re.compile(
-    r"(?i)^--privileged$|^--(?:network|net|pid|ipc|uts|userns)[= ]host$|^--cap-add[= ](?:all|sys_admin|sys_ptrace|net_admin|sys_module)$"
-    r"|^--security-opt[= ](?:seccomp|apparmor|label)[=:](?:unconfined|disable)$|^--device\b"
+_HOST_NAMESPACES = frozenset({"--network", "--net", "--pid", "--ipc", "--uts", "--userns", "--cgroupns"})
+_MOUNT_FLAGS = frozenset({"-v", "--volume", "--mount"})
+_VALUE_FLAGS = _HOST_NAMESPACES | _MOUNT_FLAGS | {"--cap-add", "--security-opt", "--device"}
+_ARG = re.compile(r"^(--?[A-Za-z][\w-]*)(?:[= ]\s*(.*))?$", re.DOTALL)
+_WIDE_CAPS = frozenset(
+    {"ALL", "SYS_ADMIN", "SYS_PTRACE", "NET_ADMIN", "SYS_MODULE", "DAC_READ_SEARCH", "SYS_RAWIO", "BPF"}
 )
-_WIDE_CAPS = frozenset({"ALL", "SYS_ADMIN", "SYS_PTRACE", "NET_ADMIN", "SYS_MODULE", "DAC_READ_SEARCH"})
+
+
+def host_source(spec: str) -> bool:
+    """Whether a mount (`type=bind,source=X,...`, or `X:Y[:opts]` as -v takes it) binds a host path that matters."""
+    text = spec.strip()
+    fields = [part.partition("=") for part in text.split(",")]
+    sources = [value.strip() for key, eq, value in fields if eq and key.strip().lower() in ("source", "src")]
+    if not sources and not any(eq for _, eq, _ in fields):
+        drive = re.match(r"^[A-Za-z]:[\\/]", text)
+        sources = [text[:2] + text[2:].split(":", 1)[0] if drive else text.split(":", 1)[0]]
+    return any(_HOST_SOURCE.search(source) for source in sources)
+
+
+def _risky_arg(flag: str, value: str) -> bool:
+    if flag == "--privileged":
+        return value.strip().lower() in ("", "true")
+    if flag in _HOST_NAMESPACES:
+        return value.strip().lower() == "host"
+    if flag == "--cap-add":
+        return value.strip().upper().removeprefix("CAP_") in _WIDE_CAPS
+    if flag == "--security-opt":
+        return bool(re.search(r"(?i)unconfined|disable", value))
+    if flag in _MOUNT_FLAGS:
+        return host_source(value)
+    return flag == "--device"
+
+
+def _run_args(raw: object) -> list[tuple[str, str]]:
+    """(flag, value) pairs: `--flag=value`, `--flag value` in one item, or the value in the next item."""
+    args = [str(a) for a in raw if isinstance(a, str | int)] if isinstance(raw, list) else []
+    pairs, index = [], 0
+    while index < len(args):
+        arg = args[index].strip()
+        found = _ARG.match(arg)
+        index += 1
+        if found:
+            flag, value = found.group(1).lower(), found.group(2)
+        elif re.match(r"^-[A-Za-z]\S", arg):
+            flag, value = arg[:2].lower(), arg[2:]
+        else:
+            continue
+        if value is None and flag in _VALUE_FLAGS and index < len(args):
+            value, index = args[index], index + 1
+        pairs.append((flag, value or ""))
+    return pairs
+
+
 _PINNED_FEATURE = re.compile(r"^[a-z0-9.-]+(?::\d+)?/[^:@\s]+(?::(?!latest$)[^:@/\s]+|@sha256:[0-9a-f]{64})$")
 
 
@@ -51,22 +101,10 @@ def _privileges(c: Collector, config: dict) -> None:
     for user_key in ("remoteUser", "containerUser"):
         if str(config.get(user_key, "")).lower() == "root":
             c.add(RULE, f"{user_key}=root", f"{user_key} is root", severity=ASK, line=c.line_of(user_key))
-    args = (
-        [str(a) for a in config.get("runArgs", []) if isinstance(a, str | int)]
-        if isinstance(config.get("runArgs"), list)
-        else []
-    )
-    joined = [" ".join(args[i : i + 2]) for i in range(len(args))]
-    for arg in {*args, *joined}:
-        if _PRIVILEGED_ARG.search(arg) or (
-            arg.startswith(("-v ", "--volume ", "--mount ")) and _HOST_PATHS.search(arg)
-        ):
-            c.add(
-                RULE,
-                f"runArgs={norm(arg)}",
-                f"runArgs grant host access: {norm(arg)[:60]}",
-                line=c.line_of(arg.split()[0]),
-            )
+    for flag, value in _run_args(config.get("runArgs")):
+        if _risky_arg(flag, value):
+            spot = f"{flag}={value}" if value else flag
+            c.add(RULE, f"runArgs={norm(spot)}", f"runArgs grant host access: {norm(spot)[:60]}", line=c.line_of(flag))
     caps = config.get("capAdd") if isinstance(config.get("capAdd"), list) else []
     for cap in caps:
         if str(cap).upper().removeprefix("CAP_") in _WIDE_CAPS:
@@ -84,16 +122,14 @@ def _privileges(c: Collector, config: dict) -> None:
 
 def _mounts(c: Collector, config: dict) -> None:
     mounts = config.get("mounts") if isinstance(config.get("mounts"), list) else []
-    for mount in mounts:
-        text = (
-            mount
-            if isinstance(mount, str)
-            else ",".join(f"{k}={v}" for k, v in mount.items())
-            if isinstance(mount, dict)
-            else ""
-        )
-        if _HOST_PATHS.search(text):
-            c.add(RULE, f"mounts={norm(text)}", f"host path mounted: {norm(text)[:80]}", line=c.line_of("mounts"))
+    workspace = config.get("workspaceMount")
+    for mount in [*mounts, *([workspace] if workspace else [])]:
+        if isinstance(mount, dict):
+            text = ",".join(f"{k}={v}" for k, v in mount.items())
+        else:
+            text = mount if isinstance(mount, str) else ""
+        if host_source(text):
+            c.add(RULE, f"mounts={norm(text)}", f"host path mounted: {norm(text)[:80]}", line=c.line_of("ount"))
 
 
 def _features(c: Collector, features: object) -> None:

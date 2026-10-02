@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from devenv.core import Collector, norm
+from devenv.core import ASK, BLOCK, Collector, norm
 from devenv.parse import UnreadableError
 
 MODULES, ATTRIBUTES, CONFIG = "dev-gitmodules-untrusted", "dev-gitattributes-filter", "dev-gitconfig-exec"
@@ -144,6 +144,8 @@ _BUILTIN_DIFF = frozenset(
         "tex",
         "binary",
         "lfs",
+        "astextplain",
+        "jupyternotebook",
     ]
 )
 _ALLOWED = {
@@ -160,9 +162,10 @@ def gitattributes(c: Collector) -> None:
             continue
         for kind, name in _ATTR.findall(line):
             if name not in _ALLOWED[kind]:
-                c.add(
-                    ATTRIBUTES, f"{kind}={name}", f"{kind} driver {name} runs a program git config names", line=number
-                )
+                # A diff driver runs only for diff and log -p, where a filter or merge driver runs on checkout or merge.
+                severity = ASK if kind == "diff" else BLOCK
+                message = f"{kind} driver {name} runs a program git config names"
+                c.add(ATTRIBUTES, f"{kind}={name}", message, severity=severity, line=number)
 
 
 _EXEC_KEYS = re.compile(
@@ -170,7 +173,8 @@ _EXEC_KEYS = re.compile(
     r"|diff\..+\.(?:textconv|command)|filter\..+\.(?:clean|smudge|process)|merge\..+\.driver|credential(?:\..+)?\.helper"
     r"|gpg(?:\..+)?\.program|include(?:if\..+)?\.path|uploadpack\.packobjectshook|web\.browser|browser\..+\.(?:cmd|path)"
     r"|interactive\.difffilter|pager\..+|url\..+\.(?:insteadof|pushinsteadof)|http(?:\..+)?\.extraheader"
-    r"|safe\.directory|ssh\.variant|man\..+\.(?:cmd|path)|mergetool\..+\.cmd|difftool\..+\.cmd|sendemail\..*"
+    r"|safe\.directory|ssh\.variant|man\..+\.(?:cmd|path)|(?:merge|diff)tool\..+\.(?:cmd|path)|sendemail\..*"
+    r"|trailer\..+\.(?:command|cmd)|gpg\..+\.defaultkeycommand|core\.alternaterefscommand|submodule\..+\.update"
 )
 _UNSAFE_VALUES = {
     "http.sslverify": "false",

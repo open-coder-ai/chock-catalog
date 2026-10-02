@@ -35,11 +35,12 @@ _TABLE: list[tuple[str, Handler]] = [
     (r"\.vscode/launch\.json", vscode.launch_file),
     (r"\.vscode/extensions\.json", vscode.extensions_file),
     (r"[^/]+\.code-workspace", vscode.workspace_file),
-    (r"\.devcontainer/(?:[^/]+/)?devcontainer\.json|\.devcontainer\.json", devcontainer.devcontainer),
+    (r"\.devcontainer/(?:.+/)?devcontainer\.json|\.devcontainer\.json", devcontainer.devcontainer),
     (r"\.idea/.+\.xml|\.run/[^/]+\.run\.xml", toolchain.jetbrains),
     (r"\.envrc(?:\.local)?", toolchain.envrc),
     (
-        r"\.?mise(?:\.local)?\.toml|\.mise/config\.toml|\.config/mise(?:/config)?\.toml|mise/config\.toml",
+        r"\.?mise(?:\.[^/]+)?\.toml|\.mise/config(?:\.[^/]+)?\.toml|\.config/mise(?:/config(?:\.[^/]+)?)?\.toml"
+        r"|\.config/mise/conf\.d/[^/]+\.toml|mise/config(?:\.[^/]+)?\.toml|\.?mise/conf\.d/[^/]+\.toml",
         toolchain.mise,
     ),
     (r"\.tool-versions|\.nvmrc|\.node-version|\.python-version|\.ruby-version", toolchain.versions),
@@ -52,6 +53,8 @@ _TABLE: list[tuple[str, Handler]] = [
     (r"\.replit", toolchain.replit),
     (r"\.husky/(?!_/)[^/]+|\.githooks/[^/]+", hooklaunch.hook_script),
     (r"\.?lefthook(?:-local)?\.ya?ml", hooklaunch.lefthook),
+    (r"\.?lefthook(?:-local)?\.json", hooklaunch.lefthook_json),
+    (r"\.?lefthook(?:-local)?\.toml", hooklaunch.lefthook_toml),
     (r"\.pre-commit-config\.ya?ml", hooklaunch.pre_commit),
     (r"package\.json", hooklaunch.package_json),
     (r"\.gitmodules", gitfiles.gitmodules),

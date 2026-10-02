@@ -16,14 +16,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from devenv.core import BLOCK, RULES, Collector
 from devenv.paths import normalized
-from devenv.scan import cross_references, judge_file, link_findings, symlinks, untracked
+from devenv.scan import cross_references, judge_file, link_findings, raw_cr, symlinks, untracked
 
 ALLOW, REFUSE, UNDECIDED, ASK = 0, 1, 2, 3
 #: Where a person reviews what is committed or pushed; anywhere else a waiver counts only once committed.
 HUMAN_EVENTS = frozenset({"commit", "push", "ci"})
 AGENT_ENV = ("CHOCK_AGENT_COMMIT", "CLAUDECODE", "AI_AGENT")
 FALSY = frozenset({"", "0", "false", "no", "off"})
-_WAIVER = re.compile(r"chock:\s*allow\s+(dev-[a-z-]+)")
+#: A waiver counts only inside a comment, never inside a value such as a hook's command string.
+_WAIVER = re.compile(r"(?:#|//|;|<!--|/\*)\s*chock:\s*allow\s+(dev-[a-z-]+)")
 
 
 def by_person(event: str) -> bool:
@@ -45,11 +46,17 @@ def committed(root: Path, path: str) -> str:
 
 
 def waived(c: Collector, rule: str, line: int, head: frozenset[str] | None) -> bool:
-    """`chock: allow <rule>` on the finding's line or a comment line just above; in the agent, only a committed one."""
+    """`chock: allow <rule>` in a comment on the finding's line or a comment line just above it.
+
+    In the agent (`head` given) both the waiver line and the finding's line must already be committed, so
+    a waiver cannot be moved onto a new value.
+    """
+    target = c.lines[line - 1] if 0 < line <= len(c.lines) else ""
     for number in (line, line - 1):
         text = c.lines[number - 1] if 0 < number <= len(c.lines) else ""
-        own_line = number == line or text.lstrip().startswith(("#", "//", ";", "<!--"))
-        if own_line and rule in _WAIVER.findall(text) and (head is None or text in head):
+        own_line = number == line or text.lstrip().startswith(("#", "//", ";", "<!--", "/*"))
+        committed = head is None or (text in head and target in head)
+        if own_line and rule in _WAIVER.findall(text) and committed:
             return True
     return False
 
@@ -60,10 +67,11 @@ def findings(payload: dict) -> list[dict]:
     root = Path(str(payload.get("repo_root") or "."))
     writes = {p: t for p, t in (payload.get("writes") or {}).items() if isinstance(t, str)}
     collectors = {path: c for path, text in sorted(writes.items()) if (c := judge_file(path, text)) is not None}
-    added = {normalized(p) for p in writes} | (untracked(root) if event == "tool_use" else set())
+    added = {**(untracked(root) if event == "tool_use" else {}), **{normalized(p): t for p, t in writes.items()}}
     cross_references(collectors, added)
     if not payload.get("baseline"):
-        for path, extra in link_findings(symlinks(root, event, writes)).items():
+        extras = [link_findings(symlinks(root, event, writes)), raw_cr(root, event, writes)]
+        for path, extra in [item for found in extras for item in found.items()]:
             collectors.setdefault(path, Collector(writes.get(path, ""))).found.extend(extra.found)
     person = by_person(event)
     found = []

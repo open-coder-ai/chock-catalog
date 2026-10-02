@@ -70,7 +70,7 @@ def test_config_reader_refuses(text: str) -> None:
 
 def test_attributes() -> None:
     text = "# filter=x\n*.a filter=decode\n*.b diff=exif merge=custom\n*.c -diff !filter text\n*.py diff=python\n"
-    assert rules(".gitattributes", text) == [(ATTRS, B)] * 3
+    assert rules(".gitattributes", text) == [(ATTRS, B), (ATTRS, "ask"), (ATTRS, B)]
     assert rules("sub/.gitattributes", "*.psd filter=lfs diff=lfs merge=lfs -text\n*.x merge=union\n") == []
 
 

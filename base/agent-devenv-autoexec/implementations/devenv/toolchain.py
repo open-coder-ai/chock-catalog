@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 import re
 
-from devenv.commands import run
+from devenv.commands import dangerous_env, run
 from devenv.core import ASK, BLOCK, Collector, dotted, key_of, network, norm, risky, strings, walk
 from devenv.parse import toml_value, under, yaml_leaves
 
@@ -48,32 +48,48 @@ def versions(c: Collector) -> None:
             )
 
 
+_TEMPLATE_EXEC = re.compile(r"\{\{[^}]*\bexec\s*\(")
+
+
 def mise(c: Collector) -> None:
-    config = toml_value(c.text)
-    for path, leaf in walk(config):
+    """mise runs tasks, hooks and `{{exec(...)}}` templates, sources env files and builds tools from paths or refs."""
+    for path, leaf in walk(toml_value(c.text)):
         head = path[0] if path else ""
+        key = key_of(path)
         spot = dotted(path)
-        if head in ("tasks", "hooks") and isinstance(leaf, str) and key_of(path) not in ("description", "alias", "dir"):
-            run(c, RULE, spot, leaf, f"mise {head[:-1]} command", severity=ASK)
+        text = leaf if isinstance(leaf, str) else ""
+        line = c.line_of(key)
+        if _TEMPLATE_EXEC.search(text):
+            run(c, RULE, spot, text, "mise template that runs a command when the file loads", line=line)
+        elif head in ("tasks", "hooks") and text and key not in ("description", "alias", "dir"):
+            run(c, RULE, spot, text, f"mise {head[:-1]} command", severity=ASK)
         elif head == "env" and path[1:2] == ("_",):
             c.add(
                 RULE,
                 f"{spot}={norm(leaf)}",
                 f"mise env directive at {spot} sources or loads a file",
                 severity=ASK,
-                line=c.line_of("_."),
+                line=line,
             )
-        elif head == "settings" and key_of(path) in ("trusted_config_paths", "task_run_auto_install", "experimental"):
+        elif head == "env" and len(path) == len(("env", key)) and dangerous_env(key):
+            c.add(RULE, f"{spot}={norm(leaf)}", f"mise environment override {key}", line=line)
+        elif head == "tools" and _VERSION_PATH.search(text):
             c.add(
                 RULE,
                 f"{spot}={norm(leaf)}",
-                f"mise setting {spot} widens what runs",
+                "mise tool built from a local path or a source ref",
                 severity=ASK,
-                line=c.line_of(key_of(path)),
+                line=line,
             )
+        elif head == "plugins":
+            c.add(RULE, f"{spot}={norm(leaf)}", "mise plugin installed from a URL", severity=ASK, line=line)
+        elif head == "settings" and key in ("trusted_config_paths", "task_run_auto_install", "experimental"):
+            c.add(RULE, f"{spot}={norm(leaf)}", f"mise setting {spot} widens what runs", severity=ASK, line=line)
 
 
 _PARSE_SHELL = re.compile(r"\$[({]shell\s+([^)}]*)")
+#: GNU make `VAR != command` runs the command when the makefile is read, as $(shell) does.
+_SHELL_ASSIGN = re.compile(r"^\s*(?:override\s+|export\s+)?[^\s=:!?+]+\s*!=\s*(.*)$")
 
 
 def makefile(c: Collector) -> None:
@@ -81,37 +97,32 @@ def makefile(c: Collector) -> None:
     for number, line in enumerate(c.lines, 1):
         if line.startswith("\t") or _comment(line):
             continue
-        for found in _PARSE_SHELL.finditer(line):
-            if network(found.group(1)) or risky(found.group(1)):
+        assigned = _SHELL_ASSIGN.match(line)
+        for command in [m.group(1) for m in _PARSE_SHELL.finditer(line)] + ([assigned.group(1)] if assigned else []):
+            if network(command) or risky(command):
                 run(
                     c,
                     RULE,
-                    f"shell@{norm(found.group(1))}",
-                    found.group(1),
+                    f"shell@{norm(command)}",
+                    command,
                     "parse-time $(shell) that reaches the network",
                     line=number,
                 )
 
 
-_BACKTICK = re.compile(r"`([^`\n]+)`")
+_BACKTICK = re.compile(r"`([^`\n]+)`|\bshell\(\s*(?:'([^'\n]*)'|\"([^\"\n]*)\")")
 
 
 def justfile(c: Collector) -> None:
-    """Backticks in a justfile assignment run when the file loads, whichever recipe is asked for."""
+    """Backticks and shell() in a justfile assignment run when the file loads, whichever recipe is asked for."""
     for number, line in enumerate(c.lines, 1):
         if line[:1] in (" ", "\t") or _comment(line) or ":=" not in line:
             continue
         for found in _BACKTICK.finditer(line.split(":=", 1)[1]):
-            severity = BLOCK if network(found.group(1)) else ASK
-            run(
-                c,
-                RULE,
-                f"backtick@{norm(found.group(1))}",
-                found.group(1),
-                "justfile backtick run at load",
-                severity=severity,
-                line=number,
-            )
+            command = next(group for group in found.groups() if group is not None)
+            severity = BLOCK if network(command) else ASK
+            label = "justfile command run at load"
+            run(c, RULE, f"backtick@{norm(command)}", command, label, severity=severity, line=number)
 
 
 def taskfile(c: Collector) -> None:

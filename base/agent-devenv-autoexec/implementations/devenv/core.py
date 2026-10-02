@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from collections.abc import Iterator
 from typing import NamedTuple
@@ -77,6 +78,12 @@ def norm(value: object) -> str:
         return text
     digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
     return f"{text[:KEY_TEXT]}...#{digest}"
+
+
+def digest(value: object) -> str:
+    """A short digest of a parsed value, so a key changes whenever anything inside it does."""
+    text = json.dumps(value, sort_keys=True, default=str, ensure_ascii=False)
+    return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
 
 
 def walk(value: object, path: tuple = ()) -> Iterator[tuple[tuple, object]]:
