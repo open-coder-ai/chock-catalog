@@ -122,7 +122,8 @@ framework moves.
 What it then checks, as CI does -- fast checks in parallel, then the slow ones:
 
 ```bash
-python tools/check_registry.py             # registry facts match the policies on disk (and lib/ copies); OWASP LLM ids are 2025 entries
+python tools/check_registry.py             # registry facts match the policies on disk (and lib/ copies,
+                                           # and data/*.json tables fresh today: check_data_tables.py); OWASP LLM ids are 2025 entries
 python tools/gen_registry.py --check       # ... and are what the generator writes
 python tools/gen_lib_copies.py --check     # every lib/ copy declared and byte-equal to its source
 python tools/check_installed.py            # an installed policy never leads its base/ source (behind: warning)
@@ -138,7 +139,7 @@ python tools/check_a11y_rules.py && python tools/check_a11y_table.py
 ruff check .                               # the framework's own lint rule set, from pyproject.toml
 ruff format --check base/java-security tests tools/gen_java_security_contract.py \
   tools/regen_all.py tools/gen_registry.py tools/check_installed.py tools/owasp_llm.py tools/prose_counts.py \
-  tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
+  tools/check_data_tables.py tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
 chock sync --repo . --check                # compiled artifacts match their manifests
 chock plugin build --repo . --policies-dir <tree> --check   # each tree
 # figures and brand card re-rendered and diffed

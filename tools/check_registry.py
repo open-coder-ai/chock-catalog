@@ -50,6 +50,10 @@ def main() -> int:
         print("lib/ copies do not match lib/consumers.yaml and lib/ (python tools/gen_lib_copies.py):")
         print("\n".join("  " + problem for problem in lib))
         return 1
+    import check_data_tables
+
+    if check_data_tables.main([], ROOT):
+        return 1
     if listed != on_disk:
         print("registry.yaml is stale.")
         print("  missing from registry:", sorted(set(on_disk) - set(listed)))
