@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-_COMMENT = re.compile(r"(?m)(?:^|\s)#.*$")
+_COMMENT = re.compile(r"(?m)^\s*#.*$")
 _TUPLE = re.compile(r'\{\s*:([A-Za-z_][A-Za-z0-9_]*)\s*,\s*((?:"|[a-z_]+:)[^}]*)')
 _HEX = re.compile(r"\bhex:\s*:([A-Za-z_][A-Za-z0-9_]*)")
 _NOT_PACKAGES = frozenset({"ok", "error"})

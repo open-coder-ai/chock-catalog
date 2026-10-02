@@ -5,11 +5,11 @@ from __future__ import annotations
 import re
 import tomllib
 
-_VERSIONED = re.compile(r"""['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+):[^'"\s:]+['"]""")
+_VERSIONED = re.compile(r"""['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+):[^'"\s]+['"]""")
 _KEYWORDED = re.compile(
-    r"""\b(?:\w*(?:mplementation|Only|lasspath|ompile|untime|rocessor|Api)|api|kapt|ksp|provided|optional)\b"""
-    r"""\s*(?:\(\s*)?(?:(?:enforced)?[Pp]latform\s*\(\s*)?"""
-    r"""['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+)(?::[^'"\s]*)?['"]"""
+    r"""\b(?:\w*(?:mplementation|Only|lasspath|ompile|untime|rocessor|Api|Desugaring|Checks|Util|Plugins)"""
+    r"""|api|kapt|ksp|provided|optional|shadow)\b"""
+    r"""\s*(?:\(\s*)?(?:(?:enforcedPlatform|platform)\s*\(\s*)?['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+)(?::[^'"\s]*)?['"]"""
 )
 _CONTINUED = re.compile(r",[ \t]*\n[ \t]*")
 _ID = r"""['"]([\w.\-]+)['"]"""
@@ -23,12 +23,11 @@ def gradle_names(text: str) -> list[str]:
     """`group:artifact` from a quoted coordinate with a version, one on a dependency configuration without, map
     notation in any order on a line, and `plugin:<id>` for versioned plugins.
 
-    Block comments are not stripped (a glob such as `**/*.class` would open a fake one and hide the code after it),
+    No comment is stripped (a glob such as `**/*.class` would open a fake block comment, and a `//` line can end one),
     so a commented-out dependency is reported too, and the baseline absorbs one that was already there. Plugins
     without a version are the ones Gradle ships. Computed coordinates are not read.
     """
-    lines = (line for line in text.removeprefix("\ufeff").splitlines() if not line.lstrip().startswith("//"))
-    code = _CONTINUED.sub(", ", "\n".join(lines))
+    code = _CONTINUED.sub(", ", text.removeprefix("\ufeff"))
     names = [f"{g}:{a}" for g, a in _VERSIONED.findall(code) + _KEYWORDED.findall(code)]
     for line in code.splitlines():
         group, name = _GROUP.search(line), _NAME.search(line)
