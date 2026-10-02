@@ -3,20 +3,20 @@
 # ones and the policy's own scripts import (static imports are checked). Edit lib/, never a copy.
 # <tree>/<policy id>: {<package>: [<module>, ...]}
 base/block-destructive-commands:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-no-verify:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-unapproved-egress:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-unguarded-agent-spawn:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/protect-agent-config:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/protect-ci-workflows:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/protect-commit-privacy:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/rtk-dangerous-actions-blocker:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/verify-mcp-allowlist:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
