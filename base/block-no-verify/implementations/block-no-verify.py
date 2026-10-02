@@ -267,7 +267,7 @@ def unparsed(raw: str) -> Verdict:
     text = without_bodies(raw)
     fallback = os.environ.get("CHOCK_ARGV_FALLBACK") == "1" or not splits(text)
     # Quotes, escapes, $'..', $".." and brace groups decoded or blanked, as bash hands the words on.
-    variants = (text, re.sub(r"[\"'\\\\]", "", text), re.sub(r"[\"'\\\\${},]", " ", normalise(text)))
+    variants = (text, re.sub(r"[\"'\\]", "", text), re.sub(r"[\"'\\${},]", " ", normalise(text)))
     if fallback and (hit := next((m for v in variants if (m := FALLBACK.search(v))), None)):
         return (
             BLOCK,
