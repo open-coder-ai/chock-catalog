@@ -169,11 +169,35 @@ def test_anchors_aliases_and_merge_keys_are_reported_never_expanded(yp: ModuleTy
     ]
     found = yp.scan(text)
     assert ("job", "perm") not in {n.path for n in found}
-    assert [(n.path, n.kind) for n in yp.indirect(found)] == [(("job", "<<"), "alias"), (("job", "list", 0), "alias")]
-    inline = yp.scan("j:\n  <<: {permissions: write-all}\n  runs-on: x\n")
-    assert [n.path for n in yp.indirect(inline)] == [("j", "<<"), ("j", "<<", "permissions")]
     assert yp.MERGE == "<<"
-    assert yp.indirect(yp.scan("a: {b: c}")) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "path"),
+    [
+        ("jobs:\n  build:\n    <<: {permissions: write-all}\n", ("jobs", "build", "permissions")),
+        ("jobs:\n  build: *tmpl\n", ("jobs", "build", "permissions")),
+        ("jobs:\n  build:\n    steps: [*s]\n", ("jobs", "build")),
+        ("<<: *all\nb: 1\n", ("b",)),
+        ("j:\n  '<<': {p: w}\n", ("j", "p")),
+        ("a:\n  <<: [*x, *y]\n", ("a",)),
+    ],
+)
+def test_a_merge_or_alias_on_the_way_makes_a_path_unknown(yp: ModuleType, text: str, path: tuple) -> None:
+    assert yp.unknown(yp.scan(text), path)
+
+
+@pytest.mark.parametrize(
+    ("text", "path"),
+    [
+        ("jobs:\n  build:\n    permissions: read\n", ("jobs", "build", "permissions")),
+        ("a: *x\nb:\n  c: 1\n", ("b", "c")),
+        ("a:\n  <<: *x\nb:\n  c: 1\n", ("b", "c")),
+        ("a: [b, *x]\n", ("a", 0)),
+    ],
+)
+def test_a_path_away_from_every_merge_and_alias_is_known(yp: ModuleType, text: str, path: tuple) -> None:
+    assert not yp.unknown(yp.scan(text), path)
 
 
 def test_properties_on_their_own_line_mark_the_node_from_there(yp: ModuleType) -> None:

@@ -108,10 +108,12 @@ REFUSED = [
     ("-\t- a\n  - b\n", 1, "a tab before a block collection"),
     ("--- a: b\n    c: d\n", 1, "a block collection on the --- line"),
     ("x: 1\n--- - a\n    - b\n", 2, "a block collection on the --- line"),
-    ("%TAG !! tag:example.com,2000:\n---\na: !!str x\n", 1, "a directive other than %YAML 1.x"),
-    ("%YAML 2.0\n---\na: 1\n", 1, "a directive other than %YAML 1.x"),
-    ("%\n---\n", 1, "a directive other than %YAML 1.x"),
-    ("%YAML 1.2@\n---\na: 1\n", 1, "a directive other than %YAML 1.x"),
+    ("%TAG !! tag:example.com,2000:\n---\na: !!str x\n", 1, "a directive other than one %YAML 1.x"),
+    ("%YAML 2.0\n---\na: 1\n", 1, "a directive other than one %YAML 1.x"),
+    ("%\n---\n", 1, "a directive other than one %YAML 1.x"),
+    ("%YAML 1.2@\n---\na: 1\n", 1, "a directive other than one %YAML 1.x"),
+    ("%YAML 1.2#c\n---\na: 1\n", 1, "a directive other than one %YAML 1.x"),
+    ("%YAML 1.2\n%YAML 1.2\n---\na: 1\n", 2, "a directive other than one %YAML 1.x"),
 ]
 
 

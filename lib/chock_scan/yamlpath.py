@@ -5,9 +5,9 @@ loaders do; multi-document streams (`---`, `...`, %YAML); CRLF, lone CR and a le
 line is where it starts (its tag or anchor, a block scalar's `|`/`>`, an empty value's key line).
 Reports, never resolves: tags as written (`!Ref`, `!!str`), anchors on their node, every duplicate
 key, values as text. Aliases and merge keys are NOT refused (compose and Kubernetes files use them)
-and NOT expanded: an alias is an `alias` node and `<<` a path segment, so a loader can see a key here
-that no node shows. indirect() lists them; a gate judging a path must treat one at or under it as
-unknown. Refuses with ParseError, never a partial result, where it cannot read the text with
+and NOT expanded: an alias is an `alias` node and `<<` a path segment, so a loader can see a key that
+no node shows -- under an alias, or in the mapping that holds a `<<` (any `<<`, quoted too, counts).
+A gate asks unknown(nodes, path) before trusting what it found, or did not find, at a path. Refuses with ParseError, never a partial result, where it cannot read the text with
 certainty or where YAML 1.1 and 1.2 loaders split it differently: tabs in indentation, inside plain
 scalars or before a block collection; explicit `?` keys; keys that are collections, aliases or span
 lines; a tag or anchor before an implicit key; a block collection on the `---` line; `key: value`
@@ -21,7 +21,7 @@ from __future__ import annotations
 from .yamlpath_block import document
 from .yamlpath_cursor import MAX_CHARS, MAX_DEPTH, MAX_NODES, Cursor, Node, ParseError, documents, prepare
 
-__all__ = ["MAX_CHARS", "MAX_DEPTH", "MAX_NODES", "MERGE", "Node", "ParseError", "indirect", "scan"]
+__all__ = ["MAX_CHARS", "MAX_DEPTH", "MAX_NODES", "MERGE", "Node", "ParseError", "scan", "unknown"]
 MERGE = "<<"
 
 
@@ -44,9 +44,27 @@ def scan(
     return out
 
 
-def indirect(nodes: list[Node]) -> list[Node]:
-    """The aliases and the nodes under a merge key: where a loader may hold keys no node shows."""
-    return [n for n in nodes if n.kind == "alias" or MERGE in n.path]
+def unknown(nodes: list[Node], path: tuple[str | int, ...]) -> bool:
+    """Whether a loader may see more at `path` than the nodes show: an alias or a merged mapping on its way.
+
+    True when an alias sits at, above or below `path`, or a `<<` key belongs to a mapping at, above or
+    below it (the merge adds keys to that mapping). A gate refuses or asks then; it never reads absence.
+    """
+    for node in nodes:
+        if MERGE in node.path:
+            holder = node.path[: node.path.index(MERGE)]
+        elif node.kind == "alias":
+            holder = node.path
+        else:
+            continue
+        if _related(holder, path):
+            return True
+    return False
+
+
+def _related(a: tuple[str | int, ...], b: tuple[str | int, ...]) -> bool:
+    """Whether one path is a prefix of the other."""
+    return a[: len(b)] == b or b[: len(a)] == a
 
 
 def _check(label: str, limit: int, ceiling: int | None) -> None:

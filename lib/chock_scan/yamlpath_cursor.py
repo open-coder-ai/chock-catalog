@@ -15,7 +15,7 @@ BOM = "\ufeff"
 FORBIDDEN = re.compile("[^\t\n\x20-\x7e\xa0-\ud7ff\ue000-\ufefe\uff00-\ufffd\U00010000-\U0010ffff]|[\u2028\u2029]")
 MARKER = re.compile(r"(?:---|\.\.\.)(?=[ \t]|$)")
 #: %YAML is read; %TAG would change what every tag means, and other directives are reserved: both refused.
-DIRECTIVE = re.compile(r"%YAML[ \t]++1\.[0-9]++[ \t]*+(?:#.*+)?")
+DIRECTIVE = re.compile(r"%YAML[ \t]++1\.[0-9]++(?:[ \t]++(?:#.*+)?)?")
 SPACES = re.compile(r" *+")
 BLANKS = re.compile(r"[ \t]*+")
 WHITE = " \t"
@@ -111,10 +111,10 @@ def _marker(line: str, number: int) -> str:
 def _prefix(line: str, number: int, directive: int) -> int:
     """Between documents: the first directive line seen so far, or -1 when this line starts a document."""
     if line.startswith("%"):
-        if not DIRECTIVE.fullmatch(line):
-            msg = "a directive other than %YAML 1.x"
+        if not DIRECTIVE.fullmatch(line) or directive:
+            msg = "a directive other than one %YAML 1.x"
             raise ParseError(msg, number)
-        return directive or number
+        return number
     if not line.strip(WHITE) or line.lstrip(WHITE).startswith("#"):
         return directive
     if directive:
