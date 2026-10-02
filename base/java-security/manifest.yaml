@@ -1,13 +1,13 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.6.5"
+version: "0.7.0"
 description: >
-  trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
-  templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
+  trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android), SQL/JPA/MyBatis,
+  templates, application.properties/.yml, web.xml, pom.xml, Gradle; "customize java security"
   opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak
-  crypto, trust-all TLS, disabled Spring Security, exposed secrets, known-exploited deps,
-  SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules in 16 packs, each allow|deny|ask in
-  .chock/security.json; absent = deny.
+  crypto, trust-all TLS, Spring Security off, exposed secrets, known-exploited deps,
+  SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules, 16 packs, each allow|deny|ask in
+  .chock/security.json; absent = deny (quality: allow).
 artifact: hook
 enforcement: block
 effects: [read_only]
@@ -20,7 +20,8 @@ hook:
       java-security: a construct one of its rules denies -- the refusal above names the rule, the
       pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json,
       per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build,
-      android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny.
+      android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny
+      for a security pack, allow for a quality pack (bugs through testing).
       Only what the change adds is refused: a violation on lines the change leaves alone never blocks it.
       Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the
       agent a waiver counts once a human has committed it. Choose verdicts by asking to customize
@@ -30,7 +31,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-10-01T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -44,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.0
+  date: '2026-10-02'
+  changes:
+  - "Owner-approved loosening (plan decision D2, roadmap 4.5 #11): a rule no selection speaks for now takes its pack's tier default. The nine security packs (79 rules) still deny; the seven quality packs -- bugs, concurrency, resources, exceptions, performance, style, testing (50 rules) -- now allow, so a legacy file's existing quality findings no longer refuse an edit. A pack kind with no written default, or a pack this build lacks, denies. A verdict a selection file spells keeps its value: a file the setup page or an install wrote before this release lists every rule at deny and reads exactly as before; only silence changed meaning. To keep enforcing a quality pack, spell it: `{\"version\": 2, \"packs\": {\"exceptions\": {\"verdict\": \"deny\"}}}`. The description says `absent = deny (quality: allow)`, its wording shortened to stay within the 500-char budget. The setup page preselects each rule's pack default and marks a verdict weakened only when it is weaker than that default. Not yet mirrored by the engine: chock's check-baseline and chock_guidance still read a silent quality rule as deny, so deleting a quality pack's entry from a committed selection is not reported as a loosening, and guidance may name a quality rule that no longer enforces."
 - version: 0.6.5
   date: '2026-10-01'
   changes:
