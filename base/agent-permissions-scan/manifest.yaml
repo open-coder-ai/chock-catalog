@@ -1,0 +1,68 @@
+id: agent-permissions-scan
+name: "Agent Permissions Scan"
+version: "0.0.1"
+description: >
+  Warns only (observe): parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
+artifact: rule
+enforcement: advise
+mandatory: false
+rule:
+  text: |
+    agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vscode/settings.json|.cursor/cli.json|opencode.json|.aider.conf.yml|.continue/**): grant named, scoped actions only
+    never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve; never(remove): deny entry; observe: warns at commit+tool_use, enforce later
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      An agent permission config grants more than named, scoped actions (a bare or wildcard allow, a
+      bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox), a
+      deny entry is gone, or the config cannot be read. Scope the grant (Bash(npm test:*), a named tool
+      list), keep the deny entry, use a mode that asks. A reviewed exception is a {file, path, value}
+      entry under waive in .chock/devenv.json, added by a person in their own commit; in the agent only
+      one already in HEAD counts, so an agent asks the person and never writes it.
+    params:
+      script: agent-permissions-scan.py
+effects:
+- read_only
+approval:
+  required: false
+
+compliance:
+  owasp_asi:
+  - control: ASI03
+    coverage: partial
+    note: "warns (observe rollout) when a change widens an agent's permission config: wildcard or bare allows, removed deny entries, bypass default modes, auto-approve switches; MCP configs, command text and tools outside the listed files are out of scope"
+  owasp_llm_2025:
+  - control: LLM06
+    coverage: partial
+    note: "Excessive Agency: reads the structured permission files line-based block-wildcard-agent-permissions cannot (multi-line arrays, unquoted YAML, removed deny entries); warns only until promoted"
+  mitre_atlas:
+  - control: AML.T0083
+    coverage: partial
+    note: "narrows the blast radius of any credential an over-granted agent config would expose; warns only"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial release (roadmap HP11, Wave 3): the structure-aware sibling of block-wildcard-agent-permissions, whose single-line regex stays as it is. A script gate at commit and at the agent's file writes, shipped at action warn (the observe rollout of plan decision D15): the script exits 1 on a finding, so promotion changes only the declared action."
+  - "Rules (rule id: what it keys): ap-allow-broad: permissions.allow, allowedTools, allowed, alwaysAllow, autoApprove and tools entries (at any depth of the listed files) that are `*`, a bare or empty Bash/Shell/run_shell_command, a Bash wildcard with no prefix or a leading star, a prefix wildcard over curl, wget, rm, sudo, su, doas, a shell, eval, exec, ssh, scp, nc, dd, chmod, chown, xargs, env or `git push`, an unscoped or `domain:*` WebFetch, a Write/Edit/MultiEdit/NotebookEdit whose glob covers everything or starts at `~` or `//`, and any `mcp__` wildcard or bare `mcp__server`; opencode `permission` set to allow for bash, edit, write, webfetch or external_directory. ap-deny-removed: an entry of permissions.deny (Gemini tools.exclude / excludeTools, Continue exclude) that HEAD held and the change lacks; always new, compared against HEAD and, at tool use, the file on disk before the write. ap-mode-bypass: a key ending defaultMode, permissionMode or approvalMode with bypassPermissions, auto, yolo, autoApprove, fullAuto or dangerFullAccess in any case or separator. ap-codex-never-danger: approval_policy never with sandbox_mode danger-full-access in the root table or a profile (profiles inherit the root). ap-auto-approve: a true yolo, yes-always, trustAll, *autoApprove, *autoAccept or *dangerouslySkipPermissions key, Gemini `trust` and folderTrust.enabled false. ap-vscode-autoapprove: a chat.tools.*.autoApprove rule set to approve a regex-all pattern (/.*/, /^.*$/), a catch-all glob or URL, or rm, curl, sudo or another risky command. ap-skip-flag: --dangerously-*, --yolo, --trust-all-tools, --allow-all-tools, --permission-mode bypassPermissions or --approval-mode yolo inside any string of a listed file. ap-unreadable: a config that is not valid JSONC/TOML/YAML (YAML with aliases, merge keys, repeated keys or several documents counts), keyed by a digest of its text. ap-sidecar-invalid: a .chock/devenv.json that breaks its closed schema."
+  - "Judging: a finding is keyed by rule, key path without list indexes and normalized value, so a reorder, reformat or insertion is not new, and the engine refuses only what the change holds more of than HEAD. A repeated JSON key is judged by every value it was given (stricter than the last-wins loaders, which parsers disagree on). Waiver: a `{file, path, value}` entry under `waive` in the selection sidecar `.chock/devenv.json`, exactly the three text keys; the file is a closed schema, so an unknown key, a missing key or a repeated key voids every waiver in it and the sidecar itself is reported. A waiver counts when it is in HEAD; a person's own staged sidecar counts at commit or push, an agent's never (CHOCK_AGENT_COMMIT, CLAUDECODE or AI_AGENT mark an agent). Only this gate reads the sidecar today; agent-devenv-autoexec keeps its in-file `chock: allow` comments."
+  - "Limits (not caught): MCP client configs and their enable flags (enableAllProjectMcpServers, enabledMcpjsonServers) belong to verify-mcp-allowlist and a later policy and are not read; user-level and managed settings (~/.claude, /etc), and any file outside the listed names; `Bash(git:*)`, interpreter prefixes (python, node, npx) and a wildcard in the middle of a Bash pattern; Read(//**) and other read grants; path-specific Write/Edit grants into sensitive places other than `~` and `//` paths; moving a deny entry to ask counts as removal, and a deny entry rewritten into an equivalent pattern counts too; a deleted config; no deny comparison when HEAD's copy cannot be read; Codex trust levels, `--yolo` in config keys and any approval/sandbox pair split across a file and an environment variable; skip flags in shell scripts, package.json scripts and CI files (block-unguarded-agent-spawn and agent-devenv-autoexec read commands and workflows); a finding's line is the first line naming its value (1 when the text escapes it). Overlap, by design: agent-devenv-autoexec also warns on some of the same switches (Gemini yolo and autoAccept, Codex never with danger, aider yes-always, VS Code auto-approve), so a change can warn from both. Friction, not a security boundary: the gate only warns until promoted."

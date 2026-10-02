@@ -473,7 +473,7 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.8
+  version: 0.0.9
   artifact: hook
   enforcement: block
   mandatory: false
@@ -482,8 +482,8 @@ policies:
   eval_cases: 17
   eval_executed: 17
   description: 'Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an allow/alwaysAllow/tools
-    array on the same line, or quoted defaultMode bypassPermissions. Any file is judged. Not caught:
-    a multi-line array (`"*"` alone on a line, YAML `- "*"` list), unquoted defaultMode: bypassPermissions.
+    array on the same line, or quoted defaultMode bypassPermissions. Any file is judged. Not caught
+    here: a multi-line array or YAML `- "*"` list, an unquoted defaultMode (agent-permissions-scan warns).
     Runs: commit, agent write, turn''s end. Waiver: ''pragma: allowlist broad-agency'' same line. Person''s
     commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: pin-github-actions
@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: agent-permissions-scan
+  path: base/agent-permissions-scan
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 38
+  eval_executed: 38
+  description: 'Warns only (observe): parses agent permission configs (.claude/settings*, .codex, .gemini,
+    .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows
+    (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto
+    modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP
+    configs, scripts, Read.'

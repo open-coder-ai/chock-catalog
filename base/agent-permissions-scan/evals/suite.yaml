@@ -1,0 +1,570 @@
+suite:
+  id: agent-permissions-scan-tests-v1
+  policy_id: agent-permissions-scan
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # Every executable case runs through the policy's script gate, staged in a throwaway repository. The gate
+  # ships at action warn (observe rollout, plan D15), so a finding reads `warn`; tests/policies/
+  # test_agent_permissions_scan.py pins exit 1 underneath. Fixtures that spell a grant the line-based sibling
+  # (block-wildcard-agent-permissions) would also match carry the same-line pragma it honours.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: "A settings file allows every tool with the star alone on its own line, the pretty-printed form the line-based sibling cannot see."
+    expect: "The gate warns about the allow-everything entry."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": [
+                "Read",
+                "*"
+              ]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-002
+    category: trigger
+    prompt: "An unquoted default mode of bypassPermissions in a YAML agent config."
+    expect: "The gate warns that the default mode approves everything."
+    execute:
+      files:
+        ".continue/config.yaml": |
+          name: local
+          defaultMode: bypassPermissions
+      event: commit
+      expect: warn
+  - id: tc-003
+    category: trigger
+    prompt: "Codex is set to never ask and to run without a sandbox."
+    expect: "The gate warns about the pair."
+    execute:
+      files:
+        ".codex/config.toml": |
+          model = "o3"
+          approval_policy = "never"
+          sandbox_mode = "danger-full-access"
+      event: commit
+      expect: warn
+  - id: tc-004
+    category: trigger
+    prompt: "VS Code workspace settings auto-approve every terminal command with a match-all rule."
+    expect: "The gate warns about the regex-all rule."
+    execute:
+      files:
+        ".vscode/settings.json": |
+          {
+            "chat.tools.terminal.autoApprove": {
+              "/.*/": true
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-005
+    category: trigger
+    prompt: "A change removes a deny entry the committed settings held."
+    expect: "The gate warns that the deny entry is gone."
+    execute:
+      head_files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Read"],
+              "deny": ["Read(.env)"]
+            }
+          }
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Read"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-006
+    category: trigger
+    prompt: "A bare Bash entry in the allow list."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-007
+    category: trigger
+    prompt: "A Bash prefix wildcard over curl."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(curl:*)"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-008
+    category: trigger
+    prompt: "Prefix wildcards over rm, sudo and git push."
+    expect: "The gate warns for each."
+    execute:
+      files:
+        ".claude/settings.local.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(rm -rf:*)", "Bash(sudo:*)", "Bash(git push:*)"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-009
+    category: trigger
+    prompt: "An unscoped WebFetch grant."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["WebFetch"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-010
+    category: trigger
+    prompt: "Write and Edit grants whose globs cover everything, the home directory or the file system."
+    expect: "The gate warns for each."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Write(**)", "Edit(~/**)", "Edit(//**)"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-011
+    category: trigger
+    prompt: "MCP wildcards: every tool of every server, and every tool of one server."
+    expect: "The gate warns for each."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["mcp__*", "mcp__files__*"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-012
+    category: trigger
+    prompt: "Gemini CLI settings turn on yolo approval and auto-accept."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".gemini/settings.json": |
+          {
+            "general": {"defaultApprovalMode": "yolo"},
+            "tools": {"autoAccept": true}
+          }
+      event: commit
+      expect: warn
+  - id: tc-013
+    category: trigger
+    prompt: "aider is told to answer yes to every prompt."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".aider.conf.yml": |
+          model: sonnet
+          yes-always: true
+      event: commit
+      expect: warn
+  - id: tc-014
+    category: trigger
+    prompt: "A multi-line autoApprove array holding the star."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".cursor/cli.json": |
+          {
+            "tools": {
+              "autoApprove": [
+                "read_file",
+                "*"
+              ]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-015
+    category: trigger
+    prompt: "A permission-skipping flag committed in a settings hook command."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "claude -p review --dangerously-skip-permissions"}]}]}
+          }
+      event: commit
+      expect: warn
+  - id: tc-016
+    category: trigger
+    prompt: "VS Code turns on chat tool auto-approve and the Claude Code extension's bypass mode."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".vscode/settings.json": |
+          {
+            "chat.tools.autoApprove": true,
+            "claudeCode.initialPermissionMode": "bypassPermissions"
+          }
+      event: commit
+      expect: warn
+  - id: tc-017
+    category: trigger
+    prompt: "opencode allows bash without asking."
+    expect: "The gate warns."
+    execute:
+      files:
+        "opencode.json": |
+          {
+            "permission": {"bash": "allow"}
+          }
+      event: commit
+      expect: warn
+  - id: tc-018
+    category: trigger
+    prompt: "A config the gate cannot read is not passed as clean."
+    expect: "The gate warns that the config cannot be judged."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {"allow": ["Read"
+      event: commit
+      expect: warn
+  - id: tc-019
+    category: trigger
+    prompt: "The agent writes a bypass permission mode at tool use."
+    expect: "The gate warns at the write."
+    execute:
+      writes:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "permissionMode": "bypassPermissions"
+            }
+          }
+      event: tool_use
+      expect: warn
+  - id: tc-020
+    category: trigger
+    prompt: "At the turn's end a deny entry that HEAD held is gone from the file on disk."
+    expect: "The gate warns at the turn's end."
+    execute:
+      head_files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "deny": ["Bash(rm:*)"]
+            }
+          }
+      writes:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "deny": []
+            }
+          }
+      event: stop
+      expect: warn
+  - id: tc-021
+    category: negative_trigger
+    prompt: "A scoped Bash prefix allow."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(npm test:*)", "Bash(git status:*)"]
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-022
+    category: negative_trigger
+    prompt: "Read-only tools and a scoped fetch."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Read", "Grep", "Glob", "WebFetch(domain:example.com)", "Edit(src/**)"],
+              "defaultMode": "acceptEdits"
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-023
+    category: behavior
+    prompt: "A grant that HEAD already held is not new when the file is reformatted and extended."
+    expect: "Nothing is reported."
+    execute:
+      head_files:
+        ".claude/settings.json": |
+          {"permissions": {"allow": ["Bash(curl:*)"]}}
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": [
+                "Read",
+                "Bash(curl:*)"
+              ]
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-024
+    category: behavior
+    prompt: "The deny list is kept and grows."
+    expect: "Nothing is reported."
+    execute:
+      head_files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "deny": ["Read(.env)"]
+            }
+          }
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "deny": ["Read(.env)", "Bash(rm:*)"]
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-025
+    category: negative_trigger
+    prompt: "A file that is no agent config is not judged here."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        "package.json": |
+          {
+            "name": "app",
+            "allow": [
+            "*"
+          ]
+          }
+      event: commit
+      expect: allow
+  - id: tc-026
+    category: negative_trigger
+    prompt: "Codex with approval never but a workspace sandbox."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        ".codex/config.toml": |
+          approval_policy = "never"
+          sandbox_mode = "workspace-write"
+      event: commit
+      expect: allow
+  - id: tc-027
+    category: negative_trigger
+    prompt: "Ordinary VS Code settings and a narrow terminal rule."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        ".vscode/settings.json": |
+          {
+            "editor.formatOnSave": true,
+            "chat.tools.terminal.autoApprove": {"git status": true, "rm": false}
+          }
+      event: commit
+      expect: allow
+  - id: tc-028
+    category: negative_trigger
+    prompt: "aider with yes-always off."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        ".aider.conf.yml": |
+          yes-always: false
+      event: commit
+      expect: allow
+  - id: tc-029
+    category: adversarial
+    prompt: "Comments and trailing commas around a bare Bash grant."
+    expect: "The gate warns; JSONC is read, not skipped."
+    execute:
+      files:
+        ".claude/settings.json": |
+          // team settings
+          {
+            /* shell */
+            "permissions": {
+              "allow": [
+                "Bash", // everything
+              ],
+            },
+          }
+      event: commit
+      expect: warn
+  - id: tc-030
+    category: adversarial
+    prompt: "A unicode-escaped spelling of defaultMode."
+    expect: "The gate warns; the JSON decoder normalizes the key."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "\u0064efaultMode": "bypass\u0050ermissions"
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-031
+    category: adversarial
+    prompt: "Duplicate defaultMode keys with the auto-approve mode last."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "defaultMode": "default",
+              "defaultMode": "auto"
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-032
+    category: adversarial
+    prompt: "Duplicate defaultMode keys with the auto-approve mode first: parsers disagree, so every value is judged."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "defaultMode": "auto",
+              "defaultMode": "default"
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-033
+    category: adversarial
+    prompt: "The mode spelled in other cases and with separators."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".gemini/settings.json": |
+          {
+            "general": {"default_approval_mode": "YOLO"}
+          }
+      event: commit
+      expect: warn
+  - id: tc-034
+    category: behavior
+    prompt: "A sidecar waiver for the exact finding, already in HEAD."
+    expect: "Nothing is reported."
+    execute:
+      head_files:
+        ".chock/devenv.json": |
+          {"waive": [{"file": ".claude/settings.json", "path": "permissions.allow", "value": "Bash(curl:*)"}]}
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(curl:*)"]
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-035
+    category: adversarial
+    prompt: "A sidecar in HEAD with an unknown key: the schema is closed, so no waiver in it counts."
+    expect: "The gate warns."
+    execute:
+      head_files:
+        ".chock/devenv.json": |
+          {"waive": [{"file": ".claude/settings.json", "path": "permissions.allow", "value": "Bash(curl:*)"}], "mode": "all"}
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(curl:*)"]
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-036
+    category: adversarial
+    prompt: "The agent writes the sidecar and the grant together: only a waiver already in HEAD counts for an agent."
+    expect: "The gate warns."
+    execute:
+      writes:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(curl:*)"]
+            }
+          }
+        ".chock/devenv.json": |
+          {"waive": [{"file": ".claude/settings.json", "path": "permissions.allow", "value": "Bash(curl:*)"}]}
+      event: tool_use
+      expect: warn
+  - id: tc-037
+    category: adversarial
+    prompt: "A YAML config the gate would have to guess at (an alias hides a value) is refused, not passed."
+    expect: "The gate warns."
+    execute:
+      files:
+        ".aider.conf.yml": |
+          base: &b true
+          yes-always: *b
+      event: commit
+      expect: warn
+  - id: tc-038
+    category: adversarial
+    prompt: "A waiver for one grant does not clear a second grant in the same list."
+    expect: "The gate warns about the second."
+    execute:
+      head_files:
+        ".chock/devenv.json": |
+          {"waive": [{"file": ".claude/settings.json", "path": "permissions.allow", "value": "Bash(curl:*)"}]}
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(curl:*)", "Bash(sudo:*)"]
+            }
+          }
+      event: commit
+      expect: warn
