@@ -138,7 +138,7 @@ def test_a_manifest_that_cannot_be_parsed_asks_and_is_never_a_silent_pass(repo: 
 
 def test_a_manifest_too_large_or_too_deep_to_read_is_a_finding_not_a_pass(repo: Path) -> None:
     big = "x" * (mod.MAX_CHARS + 1)
-    deep = '{"x": ' + "[" * 5000 + "]" * 5000 + ', "dependencies": {"evil": "1"}}'
+    deep = '{"x": ' + "[" * 300_000 + "]" * 300_000 + ', "dependencies": {"evil": "1"}}'
     for path, text in (("requirements.txt", big), ("package.json", deep)):
         code, document, err = run(repo, {path: text})
         assert code == 1
@@ -147,7 +147,7 @@ def test_a_manifest_too_large_or_too_deep_to_read_is_a_finding_not_a_pass(repo: 
 
 
 def test_an_unreadable_lockfile_asks_and_a_changed_unreadable_manifest_is_new(repo: Path) -> None:
-    deep = '{"x": ' + "[" * 5000 + "]" * 5000 + "}"
+    deep = '{"x": ' + "[" * 300_000 + "]" * 300_000 + "}"
     assert run(repo, {"package-lock.json": deep})[0] == 3
     first = keys(run(repo, {"package.json": deep})[1])
     second = keys(run(repo, {"package.json": deep + " "})[1])

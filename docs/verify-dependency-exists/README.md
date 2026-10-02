@@ -10,7 +10,7 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 46 total, 46 executable |
+| **Eval cases** | 45 total, 45 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
