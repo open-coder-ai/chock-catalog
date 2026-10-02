@@ -36,6 +36,8 @@ SIMPLE = re.compile(r"[A-Za-z0-9._/:@,|*?\[\]+=%~-]*")
 QUOTES = re.compile("[\"']")
 COMMAND_END = re.compile(r"[;&()]")
 SHELL_FILE = re.compile(r"\.(?:sh|bash|zsh|envrc)$", re.IGNORECASE)
+#: `target: ; recipe` (a ':' before any '=', then a ';').
+ONE_LINE_RULE = re.compile(r"^[^\t#=:][^=:]*:[^=;]*;")
 MAKEFILE = re.compile(r"(?:\.mk|(?:^|/)(?:gnu)?makefile)$", re.IGNORECASE)
 YAML_JSON = re.compile(r"\.(?:ya?ml|json)$", re.IGNORECASE)
 MAX_CODEPOINT = 0x10FFFF
@@ -46,8 +48,11 @@ MAX_SETTINGS = 1000
 
 def go_env(ctx: Ctx) -> None:
     """Every GO* setting on every non-comment line, judged by go_setting under each reading of its value."""
-    seen = 0
+    seen, continued = 0, False
     for number, raw in enumerate(ctx.lines, 1):
+        shell = _shell_line(ctx.path, raw, continued=continued)
+        # A Makefile recipe line ending in '\' carries on, whatever the next line's indent.
+        continued = shell and raw.rstrip().endswith("\\")
         if raw.lstrip().startswith(("#", "//")):
             continue
         for match in (*ENV_LINE.finditer(raw), *SETTING.finditer(raw)):
@@ -55,12 +60,12 @@ def go_env(ctx: Ctx) -> None:
             if seen > MAX_SETTINGS:
                 add(ctx, UNREADABLE, number, ("GO*", "too many"), f"more than {MAX_SETTINGS} GO* settings")
                 return
-            _judge(ctx, number, raw, match)
+            _judge(ctx, number, raw, match, shell=shell)
 
 
-def _judge(ctx: Ctx, number: int, raw: str, match: re.Match[str]) -> None:
+def _judge(ctx: Ctx, number: int, raw: str, match: re.Match[str], *, shell: bool) -> None:
     name = match["name"]
-    readings, certain = _value(ctx, raw, match)
+    readings, certain = _value(ctx, raw, match, shell=shell)
     if readings is None:
         add(ctx, UNREADABLE, number, (name, "long word"), f"{name} is followed by a word too long to read")
         return
@@ -80,7 +85,7 @@ def _judge(ctx: Ctx, number: int, raw: str, match: re.Match[str]) -> None:
         )
 
 
-def _value(ctx: Ctx, raw: str, match: re.Match[str]) -> tuple[list[str] | None, bool]:
+def _value(ctx: Ctx, raw: str, match: re.Match[str], *, shell: bool) -> tuple[list[str] | None, bool]:
     """(the candidate values, whether the reading is certain); (None, False) for a word past MAX_WORD."""
     pos = match.end()
     outer = match.groupdict().get("outer") or ""
@@ -91,10 +96,10 @@ def _value(ctx: Ctx, raw: str, match: re.Match[str]) -> tuple[list[str] | None, 
         return _quoted(ctx, raw, pos, quote, outer)
     if outer:
         return _in_string(raw, pos, outer)
-    return _bare(ctx, raw, pos)
+    return _bare(raw, pos, shell=shell)
 
 
-def _bare(ctx: Ctx, raw: str, pos: int) -> tuple[list[str] | None, bool]:
+def _bare(raw: str, pos: int, *, shell: bool) -> tuple[list[str] | None, bool]:
     """A value written as one bare shell word, with GOFLAGS-style flags after it."""
     word = WORD.match(raw, pos)[0]
     if len(word) > MAX_WORD:
@@ -110,7 +115,7 @@ def _bare(ctx: Ctx, raw: str, pos: int) -> tuple[list[str] | None, bool]:
     cut = TERMINATOR.search(EXPANSION.sub(lambda m: "x" * len(m[0]), word))
     if cut is None:
         return [plain + tail], True
-    if cut[0] in ";&()" and _shell_line(ctx.path, raw) and not re.search(r"[\"'\\]", word[: cut.start()]):
+    if cut[0] in ";&()" and shell and not re.search(r"[\"'\\]", word[: cut.start()]):
         # On a shell line an unquoted ; & ( or ) ends the word: one reading only. A make assignment, a Dockerfile
         # ENV line or a word quoted before the separator stays uncertain.
         return [QUOTES.sub("", word[: cut.start()]) + tail], True
@@ -118,10 +123,11 @@ def _bare(ctx: Ctx, raw: str, pos: int) -> tuple[list[str] | None, bool]:
     return [plain + tail, QUOTES.sub("", word[: cut.start()]) + tail], False
 
 
-def _shell_line(path: str, raw: str) -> bool:
-    """A shell script's line, or a Makefile recipe line (tab-indented); a make variable assignment is not shell."""
+def _shell_line(path: str, raw: str, *, continued: bool) -> bool:
+    """A shell script's line, or a Makefile recipe line: tab-indented, continuing a recipe line, or the recipe
+    of a one-line rule (target: ; command). A make variable assignment is not shell."""
     if MAKEFILE.search(path):
-        return raw.startswith("\t")
+        return raw.startswith("\t") or continued or ONE_LINE_RULE.match(raw) is not None
     return bool(SHELL_FILE.search(path))
 
 

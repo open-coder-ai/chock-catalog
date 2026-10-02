@@ -89,3 +89,18 @@ def test_a_sumdb_value_that_is_only_a_separator_is_empty() -> None:
 )
 def test_make_assignments_and_quoted_separators(path: str, text: str, want: list[str]) -> None:
     assert rules(path, text) == sorted(want)
+
+
+@pytest.mark.parametrize(
+    ("text", "want"),
+    [
+        # Recipe lines continued with a backslash, and one-line rules, are shell too.
+        ("t:\n\tset -e; \\\n    export GOPRIVATE=github.com/acme/*; go build\n", []),
+        ("t:\n\tset -e; \\\n    export GOPRIVATE=github.com; go build\n", [B_TLS]),
+        ("build: ; GOFLAGS=-mod=vendor; go build\n", []),
+        ("build: ; GOSUMDB=off; go build\n", [B_TLS]),
+        ("GOPRIVATE := (none),*\nt:\n\techo done\n", [B_TLS]),
+    ],
+)
+def test_makefile_recipe_forms(text: str, want: list[str]) -> None:
+    assert rules("Makefile", text) == want
