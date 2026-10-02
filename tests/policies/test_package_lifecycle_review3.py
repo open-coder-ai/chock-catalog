@@ -37,7 +37,7 @@ def keys(writes: dict[str, str]) -> list[str]:
     ],
 )
 def test_executed_files(body: str, files: list[str]) -> None:
-    assert executed(body) == files
+    assert [path for path, _primary in executed(body)] == files
 
 
 @pytest.fixture
@@ -100,3 +100,58 @@ def test_constructors_and_namespace_calls(body: str) -> None:
 
 def test_a_class_never_named_runs_no_constructor() -> None:
     assert found({"setup.py": "import os\nclass K:\n    def __init__(self):\n        os.system('echo')\n"}) == []
+
+
+# Round 4: the ways a hook runs scripts/a.js, each a target when only that file is edited.
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "node scripts/a",
+        "node scripts",
+        "node -r ts-node/register scripts/a.js",
+        "node --require=./scripts/a.js x",
+        "sh -c 'node scripts/a.js'",
+        'bash -c "scripts/a.js"',
+        "node --max-old-space-size 4096 scripts/a.js",
+        "python -W ignore scripts/a.js",
+        "npx --yes tsx scripts/a.js",
+        "env -i node scripts/a.js",
+        "sudo -E node scripts/a.js",
+        "time -p node scripts/a.js",
+        "pnpm exec node scripts/a.js",
+        "yarn node scripts/a.js",
+        "npm exec -- node scripts/a.js",
+        "bun x tsx scripts/a.js",
+        "yarn tsx scripts/a.js",
+        "FOO='a b' node scripts/a.js",
+        "(node scripts/a.js)",
+        "if true; then node scripts/a.js; fi",
+        "node scripts/a.js>log",
+        "node scripts/a.js > /dev/null 2>&1 || true",
+        "node build.js scripts/a.js",
+        "C:\\tools\\node.exe scripts\\a.js",
+        "sh -c 'unbalanced",
+    ],
+)
+def test_hook_shapes_that_run_a_script(tmp_path: Path, body: str) -> None:
+    (tmp_path / "package.json").write_text(json.dumps({"scripts": {"postinstall": body}}), "utf-8")
+    target = "scripts/index.js" if body == "node scripts" else "scripts/a.js"
+    expected = [] if "unbalanced" in body else [("npm-lifecycle-target", "ask")]
+    assert found({target: "x"}, str(tmp_path)) == expected
+
+
+def test_a_redirect_target_is_not_a_script(tmp_path: Path) -> None:
+    (tmp_path / "package.json").write_text(
+        json.dumps({"scripts": {"postinstall": "node a.js > out.js; node b.js >out.js"}}), "utf-8"
+    )
+    assert found({"out.js": "x"}, str(tmp_path)) == []
+
+
+def test_only_the_run_file_written_in_the_same_change_escalates() -> None:
+    package = json.dumps({"scripts": {"postinstall": "node build.js data.json"}})
+    data = found({"package.json": package, "data.json": "{}"})
+    assert data == [("npm-lifecycle-target", "ask"), ("npm-lifecycle", "ask")]
+    build = found({"package.json": package, "build.js": "x"})
+    assert build == [("npm-lifecycle-target", "ask"), ("npm-lifecycle", "block")]

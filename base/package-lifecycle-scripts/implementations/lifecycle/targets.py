@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import json
 import posixpath
-import re
 import tomllib
 
 from lifecycle import ASK, Hit, digest
+from lifecycle.shellwords import executed, resolves_to
 from lifecycle.textrules import build_rs
 from lifecycle.tree import ancestors, join, text_of
 
@@ -32,59 +32,6 @@ LIFECYCLE_NAMES = [
     "uninstall",
     "postuninstall",
 ]
-#: Programs that run the file named after them (their flags aside): `node x.js`, `sh setup`, `python x.py`.
-INTERPRETERS = frozenset(
-    [
-        "node",
-        "nodejs",
-        "bun",
-        "deno",
-        "sh",
-        "bash",
-        "zsh",
-        "dash",
-        "ksh",
-        "python",
-        "python3",
-        "py",
-        "ruby",
-        "perl",
-        "php",
-        "pwsh",
-        "powershell",
-        "tsx",
-        "ts-node",
-        "lua",
-    ]
-)
-#: Words that run the rest of the command line as given: `env X=1 node x.js`, `npx tsx x.ts`.
-WRAPPERS = frozenset(["env", "sudo", "exec", "nohup", "time", "command", "cross-env", "npx", "pnpx", "bunx", "run"])
-INLINE = frozenset(["-e", "--eval", "-p", "--print", "-pe", "-c", "-E"])
-SEPARATORS = re.compile(r"&&|\|\||[;|&\n]")
-
-
-def executed(body: str) -> list[str]:
-    """The files a hook body executes: each command's program when it is a path, or the first operand of an
-    interpreter. Data arguments (`tsc -p tsconfig.json`, `cp a b`) are not files it executes.
-    """
-    found = []
-    for command in SEPARATORS.split(body):
-        words = [w.strip("'\"") for w in command.split()]
-        while words and (re.match(r"^[A-Za-z_]\w*=", words[0]) or words[0] in WRAPPERS):
-            words.pop(0)
-        if not words:
-            continue
-        program = posixpath.basename(words[0].replace("\\", "/")).lower().removesuffix(".exe")
-        if program in INTERPRETERS:
-            for word in words[1:]:
-                if word in INLINE:  # `node -e <code>`: the operand is code, no file is run
-                    break
-                if not word.startswith("-") and word != "run":
-                    found.append(word)
-                    break
-        elif "/" in words[0] or "." in posixpath.basename(words[0]):
-            found.append(words[0])
-    return found
 
 
 def _scripts(folder: str, writes: dict[str, str], root: str) -> dict:
@@ -105,7 +52,7 @@ def npm_script(path: str, text: str, writes: dict[str, str], root: str) -> list[
         for name in LIFECYCLE_NAMES:
             body = scripts.get(name)
             where = posixpath.join(folder, "package.json") if folder else "package.json"
-            if isinstance(body, str) and path != where and any(join(folder, m) == path for m in executed(body)):
+            if isinstance(body, str) and path != where and any(resolves_to(folder, m, path) for m, _ in executed(body)):
                 # Asked about, never blocked: a URL or child_process in a program's own source is ordinary,
                 # so its text is no signal; the edit itself is what a person reviews.
                 return [Hit(1, "npm-lifecycle-target", f"{where} scripts.{name}", digest(text), ASK,
