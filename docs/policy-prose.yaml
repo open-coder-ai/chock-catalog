@@ -556,3 +556,13 @@ agentic-code-security:
     waived by a human reviewer with `# chock: allow <rule-id>` (`//` in JavaScript); the agent's own waiver is
     refused, and a JSON config, which has no comments, is waived in the selection file. The rule catalogue in
     `references/rule-catalogue.md` lists every rule with its weakness, ASI entry and fix.
+
+refname-filename-metachar:
+  solves: >
+    Names a shell, CI step or git can misread. Paths a change adds or renames into, and branches
+    and tags pushed, can carry command substitution, an IFS expansion, a backtick, a shell
+    operator, a control or bidi character, a base64-decode shape, a leading dash or a trailing
+    space or dot in a segment, or a '..' segment; a ref can also have a full commit id's shape.
+  customise: >
+    No waiver: if a name is truly required, a person creates it from their own shell. This is
+    friction, not a boundary.
