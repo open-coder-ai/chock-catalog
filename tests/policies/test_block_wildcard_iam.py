@@ -91,7 +91,7 @@ BLOCKED = [
     r"az role assignment create --assignee $SP --role Owner --scope /subscriptions/x",
     r'az role assignment create --assignee $SP --role "Owner"',
     "roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', "
-    "'8e3af657-a8ff-443c-a75c-2fe8c4bcb635')",
+    + "'8e3af657-a8ff-443c-a75c-2fe8c4bcb635')",
     # A Deny smuggled into a string value does not make the line a Deny statement.
     r'{"Sid": "Effect: Deny", "Effect": "Allow", "Action": "*", "Resource": "*"}',
     r"{Sid: 'Effect: Deny', Action: '*', Resource: '*'}",
@@ -109,7 +109,7 @@ BLOCKED = [
     r'iam.PolicyStatement(actions=["*"], resources=["*"])  # effect=Deny',
     r'resources = ["*"] # Effect = Deny',
     r"new iam.PolicyStatement({ effect: iam.Effect.DENY, actions: ['s3:x'] }); "
-    r"new iam.PolicyStatement({ actions: ['*'], resources: ['*'] });",
+    + r"new iam.PolicyStatement({ actions: ['*'], resources: ['*'] });",
     r'{"Statement":[{"Effect":"Deny","Action":"x:Y","Resource":"*"},{"Effect":"\u0041llow","Action":"*","Resource":"*"}]}',
     r'{"Effect": "Deny", "Action": "x:Y", "Resource": "*"}, {"Action": "*", "Resource": "*"}',
     r'{"Effect": "Deny", "Sid": "x", "Effect": "Allow", "Action": "*", "Resource": "*"}',
