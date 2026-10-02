@@ -31,6 +31,12 @@ def _read(args: list[str]) -> tuple[list[str], set[str], list[str]]:
     return words, flags, ops
 
 
+def mklink(w: Any, args: list[str], env: dict[str, str]) -> bool:
+    """`mklink [/D] LINK TARGET` creates the link at its first operand."""
+    ops = _read(args)[2]
+    return bool(ops) and w.reaches(ops[0], env, parents=True)
+
+
 def windows(w: Any, name: str, args: list[str], env: dict[str, str]) -> bool:
     """move is mv; xcopy and robocopy take `SOURCE DEST [files]`, and robocopy /MIR, /PURGE and /MOVE also delete."""
     words, flags, ops = _read(args)

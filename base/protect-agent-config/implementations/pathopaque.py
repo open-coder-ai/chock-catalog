@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-from chock_shellparse.parse import _ASSIGN, _WRAPPERS, _base, _crude, _Scan
+from chock_shellparse.parse import _ASSIGN, _WRAPPERS, _base, _crude, _Scan, script_at
 from pathescape import decode
 from pathtext import scan
 from pathwrap import WRAPPERS
@@ -26,6 +26,7 @@ SOURCES = frozenset((".", "source"))
 # interpreter name prefix -> the short letters and long options that give it a program on the command line
 ONE_LINERS = {
     "python": ("c", ()),
+    "pypy": ("c", ()),
     "perl": ("eE", ()),
     "ruby": ("e", ()),
     "node": ("ep", ("--eval", "--print")),
@@ -33,6 +34,13 @@ ONE_LINERS = {
     "lua": ("e", ()),
     "bun": ("e", ("--eval", "--print")),
     "deno": ("", ("eval",)),
+    "rscript": ("e", ()),
+    "julia": ("eE", ("--eval", "--print")),
+    "groovy": ("e", ()),
+    "osascript": ("e", ()),
+    "tclsh": ("", ()),
+    "sqlite3": ("", ()),
+    "gdb": ("", ("-ex", "-iex", "--eval-command", "--init-eval-command")),
 }
 # Commands that run the commands in their words, or text fed to them: any later word may be the command.
 LAUNCHERS = frozenset((*_WRAPPERS, *WRAPPERS, "find", "parallel", "xargs", "busybox"))
@@ -43,20 +51,30 @@ def _dynamic(words: list[str]) -> bool:
     return any(_DYNAMIC.search(w) for w in words)
 
 
+def _command_flag(args: list[str]) -> int | None:
+    return next((k for k, a in enumerate(args) if a == "--command" or re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", a)), None)
+
+
+def _script_at(args: list[str], flag: int) -> int:
+    """Where the script of `-c` is: after it, past the options and the `--` that end the options."""
+    return flag + 1 + script_at(args[flag + 1 :])
+
+
 def _shell(args: list[str]) -> bool:
     """Whether a shell reads a script it is not given as a literal: a `-c` with a variable or substitution or no script,
     standard input (no script file, `-s`, `/dev/stdin`), or a here-string or here-document (which leave no file)."""
-    flag = next((k for k, a in enumerate(args) if a == "--command" or re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", a)), None)
+    flag = _command_flag(args)
     if flag is not None:
-        return flag + 1 >= len(args) or _dynamic([args[flag + 1]])
+        at = _script_at(args, flag)
+        return at >= len(args) or _dynamic([args[at]])
     files = [a for a in args if not a.startswith("-")]
     return "-s" in args or not files or _STDIN.fullmatch(files[0]) is not None
 
 
 def _literal(args: list[str]) -> str:
     """The script of `bash -c SCRIPT`, when there is a literal one."""
-    flag = next((k for k, a in enumerate(args) if a == "--command" or re.fullmatch(r"-[A-Za-z]*c[A-Za-z]*", a)), None)
-    return args[flag + 1] if flag is not None and flag + 1 < len(args) else ""
+    flag = _command_flag(args)
+    return args[_script_at(args, flag)] if flag is not None and _script_at(args, flag) < len(args) else ""
 
 
 def _interpreter(name: str, args: list[str]) -> bool:
@@ -111,6 +129,7 @@ class _Look:
             if depth < _DEPTH and (script := _literal(args)):
                 self.run(script, depth + 1)
         elif name in EVALS:
+            args = args[args[:1] == ["--"] :]
             self.found |= _dynamic(args)
             if depth < _DEPTH:
                 self.run(" ".join(args), depth + 1)
@@ -128,7 +147,11 @@ def refuses(raw: str, hit: Callable[[str], bool]) -> bool:
     here-document, a variable as the command, `trap`, `xargs sh`, an interpreter one-liner) and names a protected path anywhere.
 
     The line is tested as written, with its backslash escapes decoded as bash decodes them, and as each part of it reads."""
-    decoded = [raw, raw.translate(_BARE), *(decode(raw, mode).text for mode in ("b", "echo", "fmt", "ansi"))]
+    spelled = [raw, *(decode(raw, mode).text for mode in ("b", "echo", "fmt", "ansi"))]
+    decoded = [
+        *spelled,
+        *(text.translate(_BARE) for text in spelled),
+    ]  # a `$'\x2e'` that sits in a quoted script reads `.`
     if not any(hit(text) for text in decoded):
         return False  # no path of the line is protected, as written, decoded or with its quotes taken out
     look = _Look()

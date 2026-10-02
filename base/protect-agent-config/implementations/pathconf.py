@@ -51,22 +51,29 @@ _GIT_COMMANDS = frozenset(
         *("merge", "merge-base", "mv", "name-rev", "notes", "pull", "push", "range-diff", "rebase", "reflog"),
         *("remote", "repack", "replace", "reset", "restore", "rev-list", "rev-parse", "revert", "rm", "shortlog"),
         *("show", "show-branch", "sparse-checkout", "stash", "status", "switch", "symbolic-ref", "tag", "worktree"),
+        *("for-each-ref", "show-ref"),
         *("update-index", "update-ref", "whatchanged", "diff-tree", "diff-files", "diff-index", "prune"),
     )
 )
-# Options that make a command in an alias run a program, by any spelling git accepts (a long option by any unambiguous prefix):
-# `--exec`, `--upload-pack`, `--receive-pack` (`--rece`: `--rec` is also `--recurse-submodules`), `--template`, `-x` of a rebase,
-# `-u` (upload-pack) and `-c`/`--config` (any key) of a clone, a merge strategy that is not one git ships (`git-merge-NAME`).
-_EXEC = re.compile(r"--(?:ex|upl|rece)")
-_RISKY = {
-    **dict.fromkeys(("archive", "ls-remote", "push"), _EXEC),
-    "fetch": re.compile(r"-[A-Za-z]*u|--(?:ex|upl|rece)"),
-    "pull": re.compile(r"-[A-Za-z]*[ux]|--(?:ex|upl|rece)"),
-    "rebase": re.compile(r"-[A-Za-z]*x|--e"),
-    "clone": re.compile(r"-[A-Za-z]*[uc]|--(?:ex|upl|con|tem)"),
-    "init": re.compile(r"--tem"),
+# Options that make a command in an alias run a program: `--exec`, `--upload-pack`, `--receive-pack`, `--template`, `--config`,
+# `-x` of a rebase, `-u` (upload-pack) and `-c` of a clone, a merge strategy that is not one git ships (`git-merge-NAME`).
+# A long option is read by every prefix of its name, since git accepts the unambiguous ones (`--u=`, `--te=`, `--co=`).
+_EXECS = ("--exec", "--upload-pack", "--receive-pack")
+_LONG_RISKY = {
+    **dict.fromkeys(("archive", "ls-remote", "push", "fetch", "pull"), _EXECS),
+    "rebase": ("--exec",),
+    "clone": ("--exec", "--upload-pack", "--config", "--template"),
+    "init": ("--template",),
+}
+_SHORT_RISKY = {
+    "fetch": re.compile(r"-[A-Za-z]*u"),
+    "pull": re.compile(r"-[A-Za-z]*[ux]"),
+    "rebase": re.compile(r"-[A-Za-z]*x"),
+    "clone": re.compile(r"-[A-Za-z]*[uc]"),
 }
 _ANY_EXEC = re.compile(r"--exe")  # no git option but `--exec` starts so
+_FORMAT = re.compile(r"""--(?:format|pretty)=(?:t?format:)?(?:'[^']*'|"[^"]*"|\S+)""")
+_QUOTES = str.maketrans("", "", "'\"\\")
 _STRATEGIES = frozenset(("ours", "recursive", "resolve", "octopus", "subtree", "ort"))
 _STRATEGY_COMMANDS = frozenset(("merge", "rebase", "pull", "cherry-pick", "revert"))
 _STRATEGY_OPTION = re.compile(r"(?:--str[a-z-]*=?|-s)(.*)")
@@ -139,17 +146,34 @@ def _strategy(words: list[str]) -> bool:
     return False
 
 
+def _runs_program(command: str, word: str) -> bool:
+    """Whether an option word of an alias body makes `git COMMAND` run a program."""
+    name = word.split("=", 1)[0]
+    short = _SHORT_RISKY.get(command)
+    return bool(
+        _ANY_EXEC.match(word)
+        or any(abbreviates(name, full, 3) for full in _LONG_RISKY.get(command, ()))
+        or (short and short.match(word))
+    )
+
+
+def _plain(value: str) -> str:
+    """An alias value as git reads its words: the text of a `--format` or `--pretty` option is only printed (a `[`, a `*`, a
+    `%` in it runs and matches nothing), and quotes and backslashes only group words."""
+    return _FORMAT.sub("--format=", value).translate(_QUOTES)
+
+
 def harmless_alias(key: str, value: str) -> bool:
     """Whether an alias value runs no program: it starts with a git command that takes no program (a name that is not one
     would run `git-NAME` from the PATH), and a `!` shell alias, a leading option (`-c`) or an option that runs one is none of that."""
-    words = value.split()
-    risky = _RISKY.get(words[0]) if words else None
+    plain = _plain(value)
+    words = plain.split()
     return (
         key.lower().startswith("alias.")
-        and not DYNAMIC.search(value)
+        and not DYNAMIC.search(plain)
         and words[:1] != []
         and words[0] in _GIT_COMMANDS
-        and not any(_ANY_EXEC.match(w) or (risky and risky.match(w)) for w in words[1:])
+        and not any(_runs_program(words[0], w) for w in words[1:])
         and not (words[0] in _STRATEGY_COMMANDS and _strategy(words[1:]))
     )
 

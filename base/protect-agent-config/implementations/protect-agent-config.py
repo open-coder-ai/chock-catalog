@@ -12,6 +12,7 @@ import sys
 
 from chock_shellparse import commands, writes_files
 from pathguard import refuses
+from pathmatch import DEVICE
 from pathopaque import refuses as opaque
 from pathwrap import too_deep
 
@@ -69,13 +70,13 @@ DEEP = "shell command nested too deep to check (a script inside a script, five o
 
 
 def normalise(path: str) -> str:
-    """The path as matched: backslashes as slashes, `//` and `/./` collapsed, lowercase (macOS and Windows ignore case)."""
-    normal = path.replace("\\", "/")
+    """The path as matched: backslashes as slashes, no device prefix, `//` and `/./` collapsed, names without trailing dots or spaces (Windows drops them), lowercase."""
+    normal = DEVICE.sub("", path.replace("\\", "/"))
     previous = None
     while previous != normal:
         previous = normal
         normal = normal.replace("//", "/").replace("/./", "/")
-    return normal.lower()
+    return "/".join(part.rstrip(". ") or part for part in normal.split("/")).lower()
 
 
 def hit(path: str) -> bool:

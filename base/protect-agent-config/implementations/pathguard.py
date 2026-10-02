@@ -17,7 +17,7 @@ from pathreach import Reach
 from pathscript import Scripts
 from pathsubst import PWD, bindings, resolver
 from pathtext import SUBST, scan
-from pathwin import windows
+from pathwin import mklink, windows
 from pathwords import (
     CD,
     CHILDREN,
@@ -42,6 +42,9 @@ _CLOSING = re.compile(r"(?<=[^\s\\])\\(?=\s)|(?<=%)\\(?=\S)")
 _QUOTED_END = re.compile(r'\\(?=")')  # `"C:\build\"`: the `\` closes the folder, it does not escape the quote
 _CD_SWITCH = frozenset(("/d",))
 _DRIVE_IN = re.compile(r"[A-Za-z]:\\")
+_DEVICE_PATH = re.compile(
+    r"(?<![\w\\])\\\\[?.]\\(?=[A-Za-z]:)"
+)  # `\\?\C:\x` before a drive letter: the bash-style reading would eat it
 
 
 class _Walk(Reach, Scripts):
@@ -87,7 +90,8 @@ class _Walk(Reach, Scripts):
         self.handlers: dict[str, Callable[[Cmd], bool]] = {
             **dict.fromkeys(REMOVERS, self._remove),
             **dict.fromkeys(DEST - WINDOWS, lambda c: dest(self, c.name, c.args, c.env)),
-            **dict.fromkeys(WINDOWS, lambda c: windows(self, c.name, c.args, c.env)),
+            **dict.fromkeys(WINDOWS - {"mklink"}, lambda c: windows(self, c.name, c.args, c.env)),
+            "mklink": lambda c: mklink(self, c.args, c.env),
             **dict.fromkeys(OUTPUT, lambda c: output(self, c.name, c.args, c.env)),
             **dict.fromkeys(("awk", "gawk", "mawk", "nawk"), lambda c: awk(self, c.args, c.env)),
             **dict.fromkeys(("sed", "yq"), lambda c: sed(self, c.args, c.env)),
@@ -185,8 +189,11 @@ class _Walk(Reach, Scripts):
 
         A value that holds `$PWD` was read where the line was, which may be any directory it has been in: one command each.
         """
+        bound = self.bound
         env = {
-            k: SUBST if (v.startswith(FRESH) or k in self.bound.refs) and self.bound.rebound(k) else v
+            k: SUBST
+            if k in bound.hidden or k in bound.refs or ((v.startswith(FRESH) or "$" in v) and bound.rebound(k))
+            else v
             for k, v in cmd.env.items()
         }
         late = cmd.name not in CD and cmd.name not in POP and any(PWD.search(v) for v in env.values())
@@ -232,6 +239,7 @@ class _Walk(Reach, Scripts):
 
 def _closed(raw: str) -> str:
     """The line with each Windows folder-closing `\\` read as a separator, as Windows reads it."""
+    raw = _DEVICE_PATH.sub("", raw)
     closed = _CLOSING.sub("/", _QUOTED_END.sub("/", raw) if _DRIVE_IN.search(raw) else raw)
     return _WINPATH.sub("/", closed)
 

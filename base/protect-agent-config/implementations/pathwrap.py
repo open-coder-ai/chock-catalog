@@ -66,6 +66,8 @@ WRAPPERS = {
         joined=True,
     ),
     "unbuffer": _spec("", "-p"),
+    "chronic": _spec("", "*"),
+    "tsp": _spec("-L -N -D -S", "*"),
     "busybox": _spec(),
     "nsenter": _spec("-t -S -G -w -r --target --setuid --setgid --wd --root", "-m -u -i -n -p -C -T -U -a -F -Z"),
     "setpriv": _spec(

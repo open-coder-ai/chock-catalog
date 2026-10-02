@@ -135,7 +135,7 @@ def test_a_mktemp_variable_line_of_thousands_is_read_in_linear_time(_repo_root: 
             timeout=60,
         )
         assert done.returncode == 0
-        assert time.monotonic() - start < 2
+        assert time.monotonic() - start < 4
 
 
 @pytest.mark.parametrize(

@@ -15,7 +15,9 @@ PUSH = frozenset(("pushd", "push-location"))
 POP = frozenset(("popd", "pop-location"))
 DELETERS = frozenset(("rm", "rmdir", "unlink", "shred", "remove-item", "ri", "del", "erase", "rd"))
 # Writers the guard names beyond the shared parser's remover list (a test pins the rest to it): editors, and tools it lacks.
-EXTRA_REMOVERS = frozenset(("vi", "vim", "nvim", "nano", "emacs", "sponge", "chattr", "rename"))
+EXTRA_REMOVERS = frozenset(
+    ("vi", "vim", "nvim", "nano", "emacs", "sponge", "chattr", "rename", "attrib", "icacls", "takeown")
+)
 REMOVERS = frozenset(
     (
         *("tee", "chmod", "chown", "truncate", "patch", "ed", "ex", "touch", *DELETERS),
@@ -24,10 +26,10 @@ REMOVERS = frozenset(
     )
 )
 # Windows commands the shared parser does not know: move, xcopy and robocopy write a destination (pathwriters.windows).
-WINDOWS = frozenset(("move", "xcopy", "robocopy"))
+WINDOWS = frozenset(("move", "xcopy", "robocopy", "mklink"))
 DEST = frozenset(("cp", "install", "ln", "mv", "rsync", "scp", "copy-item", "copy", "cpi", *WINDOWS))
-INTERPRETERS = ("python", "perl", "ruby", "node", "php")
-CODERS = ("lua", "luajit", "deno", "bun")
+INTERPRETERS = ("python", "pypy", "perl", "ruby", "node", "php")
+CODERS = ("lua", "luajit", "deno", "bun", "rscript", "julia", "groovy", "osascript", "tclsh")
 # Names that can sit in a protected directory whose other contents are unknown: the engine launcher, git hooks, hook files.
 CHILDREN = frozenset(
     (

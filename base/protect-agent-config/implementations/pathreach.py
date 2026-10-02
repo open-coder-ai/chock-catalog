@@ -7,7 +7,7 @@ import posixpath
 import re
 from collections.abc import Callable
 
-from pathmatch import DRIVE, DYNAMIC, FRESH, PIECE, expand, pattern
+from pathmatch import DEVICE, DRIVE, DYNAMIC, FRESH, PIECE, expand, pattern
 from pathtext import braces
 from pathwords import GUARD_DIRS
 
@@ -39,7 +39,7 @@ class Reach:
 
     def _path(self, token: str, env: dict[str, str]) -> tuple[str, bool]:
         """The token as a repo-relative, normalised path, and whether the directory it is relative to is unknown."""
-        word = _CURRENT.sub(".", expand(token, env)).replace("\\", "/")
+        word = DEVICE.sub("", _CURRENT.sub(".", expand(token, env)).replace("\\", "/"))
         if word == "~" or word.startswith("~/"):
             word = os.path.expanduser(word).replace("\\", "/")
         if word.startswith(

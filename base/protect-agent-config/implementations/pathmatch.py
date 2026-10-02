@@ -14,6 +14,7 @@ _STARS = 6
 PIECE = re.compile(r"\$(?:\{[^}]*\}|\w+|[@*#?!$-])")
 # A Windows path with a drive letter, as Windows gives the repository folder (`C:\Users\me`) and a path word once its slashes are turned (`C:/Users/me`).
 DRIVE = re.compile(r"[A-Za-z]:(?:[\\/]|$)")
+DEVICE = re.compile(r"^[\\/]{2}[?.][\\/]")  # Windows spells a drive path as a device: `\\?\C:\x`, `\\.\C:\x`
 
 
 def expand(token: str, env: dict[str, str], _depth: int = 0) -> str:

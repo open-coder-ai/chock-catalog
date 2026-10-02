@@ -44,7 +44,7 @@ def resolver(root: str) -> Callable[[str], str | None]:
 _ASSIGNED = re.compile(r"([A-Za-z_]\w*)(?:\[[^\]]*\])?\+?=")
 _NAME = re.compile(r"([A-Za-z_]\w*)(?:\[.*\])?")
 _EXPANSION = re.compile(r"\$\{(\w+):?=")
-_LEAD = frozenset(("do", "then", "else", "elif", "if", "while", "until", "!", "command", "builtin", "time"))
+_LEAD = frozenset(("do", "then", "else", "elif", "if", "while", "until", "!", "command", "builtin", "time", "{", "--"))
 _DECLARING = frozenset(("declare", "typeset", "local", "export", "readonly"))
 _OPERATOR = re.compile(r"(?:[-+*/%&|^]|<<|>>)?=")
 _DYNAMIC = re.compile(r"[$`]")
@@ -62,6 +62,9 @@ class Bindings(NamedTuple):
     counts: Counter[str]
     refs: frozenset[str]
     opaque: bool  # a script or computed text runs in this shell: it can set any variable
+    hidden: frozenset[str] = (
+        frozenset()
+    )  # names set by input the line does not show (`read x`, `for x in`, `printf -v x`)
 
     def rebound(self, name: str) -> bool:
         """Whether a variable is set by anything but its one assignment, so a fresh `mktemp` value is no longer its value."""
@@ -75,10 +78,15 @@ class _Seen:
         self.counts: Counter[str] = Counter()
         self.refs: set[str] = set()
         self.opaque = False
+        self.hidden: set[str] = set()
+        self.assigned: dict[
+            str, list[str]
+        ] = {}  # the values given to each name, for the names that turn out to be references
 
     def rebind(self, names: list[str]) -> None:
         for name in names:
             self.counts[name] += _MANY
+            self.hidden.add(name)
 
     def clause(self, words: list[str], depth: int) -> None:
         for word in words:
@@ -87,6 +95,7 @@ class _Seen:
             words.pop(0)
         while words and (found := _ASSIGNED.match(words[0])):  # `x=`, `x+=`, `x[0]=`, and a prefix `x=y cmd`
             self.counts[found[1]] += 1
+            self.assigned.setdefault(found[1], []).append(words[0][found.end() :])
             words.pop(0)
         if words:
             self.opaque |= (
@@ -128,6 +137,7 @@ class _Seen:
             inner = bindings(body, depth + 1)
             self.counts.update(inner.counts)
             self.refs |= inner.refs
+            self.hidden |= inner.hidden
             self.opaque |= inner.opaque
         elif name in ("source", "."):
             self.opaque = True
@@ -141,8 +151,22 @@ class _Seen:
             if found is None:
                 continue
             self.counts[found[1]] += 1 if equals else 0
+            if equals:
+                self.assigned.setdefault(found[1], []).append(value)
             if reference:
                 self.refs.update((found[1], *_identifiers([value])))
+
+    def follow(self) -> None:
+        """A name a reference holds is bound through it: `declare -n r; r=x; r=y` sets x, however late r is given `x`.
+
+        The values given to a reference name are followed to a fixed point; one that is computed (`r=$n`) names any variable."""
+        todo = list(self.refs)
+        while todo:
+            for value in self.assigned.get(todo.pop(), ()):
+                self.opaque |= _DYNAMIC.search(value) is not None
+                new = {name for name in _identifiers([value]) if name not in self.refs}
+                self.refs |= new
+                todo += new
 
 
 def _targets(name: str, args: list[str]) -> list[str]:
@@ -199,4 +223,5 @@ def bindings(text: str, depth: int = 0) -> Bindings:
     seen = _Seen()
     for clause in _Scan(text).run() or _crude(text):
         seen.clause(list(clause.words), depth)
-    return Bindings(seen.counts, frozenset(seen.refs), seen.opaque)
+    seen.follow()
+    return Bindings(seen.counts, frozenset(seen.refs), seen.opaque, frozenset(seen.hidden))

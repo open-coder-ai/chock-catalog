@@ -1,12 +1,13 @@
-"""`git` as a writer: checkout, restore, rm, mv, clean and the hook path (stdlib only)."""
+"""`git` as a writer: checkout, restore, rm, mv, clean, the hook path, output options and the programs it runs (stdlib only)."""
 
 from __future__ import annotations
 
+import shlex
 from typing import Any
 
 from chock_shellparse import abbreviates, flags_of, git_parts
 from pathconf import code_key, config
-from pathmatch import DYNAMIC, values
+from pathmatch import DYNAMIC, expand, values
 
 # Every git command (porcelain and plumbing, as `git help -a` lists them); any other word is a user alias, or `git-NAME` from the PATH.
 _BUILTIN = frozenset(
@@ -40,14 +41,38 @@ _BUILTIN = frozenset(
 )
 
 
+# Variables whose value git (or ssh) runs as a shell command.
+_PROGRAM_ENV = frozenset(
+    (
+        "GIT_EDITOR",
+        "GIT_SEQUENCE_EDITOR",
+        "GIT_PAGER",
+        "GIT_SSH_COMMAND",
+        "GIT_SSH",
+        "GIT_ASKPASS",
+        "GIT_EXTERNAL_DIFF",
+    ),
+) | frozenset(("GIT_PROXY_COMMAND", "EDITOR", "VISUAL", "PAGER", "SSH_ASKPASS"))
+_FILTERS = ("--env-filter", "--tree-filter", "--index-filter", "--parent-filter", "--msg-filter", "--commit-filter")
+_DIFFERS = frozenset(("log", "diff", "show", "whatchanged", "diff-tree", "diff-index", "diff-files"))
+_FLOOR = 3  # `--` and one letter
+
+
 def git(w: Any, args: list[str], env: dict[str, str]) -> bool:
     """checkout, restore, rm, mv overwrite or delete worktree files; `restore` and `rm` always take paths."""
     if any("core.hookspath" in a.lower() for a in args) and not {"--get", "--list", "-l"} & set(args):
         return True
     sub, conf, rest = git_parts(args)
-    alias = bool(sub) and sub not in _BUILTIN and w.hit(w.text)  # an alias the line does not define may run anything
+    alias = (
+        bool(sub) and sub not in _BUILTIN and _reaches_any(w, args, env)
+    )  # an alias the line does not define may run anything
     fused = [a[2:] for a in args[: len(args) - len(rest)] if a.startswith("-c") and "=" in a]  # `-ckey=value`
-    if alias or any(code_key(c.split("=", 1)[0]) for c in (*conf, *fused)):
+    if (
+        alias
+        or any(code_key(c.split("=", 1)[0]) for c in (*conf, *fused))
+        or any(w.sub(text) for text in _programs(sub, rest, env))
+        or _writes_output(w, sub, rest, env)
+    ):
         return True
     if sub == "config":
         return config(w, rest, env)
@@ -58,6 +83,53 @@ def git(w: Any, args: list[str], env: dict[str, str]) -> bool:
     paths = rest[rest.index("--") + 1 :] if "--" in rest else []
     static = [t for t in values(rest) if sub != "checkout" or t in paths or not DYNAMIC.search(t)]
     return any(w.reaches(t, env, parents=True, whole=sub in ("rm", "mv")) for t in static)
+
+
+def _values(args: list[str], short: str, longs: tuple[str, ...]) -> list[str]:
+    """The values given to a short option (`-x CMD`, `-xCMD`, `-ix CMD`) and to long options by any prefix (`--exec=CMD`, `--exec CMD`)."""
+    found, at = [], 0
+    while at < len(args):
+        arg, at = args[at], at + 1
+        name, equals, value = arg.partition("=")
+        if arg.startswith("--"):
+            if any(abbreviates(name, full, _FLOOR) for full in longs):
+                found.append(value if equals else (args[at : at + 1] or [""])[0])
+                at += not equals
+        elif short and arg.startswith("-") and short in arg[1:]:
+            tail = arg[1:].partition(short)[2]
+            found.append(tail or (args[at : at + 1] or [""])[0])
+            at += not tail
+    return found
+
+
+def _programs(sub: str, args: list[str], env: dict[str, str]) -> list[str]:
+    """The shell text git runs for this command: an editor or pager variable, `rebase -x`, `bisect run`, a `filter-branch` filter,
+    `submodule foreach`, `difftool -x` (text with a variable in it is left alone)."""
+    found = [v for k, v in env.items() if k in _PROGRAM_ENV]
+    if sub == "rebase":
+        found += _values(args, "x", ("--exec",))
+    elif sub == "difftool":
+        found += _values(args, "x", ("--extcmd",))
+    elif sub == "filter-branch":
+        found += _values(args, "", _FILTERS)
+    elif sub == "bisect" and args[:1] == ["run"]:
+        found.append(shlex.join(args[1:]))
+    elif sub == "submodule" and "foreach" in args:
+        found.append(" ".join(a for a in args[args.index("foreach") + 1 :] if not a.startswith("-")))
+    return [text for text in found if "$" not in text]
+
+
+def _writes_output(w: Any, sub: str, args: list[str], env: dict[str, str]) -> bool:
+    """`log --output=FILE` and its kin write FILE; `format-patch -o DIR` writes patch files into DIR."""
+    files = _values(args, "", ("--output",)) if sub in _DIFFERS else []
+    folders = _values(args, "o", ("--output-directory",)) if sub == "format-patch" else []
+    return any(w.reaches(t, env) for t in files) or any(w.reaches(t, env, parents=True) for t in folders)
+
+
+def _reaches_any(w: Any, args: list[str], env: dict[str, str]) -> bool:
+    """Whether an argument, a glob or a path from the working directory, is a protected path (a variable the line does not set is not)."""
+    known = [t for t in (expand(a, env) for a in values(args)) if "$" not in t]
+    return any(w.reaches(t, env, parents=False) for t in known)
 
 
 def _index_only(args: list[str]) -> bool:
