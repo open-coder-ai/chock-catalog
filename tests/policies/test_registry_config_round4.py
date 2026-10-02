@@ -28,7 +28,7 @@ from policies.test_registry_config import A_CONF, A_REDIR, B_HTTP, B_TLS, B_TOKE
         (".npmrc", "//r.example/:_authToken=${NPM_TOKEN:-lit3.d9f}\nmin-release-age=3\n", [B_TOKEN]),
         (".yarnrc.yml", 'npmAuthToken: "${NPM_TOKEN-lit3.d9f}"\nnpmMinimalAgeGate: 3d\n', [B_TOKEN]),
         (".npmrc", "//r.example/:_authToken=${NPM_TOKEN:-}\nmin-release-age=3\n", []),
-        (".npmrc", "//r.example/:_authToken=${NPM_TOKEN:-$CI_TOKEN}\nmin-release-age=3\n", []),
+        (".npmrc", "//r.example/:_authToken=${NPM_TOKEN:-$CI_TOKEN}\nmin-release-age=3\n", [B_TOKEN]),
         # A nested packageSources does not make a nested <clear/> direct.
         (
             "nuget.config",

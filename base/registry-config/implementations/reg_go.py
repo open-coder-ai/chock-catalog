@@ -4,21 +4,31 @@ from __future__ import annotations
 
 import re
 
-from reg_core import REDIRECT, TLS, Ctx, add, norm, url
+from reg_core import REDIRECT, TLS, UNREADABLE, Ctx, add, norm, url
 
 NAMES = r"(GOINSECURE|GOSUMDB|GONOSUMDB|GONOSUMCHECK|GOPRIVATE|GOPROXY|GOFLAGS)"
 #: A value as one whole shell word: ${...} and $(...) expansions, quoted pieces (spaces inside them kept) and
 #: plain characters, then GOFLAGS-style flags after spaces. `"of"f` is one word, as the shell reads it.
 VALUE = (
-    r"""((?:\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|\$\([^)\n]*\)|"(?:[^"\\\n]|\\.)*"|'[^'\n]*'|[^\s"'#;}\]])*"""
-    r"""(?:\s+--?[\w=.,${}-]+)*)"""
+    # Expansions and quoted pieces left open run to the end of the line, so no attempt rescans what is left.
+    r"""((?:\$\{\{[^}\n]*(?:\}\}|$)|\$\{[^}\n]*(?:\}|$)|\$\([^)\n]*(?:\)|$)|\$(?![{(])"""
+    r"""|"(?:[^"\\\n]|\\.)*(?:"|$)|'[^'\n]*(?:'|$)|[^\s"'#;}\]$])*(?:\s+--?[\w=.,${}-]+)*)"""
 )
 #: A GO* setting as a shell, make or env assignment, a YAML key or `go env -w` writes one; never a ${GO...} read.
 #: A bare `NAME value` (no '=' or ':') is prose, except on a Dockerfile ENV or ARG line (GO_ENV_LINE).
 GO_SETTING = re.compile(rf"""(?<![\w$])(?<!\$\{{){NAMES}["']?(?:\s*[:?+]?=\s*|\s*:\s+){VALUE}""")
 GO_ENV_LINE = re.compile(rf"""^\s*(?:ENV|ARG)\s+{NAMES}\s+{VALUE}""", re.IGNORECASE)
 #: A value passed through unchanged from the environment or a CI variable: nothing to judge here.
-PURE_REF = re.compile(r"^(?:\$\w+|\$\{\w+\}|\$\(\w+\)|\$\{\{\s*[\w.]+\s*\}\})$")
+PURE_REF = re.compile(
+    r"^(?:\$[A-Za-z_]\w*|\$[0-9]|\$\{\w+\}|\$\(\w+\)|\$\{\{\s*[\w.]+\s*\}\}"
+    r"|\$\{(?:localEnv|containerEnv):\w+\}|\$env:\w+)$"
+)
+#: Make reads `$X` as the one-letter variable X: only $(X) and ${X} pass through whole there.
+MAKE_PURE = re.compile(r"^(?:\$\(\w+\)|\$\{\w+\})$")
+MAKEFILE = re.compile(r"(?:^|/)(?:gnu)?makefile$|\.mk$", re.IGNORECASE)
+#: The rest of a word after the matched value; bounded so a line of glued settings stays linear.
+MAX_GLUED = 4096
+GLUED = re.compile(rf"\S{{0,{MAX_GLUED + 1}}}")
 QUOTE_CHARS = re.compile("[\"']")
 #: A shell default expansion, ${NAME:-value} or ${NAME:=value}: the value applies when the name is unset.
 DEFAULT = re.compile(r"^\$\{\w+:?[-=](.*)\}$")
@@ -53,13 +63,23 @@ def go_setting(ctx: Ctx, number: int, name: str, value: str) -> None:
     value = norm(value).rstrip(",")
     default = DEFAULT.match(value)
     value = norm(default[1]) if default else value
-    if not value or PURE_REF.match(value):
+    pure = MAKE_PURE if MAKEFILE.search(ctx.path) else PURE_REF
+    if not value or pure.match(value):
         return
     if "$" in value:
         # Part literal, part expansion: what Go ends up reading is not knowable from the file.
         message = f"{name} is built from an expression; what it sets is not judged here"
         add(ctx, REDIRECT, number, (name, value), message)
         return
+    before = len(ctx.out)
+    _literal(ctx, number, name, value)
+    if "\\" in value and len(ctx.out) == before:
+        # An escape the reader may resolve (\-insecure is -insecure to a shell): not judged as written.
+        add(ctx, REDIRECT, number, (name, value), f"{name} holds an escape; what it sets is not judged here")
+
+
+def _literal(ctx: Ctx, number: int, name: str, value: str) -> None:
+    """Judge a GO* value that holds no expansion."""
     # Go trims each list element, so a space after ',' or '|' hides nothing.
     items = [v.strip() for v in re.split(r"[,|]", value) if v.strip()]
     if name == "GOINSECURE" and value:
@@ -120,10 +140,24 @@ def go_env(ctx: Ctx) -> None:
         if raw.lstrip().startswith(("#", "//")):
             continue
         for match in (*GO_ENV_LINE.finditer(raw), *GO_SETTING.finditer(raw)):
-            # A shell word drops its quotes when the shell reads it (of'f' is off); one with an expansion
-            # keeps them, so $X"off" is never mistaken for the plain reference $Xoff.
-            value = match[2] if "$" in match[2] else QUOTE_CHARS.sub("", match[2])
-            go_setting(ctx, number, match[1], value)
+            # A '#', ';', ']' or '}' glued to the word may be part of it (a shell keeps `a#,*`), or may end it
+            # (a comment, a flow collection): both readings are judged.
+            glued = GLUED.match(raw, match.end())[0]
+            if len(glued) > MAX_GLUED:
+                add(
+                    ctx,
+                    UNREADABLE,
+                    number,
+                    (match[1], "long word"),
+                    f"{match[1]} is followed by a word too long to read",
+                )
+                continue
+            glued = glued.rstrip("]}")
+            for word in dict.fromkeys((match[2], match[2] + glued)):
+                # A shell word drops its quotes (of'f' is off); one with an expansion keeps them, so $X"off"
+                # is never mistaken for the plain reference $Xoff.
+                value = word if "$" in word else QUOTE_CHARS.sub("", word)
+                go_setting(ctx, number, match[1], value)
 
 
 def _replace(ctx: Ctx, number: int, old: str, new: str) -> None:
