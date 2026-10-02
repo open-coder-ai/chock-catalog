@@ -483,19 +483,20 @@ policies:
     commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.5
+  version: 0.0.6
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 17
-  eval_executed: 17
-  description: 'Blocks a workflow that references a GitHub Action by a movable ref (tag or branch) instead
-    of a full 40-char commit SHA. Every owner/repo@non-SHA is blocked, actions/* and reusable workflows
-    included; a SHA pin and a local action (no ref) pass. Bounded to .github/workflows/ and .github/actions/.
-    Runs: commit, agent write, turn''s end. Waiver: ''pragma: allowlist unpinned-action'' same line.
-    Person''s commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
+  eval_cases: 42
+  eval_executed: 42
+  description: 'Blocks uses: of an action or reusable workflow at a movable ref (not a lowercase 40-hex
+    SHA) and a docker:// image without @sha256, in quoted, JSON, flow, anchored and next-line forms;
+    local ./ passes. Scope: .github/workflows/, .github/actions/, action.y*ml. Line regex, not a YAML
+    parser: container/services image tags, impostor SHAs and a tag named like a SHA pass. Waiver: ''pragma:
+    allowlist unpinned-action'' same line. Person''s commit: honoured. Agent: only if in HEAD; MCP gateway:
+    never.'
 - id: protect-agent-config
   path: base/protect-agent-config
   version: 0.2.4

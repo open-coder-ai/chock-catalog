@@ -240,9 +240,9 @@
       {
         "id": "pin-github-actions",
         "artifact": "hook",
-        "version": "0.0.5",
+        "version": "0.0.6",
         "name": "Pin GitHub Actions",
-        "description": "Blocks a workflow that references a GitHub Action by a movable ref (tag or branch) instead of a full 40-char commit SHA. Every owner/repo@non-SHA is blocked, actions/* and reusable workflows included; a SHA pin and a local action (no ref) pass. Bounded to .github/workflows/ and .github/actions/. Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist unpinned-action' same line. Person's commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.",
+        "description": "Blocks uses: of an action or reusable workflow at a movable ref (not a lowercase 40-hex SHA) and a docker:// image without @sha256, in quoted, JSON, flow, anchored and next-line forms; local ./ passes. Scope: .github/workflows/, .github/actions/, action.y*ml. Line regex, not a YAML parser: container/services image tags, impostor SHAs and a tag named like a SHA pass. Waiver: 'pragma: allowlist unpinned-action' same line. Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never.",
         "path": ".agents/policies/pin-github-actions",
         "manifest": "manifest.yaml",
         "trust_tier": "community",

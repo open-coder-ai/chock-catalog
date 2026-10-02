@@ -2,14 +2,16 @@
   "kind": "content_regex",
   "binds": "string-arguments",
   "action": "block",
-  "message": "Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA. Pin it to the SHA -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. Waiver: 'pragma: allowlist unpinned-action' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma.",
+  "message": "Unpinned GitHub Action detected: a workflow references an action by a tag or branch (owner/repo at a movable ref) rather than a full 40-character commit SHA, a docker:// image has no @sha256: digest, or a line check cannot read the ref (an escape, an open quote). Pin it to the lowercase SHA or digest -- keep the version in a trailing comment for readability -- so a re-tagged or compromised release cannot change what runs. Waiver: 'pragma: allowlist unpinned-action' on the same line. A person's commit honours it; in the agent (write, the turn's end, an agent's commit) only a line already in HEAD counts, and the MCP gateway never does. An agent asks a person; it never writes the pragma.",
   "params": {
     "scan": "added_lines",
     "allowlist_pragma": "pragma:\\s*allowlist\\s+unpinned-action",
-    "content_pattern": "use[s]:\\s*[\"']?[A-Za-z0-9._/-]+@(?![0-9a-fA-F]{40}(?:[\"'\\s#]|$))[A-Za-z0-9._/-]+"
+    "content_pattern": "(?x)\n# 1. a uses key (bare, quoted, flow or JSON; anchor or tag allowed) naming a remote action\n#    or reusable workflow at a non-SHA ref, or a docker:// image without a digest\n[\"']?use[s][\"']?\\s*:\\s*(?:[&!]\\S*\\s+)*[\"']?\n  (?: (?!(?i:docker)://|\\./) [^\\s\"'@,\\]}]+ @ (?![0-9a-f]{40}(?:[\"'\\s,\\]}]|$))\n    | (?i:docker):// (?![^\\s\"'@,\\]}]*@sha256:[0-9a-f]{64}(?:[\"'\\s,\\]}]|$)) )\n# 2. an action's image key holding a docker:// image without a digest\n| [\"']?imag[e][\"']?\\s*:\\s*(?:[&!]\\S*\\s+)*[\"']?\n    (?i:docker):// (?![^\\s\"'@,\\]}]*@sha256:[0-9a-f]{64}(?:[\"'\\s,\\]}]|$))\n# 3. a quoted uses value this check cannot read: an escape, or a quote left open\n| [\"']?use[s][\"']?\\s*:\\s*(?:[&!]\\S*\\s+)*(?:\"[^\"]*(?:\\\\|$)|'[^']*$)\n# 4. an anchor holding an owner/repo@non-SHA or docker:// value, or an escaped one\n| &\\S+\\s+(?: \"[^\"]*\\\\\n    | [\"']? [A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:/[^\\s\"'@]*)? @ (?![0-9a-f]{40}(?:[\"'\\s,\\]}]|$))\n    | [\"']? (?i:docker):// (?![^\\s\"'@,\\]}]*@sha256:[0-9a-f]{64}(?:[\"'\\s,\\]}]|$)) )\n# 5. a value alone on its line (uses:, uses: >- or a complex key above it)\n| ^\\s*(?::\\s+)?(?:[&!]\\S*\\s+)*[\"']?\n    (?: [A-Za-z0-9-]+/[A-Za-z0-9._-]+(?:/[^\\s\"'@]*)? @ (?![0-9a-f]{40}(?:[\"'\\s,\\]}]|$))\n      | (?i:docker):// (?![^\\s\"'@,\\]}]*@sha256:[0-9a-f]{64}(?:[\"'\\s,\\]}]|$)) )\n    \\S*\\s*(?:\\#.*)?$\n# 6. a bare double-quoted line escaping a slash; an escaped key; an escaped @ anywhere\n| ^\\s*\"[^\"]*\\\\(?:/|x2[fF]|u002[fF]|U0000002[fF])\n| (?:^\\s*(?:[-?]\\s+)*|[{,]\\s*) \"[^\"]*\\\\(?:[^\"]*\"\\s*:|$)\n| \\\\(?:x40|u0040|U00000040)"
   },
   "paths": [
     ".github/workflows/*",
-    ".github/actions/*"
+    ".github/actions/*",
+    "action.y*ml",
+    "*/action.y*ml"
   ]
 }

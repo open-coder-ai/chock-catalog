@@ -110,18 +110,18 @@
       "id": "pin-github-actions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "d8eca2e21ed5718a93a050966f49c34fe57e8542aec29abc681659cd268fcb97",
-      "source": "local",
-      "artifacts_sha256": "ab196803e753df7386389a95ccbafd9971320aa235e0da031872b37aef709fd8"
+      "sha256": "6be4e73b261716cea34c40b05bad01e389e72a66bd433a1bfba521f0458e55d6",
+      "source": ".",
+      "artifacts_sha256": "923e715f7171bab37038f737fbec48313c11770cd071f3d3d6bd29fe54f52e9e",
+      "source_commit": null
     },
     {
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
       "sha256": "e2616ab80403087fd4d50581cc9934509428c63180d7cdfcd90fc0eb93625584",
-      "source": ".",
-      "artifacts_sha256": "2dce4330f9a44f6ac4f47f6375114cd11aa9c35a9e7a926817624a25c5c8b54c",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "2dce4330f9a44f6ac4f47f6375114cd11aa9c35a9e7a926817624a25c5c8b54c"
     },
     {
       "id": "protect-ci-workflows",
