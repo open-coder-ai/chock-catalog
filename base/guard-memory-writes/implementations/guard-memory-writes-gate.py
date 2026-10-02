@@ -60,10 +60,11 @@ SECRET = re.compile(
     [^"'`\s]{12}
    |(?=[A-Za-z0-9/+=_~-]{0,128}\d)(?![A-Za-z0-9/+=_~-]{0,128}(?-i:Key|Token|Secret|Passw|Type|Str|Bytes|Cred))
     [A-Za-z0-9/+=_~-]{16})
-# credentials in a URI: scheme://user:password@host, not localhost or example hosts, not a placeholder
-|\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"]*):(?!(?P=uri_user)@)
- (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token|example|dummy|redacted|placeholder)@))
- [^\s/:@'"]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
+# credentials in a URI: scheme://user:password@host, not localhost or example hosts, not a placeholder;
+# userinfo has no unescaped \ # ? / (RFC 3986), so a URL parser test vector is not a login
+|\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"#?\\]*):(?!(?P=uri_user)@)
+ (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|foo(?:bar)?|bar|baz|changeme|token|example|dummy|redacted|placeholder)@))
+ [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
 # Authorization header literals
 |\bauthorization["'`]?\]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]{1,512}(?:["'`\s,;)]|$))
  (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?:["'`\s,;)]|$)))

@@ -71,4 +71,4 @@ changelog:
 - version: 0.0.6
   date: '2026-10-02'
   changes:
-  - "The secret check follows scan-secrets 0.1.0: its content_pattern is copied verbatim (now a verbose, commented regex), so a memory file is also refused for quoted-colon JSON and YAML credentials, AWS secret access keys, credentials in URIs, Authorization header literals, passwords on a command line, PGP and encrypted private-key blocks, and the named-credential forms and vendor token shapes scan-secrets 0.1.0 adds. Scope, keys and gate unchanged."
+  - "The secret check follows scan-secrets 0.1.0: its content_pattern is copied verbatim (now a verbose, commented regex), so a memory file is also refused for quoted-colon JSON and YAML credentials, AWS secret access keys, credentials in URIs, Authorization header literals, passwords on a command line, PGP and encrypted private-key blocks, and the named-credential forms and vendor token shapes scan-secrets 0.1.0 adds. The URI-credentials alternative is the narrowed one (no unescaped backslash, # or ? in the userinfo; foo, foobar, bar, baz are placeholders). Scope, keys and gate unchanged."
