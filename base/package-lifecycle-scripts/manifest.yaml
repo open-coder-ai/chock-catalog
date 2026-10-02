@@ -1,0 +1,63 @@
+id: package-lifecycle-scripts
+name: "Flag Package Lifecycle Scripts"
+version: "0.0.1"
+description: >
+  Warns (observe rollout) when a change adds or edits code that runs at install or build time: npm
+  install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned git/URL deps;
+  setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks; build.rs and
+  build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven, Gradle exec. Never
+  refuses yet. Friction, not a security boundary.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    avoid(install_time_and_build_time_scripts); if_required: explain(why), keep_offline: true, pin(git_and_url_deps: commit)
+    prefer: download to a file, verify checksum, run as a reviewed step; never add hooks that fetch, decode or eval
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      A change adds or edits code that runs when a package is installed or built (an npm lifecycle
+      script, setup.py command override, build.rs, MSBuild Exec, gemspec extension and the like), or a
+      git or URL dependency with no commit pin. Whoever controls that code or URL runs it on every
+      machine that installs the package. Keep install and build steps offline and explicit: download to
+      a file, verify a pinned checksum, run it as a separate reviewed step, and pin git dependencies to a
+      40-hex commit. This policy only warns while it is measured (rollout observe); it has no waiver yet.
+    params:
+      script: package-lifecycle-scripts-gate.py
+
+compliance:
+  owasp_asi:
+  - control: ASI04
+    coverage: partial
+    note: "flags new or changed install- and build-time hooks and unpinned git/URL dependencies in package manifests; warns only (observe) and judges file text, not what a hook runs"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap NP04, package-registry-config bundle): a script gate at commit and agent write. It prints a findings document; the engine re-runs it on the baseline and judges only keys the change adds, so an untouched hook is old and an edited one is new (key: rule, entry, class, normalized value). Ships at action: warn, the observe stage of rollout D15; the script already chooses block (exit 1) for fetch-exec class hooks and ask (exit 3) for other new hooks, so promotion is a manifest change."

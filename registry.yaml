@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: package-lifecycle-scripts
+  path: base/package-lifecycle-scripts
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 28
+  eval_executed: 28
+  description: 'Warns (observe rollout) when a change adds or edits code that runs at install or build
+    time: npm install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned
+    git/URL deps; setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks;
+    build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven,
+    Gradle exec. Never refuses yet. Friction, not a security boundary.'
