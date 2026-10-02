@@ -209,6 +209,19 @@ def test_padded_names_lists_what_git_stages(repo: Path) -> None:
     assert gate.padded_names({"event": "commit", "repo_root": str(repo)}) == ["evil "]
 
 
+def test_a_padded_bad_name_is_reported_once_under_its_own_name(repo: Path) -> None:
+    stage(repo, {"a;b ": "x", " -x": "x"})
+    document = json.loads(
+        scriptkit.run_script_full(
+            POLICY,
+            "refname-filename-metachar-gate.py",
+            repo,
+            json.dumps({"event": "commit", "repo_root": str(repo), "writes": {"a;b": "x", "-x": "x"}}),
+        ).stdout
+    )
+    assert [f["path"] for f in document["findings"]] == ["-x", "a;b "]
+
+
 def test_padded_names_are_read_only_at_a_commit_and_never_on_the_baseline_run(tmp_path: Path) -> None:
     assert gate.padded_names({"event": "tool_use", "repo_root": str(tmp_path)}) == []
     assert gate.padded_names({"event": "commit", "baseline": True, "repo_root": str(tmp_path)}) == []
@@ -262,6 +275,10 @@ def test_every_refused_ref_is_named(tmp_path: Path) -> None:
     code, err = scriptkit.run_script(POLICY, "refname-filename-metachar-pre-push.py", tmp_path, stdin)
     assert code == 1
     assert err.count("BLOCKED:") == 2
+
+
+def test_a_ref_holding_other_whitespace_is_read_whole() -> None:
+    assert push.refused([f"refs/heads/a{chr(0x3000)}b {SHA1} refs/heads/a{chr(0x3000)}b {ZERO}"]) == []
 
 
 def test_a_line_git_would_never_write_is_refused() -> None:

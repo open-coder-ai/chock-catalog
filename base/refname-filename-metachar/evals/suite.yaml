@@ -297,3 +297,24 @@ suite:
         lib/base64-decode.js: "module.exports = {};\n"
       event: commit
       expect: allow
+  - id: tc-038
+    category: adversarial
+    prompt: A heredoc body holding an apostrophe comes before a branch name with an IFS expansion.
+    expect: The guard refuses; heredoc bodies do not change quote state.
+    execute:
+      command: "cat <<EOF > notes.md\nit's done\nEOF\ngit checkout -b 'pwn${IFS}x'"
+      expect: block
+  - id: tc-039
+    category: adversarial
+    prompt: An unquoted command substitution is glued to a quoted name holding a semicolon.
+    expect: The guard refuses; the substitution is one expanded piece and the quoted text is still judged.
+    execute:
+      command: git checkout -b $(true)'fix;id'
+      expect: block
+  - id: tc-040
+    category: negative_trigger
+    prompt: A bash -c script copies into a directory named by a variable, after a heredoc with an apostrophe.
+    expect: The guard allows it; the inner script's expansions are marked like the outer line's.
+    execute:
+      command: "cat <<EOF > notes.md\ndon't panic\nEOF\nbash -c 'cp a.txt \"${DEST}/\"'"
+      expect: allow

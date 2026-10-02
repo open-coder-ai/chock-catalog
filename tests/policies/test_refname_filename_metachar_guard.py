@@ -156,6 +156,36 @@ CASES = [
     ("New-Item -Pa 'a;b'", BLOCK),
     ("New-Item -Force -ItemType File -Value 'a;b' ok.txt", OK),
     ("New-Item -N x 'a;b' ok", OK),
+    # Review round 2: heredoc bodies, inner scripts, and substitutions spliced against a quoted literal.
+    ('cat <<EOF > notes.md\nDon\'t forget\nEOF\ngit checkout -b "feat/${TICKET}"', OK),
+    ("cat <<EOF > a.txt\nit's\nEOF\ngit checkout -b 'pwn${IFS}x'", BLOCK),
+    ("cat <<'EOF' > a.txt\n\"\nEOF\ntouch 'x$(id)'", BLOCK),
+    ("cat <<-\"EOF\" > a.txt\n\tit's\n\tEOF\ngit checkout -b 'pwn`id`'", BLOCK),
+    ("cat <<\\EOF > a.txt\nit's\nEOF\ntouch 'a;b'", BLOCK),
+    ("cat <<EOF > a.txt\nit's never closed", OK),
+    ("cat <<< 'a;b' > out.txt", OK),
+    ("git commit -F - <<'EOF'\nfix: don't break; it's \"$(x)\"\nEOF", OK),
+    ("sh -c 'touch \"${OUT}/x\"'", OK),
+    ('bash -c \'for f in *.log; do mv "$f" "${f%.log}.txt"; done\'', OK),
+    ("eval 'touch \"${OUT}/x\"'", OK),
+    ("bash -c \"git checkout -b 'x\\${IFS}y'\"", BLOCK),
+    ('bash -c \'git branch "$(echo ok)" && touch "a;b"\'', BLOCK),
+    ("git checkout -b $(true)'a;b'", BLOCK),
+    ("git switch -c `echo x`'a;b'", BLOCK),
+    ("touch $((0))';x'", BLOCK),
+    ("touch >(cat) 'a;b'", BLOCK),
+    ("touch <(true) 'a;b'", BLOCK),
+    ("echo \"$(touch 'a;b')\"", BLOCK),
+    ("echo `git branch 'a;b'`", BLOCK),
+    ('echo "$(printf \'%s\' "a)b" \\) )" > out.txt', OK),
+    ('git checkout -b "$(git rev-parse --abbrev-ref HEAD)-fix"', OK),
+    ("diff <(sort a) <(sort b) > out.txt", OK),
+    ("echo $((1<<2)) > n.txt", OK),
+    ("echo $(unterminated", OK),
+    ("echo " + "$(" * 70 + "touch ok" + ")" * 70, BLOCK),
+    ("git subtree split --prefix=lib -b 'a;b'", BLOCK),
+    ("git subtree split --prefix lib --branch lib-only", OK),
+    ("git subtree", OK),
     ("Set-Content 'C:/work/notes.txt' 'a;b'", OK),
 ]
 
@@ -176,6 +206,22 @@ def test_powershell_text_is_read_as_powershell(capsys: pytest.CaptureFixture[str
     monkeypatch.delenv("CHOCK_TOOL", raising=False)
     assert guard.run([]) == BLOCK
     assert "a;b" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("command", "want"),
+    [
+        ("git checkout -b a`;b", BLOCK),
+        ('New-Item "a`;b"', BLOCK),
+        ("New-Item 'it''s ok.txt'", OK),
+        ('New-Item "$($env:OUT)/x.txt"', OK),
+        ("Write-Output `n > out.txt", OK),
+    ],
+)
+def test_powershell_escapes_and_subexpressions(command: str, want: int, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("CHOCK_RAW_COMMAND", command)
+    monkeypatch.setenv("CHOCK_TOOL", "powershell")
+    assert guard.run([]) == want, capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
