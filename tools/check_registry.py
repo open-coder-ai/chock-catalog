@@ -44,6 +44,12 @@ def main() -> int:
     if skills.is_dir():
         for d in sorted(p for p in skills.iterdir() if p.is_dir()):
             on_disk[d.name] = f"skills/{d.name}"
+    from gen_lib_copies import problems as lib_problems
+
+    if lib := lib_problems(ROOT):
+        print("lib/ copies do not match lib/consumers.yaml and lib/ (python tools/gen_lib_copies.py):")
+        print("\n".join("  " + problem for problem in lib))
+        return 1
     if listed != on_disk:
         print("registry.yaml is stale.")
         print("  missing from registry:", sorted(set(on_disk) - set(listed)))

@@ -84,7 +84,8 @@ def test_regenerate_runs_in_dependency_order(fake: FakeRun, monkeypatch, capsys,
     monkeypatch.setattr(regen_all, "find_spec", lambda _name: object() if cairosvg else None)
     assert regen_all.regenerate("origin/main") == 0
     labels = fake.labels
-    order = ["plugin build base", "sync --check", "policy docs", "coverage matrix", "figures"]
+    order = ["lib copies", "plugin build base", "sync --check", "policy docs", "coverage matrix", "figures"]
+    labels = [label.split(" (")[0] for label in labels]
     assert [labels.index(label) for label in order] == sorted(labels.index(label) for label in order)
     assert labels[-1] == "adoption transcript pin-github-actions"
     assert not any("not-a-policy" in label for label in labels)
@@ -106,7 +107,8 @@ def test_check_only_mode_diffs_the_figures_in_a_copy(tmp_path: Path) -> None:
 def test_fast_checks_cover_every_generated_file(tmp_path: Path, monkeypatch, cairosvg: bool) -> None:
     monkeypatch.setattr(regen_all, "find_spec", lambda _name: object() if cairosvg else None)
     labels = [label for label, _cmd in regen_all.fast_checks(tmp_path)]
-    for expected in ("registry", "installed policies vs their source", "readme", "sync --check", "figures"):
+    expected_labels = ("registry", "lib copies --check", "installed policies vs their source", "readme", "sync --check")
+    for expected in (*expected_labels, "figures"):
         assert expected in labels
     assert [lb for lb in labels if lb.startswith("plugin --check")] == [f"plugin --check {t}" for t in regen_all.TREES]
     assert ("brand card --check" in labels) is cairosvg
