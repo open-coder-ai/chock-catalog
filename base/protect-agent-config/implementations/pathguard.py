@@ -58,6 +58,8 @@ class _Walk(Reach, Scripts):
         self.unsure: set[str] = set()
         self.prev: Cmd | None = None
         self.depth, self.blind, self.wrote = 0, False, False
+        self.outputs: list[str] = []  # what each substitution of the line prints, when the line shows it
+        self.unseen = False  # a substitution whose output the line does not show
         entries = [self.normal(entry).strip("/") for entry in (*protected, ".agents/policies/\0/implementations")]
         self.entries = entries
         self.files = [
@@ -121,21 +123,21 @@ class _Walk(Reach, Scripts):
             return True
         if "$" in name:
             self.blind = True
-            return self._unknown(args, env)
+            return self._unknown(args, env) or (SUBST in name and self.computed())
         if name in WRAP:
             return self.wrapped(cmd)
         handler = self.handlers.get(name) or (self.code if is_interpreter(name) else None)
         return handler is not None and handler(cmd)
 
-    def step(self, cmd: Cmd, prev: Cmd | None, *, unparsed: bool) -> bool:
+    def step(self, cmd: Cmd, prev: Cmd | None, nxt: Cmd | None, *, unparsed: bool) -> bool:
         if nested(cmd):  # a script the reader did not unwrap: it cannot be judged, so it is refused
             return True
         if cmd.name in CD:
             self._chdir(cmd.name, cmd.args, cmd.env)
         elif cmd.name in POP:
             self.cwd = self.stack.pop() if self.stack else None
-        elif cmd.name in _SHELLS and ("-s" in cmd.args or not values(cmd.args)):
-            return self.fed(cmd, prev)
+        elif (cmd.name in _SHELLS or cmd.name in (".", "source")) and self.stdin(cmd):
+            return self.fed(cmd, prev, nxt)
         else:
             return self.command(cmd) or (unparsed and writes(cmd.name, cmd.writes))
         return False
@@ -145,10 +147,14 @@ class _Walk(Reach, Scripts):
         unparsed, prev = _Scan(text).run() is None, None
         if any(self.loose(payload) for payload in env_scripts(text)):
             return True
-        for cmd in _parse(text, {}, ps=ps, depth=0)[0]:
+        cmds = _parse(text, {}, ps=ps, depth=0)[0]
+        for at, cmd in enumerate(cmds):
             self.prev = prev
             self.unsure.update(bound(cmd))
-            if any(self.step(c, prev, unparsed=unparsed) for c in self.variants(cmd)):
+            if any(
+                self.step(c, prev, cmds[at + 1] if at + 1 < len(cmds) else None, unparsed=unparsed)
+                for c in self.variants(cmd)
+            ):
                 return True
             self.wrote |= writes(cmd.name, cmd.writes)
             self.history.append(self.cwd)
@@ -182,6 +188,10 @@ class _Walk(Reach, Scripts):
             return True
         self.depth, scanned = depth, scan(text, self.resolve)
         self.docs.update(scanned.docs)
+        for body in scanned.bodies:
+            shown = self.literal(body)
+            self.outputs += shown or []
+            self.unseen |= shown is None
         start, stack = self.cwd, list(self.stack)
         if self.run(scanned.outer, ps=self.ps):
             return True

@@ -59,6 +59,9 @@ PROTECTED = (
 GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
+# A lone `\` ends the line: for a Windows command (copy, xcopy, move) it closes a folder name, it escapes nothing.
+_TRAILING = re.compile(r"(?<=[^\s\\])\\$")
+
 DEEP = "shell command nested too deep to check (a script inside a script, five or more levels) -- refused because it cannot be judged. Run the inner commands one at a time, or ask the person."
 
 
@@ -80,6 +83,7 @@ def hit(path: str) -> bool:
 
 def check(raw: str) -> str | None:
     """The reason a command edits protected files, or None."""
+    raw = _TRAILING.sub("/", raw.rstrip())
     if too_deep(raw):
         return DEEP
     if any(writes_files(cmd, hit) for cmd in commands(raw)) or refuses(raw, PROTECTED, hit, normalise):

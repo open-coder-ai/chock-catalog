@@ -504,8 +504,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 722
-  eval_executed: 722
+  eval_cases: 800
+  eval_executed: 800
   description: 'Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes
     to AGENTS.md and wrappers, .claude/settings, MCP and hook client configs (.mcp.json, .cursor/mcp.json,
     .gemini/settings.json, more), .git/{hooks,config}, policy implementations/ and .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}:

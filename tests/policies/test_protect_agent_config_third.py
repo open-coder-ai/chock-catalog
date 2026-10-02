@@ -211,7 +211,9 @@ def test_git_clean_judges_its_pathspecs_and_ignored_files() -> None:
     assert guard.check("git clean -fd --exclude=x") is None
     assert guard.check("git clean --dry-run -fdx") is None
     assert guard.check("git clean -fdx .") == guard.REASON
-    assert guard.check("git clean -fd .") is None
+    assert (
+        guard.check("git clean -fd .") == guard.REASON
+    )  # round four: the repository folder holds every protected path
     assert guard.check("git clean -fd src docs") is None
 
 

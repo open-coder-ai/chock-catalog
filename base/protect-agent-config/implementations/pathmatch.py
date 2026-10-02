@@ -10,6 +10,7 @@ DYNAMIC = re.compile(r"[*?\[$]")
 FRESH = "$__mktemp__"
 _VARIABLE = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
 _NESTING = 4
+_STARS = 6
 _PIECE = re.compile(r"\$(?:\{[^}]*\}|\w+|[@*#?!$-])")
 
 
@@ -58,6 +59,12 @@ def _close(path: str, at: int) -> int:
     return -1
 
 
+def _literal(piece: str) -> str:
+    """Bracket text as regex class text; `[`, `&&`, `~~`, `||` and `--` would read as set operators (a FutureWarning)."""
+    text = piece.replace("\\", "\\\\").replace("[", "\\[")
+    return re.sub(r"-(?=-)", "-\\\\", re.sub(r"[&~|]", r"\\\g<0>", text))
+
+
 def _bracket(body: str) -> str:
     """One bracket expression as a regex class; a class this does not know matches any character."""
     negated = body[:1] in ("!", "^")
@@ -66,7 +73,7 @@ def _bracket(body: str) -> str:
         named = _NAMED.fullmatch(piece)
         if named and named[1] not in _POSIX:
             return "[^/]"
-        out.append(_POSIX[named[1]] if named else piece.replace("\\", "\\\\").replace("[", "\\["))
+        out.append(_POSIX[named[1]] if named else _literal(piece))
     return "[" + ("^" if negated else "") + "".join(out) + "]"
 
 
@@ -76,6 +83,19 @@ def _dot(cls: str) -> bool:
         return bool(re.fullmatch(cls, "."))
     except re.error:
         return True
+
+
+def _squeeze(out: list[str]) -> list[str]:
+    """Each run of `*` and `?` as its `?`s and one `*`: the same language, and no stars to backtrack over."""
+    merged, run = [], []
+    for token in [*out, ""]:
+        if token in ("[^/]*", "[^/]"):
+            run.append(token)
+            continue
+        merged += ["[^/]"] * run.count("[^/]") + ["[^/]*"] * ("[^/]*" in run)
+        run = []
+        merged.append(token)
+    return merged
 
 
 @cache
@@ -102,6 +122,9 @@ def pattern(path: str, *, loose: bool) -> re.Pattern[str]:
         else:
             out.append({"*": "[^/]*", "?": "[^/]"}.get(char) or re.escape(char))
             at += 1
+    out = _squeeze(out)
+    if out.count("[^/]*") > _STARS:  # stars between other characters backtrack: past a few, read as any text
+        return re.compile(".*")
     try:
         return re.compile("".join(out), re.DOTALL)
     except re.error:

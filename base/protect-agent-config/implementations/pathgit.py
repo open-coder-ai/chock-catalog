@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from chock_shellparse import git_parts
+from chock_shellparse import abbreviates, flags_of, git_parts
 from pathconf import code_key, config
 from pathmatch import DYNAMIC, values
 
@@ -21,11 +21,16 @@ def git(w: Any, args: list[str], env: dict[str, str]) -> bool:
         return config(w, rest, env)
     if sub == "clean":
         return clean(w, rest, env)
-    if sub not in ("checkout", "restore", "rm", "mv") or ("--staged" in rest and sub == "restore"):
+    if sub not in ("checkout", "restore", "rm", "mv") or (sub == "restore" and _index_only(rest)):
         return False
     paths = rest[rest.index("--") + 1 :] if "--" in rest else []
     static = [t for t in values(rest) if sub != "checkout" or t in paths or not DYNAMIC.search(t)]
     return any(w.reaches(t, env, parents=True, whole=sub in ("rm", "mv")) for t in static)
+
+
+def _index_only(args: list[str]) -> bool:
+    """`restore --staged` changes the index alone, unless `--worktree` (any unambiguous prefix, or -W) asks for the files too."""
+    return "--staged" in args and not any(f == "-W" or abbreviates(f, "--worktree", 3) for f in flags_of(args))
 
 
 def clean(w: Any, args: list[str], env: dict[str, str]) -> bool:
@@ -51,4 +56,5 @@ def clean(w: Any, args: list[str], env: dict[str, str]) -> bool:
     if letters & {"-n", "--dry-run"}:
         return False
     ignored = bool(letters & {"-x", "-X"})
-    return any(w.reaches(t, env, parents=True, whole=ignored) for t in specs) or (ignored and not specs)
+    # a pathspec that is the repository folder (`.`, `./`) or one above it holds every protected path, as -x does
+    return any(w.reaches(t, env, parents=True, whole=True) for t in specs) or (ignored and not specs)

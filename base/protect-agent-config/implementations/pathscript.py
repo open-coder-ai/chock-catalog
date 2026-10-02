@@ -6,12 +6,16 @@ import codecs
 import os
 import re
 import shlex
+from collections.abc import Callable
 
-from chock_shellparse.parse import Cmd
+from chock_shellparse.parse import Cmd, _parse
 from pathmatch import DYNAMIC
+from pathtext import scan
 from pathwords import PRODUCERS
 from pathwrap import unwrap
 from pathwriters import interpreter
+
+_STDIN = re.compile(r"/dev/(?:stdin|fd/\d+)|/proc/self/fd/\d+")
 
 
 def isdir(base: str, path: str) -> bool:
@@ -40,6 +44,12 @@ class Scripts:
     docs: dict[str, str]
     prev: Cmd | None
     base: str
+    text: str
+    ps: bool
+    outputs: list[str]
+    unseen: bool
+    hit: Callable[[str], bool]
+    resolve: Callable[[str], str | None]
 
     def sub(self, text: str) -> bool:
         """Whether a script that runs here, in the same directory, is refused."""
@@ -82,11 +92,36 @@ class Scripts:
         text = words[0] if prev.name == "printf" and words else " ".join(words)
         return [codecs.decode(text, "unicode_escape", "replace") if prev.name == "printf" else text]
 
-    def fed(self, cmd: Cmd, prev: Cmd | None) -> bool:
-        """A shell that reads its script from standard input: here-string, here-document or the command before it."""
+    def stdin(self, cmd: Cmd) -> bool:
+        """A shell, `source` or `.` that reads its script from standard input (or a process substitution)."""
+        files = [a for a in cmd.args if not a.startswith("-")]
+        if cmd.name in ("source", "."):
+            return not files or _STDIN.fullmatch(files[0]) is not None
+        return "-s" in cmd.args or not files or _STDIN.fullmatch(files[0]) is not None
+
+    def fed(self, cmd: Cmd, prev: Cmd | None, nxt: Cmd | None = None) -> bool:
+        """A shell that reads its script from standard input: here-string, here-document, or the command before it
+        (`<(cmd)` shows as the command after); a script the line does not show is refused when it names a protected path."""
         scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(prev)
-        self.blind |= not scripts
+        scripts = scripts or (self.produced(nxt) if "<(" in self.text else [])
+        if not scripts:
+            self.blind = True
+            return self.hit(self.text)
         return any(self.sub(text) for text in scripts)
+
+    def literal(self, body: str) -> list[str] | None:
+        """The text a substitution body prints when it is one `echo`, `printf` or `cat <<DOC` the line shows."""
+        scanned = scan(body, self.resolve)
+        self.docs.update(scanned.docs)
+        cmds = _parse(scanned.outer, {}, ps=self.ps, depth=0)[0]
+        if len(cmds) == 1 and not cmds[0].writes and cmds[0].name in PRODUCERS:
+            return self.produced(cmds[0])
+        return None
+
+    def computed(self) -> bool:
+        """A command named by a substitution (`eval "$(echo ...)"`, `bash -c "$(cat <<E ...)"`): its text is judged
+        as a script when the line shows it, and refused when a substitution it may be hides a protected name."""
+        return any(self.sub(text) for text in self.outputs) or (self.unseen and self.hit(self.text))
 
     def code(self, cmd: Cmd) -> bool:
         scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(self.prev)
