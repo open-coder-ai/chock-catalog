@@ -31,7 +31,8 @@ def _load() -> tuple[ModuleType, ModuleType, ModuleType, ModuleType, ModuleType,
         for k in [k for k in sys.modules if k == "chock_scan" or k.startswith("chock_scan.")]:
             sys.modules[f"_ioc_{k}"] = sys.modules.pop(k)
         sys.modules.update(saved)
-    return (gate, *mods)
+    table_mod, npm_mod, python_mod, others_mod, route_mod = mods
+    return gate, table_mod, npm_mod, python_mod, others_mod, route_mod
 
 
 gate, table, npm, python, others, route = _load()

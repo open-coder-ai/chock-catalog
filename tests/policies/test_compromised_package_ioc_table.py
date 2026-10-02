@@ -130,7 +130,8 @@ def test_file_lookup(path: str, listed: bool) -> None:
 
 
 def test_a_valid_table_loads_from_any_data_folder(tmp_path: Path) -> None:
-    assert len(table.load(write(tmp_path, REAL)).files) == len(REAL["files"])
+    loaded = table.load(write(tmp_path, REAL))
+    assert len(loaded.files) == len(REAL["files"])
 
 
 def bad(**changes: object) -> dict:
