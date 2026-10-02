@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "npm": "https://docs.npmjs.com/cli/v11/using-npm/registry",
+    "yarn": "https://yarnpkg.com/configuration/yarnrc#npmRegistryServer",
+    "github-packages": "https://docs.github.com/en/packages/working-with-a-github-packages-registry",
+    "pypi": "https://docs.pypi.org/api/",
+    "conda": "https://docs.conda.io/projects/conda/en/latest/user-guide/configuration/settings.html",
+    "cargo": "https://doc.rust-lang.org/cargo/reference/registry-index.html",
+    "nuget": "https://learn.microsoft.com/en-us/nuget/api/overview",
+    "rubygems": "https://guides.rubygems.org/rubygems-org-api/",
+    "packagist": "https://getcomposer.org/doc/05-repositories.md",
+    "hex": "https://hex.pm/docs/mirrors",
+    "cocoapods": "https://blog.cocoapods.org/CocoaPods-1.7.2/",
+    "maven": "https://maven.apache.org/guides/mini/guide-mirror-settings.html",
+    "go": "https://go.dev/ref/mod#module-proxy"
+  },
+  "use": "The public registry hosts each package manager uses by default. A registry, index or mirror setting naming any other host is refused unless the repository's own reviewed allowlist (.chock/registry-hosts.txt) names it. Hosts where anyone can publish under any name and that no package manager uses as its default index (github.com, test.pypi.org) are deliberately absent.",
+  "hosts": {
+    "npm": ["registry.npmjs.org", "registry.yarnpkg.com", "npm.pkg.github.com"],
+    "pypi": ["pypi.org", "files.pythonhosted.org", "upload.pypi.org"],
+    "conda": ["conda.anaconda.org", "repo.anaconda.com"],
+    "cargo": ["index.crates.io", "crates.io", "static.crates.io"],
+    "nuget": ["api.nuget.org", "nuget.pkg.github.com"],
+    "rubygems": ["rubygems.org", "index.rubygems.org", "rubygems.pkg.github.com"],
+    "packagist": ["repo.packagist.org", "packagist.org"],
+    "hex": ["repo.hex.pm", "hex.pm"],
+    "cocoapods": ["cdn.cocoapods.org"],
+    "maven": ["repo.maven.apache.org", "repo1.maven.org", "maven.pkg.github.com"],
+    "go": ["proxy.golang.org", "sum.golang.org"]
+  }
+}
