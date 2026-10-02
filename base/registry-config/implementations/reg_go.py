@@ -131,8 +131,11 @@ def _goflags(ctx: Ctx, number: int, value: str) -> None:
 
 def _goproxy(ctx: Ctx, number: int, items: list[str]) -> None:
     for item in items:
-        if item.lower().startswith(("http://", "https://")):
-            url(ctx, number, "GOPROXY", item)
+        if item.lower() in ("direct", "off") or item.lower().startswith("file:"):
+            continue  # file: is a proxy on the local disk
+        # Go puts https:// before an element with '.', ':' or '/' but no ':/' (modfetch/proxy.go).
+        bare = ":/" not in item and any(c in item for c in ".:/")
+        url(ctx, number, "GOPROXY", "https://" + item if bare else item)
     if items and items[0].lower() == "direct":
         message = "GOPROXY=direct fetches every module from its origin, bypassing the proxy"
         add(ctx, REDIRECT, number, ("GOPROXY", "direct"), message)

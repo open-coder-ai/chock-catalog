@@ -45,7 +45,8 @@ def test_unclosed_expansions_and_glued_words_are_judged_in_time(text: str) -> No
         ("build.ps1", '$env:GOPROXY = "$env:GOPROXY"\n', []),
         # An escape in a GO* value asks.
         ("b.sh", "GOFLAGS=\\-insecure\n", [A_REDIR]),
-        (".github/workflows/x.yml", 'env:\n  GOFLAGS: "\\x2dinsecure"\n', [A_REDIR]),
+        # A YAML double-quoted escape is resolved as the loader resolves it.
+        (".github/workflows/x.yml", 'env:\n  GOFLAGS: "\\x2dinsecure"\n', [B_TLS]),
         # Only an empty default makes a credential a reference.
         (".yarnrc.yml", 'npmAuthToken: "${NPM_TOKEN:-$lit3d9f}"\nnpmMinimalAgeGate: 3d\n', [B_TOKEN]),
         (".npmrc", "//r.example/:_authToken=${NPM_TOKEN:-}\nmin-release-age=1\n", []),

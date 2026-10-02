@@ -34,6 +34,9 @@ EXPANSION = re.compile(r"\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|\$\([^)\n]*\)")
 #: The leading part of an unclosed value that is certainly its own: no quote, expansion, escape or terminator.
 SIMPLE = re.compile(r"[A-Za-z0-9._/:@,|*?\[\]+=%~-]*")
 QUOTES = re.compile("[\"']")
+FLAG_WORD = re.compile(r"--?[\w=.,${}-]+")
+YAML_JSON = re.compile(r"\.(?:ya?ml|json)$", re.IGNORECASE)
+ESCAPED = re.compile(r"\\(?:x([0-9A-Fa-f]{2})|u([0-9A-Fa-f]{4})|U([0-9A-Fa-f]{8}))")
 #: Past this many GO* settings in one file the file is refused rather than read.
 MAX_SETTINGS = 1000
 
@@ -81,14 +84,15 @@ def _value(ctx: Ctx, raw: str, match: re.Match[str]) -> tuple[list[str] | None, 
     if quote:
         return _quoted(ctx, raw, pos, quote, outer)
     if outer:
-        end = raw.find(outer, pos)
-        return ([raw[pos:end]], True) if end >= 0 else ([raw[pos:], _simple(raw[pos:])], False)
+        return _in_string(raw, pos, outer)
     word = WORD.match(raw, pos)[0]
     if len(word) > MAX_WORD:
         return None, False
     if word.startswith("#") and raw[pos - 1 : pos].isspace():
         return [""], True  # NAME= # comment: the value is empty
-    tail = FLAGS.match(raw, pos + len(word))[0]
+    # Bounded: the flags after a bare value are read within MAX_WORD characters, so a line of many settings
+    # stays linear.
+    tail = FLAGS.match(raw[pos + len(word) : pos + len(word) + MAX_WORD])[0]
     word = _unbracket(word)
     plain = word if "$" in word else QUOTES.sub("", word)
     # Inside ${...} and ${{ ... }} a '}' or ';' is the expansion's own, not the end of the value.
@@ -106,19 +110,52 @@ def _unbracket(word: str) -> str:
     return word
 
 
+def _in_string(raw: str, pos: int, outer: str) -> tuple[list[str], bool]:
+    """A setting inside an outer string (echo "NAME=value" >> file, sh -c "NAME=value cmd"): the text up to the
+    string's closing quote, its first word (a command may follow it), and what a shell glues on after the
+    quote or, after a trailing ',' or '|', passes as the next word. Certain only when the text is one word,
+    or the words after the first are GOFLAGS-style flags, and nothing follows the quote."""
+    end = raw.find(outer, pos, pos + MAX_WORD)
+    whole = raw[pos:end] if end >= 0 else raw[pos : pos + MAX_WORD]
+    first = whole.split(maxsplit=1)[0] if whole.strip() else ""
+    readings = [whole, first]
+    certain = end >= 0 and all(FLAG_WORD.fullmatch(w) for w in whole.split()[1:])
+    if end >= 0:
+        after = raw[end + 1 : end + 1 + MAX_WORD]
+        glued = WORD.match(after)[0]
+        nxt = WORD.match(after.lstrip())[0] if whole.endswith((",", "|")) else ""
+        for extra in (glued, nxt):
+            if extra and extra[0] not in ">|&;)" and not _separator(extra, after):
+                readings.append(whole + QUOTES.sub("", extra))
+                certain = False
+    return readings, certain
+
+
 def _quoted(ctx: Ctx, raw: str, pos: int, quote: str, outer: str) -> tuple[list[str], bool]:
     """A value that opens with its own quote: up to its closing quote, and what a shell glues on after it."""
-    end = raw.find(quote, pos + 1)
+    end = raw.find(quote, pos + 1, pos + 1 + MAX_WORD)
     if end < 0:
-        inner = raw[pos + 1 :]
+        inner = _unescape(ctx, raw[pos + 1 : pos + 1 + MAX_WORD], quote)
         return [inner, _simple(inner)], False
-    inner = raw[pos + 1 : end]
-    after = raw[end + 1 :]
-    glued = WORD.match(after)[0][:MAX_WORD]
-    separator = glued[:1] in (",", "]", "}") and after[1:2] in ("", " ", "\t", '"', "}", "]")
-    if not glued or glued[:1] == outer or separator or ctx.path.lower().endswith(".json"):
+    inner = _unescape(ctx, raw[pos + 1 : end], quote)
+    after = raw[end + 1 : end + 1 + MAX_WORD]
+    glued = WORD.match(after)[0]
+    if not glued or glued[:1] == outer or _separator(glued, after) or ctx.path.lower().endswith(".json"):
         return [inner], True
     return [inner, inner + QUOTES.sub("", glued)], False
+
+
+def _separator(glued: str, after: str) -> bool:
+    """A ',' ']' or '}' right after a closing quote that ends a JSON or YAML flow item rather than joining it."""
+    return glued[:1] in (",", "]", "}") and after[1:2] in ("", " ", "\t", '"', "}", "]")
+
+
+def _unescape(ctx: Ctx, text: str, quote: str) -> str:
+    """A double-quoted YAML or JSON string's \\xXX, \\uXXXX and \\UXXXXXXXX escapes resolved, as the loader
+    resolves them; shell strings are left as written (go_setting asks about an escape it cannot read)."""
+    if quote != '"' or not YAML_JSON.search(ctx.path):
+        return text
+    return ESCAPED.sub(lambda m: chr(int(m[1] or m[2] or m[3], 16)), text)
 
 
 def _simple(text: str) -> str:
