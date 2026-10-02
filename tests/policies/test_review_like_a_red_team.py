@@ -88,7 +88,8 @@ def test_the_triage_block_names_only_keys_the_table_has() -> None:
     assert re.search(r"\bverdicts\b", block)
 
 
-def test_excluded_paths_are_still_read_for_the_shapes_that_matter() -> None:
+def test_wording_pin_excluded_paths_are_still_read() -> None:
+    """A wording pin, not a behaviour test: rewording the carve-out must be a deliberate test edit."""
     block = BODY.read_text(encoding="utf-8").split("## Triage", 1)[1]
-    assert "but read its added lines for a secret" in block
-    assert "rank 4-5 source or sink" in block
+    assert "read its added and removed lines" in block
+    assert "a hit -> review that\n                           file in full" in block

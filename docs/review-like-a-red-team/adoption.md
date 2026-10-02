@@ -81,8 +81,8 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 55 skipped
-55 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 57 skipped
+57 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
