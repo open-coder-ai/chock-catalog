@@ -11,10 +11,11 @@ A table is a regular file named `*.json` directly in a folder named `data`, neit
 symlink and its path holding no `..`: what tools/check_data_tables.py finds. Folders above `data`
 are not resolved here (an adopter's checkout may sit under a symlink); the catalog's CI instead
 reports any symlinked folder that leads outside what it scans, so every table a shipped guard
-loads is one CI judges for freshness. Sources are text, never fetched: the https rule refuses
-other `scheme://` URLs, not every string a browser might follow. Duplicate keys are compared exactly as decoded: keys that differ only by
-case, Unicode normalisation or invisible characters are distinct, so a consumer keyed by names
-normalises them itself.
+loads is one CI judges for freshness. Sources are text, never fetched: every `://` in one must
+follow a standalone `https`, which is not every string a browser might follow (`javascript:`,
+`//host`, look-alike letters pass). Duplicate keys are compared exactly as decoded: keys that
+differ only by case, Unicode normalisation or invisible characters are distinct, so a consumer
+keyed by names normalises them itself.
 
 Freshness is separate from loading on purpose: a stale table still holds what it held, so a
 guard keeps using it; the catalog's CI fails on it (tools/check_data_tables.py).
@@ -43,8 +44,8 @@ SHOW = 80
 EPOCH = dt.date(2020, 1, 1)
 DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 URL = re.compile(r"https://[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+(?:[/?#]\S*)?")
-#: The lookbehind starts a match only at a scheme's first character, so a long run stays linear.
-SCHEME = re.compile(r"(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*://")
+#: Characters a URL scheme may hold: one of them right before `https://` makes it another scheme.
+SCHEME_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+.-")
 SOURCE_ID = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 WORD = re.compile(r"[A-Za-z]{3}")
 
@@ -124,11 +125,22 @@ def parse(text: str, name: str = "<table>") -> dict:
 def _source_text(where: str, value: object) -> list[str]:
     if not isinstance(value, str) or not 0 < len(value) <= MAX_SOURCE or not value.isprintable():
         return [f"{where} must be 1..{MAX_SOURCE} printable characters"]
-    if value != value.strip() or any(m != "https://" for m in SCHEME.findall(value)):
+    if value != value.strip() or not _https_only(value):
         return [f"{where} must have no outer spaces, and no URL scheme but https://"]
     if value.lower().startswith("http"):
         return [] if URL.fullmatch(value) else [f"{where} must be an https:// URL with a host and no spaces"]
     return [] if WORD.search(value) else [f"{where} must be an https:// URL or a citation in words"]
+
+
+def _https_only(value: str) -> bool:
+    """Every `://` follows `https`, itself not the tail of a longer scheme; linear in the text."""
+    at = value.find("://")
+    while at != -1:
+        start = at - len("https")
+        if start < 0 or value[start:at] != "https" or (start and value[start - 1] in SCHEME_CHARS):
+            return False
+        at = value.find("://", at + 3)
+    return True
 
 
 def _source(value: object) -> list[str]:

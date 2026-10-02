@@ -79,7 +79,6 @@ LEGACY = {
 
 #: Not shipped and not tables: version control, the framework checkout CI makes, test fixtures.
 SKIP = frozenset({".git", ".framework", "node_modules", "tests"})
-SKIP_PARTS = frozenset((s,) for s in SKIP)
 
 
 def _fold(name: str) -> str:
@@ -100,20 +99,26 @@ def tables(root: Path = ROOT) -> list[Path]:
 
 
 def links(root: Path = ROOT) -> list[Path]:
-    """Symlinked folders leading outside what `tables` scans: a table behind one would load unseen."""
+    """Symlinks a table could load through unseen: a folder link (or a dangling or looping link) whose
+    target is missing, outside `root`, `root` itself, or in a SKIP folder; a link inside the scan is fine."""
     real = root.resolve()
     found: list[Path] = []
-    for dirpath, dirnames, _ in os.walk(root):
+    for dirpath, dirnames, filenames in os.walk(root):
         here = Path(dirpath)
         if here == root:
             dirnames[:] = [d for d in dirnames if d not in SKIP]
-        for d in dirnames:
-            target = (here / d).resolve()
-            if (here / d).is_symlink() and (
-                not target.is_relative_to(real) or target.relative_to(real).parts[:1] in SKIP_PARTS
-            ):
-                found.append(here / d)
+        found += [here / n for n in dirnames + filenames if (here / n).is_symlink() and _hides(here / n, real)]
     return sorted(found)
+
+
+def _hides(link: Path, real: Path) -> bool:
+    try:
+        target = link.resolve(strict=True)
+    except (OSError, RuntimeError):
+        return True
+    if not target.is_dir():
+        return False
+    return not target.is_relative_to(real) or target == real or target.relative_to(real).parts[0] in SKIP
 
 
 def _show(rel: str) -> str:
@@ -147,7 +152,7 @@ def problems(today: dt.date, root: Path = ROOT) -> list[str]:
             out += [f"{_show(rel)}: {p}" for p in exc.problems]
     out += [f"{rel}: listed in LEGACY but not found; delete the entry" for rel in sorted(LEGACY.keys() - seen)]
     hidden = (_show(p.relative_to(root).as_posix()) for p in links(root))
-    return out + [f"{rel}: a symlinked folder leading outside the scan could hide a table" for rel in hidden]
+    return out + [f"{rel}: a symlink leading outside the scan (or nowhere) could hide a table" for rel in hidden]
 
 
 def _date(value: str) -> dt.date:

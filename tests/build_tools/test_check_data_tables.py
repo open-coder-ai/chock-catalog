@@ -168,7 +168,7 @@ def test_symlinked_tables_and_data_folders_are_reported_not_followed(
     assert found == [
         "base/p/data: a table must be a *.json file directly in a folder named data",
         "data/link.json: a table and its data folder must not be symlinks",
-        "base/p/data: a symlinked folder leading outside the scan could hide a table",
+        "base/p/data: a symlink leading outside the scan (or nowhere) could hide a table",
     ]
 
 
@@ -206,6 +206,20 @@ def test_a_symlinked_folder_leading_outside_the_scan_is_reported(
     _put(cat, "shared/data/c.json", _table())
     (cat / "base" / "p" / "shared").symlink_to(cat / "shared", target_is_directory=True)
     assert cdt.problems(DAY, cat) == [
-        f"base/p/{name}: a symlinked folder leading outside the scan could hide a table"
+        f"base/p/{name}: a symlink leading outside the scan (or nowhere) could hide a table"
         for name in ("fixtures", "implementations")
+    ]
+
+
+def test_a_link_to_the_root_a_dangling_link_and_a_loop_are_reported(cat: Path) -> None:
+    _put(cat, "tests/data/x.json", _table(as_of="2020-01-01"))
+    (cat / "base" / "p" / "loop").symlink_to("../..", target_is_directory=True)
+    (cat / "base" / "p" / "gone").symlink_to("/nonexistent/impl", target_is_directory=True)
+    (cat / "base" / "p" / "self").symlink_to("self")
+    (cat / "base" / "p" / "file.txt").write_text("x", encoding="utf-8")
+    (cat / "base" / "p" / "filelink").symlink_to("file.txt")
+    found = cdt.problems(DAY, cat)
+    assert found == [
+        f"base/p/{name}: a symlink leading outside the scan (or nowhere) could hide a table"
+        for name in ("gone", "loop", "self")
     ]

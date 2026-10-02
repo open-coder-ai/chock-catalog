@@ -104,3 +104,20 @@ def test_a_long_run_of_scheme_characters_in_sources_is_linear(dt_: ModuleType, t
     start = time.monotonic()
     assert dt_.read(path)["source"] == sources
     assert time.monotonic() - start < 2
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        *("see .http://evil.example", "see 1http://e", "see -ftp://e", "see +http://e"),
+        *("xhttps://e", "see https:// and ://", "://x", "a-https://e"),
+    ],
+)
+def test_every_scheme_but_a_standalone_https_is_refused(dt_: ModuleType, tmp_path: Path, source: str) -> None:
+    found = _problems(dt_, write(tmp_path / "t.json", table(source=source)))
+    assert found == ["source must have no outer spaces, and no URL scheme but https://"]
+
+
+@pytest.mark.parametrize("source", ["https://a.b", "see https://a.b and (https://c.d)", "MITRE, https://a.b/x"])
+def test_https_urls_inside_a_citation_pass(dt_: ModuleType, tmp_path: Path, source: str) -> None:
+    assert dt_.load(write(tmp_path / "t.json", table(source=source)), kind="curated", schema=1, keys=ROWS)
