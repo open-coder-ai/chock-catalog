@@ -53,7 +53,7 @@ SECRET = re.compile(
    |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
    |[\w.]{0,64}(?:env|getenv|environ)[.(\[]
    |(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+(?:_[0-9]{1,3})?)["'`]
-   |(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+|[a-z]+[0-9]{0,3}(?:_[a-z]+[0-9]{0,3})+)(?:_[0-9]{1,3})?(?(kv_quote)(?!)|(?:[\s,;)\]}]|$))
+   |(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+|[a-z]+[0-9]{0,3}(?:_[a-z]+[0-9]{0,3})+)(?:_[0-9]{1,3})?(?(kv_quote)(?!)|(?:[\s,;.()\]}]|$))
    |(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)
     (?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$)))
  (?(kv_quote)(?=[^"'`\s]{0,128}[^a-z._\-"'`\s])(?![^"'`\s]{0,128}/[^"'`\s]{0,128}\.(?:txt|pem|key|crt|cer|json|ya?ml|env|cfg|conf|ini|p12|pfx|jks)["'`])
