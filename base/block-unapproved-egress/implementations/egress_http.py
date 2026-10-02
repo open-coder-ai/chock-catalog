@@ -4,8 +4,19 @@ from __future__ import annotations
 
 import re
 
-from chock_shellparse import Cmd
-from egress_core import ASK_PERSON, COMMAND_SUBST, VARIABLE, Allowlist, Verdict, confirm, permitted, refuse, unapproved
+from chock_shellparse import Cmd, after
+from egress_core import (
+    ASK_PERSON,
+    COMMAND_SUBST,
+    VARIABLE,
+    WHOLE_VARIABLE,
+    Allowlist,
+    Verdict,
+    confirm,
+    permitted,
+    refuse,
+    unapproved,
+)
 
 METHODS = ("POST", "PUT", "PATCH")
 # curl short options that take a value (the rest of the cluster, or the next argument): -sd @f is -s and -d @f.
@@ -23,18 +34,29 @@ CURL_LONG_VALUE = frozenset(
 WGET_LONG_VALUE = frozenset(("--post-data", "--post-file", "--body-data", "--body-file", "--method"))
 POWERSHELL_FETCHERS = frozenset(("invoke-webrequest", "invoke-restmethod", "iwr", "irm"))
 POWERSHELL_UPLOAD = ("method", "body", "infile", "form")
-PARAM_FLOOR = 3
+PARAM_FLOOR = 2
 URL = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*://[^\s\"'()<>]+")
 BARE_HOST = re.compile(r"(?:0x[0-9a-f]+|[0-9]+|\[.*)(?:[/:].*)?", re.IGNORECASE)
 REROUTE = {"-x": "--proxy", "--proxy": "--proxy", "--resolve": "--resolve", "--connect-to": "--connect-to"}
+PREFIX_FLOOR = 4
+UPLOAD_LONG = frozenset(("--upload-file", "--json", "--post-data", "--post-file", "--body-data", "--body-file"))
 PROXY_ENV = frozenset(("http_proxy", "https_proxy", "all_proxy"))
 HEADER_OPTS = frozenset(("-H", "--header", "-A", "--user-agent", "-e", "--referer", "-b", "--cookie", "-u", "--user"))
 Options = list[tuple[str, str | None]]
 
 
+def canonical(name: str, known: frozenset[str]) -> str:
+    """An unambiguous-looking prefix (`--upl`, `--js`) as the option it abbreviates; upload options win a tie (fail closed)."""
+    if name in known or len(name) < PREFIX_FLOOR:
+        return name
+    hits = sorted(opt for opt in known if opt.startswith(name))
+    return next((h for h in hits if h in UPLOAD_LONG or h.startswith(("--data", "--form"))), hits[0] if hits else name)
+
+
 def long_option(arg: str, rest: list[str], takes_value: frozenset[str]) -> tuple[str, str | None, int]:
     """A `--name[=value]` option: its name, its value, and how many following arguments it consumed."""
     name, equals, value = arg.partition("=")
+    name = canonical(name, takes_value)
     if equals:
         return name, value, 0
     if name in takes_value and rest:
@@ -109,10 +131,16 @@ def powershell_uploads(args: list[str]) -> bool:
 
 
 def targets(args: list[str], bare: list[str]) -> list[str]:
-    """Every URL in the arguments; with none, the bare operands that read as a host (a name with a dot, localhost, a number, a substitution)."""
+    """Every URL in the arguments; with none, the bare operands that read as a host (dotted name, localhost, number, variable)."""
     urls = [u for u in URL.findall(" ".join(args)) if not u.lower().startswith("file:")]
     return urls or [
-        b for b in bare if "." in b or b == "localhost" or BARE_HOST.fullmatch(b) or COMMAND_SUBST.search(b)
+        b
+        for b in bare
+        if any(dot in b for dot in ".\u3002\uff0e\uff61")
+        or b == "localhost"
+        or BARE_HOST.fullmatch(b)
+        or COMMAND_SUBST.search(b)
+        or WHOLE_VARIABLE.fullmatch(b)
     ]
 
 
@@ -126,20 +154,45 @@ def reroutes(opts: Options) -> Verdict:
 
 
 def proxied(cmd: Cmd) -> Verdict:
-    """A *_PROXY variable set in front of curl or wget reroutes it like --proxy does."""
-    if PROXY_ENV & {name.lower() for name in cmd.env}:
+    """A *_PROXY variable in front of curl or wget, or wget -e http_proxy=..., reroutes it like --proxy does."""
+    settings = [a[2:] for a in cmd.args if a.startswith("-e") and a[2:]]
+    settings += [after(cmd.args, "-e"), after(cmd.args, "--execute")]
+    wget_setting = cmd.name == "wget" and any("proxy" in v.lower() for v in settings)
+    if PROXY_ENV & {name.lower() for name in cmd.env} or wget_setting:
         return confirm(
-            f"a proxy variable in front of {cmd.name} sends the request through a host the URL does not show. {ASK_PERSON}"
+            f"a proxy setting for {cmd.name} sends the request through a host the URL does not show. {ASK_PERSON}"
         )
     return None
 
 
+def wget_options(args: list[str]) -> Options:
+    """wget's header-like options as (curl-style name, value) pairs."""
+    names = {
+        "--header": "-H",
+        "--user-agent": "-A",
+        "--referer": "-e",
+        "--user": "-u",
+        "--password": "-u",
+        "--load-cookies": "-b",
+    }
+    opts: Options = []
+    for index, arg in enumerate(args):
+        name, equals, value = arg.partition("=")
+        if name in names:
+            opts.append((names[name], value if equals else (args[index + 1] if index + 1 < len(args) else "")))
+    return opts
+
+
 def header_exfil(allow: Allowlist, opts: Options, urls: list[str]) -> Verdict:
-    """A substitution or variable in a header, cookie, referer or user value sent to a host outside the allowlist."""
-    carries = any(COMMAND_SUBST.search(v or "") or VARIABLE.search(v or "") for n, v in opts if n in HEADER_OPTS)
+    """A substitution, variable or @file in a header, cookie, referer or user value sent to a host outside the allowlist."""
+    carries = any(
+        COMMAND_SUBST.search(v or "") or VARIABLE.search(v or "") or (v or "").startswith("@")
+        for n, v in opts
+        if n in HEADER_OPTS
+    )
     if carries and any(not permitted(allow, url) for url in urls):
         return confirm(
-            f"curl sends a command or variable value in a header to a host outside the egress allowlist. {ASK_PERSON}"
+            f"a command, variable or file value goes in a header to a host outside the egress allowlist. {ASK_PERSON}"
         )
     return None
 
@@ -161,7 +214,8 @@ def http_target(cmd: Cmd, allow: Allowlist) -> tuple[list[str], bool, Verdict]:
         found = targets(cmd.args, bare + urls)
         return found, curl_uploads(opts), reroutes(opts) or proxied(cmd) or header_exfil(allow, opts, found)
     if cmd.name == "wget":
-        return targets(cmd.args, [a for a in cmd.args if not a.startswith("-")]), wget_uploads(cmd.args), proxied(cmd)
+        found = targets(cmd.args, [a for a in cmd.args if not a.startswith("-")])
+        return found, wget_uploads(cmd.args), proxied(cmd) or header_exfil(allow, wget_options(cmd.args), found)
     if cmd.name in POWERSHELL_FETCHERS:
         return targets(cmd.args, [a for a in cmd.args if not a.startswith("-")]), powershell_uploads(cmd.args), None
     return [], False, None

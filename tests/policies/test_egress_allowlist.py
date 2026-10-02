@@ -81,26 +81,25 @@ def test_a_chock_directory_marks_the_root_without_git(
 
 
 @pytest.mark.parametrize(
-    ("content", "why"),
+    ("content", "fragment"),
     [
-        ("*\n", "a bare '*'"),
-        ("*.com\n", "a wildcard over one label"),
-        ("evil.example\nex*ample.com\n", "a '*' in the middle"),
+        ("*\n", "*"),
+        ("*.com\n", "wildcard"),
+        ("evil.example\nex*ample.com\n", "*"),
         ("# only comments\n\n", "lists no host"),
         (b"evil.example\x00\n", "binary"),
-        (b"\xff\xfe\n", "not UTF-8"),
-        ("evil.example/path\n", "a path in an entry"),
+        (b"\xff\xfe\n", "UTF-8"),
+        ("evil.example/path\n", "line 1"),
     ],
 )
 def test_an_unusable_file_refuses_every_upload_and_says_why(
-    repo: Path, capsys: pytest.CaptureFixture[str], content: str | bytes, why: str
+    repo: Path, capsys: pytest.CaptureFixture[str], content: str | bytes, fragment: str
 ) -> None:
     allowlist(repo, content)
     code, err = verdict(UPLOAD.format(host="pypi.org"), capsys)
     assert code == BLOCK
     assert "egress-allowlist.txt" in err
-    assert "unusable" in err or "lists no host" in err
-    assert why  # each parametrised case names the failure it stands for
+    assert fragment in err
 
 
 def test_an_unusable_file_refuses_uploaders_of_every_kind(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:

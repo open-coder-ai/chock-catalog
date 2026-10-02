@@ -18,7 +18,8 @@ DEFAULT_FILE = Path(__file__).resolve().parent / "data" / "egress-allowlist.txt"
 PROJECT_FILE = os.path.join(".chock", "egress-allowlist.txt")
 # The parser ends a word at an unquoted '(' or backtick, so `$(cmd)` reaches a guard as a trailing '$'.
 COMMAND_SUBST = re.compile(r"\$\(|\$$|`")
-VARIABLE = re.compile(r"\$\{?[A-Za-z_]")
+VARIABLE = re.compile(r"\$\{?[A-Za-z_0-9?@!]")
+WHOLE_VARIABLE = re.compile(r"\$(?:[A-Za-z_]\w*|\{[A-Za-z_]\w*\})")
 ASK_PERSON = "Ask the person: they extend .chock/egress-allowlist.txt or run it themselves."
 
 
@@ -38,8 +39,11 @@ def confirm(text: str) -> Verdict:
 
 
 def project_root(start: Path) -> Path | None:
-    """The nearest directory at or above `start` holding .chock/ or .git."""
-    return next((d for d in (start, *start.parents) if (d / ".chock").is_dir() or (d / ".git").exists()), None)
+    """The nearest directory at or above `start` holding .git, else the nearest holding .chock (a nested .chock cannot win)."""
+    chain = (start, *start.parents)
+    return next((d for d in chain if (d / ".git").exists()), None) or next(
+        (d for d in chain if (d / ".chock").is_dir()), None
+    )
 
 
 def load_allowlist(start: Path) -> Allowlist:

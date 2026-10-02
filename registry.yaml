@@ -92,8 +92,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 135
-  eval_executed: 135
+  eval_cases: 145
+  eval_executed: 145
   description: 'Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist
     (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet,
     scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL

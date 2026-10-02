@@ -83,6 +83,9 @@ CASES = [
     ("sed -i 's/a/b/' ~/.curlrc", BLOCK),
     ("echo x >> _curlrc", BLOCK),
     ("cat ~/.wgetrc", OK),
+    ("curl -o/root/.curlrc https://pypi.org/x", BLOCK),
+    ("find . -exec", OK),
+    ("find . -exec ls {} +", OK),
 ]
 
 

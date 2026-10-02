@@ -12,10 +12,13 @@ import sys
 from pathlib import Path
 
 import egress_exfil as exfil
+import egress_scan as scan
 import egress_upload as upload
 from chock_shellparse import Cmd, commands
 from egress_core import BLOCK, Allowlist, Verdict, load_allowlist
 from egress_http import http_target, upload_verdict
+
+DEPTH = 3
 
 
 def judge(cmd: Cmd, allow: Allowlist) -> list[Verdict]:
@@ -33,12 +36,22 @@ def judge(cmd: Cmd, allow: Allowlist) -> list[Verdict]:
     return found
 
 
+def judged(raw: str, allow: Allowlist, depth: int = 0) -> list[Verdict]:
+    """Verdicts for every command of a line, of heredocs fed to a shell, of find -exec and of every substitution body."""
+    found = [] if depth else [exfil.backtick_client(raw), scan.dev_sockets(raw, allow)]
+    for cmd in commands(raw):
+        for each in (cmd, *scan.find_exec(cmd)):
+            found += judge(each, allow)
+        if cmd.name in scan.SHELLS and cmd.doc and depth < DEPTH:
+            found += judged(cmd.doc, allow, depth + 1)
+    for body in scan.substitutions(raw) if depth < DEPTH else []:
+        found += judged(body, allow, depth + 1)
+    return found
+
+
 def check(raw: str, allow: Allowlist) -> Verdict:
     """The first block over any command in the line (every segment is judged), else the first ask, else None."""
-    found = [exfil.backtick_client(raw)]
-    for cmd in commands(raw):
-        found += judge(cmd, allow)
-    verdicts = [v for v in found if v]
+    verdicts = [v for v in judged(raw, allow) if v]
     return next((v for v in verdicts if v[0] == BLOCK), verdicts[0] if verdicts else None)
 
 
