@@ -7,9 +7,9 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="51 policies" src="https://img.shields.io/badge/policies-51-blue">
-<img alt="29 enforced" src="https://img.shields.io/badge/enforced-29-brightgreen">
-<img alt="22 advisory" src="https://img.shields.io/badge/advisory-22-orange">
+<img alt="56 policies" src="https://img.shields.io/badge/policies-56-blue">
+<img alt="30 enforced" src="https://img.shields.io/badge/enforced-30-brightgreen">
+<img alt="26 advisory" src="https://img.shields.io/badge/advisory-26-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -45,9 +45,9 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 20 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 21 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
-| `advisory` | text an agent reads and may or may not follow | 22 |
+| `advisory` | text an agent reads and may or may not follow | 26 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -99,14 +99,11 @@ per-hook trust review before its hooks run.
 | [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 181/181 |
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 34/34 |
 | [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 55/55 |
-| [`ci-github-actions-security`](docs/ci-github-actions-security/) | warns (observe, never blocks yet) when a change adds a GitHub Actions weakness to a workflow, composite action or dependabot.yml: event text in `run:`, pull request head checkout under `pull_request_target`, missing or write-all permissions, `secrets: inherit`, self-hosted runners on pull requests, cache and artifact poisoning | 43/43 |
-| [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 49/49 |
+| [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 145/145 |
 | [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | **carved out for [rtk-ai/rtk#1007](https://github.com/rtk-ai/rtk/issues/1007)**: rtk's own decision table — refuses `rm -rf /`, force push, credential-file reads (`.env`, `*.pem`, `~/.ssh`), `DROP`/`TRUNCATE` through psql and mysql; **asks** (exit 3) before `rm -rf` on an unlisted relative path, `git reset --hard`, `git clean -f`, `docker system prune`; skips file checks inside `docker exec`, and reads through rtk's own `rtk` prefix. The worked example of carving a policy out for one agent | 105/105 |
 | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 25/25 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
-| [`agent-devenv-autoexec`](docs/agent-devenv-autoexec/) | warns (never blocks; observe rollout) when a change adds what a dev tool runs on its own: agent hooks and env overrides, auto-approval, VS Code folder-open tasks, devcontainer initializeCommand, shell-entry and git hook files, git exec config | 50/50 |
-| [`package-lifecycle-scripts`](docs/package-lifecycle-scripts/) | warns (never blocks; observe rollout) on a new or changed install- or build-time hook -- npm install/prepare scripts, setup.py cmdclass, build.rs, MSBuild Exec, gemspec extensions -- and on git or URL dependencies with no commit pin | 28/28 |
 
 <details>
 <summary>21 advisory policies — expand</summary>
@@ -120,7 +117,10 @@ per-hook trust review before its hooks run.
 [`memory-discipline`](docs/memory-discipline/) ·
 [`review-like-a-red-team`](docs/review-like-a-red-team/) ·
 [`block-hook-bypass-in-files`](docs/block-hook-bypass-in-files/) ·
-[`dockerfile-compose-security`](docs/dockerfile-compose-security/)
+[`dockerfile-compose-security`](docs/dockerfile-compose-security/) ·
+[`ci-github-actions-security`](docs/ci-github-actions-security/) ·
+[`agent-devenv-autoexec`](docs/agent-devenv-autoexec/) ·
+[`package-lifecycle-scripts`](docs/package-lifecycle-scripts/)
 
 </details>
 

@@ -1,16 +1,16 @@
 # Agent Devenv Autoexec
 
-`agent-devenv-autoexec` · rule · enforces
+`agent-devenv-autoexec` · rule · advises
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | guard script `agent-devenv-autoexec-gate.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 50 total, 50 executable |
+| **Mechanism** | rule text |
+| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
+| **Compiles to** | `ambient-rule` |
+| **Eval cases** | 50 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,24 +25,24 @@ Files that make a developer tool run code with nobody pressing run: an agent hoo
 
 ## How it works
 
-A guard script, `implementations/agent-devenv-autoexec-gate.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
-
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+There is no mechanism. The rule text is compiled into the agent's ambient context:
 
 ```text
 devenv_autoexec(agent hooks|helpers|env overrides|auto-approve|folderOpen tasks|trust off|devcontainer lifecycle|.envrc|mise|git hooks|gitconfig exec|gitattributes drivers|.gitmodules): changed by people only
 never(add): hook|task|helper|env override|auto-approval; observe: warns at commit+tool_use, enforce later
 ```
 
+It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/agent-devenv-autoexec/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+An **ambient rule**. `recompile` writes `.chock/compiled/agent-devenv-autoexec/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
 
 ## Installing it
 
 ```bash
 chock add agent-devenv-autoexec
-chock sync .
+chock sync --repo .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:
