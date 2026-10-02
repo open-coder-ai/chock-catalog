@@ -1,14 +1,13 @@
 id: block-unpinned-agent-components
 name: "Block Unpinned Agent Components"
-version: "0.0.5"
+version: "0.1.0"
 description: >
-  Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at
-  an unpinned version. Blocks npx/uvx/bunx launches at @latest — the standard MCP
-  server idiom — quoted "@latest" arguments in agent config, and :latest container
-  images. Language-manifest dependencies are verify-dependency-exists; signature
-  and provenance stay with the advisory owasp-asi04 policy. Escape:
-  'pragma: allowlist unpinned' on the same line, honoured at commit; also runs at agent
-  tool-use, where it counts only when that exact line is already committed in HEAD.
+  Gate for the line-visible slice of ASI04: agent components fetched at a floating
+  version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx,
+  dlx, add/install and pipx run; FROM at latest or an untagged registry path; floating
+  docker run/pull and docker:// refs; pip --pre; go install at latest; unversioned cargo
+  installs; git+ and github: refs without a commit SHA. Per line: friction, not a
+  boundary (limits in references). Waiver 'pragma: allowlist unpinned'.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -23,11 +22,12 @@ hook:
     "on": [commit, tool_use]
     action: block
     message: >
-      Unpinned agent component detected. Pin the version (name@1.2.3, image:tag)
-      so what runs tomorrow is what was reviewed today, or add
-      'pragma: allowlist unpinned' on the same line for a deliberate exception
-      (a person's; in the agent it counts only when that exact line is already committed in HEAD, so an
-      agent asks a person).
+      Unpinned agent component detected. Pin an exact version or digest
+      (name@1.2.3, image:1.27.1 or image@sha256:..., a 40-hex commit for git+ and
+      github: refs, cargo install name@1.2.3, no pip --pre) so what runs tomorrow is
+      what was reviewed today, or add 'pragma: allowlist unpinned' on the same line
+      for a deliberate exception (a person's; in the agent it counts only when that
+      exact line is already committed in HEAD, so an agent asks a person).
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+unpinned'
@@ -36,7 +36,7 @@ hook:
       # identical real content. Without them, committing this policy folder tripped
       # the policy's own gate (#32).
       content_pattern: |-
-        (npx|uvx|bunx)\s+(-y\s+|--yes\s+)?\S*@late[s]t\b|"\S+@late[s]t"|FROM\s+\S+:late[s]t\b|image:\s*['"]?\S+:late[s]t\b
+        (npx|uvx|bunx)\s+(-y\s+|--yes\s+)?\S*@late[s]t\b|"\S+@late[s]t"|FROM\s+\S+:late[s]t\b|image:\s*['"]?\S+:late[s]t\b|\b(?:npx|uvx|bunx|pnpm\s+dlx|yarn\s+dlx|pipx\s+run|npm\s+(?:i|install|add|exec|x)|pnpm\s+(?:add|i|install)|yarn\s+(?:global\s+)?add|bun\s+(?:add|i|install|x))\s[^\n#;|&]*?\S@(?:late[s]t|nex[t]|canar[y]|bet[a]|nightl[y]|r[c]|alph[a]|experimenta[l])(?![\w.-])|["'](?:@[\w.-]+/)?[\w.-]+@(?:late[s]t|nex[t]|canar[y]|bet[a]|nightl[y]|r[c]|alph[a]|experimenta[l])["']|["'][^\s'"]+:late[s]t["']|^\s*[Ff][Rr][Oo][Mm]\s+(?:--platform[=\s]\S+\s+)?(?!-)(?:\S+:late[s]t(?![\w.-])|(?:[^\s/'"]+/)+[^\s/:@'"$]+(?:\s+[Aa][Ss]\s+\S+)?\s*(?:#.*)?$)|\b(?:docker|podman|nerdctl)\s+(?:image\s+|container\s+)?(?:run|pull|create)\s[^\n#;|&]*?(?<![^\s'"])[^\s:=@'"]+:(?:late[s]t|edg[e]|nightl[y]|canar[y]|nex[t]|mai[n]|maste[r])(?![\w.-])|\bdocker://(?:(?:[^\s/'"@]+/)*[^\s/:@'"$]+(?=$|[\s'",\]])|[^\s'"@]+:(?:late[s]t|edg[e]|nightl[y]|canar[y]|nex[t]|mai[n]|maste[r])(?![\w.-]))|\bpip3?\s+install\s[^\n#;|&]*?--pr[e](?![\w-])|\bgo\s+(?:install|run)\s[^\n#;|&]*?@late[s]t\b|\bcargo\s+install(?![\w-])(?![^\n#]*(?:--locke[d]|--vers|--path|--list|--rev\b|@\d))(?:\s+-[\w-]+(?:=\S+)?)*\s+[A-Za-z][\w-]*(?![\w@=-])|\b(?:pip3?|pipx|uvx?)\s[^\n#;|&]*?\bgit\+(?![^\s'"]*@[0-9a-fA-F]{40}(?![0-9a-fA-F]))[^\s'"]+|\bgithub:[A-Za-z0-9][\w.-]*/[\w.-]+(?![\w.-])(?!#[0-9a-fA-F]{40}(?![\w.-]))
 
 compliance:
   mitre_atlas:
@@ -59,7 +59,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-13T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -92,3 +92,7 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "Behaviour change (roadmap HP06 v2, single-line forms): the gate also blocks dist-tags latest, next, canary, beta, rc, nightly, alpha and experimental after npx, uvx, bunx, pnpm dlx, yarn dlx, pipx run, npm i/install/add/exec, pnpm add/install, yarn add and bun add/install/x, with flags in between; single- or double-quoted package-at-dist-tag strings (MCP args arrays); quoted strings ending in the latest image tag; FROM in any letter case, with or without --platform, at the latest tag or at an untagged image path that has a slash (a stage alias never has one); docker, podman and nerdctl run/pull/create with an image at latest, edge, nightly, canary, next, main or master; docker:// refs untagged or at those tags; pip's pre-release install flag; go install and go run at latest; a line that installs a crate with cargo with no version (name@x.y or the version flag) and none of the locked, path, rev or list flags; pip, pipx, uv and uvx installs of a git+ URL without a 40-hex commit; github: shorthand refs without a 40-hex commit. Every line the 0.0.5 pattern matched still matches (its alternatives are kept verbatim). Not covered yet and listed in references: bare untagged FROM (needs the wave 3 stage-aware script), untagged compose/k8s image keys and the opt-in digest requirement (both ask-tier, a separate gate), docker run with an untagged image, launchers with no version at all, multi-line forms. Known cost: docs that show one of these forms are refused too; pin the example or a person waives it."

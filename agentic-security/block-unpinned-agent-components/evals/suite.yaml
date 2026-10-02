@@ -87,3 +87,187 @@ suite:
     prompt: "At the turn's end Dockerfile differs from HEAD only by a clean line; HEAD already holds an old violation."
     expect: "The turn is allowed: only the lines the turn added are judged."
     execute: {event: stop, head_files: {"Dockerfile": "FROM python:latest\n"}, writes: {"Dockerfile": "FROM python:latest\nCOPY agent /app\n"}, expect: allow}  # pragma: allowlist unpinned
+  - id: tc-013
+    category: trigger
+    prompt: "from-untagged: a Dockerfile bases the agent on a registry image path with no tag or digest."
+    expect: "The hook blocks the commit: an untagged FROM resolves to latest, and a path with a slash is never a stage alias."
+    execute:
+      files:
+        Dockerfile: "FROM ghcr.io/acme/agent-runtime\nCOPY agent /app\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-014
+    category: trigger
+    prompt: "from-platform-latest: a FROM line carries a --platform flag before a latest-tagged image."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        Dockerfile: "FROM --platform=linux/amd64 python:latest AS build\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-015
+    category: trigger
+    prompt: "lowercase-from-latest: the FROM instruction is written in lower case."
+    expect: The hook blocks the commit; Dockerfile instructions are case-insensitive.
+    execute:
+      files:
+        Dockerfile: "from python:latest\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-016
+    category: trigger
+    prompt: "npx-next-tag: a pretty-printed MCP config launches a server at the next dist-tag."
+    expect: The hook blocks the commit; the quoted args line names a floating dist-tag.
+    execute:
+      files:
+        .mcp.json: "{\n  \"mcpServers\": {\n    \"gh\": {\n      \"command\": \"npx\",\n      \"args\": [\n        \"-y\",\n        \"@acme/mcp-server@next\"\n      ]\n    }\n  }\n}\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: "A setup script runs a tool through pnpm dlx at the canary dist-tag, with flags before the package."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "pnpm dlx --silent @acme/agent-cli@canary init\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: "go-install-latest: a setup script installs a Go tool at latest."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "go install golang.org/x/tools/gopls@latest\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: "pip-git-no-sha: a setup script installs an agent package from a git URL at a branch."
+    expect: The hook blocks the commit; a branch moves, a 40-hex commit does not.
+    execute:
+      files:
+        setup.sh: "pip install git+https://github.com/acme/agent@main\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: "A setup script installs pre-releases with pip's pre-release flag."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "python -m pip install -U --pre agent-sdk\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-021
+    category: trigger
+    prompt: "A setup script installs a crate with cargo and no version or lock flag."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "cargo install --features cli agent-tool\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-022
+    category: trigger
+    prompt: "package.json takes a dependency from a github: shorthand at a branch."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        package.json: "{\"dependencies\": {\"agent\": \"github:acme/agent#main\"}}\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-023
+    category: trigger
+    prompt: "A workflow step runs a container through an untagged docker:// ref."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        ci.yml: "steps:\n  - uses: docker://alpine\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-024
+    category: trigger
+    prompt: "An MCP config launches a server with docker run, the image at latest inside the args array."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        .mcp.json: "{\"command\": \"docker\", \"args\": [\"run\", \"-i\", \"--rm\", \"ghcr.io/acme/mcp-server:latest\"]}\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-025
+    category: trigger
+    prompt: "A setup script pulls an image at the floating edge tag, and an agent YAML config quotes a package at latest in single quotes."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "docker pull alpine:edge\n"  # pragma: allowlist unpinned
+        agent.yaml: "args: ['-y', '@acme/mcp-server@latest']\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-026
+    category: negative_trigger
+    prompt: "from-scratch, from-stage-alias: a multi-stage Dockerfile ends on scratch and on its own stage aliases."
+    expect: "The hook allows the commit: scratch and a bare stage alias are not image pulls."
+    execute:
+      files:
+        Dockerfile: "FROM golang:1.23.2 AS build\nRUN go build -o /agent .\nFROM build AS test\nFROM scratch\nCOPY --from=build /agent /agent\n"
+      expect: allow
+  - id: tc-027
+    category: negative_trigger
+    prompt: "pinned-semver: every launcher and installer names an exact version."
+    expect: The hook allows the commit.
+    execute:
+      files:
+        setup.sh: "npx -y @acme/mcp-server@2025.4.1\ngo install golang.org/x/tools/gopls@v0.16.1\ncargo install ripgrep@14.1.0\ncargo install --locked agent-tool\npip install agent-sdk==1.2.3\ndocker pull alpine:3.20\n"
+      expect: allow
+  - id: tc-028
+    category: negative_trigger
+    prompt: "digest-pinned: images and git sources are pinned by digest or 40-hex commit."
+    expect: The hook allows the commit.
+    execute:
+      files:
+        Dockerfile: "FROM ghcr.io/acme/agent-runtime@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+        setup.sh: "pip install git+https://github.com/acme/agent@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+        package.json: "{\"dependencies\": {\"agent\": \"github:acme/agent#aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}}\n"
+        ci.yml: "steps:\n  - uses: docker://alpine:3.20\n"
+      expect: allow
+  - id: tc-029
+    category: negative_trigger
+    prompt: "Exact pre-release versions spell a tag word inside the version, and ordinary code says FROM or install."
+    expect: "The hook allows the commit: a version containing next, rc or beta is still exact, and SQL, imports and other flags are not pulls."
+    execute:
+      files:
+        setup.sh: "npx -y @acme/mcp-server@1.0.0-next.3\nnpm i agent-cli@2.0.0-rc.1\npip install --prefix /opt agent-sdk==1.2.3\ncargo install --list\ncargo install-update -a\ndocker run -e MODE=x:main -v /src:/main app:1.2\n"
+        query.sql: "SELECT id\nFROM users u\nJOIN orders o ON u.id = o.uid\n"
+        app.py: "from agent.tools import run\n"
+        app.ts: "import { x } from \"@acme/pkg/sub\";\n"
+        contact.json: "{\"email\": \"ops@nexty.example\"}\n"
+      expect: allow
+  - id: tc-030
+    category: behavior
+    prompt: "Adversarial: a tab after FROM, and leading indentation with a build-platform variable before a latest image."
+    expect: The hook blocks the commit; whitespace and the platform flag do not hide the tag.
+    execute:
+      files:
+        Dockerfile: "FROM\tghcr.io/acme/agent-runtime\n"  # pragma: allowlist unpinned
+        Containerfile: "  from --platform=$BUILDPLATFORM node:latest\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-031
+    category: behavior
+    prompt: "Adversarial: a git+ ref that looks like a commit but is a 7-hex short SHA, which a branch or tag of that name can shadow."
+    expect: The hook blocks the commit; only a full 40-hex commit pins.
+    execute:
+      files:
+        setup.sh: "uv add git+https://github.com/acme/agent@abc1234\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-032
+    category: behavior
+    prompt: "Adversarial: a launcher at a dist-tag followed by a chained command on the same line."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        setup.sh: "bunx @acme/agent-cli@beta --init && echo done\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-033
+    category: trigger
+    prompt: "The agent writes an MCP config that launches a server at the next dist-tag."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {".mcp.json": "{\"command\": \"npx\", \"args\": [\"-y\", \"@acme/mcp-server@next\"]}\n"}, expect: block}  # pragma: allowlist unpinned
+  - id: tc-034
+    category: behavior
+    prompt: "The agent adds the waiver pragma itself to a new untagged FROM line."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {event: tool_use, head_files: {"Dockerfile": "FROM python:3.12\n"}, writes: {"Dockerfile": "FROM ghcr.io/acme/agent-runtime  # pragma: allowlist unpinned\n"}, expect: block}  # pragma: allowlist unpinned
+  - id: tc-035
+    category: negative_trigger
+    prompt: "The agent writes a setup script whose installs are all pinned."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {"setup.sh": "go install golang.org/x/tools/gopls@v0.16.1\ncargo install ripgrep@14.1.0\n"}, expect: allow}
