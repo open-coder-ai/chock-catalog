@@ -99,3 +99,274 @@ suite:
     prompt: "At the turn's end handler.py differs from HEAD only by a clean line; HEAD already holds an old violation."
     expect: "The turn is allowed: only the lines the turn added are judged."
     execute: {event: stop, head_files: {"handler.py": "result = eval(llm_response)\n"}, writes: {"handler.py": "result = eval(llm_response)\nlog(result)\n"}, expect: allow}  # pragma: allowlist exec
+  - id: tc-014
+    category: trigger
+    prompt: "child-process-exec-nonliteral: a staged JS file runs a template-literal command through the child_process exec method."
+    expect: "The hook blocks the commit (CWE-78)."
+    execute:
+      files:
+        git.js: "child_process.exec(`git log ${ref}`, cb);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-015
+    category: trigger
+    prompt: "A staged JS file calls the exec method on require of child_process directly."
+    expect: "The hook blocks the commit (CWE-78)."
+    execute:
+      files:
+        run.js: "require('child_process').exec(userCmd);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-016
+    category: trigger
+    prompt: "subprocess-getstatusoutput: a staged Python file runs a command string through the getstatusoutput helper."
+    expect: "The hook blocks the commit (CWE-78)."
+    execute:
+      files:
+        ops.py: "status, out = subprocess.getstatusoutput(cmd)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: "A staged Python file replaces the process with an os exec-family call."
+    expect: "The hook blocks the commit (CWE-78)."
+    execute:
+      files:
+        launch.py: "os.execvp(prog, args)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: "A staged Java file runs a command through the Runtime exec method."
+    expect: "The hook blocks the commit (CWE-78)."
+    execute:
+      files:
+        Run.java: "Process p = Runtime.getRuntime().exec(cmd);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: "A staged JS file passes the shell option as true to spawn."
+    expect: "The hook blocks the commit (CWE-78)."
+    execute:
+      files:
+        spawn.js: "spawn(cmd, { shell: true });\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: "bash-eval-expansion: a staged shell script evals a quoted variable."
+    expect: "The hook blocks the commit (CWE-78)."
+    execute:
+      files:
+        deploy.sh: "eval \"$cmd\"\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-021
+    category: trigger
+    prompt: "A staged JS file builds a function from a non-literal body with the Function constructor and no new."
+    expect: "The hook blocks the commit (CWE-95)."
+    execute:
+      files:
+        plugin.js: "const f = Function('a', body);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-022
+    category: trigger
+    prompt: "A staged JS file passes a concatenated string to setTimeout."
+    expect: "The hook blocks the commit (CWE-95)."
+    execute:
+      files:
+        timer.js: "setTimeout('tick(' + id + ')', 100);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-023
+    category: trigger
+    prompt: "A staged Python file compiles source text in exec mode."
+    expect: "The hook blocks the commit (CWE-95)."
+    execute:
+      files:
+        gen.py: "code = compile(src, '<gen>', 'exec')\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-024
+    category: trigger
+    prompt: "A staged JS file runs code through vm.runInNewContext."
+    expect: "The hook blocks the commit (CWE-95)."
+    execute:
+      files:
+        sandbox.js: "vm.runInNewContext(src, sandbox);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-025
+    category: trigger
+    prompt: "A staged JS file calls eval through globalThis."
+    expect: "The hook blocks the commit (CWE-95)."
+    execute:
+      files:
+        g.js: "globalThis.eval(src);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-026
+    category: trigger
+    prompt: "A staged Python file imports a module whose name is computed at run time."
+    expect: "The hook blocks the commit (CWE-470)."
+    execute:
+      files:
+        plugins.py: "mod = importlib.import_module(name)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-027
+    category: trigger
+    prompt: "yaml-unsafe-load: a staged Python file parses YAML with the unsafe loader function."
+    expect: "The hook blocks the commit (CWE-502)."
+    execute:
+      files:
+        cfg.py: "data = yaml.unsafe_load(fh)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-028
+    category: trigger
+    prompt: "A staged Python file decodes with jsonpickle and loads with dill."
+    expect: "The hook blocks the commit (CWE-502)."
+    execute:
+      files:
+        state.py: "obj = jsonpickle.decode(blob)\nalt = dill.loads(blob)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-029
+    category: trigger
+    prompt: "torch-load-bare: a staged Python file loads a checkpoint with torch load and no weights_only."
+    expect: "The hook blocks the commit (CWE-502)."
+    execute:
+      files:
+        infer.py: "model = torch.load(path)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-030
+    category: trigger
+    prompt: "A staged Python file loads a numpy file with allow_pickle enabled."
+    expect: "The hook blocks the commit (CWE-502)."
+    execute:
+      files:
+        data.py: "arr = np.load(path, allow_pickle=True)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-031
+    category: adversarial
+    prompt: "A staged Python file names a custom loader that merely ends in SafeLoader."
+    expect: "The hook blocks the commit: only the SafeLoader or CSafeLoader name itself exempts."
+    execute:
+      files:
+        cfg.py: "cfg = yaml.load(fh, Loader=MySafeLoader)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-032
+    category: adversarial
+    prompt: "A staged Python file puts weights_only=True in a trailing comment, not the call."
+    expect: "The hook blocks the commit: the flag after a hash does not count."
+    execute:
+      files:
+        infer.py: "model = torch.load(path)  # weights_only=True\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-033
+    category: adversarial
+    prompt: "A staged Python file passes the shell flag through a keyword-argument dict."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        runner.py: "subprocess.run(cmd, **{\"shell\": True})\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-034
+    category: adversarial
+    prompt: "A staged JS file reaches eval through bracket access and the comma-operator call."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        i.js: "window['eval'](src);\n(0, eval)(src);\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-035
+    category: adversarial
+    prompt: "A staged Python file imports os by literal name through the dunder import and calls system on it."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        x.py: "__import__('os').system(cmd)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-036
+    category: adversarial
+    prompt: "A staged Python file spells the shell flag as 1."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        runner.py: "subprocess.run(cmd, shell=1)\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-037
+    category: negative_trigger
+    prompt: "ast-literal-eval: a staged Python file parses a literal with ast.literal_eval."
+    expect: "The hook allows the commit; literal_eval is not the eval builtin."
+    execute:
+      files:
+        parse.py: "value = ast.literal_eval(text)\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-038
+    category: negative_trigger
+    prompt: "A staged JS file runs git through execFile with an argument vector and spawn without the shell option."
+    expect: "The hook allows the commit; no shell is involved."
+    execute:
+      files:
+        git.js: "cp.execFile('git', ['status'], cb);\nspawn(cmd, args, { shell: false });\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-039
+    category: negative_trigger
+    prompt: "A staged Python file loads a checkpoint with weights_only=True and a numpy file without allow_pickle."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        infer.py: "model = torch.load(path, weights_only=True)\narr = np.load(path)\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-040
+    category: negative_trigger
+    prompt: "A staged shell script uses the shell-init idiom that evals a command substitution."
+    expect: "The hook allows the commit; only variable expansions are refused."
+    execute:
+      files:
+        env.sh: "eval \"$(ssh-agent -s)\"\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-041
+    category: negative_trigger
+    prompt: "A staged Python file declares a class named Function and calls Function with a literal name."
+    expect: "The hook allows the commit; a definition or an all-literal call is not code from data."
+    execute:
+      files:
+        sym.py: "class Function(Base):\n    pass\nf = Function('f')\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-042
+    category: negative_trigger
+    prompt: "A staged JS file passes a callback to setTimeout and a number to socket.setTimeout."
+    expect: "The hook allows the commit; only a string timer runs code from text."
+    execute:
+      files:
+        timer.js: "setTimeout(() => tick(), 100);\nsocket.setTimeout(5000);\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-043
+    category: negative_trigger
+    prompt: "A staged Python file imports a module by a literal name and compiles a regex."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        m.py: "mod = importlib.import_module('json')\nrx = re.compile(r'exec')\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-044
+    category: edge
+    prompt: "markdown-fenced-example: a staged markdown file shows an eval call inside a code fence."
+    expect: "The hook blocks the commit: a line scan cannot see the fence; exempting docs would loosen the gate and is left to NP10 and the owner. The example line takes the pragma."
+    execute:
+      files:
+        docs.md: "```python\nresult = eval(x)\n```\n"  # pragma: allowlist exec
+      expect: block
+  - id: tc-045
+    category: edge
+    prompt: "test-path-fixture: a staged test fixture carries a deliberate unsafe call with the pragma on its line."
+    expect: "The hook allows the commit; a fixture is waived per line, not by path."
+    execute:
+      files:
+        tests/fixtures/bad.py: "obj = pickle.loads(blob)  # pragma: allowlist exec\n"  # pragma: allowlist exec
+      expect: allow
+  - id: tc-046
+    category: trigger
+    prompt: "The agent writes a child_process exec call into git.js."
+    expect: "The write is refused before it happens."
+    execute: {"event": "tool_use", "writes": {"git.js": "child_process.exec(cmd);\n"}, "expect": "block"}  # pragma: allowlist exec
+  - id: tc-047
+    category: adversarial
+    prompt: "The agent writes a torch load call and adds the waiver pragma itself."
+    expect: "The write is refused: a waiver the write adds is not honoured in the agent."
+    execute: {"event": "tool_use", "head_files": {"infer.py": "x = 1\n"}, "writes": {"infer.py": "model = torch.load(path)  # pragma: allowlist exec\n"}, "expect": "block"}  # pragma: allowlist exec
+  - id: tc-048
+    category: negative_trigger
+    prompt: "The agent writes a yaml.safe_load call and a model.eval call."
+    expect: "The write is allowed."
+    execute: {"event": "tool_use", "writes": {"cfg.py": "data = yaml.safe_load(fh)\nmodel.eval()\n"}, "expect": "allow"}  # pragma: allowlist exec
