@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
+from ghascan import expr
 from ghascan.tree import Tree
 
 Path = tuple[str | int, ...]
@@ -37,6 +38,7 @@ class Ctx(NamedTuple):
     on: set[str]
     tables: dict
     typed: frozenset[str] = frozenset()
+    locate: Locator | None = None
 
 
 class Step(NamedTuple):
@@ -144,20 +146,45 @@ def conditions(tree: Tree, step: Step) -> str:
     return "\n".join(texts)
 
 
-def first_line(tree: Tree, lines: list[str], path: Path, needle: str, nth: int = 0) -> int:
-    """The nth line holding `needle` within the block that starts at `path`'s line (it ends at the next
-    line indented no deeper), else the line where the value starts."""
-    start = tree.line(path)
-    indent = _indent(lines[start - 1])
-    seen = 0
-    for number in range(start, len(lines) + 1):
-        text = lines[number - 1]
-        if number > start and text.strip() and _indent(text) <= indent:
-            break
-        seen += text.count(needle) if needle else 0
-        if seen > nth:
-            return number
-    return start
+SUBSTRING, IN_EXPR, WHOLE_LINE = "substring", "in-expr", "whole-line"
+
+
+class Locator:
+    """Finding lines: the nth occurrence of a rule's text in a value, so a waiver on one copy never covers another."""
+
+    def __init__(self, tree: Tree, lines: list[str]) -> None:
+        self.tree, self.lines = tree, lines
+        self.seen: dict[tuple, int] = {}
+
+    def line(self, rule: str, path: Path, needle: str, *, mode: str = SUBSTRING) -> int:
+        key = (rule, path, needle, mode)
+        nth = self.seen.get(key, 0)
+        self.seen[key] = nth + 1
+        return self._find(path, needle, nth, mode)
+
+    def _find(self, path: Path, needle: str, nth: int, mode: str) -> int:
+        """The line of the nth occurrence of `needle` within the value at `path`, else the line it starts on.
+
+        The value ends at the next line indented no deeper than its key (a step: than its `-`). Modes:
+        SUBSTRING counts the text anywhere on a line; IN_EXPR only inside `${{ }}`, case-insensitively,
+        so a comment or key holding the same words is never taken for the finding; WHOLE_LINE counts a
+        line whose stripped text is the needle, for rules that flag a script line.
+        """
+        start = self.tree.line(path)
+        head = self.lines[start - 1]
+        indent = _indent(head) if path and isinstance(path[-1], int) else len(head) - len(head.lstrip(" -"))
+        seen = 0
+        for number in range(start, len(self.lines) + 1):
+            text = self.lines[number - 1]
+            if number > start and text.strip() and _indent(text) <= indent:
+                break
+            if mode == IN_EXPR:
+                seen += sum(body.lower().count(needle.lower()) for body in expr.expressions(text))
+            else:
+                seen += (text.strip() == needle) if mode == WHOLE_LINE else text.count(needle)
+            if seen > nth:
+                return number
+        return start
 
 
 def _indent(text: str) -> int:

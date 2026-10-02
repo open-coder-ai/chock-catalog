@@ -6,7 +6,7 @@ import re
 from typing import NamedTuple
 
 from ghascan import r_hygiene, r_injection, r_perms, r_secrets, r_supply, r_triggers
-from ghascan.model import ACTION, DEPENDABOT, WORKFLOW, Ctx, Hit, triggers, typed_inputs
+from ghascan.model import ACTION, DEPENDABOT, WORKFLOW, Ctx, Hit, Locator, triggers, typed_inputs
 from ghascan.tree import UnreadableError, documents
 
 BLOCK, ASK = "block", "ask"
@@ -85,7 +85,8 @@ def hits_for(kind: str, text: str, tables: dict) -> list[Hit]:
     hits: list[Hit] = []
     for tree in docs:
         on = triggers(tree) if kind == WORKFLOW else set()
-        ctx = Ctx(tree, kind, lines, on, tables, typed_inputs(tree) if kind == WORKFLOW else frozenset())
+        typed = typed_inputs(tree) if kind == WORKFLOW else frozenset()
+        ctx = Ctx(tree, kind, lines, on, tables, typed, Locator(tree, lines))
         for check in FOR_KIND[kind]:
             hits += check(ctx)
     return hits

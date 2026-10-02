@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from ghascan import expr
-from ghascan.model import Ctx, Hit, Step, falsy, first_line, is_action, job_path, jobs, normalize, steps
+from ghascan.model import WHOLE_LINE, Ctx, Hit, Step, falsy, is_action, job_path, jobs, normalize, steps
 
 SECURITY_WORDS = re.compile(
     r"\b(?:codeql|semgrep|trivy|grype|snyk|zizmor|actionlint|gitleaks|trufflehog|bandit|gosec|osv-scanner|scorecard"
@@ -79,7 +79,9 @@ def security_step_weakened(ctx: Ctx) -> list[Hit]:
                 hits.append(Hit("gha-security-step-weakened", node.line, step.job, f"{what} if false", message))
         for line_text in (step.run or "").splitlines():
             if SECURITY_WORDS.search(line_text) and SWALLOW.search(line_text):
-                line = first_line(ctx.tree, ctx.lines, (*step.path, "run"), line_text.strip())
+                line = ctx.locate.line(
+                    "gha-security-step-weakened", (*step.path, "run"), line_text.strip(), mode=WHOLE_LINE
+                )
                 message = f"`{SWALLOW.search(line_text).group().strip()}` hides the {what} command's failure"
                 hits.append(Hit("gha-security-step-weakened", line, step.job, normalize(line_text), message))
     return hits

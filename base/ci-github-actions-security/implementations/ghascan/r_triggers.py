@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from ghascan import expr
-from ghascan.model import DANGEROUS, PR_EVENTS, Ctx, Hit, first_line, is_action, normalize, steps, with_values
+from ghascan.model import DANGEROUS, PR_EVENTS, Ctx, Hit, is_action, normalize, steps, with_values
 
 #: Checkout refs that name the base repository's own code: anything else under a dangerous trigger is
 #: treated as the pull request's head, since a step output or an API call can resolve to it too.
@@ -22,6 +22,7 @@ HEAD_RUN = re.compile(
     r"[^\n]*\$\{\{[^}\n]*(?:head|workflow_run)",
     re.IGNORECASE,
 )
+ROW_KEY = 2  # include / exclude, row index, key
 SELF_HOSTED_EVENTS = PR_EVENTS | {"issue_comment"}
 REGISTER = re.compile(r"\bconfig\.(?:sh|cmd)\b[^\n]*--token\b", re.IGNORECASE)
 #: Who last acted, not who opened the pull request: a re-run or a push to the bot's branch changes them.
@@ -62,7 +63,7 @@ def prt_head_checkout(ctx: Ctx) -> list[Hit]:
             found += [v for v in with_values(ctx.tree, step, "repository") if expr.expressions(v)]
         found += [m.group() for m in HEAD_RUN.finditer(step.run or "")]
         for detail in found:
-            line = first_line(ctx.tree, ctx.lines, step.path, detail.split()[0] if detail.split() else "")
+            line = ctx.locate.line("gha-prt-head-checkout", step.path, detail.split()[0] if detail.split() else "")
             message = (
                 f"checks out pull request code (`{normalize(detail)}`) under {', '.join(sorted(on))}, where it runs "
                 "with this repository's secrets and write token; build it in a pull_request workflow instead"
@@ -109,11 +110,22 @@ def workflow_run_artifact(ctx: Ctx) -> list[Hit]:
 
 
 def _labels(ctx: Ctx, job: str) -> list[tuple[int, str]]:
-    """runs-on labels, and when runs-on reads the matrix, every matrix value (at the runs-on line)."""
+    """runs-on labels, and for each `matrix.<name>` runs-on reads, that name's values (at the runs-on line):
+    its list and its `include` rows; a computed or whole matrix stands for every value in it."""
     found = [(n.line, n.value) for n in ctx.tree.under(("jobs", job, "runs-on"))]
-    if any("matrix" in value.lower() for _, value in found):
-        line = found[0][0]
-        found += [(line, n.value) for n in ctx.tree.under(("jobs", job, "strategy", "matrix"))]
+    names = {p[1] if len(p) > 1 else expr.DYNAMIC for _, v in found for p in expr.names(v, "matrix")}
+    if not names:
+        return found
+    base = ("jobs", job, "strategy", "matrix")
+    line = found[0][0]
+    for node in ctx.tree.under(base):
+        rest = node.path[len(base) :]
+        if rest[:1] in (("include",), ("exclude",)):
+            key = rest[ROW_KEY] if len(rest) > ROW_KEY else None
+        else:
+            key = rest[0] if rest else None
+        if expr.DYNAMIC in names or key is None or str(key).lower() in names:
+            found.append((line, node.value))
     return found
 
 
@@ -132,7 +144,7 @@ def self_hosted_pr(ctx: Ctx) -> list[Hit]:
                     hits.append(Hit("gha-self-hosted-pr", line, job, "self-hosted", message))
     for step in steps(ctx.tree, ctx.kind):
         for match in REGISTER.finditer(step.run or ""):
-            line = first_line(ctx.tree, ctx.lines, (*step.path, "run"), match.group().split()[0])
+            line = ctx.locate.line("gha-self-hosted-pr", (*step.path, "run"), match.group().split()[0])
             message = "registers a self-hosted runner from a workflow script; register runners outside CI"
             hits.append(Hit("gha-self-hosted-pr", line, step.job, normalize(match.group()), message))
     return hits

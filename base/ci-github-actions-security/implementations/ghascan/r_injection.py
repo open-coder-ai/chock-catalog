@@ -7,7 +7,9 @@ import re
 from ghascan import expr
 from ghascan.model import (
     ACTION,
+    IN_EXPR,
     RISKY,
+    WHOLE_LINE,
     Ctx,
     Hit,
     Step,
@@ -15,7 +17,6 @@ from ghascan.model import (
     env_maps,
     env_text,
     falsy,
-    first_line,
     is_action,
     steps,
 )
@@ -63,11 +64,9 @@ def template_injection(ctx: Ctx) -> list[Hit]:
     for step in steps(ctx.tree, ctx.kind):
         taint = tainted(ctx, step)
         for path, text in _sinks(ctx, step):
-            seen: dict[str, int] = {}
             for found in expr.injected(text, taint, ctx.typed):
                 needle = found.split()[0] if found else ""
-                line = first_line(ctx.tree, ctx.lines, path, needle, seen.get(needle, 0))
-                seen[needle] = seen.get(needle, 0) + 1
+                line = ctx.locate.line("gha-template-injection", path, needle, mode=IN_EXPR)
                 message = (
                     f"`${{{{ {found} }}}}` is expanded into the script before it runs, so whoever writes that "
                     "text writes code: pass it through `env:` and read it as a quoted shell variable"
@@ -86,7 +85,7 @@ def github_env(ctx: Ctx) -> list[Hit]:
             for line_text in text.splitlines():
                 match = ENV_FILE.search(line_text)
                 if match:
-                    line = first_line(ctx.tree, ctx.lines, path, line_text.strip())
+                    line = ctx.locate.line("gha-github-env-injection", path, line_text.strip(), mode=WHOLE_LINE)
                     message = (
                         f"writes {match.group()} under {', '.join(sorted(ctx.on & RISKY))}: a value an outsider "
                         "shapes becomes an environment variable (LD_PRELOAD, BASH_ENV) or a PATH entry for every "
@@ -110,7 +109,7 @@ def insecure_commands(ctx: Ctx) -> list[Hit]:
     for step in steps(ctx.tree, ctx.kind):
         for path, text in _sinks(ctx, step):
             for match in OLD_COMMAND.finditer(text):
-                line = first_line(ctx.tree, ctx.lines, path, match.group())
+                line = ctx.locate.line("gha-insecure-commands", path, match.group())
                 message = f"`{match.group()}` is the removed workflow command; write to the environment file instead"
                 hits.append(Hit("gha-insecure-commands", line, step.job, match.group().lower(), message))
     return hits

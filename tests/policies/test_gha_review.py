@@ -105,3 +105,96 @@ def test_many_steps_stay_fast() -> None:
     started = time.monotonic()
     assert found(text) == []
     assert time.monotonic() - started < 10
+
+
+AGENT_STEP = "      - uses: anthropics/claude-code-action@v1\n"
+
+
+@pytest.mark.parametrize(
+    "cond",
+    [
+        "github.event.issue.author_association == 'OWNER'",
+        "contains(github.event.comment.body, 'MEMBER') && github.event.comment.author_association",
+        '${{ !contains(fromJSON(\'["OWNER","MEMBER"]\'), github.event.comment.author_association) }}',
+        "(github.event.comment.author_association == 'OWNER') == false",
+        "startsWith(github.event.comment.author_association, 'C') && 'COLLABORATOR'",
+        'contains(fromJSON(\'["OWNER","NONE"]\'), github.event.comment.author_association)',
+        "contains(fromJSON('[]'), github.event.comment.author_association)",
+    ],
+)
+def test_round2_association_gates_that_do_not_restrict(cond: str) -> None:
+    assert of("gha-agent-step-untrusted", workflow("  issue_comment:", AGENT_STEP, job=f"    if: {cond}\n"))
+
+
+@pytest.mark.parametrize(
+    ("on", "cond"),
+    [
+        ("  issue_comment:", "github.event.comment.author_association == 'MEMBER'"),
+        (
+            "  issue_comment:",
+            '${{ contains(fromJSON(\'["OWNER", "MEMBER"]\'), github.event.comment.author_association) }}',
+        ),
+        (
+            "  issues:\n  issue_comment:",
+            "github.event.issue.author_association == 'OWNER' && github.event.comment.author_association == 'OWNER'",
+        ),
+    ],
+)
+def test_round2_association_gates_that_restrict(on: str, cond: str) -> None:
+    assert not of("gha-agent-step-untrusted", workflow(on, AGENT_STEP, job=f"    if: {cond}\n"))
+
+
+@pytest.mark.parametrize(
+    ("password", "hit"),
+    [
+        ("${{ github.run_id && 'hunter2' }}", True),
+        ("${{ format('hunter{0}', github.run_attempt) }}", True),
+        ("${{ secrets.P || 'hunter2' }}", True),
+        ("${{ env.PW }}", True),
+        ("${{ secrets.REGISTRY_PASSWORD }}", False),
+        ("${{ vars.P }}", False),
+    ],
+)
+def test_round2_container_password_must_be_one_stored_reference(password: str, hit: bool) -> None:
+    job = f'    container:\n      image: i\n      credentials:\n        password: "{password}"\n'
+    assert bool(of("gha-container-credentials", workflow("  push:", "      - run: echo\n", job=job))) is hit
+
+
+def _matrix_job(matrix: str, runs_on: str) -> str:
+    text = workflow("  pull_request:", "      - run: echo\n", job=f"    strategy:\n      matrix:\n{matrix}")
+    return text.replace("runs-on: ubuntu-latest", f"runs-on: {runs_on}")
+
+
+def test_round2_matrix_runs_on_reads_only_the_named_key() -> None:
+    other = "        os: [ubuntu-latest]\n        note: ['no self-hosted here']\n"
+    assert not of("gha-self-hosted-pr", _matrix_job(other, "${{ matrix.os }}"))
+    row = "        include:\n          - os: self-hosted\n"
+    assert of("gha-self-hosted-pr", _matrix_job(row, "${{ matrix.os }}"))
+    computed = "        os: [ubuntu-latest]\n        include: ${{ fromJSON(vars.ROWS) }}\n"
+    assert not of("gha-self-hosted-pr", _matrix_job(computed, "${{ matrix.os }}"))
+    dynamic = "        os: [self-hosted]\n"
+    assert of("gha-self-hosted-pr", _matrix_job(dynamic, "${{ matrix[vars.K] }}"))
+    assert not of("gha-self-hosted-pr", _matrix_job(other, "ubuntu-latest"))
+
+
+def test_round2_waivers_count_only_their_own_occurrence() -> None:
+    secret = (
+        "      - run: |\n          echo ${{ secrets.A }}  # chock: allow gha-secret-echo\n"
+        "          curl -u ${{ secrets.A }} x\n"
+    )
+    assert len(found(workflow("  push:", secret), event="commit")) == 1
+    comment = (
+        "      - run: |\n          # github.event.issue.title  chock: allow gha-template-injection\n"
+        "          echo ${{ github.event.issue.title }}\n"
+    )
+    assert [h["line"] for h in found(workflow(ISSUES, comment), event="commit")] == [10]
+    escaped = (
+        '      - run: "echo ${{ \\x67ithub.event.issue.title }}"\n'
+        "        name: github.event.issue.title  # chock: allow gha-template-injection\n"
+    )
+    assert [h["line"] for h in found(workflow(ISSUES, escaped), event="commit")] == [8]
+    env_file = (
+        "      - run: |\n          echo A >> $GITHUB_ENV  # chock: allow gha-github-env-injection\n"
+        "          echo A >> $GITHUB_ENV\n"
+    )
+    assert len(found(workflow(PRT, env_file), event="commit")) == 2

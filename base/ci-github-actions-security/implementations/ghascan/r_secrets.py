@@ -6,6 +6,7 @@ import re
 
 from ghascan import expr
 from ghascan.model import (
+    IN_EXPR,
     Ctx,
     Hit,
     Step,
@@ -13,7 +14,6 @@ from ghascan.model import (
     env_maps,
     env_text,
     falsy,
-    first_line,
     is_action,
     jobs,
     steps,
@@ -69,7 +69,7 @@ def secret_echo(ctx: Ctx) -> list[Hit]:
         for node in ctx.tree.values((*step.path, "run")):
             for path in expr.names(node.value, "secrets"):
                 if len(path) > 1 and path[1] not in (expr.DYNAMIC, "github_token"):
-                    line = first_line(ctx.tree, ctx.lines, (*step.path, "run"), path[1].upper())
+                    line = ctx.locate.line("gha-secret-echo", (*step.path, "run"), f"secrets.{path[1]}", mode=IN_EXPR)
                     message = (
                         f"secrets.{path[1].upper()} is pasted into the script text (onto disk, into any log of the "
                         "command line); pass it through `env:` and read the variable"
@@ -143,13 +143,12 @@ def container_credentials(ctx: Ctx) -> list[Hit]:
     return hits
 
 
+STORED = re.compile(r"\$\{\{\s*(?:secrets|vars|inputs)\.[A-Za-z_][A-Za-z0-9_-]*\s*\}\}")
+
+
 def _literal(text: str) -> bool:
-    """Whether a password holds text of its own: anything outside `${{ }}`, or an expression naming no context."""
-    outside = text
-    for body in expr.expressions(text):
-        outside = outside.replace("${{" + body + "}}", "")
-    named = [p for body in expr.expressions(text) for p in expr.contexts(body)]
-    return bool(outside.strip()) or (bool(text.strip()) and not named)
+    """Whether a password is anything but one bare `${{ secrets.X }}` (or vars/inputs) reference."""
+    return bool(text.strip()) and not STORED.fullmatch(text.strip())
 
 
 def _from_secret(text: str) -> bool:

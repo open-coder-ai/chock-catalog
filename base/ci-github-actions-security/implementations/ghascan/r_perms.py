@@ -10,7 +10,15 @@ from ghascan.model import PR_EVENTS, RISKY, WORKFLOW, Ctx, Hit, conditions, is_a
 AGENT_EVENTS = RISKY | {"pull_request_review", "pull_request_review_comment"}
 ID_TOKEN_EVENTS = PR_EVENTS | {"issue_comment"}
 NULLS = frozenset({"", "~", "null", "Null", "NULL"})
-TRUSTED_ROLES = re.compile(r"OWNER|MEMBER|COLLABORATOR")
+ROLES = frozenset({"owner", "member", "collaborator"})
+#: The payload object whose author an agent trigger's text comes from.
+OBJECT = {
+    "issues": "issue", "issue_comment": "comment", "discussion": "discussion", "discussion_comment": "comment",
+    "pull_request_target": "pull_request", "pull_request_review": "review", "pull_request_review_comment": "comment",
+    "workflow_run": "workflow_run",
+}  # fmt: skip
+EQUALS = re.compile(r"github\.event\.([a-z_]+)\.author_association==\'(?:owner|member|collaborator)\'")
+LISTED = re.compile(r"contains\(fromjson\(\'(\[[^\]]*\])\'\),github\.event\.([a-z_]+)\.author_association\)")
 
 
 def _set(ctx: Ctx, path: tuple) -> bool:
@@ -19,12 +27,25 @@ def _set(ctx: Ctx, path: tuple) -> bool:
     return any(n.kind == "map" or n.value.strip() not in NULLS for n in nodes)
 
 
-def _gated(text: str) -> bool:
-    """Whether a condition restricts the author_association to OWNER, MEMBER or COLLABORATOR: it reads
-    one, names one of those roles, and has no `||` or `!=` that could let anyone else through."""
-    found = expr.expressions(text) or [text]
-    reads = any(p[-1] == "author_association" for e in found for p in expr.contexts(e))
-    return reads and bool(TRUSTED_ROLES.search(text)) and "||" not in text and "!=" not in text
+def _gated(text: str, on: set[str]) -> bool:
+    """Whether a condition admits only OWNER, MEMBER or COLLABORATOR authors of the triggering object.
+
+    Accepted terms, joined by `&&` only: `github.event.<object>.author_association == '<ROLE>'` and a
+    non-negated `contains(fromJSON('[<ROLES>]'), github.event.<object>.author_association)`. Every
+    object named must be one of the triggers' own (a comment for issue_comment, never the issue),
+    and every trigger's object must be named. `||`, `!=`, `!` and a comparison of the result are refused.
+    """
+    flat = re.sub(r"\s+", "", "".join(expr.expressions(text)) or text).replace('"', "'").lower()
+    if "||" in flat or "!=" in flat or "!" in flat or ")==" in flat:
+        return False
+    used = {m.group(1) for m in EQUALS.finditer(flat)}
+    for match in LISTED.finditer(flat):
+        roles = set(re.findall(r"'([a-z]+)'", match.group(1)))
+        if not roles or not roles <= ROLES:
+            return False
+        used.add(match.group(2))
+    needed = {OBJECT[t] for t in on if t in OBJECT}
+    return bool(used) and used == needed
 
 
 def _scalar(ctx: Ctx, path: tuple) -> list[tuple[int, str]]:
@@ -74,7 +95,7 @@ def agent_step_untrusted(ctx: Ctx) -> list[Hit]:
     for step in steps(ctx.tree, ctx.kind):
         if not is_action(step.uses, *agents):
             continue
-        if _gated(conditions(ctx.tree, step)):
+        if _gated(conditions(ctx.tree, step), on):
             continue
         name = step.uses.split("@", 1)[0].strip()
         message = (
