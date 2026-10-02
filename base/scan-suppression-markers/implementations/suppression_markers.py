@@ -53,7 +53,7 @@ _TABLE: tuple[tuple[str, str, str, str | None, int, re.Pattern[str] | None], ...
         "eslint-config-off",
         "eslint",
         r"/\*\s*e[s]lint\s",
-        _ESLINT_SEC + r"[\w/-]*+[\"']?\s*:\s*\[?\s*[\"']?(?:of[f]|0)\b",
+        r"(?<![\w@/-])(?=[\w@/-]*?" + _ESLINT_SEC + r")[\w@/-]*+[\"']?\s*+:\s*+(?:\[\s*+)?[\"']?(?:of[f]|0)\b",
         0,
         None,
     ),
@@ -149,11 +149,18 @@ _WORDS = {
     "sup" + "press": "suppress",
 }
 PREFILTER = re.compile("|".join(map(re.escape, sorted(_WORDS, key=len, reverse=True))))
+#: The two letters a case-insensitive match treats as `i` but casefold does not (dotted and dotless
+#: I); a scanner that lowercases with Go's strings.ToLower (KICS) reads them as `i`.
+_DOTTED_I = str.maketrans({"\u0130": "i", "\u0131": "i"})
+
+
+def _fold(text: str) -> str:
+    return text.translate(_DOTTED_I).casefold()
 
 
 def has_marker_word(text: str) -> bool:
     """Whether any rule could match somewhere in `text`."""
-    return bool(PREFILTER.search(text.casefold()))
+    return bool(PREFILTER.search(_fold(text)))
 
 
 #: The markers a secret scanner honours in any file it reads, prose included.
@@ -180,7 +187,7 @@ def _hit(line: str, anchor: re.Pattern[str], tail: re.Pattern[str] | None, opene
 
 def marker_rule(line: str) -> str | None:
     """The rule a line's suppression marker breaks, or None when it carries none."""
-    words = {_WORDS[found.group()] for found in PREFILTER.finditer(line.casefold())}
+    words = {_WORDS[found.group()] for found in PREFILTER.finditer(_fold(line))}
     if not words:
         return None
     first: dict[re.Pattern[str], int] = {}

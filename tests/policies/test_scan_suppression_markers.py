@@ -209,7 +209,7 @@ def test_a_long_line_is_truncated_in_the_report() -> None:
 
 def test_the_policy_folder_and_this_file_hold_no_marker_the_gate_asks_about() -> None:
     files = [p for p in sorted(POLICY.rglob("*")) if p.is_file() and p.suffix in {".py", ".yaml", ".json"}]
-    for path in [*files, Path(__file__), Path(__file__).with_name("test_scan_suppression_markers_bypasses.py")]:
+    for path in [*files, *sorted(Path(__file__).parent.glob("test_scan_suppression_markers*.py"))]:
         if path.name != "suite.yaml":
             assert mod.file_findings(f"src/{path.name}", path.read_text(encoding="utf-8")) == [], path
 
