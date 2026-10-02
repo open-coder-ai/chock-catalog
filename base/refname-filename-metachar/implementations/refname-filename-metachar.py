@@ -7,12 +7,14 @@
 # mv, install, ln, rsync, scp and git mv (a source keeps its name, so renaming a bad file away passes), dd of=,
 # git worktree add's path, and a cmdlet's -Path/-Name/-NewName/-Destination (abbreviated or positional).
 # What the shell expands is marked first (refname_shell.py), so `"${OUT}/x"` is not substitution syntax and
-# `a$\(id\)` or `$'a\x3bb'` is judged as the name bash would create.
+# `a$\(id\)` or `$'a\x3bb'` is judged as the name bash would create. Every inner script -- a command substitution,
+# a backtick command, a process substitution, a `bash -c` or `eval` script -- is marked and judged the same way.
 
 import os
 import shlex
 import sys
 
+import chock_shellparse.parse as shellparse
 from chock_shellparse import Cmd, commands, git_parts, is_powershell
 from refname_git import WORKTREE, created_refs, parse
 from refname_rules import describe, problems, ref_problems
@@ -23,6 +25,21 @@ DESTINATION = frozenset(("cp", "mv", "install", "ln", "rsync", "scp", "copy", "m
 TARGET_FLAGS = ("-t", "--target-directory")
 PS_FLAGS = ("-path", "-literalpath", "-name", "-newname", "-destination", "-filepath")
 PS_VALUE_FLAGS = frozenset((*PS_FLAGS, "-value", "-itemtype", "-type", "-encoding", "-filter", "-include", "-exclude"))
+MAX_SCRIPTS = 64  # inner scripts judged per command line; past it the line is refused, never passed unread
+TOO_DEEP = "command line nests more inner scripts than this guard judges, so a name in it cannot be checked."
+_SCRIPTS: list[str] = []  # bash -c and eval scripts met while parsing, judged after the line that holds them
+_PARSE = shellparse._parse
+
+
+def _parse_marked(text: str, env: dict[str, str], *, ps: bool, depth: int) -> tuple[list[Cmd], dict[str, str]]:
+    """chock_shellparse's reader, with each bash -c or eval script's expansions marked before it is read."""
+    if depth:
+        text, inner = mark_expansions(text, powershell=ps)
+        _SCRIPTS.extend(inner)
+    return _PARSE(text, env, ps=ps, depth=depth)
+
+
+shellparse._parse = _parse_marked
 # Which positional argument a cmdlet takes as the path it creates: the first, or the second (-NewName, -Destination).
 PS_POSITION = {
     **dict.fromkeys(("new-item", "ni", "set-content", "sc", "out-file", "add-content", "ac"), 0),
@@ -106,10 +123,18 @@ def named(cmd: Cmd) -> list[tuple[str, str, list[tuple[str, str]]]]:
 
 def check(raw: str) -> str | None:
     """The reason the command creates a misreadable name, or None."""
-    for cmd in commands(mark_expansions(raw, powershell=is_powershell(raw))):
-        for kind, name, found in named(cmd):
-            if found:
-                return describe(kind, name.replace(EXPANDED, "$"), found)
+    scripts, done = [raw], 0
+    while done < len(scripts):
+        if done == MAX_SCRIPTS:
+            return TOO_DEEP
+        text, inner = mark_expansions(scripts[done], powershell=is_powershell(scripts[done]))
+        _SCRIPTS.clear()
+        found = [item for cmd in commands(text) for item in named(cmd) if item[2]]
+        scripts += inner + _SCRIPTS
+        done += 1
+        if found:
+            kind, name, problems_found = found[0]
+            return describe(kind, name.replace(EXPANDED, "$"), problems_found)
     return None
 
 

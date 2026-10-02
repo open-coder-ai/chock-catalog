@@ -57,8 +57,11 @@ def _finding(path: str, reasons: list[tuple[str, str]], **extra: bool) -> dict:
 
 def findings(payload: dict) -> list[dict]:
     """One finding per refused path, keyed and shown by its escaped form so no control character reaches a terminal."""
-    found = [_finding(path, reasons) for path in sorted(payload.get("writes", {})) if (reasons := judge(path))]
-    return found + [_finding(name, reasons, new=True) for name in padded_names(payload) if (reasons := judge(name))]
+    padded = [(name, reasons) for name in padded_names(payload) if (reasons := judge(name))]
+    trimmed = {name.strip() for name, _ in padded}  # the engine's key for a refused padded name: report it once
+    writes = [path for path in sorted(payload.get("writes", {})) if path not in trimmed]
+    found = [_finding(path, reasons) for path in writes if (reasons := judge(path))]
+    return found + [_finding(name, reasons, new=True) for name, reasons in padded]
 
 
 def main() -> int:

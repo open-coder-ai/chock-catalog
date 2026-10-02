@@ -91,6 +91,12 @@ FETCH = Spec(
     frozenset(),
 )
 UPDATE_REF = Spec(_set("--no-deref --create-reflog --stdin"), "m", frozenset(), _set("-d"))
+SUBTREE = Spec(
+    _set("--branch --prefix --message --onto --rejoin --squash --annotate --ignore-joins"),
+    "bPmo",
+    _set("--branch --prefix --message --onto --annotate"),
+    frozenset(),
+)
 SYMBOLIC_REF = Spec(_set("--delete --quiet --short --no-recurse --recurse"), "m", frozenset(), _set("-d --delete"))
 
 
@@ -191,6 +197,11 @@ def _push_or_fetch(sub: str, rest: list[str], _doc: str) -> list[str]:
     return [ref for ref in found if ref and ref != "refs/tags/"]
 
 
+def _subtree(_sub: str, rest: list[str], _doc: str) -> list[str]:
+    """`subtree split -b x` (or --branch) creates x."""
+    return [value for name, value in parse(rest[1:], SUBTREE)[2] if name in ("-b", "--branch")] if rest else []
+
+
 def _stash(_sub: str, rest: list[str], _doc: str) -> list[str]:
     return rest[1:2] if rest[:1] == ["branch"] else []
 
@@ -218,6 +229,7 @@ _READERS = {
     "fetch": _push_or_fetch,
     "pull": _push_or_fetch,
     "stash": _stash,
+    "subtree": _subtree,
     "symbolic-ref": _symbolic_ref,
     "update-ref": _update_ref,
 }

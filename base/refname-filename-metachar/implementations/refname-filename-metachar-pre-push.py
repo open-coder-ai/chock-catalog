@@ -17,8 +17,8 @@ def refused(lines: list[str]) -> list[str]:
     """One reason per pushed ref that is refused, or per line that is not git's pre-push form."""
     reasons = []
     for line in lines:
-        parts = line.split()
-        if not parts:
+        parts = line.split(" ")  # git separates with one space; a ref may hold other whitespace
+        if not line.strip():
             continue
         if len(parts) != FIELDS:
             reasons.append(f"unreadable pre-push line '{shown(line)}'")

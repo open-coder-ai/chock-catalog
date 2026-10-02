@@ -1,9 +1,10 @@
 """Mark what a shell expands before the command is parsed, so a name keeps only the text it would literally hold.
 
-A `$` or backtick the shell expands (unquoted or in double quotes, not escaped) becomes EXPANDED, so `"${OUT}/x"`
-is never read as substitution syntax, while one it keeps (single-quoted, escaped, or spliced from quoted pieces
-such as `a$\\(id\\)` or `"a$"'(id)'`) stays and is judged. `$'...'` is decoded as bash does and re-quoted, so
-`$'a\\x3bb'` is judged as `a;b`. Stdlib only.
+A `$` or backtick the shell expands becomes EXPANDED, and a command substitution, backtick command or process
+substitution (`$(...)`, `` `...` ``, `<(...)`) becomes one EXPANDED whose inner script is handed back to be judged
+on its own. So `"${OUT}/x"` is never read as substitution syntax, while text the shell keeps (single-quoted,
+escaped, spliced from quoted pieces such as `a$\\(id\\)` or `$(true)'a;b'`) stays and is judged. `$'...'` is decoded
+and re-quoted, so `$'a\\x3bb'` is judged as `a;b`. Heredoc bodies are copied through untouched. Stdlib only.
 """
 
 from __future__ import annotations
@@ -11,11 +12,12 @@ from __future__ import annotations
 import re
 import sys
 
-EXPANDED = chr(0xE000)  # a private-use character standing in for an expanded `$` or backtick
-REPLACEMENT = chr(0xFFFD)  # what bash prints for a code point past Unicode
-_STARTS = frozenset("{(@*#?$!-_")
+EXPANDED = chr(0xE000)  # a private-use character standing in for expanded text
+REPLACEMENT = chr(0xFFFD)  # what a code point past Unicode decodes to
+_STARTS = frozenset("{@*#?$!-_")
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f", "v": "\v", "e": "\x1b", "E": "\x1b"}
 _ANSI = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|c.|.)", re.DOTALL)
+_HEREDOC = re.compile(r"<<(-?)[ \t]*(?:'([^'\n]*)'|\"([^\"\n]*)\"|\\?([^\s'\"<>|;&()]+))")
 _COMMENT_AFTER = frozenset(" \t\n;&|(")
 
 
@@ -31,54 +33,112 @@ def _ansi_char(match: re.Match[str]) -> str:
     return _ESCAPES.get(code, code)
 
 
-def _ansi(raw: str, start: int) -> tuple[str, int]:
-    """A `$'...'` body beginning at `start`, decoded and single-quoted; and the index after its closing quote."""
-    end = start
-    while end < len(raw) and raw[end] != "'":
-        end += 2 if raw[end] == "\\" else 1
-    text = _ANSI.sub(_ansi_char, raw[start:end])
-    return "'" + text.replace("'", "'\\''") + "'", end + 1
+class _Marker:
+    """One left-to-right pass that tracks quoting the way the shell does."""
 
+    def __init__(self, raw: str, *, powershell: bool) -> None:
+        self.raw, self.ps, self.escape = raw, powershell, "`" if powershell else "\\"
+        self.out: list[str] = []
+        self.inner: list[str] = []
+        self.docs: list[tuple[str, bool]] = []
+        self.quote, self.i = "", 0
 
-def _dollar(raw: str, at: int, quote: str, *, powershell: bool) -> tuple[str, int]:
-    """What a `$` at `at` becomes, and the index after what it consumed."""
-    nxt = raw[at + 1 : at + 2]
-    if not powershell and not quote and nxt == "'":
-        return _ansi(raw, at + 2)
-    if not powershell and not quote and nxt == '"':
-        return "", at + 1  # $"..." is a translated string: the `$` goes, the string stays
-    expands = bool(nxt) and (nxt.isalnum() or nxt in _STARTS)
-    return (EXPANDED if expands else "$"), at + 1
+    def run(self) -> tuple[str, list[str]]:
+        while self.i < len(self.raw):
+            self._step(self.raw[self.i])
+        return "".join(self.out), self.inner
 
+    def _emit(self, text: str, end: int) -> None:
+        self.out.append(text)
+        self.i = end
 
-def mark_expansions(raw: str, *, powershell: bool) -> str:
-    """The command line with every expanded `$` or backtick replaced by EXPANDED and every `$'...'` decoded."""
-    out: list[str] = []
-    quote, i = "", 0
-    escape = "`" if powershell else "\\"
-    while i < len(raw):
-        char = raw[i]
+    def _step(self, char: str) -> None:
+        raw, at, quote = self.raw, self.i, self.quote
+        nxt = raw[at + 1 : at + 2]
         if quote == "'":
-            quote = "" if char == "'" else quote
-            out.append(char)
-            i += 1
-        elif char == escape:
-            out.append(raw[i : i + 2])
-            i += 2
-        elif char == "#" and not quote and (i == 0 or raw[i - 1] in _COMMENT_AFTER):
-            end = raw.find("\n", i)
-            end = len(raw) if end < 0 else end
-            out.append(raw[i:end])
-            i = end
+            self.quote = "" if char == "'" else quote
+            self._emit(char, at + 1)
+        elif char == self.escape:
+            literal = self.ps and not quote and nxt not in ("'", "\n", "")
+            self._emit(f"'{nxt}'" if literal else raw[at : at + 2], at + 2)
+        elif not quote and char == "#" and (at == 0 or raw[at - 1] in _COMMENT_AFTER):
+            end = raw.find("\n", at)
+            self._emit(raw[at:end] if end >= 0 else raw[at:], end if end >= 0 else len(raw))
+        elif not quote and char == "\n":
+            self._emit(char, at + 1)
+            self._bodies()
+        elif not quote and not self.ps and (heredoc := _HEREDOC.match(raw, at)):
+            strip, *words = heredoc.groups()
+            self.docs.append((next(word for word in words if word is not None), bool(strip)))
+            self._emit(heredoc.group(), heredoc.end())
         elif char == "$":
-            text, i = _dollar(raw, i, quote, powershell=powershell)
-            out.append(text)
-        elif char == "`" and quote == '"':
-            out.append(EXPANDED)
-            i += 1
+            self._dollar(nxt)
+        elif char == "`" and not self.ps:
+            self._substitution(at + 1, "`")
+        elif not quote and not self.ps and char in "<>" and nxt == "(":
+            self._substitution(at + 2, ")")
         else:
             if char in "'\"" and quote in ("", char):
-                quote = "" if quote else char
-            out.append(char)
-            i += 1
-    return "".join(out)
+                self.quote = "" if quote else char
+            self._emit(char, at + 1)
+
+    def _dollar(self, nxt: str) -> None:
+        at, unquoted = self.i, not self.quote
+        if nxt == "(":
+            self._substitution(at + 2, ")")
+        elif unquoted and not self.ps and nxt == "'":
+            end = at + 2
+            while end < len(self.raw) and self.raw[end] != "'":
+                end += 2 if self.raw[end] == "\\" else 1
+            text = _ANSI.sub(_ansi_char, self.raw[at + 2 : end])
+            self._emit("'" + text.replace("'", "'\\''") + "'", end + 1)
+        elif unquoted and not self.ps and nxt == '"':
+            self._emit("", at + 1)  # $"..." is a translated string: the `$` goes, the string stays
+        else:
+            expands = bool(nxt) and (nxt.isalnum() or nxt in _STARTS)
+            self._emit(EXPANDED if expands else "$", at + 1)
+
+    def _substitution(self, start: int, closer: str) -> None:
+        """Replace `$(...)`, `<(...)` or a backtick command with EXPANDED; its script is judged on its own."""
+        end = self._close(start, closer)
+        self.inner.append(self.raw[start:end])
+        self._emit(EXPANDED, end + 1)
+
+    def _close(self, at: int, closer: str) -> int:
+        """The index of the closer matching an opener just before `at`, skipping quoted text; the end if none."""
+        depth, quote = 1, ""
+        while at < len(self.raw):
+            char = self.raw[at]
+            if quote != "'" and char == self.escape:
+                at += 1
+            elif quote:
+                quote = "" if char == quote else quote
+            elif char in "'\"":
+                quote = char
+            elif closer == ")" and char == "(":
+                depth += 1
+            elif char == closer:
+                depth -= 1
+                if not depth:
+                    return at
+            at += 1
+        return len(self.raw)
+
+    def _bodies(self) -> None:
+        """Copy the pending heredoc bodies through to their delimiter lines, quotes and all."""
+        while self.docs:
+            delimiter, strip = self.docs.pop(0)
+            start = end = self.i
+            while end < len(self.raw):
+                stop = self.raw.find("\n", end)
+                stop = len(self.raw) if stop < 0 else stop + 1
+                line = self.raw[end:stop].rstrip("\r\n")
+                end = stop
+                if (line.lstrip("\t") if strip else line) == delimiter:
+                    break
+            self._emit(self.raw[start:end], end)
+
+
+def mark_expansions(raw: str, *, powershell: bool) -> tuple[str, list[str]]:
+    """The command line with expansions marked, and the inner scripts of its command substitutions."""
+    return _Marker(raw, powershell=powershell).run()
