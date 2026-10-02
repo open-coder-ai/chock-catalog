@@ -6,7 +6,7 @@ import importlib
 import importlib.util
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 
 import pytest
 from chock_scan.yamlkit import IDS, SOURCES
@@ -40,6 +40,7 @@ def ids(paths: list[Path]) -> list[str]:
 
 JSONC = sources("jsonc")
 SNIFF = sources("sniff")
+HCL = sources("hcl")
 
 
 @pytest.fixture(params=SOURCES, ids=IDS)
@@ -60,3 +61,9 @@ def sn(request: pytest.FixtureRequest) -> ModuleType:
 @pytest.fixture(params=SNIFF, ids=ids(SNIFF))
 def sk(request: pytest.FixtureRequest) -> ModuleType:
     return load(request.param, "sniff_keys")
+
+
+@pytest.fixture(params=HCL, ids=ids(HCL))
+def m(request: pytest.FixtureRequest) -> SimpleNamespace:
+    """hcl, hcl_lex and hcl_json from one chock_scan folder."""
+    return SimpleNamespace(**{name: load(request.param, name) for name in ("hcl", "hcl_lex", "hcl_json")})
