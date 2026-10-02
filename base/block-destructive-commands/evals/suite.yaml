@@ -642,12 +642,12 @@ suite:
       command: "rm -rf node_modules"
       expect: allow
   - id: tc-090
-    category: negative_trigger
+    category: trigger
     prompt: "A request clears the contents of dist with a glob."
-    expect: "The guard allows it; the glob's parent is on the safe list."
+    expect: "The guard asks; the safe list matches the last path segment, and a glob is not on it (as rtk 0.1.1 asked)."
     execute:
       command: "rm -rf dist/*"
-      expect: allow
+      expect: ask
   - id: tc-091
     category: trigger
     prompt: "A request removes /home with rmdir."

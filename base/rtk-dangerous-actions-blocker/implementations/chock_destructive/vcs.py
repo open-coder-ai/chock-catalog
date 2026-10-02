@@ -44,13 +44,13 @@ def history(sub: str, rest: list[str]) -> Hit:
         return "history-rewrite", sub
     if sub == "reflog" and first in (["expire"], ["delete"]):
         return "history-rewrite", f"reflog {first[0]}"
-    if sub == "gc" and any(a.startswith("--prune=") and a[8:].split(".")[0] in _NOW for a in rest):
+    if sub == "gc" and any(a.startswith("--prune=") and a[8:].split(".")[0].lower() in _NOW for a in rest):
         return "history-rewrite", "gc --prune=now"
     expiry = next(
         (a[9:] for a in rest if a.startswith("--expire=")),
         rest[rest.index("--expire") + 1] if "--expire" in rest[:-1] else "now",
     )
-    if sub == "prune" and expiry.split(".")[0] in _NOW and not {"-n", "--dry-run"} & set(rest):
+    if sub == "prune" and expiry.split(".")[0].lower() in _NOW and not {"-n", "--dry-run"} & set(rest):
         return "history-rewrite", "prune"
     return ("history-rewrite", "update-ref -d") if sub == "update-ref" and "-d" in flags_of(rest) else None
 

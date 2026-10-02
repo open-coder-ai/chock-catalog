@@ -25,7 +25,7 @@ CASES: list[tuple[str, str | None]] = [
     ("rm -rf *", "rm-relative"),
     ("rm -rf $(pwd)", "rm-relative"),
     ("rm -rf node_modules dist", None),
-    ("rm -rf dist/*", None),
+    ("rm -rf dist/*", "rm-relative"),
     ("rm -rf build/", None),
     ("rm -f notes.txt", None),
     # unlink, rmdir, mv, chmod, chown on roots

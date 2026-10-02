@@ -13,7 +13,7 @@ INFRA_HOSTS = (
     *("api.planetscale.com", ".googleapis.com", ".amazonaws.com"),
 )
 _AUTH_HEADER = re.compile(r"\s*(authorization|private-token|x-api-key|api-key|x-auth-token|x-auth-key)\s*:", re.I)
-_AUTH_FLAGS = ("--oauth2-bearer", "--aws-sigv4", "-n", "--netrc", "--netrc-file")
+_AUTH_FLAGS = ("--oauth2-bearer", "--aws-sigv4", "-n", "--netrc", "--netrc-file", "-b", "--cookie", "-K", "--config")
 _HOST = re.compile(r"(?:https?://)?(?:[^@/?#]*@)?([^:/?#]+)", re.IGNORECASE)
 _MUTATION = re.compile(r"\bmutation\b[\s\S]*?(delete|destroy|remove)", re.IGNORECASE)
 

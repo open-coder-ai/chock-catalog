@@ -37,6 +37,11 @@ _EXEC_FLAGS = frozenset(("-exec", "-execdir", "-ok"))
 
 def is_root(path: str) -> bool:
     """`/`, a top-level system directory, or home (also as a `/*` glob): never a routine target."""
+    # Home is a stand-in directory while normalising, so `~/..` resolves to a system directory, not to '.'.
+    home = re.match(r"(~[a-z_][\w.-]*|~|\$\{?HOME\}?)(?=/|$)", path, re.IGNORECASE)
+    if home:
+        spot = posixpath.normpath("/home/_" + path[home.end() :])
+        return spot in ("/home/_", "/home/_/*") or _ROOT.fullmatch(spot) is not None
     return _ROOT.fullmatch(re.sub("/+", "/", posixpath.normpath(path))) is not None
 
 
@@ -46,13 +51,12 @@ def is_cwd(path: str) -> bool:
 
 
 def _safe(path: str) -> bool:
-    parts = path.rstrip("/").split("/")
-    last = parts[-2] if len(parts) > 1 and set(parts[-1]) <= set("*.?") else parts[-1]
-    return last in SAFE_DIRS
+    return path.rstrip("/").rsplit("/", 1)[-1] in SAFE_DIRS
 
 
 def has(cmd: Cmd, short: set[str], long: str) -> bool:
-    """A short flag, or any unambiguous prefix (three characters or more) of the long one, as getopt accepts."""
+    """A short flag, or any prefix of three characters or more of the long one (getopt takes unambiguous prefixes;
+    an ambiguous one fails to run anyway, so matching it only errs strict)."""
     flags = flags_of(cmd.args)
     return bool(flags & short) or any(abbreviates(f, long, len("--r")) for f in flags if f.startswith("--"))
 

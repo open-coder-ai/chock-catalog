@@ -8,7 +8,20 @@ from chock_shellparse import Cmd, after, flags_of, operands, positionals
 from .api import curl, gh
 
 Hit = tuple[str, str] | None
-KUBECTL_VALUES = frozenset(("-n", "--namespace", "--context", "--cluster", "--user", "--kubeconfig", "--server", "-s"))
+KUBECTL_VALUES = frozenset(
+    (
+        "-n",
+        "--namespace",
+        "--context",
+        "--cluster",
+        "--user",
+        "--kubeconfig",
+        "--server",
+        "-s",
+        "-v",
+        "--request-timeout",
+    )
+)
 HELM_VALUES = frozenset(("-n", "--namespace", "--kube-context", "--kubeconfig", "--kube-apiserver", "--kube-token"))
 DOCKER_VALUES = frozenset(
     (
@@ -205,9 +218,11 @@ def docker(cmd: Cmd, raw: str) -> Hit:
 
 
 def sql(cmd: Cmd) -> Hit:
-    # SQL comments separate words as whitespace does: DROP/**/TABLE is DROP TABLE, and `-- note` ends a statement.
-    text = re.sub(r"/\*.*?\*/|(?<!\S)--([ \t][^\n]*|$)", " ", f"{' '.join(cmd.args)} {cmd.doc}", flags=re.DOTALL)
-    hit = next((what for pattern, what in _SQL if re.search(pattern, text, re.IGNORECASE)), None)
+    # Judged as written and with comments read as spaces (DROP/**/TABLE, `delete from t -- note`): a comment marker
+    # inside a string literal must not hide what follows it, so either reading refusing is enough.
+    raw = f"{' '.join(cmd.args)} {cmd.doc}"
+    texts = (raw, re.sub(r"/\*.*?\*/|(?<!\S)--([ \t][^\n]*|$)", " ", raw, flags=re.DOTALL))
+    hit = next((what for pattern, what in _SQL for t in texts if re.search(pattern, t, re.IGNORECASE)), None)
     return None if hit is None else ("sql", f"{hit} through {cmd.name}")
 
 
