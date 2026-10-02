@@ -33,6 +33,8 @@ PATTERN_KEYS = frozenset(
         "secret_object",
         "header_arg",
         "url_arg",
+        "field_arg",
+        "leak_context",
         "guard_prohibit",
         "segment_break",
     }

@@ -15,7 +15,16 @@ OVERLAP = 500
 #: A fence opener: up to three spaces, then three or more backticks or tildes.
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, rule or front matter.
-BLOCK_START = re.compile(r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|>|\||<[!/A-Za-z]|---+\s*$|===+\s*$)")
+BLOCK_START = re.compile(
+    r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|>|---+\s*$|===+\s*$|<(?:!--|/?(?i:address|article|aside|blockquote"
+    r"|details|dialog|div|dl|fieldset|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table"
+    r"|tbody|td|tfoot|th|thead|tr|ul)\b))"
+)
+#: A table's delimiter row; `|` lines start their own statements only in a run that has one (a soft-wrapped
+#: line that happens to start with `|` continues its paragraph, as an autolink `<https://...>` does).
+TABLE_DELIMITER = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)*\|?\s*$")
+#: A markdown hard line break (two trailing spaces, a trailing backslash, <br>) ends a sentence.
+HARD_BREAK = re.compile(r"(?: {2,}|\\|<br\s*/?>)$", re.IGNORECASE)
 #: A sentence ends at . ! or ? followed by space and a capital, quote, bracket or markup character.
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'(\[<`*_~#\u00c0-\u024f])")
 #: Characters folded before matching: typographic quotes and dashes become their ASCII forms.
@@ -30,8 +39,8 @@ FOLD = str.maketrans(
         "\u2010": "-",
         "\u2011": "-",
         "\u2012": "-",
-        "\u2013": "-",
-        "\u2014": "-",
+        "\u2013": " - ",
+        "\u2014": " - ",
         "\u2212": "-",
     }
 )
@@ -127,28 +136,62 @@ def statements(text: str) -> list[Statement]:
 
 
 def _body(lines: list[str], skip: int) -> list[Statement]:
-    """The statements after the front matter: paragraphs, list items and headings, and fenced code lines."""
+    """The statements after the front matter: paragraphs, list items, table rows and headings, and fenced
+    code lines (a line ending in a backslash joined with the next)."""
     out: list[Statement] = []
     parts: list[tuple[int, str]] = []
+    code: list[tuple[int, str]] = []
     fence: str | None = None
+    tables = _table_rows(lines)
     for number, line in enumerate(lines[skip:], skip + 1):
         if fence is not None:
-            if line.strip().startswith(fence) and not line.strip().strip(fence[0]):
-                fence = None
-            elif line.strip():
-                out.append(Statement(number, number, line.strip(), normalize(line, code=True), code=True))
+            fence = _fenced(line, number, fence, code, out)
             continue
-        if (opener := FENCE.match(line)) or not line.strip() or BLOCK_START.match(line):
+        if (opener := FENCE.match(line)) or not line.strip() or BLOCK_START.match(line) or number - 1 in tables:
             _flush(parts, out)
             if opener:
                 fence = opener.group(1)
             if opener or not line.strip():
                 continue
         parts.append((number, line))
-        if line.lstrip().startswith("#"):
+        if line.lstrip().startswith("#") or HARD_BREAK.search(line):
             _flush(parts, out)
     _flush(parts, out)
+    _flush_code(code, out)
     return out
+
+
+def _table_rows(lines: list[str]) -> set[int]:
+    """Indexes of the lines in a run of `|` lines that holds a delimiter row."""
+    rows: set[int] = set()
+    n = 0
+    while n < len(lines):
+        end = n
+        while end < len(lines) and lines[end].lstrip().startswith("|"):
+            end += 1
+        if any(TABLE_DELIMITER.match(lines[k]) for k in range(n, end)):
+            rows.update(range(n, end))
+        n = max(end, n + 1)
+    return rows
+
+
+def _fenced(line: str, number: int, fence: str, code: list[tuple[int, str]], out: list[Statement]) -> str | None:
+    """Take one line inside a fence; the fence that stays open, or None when this line closes it."""
+    if line.strip().startswith(fence) and not line.strip().strip(fence[0]):
+        _flush_code(code, out)
+        return None
+    if line.strip():
+        code.append((number, line.strip()))
+        if not line.rstrip().endswith("\\"):
+            _flush_code(code, out)
+    return fence
+
+
+def _flush_code(code: list[tuple[int, str]], out: list[Statement]) -> None:
+    if code:
+        joined = " ".join(text.removesuffix("\\") for _, text in code)
+        out.append(Statement(code[0][0], code[-1][0], joined, normalize(joined, code=True), code=True))
+        code.clear()
 
 
 def _pieces(st: Statement) -> list[Statement]:

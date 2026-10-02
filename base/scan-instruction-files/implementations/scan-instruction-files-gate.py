@@ -113,7 +113,7 @@ def before_text(payload: dict, path: str, text: str) -> str | None:
     if Path(path).is_absolute():
         return None
     shown = subprocess.run(  # noqa: S603 -- git itself, reading one blob; nothing from the write is run
-        [GIT, "-C", str(root), "cat-file", "blob", f"HEAD:{path}"], capture_output=True, check=False, timeout=10
+        [GIT, "-C", str(root), "cat-file", "blob", f"HEAD:./{path}"], capture_output=True, check=False, timeout=10
     )
     return shown.stdout.decode("utf-8", "replace") if shown.returncode == 0 else None
 

@@ -21,15 +21,15 @@ TIGHT_WORDS = 2
 TARGET_WORDS = 4
 #: The compact rule form never(context): X, which governs X when X is at most two words on.
 COMPACT = re.compile(r"\bnever\s*\([^()]{0,120}\)\s*:\s*(?:\S+\s+){0,2}$")
-#: What ends a negation's reach: a closing bracket, colon, semicolon, pipe, arrow, a spaced dash or double
-#: dash, and/then/so. A comma ends it too, unless what follows continues a list ending in or/nor.
-CUT = re.compile(r"[)\]:;|]|\s--?\s|->|\b(?:and|then|so)\b")
+#: What ends a negation's reach: a closing bracket or `>`, colon, semicolon, pipe, arrow (->, =>, \u2192), a spaced
+#: dash or double dash, a closing double quote, and/then/so. A comma ends it too, unless what follows continues a list ending in or/nor.
+CUT = re.compile(r"[)\]:;|>\u2192\u21d2\u27f6]|\s--?\s|\b(?:and|then|so)\b")
 LIST_OR = re.compile(r"\b(?:or|nor)\b")
 #: How many statements after a fake trust tag its block may run when no closing tag ends it sooner.
 TRUST_SPAN = 12
 COMMAND_RULES = frozenset({"fetch-exec", "decode-exec", "exfil-secret"})
 EXFIL = ("exfil-secret", BLOCK, "tells the agent to send a secret to a remote destination")
-IN_URL = ("secret-in-url", ASK, "puts a secret variable in a URL a network tool fetches")
+IN_REQUEST = ("secret-in-request", ASK, "puts a secret variable in a URL or form field a network tool sends")
 TRUST = ("fake-trust-exec", BLOCK, "a fake trust block that runs a command")
 #: A guarded topic's word reduced to its stem, so review/reviewer/reviews or test/tests/testing are one topic.
 STEM = re.compile(r"(?:s|es|ed|er|ers|ing)$")
@@ -93,7 +93,11 @@ class Doc:
         before = self.text[low:pos]
         if COMPACT.search(before):
             return True
-        parts = CUT.split(before)[-1].split(",")
+        reach = CUT.split(before)[-1]
+        quotes = reach.count('"')
+        if quotes and quotes % 2 == 0:
+            reach = reach.rsplit('"', 1)[1]
+        parts = reach.split(",")
         reach = parts.pop()
         while parts and LIST_OR.search(reach):
             reach = parts.pop() + "," + reach
@@ -166,11 +170,20 @@ class Doc:
             if not (self.sts[i].code or any(not self.prohibited(pos, TIGHT_WORDS) for pos in nets[i])):
                 continue
             line = p["header_arg"].sub(" ", self.sts[i].norm)
-            if p["secret_strong"].search(p["url_arg"].sub(" ", line)) and p["shell_carrier"].search(line):
+            bare = p["field_arg"].sub(" ", p["url_arg"].sub(" ", line))
+            if p["secret_strong"].search(bare) and p["shell_carrier"].search(line):
                 found.add(i)
-            elif any(p["secret_strong"].search(url.group()) for url in p["url_arg"].finditer(line)):
+            elif any(
+                p["secret_strong"].search(m.group()) for k in ("url_arg", "field_arg") for m in p[k].finditer(line)
+            ):
                 asked.add(i)
-        at = {k: [m.start() for _, m in self.matches(p[k])] for k in ("destination", "secret_strong")}
+        set_aside = sorted((m.start(), m.end()) for k in ("header_arg", "field_arg") for _, m in self.matches(p[k]))
+        at = {
+            "destination": [m.start() for _, m in self.matches(p["destination"])],
+            "secret_strong": [
+                m.start() for _, m in self.matches(p["secret_strong"]) if not _inside(m.start(), set_aside)
+            ],
+        }
         verbs = [(i, m, True) for i, m in self.matches(p["send_verb"])]
         verbs += [(i, m, False) for i, m in self.matches(p["send_weak"])]
         for i, verb, strong_verb in verbs:
@@ -185,19 +198,17 @@ class Doc:
         A secret named only after the destination is how the agent authenticates, not what it sends. A negation
         right before the verb, or governing the secret, discounts it."""
         start, end = verb.end(), self.clause_end(verb.end())
-        i = self.index(start)
         dest = _first(at["destination"], start, end)
-        if dest is None and not _within(at["destination"], self.starts[i], self.ends[i]):
+        if dest is None or self.prohibited(verb.start(), TIGHT_WORDS):
             return False
-        object_end = end if dest is None else dest
-        if self.prohibited(verb.start(), TIGHT_WORDS):
-            return False
-        secret = _first(at["secret_strong"], start, object_end)
+        if self.p["leak_context"].search(self.text, start, dest):
+            return False  # reporting a leaked or exposed key to a security contact discloses it
+        secret = _first(at["secret_strong"], start, dest)
         if secret is not None:
             return not self.governs(start, secret)
         if not strong_verb or self.p["auth_context"].search(self.text, start, end):
             return False
-        return self.p["secret_object"].match(self.text, start, object_end) is not None
+        return self.p["secret_object"].match(self.text, start, dest) is not None
 
     def trust_blocks(self, hits: dict[int, list[Hit]]) -> list[Hit]:
         """A fake trust tag that opens a block (<system>, [INST]) whose body -- to its closing tag, at most
@@ -237,8 +248,10 @@ def _first(starts: list[int], low: int, high: int) -> int | None:
     return starts[k] if k < len(starts) and starts[k] < high else None
 
 
-def _within(starts: list[int], low: int, high: int) -> bool:
-    return _first(starts, low, high) is not None
+def _inside(pos: int, spans: list[tuple[int, int]]) -> bool:
+    """True when `pos` falls inside one of the (start, end) spans, which are sorted by start."""
+    k = bisect.bisect_right(spans, (pos, float("inf"))) - 1
+    return k >= 0 and spans[k][0] <= pos < spans[k][1]
 
 
 def judge(lex: Lexicon, sts: list[Statement]) -> list[Hit]:
@@ -249,7 +262,7 @@ def judge(lex: Lexicon, sts: list[Statement]) -> list[Hit]:
     for i in refused:
         hits[i].insert(0, Hit(*EXFIL, sts[i]))
     for i in asked:
-        hits[i].append(Hit(*IN_URL, sts[i]))
+        hits[i].append(Hit(*IN_REQUEST, sts[i]))
     found = [hit for i in sorted(hits) for hit in sorted(hits[i], key=lambda h: h.verdict != BLOCK)]
     return found + doc.trust_blocks(hits)
 
