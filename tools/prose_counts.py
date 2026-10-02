@@ -3,6 +3,8 @@
 A count is written between markers, `<!-- gen:KEY -->48<!-- /gen -->`, and the text between them
 belongs to the generator. A count written by hand next to a policy noun fails the check, because
 two hand-written counts in these files went stale (twenty-two of forty-two, two script policies).
+That check is a heuristic backstop for review, not a proof: a count phrased with no policy noun
+nearby ("All 48 ship a manifest", a table cell) still needs a reviewer to ask for a marker.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ MARKER = re.compile(r"<!-- gen:(?P<key>[a-z-]+) -->(?P<value>[^<\n]*)<!-- /gen -
 #: Any gen token left once the valid markers are gone is a marker spelled some other way.
 STRAY = re.compile(r"\bgen\s*:|/\s*gen\b", re.I)
 #: Markup a reader does not see, which must not separate a number from its noun.
-_INVISIBLE = re.compile(r"<!--.*?-->|<[^>\n]*>|&\w+;|[*_]", re.S)
+_INVISIBLE = re.compile(r"<!--.*?-->|<[^>\n]*>|&#?\w+;|[*_`]", re.S)
 _WORDS = (
     "two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
     "sixteen seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety"
@@ -29,8 +31,8 @@ _WORDS = (
 #: A number, as digits or words, then up to four words, then a noun that counts policies; read
 #: with markup removed, and the gaps may be line breaks, since prose wraps.
 HAND_COUNT = re.compile(
-    rf"(?<![\w.#-])(?:\d+|(?:{'|'.join(_WORDS.split())})(?:-\w+)?)\b"
-    r"(?:[\s-]+[\w`()/,-]+){0,4}?[\s-]+"
+    rf"(?<![\w.#-])(?:\d+\+?|(?:{'|'.join(_WORDS.split())})(?:-\w+)?)(?!\w)"
+    r"(?:[\s-]+[\w()/,'\"\u2018\u2019\u201c\u201d-]+){0,4}?[\s-]+"
     r"(?:polic\w*|advisor\w*|enforced[\w-]*|best-effort|guards?|gates?|(?:hook\s+)?programs?)\b",
     re.I,
 )

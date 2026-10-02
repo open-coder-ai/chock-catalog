@@ -80,6 +80,14 @@ def test_check_mode_writes_nothing_and_reports_drift(catalog: Path) -> None:
         ("<!-- gen:policies -->6<!-- /gen -->\nAnother 7 are best-effort\n", "hand-written count '7 are best-effort'"),
         ("<!-- gen:policies -->6<!-- /gen -->\n9 hook programs\n", "hand-written count '9 hook programs'"),
         (
+            "<!-- gen:policies -->6<!-- /gen -->\n20 of the catalog's policies are advisory.\n",
+            'hand-written count "20 of the catalog\'s policies"',
+        ),
+        ("<!-- gen:policies -->6<!-- /gen -->\n22&#160;policies\n", "hand-written count '22 policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n`48` policies\n", "hand-written count '48 policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n48+ policies\n", "hand-written count '48+ policies'"),
+        ("<!-- gen:policies -->6<!-- /gen -->\n48 \u201csigned\u201d policies\n", "hand-written count"),
+        (
             "<!-- gen:policies -->6<!-- /gen -->\n48 published, signed policies\n",
             "hand-written count '48 published, signed policies'",
         ),
