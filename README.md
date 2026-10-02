@@ -47,7 +47,7 @@ are advisory, and that is the number most catalogs would round up:
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 20 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
-| `advisory` | text an agent reads and may or may not follow | 20 |
+| `advisory` | text an agent reads and may or may not follow | 21 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -105,7 +105,7 @@ per-hook trust review before its hooks run.
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
 
 <details>
-<summary>20 advisory policies — expand</summary>
+<summary>21 advisory policies — expand</summary>
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
@@ -113,7 +113,8 @@ per-hook trust review before its hooks run.
 [`context-hygiene`](docs/context-hygiene/) · [`chock-mise`](docs/chock-mise/) ·
 [`git-safety`](docs/git-safety/) ·
 [`injection-defense`](docs/injection-defense/) ·
-[`memory-discipline`](docs/memory-discipline/)
+[`memory-discipline`](docs/memory-discipline/) ·
+[`review-like-a-red-team`](docs/review-like-a-red-team/)
 
 </details>
 
