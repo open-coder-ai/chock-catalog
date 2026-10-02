@@ -18,10 +18,12 @@ REMOTE = re.compile(r"^(?:https?://|git@|git://|ssh://)", re.IGNORECASE)
 GIT_SOURCE = re.compile(r"^(?:git@|git://|ssh://)|\.git(?:#|$)", re.IGNORECASE)
 PINNED_GIT = re.compile(r"#[0-9a-fA-F]{40}(?::|$)")
 KEY_FILE = re.compile(
-    r"^(?:\.env\.?[*?\[].*|\.env(?:\.(?!example$|sample$|template$|dist$|defaults$)[\w.-]+)?|id_(?:rsa|dsa|ecdsa|ed25519)|\.npmrc|\.pypirc|\.netrc"
+    r"^(?:\.env\.?[*?\[].*|\.env(?:\.[\w.-]+)?|id_(?:rsa|dsa|ecdsa|ed25519)|\.npmrc|\.pypirc|\.netrc"
     r"|\.git-credentials|\.pgpass|[\w.-]*\.(?:key|p12|pfx|jks|keystore)|[\w.-]*(?:key|priv)[\w.-]*\.pem)$",
     re.IGNORECASE,
 )
+#: Committed templates of an env file, not the file itself.
+ENV_TEMPLATES = frozenset({".env.example", ".env.sample", ".env.template", ".env.dist", ".env.defaults"})
 SECRET_DIRS = frozenset({".aws", ".ssh", ".gnupg", ".kube", ".docker"})
 WHOLE_CONTEXT = frozenset({".", "./", "*", "./*"})
 SSHD = re.compile(r"(?:^|[\s\"'/\[,])sshd(?![\w.-])")
@@ -36,7 +38,8 @@ def _sources(instr: Instr) -> list[str]:
 
 def _secret_path(source: str) -> bool:
     path = PurePosixPath(source.replace("\\", "/"))
-    return bool(KEY_FILE.match(path.name)) or any(part in SECRET_DIRS for part in path.parts)
+    named = bool(KEY_FILE.match(path.name)) and path.name.lower() not in ENV_TEMPLATES
+    return named or any(part in SECRET_DIRS for part in path.parts)
 
 
 def env_arg(instr: Instr) -> Iterator[Hit]:

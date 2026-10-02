@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 from policies import dockerkit
-from policies.dockerkit import person  # noqa: F401
 
 mod = dockerkit.load()
+person = dockerkit.person
 
 from dkscan import compose, composeyaml  # noqa: E402
 

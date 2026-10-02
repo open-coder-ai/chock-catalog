@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 from policies import dockerkit, scriptkit
-from policies.dockerkit import person  # noqa: F401
 
 POLICY, SCRIPT = "dockerfile-compose-security", "dockerfile-compose-security-gate.py"
 mod = dockerkit.load()
+person = dockerkit.person
 
 PIN = "@sha256:" + "0" * 64
 GOOD = f"FROM a:1{PIN}\nUSER 1000\n"
