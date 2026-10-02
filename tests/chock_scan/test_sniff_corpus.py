@@ -44,8 +44,13 @@ def _kinds(result: object) -> dict[str, str]:
 
 
 def test_every_corpus_file_has_an_expectation() -> None:
-    on_disk = {p.relative_to(CORPUS).as_posix() for p in CORPUS.rglob("*") if p.is_file()}
-    assert on_disk - {"SOURCES.txt"} == set(EXPECTED)
+    on_disk = {
+        p.relative_to(CORPUS).as_posix()
+        for sub in ("own", "upstream")
+        for p in (CORPUS / sub).rglob("*")
+        if p.is_file()
+    }
+    assert on_disk == set(EXPECTED)
 
 
 @pytest.mark.parametrize("name", FILES)

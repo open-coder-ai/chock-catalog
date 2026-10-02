@@ -1,4 +1,4 @@
-"""Fixtures for the chock_scan tests: each runs against lib/ and every copy a policy ships."""
+"""Load chock_scan modules from lib/ and from every copy a policy ships, each under its own package name."""
 
 from __future__ import annotations
 
@@ -9,39 +9,9 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
-from chock_scan.hclload import IDS as HCL_IDS
-from chock_scan.hclload import SOURCES as HCL_SOURCES
-from chock_scan.hclload import load as load_hcl
-from chock_scan.yamlkit import IDS, SOURCES, load
+from chock_scan.yamlkit import IDS, SOURCES
+from chock_scan.yamlkit import load as load_yamlpath
 from trees import ROOT, TREES
-
-
-@pytest.fixture(params=SOURCES, ids=IDS)
-def yp(request: pytest.FixtureRequest) -> ModuleType:
-    """The yamlpath module, from lib/ and from every copy a policy ships."""
-    return load(request.param)
-
-
-JSONC_SOURCES = sorted(
-    {ROOT / "lib" / "chock_scan"}
-    | {p.parent for tree in TREES for p in (ROOT / tree).glob("*/implementations/chock_scan/jsonc.py")}
-)
-
-
-def load_module(package: Path, module: str) -> ModuleType:
-    name = f"{module}_" + package.relative_to(ROOT).as_posix().replace("/", "_").replace("-", "_")
-    spec = importlib.util.spec_from_file_location(name, package / f"{module}.py")
-    assert spec is not None
-    assert spec.loader is not None
-    loaded = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(loaded)
-    return loaded
-
-
-@pytest.fixture(params=JSONC_SOURCES, ids=[s.relative_to(ROOT).as_posix() for s in JSONC_SOURCES])
-def jsonc(request: pytest.FixtureRequest) -> ModuleType:
-    """The jsonc module, from lib/ and from every copy a policy ships."""
-    return load_module(request.param, "jsonc")
 
 
 def sources(module: str) -> list[Path]:
@@ -50,7 +20,7 @@ def sources(module: str) -> list[Path]:
     return sorted({ROOT / "lib" / "chock_scan"} | copies)
 
 
-def load_package(package: Path, module: str) -> ModuleType:
+def load(package: Path, module: str) -> ModuleType:
     """`module` imported from `package` as a package of its own, so relative imports resolve inside it."""
     name = "chock_scan_" + package.relative_to(ROOT).as_posix().replace("/", "_").replace("-", "_")
     if name not in sys.modules:
@@ -64,22 +34,36 @@ def load_package(package: Path, module: str) -> ModuleType:
     return importlib.import_module(f"{name}.{module}")
 
 
+def ids(paths: list[Path]) -> list[str]:
+    return [s.relative_to(ROOT).as_posix() for s in paths]
+
+
+JSONC = sources("jsonc")
 SNIFF = sources("sniff")
+HCL = sources("hcl")
 
 
-@pytest.fixture(params=SNIFF, ids=[s.relative_to(ROOT).as_posix() for s in SNIFF])
+@pytest.fixture(params=SOURCES, ids=IDS)
+def yp(request: pytest.FixtureRequest) -> ModuleType:
+    return load_yamlpath(request.param)
+
+
+@pytest.fixture(params=JSONC, ids=ids(JSONC))
+def jsonc(request: pytest.FixtureRequest) -> ModuleType:
+    return load(request.param, "jsonc")
+
+
+@pytest.fixture(params=SNIFF, ids=ids(SNIFF))
 def sn(request: pytest.FixtureRequest) -> ModuleType:
-    """The sniff module, from lib/ and from every copy a policy ships."""
-    return load_package(request.param, "sniff")
+    return load(request.param, "sniff")
 
 
-@pytest.fixture(params=SNIFF, ids=[s.relative_to(ROOT).as_posix() for s in SNIFF])
+@pytest.fixture(params=SNIFF, ids=ids(SNIFF))
 def sk(request: pytest.FixtureRequest) -> ModuleType:
-    """The sniff_keys module, from lib/ and from every copy a policy ships."""
-    return load_package(request.param, "sniff_keys")
+    return load(request.param, "sniff_keys")
 
 
-@pytest.fixture(params=HCL_SOURCES, ids=HCL_IDS)
+@pytest.fixture(params=HCL, ids=ids(HCL))
 def m(request: pytest.FixtureRequest) -> SimpleNamespace:
-    """chock_scan's HCL modules, from lib/ and from every copy a policy ships."""
-    return load_hcl(request.param)
+    """hcl, hcl_lex and hcl_json from one chock_scan folder."""
+    return SimpleNamespace(**{name: load(request.param, name) for name in ("hcl", "hcl_lex", "hcl_json")})
