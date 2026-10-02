@@ -1,0 +1,90 @@
+Corpus for tests/chock_scan/test_sniff_corpus.py: real files the content sniffer must classify.
+Files are byte-for-byte copies, unmodified, and are test data only (never shipped: tests/ is not
+published). Renamed so each name says what the file is; the sniffer never sees a name.
+
+own/ -- copied from this repository (Apache-2.0)
+  gha-stale.yml                  .github/workflows/stale.yml
+  shell-block-curl-pipe-sh.sh    base/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh
+  unknown-pyproject.toml         pyproject.toml
+  unknown-claude-settings.json   .claude/settings.json
+
+upstream/ -- vendored at the commits below
+
+  k8s-guestbook-all-in-one.yaml  web/guestbook/all-in-one/guestbook-all-in-one.yaml
+  k8s-frontend-deployment.yaml   web/guestbook/frontend-deployment.yaml
+    https://github.com/kubernetes/examples @ d6b8cd27eacb51e651a1aa6f7c190a28713eff6e
+    Apache License 2.0, Copyright The Kubernetes Authors
+
+  openapi-petstore.yaml          _archive_/schemas/v3.0/pass/petstore.yaml
+    https://github.com/OAI/OpenAPI-Specification @ 447c479c9c7136918e80a57a258fd6c84f369c7c
+    Apache License 2.0, Copyright The Linux Foundation
+
+  compose-nginx-flask-mysql.yaml nginx-flask-mysql/compose.yaml
+  dockerfile-flask-backend       nginx-flask-mysql/backend/Dockerfile
+    https://github.com/docker/awesome-compose @ 30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562
+    CC0 1.0 Universal
+
+  cfn-compliant-bucket.yaml      S3/compliant-bucket.yaml
+  cfn-compliant-bucket.json      S3/compliant-bucket.json
+    https://github.com/aws-cloudformation/aws-cloudformation-templates @ a0f43bc6d20813052892546f445037cf84c75b54
+    Apache License 2.0. NOTICE: AWS CloudFormation Sample Templates
+    Copyright 2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  sam-api-endpointconfiguration.yaml  examples/2016-10-31/api_endpointconfiguration/template.yaml
+    https://github.com/aws/serverless-application-model @ d58ccaccd0d98da426189741248986a3ff1d1a87
+    Apache License 2.0. NOTICE: serverless-application-model
+    Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+  ansible-first-playbook.yml     first-ansible-playbook/playbook.yml
+  ansible-drupal-playbook.yml    drupal/provisioning/playbook.yml
+    https://github.com/geerlingguy/ansible-for-devops @ 86e1bf80098239cd995d54217585e8d61117d2e7
+    MIT License, reproduced below (MIT-1)
+
+  dockerfile-python-3.13-slim-bookworm  3.13/slim-bookworm/Dockerfile
+    https://github.com/docker-library/python @ 7cc547b3ff8d45d540cd23144227af126a79d60c
+    MIT License, reproduced below (MIT-2)
+
+The Apache License 2.0 text is this repository's LICENSE file.
+
+MIT-1 ------------------------------------------------------------------------
+Copyright (c) 2014 Jeff Geerling
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+MIT-2 ------------------------------------------------------------------------
+Copyright (c) 2014 Docker, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

@@ -24,7 +24,7 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.0.5
+  version: 0.0.6
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -32,11 +32,11 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 34
   eval_executed: 34
-  description: 'Best-effort guard against piping a download into a shell or interpreter: curl, wget,
-    lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node,
-    bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout;
-    also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping
-    into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.'
+  description: 'Best-effort: refuses curl/wget/lynx/aria2c/iwr/irm piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node
+    (by path, quoted, in a subshell, after bare sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)",
+    bash <(curl ...), `| iex`. Probed misses: fetch right after a quote (bash -c "curl ...", ssh), eval
+    "$(curl ...)", source <(curl ...), wrapper options (sudo -u, env VAR=, /usr/bin/env), doas, csh/tcsh/mksh/lua/php/pwsh/deno/busybox,
+    su -c, $SHELL, download then run. Friction only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
   version: 0.1.1
@@ -102,51 +102,55 @@ policies:
     A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
-  version: 0.0.5
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 12
-  eval_executed: 12
-  description: 'Pre-commit gate for the mechanizable slice of ASI04: agent components pulled at an unpinned
-    version. Blocks npx/uvx/bunx launches at @latest — the standard MCP server idiom — quoted "@latest"
-    arguments in agent config, and :latest container images. Language-manifest dependencies are verify-dependency-exists;
-    signature and provenance stay with the advisory owasp-asi04 policy. Escape: ''pragma: allowlist
-    unpinned'' on the same line, honoured at commit; also runs at agent tool-use, where it counts only
-    when that exact line is already committed in HEAD.'
+  eval_cases: 54
+  eval_executed: 54
+  description: 'Gate for the line-visible slice of ASI04: agent components fetched at a floating version.
+    Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx, dlx, add/install and
+    pipx run; FROM at latest or an untagged registry path; floating docker run/pull and docker:// refs;
+    pip --pre; go install at latest; unversioned cargo installs; git+ installs and requirements, and
+    github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
-  version: 0.0.4
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 13
-  eval_executed: 13
-  description: 'Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess
-    calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort
-    line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05
-    policy. Escape hatch for vetted uses: ''pragma: allowlist exec'' on the same line, honoured at commit;
-    at agent tool-use it counts only for a line already committed in HEAD.'
+  eval_cases: 54
+  eval_executed: 54
+  description: 'Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect
+    eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed
+    name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml
+    loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security
+    boundary. Waiver ''pragma: allowlist exec'' on the line; in the agent only if already committed
+    in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.0.4
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 12
-  eval_executed: 12
-  description: 'Pre-commit gate for the mechanizable slice of ASI03: wildcard Action or Resource in
-    IAM policy documents, AdministratorAccess attachment, GCP roles/owner or roles/editor, and Terraform
-    wildcard action/resource lists. An agent''s identity design stays with the advisory owasp-asi03
-    policy; this blocks the grants whose blast radius is everything. Escape: ''pragma: allowlist broad-privilege''
-    on the same line, honoured at commit; also runs at agent tool-use, where it counts only when that
-    exact line is already committed in HEAD.'
+  eval_cases: 38
+  eval_executed: 38
+  description: 'Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a wildcard
+    action, resource or principal in string or list form, any quote style (JSON, YAML, Terraform, CDK,
+    escaped JSON), whole-service wildcards on s3, iam, sts, kms and ec2 actions, Allow with an inverted
+    key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public
+    members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-line
+    strict-JSON AWS Deny statement is exempt. Friction, not a security boundary: grants split across
+    lines, partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants
+    pass; other Deny forms and admission-webhook wildcards are refused. Escape: ''pragma: allowlist
+    broad-privilege'' on the same line, honoured at commit; at agent tool-use only when that exact line
+    is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
   version: 0.0.4
@@ -265,19 +269,20 @@ policies:
     rule is the advisory layer over them plus atomic-commit guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.6.5
+  version: 0.7.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 172
-  eval_executed: 162
-  description: 'trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis,
-    templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security"
-    opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak
-    crypto, trust-all TLS, disabled Spring Security, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle
-    findings. 129 rules in 16 packs, each allow|deny|ask in .chock/security.json; absent = deny.'
+  eval_cases: 177
+  eval_executed: 167
+  description: 'trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android), SQL/JPA/MyBatis,
+    templates, application.properties/.yml, web.xml, pom.xml, Gradle; "customize java security" opens
+    the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto,
+    trust-all TLS, Spring Security off, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle
+    findings. 129 rules, 16 packs, each allow|deny|ask in .chock/security.json; absent = deny (quality:
+    allow).'
 - id: injection-defense
   path: base/injection-defense
   version: 0.0.4
@@ -469,7 +474,7 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.7
+  version: 0.0.8
   artifact: hook
   enforcement: block
   mandatory: false
@@ -514,19 +519,20 @@ policies:
     tool_use gate.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.1.1
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 36
-  eval_executed: 36
+  eval_cases: 55
+  eval_executed: 55
   description: 'Stops an agent weakening the checks that review its work. Shell guard refuses writes
-    to .github/workflows/, .github/actions/ and .github/dependabot.yml|yaml: redirect, rm/mv/tee/sed
-    -i, cp into, git checkout/restore, Set-Content/Add-Content/Out-File. Reads and `chock sync` pass.
-    Best-effort, coarse. No marker bypass: a person edits from their own shell. Shell only: Edit/Write
-    to these paths is not checked (no gate). Backstop: server-side branch protection.'
+    to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
+    into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks
+    a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky,
+    more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs
+    ship no gate.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
   version: 0.2.1
@@ -632,20 +638,19 @@ policies:
     refused.'
 - id: block-test-skips
   path: base/block-test-skips
-  version: 0.0.4
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 26
-  eval_executed: 25
-  description: 'Blocks newly added test skips and focus markers (@pytest.mark.skip/skipif, @unittest.skip,
-    it/describe/test.skip or .only, xit/xdescribe, JUnit @Disabled/@Ignore, Go t.Skip) in test files.
-    Runs: commit, agent write, turn''s end. Only what the change adds is judged. Waiver: ''chock: allow
-    test-skip'' same line. Person''s commit: honoured. Agent (write, turn''s end, an agent''s commit:
-    CHOCK_AGENT_COMMIT, CLAUDECODE=1, AI_AGENT or agent_commit_env): only if already in HEAD; it asks
-    a person.'
+  eval_cases: 90
+  eval_executed: 89
+  description: 'Blocks newly added test skips, focus markers and runner options that hide tests: pytest/unittest
+    skips, non-strict xfail, importorskip; JS skip/only/todo/fixme, x/f prefixes; JUnit Disabled/Assume;
+    Go Skip, Short(); Rust ignore; RSpec, PHPUnit, C#, Swift skips; --deselect/-k not, collect_ignore,
+    jest testPathIgnorePatterns. Runs: commit, agent write, turn''s end; only additions judged. Friction:
+    computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
   version: 0.0.5

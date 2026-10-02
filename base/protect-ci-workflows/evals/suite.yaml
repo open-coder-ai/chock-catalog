@@ -264,3 +264,101 @@ suite:
     execute:
       command: "ls .github/workflows"
       expect: allow
+  - id: tc-037
+    category: trigger
+    prompt: "The agent edits a GitHub workflow with the Edit tool."
+    expect: "The write waits for a person: the gate asks."
+    execute: {event: tool_use, head_files: {".github/workflows/ci.yml": "on: push\n"}, writes: {".github/workflows/ci.yml": "on: workflow_dispatch\n"}, expect: ask}
+  - id: tc-038
+    category: trigger
+    prompt: "The agent writes a GitLab pipeline with the Write tool."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".gitlab-ci.yml": "test:\n  script: [make]\n"}, expect: ask}
+  - id: tc-039
+    category: trigger
+    prompt: "The agent edits the code owners file that routes review."
+    expect: "The gate asks."
+    execute: {event: tool_use, head_files: {".github/CODEOWNERS": "* @owner\n"}, writes: {".github/CODEOWNERS": "* @agent\n"}, expect: ask}
+  - id: tc-040
+    category: trigger
+    prompt: "The agent writes a husky pre-commit hook."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".husky/pre-commit": "exit 0\n"}, expect: ask}
+  - id: tc-041
+    category: negative_trigger
+    prompt: "The agent edits the docs readme."
+    expect: "The write is allowed; it is not CI configuration."
+    execute: {event: tool_use, writes: {"docs/README.md": "# docs\n"}, expect: allow}
+  - id: tc-042
+    category: trigger
+    prompt: "The agent rewrites the dependabot config, a composite action and a Jenkinsfile in one call."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".github/dependabot.yml": "version: 2\n", ".github/actions/setup/action.yml": "runs: {}\n", "Jenkinsfile": "pipeline {}\n"}, expect: ask}
+  - id: tc-043
+    category: trigger
+    prompt: "The agent writes CircleCI, Azure, Bitbucket, Buildkite and Drone pipelines."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".circleci/config.yml": "version: 2.1\n", "azure-pipelines.yml": "steps: []\n", "bitbucket-pipelines.yml": "pipelines: {}\n", ".buildkite/pipeline.yml": "steps: []\n", ".drone.yml": "kind: pipeline\n"}, expect: ask}
+  - id: tc-044
+    category: trigger
+    prompt: "The agent edits the pre-commit, lefthook, renovate and travis configs."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".pre-commit-config.yaml": "repos: []\n", "lefthook.yml": "pre-commit: {}\n", "renovate.json": "{}\n", ".travis.yml": "language: python\n"}, expect: ask}
+  - id: tc-045
+    category: adversarial
+    prompt: "The agent spells the workflow directory in mixed case."
+    expect: "The gate asks; the match ignores case, as macOS and Windows filesystems do."
+    execute: {event: tool_use, writes: {".GitHub/Workflows/ci.yml": "on: push\n"}, expect: ask}
+  - id: tc-046
+    category: adversarial
+    prompt: "The agent writes the workflow through a backslash path with a repeated and a dot segment."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".github\\.\\\\workflows\\ci.yml": "on: push\n"}, expect: ask}
+  - id: tc-047
+    category: adversarial
+    prompt: "The agent appends a trailing dot to the directory name, which Windows strips."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".github./workflows/ci.yml": "on: push\n"}, expect: ask}
+  - id: tc-048
+    category: adversarial
+    prompt: "The agent writes the GitLab pipeline through an NTFS stream suffix."
+    expect: "The gate asks."
+    execute: {event: tool_use, writes: {".gitlab-ci.yml::$DATA": "test: {}\n"}, expect: ask}
+  - id: tc-049
+    category: negative_trigger
+    prompt: "The agent edits files whose names only resemble CI config."
+    expect: "The write is allowed; only whole path segments match."
+    execute: {event: tool_use, writes: {"docs/workflows.md": "x\n", "src/actions/index.ts": "x\n", "my.github/workflows.txt": "x\n", "CODEOWNERS.md": "x\n", "transaction.yml": "x\n"}, expect: allow}
+  - id: tc-050
+    category: behavior
+    prompt: "At the turn's end a workflow file differs from HEAD."
+    expect: "Nobody can be asked at the turn's end, so the change is reported as a warning."
+    execute: {event: stop, head_files: {".github/workflows/ci.yml": "on: push\n"}, writes: {".github/workflows/ci.yml": "on: workflow_dispatch\n"}, expect: warn}
+  - id: tc-051
+    category: negative_trigger
+    prompt: "At the turn's end only an ordinary source file differs from HEAD."
+    expect: "The turn is allowed."
+    execute: {event: stop, head_files: {"src/app.py": "print()\n"}, writes: {"src/app.py": "print('ok')\n"}, expect: allow}
+  - id: tc-052
+    category: negative_trigger
+    prompt: "A person stages a workflow edit and commits it from their own shell."
+    expect: "The tool_use gate never runs at commit, so the commit passes."
+    execute:
+      files:
+        .github/workflows/ci.yml: "on: push\n"
+      expect: allow
+  - id: tc-053
+    category: adversarial
+    prompt: "The workflow already carries a waiver-shaped line in HEAD; the agent rewrites it."
+    expect: "The gate still asks: it has no waiver, the path alone decides."
+    execute: {event: tool_use, head_files: {".github/workflows/ci.yml": "# chock: allow protect-ci-workflows\non: push\n"}, writes: {".github/workflows/ci.yml": "# chock: allow protect-ci-workflows\non: workflow_dispatch\n"}, expect: ask}
+  - id: tc-054
+    category: adversarial
+    prompt: "The agent names the workflow directory through an NTFS directory-stream suffix."
+    expect: "The gate asks; a stream suffix on any segment is matched."
+    execute: {event: tool_use, writes: {".github/workflows::$INDEX_ALLOCATION/ci.yml": "on: push\n"}, expect: ask}
+  - id: tc-055
+    category: negative_trigger
+    prompt: "The agent edits a source file whose name starts with the Jenkins pipeline name."
+    expect: "The write is allowed; only a Jenkinsfile and its variants match."
+    execute: {event: tool_use, writes: {"src/jenkinsfile_parser.py": "x = 1\n", "docs/Jenkinsfile-notes.txt": "x\n"}, expect: allow}

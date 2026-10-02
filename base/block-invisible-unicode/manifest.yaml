@@ -88,6 +88,10 @@ compliance:
   - control: ASI01
     coverage: partial
     note: "blocks the hidden-character slice of goal-hijack payloads a diff can show; semantic injection defense remains advisory (injection-defense, owasp-asi01-agent-goal-hijack)"
+  owasp_llm_2025:
+  - control: LLM01
+    coverage: partial
+    note: "Prompt Injection: blocks the hidden-character carriers of instructions (bidi, tag, zero-width and other invisible classes in the description); homoglyphs and plain-text injection are not judged"
 
 provenance:
   author: "chock-core"
@@ -127,6 +131,10 @@ changelog:
   changes:
   - "Rename (display name only, id unchanged): 'Block Invisible Unicode' becomes 'Block Bidi and Tag Unicode', since only bidi controls (U+202A-202E, U+2066-2069) and tag characters (U+E0001-E007F) are matched."
   - "Disclosure, no behaviour change: the description lists what is not matched -- ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ and LRM/RLM. The gate message names what it matches and carries the standard waiver sentence. The description names where each check runs and fits the 500-char budget."
+- version: 0.0.6
+  date: '2026-10-02'
+  changes:
+  - "Metadata, no behaviour change: the OWASP LLM01 anchor named in the 0.0.1 entry is now machine-readable, compliance.owasp_llm_2025: LLM01 (partial), checked by tools/check_registry.py against the OWASP Top 10 for LLM Applications 2025."
 - version: 0.1.0
   date: '2026-10-02'
   changes:
