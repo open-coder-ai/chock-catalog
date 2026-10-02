@@ -197,8 +197,10 @@ def test_a_glob_or_unknown_text_becomes_a_regex(pattern: str, loose: bool, text:
 
 def test_the_removers_match_the_shared_parser() -> None:
     shared = guardkit.load_shellparse(POLICY).writes
-    assert frozenset(shared._ALL_OPERANDS) <= words.REMOVERS | {"mv"}
-    assert frozenset((*shared._DEST_LAST, "mv")) == words.DEST
+    assert frozenset(shared._ALL_OPERANDS) == (words.REMOVERS - words.EXTRA_REMOVERS) | {"mv"}
+    assert frozenset((*shared._DEST_LAST, "mv")) == words.DEST - words.WINDOWS
+    assert not words.EXTRA_REMOVERS & frozenset(shared._ALL_OPERANDS)
+    assert not words.WINDOWS & frozenset((*shared._DEST_LAST, "mv"))
 
 
 def test_powershell_text_is_read_with_backslashes_as_separators(monkeypatch: pytest.MonkeyPatch) -> None:

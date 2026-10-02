@@ -9,17 +9,34 @@ from fnmatch import fnmatchcase
 from itertools import pairwise, takewhile
 from typing import Any
 
-from chock_shellparse import flags_of, git_parts
-from pathmatch import DYNAMIC, literals, values
+from chock_shellparse import flags_of
+from chock_shellparse.parse import _SHELLS, _WRAPPERS
+from pathmatch import DYNAMIC, literals
+from pathwords import is_interpreter
+from pathwrap import WRAP
 
 _SHORT = 2
 _RECURSIVE = frozenset(("-r", "-R", "-a", "--recursive", "--archive"))
-_CODE = re.compile(r"-[A-Za-z]*[ceEpi]|--(?:eval|print|in-place)")
+_CODE = re.compile(r"-[A-Za-z]*[ceEpir]|--(?:eval|print|in-place)|eval")
 _EXEC = frozenset(("-exec", "-execdir", "-ok", "-okdir"))
 _FPRINT = frozenset(("-fprint", "-fprint0", "-fprintf", "-fls"))
 _NO_FILTER = frozenset(("!", "-not", "-o", "-or", "-regex", "-iregex"))
 _NAMED = {"-name": False, "-iname": False, "-path": True, "-ipath": True, "-wholename": True, "-iwholename": True}
 _STRING = re.compile(r"""['"]([^'"\s]+)['"]""")
+# Programs `find -exec` may run on a protected file without changing it; any other program there is judged as a writer.
+READERS = frozenset(
+    (
+        *("cat", "grep", "egrep", "fgrep", "rg", "ls", "file", "stat", "head", "tail", "wc", "diff", "cmp"),
+        *("md5sum", "sha1sum", "sha224sum", "sha256sum", "sha384sum", "sha512sum", "echo", "printf", "test", "["),
+        *("realpath", "readlink", "basename", "dirname", "du", "true", "false"),
+    )
+)
+_AWK_RUN = (
+    re.compile(r'system\(\s*"((?:[^"\\]|\\.)*)"'),
+    re.compile(r'\|\s*"((?:[^"\\]|\\.)*)"'),
+    re.compile(r'"((?:[^"\\]|\\.)*)"\s*\|\s*getline'),
+)
+_SED_RUN = re.compile(r"(?:^|[;{}\n])\s*(?:[\d$]+(?:,[\d$]+)?|/[^/]*/)?!?\s*e\s+([^;}\n]+)")
 # Writers that take an output file or directory by option: name -> (options, run only when extracting).
 OUTPUT = {
     "sort": ("-o --output", False),
@@ -47,15 +64,36 @@ def _into(name: str, args: list[str]) -> tuple[str, list[str]]:
     return "", args
 
 
+def _lands_in(w: Any, target: str, sources: list[str], env: dict[str, str]) -> bool:
+    """Whether a file copied into the directory `target` takes a protected name (`cp /tmp/x/CLAUDE.md src/`)."""
+    names = [posixpath.basename(s.rstrip("/")) for s in sources]
+    return any(n not in ("", ".", "..") and w.reaches(posixpath.join(target, n), env) for n in names)
+
+
+def _into_dir(w: Any, name: str, args: tuple[str, str, list[str]], env: dict[str, str]) -> bool:
+    """Whether the sources are removed (mv), linked from (ln) or land in a directory under a protected name."""
+    target, into, sources = args
+    if name == "mv" and any(w.reaches(s, env, parents=True, whole=True) for s in sources):
+        return True
+    if name == "ln" and any(w.reaches(s, env, parents=True) for s in sources):
+        return True
+    dirlike = into or target.endswith("/") or w.is_dir(target, env)
+    return (
+        bool(target)
+        and name != "rsync"
+        and not w.outside(target, env)
+        and dirlike
+        and _lands_in(w, target, sources, env)
+    )
+
+
 def dest(w: Any, name: str, args: list[str], env: dict[str, str]) -> bool:
     """cp, mv, ln, install, rsync: what is written is the destination; mv also removes its sources."""
     into, rest = _into(name, args)
     operands = [a for a in rest if not a.startswith("-")]
     sources = operands if into else operands[:-1]
     target = into or (operands[-1] if operands else "")
-    if name == "mv" and any(w.reaches(s, env, parents=True, whole=True) for s in sources):
-        return True
-    if name == "ln" and any(w.reaches(s, env, parents=True) for s in sources):
+    if _into_dir(w, name, (target, into, sources), env):
         return True
     if not target or not w.reaches(target, env, parents=True, root=True):
         return False
@@ -69,22 +107,12 @@ def dest(w: Any, name: str, args: list[str], env: dict[str, str]) -> bool:
     return any(n in ("", ".", "..") or w.reaches(posixpath.join(target, n), env, parents=True) for n in names)
 
 
-def git(w: Any, args: list[str], env: dict[str, str]) -> bool:
-    """checkout, restore, rm, mv overwrite or delete worktree files; `restore` and `rm` always take paths."""
-    if any("core.hookspath" in a.lower() for a in args) and not {"--get", "--list", "-l"} & set(args):
-        return True
-    sub, _, rest = git_parts(args)
-    if sub not in ("checkout", "restore", "rm", "mv") or ("--staged" in rest and sub == "restore"):
-        return False
-    paths = rest[rest.index("--") + 1 :] if "--" in rest else []
-    static = [t for t in values(rest) if sub != "checkout" or t in paths or not DYNAMIC.search(t)]
-    return any(w.reaches(t, env, parents=True, whole=sub in ("rm", "mv")) for t in static)
-
-
 def sed(w: Any, args: list[str], env: dict[str, str]) -> bool:
-    """`sed -i` (and `yq -i`) edits its files; a `w file` command or `s///w file` flag writes one."""
-    wrote = (m[1] for a in args for m in re.finditer(r"(?:^|\W)w\s*([^\s;}]+)", a))
+    """`sed -i` (and `yq -i`) edits its files; a `w file` command or `s///w file` flag writes one; `e cmd` runs one."""
+    wrote = (m[1] for a in args for m in re.finditer(r"(?:^|\W)[wW]\s*([^\s;}]+)", a))
     if any(not DYNAMIC.search(t) and w.reaches(t, env) for t in wrote):
+        return True
+    if any(w.sub(m[1]) for a in args for m in _SED_RUN.finditer(a)):  # the `e command` command runs one
         return True
     if not any(re.fullmatch(r"-[A-Za-z]*i.*|--in-?place.*", a) for a in args):
         return False
@@ -95,11 +123,19 @@ def sed(w: Any, args: list[str], env: dict[str, str]) -> bool:
 
 
 def awk(w: Any, args: list[str], env: dict[str, str]) -> bool:
-    """A program that prints into a quoted file name, or `-i inplace` over its files."""
+    """A program that prints into a quoted file name or runs a quoted command, or `-i inplace` over its files."""
     named = [m for a in args for m in re.findall(r'>>?\s*"([^"\n]+)"', a)]
     operands = [a for a in args if not a.startswith("-") and a != "inplace"]
     inplace = "inplace" in args and "-i" in args
-    return any(w.reaches(t, env) for t in named + (operands[1:] if inplace else []))
+    if any(w.reaches(t, env) for t in named + (operands[1:] if inplace else [])):
+        return True
+    if any(w.sub(m) for a in args for rx in _AWK_RUN for m in rx.findall(a)):
+        return True
+    # system() of a command the guard cannot read: any protected path named in the program counts.
+    words = re.findall(r"[^\s\"'();|<>&,]+", " ".join(args))
+    return any("system(" in a for a in args) and any(
+        w.reaches(t, env, parents=True) for t in words if not DYNAMIC.search(t)
+    )
 
 
 def interpreter(w: Any, args: list[str], env: dict[str, str], scripts: list[str]) -> bool:
@@ -165,8 +201,19 @@ def find(w: Any, args: list[str], env: dict[str, str]) -> bool:
     if "-delete" in preds and found:
         return True
     for body in bodies:
+        program = posixpath.basename(body[0]).lower() if body else ""
+        if program in READERS:
+            continue
         alone = not any("{}" in a for a in body)
         texts = [shlex.join(body)] if alone else [shlex.join(a.replace("{}", c) for a in body) for c in found]
-        if any(w.sub(text) for text in texts):
+        if any(w.sub(text) for text in texts) or (found and not alone and not _known(w, program)):
             return True
     return False
+
+
+def _known(w: Any, program: str) -> bool:
+    """Whether a program run by `find -exec` is one the guard judges by name (a writer, shell or wrapper); an interpreter is not."""
+    return "$" not in program and (
+        (program in w.handlers or program in _SHELLS or program in _WRAPPERS or program in WRAP)
+        and not is_interpreter(program)
+    )

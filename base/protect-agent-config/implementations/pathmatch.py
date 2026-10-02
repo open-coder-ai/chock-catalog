@@ -6,6 +6,8 @@ import re
 from functools import cache
 
 DYNAMIC = re.compile(r"[*?\[$]")
+# What `$(mktemp ...)` becomes: a fresh, randomly named path, which cannot be a protected one.
+FRESH = "$__mktemp__"
 _VARIABLE = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
 _PIECE = re.compile(r"\$(?:\{[^}]*\}|\w+|[@*#?!$-])")
 
@@ -15,34 +17,81 @@ def expand(token: str, env: dict[str, str]) -> str:
 
     def value(found: re.Match[str]) -> str:
         known = env.get(found[1] or found[2])
-        return found[0] if known is None or DYNAMIC.search(known) else known
+        fresh = known is not None and known.startswith(FRESH) and not DYNAMIC.search(known[len(FRESH) :])
+        return found[0] if known is None or (DYNAMIC.search(known) and not fresh) else known
 
     return _VARIABLE.sub(value, token)
 
 
+_POSIX = {
+    "alpha": "a-z",
+    "upper": "a-z",  # the path is lowercased before it is matched, so upper reads as lower
+    "lower": "a-z",
+    "digit": "0-9",
+    "alnum": "a-z0-9",
+    "xdigit": "0-9a-f",
+    "space": r"\s",
+    "blank": r" \t",
+    "punct": r"!-/:-@\[-`{-~",
+}
+_NAMED = re.compile(r"\[:(\w+):\]")
+
+
+def _close(path: str, at: int) -> int:
+    """The index of the `]` that closes the bracket expression opened at `at`, or -1."""
+    i = at + 1 + (path[at + 1 : at + 2] in ("!", "^"))
+    i += path[i : i + 1] == "]"
+    while i < len(path):
+        named = _NAMED.match(path, i) if path.startswith("[:", i) else None
+        if named:
+            i = named.end()
+        elif path[i] == "]":
+            return i
+        else:
+            i += 1
+    return -1
+
+
 def _bracket(body: str) -> str:
+    """One bracket expression as a regex class; a class this does not know matches any character."""
     negated = body[:1] in ("!", "^")
-    return (
-        "[" + ("^" if negated else "") + (body[1:] if negated else body).replace("\\", "\\\\").replace("[", "\\[") + "]"
-    )
+    out = []
+    for piece in re.split(r"(\[:\w+:\])", body[1:] if negated else body):
+        named = _NAMED.fullmatch(piece)
+        if named and named[1] not in _POSIX:
+            return "[^/]"
+        out.append(_POSIX[named[1]] if named else piece.replace("\\", "\\\\").replace("[", "\\["))
+    return "[" + ("^" if negated else "") + "".join(out) + "]"
+
+
+def _dot(cls: str) -> bool:
+    """Whether a bracket class can match a dot; one that does not compile is read as able to."""
+    try:
+        return bool(re.fullmatch(cls, "."))
+    except re.error:
+        return True
 
 
 @cache
 def pattern(path: str, *, loose: bool) -> re.Pattern[str]:
-    """A glob (`*` `?` `[..]`, never matching `/` or a leading dot) and unknown variable text (anything) as a regex."""
+    """A glob (`*` `?` `[..]`, never matching `/` or a leading dot) and unknown variable text (anything) as a regex.
+
+    A bracket expression that can match `.` (`[.]`, `[!a]`, `[[:punct:]]`) may match a leading dot.
+    """
     out, at = ["(?:.*/)?" if loose else ""], 0
     while at < len(path):
         char = path[at]
-        if char in "*?[" and (at == 0 or path[at - 1] == "/"):
-            out.append(r"(?!\.)")
         piece = _PIECE.match(path, at) if char == "$" else None
-        close = path.find("]", at + 2) if char == "[" else -1
+        close = _close(path, at) if char == "[" else -1
+        cls = _bracket(path[at + 1 : close]) if close > 0 else ""
+        if char in "*?[" and (at == 0 or path[at - 1] == "/") and not (cls and _dot(cls)):
+            out.append(r"(?!\.)")
         if piece:
             glued = (at > 0 and path[at - 1] != "/") or (piece.end() < len(path) and path[piece.end()] != "/")
             out.append("[^/]*" if glued else ".*")
             at = piece.end()
         elif close > 0:
-            out.append(_bracket(path[at + 1 : close]))
+            out.append(cls)
             at = close + 1
         else:
             out.append({"*": "[^/]*", "?": "[^/]"}.get(char) or re.escape(char))

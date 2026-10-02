@@ -12,32 +12,20 @@ CD = frozenset(("cd", "chdir", "pushd", "set-location", "sl", "push-location"))
 PUSH = frozenset(("pushd", "push-location"))
 POP = frozenset(("popd", "pop-location"))
 DELETERS = frozenset(("rm", "rmdir", "unlink", "shred", "remove-item", "ri", "del", "erase", "rd"))
+# Writers the guard names beyond the shared parser's remover list (a test pins the rest to it): editors, and tools it lacks.
+EXTRA_REMOVERS = frozenset(("vi", "vim", "nvim", "nano", "emacs", "sponge", "chattr", "rename"))
 REMOVERS = frozenset(
     (
-        *(
-            "tee",
-            "chmod",
-            "chown",
-            "truncate",
-            "patch",
-            "ed",
-            "ex",
-            "vi",
-            "vim",
-            "nvim",
-            "nano",
-            "emacs",
-            "touch",
-            "sponge",
-            "chattr",
-            *DELETERS,
-        ),
+        *("tee", "chmod", "chown", "truncate", "patch", "ed", "ex", "touch", *DELETERS),
         *("set-content", "add-content", "out-file", "new-item", "clear-content", "move-item", "set-item"),
-        *("rename-item", "tee-object", "sc", "ac", "ni", "mi", "rni", "ren"),
+        *("rename-item", "tee-object", "sc", "ac", "ni", "mi", "rni", "ren", *EXTRA_REMOVERS),
     )
 )
-DEST = frozenset(("cp", "install", "ln", "mv", "rsync", "scp", "copy-item", "copy", "cpi"))
+# Windows commands the shared parser does not know: move, xcopy and robocopy write a destination (pathwriters.windows).
+WINDOWS = frozenset(("move", "xcopy", "robocopy"))
+DEST = frozenset(("cp", "install", "ln", "mv", "rsync", "scp", "copy-item", "copy", "cpi", *WINDOWS))
 INTERPRETERS = ("python", "perl", "ruby", "node", "php")
+CODERS = ("lua", "luajit", "deno", "bun")
 # Names that can sit in a protected directory whose other contents are unknown: the engine launcher, git hooks, hook files.
 CHILDREN = frozenset(
     (
@@ -58,6 +46,11 @@ def ancestors(path: str) -> Iterator[str]:
         if parent == path:
             return
         path = parent
+
+
+def is_interpreter(name: str) -> bool:
+    """A language runtime that takes code on its command line."""
+    return name.startswith(INTERPRETERS) or name in CODERS
 
 
 def writes(name: str, redirects: list[str]) -> bool:

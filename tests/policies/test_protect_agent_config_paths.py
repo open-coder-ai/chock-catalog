@@ -31,18 +31,27 @@ def _target(entry: str) -> str:
 TARGETS = sorted({_target(e) for e in guard.PROTECTED})
 
 
+def _leaf(target: str) -> str:
+    """The protected name an unknown `$D` can stand in front of: a file's name, or the folder that holds the target."""
+    folder, name = posixpath.split(target)
+    return posixpath.basename(folder) if name == "x" else name
+
+
 def _forms(target: str) -> list[str]:
     folder, name = posixpath.split(target)
+    leaf = _leaf(target)
     forms = [
         f"echo x > $(echo {target})",
         f"echo x > `echo {target}`",
         f"echo x > x/../{target}",
         f"echo x > {target.replace('/', '/x/../', 1)}",
+        f"echo x > ${{D}}/{leaf}",
+        f"echo x > $D/{leaf}",
         f"cd src && echo x > ../{target}",
         f"cd src; tee ../{target}",
+        f"cd $UNKNOWN; echo x > {leaf}",
     ]
     if name != "x":  # a file inside a hooks folder is judged by its folder: a substitution cannot name it
-        forms.append(f"cd $UNKNOWN; echo x > {name}")
         forms.append(f"D=$(echo {folder or '.'}); echo x > ${{D}}/{name}")
     if folder:
         forms += [

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import codecs
 import itertools
 import os
 import posixpath
@@ -11,24 +10,28 @@ from collections.abc import Callable
 
 from chock_shellparse import flags_of
 from chock_shellparse.parse import _SHELLS, _WINPATH, Cmd, _parse, _Scan, is_powershell
-from pathmatch import DYNAMIC, expand, pattern, values
+from pathgit import git
+from pathmatch import DYNAMIC, FRESH, expand, pattern, values
+from pathscript import Scripts
 from pathtext import braces, scan
+from pathwin import windows
 from pathwords import (
     CD,
     CHILDREN,
     DELETERS,
     DEST,
     GUARD_DIRS,
-    INTERPRETERS,
     POP,
-    PRODUCERS,
     PUSH,
     REMOVERS,
+    WINDOWS,
     ancestors,
     bound,
+    is_interpreter,
     writes,
 )
-from pathwriters import OUTPUT, awk, dest, find, git, interpreter, output, sed
+from pathwrap import WRAP, env_scripts, nested
+from pathwriters import OUTPUT, awk, dest, find, output, sed
 
 Normalise = Callable[[str], str]
 _LEAD = re.compile(r"\$(?:\{(\w+)\}|(\w+))/(?=.)")
@@ -36,7 +39,7 @@ _ONLY = re.compile(r"\$(?:\{[^}]*\}|\w+)")
 _DEPTH = 3
 
 
-class _Walk:
+class _Walk(Scripts):
     """One command line, run in order against a virtual working directory."""
 
     def __init__(
@@ -49,7 +52,8 @@ class _Walk:
         ps: bool,
     ) -> None:
         self.hit, self.normal, self.ps = hit, normalise, ps
-        self.root = self.normal(next((d for d in ancestors(start) if os.path.exists(os.path.join(d, ".git"))), start))
+        self.base = next((d for d in ancestors(start) if os.path.exists(os.path.join(d, ".git"))), start)
+        self.root = self.normal(self.base)
         self.stack: list[str | None] = []
         self.docs: dict[str, str] = {}
         self.unsure: set[str] = set()
@@ -73,7 +77,8 @@ class _Walk:
         self.cwd = self._within(self.normal(start))
         self.handlers: dict[str, Callable[[Cmd], bool]] = {
             **dict.fromkeys(REMOVERS, self._remove),
-            **dict.fromkeys(DEST, lambda c: dest(self, c.name, c.args, c.env)),
+            **dict.fromkeys(DEST - WINDOWS, lambda c: dest(self, c.name, c.args, c.env)),
+            **dict.fromkeys(WINDOWS, lambda c: windows(self, c.name, c.args, c.env)),
             **dict.fromkeys(OUTPUT, lambda c: output(self, c.name, c.args, c.env)),
             **dict.fromkeys(("awk", "gawk", "mawk", "nawk"), lambda c: awk(self, c.args, c.env)),
             **dict.fromkeys(("sed", "yq"), lambda c: sed(self, c.args, c.env)),
@@ -93,6 +98,10 @@ class _Walk:
         word = expand(token, env).replace("\\", "/")
         if word == "~" or word.startswith("~/"):
             word = os.path.expanduser(word).replace("\\", "/")
+        if word.startswith(
+            FRESH
+        ):  # a fresh path from mktemp: below it is safe, but `..` leaves it for somewhere unknown
+            return (FRESH if ".." not in word.split("/") else "$__subst__"), False
         if word.startswith("$"):
             return self.normal(posixpath.normpath(word)), False
         if word.startswith("/"):
@@ -138,6 +147,8 @@ class _Walk:
 
     def _reach(self, token: str, env: dict[str, str], *, parents: bool, above: list[str] | None, exact: bool) -> bool:
         path, loose = self._path(token, env)
+        if path == FRESH:
+            return False
         if not (loose or DYNAMIC.search(path)):
             return (
                 self.hit(path)
@@ -155,7 +166,8 @@ class _Walk:
             and (lone[1] or lone[2]) not in {n.lower() for n in (*env, "__subst__", *self.unsure)}
         ):
             # An unknown start can be the repository folder, so what follows it is a path from there.
-            return self._below(path[lone.end() :], files, everything, ("",), loose=False)
+            # ... which may be a folder on the way, so a name that can sit in a protected folder counts too.
+            return self._below(path[lone.end() :], (*files, *self.names), (*everything, *self.names), ("",), loose=True)
         lead = ("", "/") if self.cwd in (None, ".") else ("", "/", f"{self.cwd}/")
         return self._below(path, files, everything, lead, loose=loose)
 
@@ -182,13 +194,6 @@ class _Walk:
             below = [p for p in pool if p.startswith(f"{path}/")]
         return [p if self.cwd in (None, ".") else posixpath.relpath(p, self.cwd) for p in below]
 
-    def sub(self, text: str) -> bool:
-        """Whether a script that runs here, in the same directory, is refused."""
-        saved = self.cwd, list(self.stack)
-        refused = self.script(text, self.depth + 1)
-        self.cwd, self.stack = saved
-        return refused
-
     def _chdir(self, cmd_name: str, args: list[str], env: dict[str, str]) -> None:
         if cmd_name in PUSH:
             self.stack.append(self.cwd)
@@ -214,10 +219,6 @@ class _Walk:
     def _uniq(self, cmd: Cmd) -> bool:
         return any(self.reaches(t, cmd.env) for t in values(cmd.args)[1:2])
 
-    def _code(self, cmd: Cmd) -> bool:
-        scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self._produced(self.prev)
-        return interpreter(self, cmd.args, cmd.env, scripts)
-
     def command(self, cmd: Cmd) -> bool:
         """Whether one simple command may write, delete, move or link a protected path."""
         name, args, env = cmd.name, cmd.args, cmd.env
@@ -226,32 +227,20 @@ class _Walk:
         if "$" in name:
             self.blind = True
             return self._unknown(args, env)
-        handler = self.handlers.get(name) or (self._code if name.startswith(INTERPRETERS) else None)
+        if name in WRAP:
+            return self.wrapped(cmd)
+        handler = self.handlers.get(name) or (self.code if is_interpreter(name) else None)
         return handler is not None and handler(cmd)
 
-    def _produced(self, prev: Cmd | None) -> list[str]:
-        """The script text a command writes to the shell after it, when it is plain text."""
-        if prev is None or prev.name not in PRODUCERS:
-            return []
-        if prev.name == "cat":
-            return [self.docs[r] for r in prev.reads if r in self.docs]
-        words = [a for a in prev.args if not re.fullmatch(r"-[neE]+", a)]
-        text = words[0] if prev.name == "printf" and words else " ".join(words)
-        return [codecs.decode(text, "unicode_escape", "replace") if prev.name == "printf" else text]
-
-    def _fed(self, cmd: Cmd, prev: Cmd | None) -> bool:
-        """A shell that reads its script from standard input: here-string, here-document or the command before it."""
-        scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self._produced(prev)
-        self.blind |= not scripts
-        return any(self.sub(text) for text in scripts)
-
     def step(self, cmd: Cmd, prev: Cmd | None, *, unparsed: bool) -> bool:
+        if nested(cmd):  # a script the reader did not unwrap: it cannot be judged, so it is refused
+            return True
         if cmd.name in CD:
             self._chdir(cmd.name, cmd.args, cmd.env)
         elif cmd.name in POP:
             self.cwd = self.stack.pop() if self.stack else None
         elif cmd.name in _SHELLS and ("-s" in cmd.args or not values(cmd.args)):
-            return self._fed(cmd, prev)
+            return self.fed(cmd, prev)
         else:
             return self.command(cmd) or (unparsed and writes(cmd.name, cmd.writes))
         return False
@@ -259,6 +248,8 @@ class _Walk:
     def run(self, text: str, *, ps: bool) -> bool:
         """Walk the commands of one script in order, tracking cd, pushd and popd."""
         unparsed, prev = _Scan(text).run() is None, None
+        if any(self.loose(payload) for payload in env_scripts(text)):
+            return True
         for cmd in _parse(text, {}, ps=ps, depth=0)[0]:
             self.prev = prev
             self.unsure.update(bound(cmd))
@@ -267,6 +258,11 @@ class _Walk:
             self.wrote |= writes(cmd.name, cmd.writes)
             prev = cmd
         return False
+
+    def _may_write(self, text: str) -> bool:
+        """Whether a script holds a redirection or a command the guard judges by name."""
+        cmds = _parse(text, {}, ps=self.ps, depth=0)[0]
+        return any(writes(c.name, c.writes) or c.name in self.handlers or is_interpreter(c.name) for c in cmds)
 
     def script(self, text: str, depth: int) -> bool:
         """Whether a script, and each substitution in it, writes a protected path or may."""
@@ -283,6 +279,8 @@ class _Walk:
             self.cwd, self.stack = cwd, list(held)
             if depth < _DEPTH and self.script(body, depth + 1):
                 return True
+            if depth >= _DEPTH and self._may_write(body):
+                return True  # too deep to judge: refused when it holds anything that could change a file
         self.cwd, self.stack = after
         self.depth = depth
         return False

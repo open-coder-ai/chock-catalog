@@ -81,7 +81,10 @@ def test_a_brace_list_is_expanded_into_its_words() -> None:
     assert text.braces("{}") == ["{}"]
     assert text.braces("{a,b") == ["{a,b"]
     assert text.braces("${X}{a,b}") == ["${X}a", "${X}b"]
-    assert len(text.braces("{1..9999}")) <= 128
+    assert len(text.braces("{1..9999}")) == 129
+    assert text.braces("{1..9999}")[-1] == text.SUBST  # what a long range leaves out is read as unknown text
+    assert text.braces("{-500..5}")[-1] == text.SUBST
+    assert text.braces("{a,b}{1..3}") == ["a1", "a2", "a3", "b1", "b2", "b3"]
 
 
 def test_ansi_c_quoting_is_decoded() -> None:

@@ -12,6 +12,7 @@ import sys
 
 from chock_shellparse import commands, writes_files
 from pathguard import refuses
+from pathwrap import too_deep
 
 PROTECTED = (
     "AGENTS.md",
@@ -52,10 +53,13 @@ PROTECTED = (
     ".chock/agentic-security.json",
     ".chock/state",  # shell only: the engine's own session log there would fail the Edit/Write gate's turn's-end walk
     ".git/hooks",
+    ".git/config",  # core.hooksPath, core.fsmonitor and aliases there run code the way a hook does
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
 GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
+
+DEEP = "shell command nested too deep to check (a script inside a script, five or more levels) -- refused because it cannot be judged. Run the inner commands one at a time, or ask the person."
 
 
 def normalise(path: str) -> str:
@@ -76,6 +80,8 @@ def hit(path: str) -> bool:
 
 def check(raw: str) -> str | None:
     """The reason a command edits protected files, or None."""
+    if too_deep(raw):
+        return DEEP
     if any(writes_files(cmd, hit) for cmd in commands(raw)) or refuses(raw, PROTECTED, hit, normalise):
         return REASON
     return None

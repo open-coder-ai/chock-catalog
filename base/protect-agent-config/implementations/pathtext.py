@@ -6,6 +6,7 @@ import re
 from typing import NamedTuple
 
 from chock_shellparse.parse import _QUOTED, _unquote
+from pathmatch import FRESH
 
 SUBST = "$__subst__"
 _WORD = re.compile(f"{_QUOTED}+", re.DOTALL)
@@ -17,6 +18,14 @@ _ESCAPE = re.compile(r"\\(x[0-9a-fA-F]{1,2}|[0-7]{1,3}|u[0-9a-fA-F]{1,4}|U[0-9a-
 _SIMPLE = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b", "f": "\f", "v": "\v"}
 _RANGE = re.compile(r"(-?\d+)\.\.(-?\d+)|([A-Za-z])\.\.([A-Za-z])")
 _LIMIT = 128
+# `mktemp` with only these options, and a template (if any) under $TMPDIR, names a fresh path.
+_MKTEMP = re.compile(
+    r"\s*mktemp(?:\s+(?:-[duqt]+|--(?:directory|dry-run|quiet|tmpdir|suffix=[\w.-]*)))*"
+    r"(?:\s+\$\{?TMPDIR\}?/[\w.-]*X{3,}[\w.-]*)?\s*"
+)
+_MKTEMP_T = re.compile(
+    r"\s*mktemp\s+-[duq]*t[duq]*(?:\s+-[duq]+)*\s+[\w.-]*X{3,}[\w.-]*\s*"
+)  # -t: a name below $TMPDIR
 
 
 class Scanned(NamedTuple):
@@ -25,6 +34,11 @@ class Scanned(NamedTuple):
     outer: str
     bodies: list[str]
     docs: dict[str, str]
+
+
+def _holder(body: str) -> str:
+    """The word a substitution is replaced by: a fresh path for a plain mktemp, otherwise an unknown."""
+    return FRESH if _MKTEMP.fullmatch(body) or _MKTEMP_T.fullmatch(body) else SUBST
 
 
 def _matching(text: str, start: int) -> int:
@@ -98,10 +112,10 @@ class _Text:
         elif self.starts("$("):
             end = _matching(self.text, self.at + 1)
             self.bodies.append(self.text[self.at + 2 : end].removesuffix(")"))
-            self.emit(SUBST, end - self.at)
+            self.emit(_holder(self.bodies[-1]), end - self.at)
         elif char == "`" and (found := _BACKTICKS.match(self.text, self.at)):
             self.bodies.append(found[1])
-            self.emit(SUBST, found.end() - self.at)
+            self.emit(_holder(found[1]), found.end() - self.at)
         elif not self.quote:
             self.bare(char)
         else:
@@ -203,8 +217,10 @@ def _alternatives(inner: str) -> list[str]:
     if ranged[1] is None:
         low, high = sorted((ord(ranged[3]), ord(ranged[4])))
         return [chr(c) for c in range(low, high + 1)]
-    low, high = int(ranged[1]), int(ranged[2])
-    return [str(n) for n in range(min(low, high), min(max(low, high), min(low, high) + _LIMIT) + 1)]
+    low, high = sorted((int(ranged[1]), int(ranged[2])))
+    cut = min(high, low + _LIMIT)
+    # What is left out of a long range is read as unknown text, never as nothing.
+    return [*map(str, range(low, cut + 1)), *([SUBST] if cut < high else [])]
 
 
 def braces(word: str) -> list[str]:
@@ -220,5 +236,5 @@ def braces(word: str) -> list[str]:
         if depth or not (items := _alternatives(word[start + 1 : end])):
             continue
         found = [piece for item in items for piece in braces(word[:start] + item + word[end + 1 :])]
-        return found[:_LIMIT]
+        return [*found[:_LIMIT], *([SUBST] if len(found) > _LIMIT else [])]
     return [word]

@@ -179,6 +179,7 @@ REFUSED = [
     "git checkout -- $FILE",
     "git restore $FILE",
     "git rm -r .",
+    "echo x > $OUT/mcp.json",  # an unknown start may be a folder that holds the protected name
 ]
 
 ALLOWED = [
@@ -187,7 +188,6 @@ ALLOWED = [
     "echo x > $(pwd)/out.txt",
     "tee $(pwd)/build.log",
     "cp a $(pwd)/b",
-    "echo x > $OUT/mcp.json",
     "rm -rf $R/build",
     "rm -rf $TMPDIR/x",
     "T=$(mktemp -d); cp a $T/b; rm -rf $T/c",
