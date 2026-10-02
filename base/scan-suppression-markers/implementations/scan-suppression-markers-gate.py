@@ -15,13 +15,13 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from suppression_config import config_findings, normalized  # noqa: E402 -- after the path and cache setup
-from suppression_markers import marker_rule  # noqa: E402
+from suppression_markers import eslint_block_lines, lines_of, marker_rule  # noqa: E402
 
 ALLOW, ASK, UNREADABLE = 0, 3, 2
 
 #: Prose and chock's own managed files: a marker there silences no scanner.
 PROSE = re.compile(
-    r"(^|/)(CHANGELOG|CHANGES|HISTORY)[^/]*$|\.(md|mdx|markdown|rst|txt|adoc)$"
+    r"(^|/)(CHANGELOG|CHANGES|HISTORY)(\.(md|rst|txt|adoc))?$|\.(md|mdx|markdown|rst|txt|adoc)$"
     r"|(^|/)\.agents/policies/|(^|/)\.chock/|(^|/)evals/suite\.ya?ml$",
     re.IGNORECASE,
 )
@@ -47,7 +47,7 @@ def file_findings(path: str, text: str) -> list[dict]:
     """Every suppression marker, ignore entry and soft-failed scan in one file, keyed without line numbers."""
     if PROSE.search(path):
         return []
-    lines = text.splitlines()
+    lines = lines_of(text)
     found: dict[int, dict] = {}
     for rule, number, detail in config_findings(path, text):
         found.setdefault(number, _finding(rule, path, number, detail, lines[number - 1]))
@@ -55,6 +55,10 @@ def file_findings(path: str, text: str) -> list[dict]:
         rule = None if number in found else marker_rule(line)
         if rule:
             found[number] = _finding(rule, path, number, normalized(line), line)
+    for number in eslint_block_lines(lines):
+        found.setdefault(
+            number, _finding("eslint-disable-security", path, number, normalized(lines[number - 1]), lines[number - 1])
+        )
     return [found[number] for number in sorted(found)]
 
 

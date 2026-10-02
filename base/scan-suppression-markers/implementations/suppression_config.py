@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 
+from suppression_markers import lines_of
+
 #: Files that hold nothing but ignore entries: every entry is one finding.
 IGNORE_FILES = {
     ".gitleaksignore": "gitleaksignore-entry",
@@ -39,20 +41,23 @@ GITLEAKS_TOML = {".gitleaks.toml", "gitleaks.toml"}
 
 CI_FILE = re.compile(
     r"(^|/)(\.github/workflows/[^/]+|\.gitlab-ci[^/]*|\.gitlab/[^\n]+|azure-pipelines[^/]*|"
-    r"bitbucket-pipelines[^/]*|\.circleci/[^/]+)\.ya?ml$"
+    r"bitbucket-pipelines[^/]*|\.azure-pipelines/[^\n]+|\.circleci/[^/]+|action)\.ya?ml$"
 )
 #: A CI step or job that runs a security scanner, named by its action, its command or its title.
 SCANNER = re.compile(
     r"codeql|semgrep|bandit|gitleaks|trufflehog|detect-secrets|trivy|grype|snyk|checkov|tfsec|kics|"
     r"zizmor|gosec|brakeman|npm audit|yarn audit|pnpm audit|pip-audit|safety check|osv-scanner|"
     r"dependency-review|scorecard|hadolint|sonar|govulncheck|cargo audit|cargo deny|bundler-audit|"
-    r"secret.?scan|\bsast\b|\bdast\b|security|\bchock\b",
+    r"secret.?scan|secret_detection|dependency_scanning|container_scanning|api_fuzzing|\bsast\b|\bdast\b|"
+    r"security[-_ ]?(?:scan|audit|check|lint)|\bchock\s+check\b",
     re.IGNORECASE,
 )
 #: A step or job told to pass when it fails: a flag, or a shell `|| true` / `|| exit 0` / `|| :`.
 SOFT_FAIL = re.compile(
-    r"^\s*-?\s*(?:continue-on-error|allow_failure|continueOnError|soft[-_]fail)\s*:\s*['\"]?(?:true|yes|on)\b|"
-    r"\|\|\s*(?:true|exit\s+0|:)\s*(?:$|[;)#&|])",
+    r"[\"']?\b(?:continue-on-error|allow_failure|continueOnError|soft[-_]fail)[\"']?\s*:\s*"
+    r"(?:[\"']?(?:true|yes|on)\b|\{|$)|"
+    r"\|\|\s*(?:(?:/usr)?/bin/)?(?:true|:|echo\b|exit\s+0)(?:\s*$|[\s;)#&|'\"])|"
+    r";\s*true\s*$|\bset\s+\+e\b|^\s*exit\s+0\s*$|--soft-fail\b|--exit-code[ =][\"']?0\b",
     re.IGNORECASE,
 )
 _KEY = re.compile(r"^\s*(?:-\s+)?['\"]?([\w.-]+)['\"]?\s*[:=](.*)$")
@@ -69,7 +74,7 @@ def normalized(line: str) -> str:
 
 def ignore_entries(text: str) -> Iterator[tuple[int, str]]:
     """Every non-blank, non-comment line of an ignore-only file."""
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(lines_of(text), 1):
         if not _COMMENT.match(line):
             yield number, normalized(line)
 
@@ -77,7 +82,7 @@ def ignore_entries(text: str) -> Iterator[tuple[int, str]]:
 def keyed_entries(text: str, keys: set[str]) -> Iterator[tuple[int, str]]:
     """Lines that set, or sit in the block of, one of `keys` (YAML block or flow form)."""
     owner: tuple[int, str] | None = None
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(lines_of(text), 1):
         if _COMMENT.match(line):
             continue
         indent, stripped = _indent(line), line.strip()
@@ -94,7 +99,7 @@ def keyed_entries(text: str, keys: set[str]) -> Iterator[tuple[int, str]]:
 def gitleaks_allowlist(text: str) -> Iterator[tuple[int, str]]:
     """Value lines inside a gitleaks `[allowlist]`, `[[allowlists]]` or `[rules.allowlist]` table."""
     table = ""
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(lines_of(text), 1):
         stripped = line.strip()
         if stripped.startswith("["):
             table = stripped
@@ -106,6 +111,8 @@ def gitleaks_allowlist(text: str) -> Iterator[tuple[int, str]]:
 
 def _block_head(lines: list[str], index: int) -> int:
     """The step or job a CI line belongs to: its nearest list-item ancestor, else its outermost key below the root."""
+    if lines[index].lstrip().startswith("- "):
+        return index
     limit, chain = _indent(lines[index]), []
     for back in range(index - 1, -1, -1):
         line = lines[back]
@@ -132,7 +139,7 @@ def _block(lines: list[str], head: int) -> str:
 
 def soft_failed_scans(text: str) -> Iterator[tuple[int, str]]:
     """A soft-fail line inside a CI step or job that runs a security scanner."""
-    lines = text.splitlines()
+    lines = lines_of(text)
     for index, line in enumerate(lines):
         if _COMMENT.match(line) or not SOFT_FAIL.search(line):
             continue

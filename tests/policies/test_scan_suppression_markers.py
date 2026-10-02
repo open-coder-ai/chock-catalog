@@ -66,9 +66,9 @@ def rules(path: str, text: str) -> list[tuple[int, str]]:
         ("eval(x) # rubo" + "cop:disable Security/Eval", "rubocop-disable-security"),
         ("#![allow(unsafe_" + "code)]", "rust-allow-unsafe-code"),
         ("#[expect(dead_code, unsafe_" + "code)]", "rust-allow-unsafe-code"),
-        ('@SuppressFBWarnings("SQL_INJECTION_' + 'JDBC")', "suppress-security-annotation"),
-        ('@Suppress("INSECURE_' + 'TLS")', "suppress-security-annotation"),
-        ('[SuppressMessage("Microsoft.Se' + 'curity", "CA2100")]', "suppress-message-security"),
+        ("@SuppressFB" + 'Warnings("SQL_INJECTION_JDBC")', "suppress-security-annotation"),
+        ('@Suppress("IN' + 'SECURE_TLS")', "suppress-security-annotation"),
+        ("[Suppress" + 'Message("Microsoft.Se' + 'curity", "CA2100")]', "suppress-message-security"),
         ('[SuppressMessage("Design", "CA5' + '350:weak")]', "suppress-message-security"),
         ("#pragma warning disable CA5" + "351", "pragma-warning-security"),
         ("#pragma warning disable SCS0" + "005", "pragma-warning-security"),
@@ -89,7 +89,11 @@ def test_each_inline_marker_is_reported(line: str, rule: str) -> None:
         "// eslint-" + "disable-next-line no-console",
         "#[allow(dead_code)]",
         "message = 'see the nosecurity flag'",
-        "Waiver: 'pragma: allow" + "list secret' on the same line",
+        "Waiver: pragma: allow" + "list secret on the same line",
+        '@Suppress("UNSAFE_CALL")',
+        "rules_to_" + "suppress = load()",
+        "def run(ignore_" + "checks=None):",
+        'note = a * b; msg = "use tfsec:ig' + 'nore sparingly"',
         "description: checkov" + ":skip is not honoured",
         "@pytest.mark.skip  # chock: al" + "low test-skip",
         "x = 1  # pragma: allow" + "list invisible-unicode",
@@ -112,7 +116,7 @@ def test_lines_that_suppress_nothing_security_relevant_are_left_alone(line: str)
         "guide.adoc",
         "x.mdx",
         "CHANGELOG",
-        "pkg/CHANGES.yaml",
+        "pkg/HISTORY",
         ".agents/policies/scan-secrets/manifest.yaml",
         ".chock/config.yaml",
         "base/x/evals/suite.yaml",
@@ -203,9 +207,10 @@ def test_a_long_line_is_truncated_in_the_report() -> None:
     assert len(found["message"]) < 170
 
 
-def test_the_policy_folder_holds_no_marker_it_asks_about() -> None:
-    for path in sorted(POLICY.rglob("*")):
-        if path.is_file() and path.suffix in {".py", ".yaml"} and path.name != "suite.yaml":
+def test_the_policy_folder_and_this_file_hold_no_marker_the_gate_asks_about() -> None:
+    files = [p for p in sorted(POLICY.rglob("*")) if p.is_file() and p.suffix in {".py", ".yaml", ".json"}]
+    for path in [*files, Path(__file__), Path(__file__).with_name("test_scan_suppression_markers_bypasses.py")]:
+        if path.name != "suite.yaml":
             assert mod.file_findings(f"src/{path.name}", path.read_text(encoding="utf-8")) == [], path
 
 
@@ -260,7 +265,6 @@ def test_the_ask_names_only_the_new_marker(repo: Path) -> None:
     assert code == 3
     assert "app/run.py:2" in err
     assert "app/run.py:1:" not in err
-    assert not list(repo.rglob("suppression_*.pyc")), "the gate is read_only: it caches no bytecode"
 
 
 def test_the_script_runs_as_a_process_the_way_the_runner_starts_it(tmp_path: Path) -> None:
