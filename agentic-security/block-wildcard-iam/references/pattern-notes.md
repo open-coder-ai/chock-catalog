@@ -64,7 +64,7 @@ suite holds the literal forms.
   string shaped like a gsutil grant; the Owner role id as a bare string; the
   Service and CanonicalUser principal keys outside a Principal.
 - Every scan that looks ahead is bounded (200 to 300 characters), so cost stays
-  linear: about a second per megabyte of a single hostile line.
+  linear: up to about 2.5 seconds per megabyte of a single hostile line.
 
 ## The JSON pragma limitation
 
