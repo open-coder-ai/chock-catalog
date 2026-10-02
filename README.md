@@ -85,6 +85,7 @@ throwaway repo on every push.
 | [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `docker volume rm`, `aws s3 rm --recursive`, `gcloud … delete` | 81/81 |
 | [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | a shell write to `.mcp.json` adding an MCP server not on the allowlist, or changing an allowed server's command/args/url to point elsewhere (including one renamed to an allowed name) — the allowlist ships inside the guard script itself, protected the same way as any other policy's guard source; a matching entry passes without a human approval each time | 65/65 |
 | [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and `gh pr create`/`edit` bodies that narrate the development conversation (or leak a session link) instead of describing the change — a leak class that only exists once an agent authors the commit | 35/35 |
+| [`scan-suppression-markers`](docs/scan-suppression-markers/) | **Asks** a person before a change adds a scanner suppression -- inline ignore markers, scanner ignore files and skip keys, a CI scan set to pass on failure; only added lines, line-local, friction not a boundary | 44/45 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,
