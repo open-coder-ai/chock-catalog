@@ -55,19 +55,20 @@ policies:
     non-ff.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
-  version: 0.0.6
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 14
-  eval_executed: 14
-  description: 'Blocks bidi override/embed/isolate controls (U+202A-202E, U+2066-2069; Trojan Source,
-    CVE-2021-42574) and Unicode tag characters (U+E0001-E007F), which smuggle instructions. NOT matched:
-    ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ, LRM/RLM. Runs: commit, agent
-    write, turn''s end. Waiver: ''pragma: allowlist invisible-unicode'' same line. Person''s commit:
-    honoured. Agent: only if that line is already in HEAD; MCP gateway: never. Agent asks a person.'
+  eval_cases: 72
+  eval_executed: 72
+  description: 'Blocks hidden Unicode in added lines: bidi, tag and plane-14 chars, word joiner, chained
+    invisibles, zero-width/joiners/fillers by ASCII, mid-line BOM, LRM/RLM outside RTL text, selectors
+    after ASCII, private-use runs of 16+. Allows emoji, RTL/Indic/Thai/CJK text, line-start BOM. Not
+    caught: homoglyphs, a joiner between non-ASCII, binary files and text after U+2028 at commit. Runs:
+    commit, agent write, turn''s end. Waiver: ''pragma: allowlist invisible-unicode'' same line; agent:
+    HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
   version: 0.4.0
@@ -85,19 +86,19 @@ policies:
     config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.1.1
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 49
-  eval_executed: 49
-  description: 'Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod)
-    that UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
-    -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact or
-    .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a person.
-    A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.'
+  eval_cases: 145
+  eval_executed: 145
+  description: 'Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist
+    (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet,
+    scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL
+    or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:.
+    Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
   version: 0.1.0
@@ -771,3 +772,85 @@ policies:
     set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit,
     lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile,
     justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.'
+- id: agent-devenv-autoexec
+  path: base/agent-devenv-autoexec
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 50
+  eval_executed: 50
+  description: 'Warns only (observe): flags files that make a dev tool run code on open, clone or shell
+    entry -- agent hooks, helpers, env/BASE_URL overrides, auto-approve; VS Code folderOpen tasks, trust
+    off, repo executables; devcontainer initializeCommand; .envrc, mise, husky, lefthook, pre-commit;
+    gitconfig exec keys, gitattributes drivers, unsafe .gitmodules. Commit, agent write, turn''s end;
+    additions only; unreadable configs refused. Friction: misses interpreted code and unlisted files.'
+- id: ci-github-actions-security
+  path: base/ci-github-actions-security
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Friction, not a security boundary: warns (observe) on GitHub Actions weaknesses a change
+    adds to workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout
+    under pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets
+    inherit or inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning,
+    agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.'
+- id: dockerfile-compose-security
+  path: base/dockerfile-compose-security
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 34
+  eval_executed: 34
+  description: 'Warns (observe rollout, never refuses) when a change to a Dockerfile, Containerfile
+    or compose file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware:
+    FROM or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature
+    checks off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote ADD without
+    checksum; fetch piped to a shell; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd;
+    unpinned git clone; ONBUILD RUN; compose privileged, broad cap_add, unconfined profiles, devices,
+    host namespaces, runtime socket or host-root mounts, database ports on every interface, untagged
+    images. A one-line form is left to block-fetch-exec-in-files, block-unpinned-agent-components or
+    agentic-code-security only where that gate is installed and reads the file; scan-secrets lines always.
+    Misses: build args overriding defaults, commands in variables, aliases or $'''' quoting, bake and
+    k8s files. Friction, not a boundary.'
+- id: lockfile-integrity
+  path: base/lockfile-integrity
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 65
+  eval_executed: 65
+  description: 'Script gate (commit, agent write, CI) over npm, yarn, pnpm, bun, poetry, uv, Pipfile,
+    Cargo, go.sum, Gemfile, composer and NuGet locks. Blocks: source off the registry list or not https,
+    missing hash, hash changed for a locked version, unpinned git source, unreadable lock. Asks: SHA-1-only
+    hash, transitive install script, lock or manifest moved alone, go.sum lines removed, lock ignored
+    or deleted. Judges what a change adds. Friction, not a security boundary.'
+- id: package-lifecycle-scripts
+  path: base/package-lifecycle-scripts
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 28
+  eval_executed: 28
+  description: 'Warns (observe rollout) when a change adds or edits code that runs at install or build
+    time: npm install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned
+    git/URL deps; setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks;
+    build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven,
+    Gradle exec. Never refuses yet; judges file text, not what a hook runs. Friction, not a security
+    boundary.'

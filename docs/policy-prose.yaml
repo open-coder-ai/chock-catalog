@@ -6,6 +6,18 @@
 # change. Keeping the two apart is what stops a doc from claiming a control that is not
 # there, which is the failure mode these docs would otherwise introduce.
 
+agent-devenv-autoexec:
+  solves: >
+    Files that make a developer tool run code with nobody pressing run: an agent hook or
+    credential helper, an endpoint override that sends the agent's key elsewhere, a task that
+    runs when the folder opens, a dev container command that runs on the host, a shell-entry
+    or git hook file, a git config key that runs a program. An agent prompt-injected into
+    writing one of these gets code execution on the next open, clone or checkout.
+  customise: >
+    It ships at action warn (observe): it reports and never refuses. Measure what it reports
+    with `chock check --history`, then move `hook.gate.action` to block. A reviewed line in a
+    file that has comments may carry `chock: allow <rule-id>`, added by a person.
+
 agent-discipline:
   solves: >
     Agents that edit a file they never read, declare work finished without running it, and
@@ -148,12 +160,13 @@ block-unapproved-egress:
     This blocks the obvious reflex -- a network client that uploads a body to a host you
     have not allowlisted -- so the easy path costs the adversary a visible allowlist edit.
   customise: >
-    The allowlist IS the policy. `ALLOWED_HOSTS` ships with package registries and code
-    hosting; add your org's own upload targets (log sinks, artifact stores, internal APIs).
-    Be honest about the ceiling: this is a tool-time floor, not a network sandbox. Combined
-    short flags, obfuscated payloads, non-standard clients and egress via a language runtime
-    all remain reachable -- containing a determined adversary needs real sandboxing, and a
-    reviewed exception rides in the diff via `pragma: allowlist egress` on the line.
+    The allowlist IS the policy. It ships as a default list of package and container
+    registries; to change it, a person writes `.chock/egress-allowlist.txt` (one host per
+    line, `*.example.com` for subdomains), which replaces the default whole. A broken file
+    refuses every upload until it is fixed. Be honest about the ceiling: this is a tool-time
+    floor, not a network sandbox. Non-standard clients, pipes into raw sockets and egress via
+    a language runtime remain reachable -- containing a determined adversary needs real
+    sandboxing -- and no pragma passes a command: ask the person to run it.
 
 block-unpinned-agent-components:
   solves: >
@@ -572,3 +585,27 @@ scan-suppression-markers:
 block-hook-bypass-in-files:
   solves: block-no-verify refuses an agent's command that skips git hooks, but not the same skip written into a file that runs later. A hook-skip option in a release script, core.hooksPath set by a package.json prepare script, HUSKY=0 or SKIP= in a Makefile, or an uninstall in a setup script switches the hooks off for everyone who runs it. This gate reads the lines a change adds to hook launchers, scripts and build files, and flags each such line. It warns while its false-positive rate is measured, then blocks.
   customise: 'The scoped files are `applies_to.paths` in the manifest and the pattern is `content_pattern`; widen either there. A reviewed bypass is kept by a person with `pragma: allowlist hook-bypass` on the line (a JSON file such as package.json cannot carry it). In the agent a waiver counts only for a line already in HEAD.'
+ci-github-actions-security:
+  solves: >-
+    An agent that writes CI writes the workflow most likely to be attacked. Text from an issue or pull
+    request expanded into `run:`, a pull_request_target job that builds the pull request's own code, a token
+    left at write-all, `secrets: inherit` to another repository's workflow, a self-hosted runner open to
+    forks, or a cache restored into a release each hand a stranger the repository's secrets in one line.
+    This gate reads workflows, composite actions and dependabot.yml with a YAML key-path scanner and reports
+    each such weakness a change adds, naming its rule, CWE, OWASP CI/CD risk and fix. It warns while its
+    false-positive rate is measured, then a separate change makes it block.
+  customise: >-
+    The curated action lists (agent actions, caches, publishers, auto-merge, cloud-key inputs) are
+    `implementations/ghascan/data/actions.json`; the rules and their tiers are
+    `implementations/ghascan/rules.py`. A person keeps a reviewed finding with `# chock: allow <rule id>` on
+    its line; in the agent a waiver counts only for a line already in HEAD. Unpinned actions stay with
+    pin-github-actions, not this gate.
+dockerfile-compose-security:
+  solves: An agent asked to make a container work reaches for the shortcuts that make it work fastest -- run as root, mount the Docker socket, turn on privileged, skip TLS, bake a password into an ENV, build FROM whatever tag is current. Each one hands the container, or whoever controls a base image or URL, the host. This gate reads the Dockerfiles and compose files a change writes, follows build stages, ARGs, line continuations, heredocs and YAML anchors, and names each such construct with its weakness and fix. It warns while its false-positive rate is measured, then blocks; forms another gate already refuses on one line are left to that gate.
+  customise: 'Each finding names its rule id (dk-* for Dockerfiles, cm-* for compose). A person keeps a reviewed construct with `# chock: allow <rule-id>` on the line or on the comment line directly above it (for a Dockerfile, above the instruction), committing from their own shell; in the agent a waiver counts only for a line already in HEAD. Rules carry a deny or ask tier for the later enforce stage; until then every finding warns.'
+package-lifecycle-scripts:
+  solves: Install-time and build-time hooks are how recent supply-chain worms spread (Shai-Hulud's preinstall, Phantom Gyp's binding.gyp, setup.py command overrides). A hook an agent adds runs on every machine that installs the package, before anyone reads it. This gate reads package manifests and build files across npm, Python, Rust, Go, .NET, Ruby, PHP and the JVM, and reports each install- or build-time hook a change adds or edits, and each git or URL dependency without a commit pin. It warns while its false-positive rate is measured; the script already sorts hooks that download, decode or evaluate code (to block) from other new hooks (to ask).
+  customise: 'The file names and detectors live in `implementations/lifecycle/` (`dispatch.py` maps a file name to its detector; `signals.py` holds the download, decode and inline-code patterns; `npm.py` holds the allowed husky `prepare` values). There is no waiver yet: the gate only warns. Promotion to enforce adds a sidecar waiver, since package.json and TOML cannot carry an inline one.'
+lockfile-integrity:
+  solves: 'A lockfile is thousands of generated lines nobody reads, which makes it the quiet place to point one package at another server, drop its hash or re-hash a version already locked. This gate reads the lockfile formats of twelve package managers and refuses those changes, at commit and while the agent writes, judging only what the change adds.'
+  customise: 'A reviewed private registry or mirror host goes in `.chock/registry-allowlist.txt` (one host or `*.domain` per line), committed before the lock that uses it; only the committed file counts. The default registries per ecosystem are `DEFAULT_HOSTS` in `implementations/lockscan/sources.py`. Start with `rollout: observe` and read the gate log before enforcing.'
