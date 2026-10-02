@@ -28,6 +28,19 @@ agent-discipline:
     `lint_clean` rather than leaving a rule that cannot be satisfied -- a rule an agent
     routinely cannot meet teaches it that rules are advisory in general.
 
+agent-permissions-scan:
+  solves: >
+    Permission grants an agent's config can hold that a line-based pattern cannot judge: a bare
+    `Bash` or `WebFetch`, a `curl:*` or `git push:*` prefix wildcard, a star alone on its own line,
+    an unquoted bypass default mode in YAML, a regex-all terminal auto-approve rule, and a deny
+    entry that quietly disappears. An agent prompt-injected into widening its own grants gets
+    unasked tool authority on the next session.
+  customise: >
+    It ships at action warn (observe): it reports and never refuses. Measure what it reports with
+    `chock check --history`, then move `hook.gate.action` to block. A reviewed exception is a
+    `{file, path, value}` entry under `waive` in `.chock/devenv.json`, added by a person in their
+    own commit; the file is a closed schema and an unknown key voids every waiver in it.
+
 block-curl-pipe-sh:
   solves: >
     The install instruction that runs code nobody read: `curl https://get.example.com | sh`.

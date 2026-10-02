@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an allow/alwaysAllow/tools array on the same line, or quoted defaultMode bypassPermissions. Any file is judged. Not caught: a multi-line array (`"*"` alone on a line, YAML `- "*"` list), unquoted defaultMode: bypassPermissions. Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist broad-agency' same line. Person's commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.
+Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an allow/alwaysAllow/tools array on the same line, or quoted defaultMode bypassPermissions. Any file is judged. Not caught here: a multi-line array or YAML `- "*"` list, an unquoted defaultMode (agent-permissions-scan warns). Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist broad-agency' same line. Person's commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.
 
 ## What it solves
 
