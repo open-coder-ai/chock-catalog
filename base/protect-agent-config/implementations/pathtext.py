@@ -18,6 +18,7 @@ _DUP = re.compile(r"&[ \t]*(?:\d+-?|-)(?![\w$])")
 _BACKTICKS = re.compile(r"`((?:[^`\\]|\\.)*)(?:`|$)")
 _RANGE = re.compile(r"(-?\d+)\.\.(-?\d+)|([A-Za-z])\.\.([A-Za-z])")
 _LIMIT = 128
+_HEAD = 4  # `let ` is the longest word the clause start is tested for
 # `mktemp` with only these options, and a template (if any) under $TMPDIR, names a fresh path.
 _MKTEMP = re.compile(
     r"\s*mktemp(?:\s+(?:-[duqt]+|--(?:directory|dry-run|quiet|tmpdir|suffix=[\w.-]*)))*"
@@ -66,7 +67,11 @@ class _Text:
     """One left-to-right pass that knows quotes, so a `<<` or `$(` inside one is left alone."""
 
     def __init__(self, text: str, resolve: Resolve | None = None) -> None:
-        self.text, self.at, self.quote, self.clause, self.resolve = text, 0, "", 0, resolve
+        self.text, self.at, self.quote, self.resolve = text, 0, "", resolve
+        self.head, self.later = (
+            "",
+            False,
+        )  # the clause so far: its first four characters after the blanks, and whether more follows
         self.out: list[str] = []
         self.bodies: list[str] = []
         self.docs: dict[str, str] = {}
@@ -75,12 +80,23 @@ class _Text:
     def emit(self, piece: str, step: int | None = None) -> None:
         self.out.append(piece)
         self.at += len(piece) if step is None else step
+        if not self.later:
+            self.track(piece)
+
+    def track(self, piece: str) -> None:
+        """Note the start of the clause: its first characters after the blanks, and whether anything follows them."""
+        for char in piece:
+            if len(self.head) < _HEAD:
+                self.head += char if self.head or not char.isspace() else ""
+            elif not char.isspace():
+                self.later = True
+                return
+
+    def new_clause(self) -> None:
+        self.head, self.later = "", False
 
     def starts(self, prefix: str) -> bool:
         return self.text.startswith(prefix, self.at)
-
-    def clause_text(self) -> str:
-        return "".join(self.out[self.clause :]).strip()
 
     def run(self) -> Scanned:
         while self.at < len(self.text):
@@ -125,14 +141,14 @@ class _Text:
         elif self.starts('$"'):
             self.quote = '"'
             self.emit('"', 2)
-        elif char in "dlrt" and not self.clause_text() and (declared := _DECLARE.match(self.text, self.at)):
+        elif char in "dlrt" and not self.head and (declared := _DECLARE.match(self.text, self.at)):
             self.emit("export ", declared.end() - self.at)
         elif not self.redirection(char):
             self.plain(char)
 
     def redirection(self, char: str) -> bool:
         """Handle a `<<<`, `<<` or `>&` here; arithmetic `<<` of a `let` is not one."""
-        if char == "<" and self.clause_text().startswith("let "):
+        if char == "<" and self.head == "let " and self.later:
             self.emit("_")
         elif self.starts("<<<") and (word := _WORD.match(self.text, self.at + 3 + self.gap(3))):
             self.here(word)
@@ -150,13 +166,13 @@ class _Text:
         if char == "\n":
             self.emit(char)
             self.bodies_of_documents()
-            self.clause = len(self.out)
-        elif char == "(" and self.starts("((") and not self.clause_text():
+            self.new_clause()
+        elif char == "(" and self.starts("((") and not self.head:
             self.emit(":", matching(self.text, self.at) - self.at)
         else:
             self.emit(char)
             if char in ";|&(":
-                self.clause = len(self.out)
+                self.new_clause()
 
     def gap(self, after: int) -> int:
         return len(self.text[self.at + after :]) - len(self.text[self.at + after :].lstrip(" \t"))

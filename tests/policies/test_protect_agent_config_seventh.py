@@ -3,7 +3,12 @@ variables and late namerefs, arrays and `+=`, abbreviated git options in alias b
 
 from __future__ import annotations
 
+import itertools
+import random
+import re
+import shlex
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -331,3 +336,50 @@ def test_the_programs_a_git_command_runs_are_the_ones_it_is_given(
 )
 def test_a_path_is_matched_without_the_dots_spaces_and_device_prefix_windows_drops(path: str, normal: str) -> None:
     assert guard.normalise(path) == normal
+
+
+def _words_before_the_rewrite(part: str) -> list[str]:
+    """The segment reader as it was: it re-split the text at every quote, which is cubic on unbalanced quotes."""
+    positions = [m.start() for m in re.finditer(r"['\"]", part)]
+    for at in [len(part), *reversed(positions)]:
+        try:
+            return [*shlex.split(part[:at]), *([part[at + 1 :]] if at < len(part) else [])]
+        except ValueError:
+            continue
+    return part.split()
+
+
+def test_the_segment_reader_gives_what_it_gave_for_every_short_text_and_a_sample_of_long_ones(sp) -> None:
+    alphabet = ["a", " ", "'", '"', "\\", "\n"]
+    texts = ["".join(chars) for size in range(6) for chars in itertools.product(alphabet, repeat=size)]
+    rng = random.Random(7)  # noqa: S311 -- a fixed seed gives a reproducible sample, nothing secret
+    texts += ["".join(rng.choice([*alphabet, "b", "$"]) for _ in range(rng.randint(6, 40))) for _ in range(1500)]
+    for text in texts:
+        assert list(sp.parse._words(text)) == _words_before_the_rewrite(text), repr(text)
+
+
+def _unbalanced(shape: str, size: int) -> str:
+    return {
+        "escaped": lambda: 'echo "' + '\\"' * (size // 2),
+        "opened": lambda: 'echo "' + "'x' " * (size // 4),
+        "alternating": lambda: "echo " + "a'b'c\"d" * (size // 7),
+        "backslash": lambda: "echo 'a' " * (size // 9) + "\\",
+        "clauses": lambda: 'echo "a; ' * (size // 8),
+        "declares": lambda: "declare " * (size // 8),
+    }[shape]()
+
+
+@pytest.mark.parametrize("shape", ["escaped", "opened", "alternating", "backslash", "clauses", "declares"])
+def test_a_line_of_unbalanced_quotes_is_read_in_linear_time(shape: str, sp) -> None:
+    """CPU time, not wall time: a hook that outruns the engine's timeout is read as an allow."""
+
+    def seconds(call, size: int) -> float:
+        raw = _unbalanced(shape, size)
+        start = time.process_time()
+        call(raw)
+        return time.process_time() - start
+
+    for call in (sp.commands, guard.check):
+        small, large = seconds(call, 4096), seconds(call, 65536)
+        assert large < 3, (shape, large)
+        assert large < 60 * max(small, 0.005), (shape, small, large)  # 16 times the text is about 16 times the time

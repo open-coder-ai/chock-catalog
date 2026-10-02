@@ -4,6 +4,7 @@ import os
 import re
 import shlex
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import NamedTuple
 
 
@@ -167,15 +168,32 @@ class _Scan:
             self.pos += sum(len(line) + 1 for line in lines[:used])
 
 
-def _words(part: str) -> list[str]:
+# One piece of a segment as the shell reads quoting: plain text, an escaped character, a quoted string.
+_UNIT = re.compile(r"[^'\"\\]+|\\.|'[^']*+'|\"(?:[^\"\\]|\\.)*+\"", re.DOTALL)
+
+
+def _quoting(part: str) -> tuple[bool, int | None]:
+    """Whether the quotes of a segment balance, or else the last quote that opens at a balanced point (one left-to-right scan)."""
+    at, last = 0, None
+    while at < len(part):
+        unit = _UNIT.match(part, at)
+        if unit is None:  # a quote that is never closed, or a lone `\` ending the text
+            return False, last if part[at] == "\\" else at
+        if part[at] in "'\"":
+            last = at
+        at = unit.end()
+    return True, None
+
+
+@lru_cache(maxsize=128)  # a guard reads the same segment through several views of the line
+def _words(part: str) -> tuple[str, ...]:
     """Split one segment like a shell; a quote that is never closed makes the rest of the segment one word."""
-    positions = [m.start() for m in re.finditer(r"['\"]", part)]
-    for at in [len(part), *reversed(positions)]:
-        try:
-            return [*shlex.split(part[:at]), *([part[at + 1 :]] if at < len(part) else [])]
-        except ValueError:
-            continue
-    return part.split()
+    balanced, at = _quoting(part)
+    if balanced:
+        return tuple(shlex.split(part))
+    if at is None:
+        return tuple(part.split())
+    return (*shlex.split(part[:at]), part[at + 1 :])
 
 
 def _crude(text: str) -> list[_Clause]:
