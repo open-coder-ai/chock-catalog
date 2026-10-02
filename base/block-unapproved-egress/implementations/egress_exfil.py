@@ -28,17 +28,28 @@ INTERPRETER = re.compile(r"(?:python[\d.]*|node(?:js)?|ruby|perl|php|deno|bun)(?
 HTTP_LIBS = re.compile(
     r"\b(?:import requests|from requests|requests\.(?:get|post|put|patch|request|Session)|urllib\.request|urllib\.urlopen|urllib[23]"
     r"|http\.client|httplib2?|httpx|aiohttp|fetch(?=\s*\()|axios|XMLHttpRequest|node-fetch|superagent|smtplib|ftplib|xmlrpc"
-    r"|paramiko|boto3|fsockopen|socket\.(?:socket|create_connection)|net\.(?:connect|createConnection)"
-    r"|require\(\s*['\"](?:node:)?(?:https?|net|tls|dgram)['\"])"
+    r"|paramiko|boto3|__import__\(\s*['\"](?:requests|urllib|http|socket|httpx)|import_module\(\s*['\"](?:requests|urllib|http|socket)|fsockopen|socket\.(?:socket|create_connection)|net\.(?:connect|createConnection)"
+    r"|require\(\s*['\"](?:node:)?https?['\"])"
     r"|Net::(?:HTTP|FTP)|LWP|HTTP::Tiny|IO::Socket|net/http|open-uri|https?\.(?:request|get)\(|urlopen|curl_init"
     r"|(?:file_get_contents|fopen|copy|readfile|file_put_contents)\(\s*['\"]https?",
     re.IGNORECASE,
 )
 CLIENT_RC = re.compile(r"(?<![\w-])[._]?(?:curl|wget)rc\b", re.IGNORECASE)
-ALLOWLIST_FILE = re.compile(r"egress-allowlist\.txt", re.IGNORECASE)
+ALLOWLIST_FILE = re.compile(r"egress-allowlist\.txt(?![\w.])|\.chock[^ ]*[$`*?\[]|egress-[^ ]*[*?\[]", re.IGNORECASE)
+EDITORS = frozenset(("ln", "patch", "vi", "vim", "nano", "emacs", "ex", "ed", "awk", "gawk"))
+SED_WRITE = re.compile(r"\bw\s*\S*egress-allowlist", re.IGNORECASE)
 PORT = re.compile(r":(?:\d*|\$\w+|\$\{[^}]*\})$")
-OUTPUT_COMMANDS = frozenset(("curl", "wget", "tar", "cp", "mv", "install", "rsync", "ln", "unzip", "iwr"))
-OUTPUT_OPTS = frozenset(("-o", "-O", "--output", "--output-document", "-C", "-t", "--target-directory", "--directory"))
+OUTPUT_COMMANDS = frozenset(("curl", "wget", "tar", "cp", "mv", "install", "rsync", "ln", "unzip", "iwr", "rm"))
+OUTPUT_OPTS = frozenset(
+    (
+        *("-o", "-O", "--output", "--output-document", "-C", "-t", "--target-directory"),
+        *("--directory", "-P", "-d", "--output-dir", "--directory-prefix"),
+    )
+)
+CLIENT_REASON = (
+    "writing ~/.curlrc or ~/.wgetrc changes where every later curl or wget sends data. Ask the person to edit it."
+)
+ALLOWLIST_REASON = "only a person edits .chock/egress-allowlist.txt: the agent must not widen its own egress list."
 HIDE = "Move the substitution out of the destination, or ask the person."
 
 
@@ -114,24 +125,25 @@ def output_targets(cmd: Cmd) -> list[str]:
 
 def rewires_clients(cmd: Cmd) -> Verdict:
     """A write to ~/.curlrc, ~/.wgetrc (a default proxy or destination for every later call) or the allowlist file."""
-    for pattern, reason in (
-        (
-            CLIENT_RC,
-            "writing ~/.curlrc or ~/.wgetrc changes where every later curl or wget sends data. Ask the person to edit it.",
-        ),
-        (
-            ALLOWLIST_FILE,
-            "only a person edits .chock/egress-allowlist.txt: the agent must not widen its own egress list.",
-        ),
-    ):
-        if writes_files(cmd, lambda path, p=pattern: bool(p.search(path))) or any(
+    text = " ".join(cmd.args)
+    interpreter = bool(INTERPRETER.fullmatch(cmd.name))
+    for pattern, reason in ((CLIENT_RC, CLIENT_REASON), (ALLOWLIST_FILE, ALLOWLIST_REASON)):
+        touched = writes_files(cmd, lambda path, p=pattern: bool(p.search(path))) or any(
             pattern.search(t) for t in output_targets(cmd)
-        ):
+        )
+        edits = pattern is ALLOWLIST_FILE and (
+            (cmd.name in EDITORS and pattern.search(text)) or (cmd.name == "sed" and SED_WRITE.search(text))
+        )
+        if touched or edits or (interpreter and pattern.search(cmd.doc)):
             return refuse(reason)
     operands = [a for a in cmd.args if not a.startswith("-")]
     into = ([operands[-1]] if operands and cmd.name in ("cp", "mv", "install", "rsync", "ln") else []) + output_targets(
         cmd
     )
-    if any(t.rstrip("/").endswith(".chock") for t in into):
-        return refuse("writing into .chock/ is for a person: it holds the egress allowlist. Ask the person.")
+    if any(t.rstrip("/").endswith(".chock") for t in into) or (
+        cmd.name in ("rm", "mv") and any(a.rstrip("/").endswith(".chock") for a in operands)
+    ):
+        return refuse(
+            "writing into, moving or removing .chock/ is for a person: it holds the egress allowlist. Ask the person."
+        )
     return None

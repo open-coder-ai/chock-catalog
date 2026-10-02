@@ -10,6 +10,9 @@ from egress_core import Allowlist, Verdict, unapproved
 SOCKET = re.compile(r"/dev/(?:tcp|udp)/([^/\s'\"`;&|)]+)", re.IGNORECASE)
 HERE_STRING = re.compile(r"<<<\s*(?:'([^']*)'|\"([^\"]*)\")")
 BACKTICKED = re.compile(r"`([^`]*)`")
+PIPE_SHELL = re.compile(r"\|\s*(?:sudo\s+)?(?:sh|bash|zsh|dash|ksh|ash)\b(?!\s+-\w*c)")
+QUOTED = re.compile(r"'([^']*)'|\"([^\"]*)\"")
+HEREDOC = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n(.*?)\n\s*\1\b", re.DOTALL)
 SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh", "ash"))
 EXEC_FLAGS = frozenset(("-exec", "-execdir", "-ok", "-okdir"))
 
@@ -17,6 +20,8 @@ EXEC_FLAGS = frozenset(("-exec", "-execdir", "-ok", "-okdir"))
 def substitutions(raw: str) -> list[str]:
     """Bodies of every $( ... ) (balanced, quoted or not), backtick pair and here-string: each is a command line."""
     bodies = [a or b for a, b in HERE_STRING.findall(raw)] + BACKTICKED.findall(raw)
+    if PIPE_SHELL.search(raw):
+        bodies += [a or b for a, b in QUOTED.findall(raw)] + [body for _, body in HEREDOC.findall(raw)]
     start = raw.find("$(")
     while start >= 0:
         depth, end = 1, start + 2

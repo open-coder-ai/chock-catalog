@@ -151,3 +151,21 @@ def test_a_missing_default_file_is_a_guard_fault_not_a_block(
     code, err = verdict(UPLOAD.format(host="pypi.org"), capsys)
     assert code == 2
     assert "internal error" in err
+
+
+def test_a_nested_project_file_cannot_replace_the_outer_one(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    allowlist(repo, "corp.example\n")
+    nested = repo / "sub" / ".chock"
+    nested.mkdir(parents=True)
+    (nested / "egress-allowlist.txt").write_text("evil.example\n")
+    os.chdir(repo / "sub")
+    assert verdict(UPLOAD.format(host="evil.example"), capsys)[0] == BLOCK
+    assert verdict(UPLOAD.format(host="corp.example"), capsys)[0] == OK
+
+
+def test_a_nested_file_is_used_when_no_outer_one_exists(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    nested = repo / "sub" / ".chock"
+    nested.mkdir(parents=True)
+    (nested / "egress-allowlist.txt").write_text("evil.example\n")
+    os.chdir(repo / "sub")
+    assert verdict(UPLOAD.format(host="evil.example"), capsys)[0] == OK

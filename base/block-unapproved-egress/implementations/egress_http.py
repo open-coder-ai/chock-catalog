@@ -212,6 +212,7 @@ def http_target(cmd: Cmd, allow: Allowlist) -> tuple[list[str], bool, Verdict]:
             )
         urls = [value for name, value in opts if name == "--url" and value]
         found = targets(cmd.args, bare + urls)
+        found += [b for b in bare + urls if b.startswith("$") and b not in found]
         return found, curl_uploads(opts), reroutes(opts) or proxied(cmd) or header_exfil(allow, opts, found)
     if cmd.name == "wget":
         found = targets(cmd.args, [a for a in cmd.args if not a.startswith("-")])

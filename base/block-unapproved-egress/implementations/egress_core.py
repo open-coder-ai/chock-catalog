@@ -38,19 +38,17 @@ def confirm(text: str) -> Verdict:
     return ASK, f"CONFIRM: {text}"
 
 
-def project_root(start: Path) -> Path | None:
-    """The nearest directory at or above `start` holding .git, else the nearest holding .chock (a nested .chock cannot win)."""
-    chain = (start, *start.parents)
-    return next((d for d in chain if (d / ".git").exists()), None) or next(
-        (d for d in chain if (d / ".chock").is_dir()), None
+def project_file(start: Path) -> Path | None:
+    """The outermost `.chock/egress-allowlist.txt` at or above `start` (a nested one an agent made cannot replace it)."""
+    return next(
+        (d / PROJECT_FILE for d in reversed((start, *start.parents)) if os.path.lexists(d / PROJECT_FILE)), None
     )
 
 
 def load_allowlist(start: Path) -> Allowlist:
     """The project's allowlist file when there is one, else the built-in default; unusable file = nothing allowed."""
-    root = project_root(start)
-    path = root / PROJECT_FILE if root else None
-    if path is None or not os.path.lexists(path):
+    path = project_file(start)
+    if path is None:
         return Allowlist(parse_allowlist(read_text(DEFAULT_FILE)))
     try:
         entries = parse_allowlist(read_text(path))
