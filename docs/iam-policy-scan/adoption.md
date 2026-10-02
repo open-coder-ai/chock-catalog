@@ -88,7 +88,6 @@ INDEX.md: ~454 tokens (chars/4, max 2000)
 
 ```text
 [PASS] Passed with warnings.
-  [WARN]  …/.agents/policies/iam-policy-scan/references :: yagni: Empty directory; remove it.
   [WARN]  …/.agents/policies/iam-policy-scan :: interface: Artifact ID 'iam-policy-scan' does not start with a verb (INT-3). Suggest rename to a verb-first id, e.g. 'create-...', 'validate-...', 'check-...'
 ```
 
