@@ -15,16 +15,17 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from suppression_config import config_findings, normalized  # noqa: E402 -- after the path and cache setup
-from suppression_markers import SECRET_RULES, eslint_block_lines, lines_of, marker_rule  # noqa: E402
+from suppression_markers import PREFILTER, SECRET_RULES, eslint_block_lines, lines_of, marker_rule  # noqa: E402
 
 ALLOW, ASK, UNREADABLE = 0, 3, 2
 
 #: Prose and chock's own managed files: a marker there silences no scanner.
 PROSE = re.compile(r"\.(md|mdx|markdown|rst|txt|adoc)$", re.IGNORECASE)
 #: chock's own managed files and eval suites: fixtures and installed copies, never judged.
-MANAGED = re.compile(r"(^|/)\.agents/policies/|(^|/)\.chock/|(^|/)evals/suite\.ya?ml$")
-#: A secret-scanner marker quoted in prose (in quotes or backticks) is a mention, not a use.
-QUOTED = re.compile(r"[`'\"]\s*(?:(?:#|//)\s*)?(?:pragma|gitleaks|trufflehog)\b", re.IGNORECASE)
+MANAGED = re.compile(r"^\.agents/policies/|^\.chock/|^(?:base|compliance|agentic-security)/[^/]+/evals/suite\.ya?ml$")
+#: The detect-secrets pragma quoted in prose ('# pragma: ...' or a backticked one) is a mention, not a
+#: use. gitleaks and TruffleHog match their marker anywhere, quoted or not, so they get no such pass.
+QUOTED = re.compile(r"[`'\"](?:#|//)?\s*pragma\b", re.IGNORECASE)
 #: Changelogs by their conventional upper-case names; a script named `history` is code.
 CHANGELOG = re.compile(r"(^|/)(CHANGELOG|CHANGES|HISTORY)(\.(md|rst|txt|adoc))?$")
 
@@ -55,11 +56,14 @@ def file_findings(path: str, text: str) -> list[dict]:
         return [
             _finding(rule, path, n, normalized(line), line)
             for n, line in enumerate(lines, 1)
-            if (rule := marker_rule(line)) in SECRET_RULES and not QUOTED.search(line)
+            if (rule := marker_rule(line)) in SECRET_RULES
+            and not (rule == "pragma-allowlist-secret" and QUOTED.search(line))
         ]
     found: dict[int, dict] = {}
     for rule, number, detail in config_findings(path, text):
         found.setdefault(number, _finding(rule, path, number, detail, lines[number - 1]))
+    if not PREFILTER.search(text):
+        return [found[number] for number in sorted(found)]
     for number, line in enumerate(lines, 1):
         rule = None if number in found else marker_rule(line)
         if rule:

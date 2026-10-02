@@ -149,7 +149,7 @@ SECOND_ROUND_ALLOWS = {
     "or echo inside a substitution": (W, J + "      - run: V=$(semgrep --version || echo unknown)\n"),
     "a root env block": (W, "env:\n  SNYK_TOKEN: x\n  FOO: 'a || true'\njobs:\n  b:\n    steps:\n      - run: make\n"),
     "an eslint-enable block": ("a.js", "/* eslint-" + "enable\n no-" + "eval */\n"),
-    "a plain block comment": ("a.js", "/*\n  no-" + "eval is banned here\n*/\n"),
+    "a plain block comment": ("a.js", "/*\n  see the es" + "lint docs: no-" + "eval is banned\n*/\n"),
     "a nosec mention in a README": ("README.md", f"use # {NS}\n"),
     "a quoted secret-pragma mention in a README": (
         "README.md",
@@ -194,4 +194,61 @@ def test_a_long_ci_run_block_is_judged_in_linear_time() -> None:
     started = time.monotonic()
     text = J + "      - run: |\n" + "          bandit x || true\n" * 8000
     assert len(mod.file_findings(W, text)) == 8000
+    assert time.monotonic() - started < 5
+
+
+THIRD_ROUND = {
+    "set +e after an earlier set -e": (
+        W,
+        J + "      - run: |\n          set -e\n          set +e\n          gitleaks detect\n",
+        1,
+    ),
+    "exit status passed on only in a comment": (
+        W,
+        J + "      - run: |\n          set +e\n          gitleaks x\n          # exit $rc\n",
+        1,
+    ),
+    "root defaults bash +e": (
+        W,
+        "defaults:\n  run:\n    shell: bash +e {0}\njobs:\n  s:\n    steps:\n      - run: gitleaks x\n",
+        1,
+    ),
+    "root defaults bash +e with no scan": (
+        W,
+        "defaults:\n  run:\n    shell: bash +e {0}\njobs:\n  s:\n    steps:\n      - run: make\n",
+        0,
+    ),
+    "quoted gitleaks marker in prose": ("SECURITY.md", "token: ghp_x `git" + "leaks:allow`\n", 1),
+    "pragma after a quoted value in prose": ("x.rst", "password = 'hunter2'  # pragma: allow" + "list secret\n", 1),
+    "eval suite outside the policy trees": ("src/evals/suite.yaml", "key: AKIA # git" + "leaks:allow\n", 1),
+    "a .chock folder below the root": ("app/.chock/x.py", f"x  # {NS}\n", 1),
+    "a second block comment on the line": (
+        "a.js",
+        "/* a */ /* eslint-" + "disable\n  security/detect-eval-with-expression */\n",
+        1,
+    ),
+    "no-fail-fast is not no-fail": (W, J + "      - name: security-check\n        run: cargo test --no-fail-fast\n", 0),
+}
+
+
+@pytest.mark.parametrize("case", sorted(THIRD_ROUND))
+def test_the_third_review_cases(case: str) -> None:
+    path, text, asks = THIRD_ROUND[case]
+    assert bool(mod.file_findings(path, text)) == bool(asks), case
+
+
+@pytest.mark.parametrize(
+    ("path", "text"),
+    [
+        ("a.py", " " * 50000 + "rules_to_" + "suppress"),
+        ("a.yaml", "".join(" " * i + "k:\n" for i in range(3000))),
+        (W, "- x || true\n" * 100000),
+        (W, "jobs:\n" + "".join(" " * i + "- x || true\n" for i in range(1, 201)) + ("#" + "y" * 99 + "\n") * 20000),
+        ("a.py", "x=1\n" * 500000),
+        (W, "\n" * 1000000),
+    ],
+)
+def test_long_files_and_deep_nesting_are_judged_in_linear_time(path: str, text: str) -> None:
+    started = time.monotonic()
+    mod.file_findings(path, text)
     assert time.monotonic() - started < 5

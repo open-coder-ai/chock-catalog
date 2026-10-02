@@ -27,7 +27,7 @@ _I = re.IGNORECASE
 
 #: (rule id, pattern, flags, opener needed before the match). The first rule a line matches names it.
 _TABLE: tuple[tuple[str, str, int, re.Pattern[str] | None], ...] = (
-    ("nosec", r"(?:#|//|/\*|--|<!--)[^\S\n]{0,40}#?[^\S\n]{0,40}n[o]sec\b", _I, None),
+    ("nosec", r"(?:#|//|/\*|--|<!--)[^\S\n]{0,40}(?:#[^\S\n]{0,40})?n[o]sec\b", _I, None),
     # Ruff and flake8-bandit codes are S###; S101 (assert) is test hygiene, not a security finding.
     (
         "noqa-security",
@@ -51,8 +51,8 @@ _TABLE: tuple[tuple[str, str, int, re.Pattern[str] | None], ...] = (
     ("tfsec-trivy-ignore", r"\b(?:tfsec|trivy)\s*:\s*i[g]nore\b", _I, _OPENER),
     ("kics-ignore", r"\bkics-scan\s+(?:i[g]nore|disable)", _I, _OPENER),
     ("hadolint-ignore", r"\bhadolint\s+(?:global\s+)?i[g]nore\b", _I, _OPENER),
-    ("cfn-nag-suppress", r"^\s*-?\s*[\"']?rules_to_s[u]ppress[\"']?\s*:", 0, None),
-    ("cfn-lint-ignore", r"^\s*-?\s*[\"']?ignore_c[h]ecks[\"']?\s*:", 0, None),
+    ("cfn-nag-suppress", r"^\s*(?:-\s*)?[\"']?rules_to_s[u]ppress[\"']?\s*:", 0, None),
+    ("cfn-lint-ignore", r"^\s*(?:-\s*)?[\"']?ignore_c[h]ecks[\"']?\s*:", 0, None),
     ("zizmor-ignore", r"\bzizmor\s*:\s*i[g]nore\b", _I, _OPENER),
     # gitleaks and TruffleHog look for their marker anywhere on the line, comment or not.
     ("gitleaks-allow", r"\bgitleaks\s*:\s*a[l]low\b", _I, None),
@@ -94,6 +94,13 @@ _TABLE: tuple[tuple[str, str, int, re.Pattern[str] | None], ...] = (
 )
 MARKERS = tuple((rule, re.compile(pattern, flags), opener) for rule, pattern, flags, opener in _TABLE)
 _OPENERS = (_OPENER, _OPENER_OR_QUOTE)
+#: A word every marker above contains; a line (or file) without one is skipped at once.
+PREFILTER = re.compile(
+    r"n[o]sec|n[o]qa|n[o]lint|n[o]sonar|n[o]sem|e[s]lint|c[h]eckov|b[r]idgecrew|t[f]sec|t[r]ivy|k[i]cs|h[a]dolint|"
+    r"rules_to_s[u]ppress|ignore_c[h]ecks|z[i]zmor|g[i]tleaks|t[r]ufflehog|p[r]agma|l[g]tm|c[o]deql|d[e]vskim|"
+    r"d[e]epcode|b[e]arer|p[s]alm|r[u]bocop|unsafe_c[o]de|s[u]ppress",
+    re.IGNORECASE,
+)
 #: The rules a secret scanner honours even in prose files, which it scans as well.
 SECRET_RULES = frozenset({"gitleaks-allow", "trufflehog-ignore", "pragma-allowlist-secret"})
 
@@ -109,6 +116,8 @@ def marker_rule(line: str) -> str | None:
 
     Each opener is found once per line and every gap is bounded, so a long line (a minified
     bundle) stays linear."""
+    if not PREFILTER.search(line):
+        return None
     first = {opener: (hit.start() if (hit := opener.search(line)) else len(line)) for opener in _OPENERS}
     for rule, pattern, opener in MARKERS:
         for found in pattern.finditer(line):
@@ -130,7 +139,7 @@ def eslint_block_lines(lines: list[str]) -> list[int]:
             found.append(number)
         if state and "*/" in line:
             state = ""
-        elif not state and (opened := _BLOCK_OPEN.search(line)) and "*/" not in line[opened.end() :]:
+        elif not state and (opened := _BLOCK_OPEN.search(line, line.rfind("*/") + 2 if "*/" in line else 0)):
             directive = _ESLINT_DIRECTIVE.match(line[opened.end() :])
             state = "eslint" if directive else ("maybe" if not line[opened.end() :].strip() else "")
         elif state == "maybe" and body.strip():

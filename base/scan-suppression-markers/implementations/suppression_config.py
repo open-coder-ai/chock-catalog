@@ -59,13 +59,20 @@ SOFT_FAIL = re.compile(
     r"(?:[\"']?(?:true|yes|on)\b|\{|[>|]-?\s*$|(?:#.*)?$)|"
     r"\bexit-code\s*:\s*[\"']?0\b|\bshell\s*:\s*bash\s+\+e\b|;\s*true\s*(?:#.*)?$|"
     r"\|\|\s*(?:\{\s*)?(?:(?:command|builtin)\s+)?(?:(?:/usr)?/bin/)?(?:true|:|exit\s+0)(?=$|[\s;)#&|'\"}])|"
-    r"--soft-fail\b|--exit-code[ =][\"']?0\b|--exit-zero\b|--ignore-on-exit\b|(?:^|\s)--?no-fail\b|--no-exit-codes\b",
+    r"--soft-fail\b|--exit-code[ =][\"']?0\b|--exit-zero\b|--ignore-on-exit\b|(?:^|\s)--?no-fail(?![\w-])|--no-exit-codes\b",
     re.IGNORECASE,
 )
 #: A fallback that prints instead of failing; inside `$( )` it only fills a variable.
 _ECHO_FALLBACK = re.compile(r"\|\|\s*(?:echo|printf)\b")
 _SET_PLUS_E = re.compile(r"\bset\s+\+e\b")
-#: A block that turns errexit back on or passes the scan's own status on keeps the scan's verdict.
+#: A word every soft-fail shape above contains; a CI file without one has nothing to judge.
+_CI_PREFILTER = re.compile(
+    r"\|\||continue|allow_failure|soft[-_]fail|set\s+\+e|bash\s+\+e|exit-code|exit-zero|ignore-on-exit|no-fail|"
+    r"no-exit-codes|_DISABLED|;\s*true",
+    re.IGNORECASE,
+)
+_SHELL_PLUS_E = re.compile(r"\bshell\s*:\s*bash\s+\+e\b")
+#: A later code line that turns errexit back on or passes the scan's own status on keeps its verdict.
 _RESTORED = re.compile(r"\bset\s+-e\b|\bexit\s+\"?\$")
 #: GitLab's switches that turn a whole security template off.
 GITLAB_DISABLED = re.compile(
@@ -150,15 +157,26 @@ def _heads(lines: list[str]) -> list[int]:
     return heads
 
 
-def _block(lines: list[str], head: int) -> str:
-    """The text of the step or job that starts at `head`."""
-    start = _indent(lines[head])
-    body = [lines[head]]
-    for line in lines[head + 1 :]:
-        if not _COMMENT.match(line) and _indent(line) <= start:
-            break
-        body.append(line)
-    return "\n".join(body)
+def _ends(lines: list[str]) -> list[int]:
+    """For each line, the index just past the block it opens: the next non-comment line indented no
+    deeper. One pass with a stack, so nested and long blocks stay linear."""
+    ends, stack = [len(lines)] * len(lines), []
+    for index, line in enumerate(lines):
+        if _COMMENT.match(line):
+            continue
+        while stack and _indent(lines[stack[-1]]) >= _indent(line):
+            ends[stack.pop()] = index
+        stack.append(index)
+    return ends
+
+
+def _prefix(lines: list[str], pattern: re.Pattern[str], *, code_only: bool) -> list[int]:
+    """Running count of the lines `pattern` finds, so any block's count is one subtraction."""
+    counts = [0]
+    for line in lines:
+        hit = pattern.search(line) and not (code_only and _COMMENT.match(line))
+        counts.append(counts[-1] + bool(hit))
+    return counts
 
 
 def _soft_fails(line: str) -> bool:
@@ -171,9 +189,12 @@ def _soft_fails(line: str) -> bool:
 
 def soft_failed_scans(text: str) -> Iterator[tuple[int, str]]:
     """A soft-fail line inside a CI step or job that runs a security scanner, or a GitLab scan switched off."""
+    if not _CI_PREFILTER.search(text):
+        return
     lines = lines_of(text)
-    heads = _heads(lines)
-    scans: dict[int, str | None] = {}
+    heads, ends = _heads(lines), _ends(lines)
+    scans = _prefix(lines, SCANNER, code_only=False)
+    restores = _prefix(lines, _RESTORED, code_only=True)
     for index, line in enumerate(lines):
         if _COMMENT.match(line):
             continue
@@ -183,12 +204,13 @@ def soft_failed_scans(text: str) -> Iterator[tuple[int, str]]:
         if not _soft_fails(line):
             continue
         head = heads[index]
-        if head not in scans:
-            block = _block(lines, head)
-            scans[head] = None if _NOT_A_JOB.match(lines[head]) or not SCANNER.search(block) else block
-        block = scans[head]
-        restored = _SET_PLUS_E.search(line) and not SOFT_FAIL.search(line) and block and _RESTORED.search(block)
-        if block and not restored:
+        end = ends[head]
+        scanned = not _NOT_A_JOB.match(lines[head]) and scans[end] > scans[head]
+        if not scanned and _SHELL_PLUS_E.search(line):
+            # A root `defaults: run: shell: bash +e` reaches every step, the scans among them.
+            scanned = scans[-1] > 0
+        restored = _SET_PLUS_E.search(line) and not SOFT_FAIL.search(line) and restores[end] > restores[index + 1]
+        if scanned and not restored:
             yield index + 1, f"{normalized(lines[head])}|{normalized(line)}"
 
 
