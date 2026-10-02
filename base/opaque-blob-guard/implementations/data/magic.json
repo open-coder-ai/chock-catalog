@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "roadmap": "open-coder-ai/org-plan chock/plan/security-coverage-roadmap.md, NP27 opaque-blob-guard",
+    "signatures": "https://en.wikipedia.org/wiki/List_of_file_signatures"
+  },
+  "magic": [
+    {"name": "zip", "label": "zip or jar archive", "at": [[0, "504b0304"]]},
+    {"name": "zip-empty", "label": "empty zip archive", "at": [[0, "504b0506"]]},
+    {"name": "zip-spanned", "label": "spanned zip archive", "at": [[0, "504b0708"]]},
+    {"name": "gzip", "label": "gzip stream", "at": [[0, "1f8b"]]},
+    {"name": "xz", "label": "xz stream", "at": [[0, "fd377a585a00"]]},
+    {"name": "bzip2", "label": "bzip2 stream", "at": [[0, "425a68"], [4, "314159265359"]]},
+    {"name": "7z", "label": "7-zip archive", "at": [[0, "377abcaf271c"]]},
+    {"name": "zstd", "label": "zstd stream", "at": [[0, "28b52ffd"]]},
+    {"name": "rar", "label": "rar archive", "at": [[0, "526172211a07"]]},
+    {"name": "tar", "label": "tar archive", "at": [[257, "7573746172"]]},
+    {"name": "elf", "label": "ELF executable or library", "at": [[0, "7f454c46"]]},
+    {"name": "macho-32", "label": "Mach-O binary", "at": [[0, "feedface"]]},
+    {"name": "macho-64", "label": "Mach-O binary", "at": [[0, "feedfacf"]]},
+    {"name": "macho-32-le", "label": "Mach-O binary", "at": [[0, "cefaedfe"]]},
+    {"name": "macho-64-le", "label": "Mach-O binary", "at": [[0, "cffaedfe"]]},
+    {"name": "cafebabe", "label": "Java class or universal Mach-O binary", "at": [[0, "cafebabe"]]},
+    {"name": "pe", "label": "Windows PE executable", "at": [[0, "4d5a"]], "non_text_within": 64},
+    {"name": "wasm", "label": "WebAssembly module", "at": [[0, "0061736d"]]}
+  ],
+  "media": [
+    {"name": "png", "at": [[0, "89504e470d0a1a0a"]]},
+    {"name": "jpeg", "at": [[0, "ffd8ff"]]},
+    {"name": "gif87", "at": [[0, "474946383761"]]},
+    {"name": "gif89", "at": [[0, "474946383961"]]},
+    {"name": "webp", "at": [[0, "52494646"], [8, "57454250"]]},
+    {"name": "pdf", "at": [[0, "255044462d"]]}
+  ],
+  "entropy": {"min_size": 102400, "window": 16384, "min_tail": 4096, "bits_per_byte": 7.5}
+}

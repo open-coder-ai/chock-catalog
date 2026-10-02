@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "opaque-blob-guard",
+  "version": "0.0.1",
+  "description": "Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, test/, fixtures/, testdata/, spec/, m4/, vendor/ or gradle/wrapper/: a file with an archive, executable or wasm signature (any extension), a random-looking file over 100 KB, or a symlink out of the repo; or m4/configure/*.am text that decodes and evaluates, or a changed gradle wrapper jar. Misses payloads elsewhere and text-encoded ones under 100 KB. Friction, not a security boundary.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi04"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

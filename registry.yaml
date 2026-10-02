@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: opaque-blob-guard
+  path: base/opaque-blob-guard
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 17
+  eval_executed: 17
+  description: 'Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, test/,
+    fixtures/, testdata/, spec/, m4/, vendor/ or gradle/wrapper/: a file with an archive, executable
+    or wasm signature (any extension), a random-looking file over 100 KB, or a symlink out of the repo;
+    or m4/configure/*.am text that decodes and evaluates, or a changed gradle wrapper jar. Misses payloads
+    elsewhere and text-encoded ones under 100 KB. Friction, not a security boundary.'

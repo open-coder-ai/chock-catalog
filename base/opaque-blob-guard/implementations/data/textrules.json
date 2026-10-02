@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "xz": "https://nvd.nist.gov/vuln/detail/CVE-2024-3094",
+    "roadmap": "open-coder-ai/org-plan chock/plan/security-coverage-roadmap.md, NP27 opaque-blob-guard"
+  },
+  "patterns": [
+    {
+      "id": "tr-swap-pipe",
+      "why": "byte-swapping tr (escaped sets) piped onward",
+      "regex": "\\btr\\s+(?:\"[^\"\\n]{0,200}\\\\[-t\\\\x0-7][^\"\\n]{0,200}\"|'[^'\\n]{0,200}\\\\[-t\\\\x0-7][^'\\n]{0,200}')\\s+(?:\"[^\"\\n]{0,200}\"|'[^'\\n]{0,200}')\\s*\\|"
+    },
+    {
+      "id": "tr-swap-pipe",
+      "why": "byte-swapping tr (escaped sets) piped onward",
+      "regex": "\\btr\\s+(?:\"[^\"\\n]{0,200}\"|'[^'\\n]{0,200}')\\s+(?:\"[^\"\\n]{0,200}\\\\[-t\\\\x0-7][^\"\\n]{0,200}\"|'[^'\\n]{0,200}\\\\[-t\\\\x0-7][^'\\n]{0,200}')\\s*\\|"
+    },
+    {
+      "id": "decode-eval",
+      "why": "a decompressor or decoder piped into a shell, eval, source or dot",
+      "regex": "\\b(?:xz\\s+-\\S*d\\S*|unxz|xzcat|lzma\\s+-\\S*d\\S*|unlzma|gzip\\s+-\\S*d\\S*|gunzip|zcat|bzip2\\s+-\\S*d\\S*|bunzip2|bzcat|zstd\\s+-\\S*d\\S*|unzstd|base64\\s+(?:-d|-D|--decode)|uudecode|openssl\\s+enc\\s+-d)\\b[^\\n]{0,2000}\\|\\s*(?:(?:\\S*/)?(?:sh|bash|dash|zsh|ksh)|eval|source|\\.)(?:\\s|;|$)"
+    },
+    {
+      "id": "slice-eval",
+      "why": "a byte slice (head -c, tail -c, dd) piped into a shell, eval, source or dot",
+      "regex": "\\b(?:head\\s+-\\S*c\\S*|tail\\s+-\\S*c\\S*|dd)\\b[^\\n]{0,2000}\\|\\s*(?:(?:\\S*/)?(?:sh|bash|dash|zsh|ksh)|eval|source|\\.)(?:\\s|;|$)"
+    },
+    {
+      "id": "eval-test-file",
+      "why": "eval of a command substitution that reads a test or fixture file",
+      "regex": "\\beval\\s+[\"']?(?:\\$\\(|`)[^\\n]{0,2000}(?:\\btests?|\\btestdata|\\bfixtures?)/"
+    }
+  ]
+}

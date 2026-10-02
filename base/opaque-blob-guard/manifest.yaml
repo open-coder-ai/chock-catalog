@@ -1,0 +1,94 @@
+id: opaque-blob-guard
+name: "Flag Opaque Blobs"
+version: "0.0.1"
+description: >
+  Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, test/, fixtures/,
+  testdata/, spec/, m4/, vendor/ or gradle/wrapper/: a file with an archive, executable or wasm signature
+  (any extension), a random-looking file over 100 KB, or a symlink out of the repo; or m4/configure/*.am
+  text that decodes and evaluates, or a changed gradle wrapper jar. Misses payloads elsewhere and
+  text-encoded ones under 100 KB. Friction, not a security boundary.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+applies_to:
+  # Mirrors implementations/data/scope.json (a test fails on drift): the scoped folders at any depth,
+  # gradle/wrapper, the autotools build texts, and the allowlist itself.
+  paths:
+  - "tests/*"
+  - "*/tests/*"
+  - "test/*"
+  - "*/test/*"
+  - "fixtures/*"
+  - "*/fixtures/*"
+  - "testdata/*"
+  - "*/testdata/*"
+  - "spec/*"
+  - "*/spec/*"
+  - "m4/*"
+  - "*/m4/*"
+  - "vendor/*"
+  - "*/vendor/*"
+  - "gradle/wrapper/*"
+  - "*/gradle/wrapper/*"
+  - "configure"
+  - "*/configure"
+  - "configure.ac"
+  - "*/configure.ac"
+  - "configure.in"
+  - "*/configure.in"
+  - "*.m4"
+  - "*.am"
+  - ".chock/blob-allowlist.txt"
+
+rule:
+  text: |
+    binary_or_archive_in(tests|fixtures|testdata|spec|m4|vendor|gradle/wrapper): avoid; if_required: state(purpose), list(sha256+path in .chock/blob-allowlist.txt), person_commits
+    prefer: generate_in_test_setup | pinned_checksummed_download; never decode_and_eval(test_file)
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      A change adds or edits a file a reviewer cannot read in a test, fixture, vendor or gradle wrapper
+      path: an archive, executable or wasm module (by its first bytes, whatever its name), a random-looking
+      file over 100 KB, a symlink out of the repository, build text that decodes and evaluates data, or a
+      gradle wrapper jar changed with no new distributionSha256Sum. A hidden payload in a test file is how
+      the xz backdoor reached build scripts. Generate the data in the test setup or fetch it from a pinned,
+      checksummed source; if the file must be committed, state why and have a person list '<sha256>  <path>'
+      in .chock/blob-allowlist.txt. An agent asks a person: an entry written in the same agent change does
+      not count. This policy only warns while it is measured (rollout observe).
+    params:
+      script: opaque-blob-guard-gate.py
+
+compliance:
+  owasp_asi:
+  - control: ASI04
+    coverage: partial
+    note: "flags new or changed opaque binaries, archives and decode-and-evaluate build text in test, fixture, vendor and gradle wrapper paths; warns only (observe) and judges bytes by signature and entropy, not what a file does"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap NP27): a script gate at commit, CI and agent write. Files are read from disk (never through a symlink, bounded), and at a commit also from the index, so a staged blob cannot be swapped for a clean working copy. It prints a findings document keyed by rule and content hash. Ships at action: warn, the observe stage of rollout D15; the script exits 3 (ask), so promotion is a manifest change."
