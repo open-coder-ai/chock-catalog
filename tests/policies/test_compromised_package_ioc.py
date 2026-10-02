@@ -125,9 +125,13 @@ def test_a_byte_order_mark_is_read_through_as_npm_pip_and_composer_do() -> None:
     assert keys({"package.json": bom}) == []
 
 
-@pytest.mark.parametrize("text", ["litellm==1.82.7\x00\n", "lite\ufffdllm==1.82.7\n"])
+@pytest.mark.parametrize("text", ["litellm==1.82.7\x00\n", "requests==2.0\x00\n", "\ufffd\ufffdlitellm\n"])
 def test_text_that_did_not_decode_is_unreadable_not_silent(text: str) -> None:
     assert keys({"requirements.txt": text}) == ["unparseable|" + gate._digest(text)]
+
+
+def test_an_undecodable_comment_in_a_file_that_reads_is_not_a_refusal() -> None:
+    assert keys({"Gemfile": "# Jos\ufffd\ngem 'rails'\ngem 'puma'\n"}) == []
 
 
 def test_an_unreadable_file_edited_while_unreadable_is_new() -> None:
@@ -138,9 +142,22 @@ def test_an_unreadable_file_edited_while_unreadable_is_new() -> None:
     assert head != new
 
 
-def test_a_uses_form_this_gate_cannot_read_is_reported() -> None:
-    text = "x: &a tj-actions/changed-files@v45\nsteps:\n  - uses: *a\n"
-    assert keys({".github/workflows/a.yml": text}) == ["unparseable-uses|" + gate._digest("*a")]
+def test_an_alias_is_judged_by_what_its_anchor_names() -> None:
+    head = "x: &a actions/checkout@v4\nsteps:\n  - uses: *a\n"
+    new = "x: &a tj-actions/changed-files@v45\nsteps:\n  - uses: *a\n"
+    assert keys({".github/workflows/a.yml": head}) == []
+    assert keys({".github/workflows/a.yml": new}) == ["ioc-action|tj-actions/changed-files|v45"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "x: &a tj-actions/changed-files@v45\ny: &a actions/checkout@v4\nsteps:\n  - uses: *a\n",
+        "x: &a\n  tj-actions/changed-files@v45\nsteps:\n  - uses: *a\n",
+    ],
+)
+def test_an_alias_this_gate_cannot_resolve_is_keyed_by_the_whole_file(text: str) -> None:
+    assert keys({".github/workflows/a.yml": text}) == ["unparseable-uses|" + gate._digest(text)]
 
 
 def test_a_short_listed_commit_matches_a_full_pin() -> None:

@@ -217,6 +217,7 @@ def test_workflow_routing(path: str, want: bool) -> None:
         ('  - uses: "tj-actions/changed-files@v45"\n', ("tj-actions/changed-files", "v45")),
         ('  - uses: "tj-actions/changed\\x2dfiles@v45"\n', (None, '"tj-actions/changed\\x2dfiles@v45"')),
         ("  - uses: *alias\n", (None, "*alias")),
+        ("a: &x tj-actions/changed-files@v1\n  - uses: *x\n", ("tj-actions/changed-files", "v1")),
         ("  - uses:\n", (None, "")),
     ],
 )

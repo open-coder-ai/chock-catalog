@@ -16,7 +16,9 @@ BUNDLED = ("bundleDependencies", "bundledDependencies")
 #: Lockfiles of large monorepos run to tens of megabytes; this bounds the JSONC pass, not the guard.
 LOCK_LIMIT = 1 << 26
 SEMVER = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?")
-PNPM_KEY = re.compile(r"""\s+['"]?/?((?:@[^/@\s'"]+/)?[^/@\s'"()]+)[@/]([0-9][^\s:'"()_]*)[^:]*:(?:\s*\{.*)?\s*""")
+PNPM_KEY = re.compile(
+    r"""\s+(?:\?\s+)?['"]?/?((?:@[^/@\s'"]+/)?[^/@\s'"()]+)[@/]([0-9][^\s:'"()_]*)[^:\s]*\s*(?::(?:\s*[{&!#].*)?)?\s*"""
+)
 YARN_VERSION = re.compile(r"""\s+version:?\s+"?([^"\s]+)"?\s*$""")
 
 
@@ -86,7 +88,7 @@ def _overrides(text: str, node: object) -> Iterator[Hit]:
         for key, value in current.items():
             if key == ".":
                 continue
-            name = split_at(key)[0]
+            name = split_at(key.rsplit(">", 1)[-1])[0]  # pnpm `parent>child` selects the child
             spec = value.get(".") if isinstance(value, dict) else value
             yield from _alias(name, spec, line_of(text, f'"{key}"'))
             stack.append(value)
@@ -140,8 +142,8 @@ def yarn_lock(text: str) -> Iterator[Hit]:
 
 
 def pnpm_lock(text: str) -> Iterator[Hit]:
-    """pnpm-lock.yaml, v5 (`/name/1.2.3:`) to v9 (`name@1.2.3:`): every package key, a flow `{...}` value
-    after it or not, peer suffixes dropped."""
+    """pnpm-lock.yaml, v5 (`/name/1.2.3:`) to v9 (`name@1.2.3:`): every package key, explicit (`? key`) or
+    followed by a flow value, comment, tag or anchor; peer suffixes dropped."""
     for number, line in enumerate(text.splitlines(), 1):
         if found := PNPM_KEY.fullmatch(line):
             yield Hit(ECO, found.group(1), exact(found.group(2)), number)

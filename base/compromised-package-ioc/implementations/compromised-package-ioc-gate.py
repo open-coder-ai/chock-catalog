@@ -43,7 +43,7 @@ def _actions(ioc: table.Table, path: str, text: str) -> list[dict]:
             msg = (
                 f"`uses:` written in a form this gate does not read ({ref[:60]!r}); write it as a plain owner/repo@ref"
             )
-            found.append(_finding(f"unparseable-uses|{_digest(ref)}", path, line, msg))
+            found.append(_finding(f"unparseable-uses|{_digest(text)}", path, line, msg))
         elif entry := ioc.action(name, ref):
             msg = f"uses {name}@{ref}: a listed compromise of this action ({_why(entry)})"
             found.append(_finding(f"ioc-action|{name.casefold()}|{ref.casefold()}", path, line, msg))
@@ -51,16 +51,18 @@ def _actions(ioc: table.Table, path: str, text: str) -> list[dict]:
 
 
 def _read(reader: route.Reader, text: str) -> list:
-    """The reader's hits; text that did not decode (a NUL, U+FFFD) is unreadable rather than read past."""
-    if "\x00" in text or "\ufffd" in text:
+    """The reader's hits. A NUL (UTF-16, binary) is never text a manifest holds, so the file is unreadable; so
+    is one that yields nothing and holds U+FFFD. A stray U+FFFD in a file that reads (a Latin-1 comment) is not."""
+    hits = list(reader(text))
+    if "\x00" in text or (not hits and "\ufffd" in text):
         msg = "not UTF-8 text (NUL or undecodable bytes)"
         raise UnparseableError(msg)
-    return list(reader(text))
+    return hits
 
 
 def _packages(ioc: table.Table, path: str, text: str, reader: route.Reader) -> list[dict]:
     try:
-        hits = list(_read(reader, text))
+        hits = _read(reader, text)
     except UnparseableError as exc:
         msg = f"cannot read this file to check it against the IOC list: {exc}"
         return [_finding(f"unparseable|{_digest(text)}", path, 1, msg)]

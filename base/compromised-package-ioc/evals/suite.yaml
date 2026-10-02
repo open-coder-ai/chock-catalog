@@ -216,3 +216,8 @@ suite:
     prompt: "A test fixture package.json is empty."
     expect: "Allowed: an empty file names nothing."
     execute: {"event": "commit", "files": {"tests/fixtures/empty/package.json": ""}, "expect": "allow"}
+  - id: tc-042
+    category: behavior
+    prompt: "HEAD runs actions/checkout through a YAML alias; a commit changes only the anchor to a compromised action."
+    expect: "Refused: the alias is judged by what its anchor names, so the re-point is new."
+    execute: {"event": "commit", "head_files": {".github/workflows/ci.yml": "x: &a actions/checkout@v4\\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: *a\\n"}, "files": {".github/workflows/ci.yml": "x: &a tj-actions/changed-files@v45\\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: *a\\n"}, "expect": "block"}
