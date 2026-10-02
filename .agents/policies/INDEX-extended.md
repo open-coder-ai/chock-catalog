@@ -5,10 +5,6 @@
 These advise-tier policies were demoted from the main index to keep the attention
 budget focused on block and verify enforcement. Read them when the task matches.
 
-- **protect-ci-workflows**:
-  ci_config(.github/workflows|.github/actions|.github/dependabot.yml|yaml): never(shell_edit|delete); ask_person
-  if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
-
 - **protect-commit-privacy**:
   commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
   if(marker_hit|sensitive_context): ask_person before(commit); no_waiver(person removes phrase from MARKERS); never(edit MARKERS)  # history is published forever

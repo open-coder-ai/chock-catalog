@@ -584,8 +584,8 @@ policies:
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 40
-  eval_executed: 40
+  eval_cases: 55
+  eval_executed: 55
   description: 'Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs,
     private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code),
     URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split

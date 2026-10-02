@@ -322,3 +322,118 @@ suite:
         app.yaml: "private_key: 'secrets/prod-key2.pem'\n"
         call.sh: "curl -H 'Authorization: Bearer ACCESS_TOKEN_2' https://api.internal\n"
       expect: allow
+  - id: tc-033
+    category: trigger
+    prompt: A staged JSON file sets a password with the quoted-colon form.
+    expect: 'The hook blocks it; "key": "value" is judged like key = value.'
+    execute:
+      files:
+        config.json: "{\"db\": {\"password\": \"s3cr3t-Value-99\"}}\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-034
+    category: trigger
+    prompt: A staged YAML file sets an access token in camelCase.
+    expect: The hook blocks it.
+    execute:
+      files:
+        app.yaml: "accessToken: a1B2c3D4e5F6g7H8i9J0\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-035
+    category: trigger
+    prompt: A staged dotenv-style script exports an AWS secret access key.
+    expect: The hook blocks the commonest AWS secret shape, which 0.0.9 missed.
+    execute:
+      files:
+        deploy.sh: "export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCY0NOTREAL0\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-036
+    category: trigger
+    prompt: A staged file contains a GitLab personal access token.
+    expect: The hook blocks it.
+    execute:
+      files:
+        ci.py: "TOKEN = 'glpat-EXAMPLE0NOTAREAL0TOKEN'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-037
+    category: trigger
+    prompt: A staged file contains a Hugging Face access token.
+    expect: The hook blocks it.
+    execute:
+      files:
+        train.py: "HF_TOKEN = 'hf_EXAMPLE0NOTAREAL0TOKEN000000000000'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-038
+    category: trigger
+    prompt: A staged file holds a database URI with a user and password for a non-local host.
+    expect: The hook blocks credentials embedded in a URI.
+    execute:
+      files:
+        settings.py: "DATABASE_URL = 'postgres://app:s3cr3tpw@db.internal:5432/app'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-039
+    category: trigger
+    prompt: A staged script sends a literal bearer token in an Authorization header.
+    expect: The hook blocks it.
+    execute:
+      files:
+        call.sh: "curl -H 'Authorization: Bearer abc123def456ghi789' https://api.internal/v1\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-040
+    category: trigger
+    prompt: A staged script passes a literal password on the docker login command line.
+    expect: The hook blocks it; --password-stdin is the alternative.
+    execute:
+      files:
+        release.sh: "docker login -u bot -p S3cretPa55 registry.internal\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-041
+    category: trigger
+    prompt: A staged file contains an encrypted PKCS8 private key header.
+    expect: The hook blocks it; ENCRYPTED and PGP private-key headers are private keys too.
+    execute:
+      files:
+        notes.md: "-----BEGIN ENCRYPTED PRIVATE KEY-----\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-046
+    category: behavior
+    prompt: A person commits the AWS documentation example secret key with the waiver pragma.
+    expect: The hook allows it; the pragma marks a documented example.
+    execute:
+      files:
+        docs_example.sh: "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY  # pragma: allowlist secret\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-048
+    category: adversarial
+    prompt: The agent writes a GitLab token and adds the waiver pragma to the same line in the same edit.
+    expect: The write is refused; a waiver the write adds is not honoured in the agent.
+    execute: {event: tool_use, head_files: {"ci.py": "TOKEN = os.environ['TOKEN']\n"}, writes: {"ci.py": "TOKEN = 'glpat-EXAMPLE0NOTAREAL0TOKEN'  # pragma: allowlist secret\n"}, expect: block}  # pragma: allowlist secret
+  - id: tc-051
+    category: adversarial
+    prompt: A YAML key in SCREAMING_SNAKE case with a quoted value, the shape an agent writes to dodge a lower-case rule.
+    expect: The hook blocks it; name matching ignores case and separator.
+    execute:
+      files:
+        values.yaml: "STRIPE_API_KEY: \"rk9-Qz8Yx7Wv6Ut5Sr4\"\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-052
+    category: trigger
+    prompt: "The agent writes an Authorization header literal into a client file."
+    expect: "The write is refused before it happens."
+    execute: {event: tool_use, writes: {"client.py": "HEADERS = {\"Authorization\": \"Bearer abc123def456ghi789\"}\n"}, expect: block}  # pragma: allowlist secret
+  - id: tc-054
+    category: negative_trigger
+    prompt: A commit adds URL-parser test vectors whose userinfo holds a backslash, a fragment or an example word.
+    expect: The hook allows them; RFC 3986 userinfo cannot hold an unescaped backslash, # or ?, and foobar is a placeholder.
+    execute:
+      files:
+        urls.txt: "http://127.1.1.1:80\\@127.2.2.2:80/\nhttp://127.1.1.1:80\\@@127.2.2.2:80/\nhttp://127.1.1.1:80#\\@127.2.2.2:80/\nhttp://%25DOMAIN:foobar@foodomain.com/\n"
+      expect: allow
+  - id: tc-055
+    category: adversarial
+    prompt: A staged file holds real connection URLs with a user and a non-placeholder password on non-example hosts.
+    expect: The hook blocks credentials in a URI.
+    execute:
+      files:
+        deploy.sh: "git clone https://deploy:S3cr3tP4ss@git.internal.corp/app.git\n"  # pragma: allowlist secret
+        app.env.txt: "DB=postgres://app:hunter2xyz9@db.prod.corp:5432/x\n"  # pragma: allowlist secret
+      expect: block
