@@ -1,6 +1,6 @@
 ---
 name: block-no-verify
-description: "Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c, --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says ask the person. Bypasses: aliases, scripts."
+description: "Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c, git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; pre-commit/lefthook/husky uninstall; aliases and rebase --exec it sees defined. Asks on commit-tree/update-ref, GIT_DIR and config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts."
 metadata:
   chock.artifact: rule
   chock.enforcement: advise
@@ -9,11 +9,11 @@ metadata:
 
 # Block No-Verify
 
-Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c, --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says ask the person. Bypasses: aliases, scripts.
+Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c, git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; pre-commit/lefthook/husky uninstall; aliases and rebase --exec it sees defined. Asks on commit-tree/update-ref, GIT_DIR and config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts.
 
 ```
-never(commit|merge|am|rebase|push): --no-verify|-n(commit|am); never(set): core.hooksPath; never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT
-if(hook_fails|override_needed): fix_issue|ask_person; never(skip_hook)
+never(commit|merge|am|rebase|push|pull|cherry-pick|revert): --no-verify|-n(commit|am); never(set): core.hooksPath|HUSKY=0|HUSKY_SKIP_HOOKS|SKIP|LEFTHOOK=0|LEFTHOOK_EXCLUDE|PRE_COMMIT_ALLOW_NO_CONFIG; never: pre-commit|lefthook|husky uninstall
+ask_person: commit-tree|update-ref|fast-import|GIT_DIR(other repo)|GIT_CONFIG_GLOBAL|include.path; never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` can refuse an agent's shell command before it runs. See https://github.com/open-coder-ai/chock
