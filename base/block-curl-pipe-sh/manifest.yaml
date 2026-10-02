@@ -1,12 +1,13 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.0.5"
+version: "0.1.0"
 description: >
-  Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx,
-  aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node,
-  bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout;
-  also bash -c "$(curl ...)", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping
-  into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.
+  Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
+  (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
+  iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker
+  exec bodies, or downloaded and run in one command with no checksum or signature step.
+  nc/socat/one-liner reads ask. Misses: aliases, functions, variable-named fetchers, encoded text.
+  Friction only.
 artifact: rule
 enforcement: advise
 compliance:
@@ -14,8 +15,8 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(sh|bash|python|perl|node|iex)
-    allow: download_to_file, fetch|non_interpreter(jq|tar); prefer: curl -o file; read; run
+    block(remote_exec): fetch(curl|wget|iwr|irm) piped|substituted|here-string|run-after-download into interpreter(sh|bash|python|php|pwsh|source|eval|iex), quoted bodies too; ask: nc|socat|net one-liner
+    allow: download_to_file, fetch|non_interpreter(jq|tar|gpg), download+verify(sha256sum -c|gpg --verify)+run; prefer: curl -o file; read; verify; run
 effects:
 - read_only
 approval:
@@ -24,7 +25,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -38,6 +39,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "Ported from a bash regex to Python on the shared chock_shellparse reader (a byte-identical copy ships beside the guard, pinned by the copy test). A guard-local lexer (curlpipe_lex.py) keeps what chock_shellparse drops -- pipe edges, $(...)/backtick/<(...)/>(...) substitutions, here-strings and heredocs -- and each pipeline stage is resolved through chock_shellparse.commands, so sudo/env/timeout/xargs/nohup wrappers and bash -c bodies are read the way the other guards read them."
+  - "Bypasses closed (roadmap 4.5 #1), each with eval or test cases: the fetch inside a quoted body (bash -c \"curl ... | sh\", ssh host \"...\", docker/kubectl exec, watch, su -c, tmux), eval \"$(curl ...)\", source <(curl ...), . <(curl ...), here-strings (bash <<< \"$(curl ...)\"), sh < <(curl ...), tee >(sh), a substitution run as the command itself, and consumers v1 did not know: php, pwsh/powershell (-Command -, -File -), deno/bun run -, lua, tcsh, busybox sh, su, sudo -s, source /dev/stdin, $SHELL or any variable-named program, ssh host, docker exec -i, kubectl exec -i, chroot, xargs into sh -c/eval."
+  - "New: download-then-run in one command line (curl -o/-O, wget, aria2c, PowerShell -OutFile, or > file, later run as ./file, sh file, python file, source file) is refused unless a checksum or signature step (sha256sum -c, gpg --verify, cosign, minisign, openssl dgst -verify) comes between. A raw socket read (nc, socat, telnet, /dev/tcp) or an interpreter one-liner that reads the network, wired into a consumer, asks (exit 3) rather than blocks."
+  - "False blocks removed: a fetcher and an unrelated pipe into python in the same line (curl ... -o f; python3 x.py | sh), python -m json.tool / python -c / node -e / perl -ne reading the download as data, a commit or PR message that quotes the pattern, grep/rg patterns, heredoc text written to a file."
+  - "Fail closed (correction C3): when the quoting never balances (unbalanced quote, trailing backslash, unclosed substitution or heredoc), or the engine sets CHOCK_ARGV_FALLBACK=1, a command that names any downloader and any shell or interpreter is refused; past four levels of nesting a fetcher anywhere is refused. An unexpected exception exits 2 (a guard fault), never 1. Without CHOCK_RAW_COMMAND (an older adapter) argv is joined with spaces, so the plain pipe form still trips."
 - version: 0.0.5
   date: '2026-09-30'
   changes:

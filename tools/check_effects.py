@@ -92,6 +92,14 @@ def interpreter(bash: str, guard: Path) -> str:
     return sys.executable if guard.suffix == ".py" else bash
 
 
+def split_command(command: str) -> list[str]:
+    """argv as chock's hook builds it: shlex, else a whitespace split (its CHOCK_ARGV_FALLBACK path)."""
+    try:
+        return shlex.split(command)
+    except ValueError:
+        return command.split()
+
+
 def run_guard(
     bash: str, guard: Path, command: str | None, workspace: Path, home: Path, scratch: Path, stdin: str | None = None
 ) -> None:
@@ -102,7 +110,7 @@ def run_guard(
     is handed the writes and never reads git.
     """
     env = dict(os.environ, HOME=str(home), TMPDIR=str(scratch), GIT_CONFIG_GLOBAL=str(home / ".gitconfig"))
-    argv = [] if command is None else shlex.split(command)
+    argv = [] if command is None else split_command(command)
     try:
         subprocess.run(
             [interpreter(bash, guard), str(guard), *argv],

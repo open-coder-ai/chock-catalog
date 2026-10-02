@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-curl-pipe-sh",
-  "version": "0.0.5",
-  "description": "Best-effort guard against piping a download into a shell or interpreter: curl, wget, lynx, aria2c, iwr/irm and similar fetchers piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node, bare, path-qualified or quoted, in a subshell group or behind sudo/exec/env/xargs/nohup/timeout; also bash -c \"$(curl ...)\", bash <(curl ...) and PowerShell `| iex`. Saving to a file, or piping into jq/tar/grep, is allowed. Bypasses: aliases, variables, obfuscation. Friction only.",
+  "version": "0.1.0",
+  "description": "Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval, iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker exec bodies, or downloaded and run in one command with no checksum or signature step. nc/socat/one-liner reads ask. Misses: aliases, functions, variable-named fetchers, encoded text. Friction only.",
   "author": {
     "name": "chock-core"
   },
