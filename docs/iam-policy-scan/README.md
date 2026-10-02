@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 43 total, 43 executable |
+| **Eval cases** | 48 total, 48 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants (concat, for, locals), services beyond s3/iam/sts/kms/ec2, templated YAML that will not parse, unlisted file extensions. Waiver: pragma, or .chock/iam-policy-scan.json.
+Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, unlisted extensions. Waiver: pragma or sidecar.
 
 ## What it solves
 

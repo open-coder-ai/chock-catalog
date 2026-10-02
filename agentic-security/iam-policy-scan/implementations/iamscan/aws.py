@@ -11,7 +11,7 @@ from iamscan.model import ASK, BLOCK
 
 STAR = frozenset({"*", "*:*"})
 SERVICE_STAR = re.compile(r"(?i)(?:s3|iam|sts|kms|ec2):\*")
-ASSUME = re.compile(r"(?i)sts:(?:\*|assumerole\w*)")
+ASSUME = re.compile(r"(?i)sts:(?:\*|a\w*\*|assumerole\w*)")
 ACCOUNT = re.compile(r"(?:arn:[\w-]+:iam::)?\d{12}(?::|$)")
 INVERTED = ("notaction", "notresource", "notprincipal")
 #: Condition keys that say who may assume a role or reach a resource, so a wildcard principal is not public.
@@ -31,6 +31,18 @@ POSITIVE_OPERATORS = frozenset(
 )
 EVERYONE = frozenset({"*", "0.0.0.0/0", "::/0"})
 IP_KEYS = frozenset({"aws:sourceip", "aws:vpcsourceip"})
+#: Keys whose value is an ARN or an account id: a wildcard there must not stand where the account goes.
+ARN_KEYS = frozenset({"aws:principalarn", "aws:sourcearn"})
+ACCOUNT_KEYS = frozenset(
+    {
+        "aws:principalaccount",
+        "aws:sourceaccount",
+        "kms:calleraccount",
+        "s3:dataaccesspointaccount",
+        "aws:resourceaccount",
+    }
+)
+ARN_PARTS = 6  # arn:partition:service:region:account:resource
 MIN_LITERAL = 3  # a value with fewer letters or digits than this ("o-*", "arn:*") names no one
 
 
@@ -111,10 +123,28 @@ def _narrow(key: str, value: str) -> bool:
             return False
     if value in EVERYONE:
         return False
-    if not {"*", "?"} & set(value):
-        return True
+    return not {"*", "?"} & set(value) or _pattern_narrows(key, value)
+
+
+def _pattern_narrows(key: str, value: str) -> bool:
+    """Whether a value with wildcards still names someone: an account key takes none, an ARN must fix its account."""
+    if key in ACCOUNT_KEYS:
+        return False
+    if key in ARN_KEYS:
+        return _arn_names_account(value)
     named = value.lower().replace("arn", "").replace("aws", "")
     return sum(c.isalnum() for c in named) >= MIN_LITERAL
+
+
+def _arn_names_account(value: str) -> bool:
+    """Whether an ARN pattern fixes the account (an S3 ARN has none): `arn:aws:iam::*:role/*` is every account."""
+    parts = value.split(":", ARN_PARTS - 1)
+    if len(parts) < ARN_PARTS:
+        return False
+    account = parts[4]
+    if not account:
+        return parts[2].lower() == "s3" and sum(c.isalnum() for c in parts[5]) >= MIN_LITERAL
+    return not {"*", "?"} & set(account)
 
 
 def _restricts(statement: dict, keys: frozenset[str]) -> bool:

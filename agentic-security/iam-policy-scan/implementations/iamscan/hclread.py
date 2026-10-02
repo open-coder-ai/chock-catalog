@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 
 from chock_scan import hcl, jsonc
 
@@ -11,10 +12,18 @@ from iamscan.aws import judge
 from iamscan.model import BLOCK
 from iamscan.walk import Scan, Spot
 
-JSONENCODE = re.compile(r"(?s)jsonencode\s*\((.*)\)")
+JSONENCODE = re.compile(r"\bjsonencode\s*\(")
+TRY_FACTOR = (
+    8  # an expression's calls are parsed for at most this many times its length, so `)))` cannot stall the hook
+)
+TRY_FLOOR = 10_000
+QUOTED_MIN = 2
+UNESCAPED_QUOTE = re.compile(r'(?<!\\)(?:\\\\)*"')
+QUOTE_ESCAPE = re.compile(r"\\(.)")
 HEREDOC = re.compile(r"(?s)<<-?\s*(\w+)[ \t]*\n(.*?)\n[ \t]*\1[ \t]*$")
 INTERPOLATION = re.compile(r"\$\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|%\{[^{}]*\}")
 RISKY = re.compile(r"(?i)\b(?:effect|action|principal|statement)\b")
+RISKY_KEY = re.compile(r'(?i)"(?:effect|action|principal|statement)"')
 POLICY_DOCUMENT = ("aws_iam_policy_document",)
 RENAMED = {"actions": "Action", "not_actions": "NotAction", "resources": "Resource", "not_resources": "NotResource"}
 
@@ -100,16 +109,66 @@ def _attribute(attr: hcl.Attribute, scan_: Scan) -> None:
     if value is hcl.COMPUTED and (heredoc := HEREDOC.fullmatch(attr.expr.strip())):
         _template_json(heredoc.group(2), attr.line, span, scan_)
         return
-    if value is hcl.COMPUTED and (call := JSONENCODE.fullmatch(attr.expr.strip())):
-        inner = hcl.parse(f"x = {call.group(1)}\n").attributes[0]
-        value = inner.value
-        if value is hcl.COMPUTED and RISKY.search(attr.expr):
-            scan_.unreadable("a jsonencode policy with a computed key cannot be read", attr.line)
-            return
+    if value is hcl.COMPUTED and (text := _quoted(attr.expr)) is not None:
+        _template_json(text, attr.line, span, scan_, strict=False)
     scan_.walk(_plain(value), attr.line, span)
+    for inner, argument in _jsonencoded(attr.expr):
+        if inner is hcl.COMPUTED and argument.lstrip().startswith(("{", "[")) and RISKY.search(argument):
+            scan_.unreadable("a jsonencode policy with a computed key cannot be read", attr.line)
+        else:
+            scan_.walk(_plain(inner), attr.line, span)
 
 
-def _template_json(body: str, line: int, span: tuple[int, int], scan_: Scan) -> None:
+def _quoted(expr: str) -> str | None:
+    """The text of an expression that is one quoted string, its escapes undone; None for anything else."""
+    text = expr.strip()
+    if len(text) < QUOTED_MIN or text[0] != '"' or text[-1] != '"' or UNESCAPED_QUOTE.search(text[1:-1]):
+        return None
+    return QUOTE_ESCAPE.sub(lambda m: {"n": "\n", "t": "\t"}.get(m.group(1), m.group(1)), text[1:-1])
+
+
+def _jsonencoded(expr: str) -> Iterator[tuple[object, str]]:
+    """The value each `jsonencode(...)` in an expression spells, however it is wrapped or nested in another."""
+    budget = [TRY_FACTOR * len(expr) + TRY_FLOOR]
+    pending = [expr]
+    while pending:
+        text = pending.pop()
+        end = 0
+        for call in JSONENCODE.finditer(text):
+            if call.start() < end:
+                continue
+            for close in _closers(text, call.end()):
+                budget[0] -= close - call.end()
+                if budget[0] < 0:
+                    msg = "more jsonencode text than the gate reads in one expression"
+                    raise ValueError(msg)
+                argument = text[call.end() : close]
+                try:
+                    inner = hcl.parse(f"x = {argument}\n").attributes[0]
+                except (hcl.HclError, IndexError):
+                    continue
+                end = close
+                pending.append(argument)
+                yield inner.value, argument
+                break
+
+
+def _closers(expr: str, start: int) -> Iterator[int]:
+    """Each `)` after `start` where the parentheses so far balance, then the rest (a `)` may sit in a string)."""
+    depth, rest = 0, []
+    for at in range(start, len(expr)):
+        if expr[at] == "(":
+            depth += 1
+        elif expr[at] == ")":
+            if depth == 0:
+                yield at
+            else:
+                rest.append(at)
+            depth -= 1
+    yield from rest
+
+
+def _template_json(body: str, line: int, span: tuple[int, int], scan_: Scan, *, strict: bool = True) -> None:
     """A heredoc that interpolates is computed to the HCL reader; read its JSON with each `${}` made a placeholder."""
     for filler in ("TPL", '"TPL"'):
         text = INTERPOLATION.sub(filler, body)
@@ -119,5 +178,5 @@ def _template_json(body: str, line: int, span: tuple[int, int], scan_: Scan) -> 
             continue
         scan_.embedded(text, line, span, 0)
         return
-    if RISKY.search(body):
+    if strict and body.lstrip().startswith(("{", "[")) and RISKY_KEY.search(body):
         scan_.unreadable("a heredoc policy with interpolation cannot be read", line)

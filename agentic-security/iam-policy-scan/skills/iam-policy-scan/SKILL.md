@@ -1,6 +1,6 @@
 ---
 name: iam-policy-scan
-description: "Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants (concat, for, locals), services beyond s3/iam/sts/kms/ec2, templated YAML that will not parse, unlisted file extensions. Waiver: pragma, or .chock/iam-policy-scan.json."
+description: "Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, unlisted extensions. Waiver: pragma or sidecar."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # IAM Policy Scan
 
-Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants (concat, for, locals), services beyond s3/iam/sts/kms/ec2, templated YAML that will not parse, unlisted file extensions. Waiver: pragma, or .chock/iam-policy-scan.json.
+Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, unlisted extensions. Waiver: pragma or sidecar.
 
 ```
 on(commit|tool_use): block(script) script=iam-policy-scan-gate.py

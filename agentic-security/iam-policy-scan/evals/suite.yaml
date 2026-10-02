@@ -874,3 +874,97 @@ suite:
             ]
           }
       expect: block
+  - id: tc-044
+    category: trigger
+    prompt: A public bucket policy is gated by a Condition whose principal ARN leaves the account as a wildcard.
+    expect: 'The commit is refused: arn:aws:iam::*:role/* is every account, so the policy is still public.'
+    execute:
+      event: commit
+      files:
+        bucket.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::reports/*",
+                "Condition": {
+                  "ArnLike": {
+                    "aws:PrincipalArn": "arn:aws:iam::*:role/*"
+                  }
+                }
+              }
+            ]
+          }
+      expect: block
+  - id: tc-045
+    category: negative_trigger
+    prompt: A bucket policy is gated by a Condition whose principal ARN fixes one account.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        bucket.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:GetObject",
+                "Resource": "arn:aws:s3:::reports/*",
+                "Condition": {
+                  "ArnLike": {
+                    "aws:PrincipalArn": "arn:aws:iam::123456789012:role/*"
+                  }
+                }
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-046
+    category: trigger
+    prompt: A Terraform local keeps an admin policy in a map of jsonencode calls.
+    expect: 'The commit is refused: jsonencode is read wherever it sits in the expression.'
+    execute:
+      event: commit
+      files:
+        policies.tf: |
+          locals {
+            policies = {
+              admin = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{ Effect = "Allow", Action = "*", Resource = "*" }]
+              })
+            }
+          }
+      expect: block
+  - id: tc-047
+    category: negative_trigger
+    prompt: A Terraform local keeps a scoped policy in a map of jsonencode calls.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        policies.tf: |
+          locals {
+            policies = {
+              reader = jsonencode({
+                Version = "2012-10-17"
+                Statement = [{ Effect = "Allow", Action = ["s3:GetObject"], Resource = "arn:aws:s3:::reports/*" }]
+              })
+            }
+          }
+      expect: allow
+  - id: tc-048
+    category: trigger
+    prompt: A quoted Terraform policy string with an interpolation grants every S3 action on a named resource.
+    expect: 'The commit asks: the string is read with the interpolation as a placeholder.'
+    execute:
+      event: commit
+      files:
+        bucket.tf: |
+          resource "aws_iam_policy" "p" {
+            policy = "{\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"${var.arn}\"}]}"
+          }
+      expect: ask

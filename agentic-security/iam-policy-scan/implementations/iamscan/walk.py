@@ -27,7 +27,9 @@ LOCATABLE = frozenset(
         "roledefinitionid",
     }
 )
-LOOKS_LIKE_POLICY = re.compile(r'(?is)^\s*\{.*\\*"(?:Statement|Effect|rules|kind)\\*"')
+POLICY_KEY = re.compile(
+    r'(?i)"(?:Statement|Effect|rules|kind)\\*"'
+)  # no leading `.*` or `\\*`: those backtrack quadratically
 #: Keys whose repeated occurrence in one mapping hides a value from one of the loaders that read it.
 GUARDED_KEYS = frozenset(
     {"effect", "action", "notaction", "resource", "notresource", "principal", "notprincipal", "condition", "statement",
@@ -113,7 +115,8 @@ class Scan:
 
     def embedded(self, text: str, line: int, span: tuple[int, int] | None, embed: int) -> None:
         """Open JSON held in a string; `embed` counts strings opened inside strings, not how deep the file nests."""
-        if not LOOKS_LIKE_POLICY.match(unescaped(text)):
+        body = unescaped(text).lstrip()
+        if not (body.startswith("{") and POLICY_KEY.search(body)):
             return
         if embed >= EMBED_DEPTH:
             self.unreadable("a JSON policy inside strings inside strings is nested past what the gate opens", line)

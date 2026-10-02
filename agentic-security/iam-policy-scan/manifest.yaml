@@ -1,12 +1,11 @@
 id: iam-policy-scan
 name: "IAM Policy Scan"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses
   Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks
-  for service wildcards on a named resource and cross-account trust. Only added grants. Misses computed grants
-  (concat, for, locals), services beyond s3/iam/sts/kms/ec2, templated YAML that will not parse, unlisted file
-  extensions. Waiver: pragma, or .chock/iam-policy-scan.json.
+  for service wildcards on a named resource, cross-account trust. Only added grants. Misses computed grants, partial
+  wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, unlisted extensions. Waiver: pragma or sidecar.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -53,6 +52,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Final verification, fixed: a wildcard-principal Condition value that leaves the account open (`arn:aws:iam::*:role/*`, `arn:aws:iam::*:root`, `*iam*`, `aws:SourceArn` with a wildcard account, a wildcard in an account-id key) no longer counts as narrowing, so the policy is still refused as public; `jsonencode(...)` is read wherever it sits in an expression (a map or list element, a `replace()` or `trimspace()` argument, a conditional, a `\"${...}\"` template, another jsonencode), not only as a whole attribute; a quoted JSON policy string with a `${}` interpolation is read with the interpolation as a placeholder; `sts:Assume*` counts as an assume action for the cross-account ask; the embedded-JSON test no longer backtracks quadratically (a 300 KB string of backslashes stalled the gate past its time limit)."
+  - "Limits added (not caught): GCP IAM bindings (`allUsers`, `allAuthenticatedUsers`, `roles/owner`, `roles/editor`) in any file this gate reads; Azure custom role definitions with Actions `*`; Kubernetes bindings of any role to `system:anonymous`, `system:unauthenticated` or `system:authenticated`, and rules that only grant `impersonate`; an object with a computed key (`(var.k) = ...`) inside a jsonencode statement; `file()` and `templatefile()` policies; YAML or JSON held in a string that is not a JSON policy (a kustomize patch); a CloudFormation `Fn::Sub` or `Fn::Join` long form (the `!Sub` tag is read); an IPv4 network of /1 or more counts as narrowing; a Condition value that is a partial wildcard of an org id or a role path counts as narrowing when it holds three letters or digits; a same-account role ARN in a trust asks like another account's (the gate does not know which account the role lives in)."
 - version: 0.1.0
   date: '2026-10-02'
   changes:
