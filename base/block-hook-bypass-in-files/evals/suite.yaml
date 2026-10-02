@@ -142,3 +142,13 @@ suite:
     prompt: A shell script uses SKIP as an ordinary boolean flag.
     expect: Allowed; pre-commit's SKIP names hook ids, a boolean is not one.
     execute: {files: {"scripts/run.sh": "SKIP=0\n--skip) SKIP=1; shift ;;\n"}, expect: allow}
+  - id: tc-027
+    category: adversarial
+    prompt: A release script's commit message holds an ampersand before the hook-skip option.
+    expect: Flagged; a separator inside the quoted message does not end the git command.
+    execute: {files: {"scripts/release.sh": "git commit -m \"docs & tests\" --no-verify\n"}, expect: warn}
+  - id: tc-028
+    category: adversarial
+    prompt: A package.json script's escaped message holds a semicolon before the hook-skip option.
+    expect: Flagged.
+    execute: {files: {"package.json": "{\"scripts\": {\"ship\": \"git commit -m \\\"release; bump\\\" --no-verify\"}}\n"}, expect: warn}

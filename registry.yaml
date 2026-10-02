@@ -731,8 +731,8 @@ policies:
   mandatory: false
   mechanism: warn-only gate
   enforces: advisory
-  eval_cases: 26
-  eval_executed: 26
+  eval_cases: 28
+  eval_executed: 28
   description: 'Friction, not a security boundary: flags lines added to hook launchers and scripts that
     switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
     set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit,

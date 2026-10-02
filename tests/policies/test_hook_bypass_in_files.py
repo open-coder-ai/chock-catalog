@@ -77,6 +77,14 @@ LINES = {
     "skip: true": OK,
     "npx husky": OK,
     "git push --no-verbose": OK,
+    '"SKIP":"eslint"': FLAG,
+    "git --config-env=core.hooksPath=VAR commit": FLAG,
+    f'git commit -m "docs & tests" {NV}': FLAG,
+    f'git commit -m "release; bump deps" {NV}': FLAG,
+    f"git commit -m 'a|b' {NV}": FLAG,
+    f'"ship": "git commit -m \\"a & b\\" {NV}"': FLAG,
+    f'git commit -m "x" && cargo publish {NV}': OK,
+    f'echo "a" | git commit -F - {NV}': FLAG,
     "LEFTHOOK_CONFIG=/tmp/x.yml lefthook run": FLAG,
 }
 
