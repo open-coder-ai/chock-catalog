@@ -120,7 +120,7 @@ CASES = [
     ('touch $"a;b"', BLOCK),
     ("touch x # it's a note\ngit branch 'a;b'", BLOCK),
     ("echo $ > x.txt", OK),
-    ("git checkout -b \"x`id`/fix\"", OK),
+    ('git checkout -b "x`id`/fix"', OK),
     ("touch ok.txt # a trailing note", OK),
     ("git branch -v 'a;b'", BLOCK),
     ("git branch --sort=refname 'a;b'", BLOCK),
