@@ -27,7 +27,6 @@ _TRAILING_WILDCARD = re.compile(r"(.*?)(?::\s*\*+|\s+\*+|\*+)\s*", re.DOTALL)
 _EVERYTHING = re.compile(r"[*/~.\s:]*")
 _ANY_DOMAIN = re.compile(r"(?:domain:)?\s*\*+")
 _SLASHED = re.compile(r"/(.*)/[dgimsuvy]*", re.DOTALL)
-_REGEX_ALL = frozenset({"", ".*", ".+", r"[\s\S]*", r"[\s\S]+", r"\S*", r"\S+", r"\w*", r"\w+", "[^]*", "[^]+"})
 _SKIP_FLAG = re.compile(
     r"--[a-z-]*dangerously-[a-z-]+|--yolo\b|--trust-all-tools\b|--allow-all-tools\b"
     r"|--permission-mode[= ]+['\"]?bypassPermissions|--approval-mode[= ]+['\"]?yolo",
@@ -92,10 +91,12 @@ def _shell(spec: str | None) -> str | None:
     found = _TRAILING_WILDCARD.fullmatch(body)
     if not found:
         return None
-    words = found.group(1).split()
-    first = posixpath.basename((words or [""])[0]).lower()
-    if first in RISKY_COMMANDS or [first, *words[1:2]] == ["git", "push"]:
-        return f"a wildcard over {' '.join(words[:2]) if first == 'git' else first}"
+    words = found.group(1).split() or [""]
+    first, rest = posixpath.basename(words[0]).lower(), words[1:]
+    if first == "git":
+        return "a wildcard over git push" if rest[:1] == ["push"] else None
+    if first in RISKY_COMMANDS and all(word.startswith("-") for word in rest):
+        return f"a wildcard over {first}"
     return None
 
 
@@ -118,24 +119,44 @@ _BY_TOOL = {
 }
 
 
-def regex_all(pattern: str) -> bool:
-    """Whether a `/.../flags` rule matches every command (`/.*/`, `/^.*$/`, `/(?:)/`)."""
-    found = _SLASHED.fullmatch(pattern.strip())
-    if not found:
-        return False
-    core = re.sub(r"[\^$()]|\?:|\\b", "", found.group(1))
-    return core in _REGEX_ALL
+ALL_REASON = "an auto-approve rule matches every command, URL or file"
+RISKY_REASON = "an auto-approve rule covers a risky command"
+_PROBES = ("x", "ls", "echo hi", "0")
+_FLAGS = {"i": re.IGNORECASE, "s": re.DOTALL, "m": re.MULTILINE}
+MAX_PATTERN = 500
+
+
+def approval_reach(pattern: str) -> str | None:
+    """Why an auto-approve key reaches too far: every command, URL or file, or a risky command; None when narrow.
+
+    A `/.../flags` key is compiled and probed (it matches the empty command, or each probe, or a risky command with
+    or without an argument); one that will not compile, or is very long, is judged broad. Any other key is a literal
+    command prefix, URL or glob.
+    """
+    text = pattern.strip()
+    slashed = _SLASHED.fullmatch(text)
+    if slashed:
+        return _regex_reach(slashed.group(1), text.rsplit("/", 1)[1])
+    if re.fullmatch(r"(?:https?:)?[*/.:]*", text):
+        return ALL_REASON
+    return RISKY_REASON if rule_command(text) in RISKY_COMMANDS else None
+
+
+def _regex_reach(body: str, flags: str) -> str | None:
+    if len(body) > MAX_PATTERN:
+        return ALL_REASON
+    try:
+        compiled = re.compile(body, sum(_FLAGS.get(flag, 0) for flag in flags))
+    except (re.error, RecursionError):
+        return ALL_REASON
+    if compiled.search("") or all(compiled.search(probe) for probe in _PROBES):
+        return ALL_REASON
+    if any(compiled.search(probe) for cmd in RISKY_COMMANDS for probe in (cmd, f"{cmd} -x")):
+        return RISKY_REASON
+    return None
 
 
 def rule_command(pattern: str) -> str:
-    """The command a terminal auto-approve rule names: `curl` for `curl`, `/^curl\\b/` and `/curl .*/`."""
-    text = pattern.strip()
-    found = _SLASHED.fullmatch(text)
-    text = found.group(1) if found else text
-    word = re.match(r"[\^(?:]*\s*([A-Za-z0-9_./-]+)", text)
+    """The command a plain terminal auto-approve rule names: `curl` for `curl` and `curl -s`."""
+    word = re.match(r"\s*([A-Za-z0-9_./-]+)", pattern)
     return posixpath.basename(word.group(1)).lower() if word else ""
-
-
-def broad_url_or_glob(pattern: str) -> bool:
-    """Whether an auto-approve key covers every URL or file: only `*`, `/`, `.`, `:` and a scheme."""
-    return bool(re.fullmatch(r"(?:https?:)?[*/.:]*", pattern.strip()))

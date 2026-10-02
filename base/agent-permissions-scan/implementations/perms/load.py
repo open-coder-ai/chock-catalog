@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import posixpath
 import tomllib
 from typing import NamedTuple
 
@@ -23,6 +24,8 @@ FILES = (
     ("/.aider.conf.yaml", YAML, "aider"),
 )
 CONTINUE = "/.continue/"
+CONTINUE_FILES = frozenset({"config", "permissions", "settings"})
+CONTINUE_KINDS = {".json": JSON, ".yaml": YAML, ".yml": YAML}
 
 
 class Parsed(NamedTuple):
@@ -46,22 +49,23 @@ def classify(path: str) -> tuple[str, str] | None:
     for suffix, kind, surface in FILES:
         if low.endswith(suffix):
             return kind, surface
-    if CONTINUE in low:
-        for ending, kind in ((".json", JSON), (".yaml", YAML), (".yml", YAML)):
-            if low.endswith(ending):
-                return kind, "continue"
+    stem, ending = posixpath.splitext(posixpath.basename(low))
+    if CONTINUE in low and stem in CONTINUE_FILES and ending in CONTINUE_KINDS:
+        return CONTINUE_KINDS[ending], "continue"
     return None
 
 
 def parse(kind: str, text: str) -> Parsed:
     """The parsed file; UnreadableError for anything that cannot be read with certainty."""
+    if not text.strip():
+        return Parsed({}, ())
     try:
         if kind == TOML:
             return Parsed(tomllib.loads(text), ())
         if kind == YAML:
             return Parsed(_yaml_tree(text), ())
         document = jsonc.loads(text)
-    except (jsonc.JsoncError, tomllib.TOMLDecodeError, yamlpath.ParseError) as exc:
+    except (jsonc.JsoncError, tomllib.TOMLDecodeError, yamlpath.ParseError, RecursionError) as exc:
         raise UnreadableError(str(exc)) from None
     hidden = tuple((dup.path, value) for dup in document.duplicates for value in dup.values)
     return Parsed(document.value, hidden)

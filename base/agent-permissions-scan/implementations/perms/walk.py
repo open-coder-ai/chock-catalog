@@ -26,10 +26,13 @@ FLAG_ENDINGS = ("autoapprove", "autoaccept", "dangerouslyskippermissions")
 DENY_PATHS = {
     "claude": (("permissions", "deny"),),
     "cursor": (("permissions", "deny"),),
-    "opencode": (("permissions", "deny"),),
     "gemini": (("tools", "exclude"), ("excludeTools",)),
     "continue": (("exclude",), ("permissions", "exclude")),
 }
+#: Keys that hold what is forbidden or asked; their strings are not grants, and a flag named there is a ban.
+QUIET_KEYS = frozenset({"deny", "ask", "exclude", "excludetools", "disallowedtools"})
+#: In VS Code settings only the keys of an agent extension count (`editor.defaultMode` is no permission mode).
+VSCODE_PREFIXES = ("claudecode", "chat", "github", "cline", "roo", "cursor", "continue")
 OPENCODE_TOOLS = frozenset({"bash", "edit", "write", "webfetch", "external_directory", "*"})
 
 
@@ -54,16 +57,18 @@ def entries(value: object) -> list[str]:
 
 
 def hits(tree: object, surface: str, hidden: tuple = ()) -> list[Hit]:
-    """Every widening in the tree and in the values a repeated key hid, once each."""
+    """Every widening in the tree, one per occurrence, then those only a repeated key's hidden values add."""
     found: list[Hit] = []
     _walk(tree, (), surface, found)
-    for path, value in hidden:
-        keys = tuple(part for part in path if isinstance(part, str))
-        found.extend(_key(keys[-1], value, keys, surface))
-        _walk(value, keys, surface, found)
     if surface == "codex":
         found.extend(_codex(tree))
-    return list(dict.fromkeys(found))
+    extra: list[Hit] = []
+    for path, value in hidden:
+        keys = tuple(part for part in path if isinstance(part, str))
+        extra.extend(_key(keys[-1], value, keys, surface))
+        _walk(value, keys, surface, extra)
+    seen = set(found)
+    return found + [hit for hit in dict.fromkeys(extra) if hit not in seen]
 
 
 def denies(tree: object, surface: str) -> Counter:
@@ -74,6 +79,19 @@ def denies(tree: object, surface: str) -> Counter:
         for step in path:
             node = node.get(step) if isinstance(node, dict) else None
         out.update((dotted(path), rules.norm(item)) for item in entries(node))
+    if surface == "opencode" and isinstance(tree, dict):
+        out.update(_opencode_denies(tree.get("permission")))
+    return out
+
+
+def _opencode_denies(permission: object) -> list[tuple[str, str]]:
+    """opencode keeps a deny as a verdict: `permission.<tool>` set to deny, or a pattern under it set to deny."""
+    if not isinstance(permission, dict):
+        return []
+    out = [("permission", str(tool)) for tool, verdict in permission.items() if verdict == "deny"]
+    for tool, setting in permission.items():
+        if isinstance(setting, dict):
+            out += [(f"permission.{tool}", str(pattern)) for pattern, verdict in setting.items() if verdict == "deny"]
     return out
 
 
@@ -88,7 +106,8 @@ def _walk(node: object, path: tuple, surface: str, out: list[Hit]) -> None:
         for key, value in node.items():
             here = (*path, key)
             out.extend(_key(str(key), value, here, surface))
-            _walk(value, here, surface, out)
+            if rules.letters(key) not in QUIET_KEYS:
+                _walk(value, here, surface, out)
 
 
 def _key(key: str, value: object, path: tuple, surface: str) -> Iterator[Hit]:
@@ -98,6 +117,8 @@ def _key(key: str, value: object, path: tuple, surface: str) -> Iterator[Hit]:
         for entry in entries(value):
             if why := rules.broad_entry(entry):
                 yield Hit(ALLOW, where, rules.norm(entry), why)
+    if surface == "vscode" and not name.startswith(VSCODE_PREFIXES):
+        return
     if name.endswith(MODE_ENDINGS) and isinstance(value, str) and rules.letters(value) in rules.DANGER_MODES:
         yield Hit(MODE, where, rules.norm(value), "the default mode approves every action without asking")
     if (name in FLAG_KEYS or name.endswith(FLAG_ENDINGS)) and rules.truthy(value):
@@ -111,13 +132,8 @@ def _approvals(rule_map: dict, where: str) -> Iterator[Hit]:
     """Auto-approve rules that cover every command, URL or file, or a risky command."""
     for pattern, verdict in rule_map.items():
         approved = rules.truthy(verdict) or (isinstance(verdict, dict) and rules.truthy(verdict.get("approve")))
-        text = str(pattern)
-        if not approved:
-            continue
-        if rules.regex_all(text) or rules.broad_url_or_glob(text):
-            yield Hit(VSCODE, where, rules.norm(text), "an auto-approve rule matches every command, URL or file")
-        elif rules.rule_command(text) in rules.RISKY_COMMANDS:
-            yield Hit(VSCODE, where, rules.norm(text), "an auto-approve rule covers a risky command")
+        if approved and (why := rules.approval_reach(str(pattern))):
+            yield Hit(VSCODE, where, rules.norm(pattern), why)
 
 
 def _surface(name: str, value: object, where: str, surface: str) -> Iterator[Hit]:

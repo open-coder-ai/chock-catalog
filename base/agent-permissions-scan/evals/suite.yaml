@@ -568,3 +568,72 @@ suite:
           }
       event: commit
       expect: warn
+  - id: tc-039
+    category: adversarial
+    prompt: "A terminal auto-approve rule that matches every command without being the usual /.*/ spelling."
+    expect: "The gate warns; the rule is compiled and probed, not looked up in a list."
+    execute:
+      files:
+        ".vscode/settings.json": |
+          {
+            "chat.tools.terminal.autoApprove": {
+              "/.*?/": true
+            }
+          }
+      event: commit
+      expect: warn
+  - id: tc-040
+    category: trigger
+    prompt: "An opencode deny verdict is loosened to ask."
+    expect: "The gate warns that the deny is gone."
+    execute:
+      head_files:
+        "opencode.json": |
+          {
+            "permission": {"bash": {"rm *": "deny", "ls": "allow"}}
+          }
+      files:
+        "opencode.json": |
+          {
+            "permission": {"bash": {"ls": "allow"}}
+          }
+      event: commit
+      expect: warn
+  - id: tc-041
+    category: negative_trigger
+    prompt: "Risky commands with a real argument are scoped grants."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "allow": ["Bash(rm -rf node_modules:*)", "Bash(curl -s https://api.github.com/repos:*)", "Bash(git pull:*)"]
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-042
+    category: negative_trigger
+    prompt: "Banning the skip-permissions flag in the deny list is the wanted config."
+    expect: "Nothing is reported."
+    execute:
+      files:
+        ".claude/settings.json": |
+          {
+            "permissions": {
+              "deny": ["Bash(claude --dangerously-skip-permissions:*)"]
+            }
+          }
+      event: commit
+      expect: allow
+  - id: tc-043
+    category: adversarial
+    prompt: "The agent writes a waiver into the sidecar: only a person's commit may add one."
+    expect: "The gate warns about the added waiver."
+    execute:
+      writes:
+        ".chock/devenv.json": |
+          {"waive": [{"file": ".claude/settings.json", "path": "permissions.allow", "value": "Bash(curl:*)"}]}
+      event: tool_use
+      expect: warn

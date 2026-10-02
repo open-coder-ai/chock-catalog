@@ -736,8 +736,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 38
-  eval_executed: 38
+  eval_cases: 43
+  eval_executed: 43
   description: 'Warns only (observe): parses agent permission configs (.claude/settings*, .codex, .gemini,
     .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows
     (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto

@@ -1,32 +1,24 @@
-"""agent-permissions-scan: the script gate that judges agent permission configs; rules, parsers, sidecar and engine."""
+"""agent-permissions-scan: the script gate -- findings, baselines, waivers, exit codes and the engine."""
 
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
 from policies import gatekit, scriptkit
-
-POLICY = "agent-permissions-scan"
-NAME = "agent-permissions-scan.py"
-mod = scriptkit.load(POLICY, NAME)
-from perms import load, rules, sidecar, walk  # noqa: E402  (importable once the script put its folder on sys.path)
-
-CLAUDE = ".claude/settings.json"
+from policies.permskit import CLAUDE, NAME, POLICY, keys, mod, payload, sidecar
 
 
 def settings(**permissions: object) -> str:
     return json.dumps({"permissions": permissions}, indent=2)
 
 
-def payload(repo: Path, writes: dict[str, str], event: str = "commit", **extra: object) -> dict:
-    return {"event": event, "repo_root": str(repo), "writes": writes, **extra}
-
-
-def keys(repo: Path, writes: dict[str, str], event: str = "commit", **extra: object) -> list[str]:
-    return [f["key"] for f in mod.findings(payload(repo, writes, event, **extra))]
+@pytest.fixture(autouse=True)
+def person(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Judge as a person's shell by default; a test that needs an agent sets the marker itself."""
+    for name in mod.AGENT_ENV:
+        monkeypatch.delenv(name, raising=False)
 
 
 @pytest.fixture
@@ -36,409 +28,6 @@ def repo(tmp_path: Path) -> Path:
 
 def held(tmp_path: Path, files: dict[str, str]) -> Path:
     return scriptkit.init_repo(tmp_path / "h", files)
-
-
-# --- rules ---------------------------------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "entry",
-    [
-        "*",
-        "**",
-        "Bash",
-        "Bash()",
-        "Bash(**)",
-        "Bash(:*)",
-        "Bash( * )",
-        "Bash(*curl*)",
-        "Bash(: *x)",
-        "Bash(curl:*)",
-        "Bash(curl *)",
-        "Bash(curl*)",
-        "Bash(rm -rf:*)",
-        "Bash(sudo:*)",
-        "Bash(git push:*)",
-        "Bash(/usr/bin/curl:*)",
-        "Bash(bash:*)",
-        "Shell(*)",
-        "run_shell_command",
-        "WebFetch",
-        "WebFetch(*)",
-        "WebFetch(domain:*)",
-        "Write",
-        "Write(**)",
-        "Write(/**)",
-        "Write(//**)",
-        "Edit(**/*)",
-        "Edit(~/**)",
-        "Edit(~/.ssh/config)",
-        "Write(//etc/**)",
-        "MultiEdit",
-        "mcp__*",
-        "mcp__server__*",
-        "mcp__*__read",
-        "mcp__server",
-        "  Bash( curl:* )  ",
-    ],
-)
-def test_broad_entries_are_named(entry: str) -> None:
-    assert rules.broad_entry(entry)
-
-
-@pytest.mark.parametrize(
-    "entry",
-    [
-        "Read",
-        "Grep",
-        "Glob",
-        "WebSearch",
-        "Read(//**)",
-        "Bash(npm test:*)",
-        "Bash(git status:*)",
-        "Bash(git push)",
-        "Bash(curl https://api.example.com/v1)",
-        "Bash(rm build/out.txt)",
-        "Bash(make:*)",
-        "WebFetch(domain:example.com)",
-        "Write(src/**)",
-        "Edit(./docs/**)",
-        "Edit(/src/**)",
-        "mcp__server__tool",
-        "Bash(unclosed",
-        "not an entry!",
-        "",
-    ],
-)
-def test_scoped_entries_are_not(entry: str) -> None:
-    assert rules.broad_entry(entry) is None
-
-
-def test_the_messages_name_the_command() -> None:
-    assert rules.broad_entry("Bash(git push origin:*)") == "a wildcard over git push"
-    assert rules.broad_entry("Bash(curl:*)") == "a wildcard over curl"
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (True, True),
-        ("true", True),
-        (" YES ", True),
-        ("on", True),
-        ("1", True),
-        (1, True),
-        (False, False),
-        ("false", False),
-        (0, False),
-        (2, False),
-        (None, False),
-        ([], False),
-    ],
-)
-def test_truthy(value: object, expected: bool) -> None:
-    assert rules.truthy(value) is expected
-
-
-def test_norm_and_letters() -> None:
-    assert rules.norm("a \n  b") == "a b"
-    long = "x" * 300
-    assert rules.norm(long).startswith("x" * 160 + "...#")
-    assert rules.norm(long) != rules.norm("x" * 299 + "y")
-    assert rules.letters("Bypass_Permissions-") == "bypasspermissions"
-
-
-def test_skip_flags() -> None:
-    assert rules.skip_flag("claude --dangerously-skip-permissions -p x") == "--dangerously-skip-permissions"
-    assert rules.skip_flag("codex --dangerously-bypass-approvals-and-sandbox")
-    assert rules.skip_flag("gemini --yolo")
-    assert rules.skip_flag("q chat --trust-all-tools")
-    assert rules.skip_flag("claude --permission-mode=bypassPermissions")
-    assert rules.skip_flag("gemini --approval-mode yolo")
-    assert rules.skip_flag("claude --permission-mode plan") is None
-    assert rules.skip_flag("echo hello") is None
-
-
-@pytest.mark.parametrize("pattern", ["/.*/", "/.+/i", "/^.*$/", "/(?:)/", "/\\S+/", "/[\\s\\S]*/", "//"])
-def test_regex_all(pattern: str) -> None:
-    assert rules.regex_all(pattern)
-
-
-@pytest.mark.parametrize("pattern", ["/^git status$/", "/usr/bin/rm", ".*", "git", "/foo/ bar"])
-def test_regex_not_all(pattern: str) -> None:
-    assert not rules.regex_all(pattern)
-
-
-def test_rule_command_and_broad_globs() -> None:
-    assert [rules.rule_command(p) for p in ("curl", "/^curl\\b/", "/curl .*/", "/usr/bin/rm", "!!!", "")] == [
-        "curl",
-        "curl",
-        "curl",
-        "rm",
-        "",
-        "",
-    ]
-    assert all(rules.broad_url_or_glob(p) for p in ("*", "**/*", "https://*", "/", ""))
-    assert not any(rules.broad_url_or_glob(p) for p in ("**/*.ts", "https://example.com", "src/**"))
-
-
-# --- load ----------------------------------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("path", "expected"),
-    [
-        (".claude/settings.json", ("json", "claude")),
-        ("pkg/.claude/settings.local.json", ("json", "claude")),
-        (".Claude\\Settings.JSON", ("json", "claude")),
-        ("./.gemini/settings.json", ("json", "gemini")),
-        (".vscode/settings.json", ("json", "vscode")),
-        ("a/b.code-workspace", ("json", "vscode")),
-        (".cursor/cli.json", ("json", "cursor")),
-        ("opencode.json", ("json", "opencode")),
-        ("x/opencode.jsonc", ("json", "opencode")),
-        (".codex/config.toml", ("toml", "codex")),
-        (".aider.conf.yml", ("yaml", "aider")),
-        ("sub/.aider.conf.yaml", ("yaml", "aider")),
-        (".continue/config.yaml", ("yaml", "continue")),
-        (".continue/a/b.yml", ("yaml", "continue")),
-        (".continue/config.json", ("json", "continue")),
-    ],
-)
-def test_classify(path: str, expected: tuple[str, str]) -> None:
-    assert load.classify(path) == expected
-
-
-@pytest.mark.parametrize(
-    "path",
-    [
-        "package.json",
-        ".claude/settings.json.bak",
-        ".claude/commands/x.md",
-        ".continue/rules.md",
-        "settings.json",
-        ".vscode/tasks.json",
-        ".mcp.json",
-        "claude/settings.json",
-        ".codex/config.json",
-    ],
-)
-def test_classify_ignores(path: str) -> None:
-    assert load.classify(path) is None
-
-
-def test_parse_json_reads_jsonc_and_reports_hidden_duplicates() -> None:
-    parsed = load.parse("json", '// c\n{"a": 1, /* x */ "b": [1, 2,], "a": 2,}\n')
-    assert parsed.tree == {"a": 2, "b": [1, 2]}
-    assert [(path, value) for path, value in parsed.hidden] == [(("a",), 1), (("a",), 2)]
-    assert load.parse("json", '{"\\u0064efaultMode": "x"}').tree == {"defaultMode": "x"}
-
-
-@pytest.mark.parametrize(
-    ("kind", "text"),
-    [
-        ("json", "{"),
-        ("json", '{"a": 1} x'),
-        ("toml", "= ="),
-        ("yaml", "a: ["),
-        ("yaml", "\t- x: 1\n"),
-        ("yaml", "a: 'x"),
-    ],
-)
-def test_parse_refuses_what_it_cannot_read(kind: str, text: str) -> None:
-    with pytest.raises(load.UnreadableError):
-        load.parse(kind, text)
-
-
-def test_parse_yaml_trees() -> None:
-    assert load.parse("yaml", "a: 1\nb:\n  - x\n  - y: 2\n  - [p, q]\nc: {d: e}\n").tree == {
-        "a": "1",
-        "b": ["x", {"y": "2"}, ["p", "q"]],
-        "c": {"d": "e"},
-    }
-    assert load.parse("yaml", "- a\n- b\n").tree == ["a", "b"]
-    assert load.parse("yaml", "just text\n").tree == "just text"
-    assert load.parse("yaml", "").tree == {}
-    assert load.parse("toml", 'a = "x"\n[t]\nb = 1\n').tree == {"a": "x", "t": {"b": 1}}
-
-
-@pytest.mark.parametrize(
-    "text",
-    ["a: &x 1\nb: *x\n", "a: 1\na: 2\n", "base: &b {x: 1}\nd:\n  <<: *b\n", "a: 1\n---\nb: 2\n"],
-)
-def test_parse_yaml_refuses_aliases_repeats_and_many_documents(text: str) -> None:
-    with pytest.raises(load.UnreadableError):
-        load.parse("yaml", text)
-
-
-# --- walk ----------------------------------------------------------------------------------------------------
-
-
-def rules_of(tree: object, surface: str = "claude", hidden: tuple = ()) -> list[tuple[str, str, str]]:
-    return [(h.rule, h.path, h.value) for h in walk.hits(tree, surface, hidden)]
-
-
-def test_allow_lists_name_each_broad_entry_without_list_indexes() -> None:
-    tree = {"permissions": dict(allow=["Read", "*", "Bash(curl:*)", 5, "Bash(npm test:*)"], ask=["Bash"])}
-    assert rules_of(tree) == [
-        (walk.ALLOW, "permissions.allow", "*"),
-        (walk.ALLOW, "permissions.allow", "Bash(curl:*)"),
-    ]
-    assert rules_of({"allowedTools": "Bash"}) == [(walk.ALLOW, "allowedTools", "Bash")]
-    assert rules_of({"allow": True}) == []
-    assert rules_of({"mcpServers": {"s": {"autoApprove": ["*"]}}}) == [(walk.ALLOW, "mcpServers.s.autoApprove", "*")]
-    assert rules_of(dict(tools=["*"])) == [(walk.ALLOW, "tools", "*")]
-
-
-@pytest.mark.parametrize("value", ["bypassPermissions", "BYPASSPERMISSIONS", "bypass_permissions", " yolo ", "Auto"])
-def test_dangerous_modes_in_any_case(value: str) -> None:
-    assert rules_of({"permissions": {"defaultMode": value}})[0][0] == walk.MODE
-    assert rules_of({"general": {"default_approval_mode": value}})[0][0] == walk.MODE
-
-
-@pytest.mark.parametrize("value", ["default", "acceptEdits", "plan", 5, None])
-def test_asking_modes_pass(value: object) -> None:
-    assert rules_of({"permissions": {"defaultMode": value}}) == []
-
-
-def test_switches_and_skip_flags() -> None:
-    assert rules_of({"yes-always": True}, "aider") == [(walk.FLAG, "yes-always", "true")]
-    assert rules_of({"yes_always": "yes"}, "aider")[0][0] == walk.FLAG
-    assert rules_of({"yes-always": False}, "aider") == []
-    assert rules_of({"ui": {"autoAccept": True}}, "gemini") == [(walk.FLAG, "ui.autoAccept", "true")]
-    assert rules_of({"chat.tools.autoApprove": True}, "vscode") == [(walk.FLAG, "chat.tools.autoApprove", "true")]
-    assert rules_of({"claudeCode.allowDangerouslySkipPermissions": True}, "vscode")[0][0] == walk.FLAG
-    found = rules_of({"hooks": [{"command": "claude --dangerously-skip-permissions -p go"}]})
-    assert found == [(walk.SKIP, "hooks.command", "--dangerously-skip-permissions")]
-
-
-def test_gemini_trust_and_folder_trust() -> None:
-    assert rules_of({"mcpServers": {"s": {"trust": True}}}, "gemini") == [(walk.FLAG, "mcpServers.s.trust", "true")]
-    assert rules_of({"mcpServers": {"s": {"trust": True}}}, "claude") == []
-    assert rules_of({"security": {"folderTrust": {"enabled": False}}}, "gemini") == [
-        (walk.FLAG, "security.folderTrust.enabled", "false")
-    ]
-    assert rules_of({"security": {"folderTrust": {"enabled": True}}}, "gemini") == []
-    assert rules_of({"security": {"folderTrust": True}}, "gemini") == []
-
-
-def test_vscode_auto_approve_rules() -> None:
-    terminal = {
-        "chat.tools.terminal.autoApprove": {
-            "/.*/": True,
-            "rm": {"approve": True},
-            "/^curl\\b/": True,
-            "git status": True,
-            "sudo": False,
-            "wget": {"approve": False},
-        }
-    }
-    assert rules_of(terminal, "vscode") == [
-        (walk.VSCODE, "chat.tools.terminal.autoApprove", "/.*/"),
-        (walk.VSCODE, "chat.tools.terminal.autoApprove", "rm"),
-        (walk.VSCODE, "chat.tools.terminal.autoApprove", "/^curl\\b/"),
-    ]
-    urls = {"chat.tools.urls.autoApprove": {"*": True, "https://example.com": True}}
-    assert rules_of(urls, "vscode") == [(walk.VSCODE, "chat.tools.urls.autoApprove", "*")]
-
-
-def test_opencode_permissions() -> None:
-    tree = {
-        "permission": {
-            "bash": "allow",
-            "edit": {"*": "allow"},
-            "webfetch": "ask",
-            "read": "allow",
-            "write": {"*": "ask"},
-        }
-    }
-    assert rules_of(tree, "opencode") == [
-        (walk.ALLOW, "permission", "bash=allow"),
-        (walk.ALLOW, "permission", "edit=allow"),
-    ]
-    assert rules_of({"permission": "allow"}, "opencode") == [(walk.ALLOW, "permission", "*=allow")]
-    assert rules_of({"permission": ["allow"]}, "opencode") == []
-    assert rules_of({"permission": {"bash": "allow"}}, "claude") == []
-
-
-def test_codex_needs_both_in_one_effective_profile() -> None:
-    both = {"approval_policy": "never", "sandbox_mode": "danger-full-access"}
-    assert rules_of(both, "codex") == [(walk.CODEX, "<root>", "never+danger-full-access")]
-    assert rules_of({"approval_policy": "Never", "sandbox_mode": "DANGER_FULL_ACCESS"}, "codex")
-    assert rules_of({"approval_policy": "never", "sandbox_mode": "workspace-write"}, "codex") == []
-    assert rules_of({"approval_policy": "on-request", "sandbox_mode": "danger-full-access"}, "codex") == []
-    inherited = {
-        "approval_policy": "never",
-        "profiles": {"ci": {"sandbox_mode": "danger-full-access"}, "ok": {"sandbox_mode": "read-only"}},
-    }
-    assert rules_of(inherited, "codex") == [(walk.CODEX, "profiles.ci", "never+danger-full-access")]
-    assert rules_of({"profiles": {"x": 5}}, "codex") == []
-    assert rules_of({"profiles": 5}, "codex") == []
-    assert walk.hits([both], "codex") == []
-
-
-def test_hidden_duplicate_values_are_judged_too() -> None:
-    parsed = load.parse(
-        "json",
-        '{"permissions": {"defaultMode": "auto", "defaultMode": "default"}}',
-    )
-    assert rules_of(parsed.tree, "claude", parsed.hidden) == [(walk.MODE, "permissions.defaultMode", "auto")]
-    nested = load.parse("json", '{"permissions": {"allow": ["Bash"], "allow": []}}')
-    assert rules_of(nested.tree, "claude", nested.hidden) == [(walk.ALLOW, "permissions.allow", "Bash")]
-
-
-def test_denies_are_counted_per_surface_path() -> None:
-    assert walk.denies({"permissions": {"deny": ["Read(.env)", "Read(.env)", "Bash(rm:*)", 5]}}, "claude") == {
-        ("permissions.deny", "Read(.env)"): 2,
-        ("permissions.deny", "Bash(rm:*)"): 1,
-    }
-    assert walk.denies({"tools": {"exclude": ["run_shell_command"]}, "excludeTools": "x"}, "gemini") == {
-        ("tools.exclude", "run_shell_command"): 1,
-        ("excludeTools", "x"): 1,
-    }
-    assert walk.denies({"permissions": {"deny": ["x"]}}, "vscode") == {}
-    assert walk.denies([], "claude") == {}
-    assert walk.denies({"permissions": 5}, "claude") == {}
-
-
-# --- sidecar -------------------------------------------------------------------------------------------------
-
-
-def test_waivers_read_the_closed_schema() -> None:
-    text = json.dumps({"waive": [{"file": "./.claude\\settings.json", "path": "p", "value": "v"}]})
-    assert sidecar.waivers(text) == {(".claude/settings.json", "p", "v")}
-    assert sidecar.waivers("{}") == frozenset()
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        "{",
-        "[]",
-        '{"waive": [], "extra": 1}',
-        '{"waive": {}}',
-        '{"waive": [5]}',
-        '{"waive": [{"file": "a", "path": "b"}]}',
-        '{"waive": [{"file": "a", "path": "b", "value": "c", "why": "d"}]}',
-        '{"waive": [{"file": "a", "path": "b", "value": 3}]}',
-        '{"waive": [], "waive": []}',
-    ],
-)
-def test_waivers_refuse_anything_else(text: str) -> None:
-    with pytest.raises(sidecar.SidecarError):
-        sidecar.waivers(text)
-
-
-def test_committed_reads_head_and_survives_a_missing_git(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    repo = scriptkit.init_repo(tmp_path / "c", {"a/b.txt": "hello\n"})
-    assert sidecar.committed(repo, "a/b.txt") == "hello\n"
-    assert sidecar.committed(repo, "missing.txt") is None
-
-    def boom(*_a: object, **_k: object) -> None:
-        raise OSError
-
-    monkeypatch.setattr(subprocess, "run", boom)
-    assert sidecar.committed(repo, "a/b.txt") is None
 
 
 # --- the script ----------------------------------------------------------------------------------------------
@@ -588,9 +177,9 @@ def test_a_person_may_add_the_waiver_in_the_commit_an_agent_may_not(
     for name in mod.AGENT_ENV:
         monkeypatch.delenv(name, raising=False)
     assert keys(repo, writes, "commit") == []
-    assert len(keys(repo, writes, "tool_use")) == 1
+    assert len(keys(repo, writes, "tool_use")) == 2
     monkeypatch.setenv("CLAUDECODE", "1")
-    assert len(keys(repo, writes, "commit")) == 1
+    assert len(keys(repo, writes, "commit")) == 2
     monkeypatch.setenv("CLAUDECODE", "0")
     assert keys(repo, writes, "commit") == []
 
@@ -615,8 +204,8 @@ def test_non_text_writes_are_skipped(repo: Path) -> None:
 def test_person_detection(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in mod.AGENT_ENV:
         monkeypatch.delenv(name, raising=False)
-    assert mod.by_person("commit") and mod.by_person("push")
-    assert not mod.by_person("tool_use")
+    assert mod.by_person("commit")
+    assert not any(mod.by_person(event) for event in ("push", "ci", "tool_use", "stop"))
     monkeypatch.setenv("AI_AGENT", "yes")
     assert not mod.by_person("commit")
 
@@ -662,3 +251,46 @@ def test_the_engine_flags_a_removed_deny_entry_at_commit_and_at_the_turns_end(tm
     for event in (gatekit.COMMIT, gatekit.STOP):
         _, err = gatekit.judge(POLICY, base, event, {CLAUDE: settings(allow=["Read"])})
         assert "deny entry" in err
+
+
+def test_an_agent_that_adds_a_waiver_is_reported_and_a_person_is_not(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = held(tmp_path, {sidecar.PATH: waiver_file(WAIVE)})
+    both = {"file": "a.json", "path": "p", "value": "v"}
+    write = {sidecar.PATH: waiver_file(WAIVE, both)}
+    assert mod.findings(payload(base, write)) == []
+    monkeypatch.setenv("CLAUDECODE", "1")
+    for event in ("commit", "tool_use"):
+        (found,) = mod.findings(payload(base, write, event))
+        assert found["key"] == "ap-agent-waiver|a.json|p|v" and found["new"] is True
+    assert mod.findings(payload(base, write, baseline=True)) == []
+    assert mod.findings(payload(base, {sidecar.PATH: waiver_file(WAIVE)})) == []
+    broken = held(tmp_path / "b", {sidecar.PATH: "{ nope"})
+    assert len(mod.findings(payload(broken, write))) == 2
+
+
+def test_the_writes_path_forms_all_reach_the_same_file(tmp_path: Path) -> None:
+    base = held(tmp_path, {CLAUDE: settings(deny=["Read(.env)"])})
+    wanted = ["ap-deny-removed|permissions.deny|Read(.env)"]
+    for form in (CLAUDE, "./" + CLAUDE, ".claude\\settings.json", str(base / CLAUDE)):
+        assert keys(base, {form: settings()}) == wanted, form
+    assert keys(base, {"/elsewhere/" + CLAUDE: settings()}) == []
+
+
+def test_an_opencode_deny_that_is_loosened_is_a_removal(tmp_path: Path) -> None:
+    before = json.dumps({"permission": {"bash": {"rm *": "deny", "ls": "allow"}, "edit": "deny"}})
+    base = held(tmp_path, {"opencode.json": before})
+    after = json.dumps({"permission": {"bash": "ask", "edit": "ask"}})
+    assert sorted(keys(base, {"opencode.json": after})) == [
+        "ap-deny-removed|permission.bash|rm *",
+        "ap-deny-removed|permission|edit",
+    ]
+    assert keys(base, {"opencode.json": before}) == []
+
+
+def test_identical_grants_in_two_places_count_twice(tmp_path: Path) -> None:
+    servers = {"mcpServers": [{"autoApprove": ["*"]}, {"autoApprove": ["*"]}]}
+    one = {"mcpServers": [{"autoApprove": ["*"]}]}
+    base = held(tmp_path, {".continue/config.json": json.dumps(one)})
+    assert keys(base, {".continue/config.json": json.dumps(servers)}) == ["ap-allow-broad|mcpServers.autoApprove|*"] * 2
