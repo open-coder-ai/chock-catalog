@@ -13,7 +13,7 @@ rtk#1007. Destructive verdicts come from the chock_destructive table shared with
 
 ```
 block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
-ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve; skip_inside: docker|kubectl_exec(file rows); prefix: rtk; prefer: stash|dry-run
+ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve, pkill_-f, systemctl_disable; skip_inside: docker|kubectl_exec(file rows); prefix: rtk
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` can refuse an agent's shell command before it runs. See https://github.com/open-coder-ai/chock

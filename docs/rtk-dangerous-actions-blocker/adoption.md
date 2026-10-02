@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~388 tokens (chars/4, max 2000)
+INDEX.md: ~389 tokens (chars/4, max 2000)
 Recompiled 1 policies
 rtk-dangerous-actions-blocker:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~388 tokens (chars/4, max 2000)
+INDEX.md: ~389 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -229,5 +229,5 @@ rtk-dangerous-actions-blocker  [deterministic]
 ```text
 - **rtk-dangerous-actions-blocker**:
   block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
-  ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve; skip_inside: docker|kubectl_exec(file rows); prefix: rtk; prefer: stash|dry-run
+  ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve, pkill_-f, systemctl_disable; skip_inside: docker|kubectl_exec(file rows); prefix: rtk
 ```

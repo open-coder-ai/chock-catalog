@@ -10,14 +10,14 @@
 | **Mechanism** | commit-time guard script `block-destructive-commands-pre-push.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ambient-rule` |
-| **Eval cases** | 166 total, 166 executable |
+| **Eval cases** | 170 total, 170 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths; mv/chmod/chown -R of system dirs; dd to devices, mkfs, wipefs; account lockouts; force, delete and mirror pushes; history rewrites; IaC destroy; cloud and platform deletes; DB drops. Asks: rm -rf off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre- push: no non-ff.
+Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths; mv/chmod/chown -R of system dirs; dd to devices, mkfs; account lockouts; force, delete and mirror pushes; history rewrites; IaC destroy; listed cloud and platform deletes; DB drops. Asks: rm -rf off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre-push: no non-ff.
 
 ## What it solves
 
