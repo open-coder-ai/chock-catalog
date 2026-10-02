@@ -20,6 +20,8 @@ PROBES = {
     "under other key names": ("conf.json", f'{{"x": "{V}"}}\n'),
     "cut short by # or & when unquoted": (".env", f"CLIENT_SECRET={V[:10]}#{V[10:]}\n"),
     "written like code": ("conf.yaml", "client_secret: CorrectHorseBatteryStaple\n"),
+    "wrapped in a call, parentheses or concatenation": ("app.py", f'client_secret = os.getenv("K", "{V}")\n'),
+    "or in XML": ("app.config", f"<clientSecret>{V}</clientSecret>\n"),
 }
 
 

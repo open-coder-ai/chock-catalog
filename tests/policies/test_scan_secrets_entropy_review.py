@@ -78,6 +78,8 @@ def test_code_and_regex_written_as_code_are_still_explained(value: str, shape: s
         ("main.rs", f'let api_key: &str = "{V}";'),
         ("main.go", f'var apiKey string = "{V}"'),
         ("keys.h", f'#define API_KEY "{V}"'),
+        ("Keys.cs", f'public const string ApiKey = "{V}";'),
+        ("Keys.cs", f'const string ApiKey = "{V}";'),
         ("auth.py", f'headers = {{"Authorization": "SSWS {V}"}}'),
         ("auth.js", f'h.Authorization = "Token token={V}"'),
     ],
@@ -88,7 +90,13 @@ def test_source_and_embedded_string_forms_are_read(path: str, line: str) -> None
 
 @pytest.mark.parametrize(
     "line",
-    ['client_secret = load(name="x")', "client_secret: Optional[str] = None", 'f(a="x", secret=other_value)'],
+    [
+        'client_secret = load(name="x")',
+        "client_secret: Optional[str] = None",
+        'f(a="x", secret=other_value)',
+        "log(f'Secret(secret_id={self._secret_id!r}, version={self.version_label})')",
+        "_token = rf'(?:[{_punct}]+|{_core_token_pattern})'",
+    ],
 )
 def test_code_outside_a_literal_stays_unjudged(line: str) -> None:
     assert rules(line + "\n", "app.py") == []
@@ -98,3 +106,22 @@ def test_only_the_token_itself_absorbs_an_entropy_finding() -> None:
     token = kit.crc_token(5)
     assert rules(f"GITHUB_TOKEN={token}\n") == ["checksum"]
     assert rules(f"client_secret={token}-{V}\n") == ["checksum", "entropy"]
+
+
+@pytest.mark.parametrize("value", ["sha256=" + "ab" * 32, "md5=" + "cd" * 16])
+def test_a_named_digest_stays_a_digest(value: str) -> None:
+    assert rules(f"password_digest: {value}\n", "users.yaml") == []
+
+
+def test_an_annotation_needs_a_statement_start_so_a_case_label_keeps_its_key() -> None:
+    assert gate.values.source.rewrite(f'case token: x = "{V}"', language="ts") == f'case token: x = "{V}"'
+    assert gate.values.source.rewrite(f'  api_key: str = "{V}"', language="py") == f'  api_key = "{V}"'
+
+
+def test_a_long_line_of_annotation_lookalikes_is_rewritten_in_linear_time() -> None:
+    import time
+
+    line = ("a:" + " " * 998) * 1000
+    start = time.perf_counter()
+    gate.values.source.rewrite(line, language="ts")
+    assert time.perf_counter() - start < 5

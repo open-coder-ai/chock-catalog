@@ -22,7 +22,7 @@ PERSON_EVENTS = frozenset({"commit", "push", "ci"})
 #: Languages where an unquoted value is never a string literal (shell, config and template files
 #: are not among them: there a bare word is a string).
 SOURCE_CODE = re.compile(
-    r"(?i)\.(?:py|pyi|js|mjs|cjs|jsx|ts|tsx|mts|cts|go|java|kt|kts|scala|groovy|cs|fs|vb|rb|php|rs|swift"
+    r"(?i)\.(py|pyi|js|mjs|cjs|jsx|ts|tsx|mts|cts|go|java|kt|kts|scala|groovy|cs|fs|vb|rb|php|rs|swift"
     r"|c|h|cc|cpp|cxx|hpp|m|mm|dart|lua|jl|ex|exs|erl|clj)$"
 )
 EXIT_ASK = 3
@@ -47,11 +47,14 @@ def _row(path: str, line: int, rule: str, value: str, message: str) -> dict:
 
 
 def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
-    """Every finding in one file, in line order.
+    """Every finding in one file, in line order; a binary file is not judged.
 
-    NUL characters are dropped before judging, so UTF-16 text reads as its characters and a stray
-    NUL does not hide a file; a binary file is judged as whatever text it holds.
+    Text where NUL is at least a third of the characters is UTF-16 and is read with NULs dropped; a
+    few stray NULs are dropped too. Text where NUL or the replacement character is over one in a
+    hundred characters is binary (a deliberately NUL-padded text file is a stated miss).
     """
+    if _binary(text):
+        return []
     lines = values.split_lines(text.replace("\x00", ""))
     rows: list[tuple[int, dict]] = []
     taken: dict[int, list[str]] = {}
@@ -59,7 +62,8 @@ def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
         message = MESSAGES[token.rule].format(kind=token.kind)
         rows.append((token.line, _row(path, token.line, token.rule, token.value, message)))
         taken.setdefault(token.line, []).append(token.value)
-    for hit in values.hits(lines, source_code=SOURCE_CODE.search(path) is not None):
+    code = SOURCE_CODE.search(path)
+    for hit in values.hits(lines, language=code[1].lower() if code else None):
         if hit.value in taken.get(hit.line, []):
             continue
         how = f"{hit.assessment.bits:.1f} bits/char, {hit.assessment.charset}"
@@ -67,6 +71,14 @@ def judge(path: str, text: str, *, waivable: bool) -> list[dict]:
         rows.append((hit.line, _row(path, hit.line, "entropy", hit.value, message)))
     kept = [row for line, row in rows if not (waivable and PRAGMA.search(lines[line - 1]))]
     return sorted(kept, key=lambda row: row["line"])
+
+
+def _binary(text: str) -> bool:
+    """True for decoded binary content: NULs or replacement characters, but not the UTF-16 pattern."""
+    nul = text.count("\x00")
+    if 3 * nul >= len(text):
+        return False
+    return 100 * (nul + text.count("\ufffd")) > len(text)
 
 
 def findings(payload: dict) -> list[dict]:

@@ -24,6 +24,8 @@ OVERLAP = 1024
 HANDOFF = 600
 LINES = re.compile(r"\r\n|\r|\n")
 #: An auth scheme keyword_values does not skip, or a parameter name (`SSWS v`, `token=v`): the token is judged.
+#: Whole-value verdicts after which the token is judged on its own: none says the value is harmless.
+_SPLIT = frozenset({None, "low-entropy", "long"})
 _SCHEME = re.compile(r"(?:[A-Za-z][\w-]{1,15}[ \t]+)?(?:[A-Za-z]\w{0,15}=)?(?P<token>[^\s]{16,})")
 
 
@@ -69,14 +71,14 @@ def chunks(lines: list[str]) -> Iterator[tuple[int, str, int | None, int]]:
         yield start, "\n".join(group), None, 0
 
 
-def hits(lines: list[str], *, source_code: bool = False) -> Iterator[Hit]:
+def hits(lines: list[str], *, language: str | None = None) -> Iterator[Hit]:
     """Each keyword-adjacent value entropy calls suspicious and no shape explains, once per value.
 
-    Lines are read as source.rewrite spells them. In source code (`source_code`) a value outside a
-    string literal is never a secret's text (an identifier, a number, a comment's words), so only
-    values source.opened places inside a literal are judged there.
+    Lines are read as source.rewrite spells them. In source code (`language`, the file's suffix) a
+    value outside a string literal is never a secret's text (an identifier, a number, a comment's
+    words), so only values source.opened places inside a literal are judged there.
     """
-    lines = [source.rewrite(line, source_code=source_code) for line in lines]
+    lines = [source.rewrite(line, language=language) for line in lines]
     seen: set[tuple[int, str]] = set()
     judged_values: set[tuple[int, str]] = set()
     for first, text, limit, offset in chunks(lines):
@@ -84,7 +86,7 @@ def hits(lines: list[str], *, source_code: bool = False) -> Iterator[Hit]:
             line = first + found.line
             if (limit is not None and found.column >= limit) or (line, found.value) in seen:
                 continue
-            if source_code and not source.opened(lines[line - 1], offset + found.column):
+            if language is not None and not source.opened(lines[line - 1], offset + found.column):
                 continue
             seen.add((line, found.value))
             value = _scheme_token(shapes.trim(found.value))
@@ -97,6 +99,7 @@ def hits(lines: list[str], *, source_code: bool = False) -> Iterator[Hit]:
 
 
 def _scheme_token(value: str) -> str:
-    """The token of a value spelled `<scheme> <token>`, else the value."""
+    """The token of a value spelled `<scheme> <token>`, else the value; a value entropy allows whole
+    (a `sha256=<hex>` digest, a reference) is kept whole."""
     match = _SCHEME.fullmatch(value)
-    return match["token"] if match else value
+    return match["token"] if match and entropy.assess(value).reason in _SPLIT else value
