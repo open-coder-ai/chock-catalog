@@ -24,7 +24,9 @@ HUMAN_EVENTS = frozenset({"commit", "push", "ci"})
 AGENT_ENV = ("CHOCK_AGENT_COMMIT", "CLAUDECODE", "AI_AGENT")
 FALSY = frozenset({"", "0", "false", "no", "off"})
 #: A waiver counts only inside a comment, never inside a value such as a hook's command string.
-_WAIVER = re.compile(r"(?:#|//|;|<!--|/\*)\s*chock:\s*allow\s+(dev-[a-z-]+)")
+_WAIVER = re.compile(r"(?:^\s*;|(?:^|\s)(?:#|//|<!--|/\*))\s*chock:\s*allow\s+(dev-[a-z-]+)", re.MULTILINE)
+#: Quoted strings are blanked before a waiver is looked for, so one inside a value never counts.
+_QUOTED = re.compile(r"\"(?:[^\"\\\n]|\\.)*\"|'[^'\n]*'")
 
 
 def by_person(event: str) -> bool:
@@ -46,7 +48,7 @@ def committed(root: Path, path: str) -> str:
 
 
 def waived(c: Collector, rule: str, line: int, head: frozenset[str] | None) -> bool:
-    """`chock: allow <rule>` in a comment on the finding's line or a comment line just above it.
+    """`chock: allow <rule>` in a comment (outside quotes) on the finding's line or a comment line just above it.
 
     In the agent (`head` given) both the waiver line and the finding's line must already be committed, so
     a waiver cannot be moved onto a new value.
@@ -56,7 +58,7 @@ def waived(c: Collector, rule: str, line: int, head: frozenset[str] | None) -> b
         text = c.lines[number - 1] if 0 < number <= len(c.lines) else ""
         own_line = number == line or text.lstrip().startswith(("#", "//", ";", "<!--", "/*"))
         committed = head is None or (text in head and target in head)
-        if own_line and rule in _WAIVER.findall(text) and committed:
+        if own_line and rule in _WAIVER.findall(_QUOTED.sub('""', text)) and committed:
             return True
     return False
 

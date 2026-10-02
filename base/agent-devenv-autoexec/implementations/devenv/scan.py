@@ -8,21 +8,11 @@ import re
 import subprocess
 from pathlib import Path, PurePosixPath
 
-from devenv.core import BLOCK, Collector, Finding, digest, norm
+from devenv.core import BLOCK, MAX_COMMAND, Collector, Finding, digest, norm
 from devenv.parse import UnreadableError
 from devenv.paths import SPAWN_ONLY, handler_for, normalized
+from devenv.spawn import spawns
 
-_AGENT_CLI = (
-    r"(?:[\w@.~-]*[/\\])*(?:claude(?:-code)?|codex|gemini(?:-cli)?|cursor-agent|copilot|qwen(?:-code)?|opencode|amp"
-    r"|aider|goose|crush|auggie|droid|kiro-cli)"
-)
-_SPAWN = re.compile(
-    rf"(?i)(?<![\w.@/\\-]){_AGENT_CLI}(?:\.exe|\.cmd)?\b[^\n;&|]{{0,1000}}?\s(?:--dangerously-skip-permissions|"
-    r"--dangerously-bypass-approvals-and-sandbox|--permission-mode[= ]+['\"]?bypasspermissions|--yolo|--full-auto|"
-    r"--approval-mode[= ]+['\"]?yolo|--allow-all-tools|--allow-all-paths|--yes-always|"
-    r"(?:--sandbox|-s)[= ]+['\"]?danger-full-access)(?![\w-])"
-    rf"|(?<![\w.@/\\-])(?:[\w@.~-]*[/\\])*(?:gemini(?:-cli)?\b[^\n;&|]{{0,1000}}?\s-y|cursor-agent\b[^\n;&|]{{0,1000}}?\s(?:-f|--force))(?![\w-])"
-)
 #: Agent and editor config folders: a command in one that runs a script kept in another is the keyv-worm shape.
 AGENT_DIRS = frozenset(
     {
@@ -44,7 +34,23 @@ AGENT_DIRS = frozenset(
         ".amazonq",
     }
 )
-_PATHLIKE = re.compile(r"(?:\$\{?[A-Za-z_]+\}?/|\$\{[A-Za-z]+\}/|\./|\.\./)*([\w.@+-]+(?:/[\w.@+-]+)+)")
+_TOKEN = re.compile(r"[^\s`;|&()<>=,]+")
+_ROOTED = re.compile(r"(?:\$\{?[A-Za-z_]\w*\}?|\.{1,2})/")
+_RELATIVE = re.compile(r"[\w.@+-]+(?:/[\w.@+-]+)+")
+
+
+def paths_in(command: str) -> list[str]:
+    """Relative paths a command names, after `$VAR/`, `${VAR}/`, `./` and `../` prefixes; linear in its length."""
+    if len(command) > MAX_COMMAND:
+        return []
+    found = []
+    for token in _TOKEN.findall(command.replace('"', "").replace("'", "")):
+        at = 0
+        while (prefix := _ROOTED.match(token, at)) is not None:
+            at = prefix.end()
+        if _RELATIVE.fullmatch(token, at):
+            found.append(token[at:])
+    return found
 
 
 def judge_file(path: str, text: str) -> Collector | None:
@@ -62,21 +68,8 @@ def judge_file(path: str, text: str) -> Collector | None:
             c.found = [
                 Finding("dev-unparseable", 1, f"unreadable#{digest}", f"cannot be read, so it is refused: {exc}", BLOCK)
             ]
-    _spawns(c)
+    spawns(c)
     return c
-
-
-def _spawns(c: Collector) -> None:
-    """Agent CLIs started with their safety checks off, on any line of a surface, shell, workflow or build file."""
-    for number, text in enumerate(c.lines, 1):
-        found = None if text.lstrip().startswith(("#", "//")) else _SPAWN.search(text)
-        if found:
-            c.add(
-                "dev-agent-spawn",
-                f"spawn={norm(found.group(0))}",
-                "an agent CLI is started with its safety checks off",
-                line=number,
-            )
 
 
 def cross_references(collectors: dict[str, Collector], added: dict[str, str]) -> None:
@@ -89,7 +82,7 @@ def cross_references(collectors: dict[str, Collector], added: dict[str, str]) ->
         home = normalized(path).split("/")
         own = next((part for part in home if part in AGENT_DIRS), None)
         for where, command, line in c.commands:
-            for token in _PATHLIKE.findall(command):
+            for token in paths_in(command):
                 target = normalized(token)
                 first = target.split("/", 1)[0]
                 if target in added and target != normalized(path):

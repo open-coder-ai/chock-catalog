@@ -14,11 +14,12 @@ LIFECYCLE = ("onCreateCommand", "updateContentCommand", "postCreateCommand", "po
 #: A bind source that hands the container the host: the Docker socket, credential folders, the home or root folder.
 _HOST_SOURCE = re.compile(
     r"(?i)docker\.sock|(?:^|[/\\])\.(?:ssh|aws|kube|gnupg|docker|azure|config[/\\]gcloud)(?:[/\\]|$)"
-    r"|^\$\{localenv:(?:home|userprofile)\}[/\\]?$|^~[/\\]?$|^/(?:etc|root|var/run|run|proc|sys|dev|home|users|var/lib/docker)?/?$"
+    r"|^(?:\$\{localenv:(?:home|userprofile)\})+[/\\]?$|^~[/\\]?$|^[a-z]:[/\\]?$"
+    r"|^/(?:etc|root|var|var/run|run|proc|sys|dev|home|users|var/lib/docker|private|opt|usr|srv|mnt)?/?$|^/(?:home|users)/[^/]+/?$"
 )
 _HOST_NAMESPACES = frozenset({"--network", "--net", "--pid", "--ipc", "--uts", "--userns", "--cgroupns"})
 _MOUNT_FLAGS = frozenset({"-v", "--volume", "--mount"})
-_VALUE_FLAGS = _HOST_NAMESPACES | _MOUNT_FLAGS | {"--cap-add", "--security-opt", "--device"}
+_VALUE_FLAGS = _HOST_NAMESPACES | _MOUNT_FLAGS | {"--cap-add", "--security-opt", "--device", "--volumes-from"}
 _ARG = re.compile(r"^(--?[A-Za-z][\w-]*)(?:[= ]\s*(.*))?$", re.DOTALL)
 _WIDE_CAPS = frozenset(
     {"ALL", "SYS_ADMIN", "SYS_PTRACE", "NET_ADMIN", "SYS_MODULE", "DAC_READ_SEARCH", "SYS_RAWIO", "BPF"}
@@ -27,18 +28,22 @@ _WIDE_CAPS = frozenset(
 
 def host_source(spec: str) -> bool:
     """Whether a mount (`type=bind,source=X,...`, or `X:Y[:opts]` as -v takes it) binds a host path that matters."""
-    text = spec.strip()
-    fields = [part.partition("=") for part in text.split(",")]
-    sources = [value.strip() for key, eq, value in fields if eq and key.strip().lower() in ("source", "src")]
+    text = spec.strip().strip("'\"")
+    fields = [part.strip().strip("'\"").partition("=") for part in text.split(",")]
+    sources = [
+        value.strip().strip("'\"") for key, eq, value in fields if eq and key.strip().lower() in ("source", "src")
+    ]
     if not sources and not any(eq for _, eq, _ in fields):
         drive = re.match(r"^[A-Za-z]:[\\/]", text)
-        sources = [text[:2] + text[2:].split(":", 1)[0] if drive else text.split(":", 1)[0]]
+        # The source ends at the first `:` outside a ${...} variable (`${localEnv:HOME}/.ssh:/root/.ssh`).
+        head = re.match(r"(?:\$\{[^}]*\}|[^:])*", text[2:] if drive else text).group(0)
+        sources = [text[:2] + head if drive else head]
     return any(_HOST_SOURCE.search(source) for source in sources)
 
 
 def _risky_arg(flag: str, value: str) -> bool:
     if flag == "--privileged":
-        return value.strip().lower() in ("", "true")
+        return value.strip().lower() in ("", "true", "1", "yes", "on")
     if flag in _HOST_NAMESPACES:
         return value.strip().lower() == "host"
     if flag == "--cap-add":
@@ -47,7 +52,7 @@ def _risky_arg(flag: str, value: str) -> bool:
         return bool(re.search(r"(?i)unconfined|disable", value))
     if flag in _MOUNT_FLAGS:
         return host_source(value)
-    return flag == "--device"
+    return flag in ("--device", "--volumes-from")
 
 
 def _run_args(raw: object) -> list[tuple[str, str]]:

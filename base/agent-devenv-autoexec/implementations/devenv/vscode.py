@@ -92,7 +92,7 @@ _EXEC_KEY = re.compile(r"(?i)(?:path|executable|command|commandline|runtime|inte
 #: Path settings that name folders or data the editor reads, not a program it runs.
 _DATA_KEY = re.compile(
     r"(?i)(?:root|cwd|output|out|config|cache|log|base|source|src|data|dictionary|dist|build|search|watch|"
-    r"include|exclude|schema|file|workspace|storage|history|snippet|template|test|spec)path$"
+    r"include|exclude|schema|file|workspace|storage|history|snippet|template)path$"
 )
 _DATA_VALUE = re.compile(r"(?i)\.(?:txt|json|jsonc|md|dic|ya?ml|csv|xml|code-snippets|css|html?|svg|png|ico|lock)$")
 _TERMINAL = re.compile(r"(?i)^terminal\.integrated\.(?:profiles|automationprofile|shellargs|shell)\.")
@@ -107,6 +107,19 @@ _TRUST_OFF = {
 #: Terminal auto-approve keys that match every command line.
 _REGEX_ALL = re.compile(r"^/(?:\^?\.[*+]\$?|\^?\[\\s\\S\][*+]\$?|\^|\$|\(\?:\)|)/[a-z]*$|^\*$")
 _APPROVAL = ("autoapprove", "autoaccept", "allowlist", "yolo", "dangerously")
+
+
+def _matches_anything(pattern: str) -> bool:
+    """A terminal rule that approves an arbitrary command: a catch-all `/regex/` (or one that will not compile)."""
+    if _REGEX_ALL.match(pattern):
+        return True
+    body = re.fullmatch(r"/(.*)/[a-z]*", pattern, re.DOTALL)
+    if body is None:
+        return False
+    try:
+        return re.search(body.group(1), "zq~9 x") is not None
+    except re.error:
+        return True
 
 
 def _truthy(leaf: object) -> bool:
@@ -125,7 +138,7 @@ def _approval(c: Collector, path: tuple, leaf: object, spot: str, line: int) -> 
     if _truthy(leaf):
         pattern = str(path[at + 1]) if at + 1 < len(path) else None
         terminal = "terminal" in ".".join(parts[: at + 1])
-        broad = not terminal or pattern is None or bool(_REGEX_ALL.match(pattern))
+        broad = not terminal or pattern is None or _matches_anything(pattern)
         c.add(AUTO, f"{spot}={leaf}", f"auto-approval at {spot}", severity=BLOCK if broad else ASK, line=line)
         return True
     return False
