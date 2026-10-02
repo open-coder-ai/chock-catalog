@@ -266,7 +266,7 @@ jobs:
         run: >-
           ruff format --check base/java-security agentic-security/agentic-code-security tests
           tools/gen_java_security_contract.py tools/regen_all.py tools/gen_registry.py tools/check_installed.py
-          tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
+          tools/check_data_tables.py tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
 
   # This repo is itself an adopter: `.agents/policies/` holds the subset it is governed by,
   # committed as a pinned copy. Checking it here proves the adoption flow on a real repo
