@@ -41,15 +41,16 @@ hook:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+unpinned-action'
       # Verbose regex, one line judged at a time; the [s]/[e] classes keep it from matching its
-      # own source (#32). Each alternative is linear in the line (no nested quantifier can split
-      # the same text two ways), so a long hostile line cannot stall a commit hook.
+      # own source (#32). Scans stop at quotes and flow characters and no nested quantifier can
+      # split the same text two ways, so a long hostile line cannot stall a commit hook (the
+      # timing cases in tests/policies/test_pin_github_actions.py hold it).
       content_pattern: |-
         (?x)
         # Pins: a lowercase 40-hex SHA, or for docker:// an @sha256: digest, ending where the scalar
         # ends (closing quote; plain: space or end of line, after any flow , ] } run).
         # 1. a uses key (plain at a token start, or quoted) whose value on this line is a remote
         #    action or reusable workflow at a non-SHA ref, a docker:// image with no digest, a plain
-        #    value with no ref, an escape or open quote, an alias, or nothing (the value moved below)
+        #    value with no ref or with a quote in it, an escape or open quote, an alias, or nothing
         (?<![^\s\[{,])(?:use[s][ \t]*:(?=\s|$)|"use[s]"\s*:|'use[s]'\s*:)\s*
         (?: (?:[&!]\S*\s+)*
             (?: "(?: (?!(?i:docker)://|\./)[^"@]*@(?![0-9a-f]{40}")
@@ -59,28 +60,31 @@ hook:
                    | (?i:docker)://(?!(?:[^'@]|'')*@sha256:[0-9a-f]{64}'(?!'))
                    | (?:[^']|'')*$ )
               | (?![\s"'*|>&!])
-                (?: (?!(?i:docker)://|\./|\.\\)(?:[^\s@:]|:(?!\s|$)|\s+(?=[^\s\#]))*@
-                      (?![0-9a-f]{40}[,\]}]*(?:\s|$))
-                  | [A-Za-z0-9-]+/[^\s@:]*\s*(?:\#.*)?$
-                  | (?i:docker)://(?![^\s@]*@sha256:[0-9a-f]{64}[,\]}]*(?:\s|$)) )
+                (?: (?!(?i:docker)://|\./|\.\\)(?:[^\s@:"']|:(?!\s|$)|\s+(?=[^\s\#"']))*
+                      (?:@(?![0-9a-f]{40}[,\]}]*(?:\s|$))|["'])
+                  | [A-Za-z0-9-]+/[^\s@:"']*\s*(?:\#.*)?$
+                  | (?i:docker)://(?![^\s@,\]}"']*@sha256:[0-9a-f]{64}[,\]}]*(?:\s|$)) )
               | \* )
           | (?:[&!]\S*(?:\s+|$))*(?:[|>][^\s\#]*\s*)?(?:\#.*)?$ )
         # 2. a plain SHA followed by , ] or } on a line with no flow collection before the key: in
         #    block context those characters are part of the ref, so it names a tag, not a commit
         | ^[^{\[]*?(?<![^\s\[{,])(?:use[s][ \t]*:|"use[s]"\s*:|'use[s]'\s*:)\s+(?:[&!]\S*\s+)*
-          (?![\s"'*&!]|(?i:docker)://|\./)(?:[^\s@:]|:(?!\s|$)|\s+(?=[^\s\#]))*@[0-9a-f]{40}[,\]}]
-        # 3. an image key with a docker:// image and no digest, an escape or open quote, an alias, or
-        #    nothing on this line
-        | (?<![^\s\[{,])(?:imag[e][ \t]*:(?=\s|$)|"imag[e]"\s*:|'imag[e]'\s*:)\s*
-          (?: (?:[&!]\S*\s+)*
-              (?: "(?: (?i:docker)://(?![^"@]*@sha256:[0-9a-f]{64}") | [^"\\]*(?:\\|$) )
-                | '(?: (?i:docker)://(?!(?:[^'@]|'')*@sha256:[0-9a-f]{64}'(?!')) | (?:[^']|'')*$ )
-                | (?![\s"'])(?i:docker)://(?![^\s@]*@sha256:[0-9a-f]{64}[,\]}]*(?:\s|$))
-                | \* )
-            | (?:[&!]\S*(?:\s+|$))*(?:[|>][^\s\#]*\s*)?(?:\#.*)?$ )
-        # 4. an explicit (?) key, which may span lines; a double-quoted key with an escape
-        | ^\s*(?:-\s+)*\?(?:\s|$)
-        | (?:^\s*(?:-\s+)*|[{,]\s*)"[^"\\]*\\[^"]*"\s*:
+          (?![\s"'*&!]|(?i:docker)://|\./)(?:[^\s@:"']|:(?!\s|$)|\s+(?=[^\s\#"']))*@[0-9a-f]{40}[,\]}]
+        # 3. an image key with a docker:// image and no digest, an escape or open quote, or an alias
+        | (?<![^\s\[{,])(?:imag[e][ \t]*:(?=\s|$)|"imag[e]"\s*:|'imag[e]'\s*:)\s*(?:[&!]\S*\s+)*
+          (?: "(?: (?i:docker)://(?![^"@]*@sha256:[0-9a-f]{64}") | [^"\\]*(?:\\|$) )
+            | '(?: (?i:docker)://(?!(?:[^'@]|'')*@sha256:[0-9a-f]{64}'(?!')) | (?:[^']|'')*$ )
+            | (?![\s"'])(?i:docker)://(?![^\s@,\]}"']*@sha256:[0-9a-f]{64}[,\]}]*(?:\s|$))
+            | \* )
+        # 4. a docker:// image with no digest alone on its line or behind an anchor (an image: value
+        #    moved below its key, or aliased from elsewhere)
+        | ^\s*(?::\s+)?(?:[&!]\S*\s+)*["']?(?i:docker)://(?![^\s@,\]}"']*@sha256:[0-9a-f]{64})
+        | (?<![^\s\[{,:])&\S+\s+["']?(?i:docker)://(?![^\s@,\]}"']*@sha256:[0-9a-f]{64})
+        # 5. an explicit (?) key naming uses or image, or escaped, or alone on its line, which may
+        #    span lines (block or flow); a double-quoted key with an escape
+        | (?:^\s*(?:-\s+)*|[\[{,]\s*)\?(?:\s*$|\s+(?:[&!]\S*\s+)*
+            (?:(?:use[s]|imag[e]|"use[s]"|'use[s]'|"imag[e]"|'imag[e]')(?![\w-])|"[^"\\]*\\))
+        | (?:^|[\s\[{,?])"[^"\\]*\\[^"]*"\s*:
 
 compliance:
   owasp_asi:
@@ -132,5 +136,5 @@ changelog:
 - version: 0.0.6
   date: '2026-10-02'
   changes:
-  - "HP14 regex tier. Blocks a docker:// image (uses: or an action's image:) without an @sha256: digest; a uses key written quoted, JSON-style or with a space before the colon; a flow mapping. Refuses as unreadable a uses value this line check cannot see whole: an alias, a value moved to the next line (empty value, block-scalar indicator, anchor or tag alone), an escape or open quote in a quoted value, an explicit '?' key, an escaped key, and a plain owner/repo with no ref (it may continue on the next line); image: gets the same treatment for docker://. A pin is now a lowercase 40-hex SHA ending where the scalar ends: the closing quote, or for a plain value a space or end of line after any , ] } run; and a plain SHA followed by , ] or } on a line with no flow collection before the key is a tag (block context keeps those characters), so it is blocked. Short, uppercase and '#'-glued SHAs, and any path or ref characters (spaces, commas, braces, '' in single quotes, owner/repo@+x) are judged. The uses key must start a token, so 'reuses:' does not fire. Scope adds an action repo's action.yml/action.yaml at any depth. Every alternative is linear in the line length."
-  - "Limits (the YAML key-path ci-github-actions bundle, wave 3, owns them): container/services image tags without docker:// (judged by neither this nor block-unpinned-agent-components unless :latest); impostor commits from a fork network; a tag or branch named as 40 lowercase hex; a local ./ action checked out from another repo; runs.image: Dockerfile with an unpinned FROM; the commit and CI paths read git diff output, so an engine-side line split (a lone CR) or a -diff attribute hides added lines there (the agent write path still judges them). Known false positives: a commented-out uses line, a bare owner/repo after 'uses: ' inside a name or run string, image: with its value on the next line, and an action.yml vendored under node_modules."
+  - "HP14 regex tier. Blocks a docker:// image (uses: or an action's image:) without an @sha256: digest; a uses key written quoted, JSON-style or with a space before the colon; a flow mapping. Refuses as unreadable a uses value this line check cannot see whole: an alias, a value moved to the next line (empty value, block-scalar indicator, anchor or tag alone), an escape or open quote in a quoted value, an explicit '?' key naming uses or image (block or flow), a double-quoted key with an escape after any separator, a plain value with a quote in it, and a plain owner/repo with no ref; image: gets the escape, open-quote and alias treatment, and a docker:// value without a digest alone on its line or behind an anchor is blocked. A pin is now a lowercase 40-hex SHA ending where the scalar ends: the closing quote, or for a plain value a space or end of line after any , ] } run; and a plain SHA followed by , ] or } on a line with no flow collection before the key is a tag (block context keeps those characters), so it is blocked. Short, uppercase and '#'-glued SHAs, and any path or ref characters (spaces, commas, braces, '' in single quotes, owner/repo@+x) are judged. The uses key must start a token, so 'reuses:' does not fire. Scope adds an action repo's action.yml/action.yaml at any depth. Scans stop at quotes and flow characters; timing tests hold 40 KB hostile lines under 0.5 s."
+  - "Limits (the YAML key-path ci-github-actions bundle, wave 3, owns them): container/services image tags without docker:// (judged by neither this nor block-unpinned-agent-components unless :latest); impostor commits from a fork network; a tag or branch named as 40 lowercase hex; a local ./ action checked out from another repo; runs.image: Dockerfile with an unpinned FROM; the commit and CI paths read git diff output, so an engine-side line split (a lone CR) or a -diff attribute hides added lines there (the agent write path still judges them). Known false positives: a commented-out uses line; a uses or image key inside a run script's JSON, Python dict or jq filter, or a description string; a heredoc-generated workflow with ${VAR} refs; a pinned uses on a continuation line of a multi-line flow mapping followed by a comma; a ternary line starting '? uses' or '? image'; and an action.yml vendored under node_modules."

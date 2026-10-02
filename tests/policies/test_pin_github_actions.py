@@ -17,6 +17,21 @@ SHA = "8f4b7f84864484a7bf31766abe9204da3cbe65b3"
 DIGEST = "sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412"
 
 REFUSED = [
+    "      - { ? uses",
+    "    steps: [ ? uses",
+    "      - {name: x, ? uses",
+    "runs: {using: docker, ? image",
+    "      ? uses",
+    '    steps: [ "u\\x73es": actions/checkout@v4 ]',
+    '      - { ? "u\\x73es": actions/checkout@v4 }',
+    '      - !!str "u\\x73es": actions/checkout@v4',
+    '      - &k "u\\x73es": actions/checkout@v4',
+    '  &k "im\\x61ge": docker://alpine',
+    '- { ? "use\\',
+    "          docker://alpine:3",
+    "          docker://alpine:3.19, args: [a]}",
+    "  x: &d docker://alpine:3",
+    '      - uses: a/b"c@v1',
     "      - uses: actions/checkout@v4",
     "uses: some-org/deploy@main",
     'uses: "some-org/action@main"',
@@ -50,8 +65,6 @@ REFUSED = [
     "      - uses: # later",
     "      - {uses:",
     '{"steps": [{"uses":',
-    "runs: {using: docker, image:",
-    "  image:",
     "  image: *img",
     '      - uses: "actions/checkout\\x40v4"',
     '      - uses: "actions/checkout@v4\\',
@@ -82,6 +95,14 @@ REFUSED = [
 ]
 
 SILENT = [
+    "              ? 'pr'",
+    "              : 'push'",
+    "              ? context.issue.number",
+    "inputs:",
+    "  image:",
+    "    description: The image",
+    '      - name: "reuses: some-org/action@main"',
+    "      image: >-",
     f"      - uses: actions/checkout@{SHA}",
     f"      - uses: actions/checkout@{SHA}  # v4.1.1",
     f'uses: "actions/checkout@{SHA}"',
@@ -101,7 +122,6 @@ SILENT = [
     f"  image: docker://alpine@{DIGEST}",
     f"uses: 'docker://alpine@{DIGEST}'",
     "  image: Dockerfile",
-    "  x: &d docker://alpine:3",
     "      image: node:20",
     "      image: ${{ matrix.image }}",
     '      image: "node:20"',
@@ -174,6 +194,15 @@ def test_silent_on_this_repositorys_own_workflows() -> None:
 @pytest.mark.parametrize(
     "line",
     [
+        '"uses":a ' * 8000,
+        '{"uses":a,' * 4000,
+        "'uses':a " * 4000,
+        '{"image":docker://x,' * 8000 + "@sha256:" + "a" * 64,
+        "  &a" * 8000,
+        "[? " * 13000,
+        ",? uses" * 5000,
+        '{"a\\":' * 6000,
+        "uses: a'" * 5000,
         "uses: " + "!a " * 9000 + "x",
         "uses: " + "&a " * 9000 + "x",
         "image: " + "!a " * 9000 + "x",
@@ -191,4 +220,4 @@ def test_a_long_hostile_line_is_judged_in_linear_time(line: str) -> None:
     """A commit hook has no timeout: no line may make the pattern backtrack quadratically."""
     start = time.perf_counter()
     PATTERN.search(line)
-    assert time.perf_counter() - start < 2.0
+    assert time.perf_counter() - start < 0.5

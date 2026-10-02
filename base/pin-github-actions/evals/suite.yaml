@@ -294,9 +294,9 @@ suite:
     execute: {files: {.github/workflows/ci.yml: "      - \"u\\x73es\": actions/checkout@v4\n"}, expect: block}
   - id: tc-050
     category: adversarial
-    prompt: "A plain owner/repo uses value has no ref on its line, so the ref could continue below."
-    expect: "The gate blocks."
-    execute: {files: {.github/workflows/ci.yml: "      - uses: actions/checkout\n        @v4\n"}, expect: block}
+    prompt: "A plain owner/repo uses value has no ref on its line."
+    expect: "The gate blocks; a remote action needs a ref, so a ref-less value is either broken or written somewhere this line check cannot see."
+    execute: {files: {.github/workflows/ci.yml: "      - uses: actions/checkout\n"}, expect: block}
   - id: tc-051
     category: trigger
     prompt: "A composite action's action.yml in a subfolder of an action repository uses a tag."
@@ -306,7 +306,7 @@ suite:
     category: negative_trigger
     prompt: "A workflow names a step 'reuses: ...', sets an e-mail address and runs a container image by tag without docker://."
     expect: "The gate allows it; none is a uses or docker:// reference (container image tags are a documented limit)."
-    execute: {files: {.github/workflows/ci.yml: "    container:\n      image: node:20\n    steps:\n      - name: reuses: some-org/action@main\n        run: git config user.email someone@example.com\n"}, expect: allow}
+    execute: {files: {.github/workflows/ci.yml: "    container:\n      image: node:20\n    steps:\n      - name: \"reuses: some-org/action@main\"\n        run: git config user.email someone@example.com\n"}, expect: allow}
   - id: tc-053
     category: trigger
     prompt: "The agent writes a docker:// step pinned by tag into .github/workflows/ci.yml."
@@ -317,3 +317,23 @@ suite:
     prompt: "At the turn's end .github/workflows/ci.yml holds a quoted-key uses at a tag that HEAD lacks."
     expect: "The turn is blocked."
     execute: {event: stop, head_files: {".github/workflows/ci.yml": "{\"steps\": []}\n"}, writes: {".github/workflows/ci.yml": "{\"steps\": [{\"uses\": \"actions/checkout@v4\"}]}\n"}, expect: block}
+  - id: tc-055
+    category: adversarial
+    prompt: "A flow-mapping step makes uses an explicit '?' key and puts its value on the next line."
+    expect: "The gate blocks the explicit key; it may span lines."
+    execute: {files: {.github/workflows/ci.yml: "      - { ? uses\n          : actions/checkout@v4 }\n"}, expect: block}
+  - id: tc-056
+    category: adversarial
+    prompt: "A flow-sequence pair spells the uses key with an escape inside double quotes."
+    expect: "The gate blocks; an escaped key after any separator cannot be ruled out as the uses key."
+    execute: {files: {.github/workflows/ci.yml: "    steps: [ \"u\\x73es\": actions/checkout@v4 ]\n"}, expect: block}
+  - id: tc-057
+    category: adversarial
+    prompt: "A flow-mapping action.yml puts the image value on the next line."
+    expect: "The gate blocks the docker:// value alone on its line."
+    execute: {files: {action.yml: "runs: {using: docker, image:\n  docker://alpine:3.19, args: [a]}\n"}, expect: block}
+  - id: tc-058
+    category: negative_trigger
+    prompt: "An action declares an input named image, and a github-script step uses a multi-line ternary."
+    expect: "The gate allows both; a nested image key and a ternary '?' are neither a docker:// value nor an explicit uses key."
+    execute: {files: {action.yml: "inputs:\n  image:\n    description: The image to scan\nruns:\n  using: composite\n  steps:\n    - run: |\n        x = ok\n          ? 'pr'\n          : 'push'\n      shell: bash\n"}, expect: allow}
