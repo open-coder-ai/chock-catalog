@@ -351,5 +351,19 @@
   "name": "empty",
   "src": "",
   "hcl": []
+ },
+ {
+  "name": "lone-cr-in-heredoc",
+  "src": "a = \u003c\u003cEOT\n{\"s\"\rin\nEOT\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "bool-not-number",
+  "src": "a = true\nb = 1\nc = 1.0\n",
+  "hcl": [
+   "|A|a|true",
+   "|A|b|1",
+   "|A|c|1"
+  ]
  }
 ]

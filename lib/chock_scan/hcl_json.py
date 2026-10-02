@@ -46,6 +46,10 @@ Scan = Callable[[str, int], tuple[object, int]]
 Pairs = list[tuple[str, "_Node"]]
 
 
+class _ShapeError(HclError):
+    """The value does not have the shape asked for (an object, labels): `fits` reads this as "not blocks"."""
+
+
 class _Pairs(list):
     """A JSON object, as its (key, _Node) pairs in source order."""
 
@@ -123,27 +127,16 @@ class _Reader:
         )
         if items is None or not all(isinstance(item.value, _Pairs) for item in items):
             msg = f"{what}: expected an object or an array of objects"
-            raise self.fail(msg, node)
+            raise _ShapeError(msg, self.line(node.start))
         return items
 
     def merged(self, node: _Node, what: str, *, body: bool) -> Pairs:
-        """The pairs of every object `node` holds, in order, as HCL merges them.
+        """The pairs of every object `node` holds, in order, as HCL merges them; in a body, `//` keys are comments.
 
-        In a body (`body`), `//` keys are comments and a key seen twice raises: it may be an argument,
-        and HCL would refuse or one copy would hide the other. Elsewhere (top level, labels) every key
-        spells blocks, and HCL reads a repeated one as more blocks.
+        A key may repeat: HCL reads a repeated block type as more blocks, and only refuses a repeated
+        argument, which the reader of a body decides (see `body`).
         """
-        seen: set[str] = set()
-        out: Pairs = []
-        for obj in self.objects(node, what):
-            for key, child in obj.value:
-                if body and key in seen:
-                    msg = f"duplicate key {key!r}"
-                    raise self.fail(msg, child)
-                seen.add(key)
-                if not (body and key == COMMENT):
-                    out.append((key, child))
-        return out
+        return [(k, c) for obj in self.objects(node, what) for k, c in obj.value if not (body and k == COMMENT)]
 
     def body_pairs(self, node: _Node) -> Pairs:
         return self.merged(node, "a body", body=True)
@@ -154,7 +147,7 @@ class _Reader:
             pairs = self.merged(node, f"{kind} labels", body=False)
             if not pairs:
                 msg = f"{kind}: missing block label"
-                raise self.fail(msg, node)
+                raise _ShapeError(msg, self.line(node.start))
             found: list[Block] = []
             for label, child in pairs:
                 found += self.blocks(kind, child, labels - 1, (*have, label), depth + 1)
@@ -167,21 +160,36 @@ class _Reader:
         return [self.body(kind, have, item, depth) for item in value]
 
     def body(self, kind: str, labels: tuple[str, ...], node: _Node, depth: int) -> Block:
+        """A block; a key repeated across merged objects must be blocks each time (an argument set twice raises)."""
+        groups: dict[str, list[_Node]] = {}
+        for name, child in self.body_pairs(node):
+            groups.setdefault(name, []).append(child)
         attributes: list[Attribute] = []
         blocks: list[Block] = []
-        for name, child in self.body_pairs(node):
-            text = self.text[child.start : child.end]
-            attributes.append(Attribute(name, text, self.line(child.start), self.value(child, depth + 1)))
-            blocks += self.nested(kind, name, child, depth + 1)
+        for name, children in groups.items():
+            first = children[0]
+            shapes = [self.shape(kind, name, child) for child in children]
+            if len(children) > 1 and None in shapes:
+                msg = f"duplicate key {name!r} (an argument set twice)"
+                raise self.fail(msg, children[1])
+            value = self.value(first, depth + 1) if len(children) == 1 else COMPUTED
+            attributes.append(Attribute(name, self.text[first.start : first.end], self.line(first.start), value))
+            for child, labels_of in zip(children, shapes, strict=True):
+                if labels_of is not None:
+                    blocks += self.blocks(name, child, labels_of, (), depth + 1)
         return Block(kind, labels, self.line(node.start), tuple(attributes), tuple(blocks))
 
-    def nested(self, parent: str, kind: str, node: _Node, depth: int) -> list[Block]:
-        """The blocks a body key spells if its value has a block's shape: schema labels first, then none."""
+    def shape(self, parent: str, kind: str, node: _Node) -> int | None:
+        """How many labels a body key's value reads as blocks with: the schema's count, else none, else None."""
+        if node.value is None:
+            return 0
+        if not isinstance(node.value, list):
+            return None
         nested = self.schema.nested
-        for labels in dict.fromkeys((nested.get(f"{parent}/{kind}", nested.get(kind, 0)), 0)):
-            if isinstance(node.value, list) and self.fits(node, labels):
-                return self.blocks(kind, node, labels, (), depth)
-        return []
+        return next(
+            (n for n in dict.fromkeys((nested.get(f"{parent}/{kind}", nested.get(kind, 0)), 0)) if self.fits(node, n)),
+            None,
+        )
 
     def fits(self, node: _Node, labels: int) -> bool:
         """Whether `node` reads as blocks with `labels` labels; checks only the label levels and body tops."""
@@ -192,7 +200,7 @@ class _Reader:
             value = node.value
             for item in value if isinstance(value, list) and not isinstance(value, _Pairs) else [node]:
                 self.body_pairs(item)
-        except HclError:
+        except _ShapeError:
             return False
         return True
 

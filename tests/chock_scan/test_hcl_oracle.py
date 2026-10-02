@@ -60,9 +60,20 @@ def agrees(ours: list[str], theirs: list[str]) -> bool:
         return False
     for mine, hcl in zip(ours, theirs, strict=True):
         (head, value), (their_head, their_value) = split(mine), split(hcl)
-        if head != their_head or value not in ("C", their_value):
+        if head != their_head or (value != "C" and not same(value, their_value)):
             return False
     return True
+
+
+def same(ours: object, theirs: object) -> bool:
+    """Equal as JSON values, with a bool never equal to a number (Python's True == 1 is not HCL's)."""
+    if isinstance(ours, bool) or isinstance(theirs, bool):
+        return type(ours) is type(theirs) and ours == theirs
+    if isinstance(ours, list) and isinstance(theirs, list):
+        return len(ours) == len(theirs) and all(same(a, b) for a, b in zip(ours, theirs, strict=True))
+    if isinstance(ours, dict) and isinstance(theirs, dict):
+        return ours.keys() == theirs.keys() and all(same(ours[k], theirs[k]) for k in ours)
+    return (type(ours) is type(theirs) or {type(ours), type(theirs)} <= {int, float}) and ours == theirs
 
 
 @pytest.mark.parametrize("case", NATIVE, ids=[c["name"] for c in NATIVE])
@@ -82,6 +93,16 @@ def _check(m: SimpleNamespace, case: dict, parse: Callable[[str], object]) -> No
         return
     ours = lines(m, parse(case["src"]), case)
     assert agrees(ours, case["hcl"]), (ours, case["hcl"])
+
+
+def test_the_comparison_is_strict_about_types() -> None:
+    assert not agrees(["|A|a|true"], ["|A|a|1"])
+    assert not agrees(["|A|a|[0]"], ["|A|a|[false]"])
+    assert not agrees(['|A|a|{"k":1}'], ['|A|a|{"k":true}'])
+    assert not agrees(['|A|a|"1"'], ["|A|a|1"])
+    assert not agrees(["|A|a|1", "|A|b|1"], ["|A|a|1"])
+    assert agrees(["|A|a|300.0"], ["|A|a|300"])
+    assert agrees(["|A|a|C"], ["|A|a|[1]"])
 
 
 def test_the_oracle_covers_both_answers() -> None:

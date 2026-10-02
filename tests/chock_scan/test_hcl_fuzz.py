@@ -187,3 +187,15 @@ def test_a_chain_of_misshapen_labelled_blocks_is_read_once(m: SimpleNamespace) -
     assert time.perf_counter() - started < 1
     depth = sum(1 for b in m.hcl.walk(root) if b.type == "dynamic")
     assert depth == 28
+
+
+def test_json_time_does_not_grow_with_depth(m: SimpleNamespace) -> None:
+    """The same 64 KiB of templates nested 55 deep costs about what it does at depth 1 (it once cost size x depth)."""
+
+    def at(depth: int) -> str:
+        head = '{"resource":{"a":{"b":' + '{"x":' * depth
+        return head + "[" + '"${x}yy",' * (N // 9) + '""]' + "}" * (depth + 3)
+
+    shallow = min(_outcome(m, m.hcl_json.parse_json, at(1), None) for _ in range(2))
+    deep = min(_outcome(m, m.hcl_json.parse_json, at(55), None) for _ in range(2))
+    assert deep < 3 * shallow + 0.05, (shallow, deep)

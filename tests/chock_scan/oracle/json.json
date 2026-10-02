@@ -488,5 +488,91 @@
    "/0:locals[]|B",
    "/0:locals[]|A|a|C"
   ]
+ },
+ {
+  "name": "r2-repeated-comment-in-merged-body",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"statement\":[[{\"//\":\"a\",\"actions\":[\"*\"]},{\"//\":\"b\"}]]}}}}",
+  "nested": {
+   "statement": 0
+  },
+  "attrs": [
+   "actions",
+   "r",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|A|actions|[\"*\"]"
+  ]
+ },
+ {
+  "name": "r2-repeated-block-in-merged-body",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"statement\":[[{\"actions\":[\"*\"],\"condition\":{\"test\":\"a\"}},{\"condition\":{\"test\":\"b\"}}]]}}}}",
+  "nested": {
+   "condition": 0,
+   "statement": 0
+  },
+  "attrs": [
+   "actions",
+   "r",
+   "resource",
+   "t",
+   "test"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|A|actions|[\"*\"]",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/0:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/0:condition[]|A|test|\"a\"",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/1:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/1:condition[]|A|test|\"b\""
+  ]
+ },
+ {
+  "name": "r2-null-beside-merged",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"condition\":[null,[{\"//\":\"a\",\"test\":\"x\"},{\"//\":\"b\"}]]}}}}",
+  "nested": {
+   "condition": 0
+  },
+  "attrs": [
+   "r",
+   "resource",
+   "t",
+   "test"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/1:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/1:condition[]|A|test|\"x\""
+  ]
+ },
+ {
+  "name": "r2-repeated-comment-resource-body",
+  "src": "{\"resource\":{\"t\":{\"n\":[[{\"//\":\"a\",\"x\":1},{\"//\":\"b\"}]]}}}",
+  "attrs": [
+   "n",
+   "resource",
+   "t",
+   "x"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]|A|x|1"
+  ]
+ },
+ {
+  "name": "r2-argument-set-twice",
+  "src": "{\"resource\":{\"t\":{\"n\":[[{\"x\":1},{\"x\":2}]]}}}",
+  "attrs": [
+   "n",
+   "resource",
+   "t",
+   "x"
+  ],
+  "hcl": "ERR"
  }
 ]

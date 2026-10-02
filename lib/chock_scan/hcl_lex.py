@@ -244,6 +244,9 @@ class _Lexer:
                 pos += 1
                 at_line_start = True
                 continue
+            if src[pos] == "\r" and not src.startswith("\r\n", pos):
+                msg = f"heredoc {marker}: carriage return not followed by a newline"
+                raise self.fail(msg, pos)
             text, pos, interpolated = self.template_char(pos)
             computed = computed or interpolated
             parts.append(text)
