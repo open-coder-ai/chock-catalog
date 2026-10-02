@@ -337,3 +337,12 @@ suite:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN cat << EOF > /etc/motd\nhello\nUSER 1000\nEOF\n"
       expect: warn
+  - id: tc-034
+    category: adversarial
+    prompt: A chmod 777 is split across a line continuation in the middle of the command name.
+    expect: Warned (dk-chmod-setuid); continuation lines join as BuildKit joins them, with no space.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN ch\\\nmod 777 /srv\nUSER 1000\n"
+      expect: warn

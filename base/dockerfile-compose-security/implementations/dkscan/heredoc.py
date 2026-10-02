@@ -19,6 +19,13 @@ class LexError(ValueError):
     """BuildKit's lexer would refuse this text."""
 
 
+class TooDeepError(RuntimeError):
+    """${...} nests deeper than DEPTH: the line is reported as too deep to judge, not guessed at."""
+
+
+DEPTH = 64
+
+
 class _Words:
     def __init__(self) -> None:
         self.buf: list[str] = []
@@ -77,6 +84,8 @@ class Lex:
         return text
 
     def lex(self, stop: str) -> _Words:
+        if len(self.open) >= DEPTH:
+            raise TooDeepError(stop)
         words = _Words()
         self.open.append(words)
         try:

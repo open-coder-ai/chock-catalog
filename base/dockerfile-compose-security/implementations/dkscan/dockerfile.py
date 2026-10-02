@@ -31,6 +31,8 @@ class Instr(NamedTuple):
     lines: tuple[int, ...]
     raw: tuple[str, ...]
     above: str
+    body_at: int = 0
+    deep: bool = False
 
     @property
     def line(self) -> int:
@@ -60,6 +62,7 @@ class _Builder:
         self.raw: list[str] = []
         self.above = above
         self.first = line
+        self.deep = False
 
     def add(self, number: int, text: str, sep: str, raw: str) -> None:
         if self.parts:
@@ -94,10 +97,18 @@ def _is_comment(line: str) -> bool:
 
 
 def _continues(line: str, esc: str) -> tuple[str, bool]:
+    """BuildKit's rule: a line ending in the escape character (blanks after it allowed) that is not
+    itself escaped continues; the character and those blanks are dropped, nothing else."""
     stripped = line.rstrip(" \t")
-    if stripped.endswith(esc):
-        return stripped[: -len(esc)], True
+    if stripped.endswith(esc) and (len(stripped) == 1 or stripped[-2] != esc):
+        return stripped[:-1], True
     return line, False
+
+
+def _shell_continues(line: str) -> tuple[str, bool]:
+    """The shell's rule inside a heredoc script: an unescaped backslash right before the newline."""
+    trailing = len(line) - len(line.rstrip("\\"))
+    return (line[:-1], True) if trailing % 2 else (line, False)
 
 
 def _logical(lines: list[str], index: int, esc: str) -> tuple[list[tuple[int, str, str]], int]:
@@ -122,7 +133,12 @@ def heredoc_words(text: str) -> list[tuple[bool, str]]:
 
 def _heredocs(lines: list[str], index: int, build: _Builder, keyword: str) -> int:
     """Append each `<<WORD` body to a RUN's text; skip the bodies of COPY and ADD (file contents)."""
-    for strip_tabs, word in heredoc_words(build.text()):
+    try:
+        openers = heredoc_words(build.text())
+    except heredoc.TooDeepError:
+        build.deep = True
+        return index
+    for strip_tabs, word in openers:
         sep = "\n"
         while index < len(lines):
             raw = lines[index]
@@ -131,9 +147,9 @@ def _heredocs(lines: list[str], index: int, build: _Builder, keyword: str) -> in
             if body == word:
                 break
             if keyword == "RUN":
-                text, more = _continues(body, "\\")
+                text, more = _shell_continues(body)
                 build.add(index, text, sep, raw)
-                sep = " " if more else "\n"
+                sep = "" if more else "\n"
     return index
 
 
@@ -149,7 +165,7 @@ def split_flags(rest: str) -> tuple[dict[str, str], str]:
 def _instruction(parts: list[tuple[int, str, str]], above: str) -> tuple[_Builder, str] | None:
     build = _Builder(parts[0][0], above)
     for number, text, raw in parts:
-        build.add(number, text, " ", raw)
+        build.add(number, text, "", raw)
     head = KEYWORD.match(build.text())
     return (build, head.group(1).upper()) if head else None
 
@@ -179,6 +195,9 @@ def parse(text: str) -> list[Instr]:
 
 def _finish(build: _Builder, keyword: str) -> Instr:
     whole = build.text()
-    rest = whole[KEYWORD.match(whole).end() :]  # type: ignore[union-attr]
-    flags, args = split_flags(rest.split("\n", 1)[0])
-    return Instr(keyword, flags, args, whole, tuple(build.starts), tuple(build.lines), tuple(build.raw), build.above)
+    head = KEYWORD.match(whole).end()  # type: ignore[union-attr]
+    first = whole[head:].split("\n", 1)[0]
+    flags, args = split_flags(first)
+    body_at = head + len(first.rstrip()) - len(args)
+    lines, raw = tuple(build.lines), tuple(build.raw)
+    return Instr(keyword, flags, args, whole, tuple(build.starts), lines, raw, build.above, body_at, build.deep)

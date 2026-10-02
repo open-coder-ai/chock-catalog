@@ -9,7 +9,7 @@ from policies import dockerkit
 
 mod = dockerkit.load()
 
-from dkscan import shellrules  # noqa: E402
+from dkscan import cmdrules  # noqa: E402
 
 HEAD = "FROM a@sha256:" + "0" * 64 + "\n"
 TAIL = "USER 1000\n"
@@ -218,10 +218,10 @@ def test_hygiene_and_build_rules_stay_silent(body: str) -> None:
 
 
 def test_chmod_mode_reader() -> None:
-    assert shellrules.chmod_mode(" -R 4755 /x") == "sets the setuid or setgid bit"
-    assert shellrules.chmod_mode(" o+w /x") == "makes the file world-writable"
-    assert shellrules.chmod_mode(" -v") == ""
-    assert shellrules.chmod_mode(" 0644 /x") == ""
+    assert cmdrules.chmod_why(("-R", "4755", "/x")) == "sets the setuid or setgid bit"
+    assert cmdrules.chmod_why(("o+w", "/x")) == "makes the file world-writable"
+    assert cmdrules.chmod_why(("-v",)) == ""
+    assert cmdrules.chmod_why(("0644", "/x")) == ""
 
 
 def test_wrapped_and_quoted_command_positions() -> None:

@@ -736,8 +736,8 @@ policies:
   mandatory: false
   mechanism: warn-only gate
   enforces: advisory
-  eval_cases: 33
-  eval_executed: 33
+  eval_cases: 34
+  eval_executed: 34
   description: 'Warns (observe rollout, never refuses) when a change to a Dockerfile, Containerfile
     or compose file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware:
     FROM or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature

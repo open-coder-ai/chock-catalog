@@ -113,8 +113,9 @@ class Walker:
 
     def env(self, instr: Instr) -> None:
         if self.stages:
+            scope = self.scope()
             for name, value in env_pairs(instr.args):
-                self.stages[-1].env[name] = images.substitute(value, self.scope())
+                scope[name] = self.stages[-1].env[name] = images.substitute(value, scope)
 
     def user(self, instr: Instr) -> None:
         if self.stages:

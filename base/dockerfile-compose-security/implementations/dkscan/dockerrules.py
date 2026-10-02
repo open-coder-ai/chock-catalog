@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable, Iterator
 from pathlib import PurePosixPath
 
-from dkscan import limits, secrets, shellrules, stages
+from dkscan import cmdrules, secrets, shellrules, stages
 from dkscan.dockerfile import Instr, split_flags
 from dkscan.rules import Ctx, Hit
 
@@ -72,7 +72,7 @@ def copy_add(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
             f"{instr.keyword} all",
             f"{instr.keyword} of the whole context with no .dockerignore",
         )
-    if why := shellrules.chmod_mode(instr.flags.get("chmod", "")):
+    if why := cmdrules.mode_why(instr.flags.get("chmod", "")):
         yield Hit("dk-chmod-setuid", instr.line, f"{instr.keyword} --chmod", f"{instr.keyword} --chmod {why}")
     if instr.keyword == "ADD":
         yield from _add_remote(instr, sources, ctx)
@@ -105,7 +105,9 @@ def onbuild(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
     inner, _, rest = instr.args.partition(" ")
     if inner.upper() == "RUN":
         yield Hit("dk-onbuild-run", instr.line, instr.text, "ONBUILD RUN runs in every downstream build")
-        yield from shellrules.run_hits(instr._replace(flags=split_flags(rest)[0]), ctx)
+        flags, body = split_flags(rest)
+        body_at = instr.body_at + len(instr.args.rstrip()) - len(body)
+        yield from shellrules.run_hits(instr._replace(flags=flags, body_at=body_at), ctx)
 
 
 def instruction_hits(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
@@ -126,7 +128,7 @@ def instruction_hits(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
 
 
 def _env_like(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
-    if len(instr.text) > limits.TEXT:
+    if len(instr.text) > shellrules.TEXT:
         yield from shellrules.judgeable(instr)
         return
     yield from env_arg(instr)

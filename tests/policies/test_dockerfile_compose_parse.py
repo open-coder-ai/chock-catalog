@@ -33,7 +33,7 @@ def test_flag_without_value() -> None:
 
 def test_continuation_joins_and_places_each_part() -> None:
     (instr,) = parse("RUN apt-get update \\\n  && apt-get install -y x\n")
-    assert instr.text == "RUN apt-get update    && apt-get install -y x"
+    assert instr.text == "RUN apt-get update   && apt-get install -y x"
     assert instr.lines == (1, 2)
     assert instr.line_at(0) == 1
     assert instr.line_at(instr.text.index("&&")) == 2
@@ -41,13 +41,13 @@ def test_continuation_joins_and_places_each_part() -> None:
 
 def test_comment_and_blank_lines_inside_a_continuation_are_dropped() -> None:
     (instr,) = parse("RUN a \\\n# note\n\n  b\n")
-    assert instr.text == "RUN a    b"
+    assert instr.text == "RUN a   b"
     assert instr.lines == (1, 4)
 
 
 def test_escape_directive_switches_to_backtick() -> None:
     instrs = parse("# escape=`\nFROM a\nRUN a `\n  b\nRUN c \\\nRUN d\n")
-    assert [i.text for i in instrs] == ["FROM a", "RUN a    b", "RUN c \\", "RUN d"]
+    assert [i.text for i in instrs] == ["FROM a", "RUN a   b", "RUN c \\", "RUN d"]
 
 
 def test_directives_end_at_the_first_other_line() -> None:
