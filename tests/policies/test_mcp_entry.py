@@ -91,10 +91,8 @@ def test_two_entries_of_one_name_each_approve_their_own_spec() -> None:
         {"command": "npx", "args": "not-a-list"},
         {"command": 3},
         {"command": "npx", "args": [["nested"]]},
-        {"command": "npx", "args": [True]},
         {"command": "npx", "env": "x"},
         {"command": "npx", "env": {"A": ["x"]}},
-        {"command": "npx", "headers": {"A": None}},
         {"command": "npx x 'unbalanced"},
         {"url": {"nested": 1}},
     ],
@@ -181,3 +179,9 @@ def test_a_malformed_table_is_refused_by_name(
     finally:
         tables.denylist.cache_clear()
         tables.floors.cache_clear()
+
+
+def test_null_and_boolean_values_are_read_as_text() -> None:
+    read = entry.from_config("s", {"command": "npx", "args": [True, None], "env": {"A": None, "B": False}})
+    assert read.args == ("true", "")
+    assert read.env == (("A", ""), ("B", "false"))

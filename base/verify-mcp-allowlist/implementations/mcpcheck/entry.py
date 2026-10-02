@@ -39,10 +39,11 @@ class Server:
     env: tuple[tuple[str, str], ...]
     headers: tuple[tuple[str, str], ...]
     secrets: tuple[tuple[str, str], ...]
+    raw: str = ""
 
     def digest(self) -> str:
         """A short fingerprint of everything the entry says, so any change to it is a different key."""
-        parts = [self.launcher, self.args, self.urls, self.env, self.headers, self.secrets]
+        parts = [self.launcher, self.args, self.urls, self.env, self.headers, self.secrets, self.raw]
         return hashlib.sha256(json.dumps(parts, sort_keys=True).encode("utf-8", errors="replace")).hexdigest()[:16]
 
 
@@ -59,7 +60,9 @@ def literal_secrets(pairs: tuple[tuple[str, str], ...]) -> list[str]:
 
 
 def _text(value: object) -> str:
-    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+    if value is None or isinstance(value, bool):
+        return "" if value is None else str(value).lower()
+    if not isinstance(value, (str, int, float)):
         msg = "a value that is not text"
         raise EntryError(msg)
     return str(value)
@@ -122,4 +125,5 @@ def from_config(name: str, config: object) -> Server:
         env=tuple(sorted({*_pairs(config, ENV_KEYS), *_pairs(own, ("env",))})),
         headers=_pairs(config, HEADER_KEYS),
         secrets=scalars,
+        raw=json.dumps(config, sort_keys=True, default=str),
     )

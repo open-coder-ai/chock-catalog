@@ -177,7 +177,14 @@ def test_a_rule_that_is_new_in_v2_warns_and_a_v1_tier_refuses(tmp_path: Path) ->
     code, _, err = run(repo, both)
     assert code == 1
     assert err.startswith("verify-mcp-allowlist: MCP server config refused")
-    assert {"allowlist", "allowlist-entry", "allowlist-unreadable", "unreadable", "unreadable-entry"} == mod.ENFORCED
+    assert {
+        "allowlist",
+        "allowlist-entry",
+        "allowlist-unreadable",
+        "unreadable",
+        "unreadable-entry",
+        "duplicate-key",
+    } == mod.ENFORCED
 
 
 def observed_server() -> dict:

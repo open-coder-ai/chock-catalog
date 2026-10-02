@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host). Shell guard refuses `claude|codex|gemini|cursor-agent mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs: unlisted or altered servers refuse; unpinned or shell launchers, http urls, literal credentials, old versions only warn for now. Misses: aliases, scripts.
+Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host). Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs: a server off the list, or with other command, args or url host, refuses; unpinned or shell launchers, http, literal credentials, old versions only warn. Misses: aliases, scripts, gitignored files, other clients.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> An MCP server is not on the allowlist, differs from its allowlisted entry, or its config cannot be parsed. Only servers listed in .chock/mcp-allowlist.json (name with launcher and exact arguments, or url host) may be configured; the server must also be pinned to an exact version or image digest, run no shell command line, use https, and carry credentials only as references. Ask a person to review the server and edit the allowlist from their own shell; do not edit the allowlist yourself.
+> An MCP server is not on the allowlist, differs from its allowlisted entry, or its config cannot be parsed. Only servers listed in .chock/mcp-allowlist.json (name with launcher and exact arguments, or url host) may be configured. Pin it to an exact version or image digest, run no shell command line, use https and carry credentials only as references (these rules warn for now). Ask a person to review the server and edit the allowlist from their own shell; do not edit the allowlist yourself.
 
 ## Which primitive it becomes
 

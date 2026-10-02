@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -14,8 +15,8 @@ from chock_scan.urls import parse_url
 from mcpcheck.entry import Server
 
 PATH = ".chock/mcp-allowlist.json"
-#: Events where the actor may be the agent: the allowlist is then the one HEAD holds, never one the agent just wrote.
-AGENT_EVENTS = frozenset({"tool_use", "stop", "agent-commit"})
+#: Events a person's commit reaches. Any other event, a name never seen included, is an agent's: it reads HEAD's allowlist.
+PERSON_EVENTS = frozenset({"commit", "push", "ci"})
 KEYS = frozenset({"name", "launcher", "spec", "url_host"})
 LIMIT = 1 << 20
 MAX_ENTRIES = 500
@@ -34,6 +35,7 @@ class Allowed:
     launcher: str
     spec: str
     host: hostmatch.Entry | None
+    host_text: str = ""
 
 
 def _entry(item: object) -> Allowed:
@@ -45,7 +47,7 @@ def _entry(item: object) -> Allowed:
         msg = "each server needs a name and either launcher with spec, or url_host"
         raise AllowlistError(msg)
     try:
-        return Allowed(name, launcher, spec, hostmatch.parse_entry(host) if host else None)
+        return Allowed(name, launcher, spec, hostmatch.parse_entry(host) if host else None, host)
     except UnparseableError as exc:
         msg = f"url_host {host!r}: {exc}"
         raise AllowlistError(msg) from None
@@ -73,7 +75,12 @@ def head_text(repo_root: Path) -> str | None:
     """The allowlist as HEAD holds it, or None when there is no HEAD, no such file or it is too large."""
     try:
         done = subprocess.run(  # noqa: S603 -- read-only git with a fixed argument list
-            [GIT, "show", f"HEAD:{PATH}"], cwd=repo_root, capture_output=True, timeout=20, check=False
+            [GIT, "--no-replace-objects", "show", f"HEAD:./{PATH}"],
+            cwd=repo_root,
+            capture_output=True,
+            timeout=20,
+            check=False,
+            env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"},
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -96,7 +103,7 @@ def disk_text(repo_root: Path) -> str | None:
 
 def load(repo_root: Path, event: str) -> tuple[tuple[Allowed, ...], str | None]:
     """(entries, the text they came from). A missing file is an empty allowlist: every server is then unlisted."""
-    text = head_text(repo_root) if event in AGENT_EVENTS else disk_text(repo_root)
+    text = disk_text(repo_root) if event in PERSON_EVENTS else head_text(repo_root)
     return (parse(text), text) if text is not None else ((), None)
 
 

@@ -42,6 +42,9 @@ VALUE_FLAGS = frozenset(
         "--header-env",
     }
 )
+PACKAGE_RUNNERS = frozenset({"npx", "bunx", "pnpx", "uvx"})
+PACKAGE_AGENT = re.compile(r"(?:^|/)(claude-code|codex|gemini-cli)(?:@[^/@]*)?$")
+PACKAGE_NAMES = {"claude-code": "claude", "codex": "codex", "gemini-cli": "gemini"}
 LIST_FLAGS = {"-e": "env", "--env": "env", "-H": "header", "--header": "header"}
 ENV_WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 REMOTE = frozenset({"http", "sse", "streamable-http"})
@@ -52,8 +55,8 @@ NO_ENTRY = (
 )
 REFUSED = (
     "MCP server config change refused -- {why}. Only servers on the allowlist ({path}: name with launcher and exact "
-    "arguments, or url host) that pass the pin, shell, https, credential and option rules may be added. Do not edit the "
-    "allowlist or add the server yourself; ask the person to review it and edit the allowlist from their own shell."
+    "arguments, or url host) may be added. Do not edit the allowlist or add the server yourself; ask the person to "
+    "review it and edit the allowlist from their own shell."
 )
 
 
@@ -123,11 +126,18 @@ def parse_add(args: list[str]) -> tuple[list[str], list[str], dict[str, list[str
 
 def added_server(cmd: Cmd) -> tuple[str, object] | None:
     """(name, entry) for an `<agent> mcp add*` command; ('', None) when it cannot be read; None when it is not one."""
-    verbs = ADD_VERBS.get(cmd.name)
-    if not verbs or cmd.args[:1] != ["mcp"] or cmd.args[1:2] not in [[verb] for verb in verbs]:
+    agent = cmd.name if cmd.name in ADD_VERBS else None
+    if cmd.name in PACKAGE_RUNNERS:
+        found = next((m for arg in cmd.args if (m := PACKAGE_AGENT.search(arg))), None)
+        agent = PACKAGE_NAMES[found.group(1)] if found else None
+    if agent is None:
         return None
-    verb = cmd.args[1]
-    words, launch, lists, flags = parse_add(cmd.args[2:])
+    # `mcp` may follow global options (`claude --model x mcp add ...`), so the first `mcp <verb>` pair is the one.
+    at = next((i for i, arg in enumerate(cmd.args[:-1]) if arg == "mcp" and cmd.args[i + 1] in ADD_VERBS[agent]), None)
+    if at is None:
+        return None
+    verb = cmd.args[at + 1]
+    words, launch, lists, flags = parse_add(cmd.args[at + 2 :])
     if verb == "add-from-claude-desktop" or not words:
         return "", None
     if verb == "add-json":

@@ -4,13 +4,13 @@ version: "0.1.0"
 description: >
   Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
   bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never, danger-full-access;
-  gemini --yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline, goose, opencode
-  auto-approve. Looks through cd, bash -c, sudo, env, npx and uvx; echo text passes. Misses: aliases, scripts, config.
+  gemini --yolo or --approval-mode yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline,
+  goose, opencode auto-approve. Looks through cd, bash -c, sudo, env, npx, uvx. Misses: config, aliases, scripts, ssh.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
+    never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
     if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 effects:
 - read_only

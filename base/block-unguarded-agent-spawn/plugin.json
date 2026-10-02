@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-unguarded-agent-spawn",
   "version": "0.1.0",
-  "description": "Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions, bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never, danger-full-access; gemini --yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline, goose, opencode auto-approve. Looks through cd, bash -c, sudo, env, npx and uvx; echo text passes. Misses: aliases, scripts, config.",
+  "description": "Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions, bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never, danger-full-access; gemini --yolo or --approval-mode yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline, goose, opencode auto-approve. Looks through cd, bash -c, sudo, env, npx, uvx. Misses: config, aliases, scripts, ssh.",
   "author": {
     "name": "chock-core"
   },

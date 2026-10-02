@@ -12,7 +12,7 @@ INLINE = {
     "deno": {"eval"}, "perl": {"-e", "-E"}, "ruby": {"-e"}, "php": {"-r"},
 }  # fmt: skip
 WRAPPERS = frozenset({"env", "sudo", "doas", "nohup", "exec", "command", "timeout", "nice", "time", "xargs", "stdbuf"})
-WRAPPER_VALUE_FLAGS = frozenset({"-u", "-C", "--unset", "--chdir", "-n", "-s", "-k", "-o", "-e", "-i"})
+WRAPPER_VALUE_FLAGS = frozenset({"-u", "-C", "--unset", "--chdir", "-n", "-s", "-k", "-o", "-e"})
 RUNNERS = (
     ("npm", {"npx", "bunx", "pnpx"}, ()),
     ("npm", {"pnpm", "yarn"}, ("dlx",)),
@@ -145,7 +145,7 @@ def unwrap(command: str, args: list[str]) -> tuple[str, list[str]]:
     """The command a wrapper (env, sudo, nohup, timeout, ...) finally runs, with its arguments."""
     while program(command) in WRAPPERS:
         i = 0
-        while i < len(args) and (args[i].startswith("-") or "=" in args[i] or args[i].isdigit()):
+        while i < len(args) and (args[i].startswith("-") or "=" in args[i] or re.fullmatch(r"\d+[smhd]?", args[i])):
             i += 2 if args[i] in WRAPPER_VALUE_FLAGS else 1
         if i >= len(args):
             break
@@ -155,8 +155,10 @@ def unwrap(command: str, args: list[str]) -> tuple[str, list[str]]:
 
 def _runs_inline(name: str, args: list[str]) -> bool:
     """Whether a shell or interpreter is given code on its command line instead of a script."""
+    if name == "python":
+        return any(re.fullmatch(r"-[A-Za-z]*c", arg) for arg in args)
     if name in INLINE:
-        return any(arg in INLINE[name] for arg in args)
+        return any(arg.partition("=")[0] in INLINE[name] for arg in args)
     low = [arg.lower() for arg in args]
     if name in {"cmd"}:
         return any(arg in {"/c", "/k", "/r"} for arg in low)
@@ -171,6 +173,8 @@ def _runs_inline(name: str, args: list[str]) -> bool:
 
 def _family(name: str, args: list[str]) -> tuple[str, list[str]] | None:
     """('npm' | 'pypi' | 'docker', the arguments after the runner's own verb) for a package or image launcher."""
+    if name in {"npm", "pnpm", "yarn", "bun"}:
+        args = args[next((i for i, arg in enumerate(args) if not arg.startswith("-")), len(args)) :]
     for family, names, verb in RUNNERS:
         if name in names and tuple(args[: len(verb)]) == verb:
             return family, args[len(verb) :]

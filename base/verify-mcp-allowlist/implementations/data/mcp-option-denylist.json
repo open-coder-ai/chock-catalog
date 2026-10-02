@@ -43,6 +43,11 @@
   ],
   "env_keys": [
     "NODE_OPTIONS",
+    "PATH",
+    "NPM_CONFIG_PREFIX",
+    "NPM_CONFIG_NODE_OPTIONS",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
     "NODE_PATH",
     "NODE_EXTRA_CA_CERTS",
     "NODE_TLS_REJECT_UNAUTHORIZED",

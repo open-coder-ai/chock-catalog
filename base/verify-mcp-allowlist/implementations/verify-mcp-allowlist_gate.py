@@ -19,12 +19,21 @@ from mcpcheck import allowlist, configs, entry, rules
 #: Finding rules that refuse (exit 1): the v1 tiers (an unlisted or altered server, an unreadable config) and the
 #: allowlist's own integrity. Every other rule is new in v2 and exits 4, a warning, while it is observed (decision D15);
 #: promoting one is adding it here.
-ENFORCED = rules.ENFORCED | {"allowlist-entry", "allowlist-unreadable", "unreadable", "unreadable-entry"}
+ENFORCED = rules.ENFORCED | {
+    "allowlist-entry",
+    "allowlist-unreadable",
+    "unreadable",
+    "unreadable-entry",
+    "duplicate-key",
+}
 WARN_EXIT = 4
 FOOTER = (
-    f"Only servers on the allowlist ({allowlist.PATH}: name with launcher and exact arguments, or url host) that also "
-    "pass the pin, shell, https, credential and option rules may be configured. Ask a person to review the server and "
-    "edit the allowlist from their own shell; do not edit it yourself."
+    f"Only servers on the allowlist ({allowlist.PATH}: name with launcher and exact arguments, or url host) may be "
+    "configured. Ask a person to review the server and edit the allowlist from their own shell; do not edit it yourself."
+)
+OBSERVED_FOOTER = (
+    "These findings only warn for now: pin the launcher to an exact version or image digest, run no shell command line, "
+    "use https, and give credentials as references such as ${VAR}."
 )
 
 
@@ -86,7 +95,7 @@ def allowlist_findings(path: str, text: str) -> list[dict]:
             path,
             text,
             f'"{one.name}"',
-            f"allowlist-entry|{one.name}|{one.launcher}|{one.spec}|{one.host.host.name if one.host else ''}",
+            "allowlist-entry|" + json.dumps([one.name, one.launcher, one.spec, one.host_text]),
             f"the allowlist entry {one.name!r} was added or changed; only a person approves an MCP server",
         )
         for one in entries
@@ -107,7 +116,7 @@ def findings(payload: dict) -> list[dict]:
             found.append(item(allowlist.PATH, "", "", f"allowlist-unreadable|{exc}", f"the MCP allowlist is {exc}"))
     for path, text in sorted(writes.items()):
         if is_allowlist(path):
-            found += allowlist_findings(path, text) if event in allowlist.AGENT_EVENTS else []
+            found += allowlist_findings(path, text) if event not in allowlist.PERSON_EVENTS else []
         elif watched[path] is not None:
             found += config_findings(path, text, watched[path], allowed)
     return found
@@ -131,7 +140,7 @@ def main() -> int:
     )
     for one in found:
         print(f"  {one['path']}: {one['message']}", file=sys.stderr)
-    print(FOOTER, file=sys.stderr)
+    print(FOOTER if refusing else OBSERVED_FOOTER, file=sys.stderr)
     return 1 if refusing else WARN_EXIT
 
 

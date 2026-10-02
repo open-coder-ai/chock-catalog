@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import posixpath
 import re
 import tomllib
 from dataclasses import dataclass, field
@@ -53,8 +54,8 @@ class Parsed:
 
 
 def rooted(path: str) -> str:
-    """A path as the matchers see it: lowercase, forward slashes, rooted, no trailing dots or spaces (Windows drops them)."""
-    return "/" + path.replace("\\", "/").lower().rstrip(". ")
+    """A path as the matchers see it: lowercase, forward slashes, rooted, `.`, `..` and `//` resolved, no trailing dots or spaces."""
+    return "/" + posixpath.normpath(path.replace("\\", "/").lower().rstrip(". ")).lstrip("/")
 
 
 def config_for(path: str) -> Config | None:

@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~366 tokens (chars/4, max 2000)
+INDEX.md: ~370 tokens (chars/4, max 2000)
 Recompiled 1 policies
 verify-mcp-allowlist:
   claude: enforced-at-commit + best-effort at tool use (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~366 tokens (chars/4, max 2000)
+INDEX.md: ~370 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -246,6 +246,6 @@ verify-mcp-allowlist  [deterministic]
 
 ```text
 - **verify-mcp-allowlist**:
-  mcp_server(any client config): must(name+launcher+exact_args|url_host in .chock/mcp-allowlist.json); block(unlisted|altered); warn(unpinned|shell_launcher|http|literal_credential|below_floor|enable_all)
+  mcp_server(any client config): must(name+launcher+exact_args|url_host in .chock/mcp-allowlist.json); block(unlisted|command_args_url_differ); warn(unpinned|shell_launcher|http|literal_credential|below_floor|enable_all)
   allowlist: file, empty by default; an agent is judged by HEAD's copy and cannot grow it, a person edits it; guard: `<agent> mcp add`, shell writes; gate: commit|tool_use|stop
 ```

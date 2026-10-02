@@ -69,7 +69,7 @@ def test_an_agent_is_judged_by_the_allowlist_head_holds(tmp_path: Path, event: s
     assert [i["key"].split("|")[0] for i in items] == ["allowlist"]
 
 
-@pytest.mark.parametrize("event", ["commit", "push", "ci", ""])
+@pytest.mark.parametrize("event", ["commit", "push", "ci"])
 def test_a_person_s_commit_is_judged_by_the_allowlist_on_disk(tmp_path: Path, event: str) -> None:
     repo = held(tmp_path, allow=ONE)
     scriptkit.write(repo, {ALLOW: TWO})
@@ -101,7 +101,8 @@ def test_a_repo_with_no_commit_has_an_empty_allowlist_for_an_agent(tmp_path: Pat
 def test_an_agent_cannot_grow_the_allowlist(tmp_path: Path, event: str) -> None:
     repo = held(tmp_path, allow=ONE)
     items = mod.findings({"event": event, "repo_root": str(repo), "writes": {ALLOW: TWO}})
-    assert [i["key"].split("|")[:2] for i in items] == [["allowlist-entry", "filesystem"], ["allowlist-entry", "docs"]]
+    assert [i["key"].startswith("allowlist-entry|") for i in items] == [True, True]
+    assert ["filesystem" in items[0]["key"], "docs" in items[1]["key"]] == [True, True]
     assert "only a person approves" in items[0]["message"]
 
 
@@ -220,3 +221,50 @@ def test_a_missing_allowlist_file_is_an_empty_list_for_a_person_and_an_agent(tmp
     repo = held(tmp_path, allow=None)
     assert allowlist.load(repo, "commit") == ((), None)
     assert allowlist.load(repo, "tool_use") == ((), None)
+
+
+@pytest.mark.parametrize("event", ["", "pre-tool-use", "PreToolUse", "Stop", "tool-use", "unknown"])
+def test_an_event_that_is_not_a_person_s_is_an_agent_s(tmp_path: Path, event: str) -> None:
+    repo = held(tmp_path, allow=ONE)
+    scriptkit.write(repo, {ALLOW: TWO})
+    docs = mcpkit.mcp({"docs": {"url": "https://mcp.example.invalid/mcp"}})
+    items = mod.findings({"event": event, "repo_root": str(repo), "writes": {".mcp.json": docs}})
+    assert [i["key"].split("|")[0] for i in items] == ["allowlist"]
+    assert mod.findings({"event": event, "repo_root": str(repo), "writes": {ALLOW: TWO}})
+
+
+def test_widening_an_exact_host_to_a_wildcard_is_an_edited_entry(tmp_path: Path) -> None:
+    exact = mcpkit.allowlist_text({"name": "docs", "url_host": "example.invalid"})
+    wild = mcpkit.allowlist_text({"name": "docs", "url_host": "*.example.invalid"})
+    repo = held(tmp_path, allow=exact)
+    assert engine(repo, {ALLOW: wild}, gatekit.PRE_TOOL_USE) == 1
+    clash = mcpkit.allowlist_text({"name": "a", "launcher": "x|y", "spec": "z"})
+    other = mcpkit.allowlist_text({"name": "a", "launcher": "x", "spec": "y|z"})
+    assert engine(held(tmp_path / "k", allow=clash), {ALLOW: other}, gatekit.PRE_TOOL_USE) == 1
+
+
+def test_git_replace_cannot_change_the_allowlist_an_agent_is_judged_by(tmp_path: Path) -> None:
+    repo = held(tmp_path, allow=ONE)
+    evil = mcpkit.allowlist_text({"name": "evil", "launcher": "npx", "spec": "-y evil@1.0.0"})
+    scriptkit.write(repo, {"evil-allowlist.json": evil})
+    blob = subprocess.run(
+        [scriptkit.GIT, "hash-object", "-w", "evil-allowlist.json"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    head = subprocess.run(
+        [scriptkit.GIT, "rev-parse", f"HEAD:{ALLOW}"], cwd=repo, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    scriptkit.git(repo, "replace", head, blob)
+    written = {".mcp.json": mcpkit.mcp({"evil": {"command": "npx", "args": ["-y", "evil@1.0.0"]}})}
+    items = mod.findings({"event": "tool_use", "repo_root": str(repo), "writes": written})
+    assert "allowlist" in [i["key"].split("|")[0] for i in items]
+
+
+def test_the_head_allowlist_is_read_from_the_repo_root_not_the_current_directory(tmp_path: Path) -> None:
+    repo = mcpkit.repo_with(tmp_path, head={"sub/.chock/mcp-allowlist.json": ONE})
+    written = {".mcp.json": mcpkit.mcp({"filesystem": FS})}
+    items = mod.findings({"event": "tool_use", "repo_root": str(repo / "sub"), "writes": written})
+    assert items == []
