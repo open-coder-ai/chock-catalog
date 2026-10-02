@@ -9,7 +9,8 @@ from pathlib import Path
 
 import yaml
 
-WORKFLOWS = sorted((Path(__file__).resolve().parents[1] / ".github" / "workflows").glob("*.yml"))
+_DIR = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+WORKFLOWS = sorted([*_DIR.glob("*.yml"), *_DIR.glob("*.yaml")])
 
 UNSAFE_TRIGGERS = {"pull_request_target", "workflow_run"}
 
@@ -19,6 +20,9 @@ FRAMEWORK_REF = re.compile(r"framework[_-]?ref", re.IGNORECASE)
 PINS = {"${{ env.FRAMEWORK_REF }}", "${{ inputs.framework_ref }}"}
 TOOL = "python3 tools/framework_ref.py"
 BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
+HEXISH = re.compile(r"[0-9a-fA-F]{7,64}")
+# A verify step is its command and the ref it checks: shell, working-directory or extra env could neuter it.
+VERIFY_KEYS = {"name", "id", "run", "env"}
 
 
 def _triggers(workflow: dict) -> set:
@@ -30,33 +34,55 @@ def _run(step: dict) -> str:
     return str(step.get("run", "")).strip()
 
 
+def _params(step: dict) -> dict:
+    """Action inputs are case-insensitive at runtime (INPUT_REF), so match them that way."""
+    return {str(k).lower(): v for k, v in (step.get("with") or {}).items()}
+
+
+def _is_checkout(step: dict) -> bool:
+    return str(step.get("uses", "")).lower().startswith("actions/checkout@")
+
+
 def _pin(step: dict) -> str:
     """The FRAMEWORK_REF a run step sees: its own env entry, else the job env the read step exported."""
     return str((step.get("env") or {}).get("FRAMEWORK_REF", "${{ env.FRAMEWORK_REF }}"))
 
 
+def _skippable(step: dict) -> bool:
+    return "if" in step or "continue-on-error" in step
+
+
 def _validated(steps: list[dict], ref: str) -> bool:
-    if ref == "${{ env.FRAMEWORK_REF }}" and any(_run(s) == f"{TOOL} read" for s in steps):
-        return True
-    return any(_run(s) == f"{TOOL} check" and _pin(s) == ref for s in steps)
+    for step in steps:
+        if _skippable(step):
+            continue
+        if ref == "${{ env.FRAMEWORK_REF }}" and _run(step) == f"{TOOL} read":
+            return True
+        if _run(step) == f"{TOOL} check" and _pin(step) == ref:
+            return True
+    return False
 
 
 def _verify_problem(step: dict | None, ref: str, path: str) -> str | None:
     if step is None or _run(step) != f"{TOOL} verify {path}":
         return f"the next step is not `{TOOL} verify {path}`"
-    if "if" in step or "continue-on-error" in step:
+    if _skippable(step):
         return "the verify step after it can be skipped (`if:`/`continue-on-error:`)"
+    if extra := sorted(set(step) - VERIFY_KEYS) + sorted(set(step.get("env") or {}) - {"FRAMEWORK_REF"}):
+        return f"the verify step after it sets {extra}, which can change what it runs or checks"
     if _pin(step) != ref:
         return f"the verify step checks FRAMEWORK_REF={_pin(step)}, not the ref checked out"
     return None
 
 
 def _checkout_problems(steps: list[dict], index: int) -> list[str]:
-    params = steps[index].get("with") or {}
+    params = _params(steps[index])
     ref, path = str(params.get("ref", "")), str(params.get("path", "."))
     if ref not in PINS:
         return [f"its ref must be one of {sorted(PINS)}"]
     problems = []
+    if str(params.get("clean", True)).lower() == "false":
+        problems.append("`clean: false` keeps files the pinned commit does not have")
     if not _validated(steps[:index], ref):
         problems.append(f"no earlier step refuses a non-SHA ref (`{TOOL} read`, or `{TOOL} check` given it in env)")
     follower = steps[index + 1] if index + 1 < len(steps) else None
@@ -66,23 +92,29 @@ def _checkout_problems(steps: list[dict], index: int) -> list[str]:
 
 
 def framework_checkouts(name: str, workflow: dict) -> list[str]:
-    """A checkout by FRAMEWORK_REF is validated before it and proven to be that commit right after it.
+    """A checkout by FRAMEWORK_REF is validated before it and its HEAD proven to be that commit right after.
 
-    A checkout of another repository at anything else must name a literal branch, which reads as mutable.
+    A checkout of another repository at anything else must name a literal, non-hex branch, which reads as
+    mutable. Not seen: steps after the verify step, composite actions, reusable workflows, `run: git clone`.
     """
     problems = []
     for job_id, job in (workflow.get("jobs") or {}).items():
         steps = job.get("steps") or []
         for index, step in enumerate(steps):
-            params = step.get("with") or {}
-            ref = str(params.get("ref", ""))
-            if not str(step.get("uses", "")).startswith("actions/checkout@"):
+            if not _is_checkout(step):
                 continue
+            params = _params(step)
+            ref = str(params.get("ref", ""))
             where = f"{name} job {job_id!r} checks out {ref or 'the default ref'}"
             if FRAMEWORK_REF.search(ref):
                 problems += [f"{where}: {p}" for p in _checkout_problems(steps, index)]
-            elif "repository" in params and not BRANCH.fullmatch(ref):
-                problems.append(f"{where} of {params['repository']}: pin it by FRAMEWORK_REF or name a literal branch")
+                if (workflow.get("defaults") or {}).get("run") or (job.get("defaults") or {}).get("run"):
+                    problems.append(f"{where}: `defaults.run` can change the shell or directory its verify runs in")
+            elif "repository" in params and (not BRANCH.fullmatch(ref) or HEXISH.fullmatch(ref)):
+                problems.append(
+                    f"{where} of {params['repository']}: a pin goes through FRAMEWORK_REF and its verify step; "
+                    "otherwise name a literal branch, which reads as mutable"
+                )
     return problems
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The framework pin is one full commit SHA, and a checkout of it is that commit or the job fails."""
+"""The framework pin is one full commit SHA, and a checkout of it is that commit, clean, or the job fails."""
 
 from __future__ import annotations
 
@@ -31,14 +31,19 @@ def read_pin(root: Path = ROOT) -> str | None:
     return ref if valid(ref) else None
 
 
+def _git(path: str, *args: str) -> subprocess.CompletedProcess[str]:
+    # No inherited GIT_DIR/GIT_WORK_TREE redirect, and no replace object stands in for the pinned commit.
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")} | {"GIT_NO_REPLACE_OBJECTS": "1"}
+    return subprocess.run(["git", "-C", path, *args], capture_output=True, text=True, check=False, env=env)
+
+
 def _head(path: str) -> str:
-    out = subprocess.run(
-        ["git", "-C", path, "rev-parse", "--verify", "HEAD^{commit}"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return out.stdout.strip() if out.returncode == 0 else ""
+    """The checked-out commit, or "" when there is none or the worktree differs from it."""
+    head = _git(path, "rev-parse", "--verify", "HEAD^{commit}")
+    status = _git(path, "status", "--porcelain", "--untracked-files=all", "--ignored")
+    if head.returncode or status.returncode or status.stdout:
+        return ""
+    return head.stdout.strip()
 
 
 def _refuse(message: str) -> int:
@@ -76,7 +81,9 @@ def _verify(path: str) -> int:
         return _refuse("FRAMEWORK_REF must be a full 40-character lowercase commit SHA (no branch, tag or short SHA)")
     head = _head(path)
     if head != ref:
-        return _refuse(f"{path} is checked out at {head or 'no commit'}, not the pinned {ref}; refusing to use it")
+        return _refuse(
+            f"{path} is checked out at {head or 'no clean commit'}, not the pinned {ref}; refusing to use it"
+        )
     print(f"{path} is the pinned commit {ref}")
     return 0
 

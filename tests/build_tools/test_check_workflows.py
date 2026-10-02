@@ -18,6 +18,7 @@ READ = {"name": "Read the framework pin", "run": "python3 tools/framework_ref.py
 CHECK = {"run": "python3 tools/framework_ref.py check", "env": {"FRAMEWORK_REF": INPUT_PIN}}
 VERIFY = {"run": "python3 tools/framework_ref.py verify .framework"}
 INSTALL = {"run": "pip install ./.framework"}
+SHA = "5c9350738729a2cf1c40f5851628384751cae484"
 
 
 def _checkout(ref: str = ENV_PIN, **extra: str) -> dict:
@@ -33,15 +34,27 @@ def test_this_repos_workflows_pass(capsys) -> None:
     assert "workflow(s) checked" in capsys.readouterr().out
 
 
-def test_every_framework_checkout_here_is_verified() -> None:
-    """The real workflows: each FRAMEWORK_REF checkout is found, and found guarded."""
+def test_every_framework_checkout_here_is_found_and_guarded() -> None:
+    """The real workflows: each FRAMEWORK_REF checkout is seen by the rule, and passes it."""
     found = 0
     for path in check_workflows.WORKFLOWS:
-        jobs = yaml.safe_load(path.read_text(encoding="utf-8")).get("jobs") or {}
-        for job in jobs.values():
-            for step in job.get("steps") or []:
-                found += "framework" in str((step.get("with") or {}).get("ref", "")).lower()
+        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert check_workflows.framework_checkouts(path.name, workflow) == []
+        for job in (workflow.get("jobs") or {}).values():
+            found += sum(
+                "framework" in str((s.get("with") or {}).get("ref", "")).lower() for s in job.get("steps") or []
+            )
     assert found >= 8
+
+
+def test_defaults_run_around_a_framework_checkout_fails() -> None:
+    for where in ("workflow", "job"):
+        job = {"steps": [READ, _checkout(), VERIFY]}
+        workflow = {"jobs": {"j": job}}
+        (workflow if where == "workflow" else job)["defaults"] = {"run": {"shell": "true {0}"}}
+        assert any("defaults.run" in p for p in check_workflows.framework_checkouts("w.yml", workflow))
+    clean = {"defaults": {"run": {}}, "jobs": {"j": {"defaults": {"run": None}, "steps": [READ, _checkout(), VERIFY]}}}
+    assert check_workflows.framework_checkouts("w.yml", clean) == []
 
 
 @pytest.mark.parametrize(
@@ -88,6 +101,29 @@ def test_guarded_checkouts_pass(steps: tuple[dict, ...]) -> None:
         (
             ({"uses": CHECKOUT, "with": {"repository": "open-coder-ai/chock"}},),
             "the default ref of open-coder-ai/chock",
+        ),
+        (
+            ({"uses": CHECKOUT, "with": {"repository": "open-coder-ai/chock", "ref": SHA}},),
+            "goes through FRAMEWORK_REF",
+        ),
+        (({"uses": CHECKOUT, "with": {"repository": "open-coder-ai/chock", "ref": SHA[:12].upper()}},), "goes through"),
+        (({"uses": "Actions/Checkout@v4", "with": {"repository": "o/r", "ref": ENV_PIN}},), "no earlier step refuses"),
+        (
+            ({"uses": CHECKOUT, "with": {"Repository": "o/r", "Ref": ENV_PIN, "Path": ".framework"}},),
+            "the next step is",
+        ),
+        ((READ, _checkout(), {**VERIFY, "shell": "true {0}"}), "sets ['shell']"),
+        ((READ, _checkout(), {**VERIFY, "working-directory": ".framework"}), "sets ['working-directory']"),
+        ((READ, _checkout(), {**VERIFY, "env": {"GIT_DIR": "/elsewhere/.git"}}), "sets ['GIT_DIR']"),
+        ((READ, _checkout(clean="false"), VERIFY), "`clean: false`"),
+        (({**READ, "if": "false"}, _checkout(), VERIFY), "no earlier step refuses"),
+        (
+            (
+                {**CHECK, "continue-on-error": True},
+                _checkout(INPUT_PIN),
+                {**VERIFY, "env": {"FRAMEWORK_REF": INPUT_PIN}},
+            ),
+            "refuses",
         ),
     ],
 )

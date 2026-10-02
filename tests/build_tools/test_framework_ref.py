@@ -116,7 +116,9 @@ def repo(tmp_path: Path) -> tuple[Path, str, str]:
     _git(path, "init", "-q")
     _git(path, "commit", "-q", "--allow-empty", "-m", "pinned")
     pinned = _git(path, "rev-parse", "HEAD")
-    _git(path, "commit", "-q", "--allow-empty", "-m", "impostor")
+    (path / "payload.py").write_text("print('substituted')\n", encoding="utf-8")
+    _git(path, "add", "payload.py")
+    _git(path, "commit", "-q", "-m", "impostor")
     impostor = _git(path, "rev-parse", "HEAD")
     _git(path, "checkout", "-q", pinned)
     return path, pinned, impostor
@@ -146,7 +148,7 @@ def test_verify_refuses_what_is_not_a_repo(tmp_path: Path, monkeypatch: pytest.M
     monkeypatch.setenv("GIT_CEILING_DIRECTORIES", str(tmp_path.parent))
     monkeypatch.setenv("FRAMEWORK_REF", SHA)
     assert framework_ref.main(["verify", str(tmp_path)]) == framework_ref.REFUSED
-    assert "checked out at no commit" in capsys.readouterr().err
+    assert "checked out at no clean commit" in capsys.readouterr().err
 
 
 def test_verify_refuses_a_bad_ref_before_looking(repo, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -163,3 +165,40 @@ def test_runs_as_a_script(repo) -> None:
     assert proc.returncode == framework_ref.REFUSED
     assert f"not the pinned {impostor}" in proc.stderr
     assert pinned in proc.stderr
+
+
+@pytest.mark.parametrize("dirt", ["modified", "untracked", "ignored"])
+def test_verify_refuses_a_worktree_that_is_not_the_commit(repo, monkeypatch: pytest.MonkeyPatch, dirt: str) -> None:
+    path, pinned, _ = repo
+    if dirt == "modified":
+        (path / "f").write_text("x", encoding="utf-8")
+        _git(path, "add", "f")
+    elif dirt == "ignored":
+        (path / ".git" / "info" / "exclude").write_text("build/\n", encoding="utf-8")
+        (path / "build").mkdir()
+        (path / "build" / "setup.py").write_text("x", encoding="utf-8")
+    else:
+        (path / "setup.py").write_text("x", encoding="utf-8")
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+
+
+def test_verify_ignores_a_git_dir_redirect_in_its_env(repo, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path, pinned, impostor = repo
+    decoy = tmp_path / "decoy"
+    _git(tmp_path, "clone", "-q", str(path), str(decoy))
+    _git(decoy, "checkout", "-q", pinned)
+    _git(path, "checkout", "-q", impostor)
+    monkeypatch.setenv("GIT_DIR", str(decoy / ".git"))
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+
+
+def test_verify_refuses_a_replace_object_standing_in(repo, monkeypatch: pytest.MonkeyPatch) -> None:
+    path, pinned, impostor = repo
+    _git(path, "checkout", "-q", "--detach", impostor)
+    _git(path, "replace", pinned, impostor)
+    _git(path, "checkout", "-q", pinned)
+    assert (path / "payload.py").exists()
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
