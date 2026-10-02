@@ -111,6 +111,12 @@ def hidden_selectors(sheets: list[str]) -> dict[str, str]:
     return out
 
 
+#: Elements whose content html.parser reads as raw text in this Python release.
+RAW_TEXT_ELEMENTS = (*HTMLParser.CDATA_CONTENT_ELEMENTS, *getattr(HTMLParser, "RCDATA_CONTENT_ELEMENTS", ()))
+#: Where a browser ends a comment.
+COMMENT_END = re.compile(r"--!?>")
+
+
 class Collector(HTMLParser):
     """Collects attribute URLs, hidden elements with their text, and hidden rules in style elements."""
 
@@ -124,6 +130,15 @@ class Collector(HTMLParser):
         self.where: dict[str, list[int]] = {}
         self.hiding: list[Frame] = []
         self.foreign = 0
+
+    def parse_comment(self, i: int, *_: object) -> int:
+        """A comment read as a browser reads it, whatever html.parser's release: <!--> and <!---> are empty
+        comments, and any other ends at the first --> or --!>."""
+        for empty in ("<!-->", "<!--->"):
+            if self.rawdata.startswith(empty, i):
+                return i + len(empty)
+        end = COMMENT_END.search(self.rawdata, i + 4)
+        return -1 if end is None else end.end()
 
     def parse_html_declaration(self, i: int) -> int:
         """Outside XML, `<![CDATA[` read as a browser reads it in HTML content: a bogus comment ending at the
@@ -270,9 +285,13 @@ class Collector(HTMLParser):
         self.stack, self.where, self.hiding = [], {}, []
 
 
-def collect(text: str, *, xml: bool = False) -> Collected:
+def collect(text: str, *, xml: bool = False, flat: bool = False) -> Collected:
+    """Flat: no element holds its content as raw text (RAW_TEXT_ELEMENTS), a reading in which nothing
+    swallows the markup after it."""
     sheets = [sheet for _, sheet in style_blocks(text)]
     parser = Collector(xml=xml, rules=hidden_selectors(sheets))
+    if flat:
+        parser.CDATA_CONTENT_ELEMENTS = parser.RCDATA_CONTENT_ELEMENTS = ()  # type: ignore[misc]
     parser.feed(text)
     parser.close()
     return parser.out

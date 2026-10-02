@@ -36,6 +36,8 @@ MAX_TEXT = 1 << 20
 DEADLINE = 10.0
 #: Would block once promoted: a secret-bearing beacon, a URL dictionary, and a file the run had no time to
 #: read (it may hold either, so running out of time never softens the verdict).
+#: Elements whose content this Python's HTML parser reads as raw text (the list varies by release).
+RAW_TEXT = re.compile(rf"<(?:{'|'.join(hidden_html.RAW_TEXT_ELEMENTS)})(?![A-Za-z0-9-])", re.IGNORECASE)
 BLOCKING = hidden_urls.BLOCKING | {"not-judged"}
 SHOWN = 50
 MARKDOWN = {".md", ".mdx", ".markdown", ".mdc"}
@@ -129,17 +131,20 @@ def text_findings(path: str, text: str, kind: str) -> list[dict]:
     text with only the '<' of code removed, so code inside a comment or an HTML block still counts."""
     scan = spans.blank_code(text) if kind == "markdown" else text
     tags = spans.tag_view(text, scan) if kind == "markdown" else text
-    views = [(tags, tags)]
+    views = [(tags, tags, False)]
     if kind == "markdown":  # what a renderer may read two ways is read both ways: each reading's findings count
         views = [
-            (view, html)
+            (view, html, False)
             for view in dict.fromkeys([tags, spans.escaped_view(tags)])
             for html in dict.fromkeys([view, spans.closed_view(text, view)])
         ]
+        flat = spans.flat_view(tags)
+        if flat != tags or RAW_TEXT.search(tags):  # otherwise the flat reading is the first one
+            views += [(tags, html, True) for html in dict.fromkeys([flat, spans.closed_view(text, flat)])]
     out: dict[tuple, list[dict]] = {}
-    for view, html in views:  # per finding, as many as the reading that found the most: counts stay counts
+    for reading in views:  # per finding, as many as the reading that found the most: counts stay counts
         found: dict[tuple, list[dict]] = {}
-        for f in _view_findings(path, scan, view, html, kind):
+        for f in _view_findings(path, scan, kind, reading):
             found.setdefault((f["line"], f["rule"], f["key"]), []).append(f)
         for slot, same in found.items():
             if len(same) > len(out.get(slot, [])):
@@ -147,10 +152,11 @@ def text_findings(path: str, text: str, kind: str) -> list[dict]:
     return [f for same in out.values() for f in same]
 
 
-def _view_findings(path: str, scan: str, tags: str, html: str, kind: str) -> list[dict]:
+def _view_findings(path: str, scan: str, kind: str, reading: tuple[str, str, bool]) -> list[dict]:
+    tags, html, flat = reading  # comments are read in tags, elements in html
     lines, scan_lines = hidden_text.Lines(scan), scan.split("\n")
     words = vocab()
-    collected = hidden_html.collect(html, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"))
+    collected = hidden_html.collect(html, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"), flat=flat)
     out = _url_findings(path, _urls(scan, lines, kind, collected))
     bodies = [(at, body, "comment") for at, body in hidden_text.comments(tags)]
     if path.lower().endswith(".mdx"):

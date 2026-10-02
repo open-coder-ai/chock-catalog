@@ -24,6 +24,7 @@ INLINE_TAG = rf"<[A-Za-z][A-Za-z0-9-]*(?:{ATTRIBUTE})*\s*/?>|</[A-Za-z][A-Za-z0-
 #: Tokens of link text: an escape, an inline tag or autolink, an image or link opener, a closer followed by a
 #: destination, and a blank line (which ends any open link text).
 ESCAPED_LT = re.compile(r"(?<!\\)((?:\\\\)*\\)<")
+SWALLOWS = re.compile(r"<(?=[!?]|/[^A-Za-z])")
 BRACKETS = re.compile(rf"\\.|{INLINE_TAG}|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
 
 
@@ -105,6 +106,13 @@ def closed_view(text: str, view: str) -> str:
         line if kind == HTML and at and kinds[at - 1] == HTML and raw[at - 1].strip() else ">" + line
         for at, (line, kind) in enumerate(zip(lines, kinds, strict=True))
     )
+
+
+def flat_view(view: str) -> str:
+    """The view with no '<' that opens a comment, a declaration, a processing instruction or a bogus comment:
+    in Markdown this reader is not certain which of them a renderer passes through, and each swallows the
+    markup after it, so the gate also reads every tag as if none did."""
+    return SWALLOWS.sub(" ", view)
 
 
 def closers(text: str) -> dict[int, bool]:
