@@ -1,0 +1,53 @@
+id: guard-deletion
+name: "Guard Deletion and Mitigation Removal"
+version: "0.0.2"
+description: >
+  trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check
+  with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute,
+  TLS check or row-level security, or swaps one of those or a narrow file mode for a weakened form (block).
+  Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings,
+  a deletion-only commit.
+artifact: hook
+enforcement: block
+mandatory: false
+effects: [read_only]
+approval:
+  required: false
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      guard-deletion: this change removes a check or a security mitigation (the refusal above names the file,
+      line and family). Keep it, or move its replacement into the same hunk. A removed guard asks a person; a
+      removed or weakened mitigation (hardening flag, security header, cookie attribute, TLS verification,
+      row-level security, file mode) is refused. A person who has reviewed the removal waives one line with
+      'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma is itself a
+      finding, and counts only on a removed line that is already committed.
+    params:
+      script: guard-deletion-gate.py
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (NP31). One script gate, two rules, over the diff of a change rather than a file. guard-deletion (ask): a removed line matches a guard shape and no added line in the same hunk matches a guard shape of the same group. mitigation-removal (block): a removed hardening flag, security header, cookie attribute, TLS verification, row-level security or file mode, or a swap to a weakened form (flag with its opposite on the line, header value max-age=0 or ALLOWALL or unsafe-inline, a policy USING (true), a world-writable mode). Shapes live in implementations/data/shapes.json and the path scope in implementations/data/scope.json (EP12 tables)."
+- version: 0.0.2
+  date: '2026-10-02'
+  changes:
+  - "Final review pass. An agent's move of a file into a judged path from one outside it (tests, docs, a skipped suffix) now asks: it closed a three-commit self-waiver (plant a pragma on a guard line under tests/, move the file in, then remove the line). A bare `mode` now needs an octal literal with a leading 0 (`mode: 0640`), so a status code on a line with the word mode (`404` to `403`) no longer reads as a file-mode swap; `umask` is no longer read, because its digits mean the reverse of chmod's. The trigger text says a file mode is judged on a swap only. The middleware-registration shape now also reads Go `r.Use(`, Laravel `->middleware(`, Rails `protect_from_forgery` and Nest `@UseGuards`. Limits named: authorization wired by dependency injection or a config chain (FastAPI `Depends`, Spring `authorizeRequests`) is not read; a replacement line that only mentions a guard or header in a string (a log message) counts as keeping it; a removed chmod with no weaker mode in its place is not seen; umask is not read; files with CR-only line endings are read as one line; binary files whose suffix is not listed are read as text and ask."

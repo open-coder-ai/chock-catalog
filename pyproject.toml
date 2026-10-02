@@ -37,6 +37,8 @@ source = [
     "base/block-test-skips/implementations",
     "base/guard-memory-writes/implementations",
     "base/limit-diff-size/implementations",
+    "base/guard-deletion/implementations",
+    "base/guard-deletion/implementations/diffshape",
     "base/firecrawl-fallback-only/implementations",
     "base/token-efficiency/implementations",
     "base/agent-devenv-autoexec/implementations",
