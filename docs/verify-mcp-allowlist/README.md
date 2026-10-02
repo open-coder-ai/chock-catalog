@@ -55,7 +55,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The allowlist is the policy, and it ships inside the guard script itself rather than a separate file: guard-mode evals run against an empty sandbox repo, so an allowlist that lived anywhere else could never be exercised by this suite. Add your own approved servers as `name<TAB>source` lines; protect-agent-config's own protected-path coverage of every policy's `implementations/` already keeps a shell edit to this list honest, gated behind the same `chock: approved-config-change` marker. Covers Claude Code's `.mcp.json` only -- agentseam has no recorded MCP-config-path for the other agents it lists, and this policy does not guess at one.
+The allowlist is `.chock/mcp-allowlist.json`, empty by default: a `servers` list whose entries are a `name` with a `launcher` and the `spec` (its arguments, joined by single spaces), or a `name` with a `url_host`. An agent is judged by the copy HEAD holds and cannot grow it; a person edits it from their own shell and commits it. Beside it the gate warns, while the rules are observed, about unpinned or shell launchers, http urls, literal credentials, denied options and packages below their floor (the tables in `implementations/data/`). It reads thirteen client config paths, not only `.mcp.json`; a shell write is checked for the files that hold nothing but servers.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

@@ -284,7 +284,7 @@ CASES: dict[str, list[tuple[str, int]]] = {
         ("claude --allowedTools '*'", BLOCK),
         ("claude --allowed-tools 'Edit(*)'", BLOCK),
         ("claude --allowedTools 'Read,Bash(:*)'", BLOCK),
-        ("claude --allowedTools=Edit,Bash\\(*\\)", BLOCK),
+        ("claude --allowedTools=Edit,Read\\(*\\)", BLOCK),
         ("claude -p fix --allowedTools Read '*'", BLOCK),
         ("npx -y @github/copilot --allow-all-tools", BLOCK),
         ("uvx aider-chat==0.50.0 --yes-always", BLOCK),
