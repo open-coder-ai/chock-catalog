@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -30,20 +31,39 @@ def _finding(key: str, path: str, line: int, message: str) -> dict:
     return {"key": key, "path": path, "line": line, "message": message}
 
 
+def _digest(text: str) -> str:
+    """Part of an unreadable file's key: an edit to a file that stays unreadable is new, not covered by the old one."""
+    return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+
+
 def _actions(ioc: table.Table, path: str, text: str) -> list[dict]:
     found = []
     for name, ref, line in route.uses(text):
-        if entry := ioc.action(name, ref):
+        if name is None:
+            msg = (
+                f"`uses:` written in a form this gate does not read ({ref[:60]!r}); write it as a plain owner/repo@ref"
+            )
+            found.append(_finding(f"unparseable-uses|{_digest(ref)}", path, line, msg))
+        elif entry := ioc.action(name, ref):
             msg = f"uses {name}@{ref}: a listed compromise of this action ({_why(entry)})"
             found.append(_finding(f"ioc-action|{name.casefold()}|{ref.casefold()}", path, line, msg))
     return found
 
 
+def _read(reader: route.Reader, text: str) -> list:
+    """The reader's hits; text that did not decode (a NUL, U+FFFD) is unreadable rather than read past."""
+    if "\x00" in text or "\ufffd" in text:
+        msg = "not UTF-8 text (NUL or undecodable bytes)"
+        raise UnparseableError(msg)
+    return list(reader(text))
+
+
 def _packages(ioc: table.Table, path: str, text: str, reader: route.Reader) -> list[dict]:
     try:
-        hits = list(reader(text))
+        hits = list(_read(reader, text))
     except UnparseableError as exc:
-        return [_finding("unparseable", path, 1, f"cannot read this file to check it against the IOC list: {exc}")]
+        msg = f"cannot read this file to check it against the IOC list: {exc}"
+        return [_finding(f"unparseable|{_digest(text)}", path, 1, msg)]
     found = []
     for hit in hits:
         if entry := ioc.package(hit.ecosystem, hit.name, hit.version):
@@ -68,8 +88,8 @@ def findings(payload: dict, ioc: table.Table) -> list[dict]:
             found.append(
                 _finding(f"ioc-file|{entry.name.casefold()}", path, 1, f"file name matches an IOC ({_why(entry)})")
             )
-        if not isinstance(text, str):
-            continue
+        if not isinstance(text, str) or not (text := text.removeprefix("\ufeff")).strip():
+            continue  # an empty file names nothing; a BOM is stripped, as npm, pip and Composer do
         if route.is_workflow(path):
             found += _actions(ioc, path, text)
         if reader := route.reader(path):
@@ -81,6 +101,8 @@ def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except json.JSONDecodeError:
+        payload = None
+    if not isinstance(payload, dict) or not isinstance(payload.get("writes", {}), dict):
         print("compromised-package-ioc: stdin is not the gate JSON", file=sys.stderr)
         return 2
     try:

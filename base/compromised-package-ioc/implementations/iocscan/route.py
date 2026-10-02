@@ -34,9 +34,11 @@ BY_NAME: dict[str, Reader] = {
     "composer.json": others.composer_json,
     "composer.lock": others.composer_lock,
 }
-REQUIREMENTS = re.compile(r"(?:requirements|constraints)[^/]*\.(?:txt|in)")
+REQUIREMENTS = re.compile(r"[^/]*(?:requirements|constraints)[^/]*\.(?:txt|in|pip)")
 WORKFLOW = re.compile(r"(?:^|/)\.github/workflows/[^/]+\.ya?ml$")
-USES = re.compile(r"""^[ \t]*(?:-[ \t]*)?['"]?uses['"]?[ \t]*:[ \t]*['"]?([^'"\s#]+)""", re.MULTILINE)
+USES = re.compile(r"""[ \t]*(?:-[ \t]*)?['"]?uses['"]?[ \t]*:(.*)""")
+PLAIN = re.compile(r"[A-Za-z0-9_./-]+(?:@[A-Za-z0-9_./+-]*)?")
+BLOCK_SCALAR = re.compile(r"[>|][-+]?")
 
 
 def reader(path: str) -> Reader | None:
@@ -56,11 +58,30 @@ def is_workflow(path: str) -> bool:
     return bool(WORKFLOW.search(folded)) or PurePosixPath(folded).name in ("action.yml", "action.yaml")
 
 
-def uses(text: str) -> Iterator[tuple[str, str, int]]:
-    """(owner/repo, ref, line) for every remote `uses:`; local `./` paths and `docker://` images are not actions."""
-    for found in USES.finditer(text):
-        value = found.group(1)
+def _value(raw: str) -> str:
+    """A `uses:` value with its comment, YAML tags and anchor dropped and plain quotes removed."""
+    value = re.split(r"\s#", raw, maxsplit=1)[0].strip()
+    while value[:1] in ("!", "&"):
+        value = value.partition(" ")[2].strip()
+    if len(value) > 1 and value[0] == value[-1] and value[0] in "'\"" and "\\" not in value and "''" not in value[1:-1]:
+        value = value[1:-1]
+    return value
+
+
+def uses(text: str) -> Iterator[tuple[str | None, str, int]]:
+    """(owner/repo, ref, line) for every remote `uses:`, or (None, value, line) for one written in a form not read
+    here (an alias, an escaped or multi-line string); local `./` paths and `docker://` images are not actions."""
+    lines = text.splitlines()
+    for number, line in enumerate(lines, 1):
+        if not (found := USES.fullmatch(line)):
+            continue
+        value = _value(found.group(1))
+        if not value or BLOCK_SCALAR.fullmatch(value):
+            value = next((_value(rest) for rest in lines[number:] if rest.strip()), "")
         if value.startswith(("./", "docker://")):
             continue
+        if not PLAIN.fullmatch(value):
+            yield None, value, number
+            continue
         target, _, ref = value.rpartition("@") if "@" in value else (value, "", "")
-        yield "/".join(target.split("/")[:2]), ref, text.count("\n", 0, found.start(1)) + 1
+        yield "/".join(target.split("/")[:2]), ref, number

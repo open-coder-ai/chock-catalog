@@ -56,6 +56,12 @@ def test_package_json_lists_every_section_alias_bundle_override_and_resolution()
     assert ("x", None) in got
 
 
+def test_package_json_reads_pnpm_overrides() -> None:
+    doc = {"pnpm": {"overrides": {"axios": "1.14.1"}}}
+    assert pairs(npm.package_json(json.dumps(doc))) == [("axios", "1.14.1")]
+    assert pairs(npm.package_json(json.dumps({"pnpm": "x"}))) == []
+
+
 def test_a_package_json_without_dependencies_names_nothing() -> None:
     assert pairs(npm.package_json('{"name": "a", "resolutions": []}')) == []
 
@@ -120,12 +126,19 @@ def test_pnpm_lock_reads_v5_v6_and_v9_keys_and_skips_non_keys() -> None:
         "  /@nx/devkit@21.5.0(nx@21.5.0):\n"
         "  '@ctrl/tinycolor@4.1.2':\n"
         "  keyv@6.0.0_peer@1:\n"
+        "  debug@4.4.2: {resolution: {integrity: x}}\n"
         "    resolution: {integrity: x}\n"
         "    debug@4.4.2 not a key\n"
         "importers:\n  .:\n    dependencies:\n      chalk:\n        version: 5.6.1\n"
     )
     got = pairs(npm.pnpm_lock(text))
-    assert got == [("axios", "1.14.1"), ("@nx/devkit", "21.5.0"), ("@ctrl/tinycolor", "4.1.2"), ("keyv", "6.0.0")]
+    assert got == [
+        ("axios", "1.14.1"),
+        ("@nx/devkit", "21.5.0"),
+        ("@ctrl/tinycolor", "4.1.2"),
+        ("keyv", "6.0.0"),
+        ("debug", "4.4.2"),
+    ]
 
 
 def test_bun_lock_reads_the_leading_descriptor_and_tolerates_trailing_commas() -> None:

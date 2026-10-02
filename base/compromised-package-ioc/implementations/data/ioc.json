@@ -23,8 +23,10 @@
     "bleeping-fastlane": "https://bleepingcomputer.com/news/security/malicious-rubygems-pose-as-fastlane-to-steal-telegram-api-data",
     "osv-intercom-php": "https://osv.dev/vulnerability/MAL-2026-3637",
     "ghsa-tj-actions": "https://github.com/advisories/ghsa-mrrh-fwg8-r2c3",
+    "ghsa-reviewdog": "https://github.com/advisories/GHSA-qmg3-hpqr-gqvc",
     "wiz-reviewdog": "https://www.wiz.io/blog/new-github-action-supply-chain-attack-reviewdog-action-setup",
-    "snyk-trivy-action": "https://snyk.io/articles/trivy-github-actions-supply-chain-compromise/"
+    "snyk-trivy-action": "https://snyk.io/articles/trivy-github-actions-supply-chain-compromise/",
+    "stepsecurity-trivy": "https://stepsecurity.io/blog/trivy-compromised-a-second-time---malicious-v0-69-4-release"
   },
   "refresh": "A dated snapshot, not a feed. A person refreshes it from the weekly threat digest in a reviewed pull request; CI fails 120 days after as_of. An entry is never removed to let a change through.",
   "packages": [
@@ -96,8 +98,9 @@
   ],
   "actions": [
     {"name": "tj-actions/changed-files", "refs": ["0e58ed8671d6b60d0890c21b07f8835ace038e67"], "mutable_refs": true, "incident": "tj-actions/changed-files tags re-pointed (CVE-2025-30066)", "date": "2025-03-14", "source": "ghsa-tj-actions"},
-    {"name": "reviewdog/action-setup", "refs": [], "mutable_refs": true, "incident": "reviewdog/action-setup v1 tag re-pointed (CVE-2025-30154)", "date": "2025-03-11", "source": "wiz-reviewdog"},
-    {"name": "aquasecurity/trivy-action", "refs": [], "mutable_refs": true, "incident": "TeamPCP: trivy-action tags force-pushed", "date": "2026-03-19", "source": "snyk-trivy-action"}
+    {"name": "reviewdog/action-setup", "refs": ["f0d342d"], "mutable_refs": true, "incident": "reviewdog/action-setup v1 tag re-pointed (CVE-2025-30154)", "date": "2025-03-11", "source": "ghsa-reviewdog"},
+    {"name": "aquasecurity/trivy-action", "refs": [], "mutable_refs": true, "incident": "TeamPCP: 76 trivy-action tags force-pushed to malicious commits", "date": "2026-03-19", "source": "snyk-trivy-action"},
+    {"name": "aquasecurity/setup-trivy", "refs": [], "mutable_refs": true, "incident": "TeamPCP: setup-trivy action tags compromised alongside trivy v0.69.4", "date": "2026-03-19", "source": "stepsecurity-trivy"}
   ],
   "files": [
     {"name": "setup_bun.js", "incident": "Shai-Hulud 2.0 preinstall loader", "date": "2025-11-24", "source": "checkpoint-shai-hulud-2"},

@@ -33,7 +33,7 @@ def test_findings_key_each_kind_by_what_is_listed_never_by_line() -> None:
     }
     assert keys(writes) == [
         "ioc-action|tj-actions/changed-files|v45",
-        "unparseable",
+        "unparseable|" + gate._digest("[dependencies\n"),
         "ioc|npm|axios|1.14.1",
         "ioc|npm|postmark-mcp|*",
         "ioc|npm|axios|1.14.1",
@@ -45,7 +45,12 @@ def test_findings_key_each_kind_by_what_is_listed_never_by_line() -> None:
 
 
 def test_clean_manifests_report_nothing() -> None:
-    writes = {"package.json": json.dumps({"dependencies": {"axios": "1.14.0"}}), "go.sum": "", "x.txt": "debug 4.4.2"}
+    writes = {
+        "package.json": json.dumps({"dependencies": {"axios": "1.14.0"}}),
+        "go.sum": "",
+        "composer.json": " \n",
+        "x.txt": "debug 4.4.2",
+    }
     assert keys(writes) == []
     assert keys({}) == []
 
@@ -101,3 +106,54 @@ def test_the_shipped_script_runs_as_a_process_and_refuses(tmp_path: Path) -> Non
     proc = scriptkit.run_script_full(POLICY, GATE, tmp_path, payload)
     assert proc.returncode == 1
     assert json.loads(proc.stdout)["findings"][0]["key"] == "ioc|pypi|litellm|1.82.8"
+
+
+def test_a_byte_order_mark_is_read_through_as_npm_pip_and_composer_do() -> None:
+    bom = "\ufeff"
+    writes = {
+        "package.json": bom + json.dumps({"dependencies": {"axios": "1.14.1"}}),
+        "composer.json": bom + json.dumps({"require": {"intercom/intercom-php": "5.0.2"}}),
+        "requirements.txt": bom + "litellm==1.82.7\n",
+        ".github/workflows/a.yml": bom + "  - uses: tj-actions/changed-files@v45\n",
+    }
+    assert sorted(keys(writes)) == [
+        "ioc-action|tj-actions/changed-files|v45",
+        "ioc|npm|axios|1.14.1",
+        "ioc|packagist|intercom/intercom-php|5.0.2",
+        "ioc|pypi|litellm|1.82.7",
+    ]
+    assert keys({"package.json": bom}) == []
+
+
+@pytest.mark.parametrize("text", ["litellm==1.82.7\x00\n", "lite\ufffdllm==1.82.7\n"])
+def test_text_that_did_not_decode_is_unreadable_not_silent(text: str) -> None:
+    assert keys({"requirements.txt": text}) == ["unparseable|" + gate._digest(text)]
+
+
+def test_an_unreadable_file_edited_while_unreadable_is_new() -> None:
+    head = keys({"package.json": "{"})
+    new = keys({"package.json": '{"dependencies": {"axios": "1.14.1"'})
+    assert head[0].startswith("unparseable|")
+    assert new[0].startswith("unparseable|")
+    assert head != new
+
+
+def test_a_uses_form_this_gate_cannot_read_is_reported() -> None:
+    text = "x: &a tj-actions/changed-files@v45\nsteps:\n  - uses: *a\n"
+    assert keys({".github/workflows/a.yml": text}) == ["unparseable-uses|" + gate._digest("*a")]
+
+
+def test_a_short_listed_commit_matches_a_full_pin() -> None:
+    text = "  - uses: reviewdog/action-setup@f0d342d24037bb11d26b9bd8496e0808ba32e9ec\n"
+    assert keys({".github/workflows/a.yml": text}) == [
+        "ioc-action|reviewdog/action-setup|f0d342d24037bb11d26b9bd8496e0808ba32e9ec"
+    ]
+
+
+@pytest.mark.parametrize("stdin", ["[]", '{"writes": []}'])
+def test_main_refuses_json_of_the_wrong_shape(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], stdin: str
+) -> None:
+    code, out, err = run(monkeypatch, capsys, stdin)
+    assert (code, out) == (2, "")
+    assert "stdin is not the gate JSON" in err

@@ -32,11 +32,20 @@ def _semver(spec: object, prefixes: str = "=") -> str | None:
     return spec if SEMVER.fullmatch(spec) else None
 
 
+def _floor(spec: object) -> str | None:
+    """The version a Cargo requirement starts at when it is one bound: bare, `=`, `^`, `~` or `>=`."""
+    if not isinstance(spec, str):
+        return None
+    spec = spec.strip()
+    spec = spec[2:] if spec.startswith(">=") else spec
+    return _semver(spec.split("+", 1)[0], "=^~")
+
+
 def go_mod(text: str) -> Iterator[Hit]:
     """go.mod `require` lines and blocks, and the target of each `replace`."""
     block = ""
     for number, raw in enumerate(text.splitlines(), 1):
-        words = raw.split("//", 1)[0].split()
+        words = [w.strip('"`') for w in re.sub(r"([()])", r" \1 ", raw.split("//", 1)[0]).split()]
         if not words:
             continue
         if words[-1] == "(" and len(words) == BLOCK_OPENER:
@@ -78,7 +87,7 @@ def _cargo_deps(text: str, table: object) -> Iterator[Hit]:
         name = spec.get("package", key) if isinstance(spec, dict) else key
         version = spec.get("version") if isinstance(spec, dict) else spec
         if isinstance(name, str):
-            yield Hit("crates", name, _semver(version, "=^"), line_of(text, key))
+            yield Hit("crates", name, _floor(version), line_of(text, key))
 
 
 def cargo_toml(text: str) -> Iterator[Hit]:

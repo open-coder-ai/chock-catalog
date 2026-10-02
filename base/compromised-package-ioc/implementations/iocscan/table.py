@@ -13,6 +13,9 @@ KEYS = ("refresh", "packages", "actions", "files")
 ECOSYSTEMS = ("npm", "pypi", "crates", "go", "rubygems", "packagist")
 ANY = "*"
 SHA = re.compile(r"[0-9a-f]{40}")
+#: A listed commit may be the abbreviation an advisory publishes (7 or more hex digits).
+COMMIT = re.compile(r"[0-9a-f]{7,40}")
+_EPOCH = re.compile(r"0*!")
 DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _PEP503 = re.compile(r"[-_.]+")
 _RELEASE = re.compile(r"([0-9]+(?:\.[0-9]+)*)(.*)", re.DOTALL)
@@ -49,6 +52,8 @@ def norm_version(ecosystem: str, version: str) -> str:
     if ecosystem == "npm":
         version = version.split("+", 1)[0]
     if ecosystem == "pypi":
+        if epoch := _EPOCH.match(version):  # PEP 440: epoch 0 is the default, so `0!1.82.7` is 1.82.7
+            version = version[epoch.end() :]
         found = _RELEASE.fullmatch(version)
         if found:
             parts = [int(p) for p in found.group(1).split(".")]
@@ -89,13 +94,14 @@ class Table:
         return entry if version is not None and norm_version(ecosystem, version) in entry.versions else None
 
     def action(self, name: str, ref: str) -> Entry | None:
-        """The entry when `uses: name@ref` is a listed commit, or a tag or branch of an action listed as re-pointed."""
+        """The entry when `uses: name@ref` is a listed commit (either side may be abbreviated), or any non-40-hex ref of an action listed as re-pointed."""
         listed = self.actions.get(name.casefold())
         if listed is None:
             return None
         entry, mutable = listed
         ref = ref.casefold()
-        return entry if ref in entry.versions or (mutable and not SHA.fullmatch(ref)) else None
+        listed_commit = COMMIT.fullmatch(ref) and any(ref.startswith(c) or c.startswith(ref) for c in entry.versions)
+        return entry if listed_commit or (mutable and not SHA.fullmatch(ref)) else None
 
     def file(self, path: str) -> Entry | None:
         """The entry whose name is this path's basename, or for a name holding `/`, its trailing segments."""
@@ -141,8 +147,8 @@ def _action_problems(where: str, item: object, sources: dict) -> list[str]:
     out = _common(where, item, sources, {"name", "refs", "mutable_refs"})
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", item["name"]):
         out.append(f"{where}.name must be owner/repo")
-    if not isinstance(item["refs"], list) or not all(isinstance(r, str) and SHA.fullmatch(r) for r in item["refs"]):
-        out.append(f"{where}.refs must be a list of 40-hex lowercase commits")
+    if not isinstance(item["refs"], list) or not all(isinstance(r, str) and COMMIT.fullmatch(r) for r in item["refs"]):
+        out.append(f"{where}.refs must be a list of lowercase hex commits (7 to 40 digits)")
     if not isinstance(item["mutable_refs"], bool) or not (item["refs"] or item["mutable_refs"]):
         out.append(f"{where} must list refs or set mutable_refs true")
     return out

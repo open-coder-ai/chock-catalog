@@ -40,6 +40,29 @@ def test_go_mod_reads_require_lines_blocks_and_replace_targets() -> None:
     ]
 
 
+def test_go_mod_reads_an_unspaced_block_and_quoted_paths() -> None:
+    text = 'require(\n\t"github.com/boltdb-go/bolt" v1.3.1\n)\nrequire `example.com/q` v0.1.0\n'
+    assert triples(others.go_mod(text)) == [
+        ("go", "github.com/boltdb-go/bolt", "v1.3.1"),
+        ("go", "example.com/q", "v0.1.0"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("spec", "want"),
+    [
+        ("0.3.10", "0.3.10"),
+        ("~0.3.10", "0.3.10"),
+        (">= 0.3.10", "0.3.10"),
+        ("0.3.10+meta", "0.3.10"),
+        ("<0.3.10", None),
+        (1, None),
+    ],
+)
+def test_cargo_floor(spec: object, want: str | None) -> None:
+    assert others._floor(spec) == want
+
+
 def test_go_sum_reads_both_line_kinds() -> None:
     text = "github.com/boltdb-go/bolt v1.3.1 h1:x=\ngithub.com/boltdb-go/bolt v1.3.1/go.mod h1:y=\nshort\n"
     assert triples(others.go_sum(text)) == [("go", "github.com/boltdb-go/bolt", "v1.3.1")] * 2
@@ -154,6 +177,8 @@ def test_an_unreadable_file_is_unparseable(reader: object, text: str) -> None:
         ("constraints.txt", python.requirements),
         ("requirements/test.txt", python.requirements),
         ("requirements/notes.md", None),
+        ("test-requirements.txt", python.requirements),
+        ("requirements.pip", python.requirements),
         ("docs/requirements.md", None),
         ("src/app.py", None),
     ],
@@ -181,6 +206,22 @@ def test_cargo_lock_routes_to_the_crates_lock_reader() -> None:
 )
 def test_workflow_routing(path: str, want: bool) -> None:
     assert route.is_workflow(path) is want
+
+
+@pytest.mark.parametrize(
+    ("text", "want"),
+    [
+        ("  - uses: >-\n      tj-actions/changed-files@v45\n", ("tj-actions/changed-files", "v45")),
+        ("  - uses:\n\n      tj-actions/changed-files@v45 # c\n", ("tj-actions/changed-files", "v45")),
+        ("  - uses: !!str &x tj-actions/changed-files@v45\n", ("tj-actions/changed-files", "v45")),
+        ('  - uses: "tj-actions/changed-files@v45"\n', ("tj-actions/changed-files", "v45")),
+        ('  - uses: "tj-actions/changed\\x2dfiles@v45"\n', (None, '"tj-actions/changed\\x2dfiles@v45"')),
+        ("  - uses: *alias\n", (None, "*alias")),
+        ("  - uses:\n", (None, "")),
+    ],
+)
+def test_uses_reads_yaml_scalar_forms_and_reports_the_rest(text: str, want: tuple) -> None:
+    assert [u[:2] for u in route.uses(text)] == [want]
 
 
 def test_uses_lists_remote_actions_only() -> None:

@@ -183,11 +183,36 @@ suite:
     execute: {"event": "commit", "head_files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\"\n  }\n}\n"}, "files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\",\n    \"left-pad\": \"1.3.0\"\n  }\n}\n"}, "expect": "allow"}
   - id: tc-035
     category: behavior
-    prompt: "HEAD already holds an unparseable package.json and the commit leaves it unparseable."
-    expect: "Allowed: the parse failure is not new."
-    execute: {"event": "commit", "head_files": {"package.json": "{\n"}, "files": {"package.json": "{ \n"}, "expect": "allow"}
+    prompt: "HEAD already holds an unparseable package.json and a commit edits it, still unparseable, to add a listed release."
+    expect: "Refused: an edit to an unreadable file is new, so it cannot hide behind the old failure."
+    execute: {"event": "commit", "head_files": {"package.json": "{\n"}, "files": {"package.json": "{\"dependencies\": {\"axios\": \"1.14.1\",}\n"}, "expect": "block"}
   - id: tc-036
     category: behavior
     prompt: "HEAD already pins axios 1.14.1 and a commit adds 0.30.4 too."
     expect: "Refused: the second listed release is new."
     execute: {"event": "commit", "head_files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\"\n  }\n}\n"}, "files": {"package.json": "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\",\n    \"axios-legacy\": \"npm:axios@0.30.4\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-037
+    category: adversarial
+    prompt: "A workflow pins reviewdog/action-setup to the commit its v1 tag was moved to."
+    expect: "Refused: the advisory's abbreviated commit matches the full pin."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: reviewdog/action-setup@f0d342d24037bb11d26b9bd8496e0808ba32e9ec\n"}, "expect": "block"}
+  - id: tc-038
+    category: adversarial
+    prompt: "package.json starts with a byte-order mark, which npm strips, and pins axios 1.14.1."
+    expect: "Refused: the mark is read through."
+    execute: {"event": "commit", "files": {"package.json": "\ufeff{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"axios\": \"1.14.1\"\n  }\n}\n"}, "expect": "block"}
+  - id: tc-039
+    category: adversarial
+    prompt: "A workflow writes the action reference as a folded block scalar on the next line."
+    expect: "Refused."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: >-\n          tj-actions/changed-files@v45\n"}, "expect": "block"}
+  - id: tc-040
+    category: adversarial
+    prompt: "A workflow reaches the action through a YAML alias."
+    expect: "Refused: a uses: this gate cannot read is not passed unread."
+    execute: {"event": "commit", "files": {".github/workflows/ci.yml": "x: &a tj-actions/changed-files@v45\non: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: *a\n"}, "expect": "block"}
+  - id: tc-041
+    category: negative_trigger
+    prompt: "A test fixture package.json is empty."
+    expect: "Allowed: an empty file names nothing."
+    execute: {"event": "commit", "files": {"tests/fixtures/empty/package.json": ""}, "expect": "allow"}
