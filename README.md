@@ -108,6 +108,7 @@ per-hook trust review before its hooks run.
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
 | [`scan-secret-files`](docs/scan-secret-files/) | warns (never blocks, observe) on files that are secrets by name or content: private keys and key stores, service-account and OAuth JSON, kubeconfig users, AWS and registry credential files, Terraform state, non-template `.env`, browser credential stores | 25/25 |
+| [`scan-hidden-content`](docs/scan-hidden-content/) | warns (never blocks while observed) on text a reader cannot see -- instruction-like HTML comments, CSS-hidden, white or 1pt text, hidden Word runs -- and on image or link URLs shaped to carry data out, in Markdown, HTML, SVG, XML, Word, agent instruction files and templates | 44/45 |
 
 <details>
 <summary>21 advisory policies — expand</summary>

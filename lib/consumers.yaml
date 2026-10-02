@@ -41,3 +41,5 @@ base/block-curl-pipe-sh:
   chock_shellparse: [args, parse, targets, writes]
 base/scan-instruction-files:
   chock_scan: [data_table, entropy, safe_read]
+base/scan-hidden-content:
+  chock_scan: [data_table, hostmatch, hosts, idn, safe_read, urls]

@@ -1,0 +1,181 @@
+"""What the HTML standard says about elements, as the readers of scan-hidden-content need it."""
+
+from __future__ import annotations
+
+import re
+from html.parser import HTMLParser
+
+VOID = set(
+    [
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "source",
+        "track",
+        "wbr",
+        "param",
+        "keygen",
+    ]
+)
+#: An end tag does not close an element outside these: the browser ignores it (table scope).
+SCOPE = {"td", "th", "table", "caption", "template", "html", "select", "object", "marquee", "applet"}
+SCOPE |= {"foreignobject", "desc", "title", "mi", "mo", "mn", "ms", "mtext", "annotation-xml"}
+#: Table parts a browser drops when no table is open.
+TABLE_PARTS = {"td", "th", "tr", "caption", "thead", "tbody", "tfoot", "col", "colgroup"}
+FOREIGN = {"svg", "math"}
+#: The standard's special elements (13.2.4.2): an end tag for any other element is ignored while one of
+#: these is open above it, and the adoption agency carries a formatting element on past one, so either way
+#: the element stays in effect.
+SPECIAL = set(
+    [
+        "address",
+        "applet",
+        "area",
+        "article",
+        "aside",
+        "base",
+        "basefont",
+        "bgsound",
+        "blockquote",
+        "body",
+        "br",
+        "button",
+        "caption",
+        "center",
+        "col",
+        "colgroup",
+        "dd",
+        "details",
+        "dir",
+        "div",
+        "dl",
+        "dt",
+        "embed",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "form",
+        "frame",
+        "frameset",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "head",
+        "header",
+        "hgroup",
+        "hr",
+        "html",
+        "iframe",
+        "img",
+        "input",
+        "keygen",
+        "li",
+        "link",
+        "listing",
+        "main",
+        "marquee",
+        "menu",
+        "meta",
+        "nav",
+        "noembed",
+        "noframes",
+        "noscript",
+        "object",
+        "ol",
+        "p",
+        "param",
+        "plaintext",
+        "pre",
+        "script",
+        "search",
+        "section",
+        "select",
+        "source",
+        "style",
+        "summary",
+        "table",
+        "tbody",
+        "td",
+        "template",
+        "textarea",
+        "tfoot",
+        "th",
+        "thead",
+        "title",
+        "tr",
+        "track",
+        "ul",
+        "wbr",
+        "xmp",
+        "mi",
+        "mo",
+        "mn",
+        "ms",
+        "mtext",
+        "annotation-xml",
+        "foreignobject",
+        "desc",
+    ]
+)
+#: Start tags that close an open <p> in button scope (13.2.6.4.7). Not table: in quirks mode a <p> stays open
+#: around it, so closing it there could end hidden text early.
+CLOSES_P = set(
+    [
+        "address",
+        "article",
+        "aside",
+        "blockquote",
+        "center",
+        "details",
+        "dialog",
+        "dir",
+        "div",
+        "dl",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "header",
+        "hgroup",
+        "main",
+        "menu",
+        "nav",
+        "ol",
+        "p",
+        "search",
+        "section",
+        "summary",
+        "ul",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "pre",
+        "listing",
+        "form",
+        "plaintext",
+        "hr",
+        "xmp",
+        "li",
+        "dd",
+        "dt",
+    ]
+)
+BUTTON_SCOPE = SCOPE | {"button"}
+#: Elements whose content html.parser reads as raw text in this Python release.
+RAW_TEXT_ELEMENTS = (*HTMLParser.CDATA_CONTENT_ELEMENTS, *getattr(HTMLParser, "RCDATA_CONTENT_ELEMENTS", ()))
+#: Where a browser ends a comment.
+COMMENT_END = re.compile(r"--!?>")

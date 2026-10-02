@@ -635,3 +635,14 @@ scan-instruction-files:
     enforcing. A person answers an ask by committing from their own shell with CHOCK_ALLOW=scan-instruction-files
     for that one commit, and waives a refusal with ''chock: allow instruction-scan'' on the line. To stop judging
     the policy, list it under policies.disabled.'
+scan-hidden-content:
+  solves: 'A page can show a reviewer one thing and an agent another. A comment the renderer never shows, a span styled
+    out of sight, white or zero-size text, or a Word run marked hidden can carry instructions an agent reads and a person
+    never sees; an image URL whose query holds a token or a data-shaped part sends data out the moment the page is
+    rendered. This gate reads what a change adds to Markdown, HTML, SVG, XML and Word files, agent instruction files,
+    docs and issue or pull-request templates, and flags each such comment, hidden element and URL. It warns while its
+    false-positive rate is measured; a later release asks, and blocks a URL whose query names a secret.'
+  customise: 'A reviewed line is kept by a person with `chock: allow scan-hidden-content` on it, or on a comment line
+    just above, committed from their own shell; in the agent a waiver counts only for a line already in HEAD. A Word
+    document cannot carry the waiver. The host allowlist and the vocabulary live in the policy''s data table; widening
+    them is a change to the policy.'
