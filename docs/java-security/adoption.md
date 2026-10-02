@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~485 tokens (chars/4, max 2000)
+INDEX.md: ~502 tokens (chars/4, max 2000)
 Recompiled 1 policies
 java-security:
   claude: enforced-at-commit + best-effort at tool use (live-run)
@@ -81,7 +81,7 @@ Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~485 tokens (chars/4, max 2000)
+INDEX.md: ~502 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -257,9 +257,14 @@ java-security  [deterministic]
   PASS  tc-170                             authored  C.java:9: [deny: java-path-traversal-request-data CWE-22, CWE-73] T…
   PASS  tc-171                             authored  gate exit 0
   PASS  tc-172                             authored  gate exit 0
+  PASS  tc-173                             authored  gate exit 0
+  PASS  tc-174                             authored  p.html:1: [deny: java-xss-unescaped-template CWE-79] th:utext write…
+  PASS  tc-175                             authored  p.html:1: [deny: java-xss-unescaped-template CWE-79] th:utext write…
+  PASS  tc-176                             authored  E.java:4: [deny: exceptions-empty-catch CWE-1071] This catch block …
+  PASS  tc-177                             authored  E.java:4: [ask: exceptions-empty-catch CWE-1071] This catch block f…
   score 1.00
 
-5 policies: 162 pass, 51 skipped
+5 policies: 167 pass, 51 skipped
 51 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -293,5 +298,5 @@ java-security  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Only what the change adds is refused: a violation on lines the change leaves alone never blocks it. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **java-security**: java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny for a security pack, allow for a quality pack (bugs through testing). Only what the change adds is refused: a violation on lines the change leaves alone never blocks it. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

@@ -139,6 +139,7 @@ def test_main(monkeypatch, capsys) -> None:
     seen = []
     monkeypatch.setattr(gen_registry, "update_registry", lambda *, write: seen.append(write) or "registry.yaml done")
     monkeypatch.setattr(gen_registry, "update_readme", lambda **_kw: "README.md is stale: run it")
+    monkeypatch.setattr(gen_registry, "update_prose", lambda **_kw: "SECURITY.md counts already current")
     assert gen_registry.main([]) == 1
     assert gen_registry.main(["--check"]) == 1
     assert seen == [True, False]

@@ -1,0 +1,369 @@
+[
+ {
+  "name": "sg-ingress",
+  "src": "resource \"aws_security_group\" \"w\" {\n  ingress {\n    cidr_blocks = [\"0.0.0.0/0\"]\n  }\n}\n",
+  "hcl": [
+   "/0:resource[\"aws_security_group\",\"w\"]|B",
+   "/0:resource[\"aws_security_group\",\"w\"]/0:ingress[]|B",
+   "/0:resource[\"aws_security_group\",\"w\"]/0:ingress[]|A|cidr_blocks|[\"0.0.0.0/0\"]"
+  ]
+ },
+ {
+  "name": "comment-hash-in-string",
+  "src": "a = \"x # y = 1\"\nb = 2\n",
+  "hcl": [
+   "|A|a|\"x # y = 1\"",
+   "|A|b|2"
+  ]
+ },
+ {
+  "name": "comment-slash-in-string",
+  "src": "a = \"http://x/*y*/\"\n",
+  "hcl": [
+   "|A|a|\"http://x/*y*/\""
+  ]
+ },
+ {
+  "name": "block-comment-hides-nothing",
+  "src": "a = 1 /* b = 2\n c = 3 */\nd = 4\n",
+  "hcl": [
+   "|A|a|1",
+   "|A|d|4"
+  ]
+ },
+ {
+  "name": "comment-ends-line",
+  "src": "a = 1 # x\nb = 2 // y\n",
+  "hcl": [
+   "|A|a|1",
+   "|A|b|2"
+  ]
+ },
+ {
+  "name": "template-escape",
+  "src": "a = \"$${x} %%{y}\"\n",
+  "hcl": [
+   "|A|a|\"${x} %{y}\""
+  ]
+ },
+ {
+  "name": "template-nested",
+  "src": "a = \"${ {k = \"}\"}[\"k\"] }\"\nb = 1\n",
+  "hcl": [
+   "|A|a|\"}\"",
+   "|A|b|1"
+  ]
+ },
+ {
+  "name": "template-plain",
+  "src": "a = \"${\"x\"}\"\n",
+  "hcl": [
+   "|A|a|\"x\""
+  ]
+ },
+ {
+  "name": "heredoc",
+  "src": "p = \u003c\u003cEOT\n{\"Action\": \"*\"}\nEOT\nq = 1\n",
+  "hcl": [
+   "|A|p|\"{\\\"Action\\\": \\\"*\\\"}\\n\"",
+   "|A|q|1"
+  ]
+ },
+ {
+  "name": "heredoc-flush",
+  "src": "p = \u003c\u003c-EOT\n    a\n      b\n\n    c\n  EOT\n",
+  "hcl": [
+   "|A|p|\"a\\n  b\\n\\nc\\n\""
+  ]
+ },
+ {
+  "name": "heredoc-unicode-space",
+  "src": "p = \u003c\u003c-EOT\n     Foo\n    Bar\n  EOT\n",
+  "hcl": [
+   "|A|p|\" Foo\\nBar\\n\""
+  ]
+ },
+ {
+  "name": "heredoc-crlf",
+  "src": "p = \u003c\u003cEOT\r\nA\r\n  EOT  \r\nq = 1\r\n",
+  "hcl": [
+   "|A|p|\"A\\r\\n\"",
+   "|A|q|1"
+  ]
+ },
+ {
+  "name": "heredoc-marker-suffix",
+  "src": "p = \u003c\u003cEOT\n  NOT EOT\n EOTX\nEOT\n",
+  "hcl": [
+   "|A|p|\"  NOT EOT\\n EOTX\\n\""
+  ]
+ },
+ {
+  "name": "heredoc-holds-key-text",
+  "src": "p = \u003c\u003cEOT\nevil = true\n}\nEOT\nq = 1\n",
+  "hcl": [
+   "|A|p|\"evil = true\\n}\\n\"",
+   "|A|q|1"
+  ]
+ },
+ {
+  "name": "heredoc-at-eof",
+  "src": "p = \u003c\u003cEOT\nfoo\nEOT",
+  "hcl": "ERR"
+ },
+ {
+  "name": "heredoc-template",
+  "src": "p = \u003c\u003cEOT\n${x}\nEOT\n",
+  "hcl": [
+   "|A|p|C"
+  ]
+ },
+ {
+  "name": "escapes",
+  "src": "a = \"\\u00e9\\U0001F600\\t\\\"\\\\\"\n",
+  "hcl": [
+   "|A|a|\"é😀\\t\\\"\\\\\""
+  ]
+ },
+ {
+  "name": "nfc",
+  "src": "a = \"falsè\"\n",
+  "hcl": [
+   "|A|a|\"falsè\""
+  ]
+ },
+ {
+  "name": "nfc-kelvin",
+  "src": "a = \"K\"\n",
+  "hcl": [
+   "|A|a|\"K\""
+  ]
+ },
+ {
+  "name": "crlf",
+  "src": "a = 1\r\nb {\r\n  c = true\r\n}\r\n",
+  "hcl": [
+   "|A|a|1",
+   "/0:b[]|B",
+   "/0:b[]|A|c|true"
+  ]
+ },
+ {
+  "name": "bom",
+  "src": "﻿a = 1\n",
+  "hcl": [
+   "|A|a|1"
+  ]
+ },
+ {
+  "name": "tabs",
+  "src": "a\t=\t1\nb\t{\n\tc\t=\t2\n}\n",
+  "hcl": [
+   "|A|a|1",
+   "/0:b[]|B",
+   "/0:b[]|A|c|2"
+  ]
+ },
+ {
+  "name": "one-line-block",
+  "src": "b x \"y\" { k = false }\n",
+  "hcl": [
+   "/0:b[\"x\",\"y\"]|B",
+   "/0:b[\"x\",\"y\"]|A|k|false"
+  ]
+ },
+ {
+  "name": "empty-block",
+  "src": "b {}\n",
+  "hcl": [
+   "/0:b[]|B"
+  ]
+ },
+ {
+  "name": "label-escape",
+  "src": "b \"a\\\"b\" {}\n",
+  "hcl": [
+   "/0:b[\"a\\\"b\"]|B"
+  ]
+ },
+ {
+  "name": "literals",
+  "src": "a = [1, -2.5, 3e2, true, null, {k = \"v\", \"q\": [1]}]\n",
+  "hcl": [
+   "|A|a|[1,-2.5,300,true,null,{\"k\":\"v\",\"q\":[1]}]"
+  ]
+ },
+ {
+  "name": "partial-tuple",
+  "src": "a = [\"*\", var.x]\n",
+  "hcl": [
+   "|A|a|C"
+  ]
+ },
+ {
+  "name": "operator",
+  "src": "a = \"a\" == \"b\"\nb = 1 + 2\n",
+  "hcl": [
+   "|A|a|false",
+   "|A|b|3"
+  ]
+ },
+ {
+  "name": "conditional",
+  "src": "a = true ? false : true\n",
+  "hcl": [
+   "|A|a|false"
+  ]
+ },
+ {
+  "name": "for-tuple",
+  "src": "a = [for x in [1] : x]\n",
+  "hcl": [
+   "|A|a|[1]"
+  ]
+ },
+ {
+  "name": "dynamic",
+  "src": "resource \"t\" \"n\" {\n  dynamic \"ingress\" {\n    for_each = var.r\n    content {\n      cidr_blocks = [\"0.0.0.0/0\"]\n    }\n  }\n}\n",
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]|A|for_each|C",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]/0:content[]|B",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]/0:content[]|A|cidr_blocks|[\"0.0.0.0/0\"]"
+  ]
+ },
+ {
+  "name": "count-literal",
+  "src": "resource \"t\" \"n\" {\n  count = 0\n}\n",
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]|A|count|0"
+  ]
+ },
+ {
+  "name": "string-bool",
+  "src": "a = \"false\"\n",
+  "hcl": [
+   "|A|a|\"false\""
+  ]
+ },
+ {
+  "name": "object-newline-separated",
+  "src": "a = {\n  x = 1\n  y = 2\n}\n",
+  "hcl": [
+   "|A|a|{\"x\":1,\"y\":2}"
+  ]
+ },
+ {
+  "name": "object-trailing-comma",
+  "src": "a = {x = 1, y = 2,}\n",
+  "hcl": [
+   "|A|a|{\"x\":1,\"y\":2}"
+  ]
+ },
+ {
+  "name": "tuple-multiline",
+  "src": "a = [\n  \"a\", # c\n  \"b\",\n]\n",
+  "hcl": [
+   "|A|a|[\"a\",\"b\"]"
+  ]
+ },
+ {
+  "name": "duplicate-attribute",
+  "src": "a = 1\na = 2\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "two-attrs-one-line",
+  "src": "a = 1 b = 2\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "lone-cr",
+  "src": "a = 1\rb = 2\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "cr-in-string",
+  "src": "a = \"x\ry\"\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "unclosed-block",
+  "src": "b {\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "unicode-ident",
+  "src": "bé = 1\n",
+  "hcl": [
+   "|A|bé|1"
+  ]
+ },
+ {
+  "name": "number-big",
+  "src": "a = 123456789012345678901234567890\n",
+  "hcl": [
+   "|A|a|123456789012345678901234567890"
+  ]
+ },
+ {
+  "name": "nested-blocks",
+  "src": "a {\n  b {\n    c {\n      d = 1\n    }\n  }\n}\n",
+  "hcl": [
+   "/0:a[]|B",
+   "/0:a[]/0:b[]|B",
+   "/0:a[]/0:b[]/0:c[]|B",
+   "/0:a[]/0:b[]/0:c[]|A|d|1"
+  ]
+ },
+ {
+  "name": "interp-label",
+  "src": "b \"${x}\" {}\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "single-quotes",
+  "src": "a = 'x'\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "object-computed-key",
+  "src": "a = {(var.k) = 1}\n",
+  "hcl": [
+   "|A|a|C"
+  ]
+ },
+ {
+  "name": "object-dup-key",
+  "src": "a = {k = 1, k = 2}\n",
+  "hcl": [
+   "|A|a|{\"k\":2}"
+  ]
+ },
+ {
+  "name": "comment-only",
+  "src": "# only\n// comment\n/* x = 1 */\n",
+  "hcl": []
+ },
+ {
+  "name": "empty",
+  "src": "",
+  "hcl": []
+ },
+ {
+  "name": "lone-cr-in-heredoc",
+  "src": "a = \u003c\u003cEOT\n{\"s\"\rin\nEOT\n",
+  "hcl": "ERR"
+ },
+ {
+  "name": "bool-not-number",
+  "src": "a = true\nb = 1\nc = 1.0\n",
+  "hcl": [
+   "|A|a|true",
+   "|A|b|1",
+   "|A|c|1"
+  ]
+ }
+]

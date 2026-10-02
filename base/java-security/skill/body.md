@@ -3,12 +3,14 @@
 Asked to customize, configure, set up, review or change these rules -- "customize java
 security" and anything meaning it -- open the guided page rather than asking the questions
 as prose. Open it unasked, once, when Java is about to be written and no selection file
-exists at either scope: every rule denies until someone chooses, and the page is a better
-first meeting than the refusal. It is `setup.html`, in this skill's own directory beside this file and
-`references/`. It is offline and writes nothing itself; deny is preselected for every rule,
-and a verdict is chosen, never derived from a question about the stack. It asks once per pack --
-java, crypto, spring, jakarta, persistence, templates, logging, build, android -- so a team
-switches off a stack it does not run in one answer, and opens a pack's rules only when asked.
+exists at either scope: every security rule denies until someone chooses (a quality pack's
+rules allow), and the page is a better first meeting than the refusal. It is `setup.html`, in
+this skill's own directory beside this file and `references/`. It is offline and writes
+nothing itself; each rule's pack default is preselected (deny for a security pack, allow for
+a quality pack), and a verdict is chosen, never derived from a question about the stack. It
+asks once per pack -- java, crypto, spring, jakarta, persistence, templates, logging, build,
+android, then the quality packs -- so a team switches off a stack it does not run in one
+answer, and opens a pack's rules only when asked.
 
 Where this client can publish an Artifact, publish that file as one, declaring
 `capabilities: {db: {}}`, and let the person walk it in the panel. Their Submit writes the
@@ -34,7 +36,7 @@ the diff against it. Then give one command to paste into their own shell, and ne
 
 (`~/.chock` in both places for user scope.) Never put a pattern, severity or path in the file:
 it carries verdicts only, and the gate refuses anything else at the next write. Reach for the
-text walk -- `references/setup-contract.json`, one rule at a time, deny unless told
+text walk -- `references/setup-contract.json`, one rule at a time, its pack's `default` unless told
 otherwise -- only where the page cannot be shown at all.
 
 ## Plan-time guidance
