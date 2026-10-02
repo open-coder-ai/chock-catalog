@@ -47,8 +47,7 @@ def has_dockerignore(path: str, payload: dict, repo: Repo) -> bool:
     return any((repo.root / name).is_file() for name in names)
 
 
-def dockerfile_hits(path: str, text: str, payload: dict, repo: Repo) -> list[Hit]:
-    instrs = dockerfile.parse(text)
+def dockerfile_hits(path: str, instrs: list[dockerfile.Instr], payload: dict, repo: Repo) -> list[Hit]:
     ctx = Ctx(
         ignored=has_dockerignore(path, payload, repo),
         fetch_exec_elsewhere=repo.fetch_exec_reads(path),
@@ -61,15 +60,16 @@ def dockerfile_hits(path: str, text: str, payload: dict, repo: Repo) -> list[Hit
     return hits
 
 
-def marks_by_line(text: str, kind: str) -> dict[int, list[str]]:
+def marks_by_line(text: str, instrs: list[dockerfile.Instr] | None) -> dict[int, list[str]]:
     """Where a `chock: allow <rule>` may sit for a finding on each line: the line itself and the comment above it.
 
-    In a Dockerfile that is every physical line of the instruction, plus the comment line directly above it.
+    In a Dockerfile (its parsed `instrs` given) that is every physical line of the instruction, plus the
+    comment line directly above it.
     """
     lines = text.removeprefix("\ufeff").replace("\r\n", "\n").replace("\r", "\n").split("\n")
     marks: dict[int, list[str]] = {}
-    if kind == "dockerfile":
-        for instr in dockerfile.parse(text):
+    if instrs is not None:
+        for instr in instrs:
             for number in instr.lines:
                 marks[number] = [instr.above, *instr.raw]
         return marks
@@ -94,11 +94,13 @@ def findings(payload: dict) -> list[dict]:
         kind = kind_of(norm)
         if kind is None or not isinstance(text, str):
             continue
+        instrs = None
         if kind == "compose":
             hits = compose_hits(text, Ctx(pins_elsewhere=repo.pins_reads()))
         else:
-            hits = dockerfile_hits(norm, text, payload, repo)
-        marks = marks_by_line(text, kind) if waive else {}
+            instrs = dockerfile.parse(text)
+            hits = dockerfile_hits(norm, instrs, payload, repo)
+        marks = marks_by_line(text, instrs) if waive else {}
         for hit in sorted(set(hits), key=lambda h: (h.line, h.rule, h.detail)):
             if any(hit.rule in WAIVER.findall(mark) for mark in marks.get(hit.line, ())):
                 continue

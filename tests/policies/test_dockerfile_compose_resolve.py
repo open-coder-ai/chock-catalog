@@ -107,3 +107,45 @@ def test_resolver_details() -> None:
     assert deep
     cmds, _ = shell.commands("x=(unclosed")
     assert cmds[0].words == ("x=(unclosed",)
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        f"<<< x {CHMOD}",
+        f"{{fd}}>/tmp/l {CHMOD}",
+        "{chmod,777,/x}",
+        f"ionice -c 3 {CHMOD}",
+        f"taskset 1 {CHMOD}",
+        f"tini -- {CHMOD}",
+        f"dumb-init {CHMOD}",
+        f"watch -n1 {CHMOD}",
+        f"script -qc '{CHMOD}' /dev/null",
+    ],
+)
+def test_round_five_forms(form: str) -> None:
+    assert "dk-chmod-setuid" in rules(f"RUN {form}\n")
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        f"{FETCH} > >(sh)",
+        f"{FETCH} {PIPE} tee >(sh)",
+        f"{FETCH} {PIPE} tee x {PIPE} tee >(sh)",
+        f"{FETCH} {PIPE} tee >(sh) >(bash)",
+    ],
+)
+def test_process_substitution_consumers(form: str) -> None:
+    assert "dk-fetch-exec" in rules(f"RUN {form}\n")
+
+
+def test_a_standalone_brace_argument_does_not_end_the_command() -> None:
+    assert "dk-tls-off" in rules("RUN curl -g -o y https://example.com { -k || true\n")
+    assert not rules("RUN echo { sudo is fine here }\n")
+    assert not rules("RUN cat <(sh) && echo x > >(cat)\n")
+
+
+def test_inline_scripts_deeper_than_followed_are_reported() -> None:
+    assert "dk-chmod-setuid" in rules(f"RUN eval eval eval eval '{CHMOD}'\n")
+    assert "dk-unjudgeable" in rules(f"RUN eval eval eval eval eval '{CHMOD}'\n")

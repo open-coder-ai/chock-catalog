@@ -180,6 +180,12 @@ class Lexer:
             self.add(part)
         return stop - self.at
 
+    def at_command(self, ch: str) -> bool:
+        """A standalone brace is a group or function body only where a command could start:
+        no words yet, or `{` after `name()` or `function name`."""
+        words = self.cur.words
+        return not words or (ch == "{" and (words[-1] == "\x00" or words[0] == "function"))
+
     def separator(self, ch: str, pair: str) -> int:
         if ch == "&" and (pair == "&>" or (self.cur.word and self.cur.word[-1] in "<>")):
             self.add(ch)
@@ -190,7 +196,7 @@ class Lexer:
         if ch in " \t\r":
             self.end_word()
             return 1
-        if ch in "{}" and self.cur.word is None and (pair[1:] == "" or pair[1:] in BOUNDARY):
+        if ch in "{}" and self.cur.word is None and (pair[1:] == "" or pair[1:] in BOUNDARY) and self.at_command(ch):
             self.end_cmd(pipe=False)
             return 1
         self.add(ch)

@@ -5,11 +5,12 @@ Each rule yields (rule id, offset, why); the caller places the offset on its phy
 
 from __future__ import annotations
 
+import functools
 import posixpath
 import re
 from collections.abc import Iterator
 
-from dkscan.resolve import SHELLS, resolve
+from dkscan.resolve import SHELLS, expand, resolve
 from dkscan.shell import Cmd
 
 FETCHERS = frozenset(
@@ -45,10 +46,16 @@ def name(word: str) -> str:
 
 def program(cmd: Cmd) -> tuple[str, tuple[str, ...], frozenset[str]]:
     """(program name, its arguments, wrappers before it); name "" when only wrappers are left."""
-    at, wrappers = resolve(cmd.words)
+    return _program(cmd.words)
+
+
+@functools.lru_cache(maxsize=4096)
+def _program(words: tuple[str, ...]) -> tuple[str, tuple[str, ...], frozenset[str]]:
+    words = expand(words)
+    at, wrappers = resolve(words)
     if at < 0:
         return "", (), wrappers
-    return name(cmd.words[at]), cmd.words[at + 1 :], wrappers
+    return name(words[at]), words[at + 1 :], wrappers
 
 
 def _numeric(mode: str) -> str:
@@ -157,29 +164,46 @@ def _modes(prog: str, args: tuple[str, ...], depth: int) -> Iterator[tuple[str, 
                 yield from simple(name(sub[0]), sub[1:], frozenset(), depth + 1)
 
 
-def fetch_exec(cmds: list[Cmd]) -> Iterator[tuple[Cmd, Cmd]]:
-    """(fetch, runner) pairs: a download piped (through any stages) or substituted into an interpreter.
+def _upstream(cmd: Cmd | None, by_id: dict[int, Cmd], memo: dict[int, int]) -> int:
+    """The id of the nearest fetch command piped (through any stages) into `cmd`, else 0; memoised, so linear."""
+    chain: list[int] = []
+    found = 0
+    while cmd is not None and cmd.id not in memo:
+        chain.append(cmd.id)
+        up = by_id.get(cmd.piped_from)
+        if up is not None and program(up)[0] in FETCHERS:
+            found = up.id
+            break
+        cmd = up
+    if cmd is not None and cmd.id in memo:
+        found = memo[cmd.id]
+    for ident in chain:
+        memo[ident] = found
+    return found
 
-    Commands come out in the order they end, so a pipe's upstream stage and a substitution's inner
-    command are seen before the command that uses them: one pass, linear in the number of commands.
-    """
+
+def fetch_exec(cmds: list[Cmd]) -> Iterator[tuple[Cmd, Cmd]]:
+    """(fetch, runner) pairs: a download piped (through any stages), substituted, or fed by process
+    substitution (`curl ... > >(sh)`, `| tee >(sh)`) into an interpreter. Linear in the number of commands."""
     by_id = {cmd.id: cmd for cmd in cmds}
-    fetch_up: dict[int, int] = {}
+    memo: dict[int, int] = {}
     fetched_into: dict[int, int] = {}
     for cmd in cmds:
-        prog, args, _ = program(cmd)
-        if prog in FETCHERS:
+        if program(cmd)[0] in FETCHERS:
             fetched_into.setdefault(cmd.parent, cmd.id)
-        upstream = by_id.get(cmd.piped_from)
-        if upstream is not None:
-            fetch_up[cmd.id] = upstream.id if program(upstream)[0] in FETCHERS else fetch_up.get(upstream.id, 0)
+    for cmd in cmds:
+        prog, args, _ = program(cmd)
         if "\x00" in prog and cmd.id in fetched_into:
             yield by_id[fetched_into[cmd.id]], cmd
             continue
         if not (prog in SHELLS or prog in SCRIPTERS or prog in EVALUATORS):
             continue
-        source = fetch_up.get(cmd.id, 0) if reads_stdin(args) else 0
-        source = source or fetched_into.get(cmd.id, 0)
+        source = fetched_into.get(cmd.id, 0)
+        if not source and reads_stdin(args):
+            parent = by_id.get(cmd.parent)
+            source = _upstream(cmd, by_id, memo)
+            if not source and parent is not None:
+                source = parent.id if program(parent)[0] in FETCHERS else _upstream(parent, by_id, memo)
         if source:
             yield by_id[source], cmd
 

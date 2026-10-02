@@ -14,7 +14,8 @@ import re
 from typing import NamedTuple
 
 ASSIGNMENT = re.compile(r"[A-Za-z_]\w*\+?=")
-REDIRECT = re.compile(r"(?:\d+|&)?(?:>>?|<<?|>&|<&|&>>?|>\|)(.*)", re.DOTALL)
+REDIRECT = re.compile(r"(?:\d+|&|\{\w+\})?(?:<<<|>>?|<<?|>&|<&|&>>?|>\||<>)(.*)", re.DOTALL)
+BRACE_LIST = re.compile(r"\{([^{},]*(?:,[^{},]*)+)\}")
 LEADERS = frozenset(
     {
         "{",
@@ -70,8 +71,15 @@ WRAPPERS = {
     "runuser": Wrapper(frozenset({"-u", "-g", "-G", "--user", "--group"})),
     "busybox": Wrapper(frozenset()),
     "unshare": Wrapper(frozenset()),
+    "ionice": Wrapper(frozenset({"-c", "-n", "-p", "-P", "-u", "--class", "--classdata"})),
+    "taskset": Wrapper(frozenset(), 1),
+    "tini": Wrapper(frozenset({"-p", "-e"})),
+    "dumb-init": Wrapper(frozenset()),
+    "watch": Wrapper(frozenset({"-n", "--interval", "-d"})),
     "nsenter": Wrapper(frozenset({"-t", "--target"})),
 }
+#: Commands that run the string after -c (or --command=) as shell code.
+SCRIPT_TAKERS = frozenset({"su", "runuser", "flock", "script"})
 SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash", "csh", "tcsh", "mksh", "fish"})
 
 
@@ -90,6 +98,12 @@ def _skip_wrapper(words: tuple[str, ...], at: int, wrapper: Wrapper) -> int:
         if option == "--":
             break
     return at + wrapper.positional
+
+
+def expand(words: tuple[str, ...]) -> tuple[str, ...]:
+    """The command with a leading brace list (`{chmod,777,/x}`) expanded the way the shell does."""
+    found = BRACE_LIST.fullmatch(words[0]) if words else None
+    return (*found.group(1).split(","), *words[1:]) if found else words
 
 
 def resolve(words: tuple[str, ...]) -> tuple[int, frozenset[str]]:
@@ -127,11 +141,11 @@ def inline_scripts(prog: str, args: tuple[str, ...], words: tuple[str, ...]) -> 
     """Strings this command runs as shell code."""
     found: list[str] = []
     first = posixpath.basename(words[0]) if words else ""
-    if prog not in SHELLS and first in ("su", "runuser", "flock"):
+    if prog not in SHELLS and first in SCRIPT_TAKERS:
         prog, args = first, words[1:]
-    if prog in SHELLS or prog in ("su", "runuser", "flock"):
+    if prog in SHELLS or prog in SCRIPT_TAKERS:
         for at, arg in enumerate(args):
-            if INLINE_FLAG.fullmatch(arg) and (prog in SHELLS or arg == "-c"):
+            if INLINE_FLAG.fullmatch(arg) and (prog in SHELLS or prog == "script" or arg == "-c"):
                 script = _after_flag(args, at)
                 found += [script] if script is not None else []
                 break

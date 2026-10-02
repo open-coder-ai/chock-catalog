@@ -78,7 +78,8 @@ def script(instr: Instr) -> tuple[list[shell.Cmd], bool]:
                 ]
         cmds = cmds + found
         queue = found
-    return cmds, deep
+    unfollowed = any(resolve.inline_scripts(*cmdrules.program(cmd)[:2], cmd.words) for cmd in queue)
+    return cmds, deep or unfollowed
 
 
 def judgeable(instr: Instr) -> Iterator[Hit]:

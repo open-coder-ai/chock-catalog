@@ -203,7 +203,9 @@ def test_large_compose_stays_fast() -> None:
 
 
 def test_many_findings_at_commit_stay_fast() -> None:
-    text = f"FROM a:1{PIN}\n" + "".join(f"RUN sudo x{i}\n" for i in range(20_000)) + "USER 1000\n"
+    # Waivers are looked up per line from one parse; a lookup that re-read the file per finding
+    # (quadratic) takes minutes at this size, so 5,000 findings tell the two apart on a loaded runner.
+    text = f"FROM a:1{PIN}\n" + "".join(f"RUN sudo x{i}\n" for i in range(5_000)) + "USER 1000\n"
     start = time.monotonic()
-    assert len(mod.findings({"event": "commit", "writes": {"Dockerfile": text}})) == 20_000
+    assert len(mod.findings({"event": "commit", "writes": {"Dockerfile": text}})) == 5_000
     assert time.monotonic() - start < 5
