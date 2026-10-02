@@ -205,3 +205,23 @@ def test_opencode_denies() -> None:
     assert walk.denies(tree, "opencode") == {("permission.bash", "rm *"): 1, ("permission", "edit"): 1}
     assert walk.denies({"permission": "deny"}, "opencode") == {}
     assert walk.denies({"permission": 5}, "opencode") == {}
+
+
+def test_a_server_or_key_named_like_a_ban_does_not_hide_a_grant() -> None:
+    assert rules_of({"mcpServers": {"exclude": {"trust": True}}}, "gemini") == [
+        (walk.FLAG, "mcpServers.exclude.trust", "true")
+    ]
+    nested = {"permissions": {"ask": {"defaultMode": "auto"}, "Deny": {"allow": ["Bash"]}}}
+    assert rules_of(nested) == [
+        (walk.MODE, "permissions.ask.defaultMode", "auto"),
+        (walk.ALLOW, "permissions.Deny.allow", "Bash"),
+    ]
+
+
+def test_agent_extension_keys_are_read_by_their_last_segment() -> None:
+    tree = {"roo-cline.allowedCommands": ["*"], "amp.dangerouslyAllowAll": True, "kilo-code.autoApprove": True}
+    assert [hit.path for hit in walk.hits(tree, "vscode")] == [
+        "roo-cline.allowedCommands",
+        "amp.dangerouslyAllowAll",
+        "kilo-code.autoApprove",
+    ]

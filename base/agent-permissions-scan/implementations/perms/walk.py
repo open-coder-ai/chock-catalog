@@ -17,11 +17,11 @@ ALLOW, DENY, MODE, FLAG, VSCODE, SKIP = (
     "ap-skip-flag",
 )
 CODEX = "ap-codex-never-danger"
-ALLOW_KEYS = frozenset({"allow", "allowedtools", "allowed", "alwaysallow", "autoapprove", "tools"})
+ALLOW_KEYS = frozenset({"allow", "allowedtools", "allowedcommands", "allowed", "alwaysallow", "autoapprove", "tools"})
 #: Key names end in one of these (`claudeCode.initialPermissionMode`, `chat.tools.global.autoApprove`).
 MODE_ENDINGS = ("defaultmode", "permissionmode", "approvalmode")
 FLAG_KEYS = frozenset({"yolo", "yesalways", "trustalltools", "trustall"})
-FLAG_ENDINGS = ("autoapprove", "autoaccept", "dangerouslyskippermissions")
+FLAG_ENDINGS = ("autoapprove", "autoaccept", "dangerouslyskippermissions", "dangerouslyallowall")
 #: Where each surface keeps the entries that forbid an action; a shrinking list there is a finding.
 DENY_PATHS = {
     "claude": (("permissions", "deny"),),
@@ -32,7 +32,10 @@ DENY_PATHS = {
 #: Keys that hold what is forbidden or asked; their strings are not grants, and a flag named there is a ban.
 QUIET_KEYS = frozenset({"deny", "ask", "exclude", "excludetools", "disallowedtools"})
 #: In VS Code settings only the keys of an agent extension count (`editor.defaultMode` is no permission mode).
-VSCODE_PREFIXES = ("claudecode", "chat", "github", "cline", "roo", "cursor", "continue")
+VSCODE_PREFIXES = (
+    *("claudecode", "chat", "github", "copilot", "cline", "roo", "kilo", "amp", "cursor", "continue", "gemini"),
+    *("codeium", "windsurf", "amazonq", "augment", "tabnine", "aider"),
+)
 OPENCODE_TOOLS = frozenset({"bash", "edit", "write", "webfetch", "external_directory", "*"})
 
 
@@ -106,14 +109,21 @@ def _walk(node: object, path: tuple, surface: str, out: list[Hit]) -> None:
         for key, value in node.items():
             here = (*path, key)
             out.extend(_key(str(key), value, here, surface))
-            if rules.letters(key) not in QUIET_KEYS:
+            if not _quiet(key, value):
                 _walk(value, here, surface, out)
+
+
+def _quiet(key: object, value: object) -> bool:
+    """Whether a value is a deny/ask/exclude list of strings (a ban, not a grant); an object under such a key is read."""
+    plain = isinstance(value, str) or (isinstance(value, list) and all(isinstance(item, str) for item in value))
+    return plain and rules.letters(key) in QUIET_KEYS
 
 
 def _key(key: str, value: object, path: tuple, surface: str) -> Iterator[Hit]:
     name = rules.letters(key)
+    leaf = rules.letters(key.rsplit(".", 1)[-1])
     where = dotted(path)
-    if name in ALLOW_KEYS and not isinstance(value, bool):
+    if leaf in ALLOW_KEYS and not isinstance(value, bool):
         for entry in entries(value):
             if why := rules.broad_entry(entry):
                 yield Hit(ALLOW, where, rules.norm(entry), why)

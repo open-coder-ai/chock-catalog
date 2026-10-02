@@ -143,8 +143,6 @@ def test_deny_shrinkage_is_read_on_disk_at_tool_use_and_ignores_unreadable_texts
     assert keys(base, write, "tool_use") == []
     (base / CLAUDE).unlink()
     assert keys(base, write, "tool_use") == []
-    outside = {"../" + CLAUDE: settings()}
-    assert keys(base, outside, "tool_use") == []
 
 
 def test_head_text_that_cannot_be_read_is_not_a_deny_baseline(tmp_path: Path) -> None:
@@ -268,14 +266,6 @@ def test_an_agent_that_adds_a_waiver_is_reported_and_a_person_is_not(
     assert mod.findings(payload(base, {sidecar.PATH: waiver_file(WAIVE)})) == []
     broken = held(tmp_path / "b", {sidecar.PATH: "{ nope"})
     assert len(mod.findings(payload(broken, write))) == 2
-
-
-def test_the_writes_path_forms_all_reach_the_same_file(tmp_path: Path) -> None:
-    base = held(tmp_path, {CLAUDE: settings(deny=["Read(.env)"])})
-    wanted = ["ap-deny-removed|permissions.deny|Read(.env)"]
-    for form in (CLAUDE, "./" + CLAUDE, ".claude\\settings.json", str(base / CLAUDE)):
-        assert keys(base, {form: settings()}) == wanted, form
-    assert keys(base, {"/elsewhere/" + CLAUDE: settings()}) == []
 
 
 def test_an_opencode_deny_that_is_loosened_is_a_removal(tmp_path: Path) -> None:

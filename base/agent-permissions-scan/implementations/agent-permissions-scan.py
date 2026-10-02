@@ -12,6 +12,7 @@ import contextlib
 import hashlib
 import json
 import os
+import posixpath
 import sys
 from collections import Counter
 from pathlib import Path
@@ -50,11 +51,11 @@ def digest(text: str) -> str:
 
 def repo_path(root: Path, path: str) -> str:
     """The path as the repository names it: `/` separators, no leading `./`, an absolute path under `root` made relative."""
-    name = path.replace("\\", "/")
+    name = posixpath.normpath(path.replace("\\", "/"))
     if Path(name).is_absolute():
         with contextlib.suppress(ValueError):
-            name = Path(name).relative_to(root).as_posix()
-    return name.removeprefix("./")
+            name = Path(name).relative_to(root.resolve()).as_posix()
+    return name
 
 
 def current_waivers(root: Path, writes: dict[str, str], *, person: bool) -> frozenset:
@@ -69,7 +70,7 @@ def current_waivers(root: Path, writes: dict[str, str], *, person: bool) -> froz
 
 def before_denies(root: Path, path: str, kind: str, surface: str, event: str) -> Counter:
     """Deny entries the file held at HEAD, and on disk before a tool-use write; unreadable text adds none."""
-    texts = [sidecar.committed(root, path)]
+    texts: list[str | None] = [*sidecar.committed_all(root, path)]
     if event == "tool_use" and ".." not in path.split("/"):
         with contextlib.suppress(safe_read.UnreadableError, ValueError):
             texts.append(safe_read.read_text(root / path))
@@ -108,7 +109,7 @@ def _args(parsed: load.Parsed, surface: str) -> tuple:
 
 def findings(payload: dict) -> list[dict]:
     event = str(payload.get("event", ""))
-    root = Path(str(payload.get("repo_root") or "."))
+    root = Path(str(payload.get("repo_root") or ".")).resolve()
     baseline = bool(payload.get("baseline"))
     writes = {
         repo_path(root, path): text for path, text in (payload.get("writes") or {}).items() if isinstance(text, str)
@@ -121,12 +122,19 @@ def findings(payload: dict) -> list[dict]:
             found += _sidecar_finding(name, text, root, person=person or baseline)
         if load.classify(name) is None:
             continue
+        if name.startswith(("/", "../")) or name == "..":
+            found.append(_unmapped(name))
         for hit, line, new in file_findings(name, text, root, event, baseline=baseline):
             if (name, hit.path, hit.value) in waived:
                 continue
             item = {"key": f"{hit.rule}|{hit.path}|{hit.value}", "path": name, "line": line}
             found.append({**item, "message": f"[{hit.rule}] {hit.why}: {hit.path} = {hit.value}", "new": new})
     return found
+
+
+def _unmapped(name: str) -> dict:
+    message = f"[ap-unmapped] {name} is outside the repository, so its HEAD copy cannot be compared"
+    return {"key": f"ap-unmapped|{digest(name)}", "path": name, "line": 1, "message": message}
 
 
 def _sidecar_finding(name: str, text: str, root: Path, *, person: bool) -> list[dict]:

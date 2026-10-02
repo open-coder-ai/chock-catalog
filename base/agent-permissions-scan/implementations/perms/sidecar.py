@@ -53,3 +53,19 @@ def waivers(text: str) -> frozenset[Waiver]:
             raise SidecarError(msg)
         out.add((item["file"].replace("\\", "/").removeprefix("./"), item["path"], item["value"]))
     return frozenset(out)
+
+
+def committed_all(root: Path, path: str) -> list[str]:
+    """The HEAD text of every tracked file whose path equals `path` ignoring case (file systems may fold it)."""
+    try:
+        proc = subprocess.run(
+            ["git", "ls-tree", "-r", "--name-only", "-z", "HEAD"],  # noqa: S607 -- git from PATH, as the runner's own
+            cwd=root,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return []
+    names = proc.stdout.decode("utf-8", "replace").split("\0") if proc.returncode == 0 else []
+    wanted = path.casefold()
+    return [text for name in names if name.casefold() == wanted and (text := committed(root, name)) is not None]
