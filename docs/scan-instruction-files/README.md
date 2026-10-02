@@ -21,7 +21,7 @@ Asks a person before a change adds injection text to an agent instruction file (
 
 ## What it solves
 
-An instruction file (AGENTS.md, CLAUDE.md, a rules folder, a skill, a prompt) is obeyed by every agent that opens the repository, so one poisoned line in it hijacks them all: overriding the rules, hiding work from a person, approving tools, skipping hooks, fetching and running code, or sending secrets away. This gate asks a person before a change adds such text, and refuses outright secret exfiltration and encoded payloads. Only what the change adds is judged, plus guardrail statements it deletes or rewords.
+An instruction file (AGENTS.md, CLAUDE.md, a rules folder, a skill, a prompt) is obeyed by every agent that opens the repository, so one poisoned line in it hijacks them all: overriding the rules, hiding work from a person, approving tools, skipping hooks, fetching and running code, or sending secrets away. This gate asks a person before a change adds such text, and refuses outright secret exfiltration and encoded payloads. Only what the change adds is judged, plus guardrail statements it deletes or weakens.
 
 ## How it works
 

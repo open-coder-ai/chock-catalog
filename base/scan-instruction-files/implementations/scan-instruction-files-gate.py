@@ -144,10 +144,14 @@ def removed_guardrails(lex: Lexicon, path: str, old: str, new_lines: int, text: 
 
 def judge_file(lex: Lexicon, payload: dict, path: str, text: str) -> tuple[list[dict], bool]:
     """(findings, whether a block-class finding is new against the text before the change)."""
-    if len(text) > MAX_TEXT:
-        size = f"an instruction file over {MAX_TEXT} characters, too long to judge"
-        return [_finding("oversize", size, path, Statement(1, 1, f"{len(text)} characters", text, code=False))], False
     waive = str(payload.get("event", "")) == "commit"
+    if len(text) > MAX_TEXT:
+        # Too long to read in the budget: refused, so padding a file cannot turn a refusal into an ask.
+        if waive and WAIVER.search(text[: text.find("\n")] if "\n" in text else text):
+            return [], False
+        size = f"an instruction file over {MAX_TEXT} characters, too long to judge"
+        oversize = _finding("oversize", size, path, Statement(1, 1, f"{len(text)} characters", text, code=False))
+        return [oversize], not payload.get("baseline")
     lines = lines_of(text)
     hits = [h for h in file_hits(lex, text) if not (waive and _waived(h, lines))]
     found = [_finding(h.rule, h.label, path, h.statement) for h in hits]
@@ -167,7 +171,10 @@ def findings(payload: dict) -> tuple[list[dict], bool]:
     if not isinstance(writes, dict) or not all(isinstance(payload.get(k, ""), str) for k in ("event", "repo_root")):
         raise TypeError("writes")
     judged_writes = {canonical(str(p)): t for p, t in writes.items() if judged(str(p))}
-    if not all(isinstance(t, str) for t in judged_writes.values()):
+    if len(judged_writes) != sum(judged(str(p)) for p in writes) or not all(
+        isinstance(t, str) for t in judged_writes.values()
+    ):
+        # Two spellings of one path would let the later text hide the earlier: cannot judge.
         raise TypeError("writes")
     if not judged_writes:
         return [], False

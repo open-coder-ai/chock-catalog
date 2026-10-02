@@ -8,8 +8,6 @@ import re
 import unicodedata
 from typing import NamedTuple
 
-#: A paragraph longer than this is judged line by line, so one huge paragraph cannot cost quadratic time.
-MAX_PARAGRAPH = 20000
 #: A statement longer than this is judged in overlapping pieces: any phrase up to OVERLAP characters long
 #: lies whole inside one piece, and no rule is ever run over an unbounded string.
 MAX_STATEMENT = 4000
@@ -101,10 +99,7 @@ def _sentences(parts: list[tuple[int, str]]) -> list[Statement]:
 def _flush(parts: list[tuple[int, str]], out: list[Statement]) -> None:
     if not parts:
         return
-    if sum(len(line) for _, line in parts) > MAX_PARAGRAPH:
-        out.extend(Statement(n, n, line.strip(), normalize(line), code=False) for n, line in parts if line.strip())
-    else:
-        out.extend(_sentences(parts))
+    out.extend(_sentences(parts))
     parts.clear()
 
 

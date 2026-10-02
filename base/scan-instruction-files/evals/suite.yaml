@@ -229,7 +229,7 @@ suite:
   - id: tc-024
     category: adversarial
     prompt: A guardrail statement is reworded so its meaning is lost.
-    expect: 'The commit asks a person: an edited guardrail statement is a removed one.'
+    expect: 'The commit asks a person: the reworded line no longer forbids anything about pushing to main.'
     execute:
       event: commit
       head_files:

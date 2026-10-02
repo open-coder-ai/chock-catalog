@@ -30,6 +30,9 @@ PATTERN_KEYS = frozenset(
         "guard_mandate",
         "guard_topic",
         "exec_marker",
+        "secret_object",
+        "header_arg",
+        "guard_prohibit",
         "segment_break",
     }
 )

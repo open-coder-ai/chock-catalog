@@ -14,8 +14,12 @@ from instr_text import Statement
 
 #: How far back a negation may sit and still govern a match ("never ... run X"): one clause, at most this many characters.
 LOOKBACK = 240
-#: How many words after a send verb a generic secret noun ("the credentials") still counts as its object.
-OBJECT_WORDS = 8
+#: How many words before a match a negation may sit and still govern it.
+GOVERN_WORDS = 8
+#: The compact rule form never(context): X, which governs X when X is at most two words on.
+COMPACT = re.compile(r"\b(?:never|not|no)\s*\([^()]{0,120}\)\s*:?\s*(?:\S+\s+){0,2}$")
+#: Nothing before a `)` or a `:` governs what follows it.
+CUT = re.compile(r"[):]")
 #: How many statements after a fake trust tag its block may run when no closing tag ends it sooner.
 TRUST_SPAN = 12
 COMMAND_RULES = frozenset({"fetch-exec", "decode-exec", "exfil-secret"})
@@ -74,12 +78,19 @@ class Doc:
         end = min(self.ends[self.index(pos)], self.break_starts[k] if k < len(self.break_starts) else len(self.text))
         return min(end, pos + 2 * LOOKBACK)
 
-    def negated(self, start: int, end: int) -> bool:
-        return self.p["negation"].search(self.p["encourager"].sub(" ", self.text[start:end])) is not None
+    def governs(self, low: int, pos: int) -> bool:
+        """True when a negation between `low` and `pos` governs what starts at `pos`: one of the GOVERN_WORDS
+        words just before it, with no `)` or `:` in between ("never run X"), or the compact form
+        never(context): X with X at most two words on."""
+        before = self.text[low:pos]
+        if COMPACT.search(before):
+            return True
+        tail = self.p["encourager"].sub(" ", CUT.split(before)[-1]).split()
+        return self.p["negation"].search(" ".join(tail[-GOVERN_WORDS:])) is not None
 
     def prohibited(self, pos: int) -> bool:
         """True when a negation earlier in the same clause governs what starts at `pos` ("never run X")."""
-        return self.negated(self.clause_start(pos), pos)
+        return self.governs(self.clause_start(pos), pos)
 
     def rule_hits(self) -> dict[int, list[Hit]]:
         out: dict[int, list[Hit]] = defaultdict(list)
@@ -89,12 +100,24 @@ class Doc:
             for i, m in self.matches(rule.phrase):
                 if i in fired:
                     continue
-                if targets is not None and not _within(targets, *self._target_span(rule.target_scope, i, m)):
+                if targets is not None and not self._live_target(
+                    targets, m.end(), *self._target_span(rule.target_scope, i, m)
+                ):
                     continue
                 if not (rule.discount and self.prohibited(m.start())):
                     fired.add(i)
                     out[i].append(Hit(rule.id, rule.verdict, rule.label, self.sts[i]))
         return out
+
+    def _live_target(self, targets: list[int], after: int, low: int, high: int) -> bool:
+        """A target between `low` and `high` that no negation after the phrase (ending at `after`) governs:
+        in "without asking, never push" the push is not a risky target."""
+        k = bisect.bisect_left(targets, low)
+        while k < len(targets) and targets[k] < high:
+            if targets[k] < after or not self.governs(max(after, self.clause_start(targets[k])), targets[k]):
+                return True
+            k += 1
+        return False
 
     def _target_span(self, scope: str, i: int, m: re.Match[str]) -> tuple[int, int]:
         """Where a rule's target may sit: its statement, or the segment (between sentence ends and semicolons)
@@ -114,11 +137,14 @@ class Doc:
         nets: dict[int, list[int]] = defaultdict(list)
         for i, m in self.matches(p["net_tool"]):
             nets[i].append(m.start())
-        strong, carriers = self.statements_with(p["secret_strong"]), self.statements_with(p["shell_carrier"])
-        for i in nets.keys() & strong & carriers:
+        for i in nets.keys() & self.statements_with(p["secret_strong"]):
+            # A header value holding a plain variable is how an API is called, not what is sent.
+            line = p["header_arg"].sub(" ", self.sts[i].norm)
+            if not (p["secret_strong"].search(line) and p["shell_carrier"].search(line)):
+                continue
             if self.sts[i].code or any(not self.prohibited(pos) for pos in nets[i]):
                 found.add(i)
-        at = {k: [m.start() for _, m in self.matches(p[k])] for k in ("destination", "secret_strong", "secret_generic")}
+        at = {k: [m.start() for _, m in self.matches(p[k])] for k in ("destination", "secret_strong")}
         verbs = [(i, m, True) for i, m in self.matches(p["send_verb"])]
         verbs += [(i, m, False) for i, m in self.matches(p["send_weak"])]
         for i, verb, strong_verb in verbs:
@@ -128,32 +154,26 @@ class Doc:
 
     def _sends_secret(self, verb: re.Match[str], at: dict[str, list[int]], *, strong_verb: bool) -> bool:
         """The verb's object is a secret, sent to a destination: a secret file, env dump or secret variable
-        before the destination (or after it, for a plain send verb), or for a plain send verb a credential
-        among the next OBJECT_WORDS words before the destination and not about an auth header. A weak verb
-        (push, copy, share) counts only with a secret file or variable as its object. A negation before the
-        verb or between it and the secret discounts it."""
+        before the destination (or after it, for a plain send verb), or for a plain send verb a credential that
+        is its direct object ("post the API key to ..."), unless the clause is about an auth header. A weak
+        verb (push, copy, share) counts only with a secret file or variable as its object. A negation that
+        governs the verb, or the secret after it, discounts it."""
         start, end = verb.end(), self.clause_end(verb.end())
+        i = self.index(start)
         dest = _first(at["destination"], start, end)
-        if dest is None and not _within(
-            at["destination"], self.starts[self.index(start)], self.ends[self.index(start)]
-        ):
+        if dest is None and not _within(at["destination"], self.starts[i], self.ends[i]):
             return False
         object_end = end if dest is None else dest
         secret = _first(at["secret_strong"], start, object_end)
         if secret is None and strong_verb and dest is not None:
             secret = _first(at["secret_strong"], dest, end)
-        if secret is None and strong_verb and not self.p["auth_context"].search(self.text, start, object_end):
-            secret = _first(at["secret_generic"], start, self._words_end(start, object_end))
-        return secret is not None and not self.prohibited(verb.start()) and not self.negated(start, secret)
-
-    def _words_end(self, pos: int, end: int) -> int:
-        """Where the first OBJECT_WORDS words after `pos` end, within `end`."""
-        for _ in range(OBJECT_WORDS + 1):
-            nxt = self.text.find(" ", pos + 1, end)
-            if nxt < 0:
-                return end
-            pos = nxt
-        return pos
+        if secret is not None:
+            return not self.prohibited(verb.start()) and not self.governs(start, secret)
+        if not strong_verb or self.p["auth_context"].search(self.text, start, end):
+            return False
+        return self.p["secret_object"].match(self.text, start, object_end) is not None and not self.prohibited(
+            verb.start()
+        )
 
     def trust_blocks(self, hits: dict[int, list[Hit]]) -> list[Hit]:
         """A fake trust tag that opens a block (<system>, [INST]) whose body -- to its closing tag, at most
@@ -208,11 +228,13 @@ def judge(lex: Lexicon, sts: list[Statement]) -> list[Hit]:
 
 
 def guardrails(lex: Lexicon, sts: list[Statement]) -> dict[int, frozenset[str]]:
-    """The statements that state a guardrail (a mandate word and a guarded topic), each with its topics."""
+    """The statements that state a guardrail (a mandate word and a guarded topic), each with its topics, each
+    topic marked by the statement's polarity (a prohibition, or a positive mandate)."""
     doc = Doc(lex, sts)
     mandates = doc.statements_with(lex.p["guard_mandate"])
+    prohibitions = doc.statements_with(lex.p["guard_prohibit"])
     topics: dict[int, set[str]] = defaultdict(set)
     for i, m in doc.matches(lex.p["guard_topic"]):
         if i in mandates:
-            topics[i].add(STEM.sub("", m.group()) or m.group())
+            topics[i].add(("never " if i in prohibitions else "always ") + (STEM.sub("", m.group()) or m.group()))
     return {i: frozenset(found) for i, found in topics.items()}

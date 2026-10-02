@@ -561,7 +561,7 @@ scan-instruction-files:
     agent that opens the repository, so one poisoned line in it hijacks them all: overriding the rules, hiding
     work from a person, approving tools, skipping hooks, fetching and running code, or sending secrets away.
     This gate asks a person before a change adds such text, and refuses outright secret exfiltration and
-    encoded payloads. Only what the change adds is judged, plus guardrail statements it deletes or rewords.'
+    encoded payloads. Only what the change adds is judged, plus guardrail statements it deletes or weakens.'
   customise: 'Ship it under `rollout: observe` in .chock/config.yaml first and read the gate log before
     enforcing. A person answers an ask by committing from their own shell with CHOCK_ALLOW=scan-instruction-files
     for that one commit, and waives a refusal with ''chock: allow instruction-scan'' on the line. To stop judging
