@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: lockfile-integrity
+  path: base/lockfile-integrity
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 65
+  eval_executed: 65
+  description: 'Script gate (commit, agent write, CI) over npm, yarn, pnpm, bun, poetry, uv, Pipfile,
+    Cargo, go.sum, Gemfile, composer and NuGet locks. Blocks: source off the registry list or not https,
+    missing hash, hash changed for a locked version, unpinned git source, unreadable lock. Asks: SHA-1-only
+    hash, transitive install script, lock or manifest moved alone, go.sum lines removed, lock ignored
+    or deleted. Judges what a change adds. Friction, not a security boundary.'
