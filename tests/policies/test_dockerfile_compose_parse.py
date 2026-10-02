@@ -113,3 +113,15 @@ def test_a_line_that_is_no_instruction_is_skipped() -> None:
 def test_continuation_at_end_of_file() -> None:
     (instr,) = parse("RUN a \\")
     assert instr.text == "RUN a "
+
+
+def test_heredoc_opens_only_at_an_unquoted_word_start() -> None:
+    text = 'RUN echo "x<<EOF" && echo $((1<<BITS)) && echo $(( 2 <<SHIFT )) && a=b<<C\nFROM b\nUSER root\n'
+    assert [i.keyword for i in parse(text)] == ["RUN", "FROM", "USER"]
+    assert dockerfile.heredoc_words("cat 3<<'A' <<-B 'x<<C' \\<<D $((1<<E") == [(False, "A"), (True, "B")]
+    assert dockerfile.heredoc_words('echo "a\\"<<X"') == []
+
+
+def test_bom_is_dropped() -> None:
+    (instr,) = parse("\ufeffFROM a\n")
+    assert instr.keyword == "FROM"

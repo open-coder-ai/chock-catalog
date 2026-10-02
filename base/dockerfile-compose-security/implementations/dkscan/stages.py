@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 from dkscan import images
 from dkscan.dockerfile import Instr
-from dkscan.rules import Hit
+from dkscan.rules import Ctx, Hit
 
 ROOT_USERS = frozenset({"root"})
 MOUNT_FROM = re.compile(r"(?:^|[,\s])from=([^,\s]+)")
@@ -57,7 +57,8 @@ def is_root(user: str) -> bool:
 class Walker:
     """One pass over a Dockerfile's instructions, collecting stage facts and image findings."""
 
-    def __init__(self) -> None:
+    def __init__(self, ctx: Ctx | None = None) -> None:
+        self.ctx = ctx or Ctx()
         self.globals: dict[str, str | None] = {}
         self.stages: list[Stage] = []
         self.names: dict[str, int] = {}
@@ -73,7 +74,7 @@ class Walker:
 
     def image(self, ref: str, instr: Instr, what: str) -> None:
         """Judge one external image reference written in `instr`."""
-        if what == "FROM" and images.HP06_FROM.search(instr.raw[0]):
+        if what == "FROM" and self.ctx.pins_elsewhere and images.HP06_FROM.search(instr.raw[0]):
             return
         resolved = images.substitute(ref, self.globals if what == "FROM" else self.scope())
         detail = f"{what} {ref}"
@@ -157,8 +158,8 @@ class Walker:
 HANDLERS = {"FROM": Walker.from_, "ARG": Walker.arg, "ENV": Walker.env, "USER": Walker.user}
 
 
-def walk(instrs: list[Instr]) -> list[Hit]:
-    walker = Walker()
+def walk(instrs: list[Instr], ctx: Ctx | None = None) -> list[Hit]:
+    walker = Walker(ctx)
     for instr in instrs:
         handler = HANDLERS.get(instr.keyword)
         if handler:

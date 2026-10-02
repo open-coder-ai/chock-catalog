@@ -18,10 +18,12 @@ class Rule(NamedTuple):
 
 
 class Ctx(NamedTuple):
-    """Per-file facts a rule needs: whether NODE_TLS is this bundle's to report, and whether a .dockerignore exists."""
+    """Per-file facts: which installed sibling gate already reads a one-line form here, and whether a .dockerignore exists."""
 
-    node_tls: bool
-    ignored: bool
+    ignored: bool = False
+    fetch_exec_elsewhere: bool = False
+    pins_elsewhere: bool = False
+    node_tls_elsewhere: bool = False
 
 
 class Hit(NamedTuple):

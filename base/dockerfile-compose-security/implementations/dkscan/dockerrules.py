@@ -7,17 +7,18 @@ from collections.abc import Callable, Iterator
 from pathlib import PurePosixPath
 
 from dkscan import secrets, shellrules, stages
-from dkscan.dockerfile import Instr
+from dkscan.dockerfile import Instr, split_flags
 from dkscan.rules import Ctx, Hit
 
-#: block-fetch-exec-in-files (HP03) reads `ADD <url>` with no --checksum on one line; that line is its to report.
+#: block-fetch-exec-in-files (HP03) reads `ADD <url>` with no --checksum on one line; where it is installed,
+#: that line is its to report.
 HP03_ADD = re.compile(r"^\s*(?i:add)\s+(?:--(?!checksum)[\w-]+(?:=\S+)?\s+)*[\"']?https?://")
 HTTP = re.compile(r"^https?://", re.IGNORECASE)
 REMOTE = re.compile(r"^(?:https?://|git@|git://|ssh://)", re.IGNORECASE)
 GIT_SOURCE = re.compile(r"^(?:git@|git://|ssh://)|\.git(?:#|$)", re.IGNORECASE)
 PINNED_GIT = re.compile(r"#[0-9a-fA-F]{40}(?::|$)")
 KEY_FILE = re.compile(
-    r"^(?:\.env(?:\.(?!example$|sample$|template$|dist$|defaults$)[\w.-]+)?|id_(?:rsa|dsa|ecdsa|ed25519)|\.npmrc|\.pypirc|\.netrc"
+    r"^(?:\.env[*?\[].*|\.env(?:\.(?!example$|sample$|template$|dist$|defaults$)[\w.-]+)?|id_(?:rsa|dsa|ecdsa|ed25519)|\.npmrc|\.pypirc|\.netrc"
     r"|\.git-credentials|\.pgpass|[\w.-]*\.(?:key|p12|pfx|jks|keystore)|[\w.-]*(?:key|priv)[\w.-]*\.pem)$",
     re.IGNORECASE,
 )
@@ -39,15 +40,16 @@ def _secret_path(source: str) -> bool:
 
 
 def env_arg(instr: Instr) -> Iterator[Hit]:
+    found = stages.words(instr.args)
+    legacy = instr.keyword == "ENV" and bool(found) and "=" not in found[0]
     pairs = (
         stages.env_pairs(instr.args)
         if instr.keyword == "ENV"
-        else [(name, value) for name, eq, value in (w.partition("=") for w in stages.words(instr.args)) if eq]
+        else [(name, value) for name, eq, value in (w.partition("=") for w in found) if eq]
     )
     for name, value in pairs:
-        if secrets.is_secret_name(name) and secrets.is_literal(value):
-            if any(name in raw and secrets.scan_secrets_reads(raw) for raw in instr.raw):
-                continue
+        written = f"{name} {value}" if legacy else f"{name}={value}"
+        if secrets.is_secret_name(name) and secrets.is_literal(value) and not secrets.scan_secrets_reads(written):
             yield Hit(
                 "dk-secret-arg-env", instr.line, f"{instr.keyword} {name}", f"{instr.keyword} {name} holds a literal"
             )
@@ -70,15 +72,18 @@ def copy_add(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
             f"{instr.keyword} all",
             f"{instr.keyword} of the whole context with no .dockerignore",
         )
+    if why := shellrules.chmod_mode(instr.flags.get("chmod", "")):
+        yield Hit("dk-chmod-setuid", instr.line, f"{instr.keyword} --chmod", f"{instr.keyword} --chmod {why}")
     if instr.keyword == "ADD":
-        yield from _add_remote(instr, sources)
+        yield from _add_remote(instr, sources, ctx)
 
 
-def _add_remote(instr: Instr, sources: list[str]) -> Iterator[Hit]:
+def _add_remote(instr: Instr, sources: list[str], ctx: Ctx) -> Iterator[Hit]:
     if "checksum" in instr.flags:
         return
+    covered = ctx.fetch_exec_elsewhere and bool(HP03_ADD.match(instr.raw[0]))
     for source in sources:
-        if not REMOTE.match(source) or (HTTP.match(source) and HP03_ADD.match(instr.raw[0])):
+        if not REMOTE.match(source) or (covered and HTTP.match(source)):
             continue
         if not GIT_SOURCE.search(source):
             yield Hit("dk-add-remote", instr.line, f"ADD {source}", "ADD of a URL with no --checksum")
@@ -97,10 +102,10 @@ def command(instr: Instr) -> Iterator[Hit]:
 
 
 def onbuild(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
-    inner = (instr.args.split(None, 1) or [""])[0].upper()
-    if inner == "RUN":
+    inner, _, rest = instr.args.partition(" ")
+    if inner.upper() == "RUN":
         yield Hit("dk-onbuild-run", instr.line, instr.text, "ONBUILD RUN runs in every downstream build")
-        yield from shellrules.run_hits(instr, ctx)
+        yield from shellrules.run_hits(instr._replace(flags=split_flags(rest)[0]), ctx)
 
 
 def instruction_hits(instr: Instr, ctx: Ctx) -> Iterator[Hit]:

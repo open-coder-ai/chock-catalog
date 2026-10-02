@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -16,7 +17,7 @@ TAIL = "USER 1000\n"
 SHA = "c0ffee" * 6 + "abcd"
 
 
-def rules(body: str, writes: dict[str, str] | None = None, root: str = ".") -> set[str]:
+def rules(body: str, writes: dict[str, str] | None = None, root: str = dockerkit.BARE) -> set[str]:
     payload = {"event": "tool_use", "repo_root": root, "writes": {"Dockerfile": HEAD + body + TAIL, **(writes or {})}}
     return {f["rule"] for f in mod.findings(payload)}
 
@@ -140,16 +141,46 @@ def test_remote_add_without_a_pin(body: str) -> None:
     assert "dk-add-remote" in rules(body)
 
 
+ONE_LINE_ADD = [
+    "ADD https://example.com/tool.tgz /opt/\n",
+    "ADD --chown=1:1 https://example.com/tool.tgz /opt/\n",
+    "ADD https://github.com/org/repo.git /src\n",
+]
+
+
+@pytest.mark.parametrize("body", ONE_LINE_ADD)
+def test_one_line_url_add_is_reported_unless_block_fetch_exec_in_files_reads_it(body: str, tmp_path: Path) -> None:
+    assert "dk-add-remote" in rules(body)
+    assert "dk-add-remote" not in rules(body, root=dockerkit.installed(tmp_path, dockerkit.FETCH_EXEC))
+
+
 @pytest.mark.parametrize(
     "body",
     [
-        "ADD https://example.com/tool.tgz /opt/\n",
-        "ADD --chown=1:1 https://example.com/tool.tgz /opt/\n",
-        "ADD https://github.com/org/repo.git /src\n",
         "ADD --checksum=sha256:" + "0" * 64 + " https://example.com/tool.tgz /opt/\n",
         f"ADD git@github.com:org/repo.git#{SHA} /src\n",
         "ADD local.tgz /opt/\n",
     ],
 )
-def test_pinned_local_and_one_line_url_adds_are_silent_here(body: str) -> None:
+def test_pinned_and_local_adds_are_silent(body: str) -> None:
     assert "dk-add-remote" not in rules(body)
+
+
+@pytest.mark.parametrize(
+    ("body", "rule", "expected"),
+    [
+        ("ENV PGPASSWORD=hunter2\n", "dk-secret-arg-env", True),
+        ("ENV PASSWORD_HASH_ALGO=bcrypt PASS_MIN_DAYS=7\n", "dk-secret-arg-env", False),
+        ("ENV DB_PASSWORD=hunter2 TEST_JWT=ey" + "J0.e30.x\n", "dk-secret-arg-env", True),
+        ("COPY .env* /app/\n", "dk-copy-secrets", True),
+    ],
+)
+def test_review_round_one_secret_cases(body: str, rule: str, expected: bool) -> None:
+    assert (rule in rules(body)) is expected
+
+
+def test_long_env_line_stays_fast() -> None:
+    body = "ENV " + " ".join(f"K{i}_PASSWORD=v{i}" for i in range(5000)) + "\n"
+    start = time.monotonic()
+    assert "dk-secret-arg-env" in rules(body)
+    assert time.monotonic() - start < 5

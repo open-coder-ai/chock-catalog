@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import time
+from pathlib import Path
+
 import pytest
 from policies import dockerkit
+from policies.dockerkit import person  # noqa: F401
 
 mod = dockerkit.load()
 
@@ -13,8 +17,9 @@ DIGEST = "@sha256:" + "0" * 64
 IMG = f"    image: app:1{DIGEST}\n"
 
 
-def found(text: str, path: str = "compose.yaml") -> list[tuple[str, int]]:
-    return [(f["rule"], f["line"]) for f in mod.findings({"event": "tool_use", "writes": {path: text}})]
+def found(text: str, path: str = "compose.yaml", root: str = dockerkit.BARE) -> list[tuple[str, int]]:
+    payload = {"event": "tool_use", "repo_root": root, "writes": {path: text}}
+    return [(f["rule"], f["line"]) for f in mod.findings(payload)]
 
 
 def service(body: str) -> set[str]:
@@ -147,13 +152,40 @@ def test_images(image: str, rule: str) -> None:
     "text",
     [
         f"services:\n  web:\n    image: nginx:1.27{DIGEST}\n",
-        "services:\n  web:\n    image: nginx:" + "late" + "st\n",
         "services:\n  web:\n    build: .\n    image: myapp\n",
         "services:\n  web:\n    build:\n      context: .\n    image: myapp\n",
     ],
 )
-def test_pinned_built_and_hp06_images_are_silent(text: str) -> None:
+def test_pinned_and_built_images_are_silent(text: str) -> None:
     assert not found(text)
+
+
+def test_latest_image_is_left_to_block_unpinned_agent_components_where_installed(tmp_path: Path) -> None:
+    text = "services:\n  web:\n    image: nginx:" + "late" + "st\n"
+    assert found(text) == [("cm-image-floating", 3)]
+    assert not found(text, root=dockerkit.installed(tmp_path, dockerkit.PINS))
+
+
+@pytest.mark.parametrize(
+    ("body", "rule"),
+    [
+        ("    cgroup: host\n", "cm-host-namespaces"),
+        ("    security_opt: [systempaths=unconfined]\n", "cm-privileged-caps"),
+        ("    volumes: [/run/podman/podman.sock:/s]\n", "cm-docker-sock"),
+        ("    volumes: [/run/containerd/containerd.sock:/s]\n", "cm-docker-sock"),
+        ("    environment: [PGPASSWORD=hunter2]\n", "cm-literal-secrets"),
+    ],
+)
+def test_review_round_one_compose_cases(body: str, rule: str) -> None:
+    assert rule in service(body)
+
+
+def test_alias_fan_out_is_capped_across_documents() -> None:
+    doc = "a: &a [x, x, x, x, x, x, x, x]\nb: &b [*a, *a, *a, *a, *a, *a, *a, *a]\nc: &c [*b, *b, *b, *b, *b, *b, *b, *b]\n"
+    text = "---\n".join([doc] * 450)
+    start = time.monotonic()
+    assert ("cm-unreadable", 1) in found(text)
+    assert time.monotonic() - start < 10
 
 
 def test_v1_layout_and_multi_document() -> None:
@@ -162,6 +194,7 @@ def test_v1_layout_and_multi_document() -> None:
     assert rules == {"cm-image-floating", "cm-privileged-caps", "cm-host-namespaces"}
 
 
+@pytest.mark.usefixtures("person")
 def test_waiver_on_the_line_or_the_comment_above_counts_only_at_commit() -> None:
     text = (
         "services:\n  web:\n"

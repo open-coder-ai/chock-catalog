@@ -8,12 +8,14 @@ from collections.abc import Iterator
 
 from dkscan import images, secrets
 from dkscan.composeyaml import Entry, UnreadableError, flatten, services
-from dkscan.rules import Hit
+from dkscan.rules import Ctx, Hit
 
 TRUTHY = frozenset({"true", "yes", "on", "1"})
 BAD_CAPS = frozenset({"ALL", "SYS_ADMIN", "NET_ADMIN", "SYS_PTRACE"})
-UNCONFINED = re.compile(r"(?:seccomp|apparmor)\s*[:=]\s*unconfined|label\s*[:=]\s*disable", re.IGNORECASE)
-NAMESPACES = frozenset({"network_mode", "pid", "ipc", "userns_mode", "uts"})
+UNCONFINED = re.compile(r"(?:seccomp|apparmor|systempaths)\s*[:=]\s*unconfined|label\s*[:=]\s*disable", re.IGNORECASE)
+NAMESPACES = frozenset({"network_mode", "pid", "ipc", "userns_mode", "uts", "cgroup"})
+#: Container runtime sockets: each hands the container the host's runtime, as docker.sock does.
+SOCKETS = ("docker.sock", "podman.sock", "containerd.sock")
 SENSITIVE = ("/etc", "/proc", "/sys", "/boot", "/dev", "/root", "~/.ssh", "~/.aws", "~/.kube", "/var/lib/docker")
 SOCKET_DIRS = frozenset({"/var", "/var/run", "/run"})
 EXEMPT = ("/etc/localtime", "/etc/timezone", "/etc/ssl/certs")
@@ -75,7 +77,7 @@ def host_path(source: str) -> str | None:
 
 
 def mount_rule(source: str) -> str | None:
-    if "docker.sock" in source:
+    if any(socket in source for socket in SOCKETS):
         return "cm-docker-sock"
     path = host_path(source)
     if path is None or any(path == e or path.startswith(e + "/") for e in EXEMPT):
@@ -103,7 +105,8 @@ def short_port(value: str) -> bool:
 
 
 class Service:
-    def __init__(self, name: str, rows: list[Entry], lines: list[str]) -> None:
+    def __init__(self, name: str, rows: list[Entry], lines: list[str], ctx: Ctx) -> None:
+        self.ctx = ctx
         self.name, self.rows, self.lines = name, rows, lines
         self.by_path = {row.path: row for row in rows}
 
@@ -155,12 +158,14 @@ class Service:
     def environment(self, row: Entry, value: str) -> Iterator[Hit]:
         if len(row.path) != ITEM:
             return
-        name, eq, literal = (str(row.path[1]), "=", value) if isinstance(row.path[1], str) else value.partition("=")
+        listed = not isinstance(row.path[1], str)
+        name, eq, literal = value.partition("=") if listed else (str(row.path[1]), ":", value)
+        written = f"{name}={literal}" if listed else f"{name}: {literal}"
         if (
             eq
             and secrets.is_secret_name(name)
             and secrets.is_literal(literal)
-            and not secrets.scan_secrets_reads(self.line_text(row))
+            and not secrets.scan_secrets_reads(written)
         ):
             yield self.hit("cm-literal-secrets", row._replace(value=name), f"environment {name} holds a literal")
 
@@ -171,7 +176,11 @@ class Service:
 
     def image(self) -> Iterator[Hit]:
         row = self.by_path.get(("image",))
-        if row is None or any(r.path[0] == "build" for r in self.rows) or images.HP06_IMAGE.search(self.line_text(row)):
+        if (
+            row is None
+            or any(r.path[0] == "build" for r in self.rows)
+            or (self.ctx.pins_elsewhere and images.HP06_IMAGE.search(self.line_text(row)))
+        ):
             return
         resolved = images.substitute(row.value.strip(), {})
         verdict = "floating" if resolved is None else images.judge(resolved)
@@ -181,7 +190,7 @@ class Service:
             yield self.hit("cm-image-no-digest", row, f"image {row.value} has no digest")
 
 
-def compose_hits(text: str) -> list[Hit]:
+def compose_hits(text: str, ctx: Ctx | None = None) -> list[Hit]:
     try:
         docs = flatten(text)
     except UnreadableError as exc:
@@ -190,5 +199,5 @@ def compose_hits(text: str) -> list[Hit]:
     hits: list[Hit] = []
     for entries in docs:
         for name, rows in services(entries).items():
-            hits.extend(Service(name, rows, lines).scan())
+            hits.extend(Service(name, rows, lines, ctx or Ctx()).scan())
     return hits

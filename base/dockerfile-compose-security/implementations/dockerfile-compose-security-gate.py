@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 from pathlib import Path, PurePosixPath
@@ -15,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from dkscan import dockerfile, dockerrules, stages
 from dkscan.compose import compose_hits
+from dkscan.context import Repo, agent_commit
 from dkscan.rules import DENY, RULES, Ctx, Hit
 
 DOCKERFILE = re.compile(
@@ -24,11 +24,8 @@ NOT_DOCKERFILE = re.compile(
     r"\.(?:md|rst|txt|py|json|ya?ml|sh|ignore|dockerignore|html|j2|tpl|bak|orig)$", re.IGNORECASE
 )
 COMPOSE = re.compile(r"^(?:docker-)?compose(?:[._-][\w.-]+)?\.ya?ml$", re.IGNORECASE)
-#: agentic-code-security's comms-node-tls-disabled reads NODE_TLS_REJECT_UNAUTHORIZED in these names.
-AGENTIC_DOCKERFILE = re.compile(r"^dockerfile(?:\..*)?$", re.IGNORECASE)
 WAIVER = re.compile(r"chock:\s*allow\s+([\w-]+)")
 COMMENT = re.compile(r"^\s*#")
-FALSY = {"", "0", "false", "no", "off"}
 EXIT_BLOCK, EXIT_ASK = 1, 3
 
 
@@ -41,20 +38,24 @@ def kind_of(path: str) -> str | None:
     return None
 
 
-def has_dockerignore(path: str, payload: dict) -> bool:
+def has_dockerignore(path: str, payload: dict, repo: Repo) -> bool:
     """A .dockerignore next to the Dockerfile, at the repository root, or named for the Dockerfile."""
     parent = PurePosixPath(path).parent
     names = {str(parent / ".dockerignore"), ".dockerignore", f"{path}.dockerignore"}
     if any(name.removeprefix("./") in payload.get("writes", {}) for name in names):
         return True
-    root = Path(str(payload.get("repo_root") or "."))
-    return any((root / name).is_file() for name in names)
+    return any((repo.root / name).is_file() for name in names)
 
 
-def dockerfile_hits(path: str, text: str, payload: dict) -> list[Hit]:
+def dockerfile_hits(path: str, text: str, payload: dict, repo: Repo) -> list[Hit]:
     instrs = dockerfile.parse(text)
-    ctx = Ctx(node_tls=not AGENTIC_DOCKERFILE.match(PurePosixPath(path).name), ignored=has_dockerignore(path, payload))
-    hits = stages.walk(instrs)
+    ctx = Ctx(
+        ignored=has_dockerignore(path, payload, repo),
+        fetch_exec_elsewhere=repo.fetch_exec_reads(path),
+        pins_elsewhere=repo.pins_reads(),
+        node_tls_elsewhere=repo.node_tls_reads(path),
+    )
+    hits = stages.walk(instrs, ctx)
     for instr in instrs:
         hits.extend(dockerrules.instruction_hits(instr, ctx))
     return hits
@@ -65,7 +66,7 @@ def marks_by_line(text: str, kind: str) -> dict[int, list[str]]:
 
     In a Dockerfile that is every physical line of the instruction, plus the comment line directly above it.
     """
-    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    lines = text.removeprefix("\ufeff").replace("\r\n", "\n").replace("\r", "\n").split("\n")
     marks: dict[int, list[str]] = {}
     if kind == "dockerfile":
         for instr in dockerfile.parse(text):
@@ -78,22 +79,25 @@ def marks_by_line(text: str, kind: str) -> dict[int, list[str]]:
     return marks
 
 
-def waivable(event: str) -> bool:
-    """A waiver counts only at commit, and never for a commit an agent marked as its own."""
-    agent = os.environ.get("CHOCK_AGENT_COMMIT", "").strip().lower() not in FALSY
-    return event == "commit" and not agent
+def waivable(event: str, repo: Repo) -> bool:
+    """A waiver counts only at commit, and never for a commit the engine would mark as an agent's."""
+    return event == "commit" and not agent_commit(repo.root)
 
 
 def findings(payload: dict) -> list[dict]:
     """Every finding in the written Dockerfiles and compose files, keyed by rule, path and the normalized construct."""
-    waive = waivable(str(payload.get("event", "")))
+    repo = Repo(Path(str(payload.get("repo_root") or ".")))
+    waive = waivable(str(payload.get("event", "")), repo)
     found = []
     for path, text in sorted(payload.get("writes", {}).items()):
         norm = path.replace("\\", "/")
         kind = kind_of(norm)
         if kind is None or not isinstance(text, str):
             continue
-        hits = compose_hits(text) if kind == "compose" else dockerfile_hits(norm, text, payload)
+        if kind == "compose":
+            hits = compose_hits(text, Ctx(pins_elsewhere=repo.pins_reads()))
+        else:
+            hits = dockerfile_hits(norm, text, payload, repo)
         marks = marks_by_line(text, kind) if waive else {}
         for hit in sorted(set(hits), key=lambda h: (h.line, h.rule, h.detail)):
             if any(hit.rule in WAIVER.findall(mark) for mark in marks.get(hit.line, ())):

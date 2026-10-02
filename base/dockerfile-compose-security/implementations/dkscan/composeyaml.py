@@ -36,7 +36,8 @@ class UnreadableError(ValueError):
 
 
 class _Doc:
-    def __init__(self, nodes: list[yamlpath.Node]) -> None:
+    def __init__(self, nodes: list[yamlpath.Node], budget: int) -> None:
+        self.budget = budget
         self.children: dict[Key, list[yamlpath.Node]] = defaultdict(list)
         self.targets: dict[int, Key] = {}
         anchors: dict[str, Key] = {}
@@ -58,8 +59,8 @@ class _Doc:
         return self.targets[self.index[id(node)]]
 
     def emit(self, path: Key, node: yamlpath.Node, line: int) -> None:
-        if len(self.out) >= MAX_ENTRIES:
-            msg = f"more than {MAX_ENTRIES} entries once aliases are expanded"
+        if len(self.out) >= self.budget:
+            msg = f"more than {MAX_ENTRIES} entries in the file once aliases are expanded"
             raise UnreadableError(msg)
         self.out.append(Entry(path, node.value, line, node.kind in SCALARS))
 
@@ -107,7 +108,7 @@ def flatten(text: str) -> list[list[Entry]]:
         docs[node.doc].append(node)
     out = []
     for doc_nodes in docs.values():
-        doc = _Doc(doc_nodes)
+        doc = _Doc(doc_nodes, MAX_ENTRIES - sum(len(done) for done in out))
         doc.walk((), (), 0)
         out.append(doc.out)
     return out

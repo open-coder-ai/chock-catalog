@@ -9,8 +9,10 @@ still import as before.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from types import ModuleType
 
+import pytest
 from policies import scriptkit
 
 POLICY, SCRIPT = "dockerfile-compose-security", "dockerfile-compose-security-gate.py"
@@ -26,3 +28,22 @@ def load() -> ModuleType:
         for name in [n for n in sys.modules if n.split(".")[0] == "chock_scan"]:
             del sys.modules[name]
         sys.modules.update(held)
+
+
+#: A repository root with no .chock/compiled: no sibling gate is installed, so nothing is deferred.
+BARE = str(Path(__file__).resolve().parent)
+FETCH_EXEC, PINS, AGENTIC = "block-fetch-exec-in-files", "block-unpinned-agent-components", "agentic-code-security"
+
+
+def installed(root: Path, *policies: str) -> str:
+    """`root` as a repository where `policies` are installed (their .chock/compiled folders exist)."""
+    for policy in policies:
+        (root / ".chock" / "compiled" / policy).mkdir(parents=True, exist_ok=True)
+    return str(root)
+
+
+@pytest.fixture
+def person(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A person's shell: none of the variables the engine reads as an agent's commit."""
+    for name in ("CHOCK_AGENT_COMMIT", "CLAUDECODE", "AI_AGENT"):
+        monkeypatch.delenv(name, raising=False)

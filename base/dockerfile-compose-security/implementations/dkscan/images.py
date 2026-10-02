@@ -7,8 +7,8 @@ import re
 NESTED = re.compile(r"\$\{[^}]*\$")
 VAR = re.compile(r"\$(?:\{([A-Za-z_]\w*)(?:(:?[-+?])([^}]*))?\}|([A-Za-z_]\w*))")
 DIGEST = re.compile(r"@[a-z0-9]+(?:[.+_-][a-z0-9]+)*:[0-9a-fA-F]{32,}$")
-#: block-unpinned-agent-components (HP06 0.1.0) reads these FROM and image: lines one at a time; a line
-#: one of these matches is that gate's to report, so this bundle stays silent on it (no double report).
+#: block-unpinned-agent-components (HP06 0.1.0) reads these FROM and image: lines one at a time; where that
+#: gate is installed, a line one of these matches is its to report, so this bundle stays silent on it.
 #: The single-character classes keep the pattern from matching its own source text.
 HP06_FROM = re.compile(
     r"FROM\s+\S+:late[s]t\b|^\s*[Ff][Rr][Oo][Mm]\s+(?:--platform[=\s]\S+\s+)?(?!-)(?:\S+:late[s]t(?![\w.-])"
@@ -69,6 +69,6 @@ def judge(ref: str) -> str:
 
 
 def runs_as_non_root(ref: str) -> bool:
-    """A base image whose name or tag says it runs unprivileged (distroless :nonroot, *-rootless)."""
-    lowered = ref.lower()
-    return "nonroot" in lowered or "rootless" in lowered
+    """A base image whose tag says it runs unprivileged: `nonroot` (distroless), or ending -nonroot or -rootless."""
+    tag = split_ref(ref)[1].lower()
+    return tag == "nonroot" or tag.endswith(("-nonroot", "-rootless"))

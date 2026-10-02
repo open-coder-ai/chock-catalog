@@ -49,8 +49,14 @@ NOT_SECRET_LAST = frozenset(
         "port",
         "prefix",
         "suffix",
+        "algo",
+        "days",
+        "age",
+        "len",
     }
 )
+#: A credential word glued to a prefix with no separator (PGPASSWORD, MYSQLPWD is too short to tell).
+GLUED = ("password", "passwd", "secret")
 SHELL_VARS = frozenset({"PWD", "OLDPWD"})
 NOT_LITERAL = frozenset({"", "true", "false", "yes", "no", "on", "off", "none", "null", "0", "1"})
 #: Reference forms: a variable, a template, an <angle placeholder>, a run-time secret path.
@@ -75,7 +81,7 @@ def is_secret_name(name: str) -> bool:
     parts = [p.lower() for p in PARTS.findall(name)]
     if not parts or parts[-1] in NOT_SECRET_LAST:
         return False
-    if any(p in SECRET_PARTS for p in parts):
+    if any(p in SECRET_PARTS or p.endswith(GLUED) for p in parts):
         return True
     return any(pair in SECRET_PAIRS for pair in pairwise(parts))
 

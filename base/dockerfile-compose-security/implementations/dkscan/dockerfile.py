@@ -13,7 +13,8 @@ import re
 from typing import NamedTuple
 
 DIRECTIVE = re.compile(r"#[ \t]*([A-Za-z][A-Za-z0-9_-]*)[ \t]*=[ \t]*(\S*)[ \t]*")
-HEREDOC = re.compile(r"(?<!<)<<(-?)([\"']?)([A-Za-z_][\w.-]*)\2")
+#: A heredoc opens only at the start of an unquoted shell word (`<<WORD`, `<<-WORD`, `3<<"WORD"`), as BuildKit reads it.
+HEREDOC = re.compile(r"\d*<<(?!<)(-?)([\"']?)([A-Za-z_][\w.-]*)\2")
 KEYWORD = re.compile(r"[ \t]*([A-Za-z]+)(?:[ \t]+|$)")
 FLAG = re.compile(r"--([\w-]+)(?:=(\S*))?(?:[ \t]+|$)")
 HEREDOC_KEYWORDS = frozenset({"RUN", "COPY", "ADD"})
@@ -114,10 +115,33 @@ def _logical(lines: list[str], index: int, esc: str) -> tuple[list[tuple[int, st
     return parts, index
 
 
+def heredoc_words(text: str) -> list[tuple[bool, str]]:
+    """(strip tabs, word) for each heredoc opener: outside quotes, $((...)) and escapes, at a word's start."""
+    found: list[tuple[bool, str]] = []
+    at, quote = 0, ""
+    while at < len(text):
+        char = text[at]
+        if quote:
+            at += 2 if char == "\\" and quote == '"' else 1
+            quote = "" if char == quote else quote
+            continue
+        if text.startswith("$((", at):
+            close = text.find("))", at)
+            at = len(text) if close < 0 else close + 2
+            continue
+        opener = HEREDOC.match(text, at) if at == 0 or text[at - 1].isspace() else None
+        if opener:
+            found.append((opener.group(1) == "-", opener.group(3)))
+            at = opener.end()
+            continue
+        quote = char if char in "\"'" else ""
+        at += 2 if char == "\\" else 1
+    return found
+
+
 def _heredocs(lines: list[str], index: int, build: _Builder, keyword: str) -> int:
     """Append each `<<WORD` body to a RUN's text; skip the bodies of COPY and ADD (file contents)."""
-    for found in HEREDOC.finditer(build.text()):
-        strip_tabs, word = found.group(1) == "-", found.group(3)
+    for strip_tabs, word in heredoc_words(build.text()):
         sep = "\n"
         while index < len(lines):
             raw = lines[index]
@@ -132,7 +156,7 @@ def _heredocs(lines: list[str], index: int, build: _Builder, keyword: str) -> in
     return index
 
 
-def _split_flags(rest: str) -> tuple[dict[str, str], str]:
+def split_flags(rest: str) -> tuple[dict[str, str], str]:
     flags: dict[str, str] = {}
     while found := FLAG.match(rest):
         key = found.group(1).lower()
@@ -151,7 +175,7 @@ def _instruction(parts: list[tuple[int, str, str]], above: str) -> tuple[_Builde
 
 def parse(text: str) -> list[Instr]:
     """Every instruction in order. Never raises: a line it cannot read as an instruction is skipped."""
-    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    lines = text.removeprefix("\ufeff").replace("\r\n", "\n").replace("\r", "\n").split("\n")
     esc = escape_char(lines)
     out: list[Instr] = []
     index, above = 0, ""
@@ -175,5 +199,5 @@ def parse(text: str) -> list[Instr]:
 def _finish(build: _Builder, keyword: str) -> Instr:
     whole = build.text()
     rest = whole[KEYWORD.match(whole).end() :]  # type: ignore[union-attr]
-    flags, args = _split_flags(rest.split("\n", 1)[0])
+    flags, args = split_flags(rest.split("\n", 1)[0])
     return Instr(keyword, flags, args, whole, tuple(build.starts), tuple(build.lines), tuple(build.raw), build.above)

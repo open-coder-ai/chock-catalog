@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from policies import dockerkit
 
@@ -12,12 +14,13 @@ from dkscan import images, stages  # noqa: E402
 USER = "USER 1000\n"
 
 
-def found(text: str, path: str = "Dockerfile") -> list[tuple[str, int]]:
-    return [(f["rule"], f["line"]) for f in mod.findings({"event": "tool_use", "writes": {path: text}})]
+def found(text: str, path: str = "Dockerfile", root: str = dockerkit.BARE) -> list[tuple[str, int]]:
+    payload = {"event": "tool_use", "repo_root": root, "writes": {path: text}}
+    return [(f["rule"], f["line"]) for f in mod.findings(payload)]
 
 
-def rules(text: str) -> set[str]:
-    return {rule for rule, _ in found(text)}
+def rules(text: str, root: str = dockerkit.BARE) -> set[str]:
+    return {rule for rule, _ in found(text, root=root)}
 
 
 @pytest.mark.parametrize(
@@ -72,8 +75,10 @@ def test_pinned_images_scratch_and_stages_are_silent(text: str) -> None:
         "FROM ${REG}/app\n",
     ],
 )
-def test_forms_block_unpinned_agent_components_reads_are_left_to_it(line: str) -> None:
-    assert not {r for r in rules(line + USER) if r.startswith("dk-from")}
+def test_forms_block_unpinned_agent_components_reads_are_left_to_it_where_installed(line: str, tmp_path: Path) -> None:
+    assert {r for r in rules(line + USER) if r.startswith("dk-from")}
+    root = dockerkit.installed(tmp_path, dockerkit.PINS)
+    assert not {r for r in rules(line + USER, root) if r.startswith("dk-from")}
 
 
 def test_latest_on_a_continued_from_line_is_reported_here() -> None:
@@ -116,6 +121,7 @@ def test_final_stage_root_or_no_user(text: str, line: int) -> None:
         "FROM a@sha256:" + "0" * 64 + " AS b\nENV U=app\nFROM b\nUSER $U\n",
         "FROM root@sha256:" + "0" * 64 + "\nUSER root\nFROM gcr.io/distroless/static:nonroot\n",
         "FROM docker:27-dind-rootless\n",
+        "FROM app:1-nonroot\n",
         "# a file with no FROM\n",
         "ENV A=1\nFROM\nUSER 1000\n",
         "USER root\n",
@@ -123,6 +129,15 @@ def test_final_stage_root_or_no_user(text: str, line: int) -> None:
 )
 def test_non_root_final_stage_is_silent(text: str) -> None:
     assert "dk-last-user-root" not in rules(text)
+
+
+@pytest.mark.parametrize("base", ["evil/nonroot-ish:1", "rootless/app:1", "a:nonrootx"])
+def test_non_root_is_read_from_the_tag_only(base: str) -> None:
+    assert "dk-last-user-root" in rules(f"FROM {base}@sha256:" + "0" * 64 + "\n")
+
+
+def test_bom_does_not_hide_the_first_stage() -> None:
+    assert {"dk-from-no-digest", "dk-last-user-root"} <= rules("\ufeffFROM ubuntu:22.04\n")
 
 
 def test_arg_and_env_before_any_stage_or_user() -> None:

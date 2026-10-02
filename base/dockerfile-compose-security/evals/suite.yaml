@@ -310,3 +310,21 @@ suite:
       files:
         docs/containers.md: "Never write `privileged: true` or `USER root` in a final stage.\n"
       expect: allow
+  - id: tc-031
+    category: adversarial
+    prompt: A one-line RUN pipes a download into sh in a repository where block-fetch-exec-in-files is not installed.
+    expect: Warned (dk-fetch-exec); the bundle defers only to a sibling gate that is installed and reads the file.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN wget -qO- https://get.example.com/install.sh | sh\nUSER 1000\n"
+      expect: warn
+  - id: tc-032
+    category: adversarial
+    prompt: A quoted "<<EOF" in an earlier RUN tries to swallow the root final stage as a heredoc body.
+    expect: Warned (dk-last-user-root); a heredoc opens only at an unquoted word start.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\nRUN echo \"x<<EOF\"\nUSER root\n"
+      expect: warn

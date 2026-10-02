@@ -10,14 +10,14 @@
 | **Mechanism** | rule text |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
-| **Eval cases** | 30 total, 0 executable |
+| **Eval cases** | 32 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Warns (observe rollout, never refuses) when a change to a Dockerfile, Containerfile or compose file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware: FROM or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature checks switched off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote ADD without checksum; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd; unpinned git clone; ONBUILD RUN; compose privileged, dangerous cap_add, unconfined seccomp/apparmor, devices, host namespaces, Docker socket or sensitive host mounts, database ports on every interface, untagged images. Left to other gates: one-line fetch-exec and ADD URL (block-fetch-exec-in-files), FROM/image at latest or untagged with a slash (block-unpinned-agent-components), scan-secrets token lines. Misses: build args overriding defaults, variables in commands, bake/k8s files. Friction, not a boundary.
+Warns (observe rollout, never refuses) when a change to a Dockerfile, Containerfile or compose file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware: FROM or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature checks off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote ADD without checksum; fetch piped to a shell; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd; unpinned git clone; ONBUILD RUN; compose privileged, broad cap_add, unconfined profiles, devices, host namespaces, runtime socket or host-root mounts, database ports on every interface, untagged images. A one-line form is left to block-fetch-exec-in-files, block-unpinned-agent-components or agentic-code-security only where that gate is installed and reads the file; scan-secrets lines always. Misses: build args overriding defaults, commands in variables, bake and k8s files. Friction, not a boundary.
 
 ## What it solves
 

@@ -124,9 +124,11 @@ dockerfile-compose-security  [deterministic]
   PASS  tc-028                             authored  gate exit 0
   PASS  tc-029                             authored  Dockerfile:3: dk-last-user-root (CWE-250; hadolint DL3002, CKV_DOCK…
   PASS  tc-030                             authored  gate exit 0
+  PASS  tc-031                             authored  gate: warning: Dockerfile:2: dk-fetch-exec (CWE-494; roadmap HP03 (…
+  PASS  tc-032                             authored  gate: warning: Dockerfile:4: dk-last-user-root (CWE-250; hadolint D…
   score 1.00
 
-5 policies: 30 pass, 41 skipped
+5 policies: 32 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
