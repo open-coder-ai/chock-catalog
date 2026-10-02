@@ -264,11 +264,18 @@ const CONTRACT = JSON.parse($("#contract").textContent);
 const AGENT = CONTRACT.agent ? CONTRACT.agent.agent : null;
 const AGENT_LABEL = CONTRACT.agent ? CONTRACT.agent.label : "this agent";
 const DEFAULT_VERDICT = CONTRACT.default;
-/* a security pack's silent rules deny, a quality pack's allow; a pack the contract gives no default denies */
-const PACK_DEFAULT = Object.fromEntries((CONTRACT.packs || []).map(p => [p.id, p.default || DEFAULT_VERDICT]));
+/* a quality pack's silent rules allow; every other kind, and a pack the contract does not list, denies */
+const PACK_DEFAULT = Object.fromEntries((CONTRACT.packs || []).map(p => [p.id, p.kind === "quality" ? "allow" : DEFAULT_VERDICT]));
 const RANK = {deny:0, ask:1, allow:2};
 function defaultOf(r){ return PACK_DEFAULT[r[5]] || DEFAULT_VERDICT; }
-function isWeak(r, v){ return (RANK[v] ?? RANK.allow) > RANK[defaultOf(r)]; }
+/* what a verdict is weighed against: the stricter of the pack default and the selection this repository already has */
+function baselineOf(r){
+  const d = defaultOf(r), c = CONTRACT.current && CONTRACT.current[r[0]];
+  return c && RANK[c] !== undefined && RANK[c] < RANK[d] ? c : d;
+}
+function isWeak(r, v){ return (RANK[v] ?? RANK.allow) > RANK[baselineOf(r)]; }
+/* a quality rule left at allow, where nothing stricter stood, is silence: written out, it would read as a loosening */
+function isSilent(r, v){ return v === "allow" && baselineOf(r) === "allow"; }
 const LS_KEY = "chock-security-setup:" + (AGENT || "agent");
 
 /* editorial text only -- not a fact a build computes, so it stays here rather than in the
@@ -608,8 +615,8 @@ function renderReview(zone){
   const w = weakened().length;
   qe.textContent = state.returning
     ? "Welcome back. Here is the selection as it stands — change anything, then re-stage."
-    : (w ? `That's everything. ${w} rule${w>1?"s are":" is"} weaker than its pack's default — each is marked, and a reviewer will see it in the pull request.`
-         : "That's everything. No rule is weaker than its pack's default. Review it all before anything is written.");
+    : (w ? `That's everything. ${w} rule${w>1?"s are":" is"} weaker than its pack's default or the current selection — each is marked, and a reviewer will see it in the pull request.`
+         : "That's everything. No rule is weaker than its pack's default or the current selection. Review it all before anything is written.");
   qe.style.animation="none"; void qe.offsetWidth; qe.style.animation="";
   say(qe.textContent);
   $("#topiclbl").innerHTML = `Topic ${REVIEW+1}: Review <span>· ${esc(AGENT_LABEL)} · ${state.answers.scope === "repo" ? "repository" : "user-level"}</span>`;
@@ -678,7 +685,7 @@ function buildResult(){
   const packs = {};
   RULES.forEach(r => {
     const k = "rule:"+r[0];
-    if (state.excluded[k]) return;
+    if (state.excluded[k] || isSilent(r, state.answers[k])) return;
     const pack = packs[r[5]] || (packs[r[5]] = { rules: {} });
     pack.rules[r[0]] = state.answers[k];
   });

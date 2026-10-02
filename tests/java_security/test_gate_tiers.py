@@ -56,3 +56,19 @@ def test_a_user_level_selection_still_spells_quality_verdicts(gate: GateRun, tmp
     home.mkdir(parents=True)
     (home / "security.json").write_text('{"version": 2, "packs": {"exceptions": {"verdict": "deny"}}}')
     assert gate({"E.java": EMPTY_CATCH})[0] == REFUSE
+
+
+SWALLOWED_TRUST_CHECK = (
+    "public class T implements X509TrustManager {\n"
+    "  public void checkServerTrusted(X509Certificate[] c, String a) {\n"
+    "    try {\n      d.checkServerTrusted(c, a);\n    } catch (CertificateException e) {\n    }\n"
+    "  }\n}\n"
+)
+
+
+def test_known_limit_a_swallowed_security_check_needs_the_exceptions_pack_spelled(gate: GateRun) -> None:
+    """Documented in the 0.7.0 changelog: only the quality rule exceptions-empty-catch sees this."""
+    assert gate({"T.java": SWALLOWED_TRUST_CHECK})[0] == PASS
+    code, err = gate({"T.java": SWALLOWED_TRUST_CHECK}, {"version": 2, "packs": {"exceptions": {"verdict": DENY}}})
+    assert code == REFUSE
+    assert "exceptions-empty-catch" in err

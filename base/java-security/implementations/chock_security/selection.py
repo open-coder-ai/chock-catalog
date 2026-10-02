@@ -15,7 +15,7 @@ SCHEMA_VERSION = 2
 #: Version 1 had one pack, `java`, holding the eight rules this policy first shipped. Those rules
 #: now live in the packs their frameworks name, under the same ids, so a version-1 file keeps
 #: exactly the meaning it was written with: its `java` pack speaks for those eight, and every
-#: rule it could not have known about enforces, as any upgrade's new rule does.
+#: rule it could not have known about takes its tier's default, as any upgrade's new rule does.
 LEGACY_VERSION = 1
 LEGACY_PACK = "java"
 LEGACY_RULES = frozenset(
