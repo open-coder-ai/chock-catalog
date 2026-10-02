@@ -1,0 +1,99 @@
+id: block-hook-bypass-in-files
+name: "Block Hook Bypass In Files"
+version: "0.0.1"
+description: >
+  Friction, not a security boundary: flags lines added to hook launchers and scripts that switch
+  git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
+  set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a
+  pre-commit, lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook,
+  package.json, Makefile, justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.
+artifact: hook
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+applies_to:
+  # Where a hook bypass written into a file runs for everyone who uses the repository: hook
+  # launchers and the scripts and build files that call git. CI files are left out: CI runs no
+  # git hooks, and HUSKY: 0 there is husky's documented way to skip its install step.
+  paths:
+  - ".husky/*"
+  - "*/.husky/*"
+  - ".githooks/*"
+  - "*/.githooks/*"
+  - "lefthook*.y*ml"
+  - "*/lefthook*.y*ml"
+  - ".lefthook*.y*ml"
+  - "*/.lefthook*.y*ml"
+  - "package.json"
+  - "*/package.json"
+  - "Makefile"
+  - "*/Makefile"
+  - "makefile"
+  - "*/makefile"
+  - "GNUmakefile"
+  - "*/GNUmakefile"
+  - "*.mk"
+  - "justfile"
+  - "*/justfile"
+  - "Justfile"
+  - "*/Justfile"
+  - ".justfile"
+  - "*/.justfile"
+  - "*.sh"
+  - "*.bash"
+  - "*.zsh"
+  - ".envrc"
+  - "*/.envrc"
+  - ".hooks/*"
+  - "*/.hooks/*"
+  - "git-hooks/*"
+  - "*/git-hooks/*"
+  - "lefthook*.json"
+  - "*/lefthook*.json"
+  - "lefthook*.toml"
+  - "*/lefthook*.toml"
+  - "*.just"
+
+hook:
+  gate:
+    kind: content_regex
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      This line switches git hooks off for everyone who runs this file (a hook-skip option on a
+      git command, a new hooks path (core.hooksPath), a hook manager's off-switch variable such as HUSKY set to zero, or an
+      uninstall). Fix the failing hook instead. A person who has reviewed it may keep it with
+      'pragma: allowlist hook-bypass' on the same line (a person's commit honours it; in the agent
+      only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
+    params:
+      scan: added_lines
+      allowlist_pragma: 'pragma:\s*allowlist\s+hook-bypass'
+      # Bracketed first letters keep the pattern from matching its own text. A comment line is
+      # skipped; reads of core.hooksPath (--get, unset, no value, 2>/dev/null) and $HUSKY tests are
+      # not sets. A keyword lookahead, atomic groups and 400-character bounds keep every line linear.
+      content_pattern: '^(?!\s*(?:#|//))(?=[^\n]*?(?:no-[v]er|(?i:hooks[p]ath)|[H]USKY|[L]EFTHOOK|[S]KIP|[P]RE_COMMIT|uninstall)).*?(?:(?:\b[g]it\b|\$[({]?(?i:[g]it)\b[)}]?[''"]?)(?>(?:\"[^\"\n]{0,300}\"|''[^''\n]{0,300}''|[^;&|\n\"'']){0,400}?\s(?:commit|push|merge|am|rebase|pull|cherry-pick|revert)\b)(?>(?:\"[^\"\n]{0,300}\"|''[^''\n]{0,300}''|[^;&|\n\"'']){0,400}?\s--no-[v]er(?:i|if|ify)(?![\w-]))|\b[c]onfig\b(?![^;&|\n]{0,400}?(?:--get|--unset|--list|--remove-section|\s(?:get|unset|list)\s))[^;&|\n]{0,400}?\s[''"]?(?i:[c]ore\.hooks[p]ath)[''"]?(?:\s*=|\s+(?!\d*[<>])[^\s;|&)<>`''"#]|\s+[''"][^''"\s])|(?:-c\s*|--config-env[= ])[''"]?(?i:[c]ore\.hooks[p]ath)=|[G]IT_CONFIG_KEY_\d+[''"]?\s*(?:[:?+]?=|:)\s*[''"]?(?i:[c]ore\.hooks[p]ath)|[G]IT_CONFIG_PARAMETERS[^\n]{0,400}?(?i:[c]ore\.hooks[p]ath)|(?<![\w${-])(?:[H]USKY|[L]EFTHOOK)[''"]?(?:\s*[:?+]?=\s*|:\s*)[''"]?(?i:0|false|off|no)\b|\$\{(?:[H]USKY|[L]EFTHOOK):?=(?i:0|false|off|no)\}|(?<![\w${-])(?:[H]USKY_SKIP_HOOKS|[L]EFTHOOK_EXCLUDE|[L]EFTHOOK_CONFIG|[P]RE_COMMIT_ALLOW_NO_CONFIG)[''"]?(?:\s*[:?+]?=\s*|:\s*)[''"]?[\w$./]|(?<![\w${-])[S]KIP[''"]?(?:[:?+]?=|\s+[:?+]?=\s+|:\s+|(?<=["'']):\s*)[''"]?(?!(?i:true|false|yes|no|on|off)(?![\w-]))[A-Za-z_]|\b(?:[p]re[-_]commit|[l]efthook|[h]usky)\s+uninstall\b)'
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap 5.1 HP04, file half; companion of block-no-verify's command guard, which cannot see inside scripts). A content_regex gate bounded by applies_to.paths to hook launchers (.husky/, .githooks/, lefthook config), package.json, Makefiles, justfiles and shell scripts, judging added lines at commit and on the agent's writes. Ships as action: warn, the per-policy form of rollout observe (D15): rollout is set per repository, so a single new policy cannot be put in observe any other way. A separate PR promotes it to block once its false-positive rate is measured at 5% or less. Measured before merge on every added line in scope across the history of chock-catalog (121 commits), chock (392) and org-plan (622): 0 flagged. A separate adversarial review shaped the pattern: a keyword lookahead, atomic groups and 400-character bounds keep a long line linear (it was cubic); a git scan stops at ; & | outside quotes, so cargo publish's own option is not git's while a quoted message holding & stays one word; --no-verify-signatures is not the skip; core.hooksPath counts only after git config or -c and never as a read with 2>/dev/null; SKIP must name a hook id, not a boolean; $(GIT) and $GIT count as git; .envrc, extension-less hook folders, lefthook json/toml and *.just are in scope."

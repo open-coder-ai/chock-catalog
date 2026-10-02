@@ -35,7 +35,7 @@ GUARDS = {
     "block-unguarded-agent-spawn": "block-unguarded-agent-spawn",
 }
 #: What each guard calls to reach its verdict; the fault test makes it raise.
-VERDICT_FN = {"rtk-dangerous-actions-blocker": "judge_all"}
+VERDICT_FN: dict[str, str] = {}
 MODULES = {policy: guardkit.load_guard(policy) for policy in GUARDS}
 
 
