@@ -8,10 +8,10 @@ Limits, stated rather than hidden:
 - one line at a time: a key and value split across lines (YAML block scalars, continuation lines)
   are missed;
 - a quoted value (one or three quote characters, so Python and TOML triple quotes count) ends at the
-  next quote character of any kind, a bare one at whitespace or `,;&#)}]`; an escaped quote or a `#`
+  next quote character of any kind, a bare one at whitespace or `,;#)}]` (or a later `&`); an escaped quote or a `#`
   ends a value early, and the prefix is judged only if it is still MIN_LEN long;
 - only space and tab count as blanks, at most 16 either side of the operator (a no-break space or a
-  wider gap is missed); XML forms (`<password>v</password>`, `key="password" value="v"`) are missed;
+  wider gap is missed); more than two YAML tags, or a tag over 151 characters, loses the value; XML forms (`<password>v</password>`, `key="password" value="v"`) are missed;
 - every offset is tried, so a key inside another assignment's value (`url=https://h/?token=...`)
   is still found, and a value is reported once, under the first key that names it;
 - keys are ASCII words; a key longer than 128 characters is seen only from a dash or dot inside its
@@ -42,7 +42,7 @@ _ASSIGN = re.compile(
     r"""(?<![A-Za-z0-9_])(?P<kq>["'`]?)(?P<key>[A-Za-z_][A-Za-z0-9_.-]{0,127}+)(?P=kq)[ \t]{0,16}+(?::=|=>|[:=])"""
     r"""[ \t]{0,16}+(?P<tags>(?:(?:!{1,2}[\w./:-]{0,151}+|&[\w.-]{1,151}+)[ \t]{1,16}+){0,2})"""
     r"""(?:(?P<q>(?P<qc>["'`])(?:(?P=qc){2})?+)(?:(?i:bearer|basic|token|bot)[ \t]{1,16}+)?+(?P<qval>[^"'`\r\n]{0,151}+)"""
-    r"""|(?:(?i:bearer|basic|token|bot)[ \t]{1,16}+)?+(?P<val>[^\s"'`,;&#)}\]]{1,151}+))"""
+    r"""|(?:(?i:bearer|basic|token|bot)[ \t]{1,16}+)?+(?P<val>[^\s"'`,;#)}\]][^\s"'`,;&#)}\]]{0,150}+))"""
 )
 _WORD = re.compile(r"\S+")
 _WORDS = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])")

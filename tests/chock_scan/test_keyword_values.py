@@ -177,6 +177,11 @@ def test_a_value_starting_with_a_tag_character_is_not_taken_for_a_tag(kv: Module
     assert found[0] in {"!" + VALUE, "&" + VALUE}
 
 
+def test_a_bare_value_may_start_with_an_ampersand(kv: ModuleType) -> None:
+    assert [c.value for c in kv.candidates(f"PASSWORD=&{VALUE}")] == ["&" + VALUE]
+    assert [c.value for c in kv.candidates(f"a=1&token={VALUE}&b=2")] == [VALUE]
+
+
 def test_an_empty_quoted_value_reports_nothing_after_it(kv: ModuleType) -> None:
     assert list(kv.candidates(f'password = "" # {VALUE}')) == []
 

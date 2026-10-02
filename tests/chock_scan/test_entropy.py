@@ -203,6 +203,11 @@ def test_pathological_values_are_fast(en: ModuleType, value: str) -> None:
         "!Ref Qz8p!L2wXy7Kd3mNv9",
         "arn:aws:secretsmanager:Qz8pL2wXy7Kd3mNv9",
         "ENC[Qz8pL2wXy7Kd3mNv9]",
+        "os.environ.get('DB_PASSWORD', 'Qz8pL2wXy7Kd3mNv9')",  # round 3: a real fallback secret
+        "getenv('DB_PASSWORD', 'Qz8pL2wXy7Kd3mNv9')",
+        "env('DB_PASSWORD', 'Qz8pL2wXy7Kd3mNv9')",
+        "ENV.fetch('X', 'Qz8pL2wXy7Kd3mNv9')",
+        "!Sub Qz8p!L2wXy7Kd3mNv9${AWS::Region}",
     ],
 )
 def test_reference_digest_and_data_shapes_inside_a_secret_allow_nothing(en: ModuleType, value: str) -> None:

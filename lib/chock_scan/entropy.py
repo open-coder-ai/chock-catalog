@@ -10,8 +10,10 @@ Limits, stated rather than hidden:
 - a UUID is allowed (reason "uuid"), so a credential issued as a bare UUID is missed;
 - a value whose text contains a placeholder word (example, changeme, ...) is allowed, so a real
   secret that happens to contain one is missed;
-- a value that is wholly a reference form (`${X}`, `<...>`, `{{ x }}`, `ENC[...]`) is allowed, so a
-  secret written as `<s3cr3t>` is missed; a reference form inside a longer value allows nothing;
+- a value that is wholly a wrapper form (`${...}`, `$(...)`, `{{...}}`, `{%...%}`, `<...>`, `%(...)s`,
+  `vault:...`, `!Ref ...`, `ENC[AES256_GCM,...]`, a secretsmanager ARN) is allowed whatever the
+  wrapper holds, so a secret written as `<s3cr3t>` is missed; env lookups allow only an empty
+  default; a reference form inside a longer value allows nothing;
 - digests are allowed only with a body of the algorithm's exact length; data: URIs only as base64
   images or fonts (their content is not decoded);
 - values longer than 150 characters are not judged here (reason "long"); blobs are NP27's.
@@ -57,11 +59,11 @@ _DATA_URI = re.compile(r"(?i)data:(?:image|font)/[a-z0-9.+-]+(?:;[a-z0-9=._-]+)*
 _REFERENCE = re.compile(
     r"\$\{[^{}]*\}|\$\([^()]*\)|\$[A-Z_][A-Z0-9_]*|\{\{[^{}]*\}\}|\{%[^%]*%\}|%\([A-Za-z0-9_]+\)s|<[^<>]*>"
     r"|ENC\[AES256_GCM,[^\]]*\]|vault:[\w/.-]+(?:#\w+)?"
-    r"|os\.environ(?:\[[\"'][A-Za-z_]\w*[\"']\]|\.get\([\"'][A-Za-z_]\w*[\"'][^()]*\))"
+    r"|os\.environ(?:\[[\"'][A-Za-z_]\w*[\"']\]|\.get\([\"'][A-Za-z_]\w*[\"'](?:,\s*(?:None|nil|null|''|\"\"))?\))"
     r"|process\.env(?:\.[A-Za-z_]\w*|\[[\"'][A-Za-z_]\w*[\"']\])"
-    r"|(?:os\.|System\.)?getenv\([\"'][A-Za-z_]\w*[\"'][^()]*\)|env\([\"']?[A-Za-z_]\w*[\"']?[^()]*\)"
-    r"|ENV(?:\[[\"'][A-Za-z_]\w*[\"']\]|\.fetch\([\"'][A-Za-z_]\w*[\"'][^()]*\))"
-    r"|!Ref\s[A-Za-z][\w.]*|!GetAtt\s[A-Za-z][\w.]*|!Sub\s.*\$\{[\w.:-]+\}.*"
+    r"|(?:os\.|System\.)?getenv\([\"'][A-Za-z_]\w*[\"'](?:,\s*(?:None|nil|null|''|\"\"))?\)|env\([\"']?[A-Za-z_]\w*[\"']?(?:,\s*(?:None|nil|null|''|\"\"))?\)"
+    r"|ENV(?:\[[\"'][A-Za-z_]\w*[\"']\]|\.fetch\([\"'][A-Za-z_]\w*[\"'](?:,\s*(?:None|nil|null|''|\"\"))?\))"
+    r"|!Ref\s[A-Za-z][\w.]*|!GetAtt\s[A-Za-z][\w.]*|!Sub\s(?P<sq>[\"']?)(?:[\w./:-]|\$\{[\w.:-]+\})*\$\{[\w.:-]+\}(?:[\w./:-]|\$\{[\w.:-]+\})*(?P=sq)"
     r"|arn:aws:secretsmanager:[a-z0-9-]+:\d{12}:secret:[\w/+=.@-]+"
 )
 #: Placeholder and documentation words; matched case-insensitively anywhere in the value. AWS's
