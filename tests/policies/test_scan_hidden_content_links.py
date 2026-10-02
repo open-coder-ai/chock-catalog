@@ -81,12 +81,27 @@ def test_definitions() -> None:
     ]
 
 
-def test_image_labels_and_image_closers() -> None:
-    doc = "![A][Ref] ![b][] ![c] ![d](x) [e](y) [![f](z)](w) ![g\\]](v) ](u)\n\n[h](t)"
+def test_image_labels() -> None:
+    doc = "![A][Ref] ![b][] ![c] ![d](x) [![f](z)](w) ![g\\]](v)"
     assert text.image_labels(doc) == {"ref", "b", "c", "g\\"}  # a label is read loosely; only lookups use it
+
+
+@pytest.mark.parametrize(
+    ("doc", "images"),
+    [
+        ("[e](y)", [False]),
+        ("![d](x)", [True]),
+        ("[![f](z)](w)", [True, False]),
+        ("![g\\]](v)", [True]),
+        ("](u)", [True]),
+        ("![a]\n\n[h](t)", [False]),
+        ("![a] [h](t)", [True]),
+        ('[ ![a <x title="]">](u)', [True]),
+    ],
+)
+def test_image_closers(doc: str, images: list[bool]) -> None:
     ends = [i for i in range(len(doc)) if doc.startswith("](", i)]
-    images = blocks.image_closers(doc)
-    assert [i in images for i in ends] == [True, False, True, False, True, True, False]
+    assert [i in blocks.image_closers(doc) for i in ends] == images
 
 
 @pytest.mark.parametrize(

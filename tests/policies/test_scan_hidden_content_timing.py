@@ -33,6 +33,9 @@ SHAPES = {
     "links": "[x](y) ![z](w) ",
     "image closers": "](/)](a:)",
     "waiver lines": " " * 2000 + "\n" + "<!--run-->" * 200 + "\n",
+    "image openers": "![",
+    "table cells": "|---|---|\n| `a | <!-- b --> ` |\n",
+    "keyframes": "<style>@keyframes k{to{opacity:1}} .a{opacity:0;animation:k 1s}</style>",
 }
 
 

@@ -177,26 +177,6 @@ def test_style_and_script_text_is_not_hidden_text() -> None:
     assert hidden_of("<div hidden><script>var a = 1;</script></div>") == []
 
 
-def test_an_animated_rule_is_judged_unless_a_keyframe_here_reveals_it() -> None:
-    show = css.revealing_keyframes(
-        "@keyframes show { from { opacity: 0 } to { opacity: 1 } } @keyframes spin { to { rotate: 1turn } }"
-    )
-    assert show == {"show"}
-    decls = css.declarations("opacity:0; animation: show 2s forwards")
-    assert css.hidden(decls, None, revealing=show) is None
-    assert css.hidden(decls, None) == "opacity 0"
-    assert css.hidden(css.declarations("display:none; animation-name: spin"), None, revealing=show) == "display none"
-    assert css.revealing_keyframes("}} @keyframes x { a { b {") == frozenset()
-    doc = "<style>@keyframes show{to{opacity:1}} .l{opacity:0;animation:show 1s}</style><p class=l>hello</p>"
-    assert hidden_of(doc) == []
-    inline = "<style>@keyframes k1{to{opacity:1}} .l{opacity:0}</style><text class=l style='animation-name:k1'>a</text>"
-    assert hidden_of(inline) == [("style", "opacity 0")]
-    assert hidden_of(inline.replace("k1'", "k2'")) == [
-        ("style", "opacity 0"),
-        ("text", "hidden by a style rule (opacity 0)"),
-    ]
-
-
 def test_html_aria_inside_aria_and_strict_inside_aria() -> None:
     long = "x" * 120
     doc = f'<div aria-hidden="true"><div aria-hidden="true">{long}</div><b hidden>y</b></div>'

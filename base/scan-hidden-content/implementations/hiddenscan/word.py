@@ -128,8 +128,8 @@ def _parts(data: bytes) -> list[tuple[str, bytes]]:
         if len(raw) > MAX_PART or total > MAX_TOTAL:
             msg = f"{info.filename} unpacks past {MAX_PART >> 20} MB, or the document past {MAX_TOTAL >> 20} MB"
             raise UnreadableError(msg)
-        head = raw[:64].lstrip(b"\xef\xbb\xbf \t\r\n")
-        if raw.startswith((b"\xff\xfe", b"\xfe\xff")) or head.startswith(b"<\x00"):
+        head = raw.lstrip(b"\xef\xbb\xbf \t\r\n")[:4]
+        if raw.startswith((b"\xff\xfe", b"\xfe\xff")) or (head.startswith((b"<", b"\x00")) and b"\x00" in head):
             msg = f"{info.filename} is XML in UTF-16, which this reader does not judge"
             raise UnreadableError(msg)
         if head.startswith(b"<"):

@@ -88,6 +88,14 @@ def test_unreadable_documents(data: bytes, why: str) -> None:
         docx.hidden_runs(data)
 
 
+def test_a_part_may_start_with_any_amount_of_whitespace() -> None:
+    raw = b" " * 100 + b"\n" + part_of(VANISH).encode()
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("word/document.xml", raw)
+    assert [r for _, r, _ in docx.hidden_runs(buffer.getvalue())] == ["hidden (vanish)"]
+
+
 def test_a_part_is_found_by_its_bytes_not_its_name() -> None:
     data = document(VANISH, part="word/document.bin", extra={"media/a.png": b"\x89PNG", "docProps/x": b"  \n<x/>"})
     assert [(p, r) for p, r, _ in docx.hidden_runs(data)] == [("word/document.bin", "hidden (vanish)")]
@@ -106,7 +114,7 @@ def test_the_whole_document_and_its_elements_are_bounded(monkeypatch: pytest.Mon
     assert len(docx.hidden_runs(document(many))) == 2100
 
 
-@pytest.mark.parametrize("bom", [b"\xff\xfe", b"\xfe\xff", b"<\x00"])
+@pytest.mark.parametrize("bom", [b"\xff\xfe", b"\xfe\xff", b"<\x00", b" \x00"])
 def test_utf16_parts_are_unreadable(bom: bytes) -> None:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:

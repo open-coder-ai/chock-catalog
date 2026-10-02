@@ -12,7 +12,8 @@ DEFINITION = re.compile(
     r"(?:(?:[ \t]+|[ \t]*\n(?:[ \t]*>)?[ \t]*)(?:\"(?P<dq>[^\"\n]*)\"|'(?P<sq>[^'\n]*)'|\((?P<pq>[^)\n]*)\)))?[ \t]*$",
     re.MULTILINE,
 )
-IMAGE_REF = re.compile(r"!\[([^\]\n]{0,999})\](?:\[([^\]\n]{0,999})\])?(?!\()")
+#: Labels hold no unescaped bracket, so each match stops at the next one: linear on a run of brackets.
+IMAGE_REF = re.compile(r"!\[([^\[\]\n]{0,999})\](?:\[([^\[\]\n]{0,999})\])?(?!\()")
 KATEX = re.compile(
     r"\\(?:color|textcolor|colorbox)\s*\{\s*(?:white|transparent|#?fff(?:fff)?(?:00)?|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\s*\}"
     r"|\\[hv]?phantom\s*\{",

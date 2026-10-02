@@ -13,23 +13,30 @@ FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 #: blank as code what a renderer passes through as HTML. Comments themselves are found by markdown.comments.
 HTML_ENDS = (
     (
-        re.compile(r"^ {0,3}<(?:pre|script|style|textarea)(?=[\s>]|$)", re.IGNORECASE),
+        re.compile(r"^[ \t]*<(?:pre|script|style|textarea)(?=[\s>]|$)", re.IGNORECASE),
         ("</pre>", "</script>", "</style>", "</textarea>"),
     ),
-    (re.compile(r"^ {0,3}<!--"), ("-->",)),
-    (re.compile(r"^ {0,3}<\?"), ("?>",)),
-    (re.compile(r"^ {0,3}<!\[CDATA\["), ("]]>",)),
-    (re.compile(r"^ {0,3}<![A-Za-z]"), (">",)),
+    (re.compile(r"^[ \t]*<!--"), ("-->",)),
+    (re.compile(r"^[ \t]*<\?"), ("?>",)),
+    (re.compile(r"^[ \t]*<!\[CDATA\["), ("]]>",)),
+    (re.compile(r"^[ \t]*<![A-Za-z]"), (">",)),
 )
-HTML_OTHER = re.compile(r"^ {0,3}</?[A-Za-z]")
+#: Any indentation: inside a list item an HTML block sits at the item's content column; outside one an
+#: indented line is code, shown either way, so reading it as HTML only reports more.
+HTML_OTHER = re.compile(r"^[ \t]*</?[A-Za-z]")
 #: Lines that start a block of their own, so a code span never pairs backticks across them.
-BLOCK_START = re.compile(r"^ {0,3}(?:>|[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$))")
-#: Lines that are a whole block: an ATX heading or a thematic break.
-SINGLE = re.compile(r"^ {0,3}(?:#{1,6}(?:[ \t].*)?|(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$")
+BLOCK_START = re.compile(r"^[ \t]*(?:>|[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$))")
+#: Lines that end a run on both sides: an ATX heading, a thematic break, a setext underline.
+SINGLE = re.compile(r"^[ \t]*(?:#{1,6}(?:[ \t].*)?|(?:\*[ \t]*){3,}|(?:-[ \t]*){2,}|(?:_[ \t]*){3,}|=+[ \t]*|-[ \t]*)$")
+#: A GFM table's delimiter row: after it, each row's cells are runs of their own until a blank line.
+TABLE_DELIMITER = re.compile(
+    r"^[ \t]*\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)+\|?[ \t]*$|^[ \t]*\|[ \t]*:?-+:?[ \t]*\|?[ \t]*$"
+)
+CELL = re.compile(r"((?<!\\)\|)")
 TICKS = re.compile(r"(\\*)(`+)")
-#: Tokens of link text: an escape, an image or link opener, a closer followed by a destination, a closer,
-#: and a blank line (which ends any open link text).
-BRACKETS = re.compile(r"\\.|!\[|\[|\]\(|\]|\n[ \t]*\n", re.DOTALL)
+#: Tokens of link text: an escape, an image or link opener, a closer followed by a destination, and a
+#: blank line (which ends any open link text).
+BRACKETS = re.compile(r"\\.|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
 CODE, HTML, TEXT, BREAK = "code", "html", "text", "break"
 
 
@@ -107,7 +114,8 @@ def blank_code(text: str) -> str:
     """Markdown with fenced blocks and code spans replaced by spaces, newlines kept: code is shown, not fetched.
 
     Code spans are paired only within one run of paragraph lines: a blank line, an HTML block, a fence, a
-    heading, a thematic break, a list item or a block quote ends the run."""
+    heading or setext underline, a thematic break, a list item or a block quote ends the run, and after a
+    GFM table's delimiter row each cell is a run of its own."""
     lines = text.split("\n")
     out: list[str] = []
     segment: list[str] = []
@@ -117,8 +125,16 @@ def blank_code(text: str) -> str:
             out.extend(_blank_spans("\n".join(segment)).split("\n"))
             segment.clear()
 
+    table = False
     for line, kind in zip(lines, classify(lines), strict=True):
-        if kind == TEXT and SINGLE.match(line):
+        table = table and kind == TEXT
+        if kind == TEXT and TABLE_DELIMITER.match(line):
+            flush()
+            table = True
+            out.append(line)
+        elif table:
+            out.append("".join(_blank_spans(cell) for cell in CELL.split(line)))
+        elif kind == TEXT and SINGLE.match(line):
             flush()
             out.append(_blank_spans(line))
         elif kind == TEXT:
@@ -139,20 +155,23 @@ def tag_view(raw: str, blanked: str) -> str:
 
 
 def image_closers(text: str) -> set[int]:
-    """Offsets of each `](` that closes an image's text (`![...](`), escapes honoured, in one forward pass.
-    A `](` with no opener is counted as an image, the stricter reading."""
+    """Offsets of each `](` that may close an image's text, in one forward pass with escapes honoured. The
+    stricter reading: a `](` counts when no opener is open or any open opener is an image's, and a bare `]`
+    closes nothing, since a bracket inside inline HTML, an autolink or a reference is not one this pass can
+    place."""
     stack: list[bool] = []
+    images = 0
     out: set[int] = set()
     for m in BRACKETS.finditer(text):
         piece = m.group(0)
         if piece in ("![", "["):
             stack.append(piece == "![")
+            images += piece == "!["
         elif piece == "](":
-            if not stack or stack.pop():
+            if not stack or images:
                 out.add(m.start())
-        elif piece == "]":
             if stack:
-                stack.pop()
+                images -= stack.pop()
         elif piece[0] == "\n":
-            stack.clear()
+            stack, images = [], 0
     return out

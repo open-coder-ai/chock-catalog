@@ -11,6 +11,7 @@ from html.parser import HTMLParser
 from typing import Any
 
 from hiddenscan import css as hidden_css
+from hiddenscan.motion import Motion
 from hiddenscan.vocab import visible
 
 #: Attributes whose URL the renderer fetches by itself: loading the page is the request.
@@ -101,12 +102,12 @@ def style_blocks(text: str) -> list[tuple[int, str]]:
     return out
 
 
-def hidden_selectors(sheets: list[str], revealing: frozenset[str]) -> dict[str, str]:
+def hidden_selectors(sheets: list[str], motion: Motion) -> dict[str, str]:
     """`.class` and `#id` names that a style rule anywhere in the file hides, with the reason."""
     out: dict[str, str] = {}
     for sheet in sheets:
         for _, selector, decls in hidden_css.rules(sheet):
-            if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None, revealing=revealing)):
+            if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None, motion=motion)):
                 out.update(dict.fromkeys(hidden_css.selector_targets(selector), reason))
     return out
 
@@ -114,9 +115,9 @@ def hidden_selectors(sheets: list[str], revealing: frozenset[str]) -> dict[str, 
 class Collector(HTMLParser):
     """Collects attribute URLs, hidden elements with their text, and hidden rules in style elements."""
 
-    def __init__(self, *, xml: bool, rules: dict[str, str], revealing: frozenset[str] = frozenset()) -> None:
+    def __init__(self, *, xml: bool, rules: dict[str, str], motion: Motion) -> None:
         super().__init__(convert_charrefs=True)
-        self.xml, self.rules, self.revealing = xml, rules, revealing
+        self.xml, self.rules, self.motion = xml, rules, motion
         self.out = Collected()
         self.stack: list[Frame] = []
         # Bookkeeping that keeps each tag O(1): open positions per tag name, the open frames that hide,
@@ -158,22 +159,26 @@ class Collector(HTMLParser):
         if "bgcolor" in attrs and "background-color" not in decls:
             decls["background-color"] = attrs["bgcolor"].strip().lower()
         behind = hidden_css.background(decls) or under
-        moving = hidden_css.animated(decls, self.revealing)
         targets = [f"#{i.lower()}" for i in attrs.get("id", "").split()[:1]]
         targets += [f".{c.lower()}" for c in attrs.get("class", "").split()]
         far = svg and any((hidden_css.number(attrs.get(a, "")) or (0, ""))[0] <= OFF_SVG for a in ("x", "y"))
         found = (
             ("hidden attribute" if "hidden" in attrs else None)
-            or hidden_css.hidden(decls, under or self._page(), svg=svg, revealing=self.revealing)
+            or hidden_css.hidden(decls, under or self._page(), svg=svg, motion=self.motion)
             or ("positioned off screen" if far else None)
             or next(
-                (f"hidden by a style rule ({self.rules[t]})" for t in targets if t in self.rules and not moving),
+                (f"hidden by a style rule ({self.rules[t]})" for t in targets if self._ruled(t, decls)),
                 None,
             )
             or (NOT_DRAWN if svg and tag in NOT_DRAWN_TAGS else None)
             or (ARIA if attrs.get("aria-hidden", "").strip().lower() == "true" else None)
         )
         return found, behind
+
+    def _ruled(self, target: str, decls: dict[str, str]) -> bool:
+        """Whether a style rule hides this element: its class or id is hidden, and its own animation does
+        not play a keyframe of the file that shows what the rule hides."""
+        return target in self.rules and not self.motion.reveals(decls, self.rules[target])
 
     def _page(self) -> str | None:
         """The page behind text no element gives a background: white in HTML and Markdown (inline SVG too);
@@ -242,9 +247,7 @@ class Collector(HTMLParser):
         line = self.getpos()[0]
         breaks = [m.start() for m in re.finditer("\n", sheet)]
         for offset, selector, decls in hidden_css.rules(sheet):
-            if not hidden_css.no_text(selector) and (
-                reason := hidden_css.hidden(decls, None, revealing=self.revealing)
-            ):
+            if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None, motion=self.motion)):
                 at = line + bisect.bisect_left(breaks, offset + len(selector))
                 self.out.hidden.append((at, "style", reason, selector, " ".join(selector.split())))
         for offset, url in hidden_css.urls(sheet):
@@ -265,8 +268,8 @@ class Collector(HTMLParser):
 
 def collect(text: str, *, xml: bool = False) -> Collected:
     sheets = [sheet for _, sheet in style_blocks(text)]
-    revealing = frozenset().union(*(hidden_css.revealing_keyframes(sheet) for sheet in sheets))
-    parser = Collector(xml=xml, rules=hidden_selectors(sheets, revealing), revealing=revealing)
+    motion = Motion(sheets, text)
+    parser = Collector(xml=xml, rules=hidden_selectors(sheets, motion), motion=motion)
     parser.feed(text)
     parser.close()
     return parser.out

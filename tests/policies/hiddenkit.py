@@ -12,7 +12,7 @@ from trees import ROOT
 POLICY = "scan-hidden-content"
 GATE = "scan-hidden-content-gate.py"
 IMPL = ROOT / "base" / POLICY / "implementations"
-READERS = ("blocks", "colours", "css", "word", "markup", "markdown", "links", "vocab")
+READERS = ("blocks", "colours", "css", "motion", "word", "markup", "markdown", "links", "vocab")
 
 
 def _load() -> tuple[ModuleType, dict[str, ModuleType]]:

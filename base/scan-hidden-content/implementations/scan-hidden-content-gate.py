@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import sys
+import time
 from pathlib import Path, PurePosixPath
 
 # The scanners ship beside this script. A missing or broken copy raises here, and the runner treats an
@@ -30,6 +31,9 @@ MAX_FINDINGS = 10000
 #: A text file past this is not parsed (the 30-second budget covers the baseline run too); it is
 #: reported, keyed by its whole text, so every change to it is new.
 MAX_TEXT = 1 << 20
+#: The engine gives the change run and the baseline run 30 seconds together. Past this many seconds in one
+#: run, the files not yet read are reported, marked new, so one slow file cannot cost every finding.
+DEADLINE = 12.0
 SHOWN = 50
 MARKDOWN = {".md", ".mdx", ".markdown", ".mdc"}
 MARKUP = {".html", ".htm", ".xhtml", ".svg", ".xml"}
@@ -190,10 +194,14 @@ def findings(payload: dict) -> list[dict]:
         raise TypeError("writes")
     event = str(payload.get("event", ""))
     out: list[dict] = []
+    started = time.monotonic()
     for raw_path, text in sorted(writes.items()):
         path = str(raw_path).replace("\\", "/")
         kind = kind_of(path)
-        if kind == "docx":
+        if kind and time.monotonic() - started > DEADLINE:
+            message = f"not read: the gate's {DEADLINE:.0f}-second share of its budget ran out first"
+            out.append({**_finding(path, 1, "not-judged", "late", message), "new": True})
+        elif kind == "docx":
             out += docx_findings(path, payload)
         elif kind and isinstance(text, str) and len(text) > MAX_TEXT:
             message = f"{len(text)} characters, more than {MAX_TEXT}: not parsed, judged as changed"

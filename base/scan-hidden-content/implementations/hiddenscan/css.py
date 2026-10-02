@@ -62,10 +62,6 @@ SURROGATES = range(0xD800, 0xE000)
 #: Offsets past these put a box out of any viewport.
 OFF_PX, OFF_EM, OFF_VW, FAR_PX = -999, -50, -50, 9999
 #: Properties a keyframe may change to show what a block hides.
-REVEALING = re.compile(
-    r"opacity|visibility|display|color|transform|scale|translate|font|clip|fill|left|top|right|bottom|height|width|indent|margin"
-)
-KEYFRAME_TOKENS = re.compile(rf"@(?:-webkit-)?keyframes\s+([\w-]+)\s*\{{|\{{|\}}|{REVEALING.pattern}")
 FAINT = 0.05
 
 
@@ -172,41 +168,12 @@ def _faint(value: str) -> bool:
     return bool(opacity) and opacity[0] <= (FAINT * 100 if opacity[1] == "%" else FAINT)
 
 
-def revealing_keyframes(sheet: str) -> frozenset[str]:
-    """Names of @keyframes in a style sheet that change a property hiding could use, in one pass."""
-    out, open_frames, depth = set(), [], 0
-    for m in KEYFRAME_TOKENS.finditer(sheet.lower()):
-        piece = m.group(0)
-        if m.group(1):
-            depth += 1
-            open_frames.append((m.group(1), depth))
-        elif piece == "{":
-            depth += 1
-        elif piece == "}":
-            if open_frames and open_frames[-1][1] == depth:
-                open_frames.pop()
-            depth = max(depth - 1, 0)
-        elif open_frames:
-            out.add(open_frames[-1][0])
-    return frozenset(out)
-
-
-def animated(decls: dict[str, str], revealing: frozenset[str]) -> bool:
-    """Whether a block runs a keyframe of this file that can reveal what hiding sets."""
-    names = re.split(r"[\s,]+", decls.get("animation-name", "") + " " + decls.get("animation", ""))
-    return bool(revealing & set(names))
-
-
-def hidden(
-    decls: dict[str, str], under: str | None, *, svg: bool = False, revealing: frozenset[str] = frozenset()
-) -> str | None:
+def hidden(decls: dict[str, str], under: str | None, *, svg: bool = False, motion: object = None) -> str | None:
     """Why a declaration block hides its text, or None. `under` is the background behind the text, when
     known; without it, only a colour equal to the block's own background or transparent counts. In SVG
-    the text colour is `fill`."""
+    the text colour is `fill`. With `motion` (a motion.Motion), a block a keyframe of the file shows is not hidden."""
     if not decls:
         return None
-    if animated(decls, revealing):
-        return None  # a keyframe in this file changes what hides it, so it may be shown over time
     source = (
         "fill"
         if svg and "fill" in decls
@@ -232,7 +199,8 @@ def hidden(
         (_offscreen(decls) or _collapsed(decls), "positioned off screen, clipped or collapsed"),
         (text == "transparent" or (text is not None and text == behind), "text colour equal to background"),
     )
-    return next((reason for hit, reason in checks if hit), None)
+    reason = next((reason for hit, reason in checks if hit), None)
+    return None if reason and motion is not None and motion.reveals(decls, reason) else reason
 
 
 def no_text(selector: str) -> bool:
