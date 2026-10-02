@@ -723,3 +723,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: block-hook-bypass-in-files
+  path: base/block-hook-bypass-in-files
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 20
+  eval_executed: 20
+  description: 'Friction, not a security boundary: flags lines added to hook launchers and scripts that
+    switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
+    set, the husky, lefthook and pre-commit off-switch variables (HUSKY or LEFTHOOK zero, SKIP and the
+    like), an uninstall by pre-commit, lefthook or husky -- in .husky/, .githooks/, lefthook, package.json,
+    Makefile, justfile, *.sh. Warns only (observe). Misses: split lines, -n, other files.'
