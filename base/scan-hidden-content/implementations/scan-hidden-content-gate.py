@@ -15,7 +15,8 @@ from pathlib import Path, PurePosixPath
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from hiddenscan import links as hidden_urls  # noqa: E402 -- after the path and cache setup
+from hiddenscan import blocks  # noqa: E402 -- after the path and cache setup
+from hiddenscan import links as hidden_urls  # noqa: E402
 from hiddenscan import markdown as hidden_text  # noqa: E402
 from hiddenscan import markup as hidden_html  # noqa: E402
 from hiddenscan import word as hidden_docx  # noqa: E402
@@ -45,7 +46,7 @@ MANAGED = re.compile(r"^\.agents/policies/|^\.chock/")
 #: A waiver is a line holding nothing but the marker, as a comment, just above the finding: a marker
 #: inside the hidden text or the URL itself is part of what is judged, never a waiver.
 WAIVER = re.compile(
-    r"\s*(?:<!--\s*{m}\s*-->|\{{/\*\s*{m}\s*\*/\}}|\[//\]:\s*#\s*\(\s*{m}\s*\)|#\s*{m})\s*".format(
+    r"(?:<!--\s*{m}\s*-->|\{{/\*\s*{m}\s*\*/\}}|\[//\]:\s*#\s*\(\s*{m}\s*\)|#\s*{m})".format(
         m=r"chock:\s*allow\s+scan-hidden-content"
     )
 )
@@ -119,8 +120,8 @@ def text_findings(path: str, text: str, kind: str) -> list[dict]:
 
     In Markdown, URLs are read with code blanked (code is shown, not fetched), and tags and comments from the
     text with only the '<' of code removed, so code inside a comment or an HTML block still counts."""
-    scan = hidden_text.blank_code(text) if kind == "markdown" else text
-    tags = hidden_text.tag_view(text, scan) if kind == "markdown" else text
+    scan = blocks.blank_code(text) if kind == "markdown" else text
+    tags = blocks.tag_view(text, scan) if kind == "markdown" else text
     lines, scan_lines = hidden_text.Lines(scan), scan.split("\n")
     words = vocab()
     collected = hidden_html.collect(tags, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"))
@@ -170,13 +171,15 @@ def docx_findings(path: str, payload: dict) -> list[dict]:
     ]
 
 
-def waived(finding: dict, lines: list[str], event: str) -> bool:
-    """A person's waiver: a marker-only comment line just above the finding. CI does not honour one on a
-    would-block finding, since a pull request's author may be anyone."""
+def waived(finding: dict, lines: list[str], event: str, seen: dict[int, bool]) -> bool:
+    """A person's waiver: a marker-only comment line just above the finding, each line read once. CI does
+    not honour one on a would-block finding, since a pull request's author may be anyone."""
     number = finding["line"]
-    if event == "ci" and finding["rule"] in hidden_urls.BLOCKING:
+    if number <= 1 or (event == "ci" and finding["rule"] in hidden_urls.BLOCKING):
         return False
-    return number > 1 and bool(WAIVER.fullmatch(lines[number - 2]))
+    if number not in seen:
+        seen[number] = bool(WAIVER.fullmatch(lines[number - 2].strip()))
+    return seen[number]
 
 
 def findings(payload: dict) -> list[dict]:
@@ -197,8 +200,10 @@ def findings(payload: dict) -> list[dict]:
             raw = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
             out.append(_finding(path, 1, "too-large", raw, message))
         elif kind and isinstance(text, str):
-            lines = text.split("\n")
-            out += [f for f in text_findings(path, text, kind) if not (event in WAIVABLE and waived(f, lines, event))]
+            lines, seen = text.split("\n"), {}
+            out += [
+                f for f in text_findings(path, text, kind) if not (event in WAIVABLE and waived(f, lines, event, seen))
+            ]
     return out
 
 

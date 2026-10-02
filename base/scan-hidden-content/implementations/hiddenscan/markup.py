@@ -49,14 +49,17 @@ VOID = set(
     ]
 )
 #: An end tag does not close an element outside these: the browser ignores it (table scope).
-SCOPE = {"td", "th", "table", "caption", "template", "html"}
+SCOPE = {"td", "th", "table", "caption", "template", "html", "select", "object", "marquee", "applet"}
+SCOPE |= {"foreignobject", "desc", "title", "mi", "mo", "mn", "ms", "mtext", "annotation-xml"}
+#: Table parts a browser drops when no table is open.
+TABLE_PARTS = {"td", "th", "tr", "caption", "thead", "tbody", "tfoot", "col", "colgroup"}
 FOREIGN = {"svg", "math"}
 ARIA = "aria-hidden wrapping long text"
-NOT_DRAWN = "SVG metadata or defs (never drawn)"
+NOT_DRAWN = "SVG metadata, defs, symbol, clipPath or mask (not drawn as text)"
 #: desc and title are not here: screen readers present them, so they are not hidden from a person.
-NOT_DRAWN_TAGS = {"metadata", "defs"}
+NOT_DRAWN_TAGS = {"metadata", "defs", "symbol", "clippath", "mask"}
 #: These hide text from some readers only; they count once the text is this long.
-LONG_ONLY = {ARIA: 100, NOT_DRAWN: 100}
+LONG_ONLY = {ARIA: 100}
 KEPT_TEXT = 2000
 OFF_SVG = -999
 
@@ -98,12 +101,12 @@ def style_blocks(text: str) -> list[tuple[int, str]]:
     return out
 
 
-def hidden_selectors(text: str) -> dict[str, str]:
+def hidden_selectors(sheets: list[str], revealing: frozenset[str]) -> dict[str, str]:
     """`.class` and `#id` names that a style rule anywhere in the file hides, with the reason."""
     out: dict[str, str] = {}
-    for _, sheet in style_blocks(text):
+    for sheet in sheets:
         for _, selector, decls in hidden_css.rules(sheet):
-            if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None)):
+            if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None, revealing=revealing)):
                 out.update(dict.fromkeys(hidden_css.selector_targets(selector), reason))
     return out
 
@@ -111,9 +114,9 @@ def hidden_selectors(text: str) -> dict[str, str]:
 class Collector(HTMLParser):
     """Collects attribute URLs, hidden elements with their text, and hidden rules in style elements."""
 
-    def __init__(self, *, xml: bool, rules: dict[str, str]) -> None:
+    def __init__(self, *, xml: bool, rules: dict[str, str], revealing: frozenset[str] = frozenset()) -> None:
         super().__init__(convert_charrefs=True)
-        self.xml, self.rules = xml, rules
+        self.xml, self.rules, self.revealing = xml, rules, revealing
         self.out = Collected()
         self.stack: list[Frame] = []
         # Bookkeeping that keeps each tag O(1): open positions per tag name, the open frames that hide,
@@ -155,18 +158,27 @@ class Collector(HTMLParser):
         if "bgcolor" in attrs and "background-color" not in decls:
             decls["background-color"] = attrs["bgcolor"].strip().lower()
         behind = hidden_css.background(decls) or under
+        moving = hidden_css.animated(decls, self.revealing)
         targets = [f"#{i.lower()}" for i in attrs.get("id", "").split()[:1]]
         targets += [f".{c.lower()}" for c in attrs.get("class", "").split()]
         far = svg and any((hidden_css.number(attrs.get(a, "")) or (0, ""))[0] <= OFF_SVG for a in ("x", "y"))
         found = (
             ("hidden attribute" if "hidden" in attrs else None)
-            or hidden_css.hidden(decls, under if under or svg else hidden_css.DEFAULT_BACKGROUND, svg=svg)
+            or hidden_css.hidden(decls, under or self._page(), svg=svg, revealing=self.revealing)
             or ("positioned off screen" if far else None)
-            or next((f"hidden by a style rule ({self.rules[t]})" for t in targets if t in self.rules), None)
+            or next(
+                (f"hidden by a style rule ({self.rules[t]})" for t in targets if t in self.rules and not moving),
+                None,
+            )
             or (NOT_DRAWN if svg and tag in NOT_DRAWN_TAGS else None)
             or (ARIA if attrs.get("aria-hidden", "").strip().lower() == "true" else None)
         )
         return found, behind
+
+    def _page(self) -> str | None:
+        """The page behind text no element gives a background: white in HTML and Markdown (inline SVG too);
+        unknown in a standalone SVG or XML file, which paints its background with shapes."""
+        return None if self.xml else hidden_css.DEFAULT_BACKGROUND
 
     def _open(self, tag: str, attrs: list[tuple[str, str | None]], *, push: bool) -> None:
         line = self.getpos()[0]
@@ -175,6 +187,8 @@ class Collector(HTMLParser):
         # The background behind the text, when an element declares one. Unset, an HTML page is white; an SVG
         # paints its background with shapes this reader does not place, so there it stays unknown.
         under = self.stack[-1].background if self.stack else None
+        if tag in TABLE_PARTS and not self.where.get("table") and not (self.xml or self.foreign):
+            return  # a browser drops a table part outside a table
         reason, behind = self._reason(tag, named, under)
         if any(f.reason not in LONG_ONLY or reason in LONG_ONLY for f in self.hiding):
             reason = None  # already inside hidden text: the outer element is the finding
@@ -228,7 +242,9 @@ class Collector(HTMLParser):
         line = self.getpos()[0]
         breaks = [m.start() for m in re.finditer("\n", sheet)]
         for offset, selector, decls in hidden_css.rules(sheet):
-            if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None)):
+            if not hidden_css.no_text(selector) and (
+                reason := hidden_css.hidden(decls, None, revealing=self.revealing)
+            ):
                 at = line + bisect.bisect_left(breaks, offset + len(selector))
                 self.out.hidden.append((at, "style", reason, selector, " ".join(selector.split())))
         for offset, url in hidden_css.urls(sheet):
@@ -248,7 +264,9 @@ class Collector(HTMLParser):
 
 
 def collect(text: str, *, xml: bool = False) -> Collected:
-    parser = Collector(xml=xml, rules=hidden_selectors(text))
+    sheets = [sheet for _, sheet in style_blocks(text)]
+    revealing = frozenset().union(*(hidden_css.revealing_keyframes(sheet) for sheet in sheets))
+    parser = Collector(xml=xml, rules=hidden_selectors(sheets, revealing), revealing=revealing)
     parser.feed(text)
     parser.close()
     return parser.out

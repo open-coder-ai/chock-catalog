@@ -17,12 +17,14 @@ HIDING = ("vanish", "specVanish", "webHidden")
 OFF = {"0", "false", "off"}
 SIZE = re.compile(r"\d{1,6}")
 #: A DTD can expand entities without bound; no Word part carries one, so a part with one is refused.
-DTD = re.compile(r"<!(?:DOCTYPE|ENTITY)", re.IGNORECASE)
+DTD = re.compile(rb"<!(?:DOCTYPE|ENTITY)", re.IGNORECASE)
 #: Bounds on what is unpacked, so a zip bomb or a huge part is reported, not expanded.
 MAX_PART = 32 << 20
 #: Word sizes are in half-points: 2 is 1 point.
 ONE_POINT = 2
 MAX_MEMBERS = 4096
+MAX_TOTAL = 64 << 20
+MAX_ELEMENTS = 1_000_000
 MAX_BLOB = 64 << 20
 #: A blob of a write: the index at a person's or agent's commit, HEAD at a push or in CI.
 BLOB_REF = {"commit": ":./{}", "agent-commit": ":./{}", "push": "HEAD:./{}", "ci": "HEAD:./{}"}
@@ -67,43 +69,71 @@ def _val(props: ET.Element, tag: str, ns: str) -> str | None:
     return None if found is None else (found.get(f"{{{ns}}}val") or "").strip()
 
 
-def _part(name: str, xml: str) -> list[tuple[str, str, str]]:
-    if DTD.search(xml):
+def _local(tag: str) -> tuple[str, str]:
+    namespace, _, local = tag[1:].partition("}") if tag.startswith("{") else ("", "", tag)
+    return namespace, local
+
+
+def _part(name: str, raw: bytes, budget: list[int]) -> list[tuple[str, str, str]]:
+    """Hidden runs of one part, parsed as a stream: each run is judged and dropped as it closes, and the
+    document's element budget is shared across parts."""
+    if DTD.search(raw):
         msg = f"{name} declares a DTD"
         raise UnreadableError(msg)
+    found, depth, root = [], 0, None
     try:
-        root = ET.fromstring(xml)  # noqa: S314 -- no DTD (refused above), so no entity expansion
+        for event, elem in ET.iterparse(io.BytesIO(raw), events=("start", "end")):  # noqa: S314 -- no DTD
+            namespace, local = _local(elem.tag)
+            run = local == "r" and namespace in NAMESPACES
+            if event == "start":
+                root = elem if root is None else root
+                depth += run
+                budget[0] -= 1
+                if budget[0] < 0:
+                    msg = f"more than {MAX_ELEMENTS} XML elements"
+                    raise UnreadableError(msg)
+                continue
+            if run:
+                depth -= 1
+                found += _judge(name, elem, namespace)
+            if not depth:
+                elem.clear()
+                if budget[0] % 4096 == 0:
+                    root.clear()
     except ET.ParseError:
         msg = f"{name} is not well-formed XML"
         raise UnreadableError(msg) from None
-    found = []
-    for ns in NAMESPACES:
-        for run in root.iter(f"{{{ns}}}r"):
-            props = run.find(f"{{{ns}}}rPr")
-            text = "".join(t.text or "" for t in run.iter() if t.tag in (f"{{{ns}}}t", f"{{{ns}}}delText")).strip()
-            if props is not None and text:
-                found += [(name, reason, text) for reason in _reasons(props, ns)]
     return found
 
 
-def _parts(data: bytes) -> list[tuple[str, str]]:
-    """(name, text) of every XML part, within the bounds: Word finds its parts through relationships, so a
-    renamed main part is still read. zipfile's own errors pass up."""
+def _judge(name: str, run: ET.Element, ns: str) -> list[tuple[str, str, str]]:
+    props = run.find(f"{{{ns}}}rPr")
+    text = "".join(t.text or "" for t in run.iter() if t.tag in (f"{{{ns}}}t", f"{{{ns}}}delText")).strip()
+    return [(name, reason, text) for reason in _reasons(props, ns)] if props is not None and text else []
+
+
+def _parts(data: bytes) -> list[tuple[str, bytes]]:
+    """(name, bytes) of every member that reads as XML, within the bounds: Word finds its parts through
+    relationships, so a part under any name is read. zipfile's own errors pass up."""
     archive = zipfile.ZipFile(io.BytesIO(data))
     members = archive.infolist()
     if len(members) > MAX_MEMBERS:
         msg = f"{len(members)} zip members"
         raise UnreadableError(msg)
-    out = []
+    out, total = [], 0
     for info in members:
-        if not info.filename.lower().endswith(".xml"):
-            continue
         with archive.open(info) as handle:
             raw = handle.read(MAX_PART + 1)
-        if len(raw) > MAX_PART:
-            msg = f"{info.filename} unpacks past {MAX_PART >> 20} MB"
+        total += len(raw)
+        if len(raw) > MAX_PART or total > MAX_TOTAL:
+            msg = f"{info.filename} unpacks past {MAX_PART >> 20} MB, or the document past {MAX_TOTAL >> 20} MB"
             raise UnreadableError(msg)
-        out.append((info.filename, raw.decode("utf-8", errors="replace")))
+        head = raw[:64].lstrip(b"\xef\xbb\xbf \t\r\n")
+        if raw.startswith((b"\xff\xfe", b"\xfe\xff")) or head.startswith(b"<\x00"):
+            msg = f"{info.filename} is XML in UTF-16, which this reader does not judge"
+            raise UnreadableError(msg)
+        if head.startswith(b"<"):
+            out.append((info.filename, raw))
     return out
 
 
@@ -124,4 +154,5 @@ def hidden_runs(data: bytes) -> list[tuple[str, str, str]]:
     ) as exc:
         msg = f"not a readable document ({type(exc).__name__})"
         raise UnreadableError(msg) from None
-    return [found for name, xml in parts for found in _part(name, xml)]
+    budget = [MAX_ELEMENTS]
+    return [found for name, raw in parts for found in _part(name, raw, budget)]

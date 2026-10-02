@@ -31,6 +31,8 @@ SHAPES = {
     "style braces": "{",
     "katex": "\\color{white}",
     "links": "[x](y) ![z](w) ",
+    "image closers": "](/)](a:)",
+    "waiver lines": " " * 2000 + "\n" + "<!--run-->" * 200 + "\n",
 }
 
 

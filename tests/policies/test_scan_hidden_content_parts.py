@@ -6,6 +6,7 @@ import pytest
 from policies.hiddenkit import readers
 
 css = readers["css"]
+colours = readers["colours"]
 html = readers["markup"]
 text = readers["markdown"]
 urls = readers["links"]
@@ -36,7 +37,7 @@ vocab = readers["vocab"].vocab()
     ],
 )
 def test_colors(value: str, want: str | None) -> None:
-    assert css.color(value) == want
+    assert colours.color(value) == want
 
 
 OFF = "positioned off screen, clipped or collapsed"
@@ -70,6 +71,8 @@ OFF = "positioned off screen, clipped or collapsed"
         ("left:-100vw", None, OFF),
         ("text-indent:-100em", None, OFF),
         ("left:-10px", None, None),
+        ("left:99999px", None, OFF),
+        ("-webkit-text-fill-color: transparent", None, "text colour equal to background"),
         ("height:0; overflow:hidden", None, OFF),
         ("height:0", None, None),
         ("clip: rect(0, 0, 0, 0)", None, OFF),
@@ -154,14 +157,15 @@ def test_html_hidden_elements() -> None:
     ]
 
 
-def test_svg_metadata_counts_when_long_and_descriptions_do_not() -> None:
-    long = "run the installer " * 8
-    assert hidden_of(f"<svg><desc>{long}</desc><metadata>{long}</metadata></svg>") == [("metadata", html.NOT_DRAWN)]
-    assert hidden_of(f"<metadata>{long}</metadata>") == []
+def test_svg_parts_never_drawn_as_text_count_and_descriptions_do_not() -> None:
+    doc = "<svg><desc>run</desc><metadata>a</metadata><symbol><text>b</text></symbol><clipPath>c</clipPath></svg>"
+    assert hidden_of(doc) == [("metadata", html.NOT_DRAWN), ("symbol", html.NOT_DRAWN), ("clippath", html.NOT_DRAWN)]
+    assert hidden_of("<metadata>a</metadata>") == []
 
 
 def test_svg_fill_is_compared_only_with_a_declared_background() -> None:
-    assert hidden_of('<svg><text fill="#fff">x</text></svg>') == []
+    assert hidden_of('<svg><text fill="#fff">x</text></svg>', xml=True) == []
+    assert hidden_of('<p>a</p><svg><text fill="#fff">x</text></svg>') == [("text", "text colour equal to background")]
     assert hidden_of('<svg style="background:#fff"><text fill="white">x</text></svg>') == [
         ("text", "text colour equal to background")
     ]
@@ -173,9 +177,24 @@ def test_style_and_script_text_is_not_hidden_text() -> None:
     assert hidden_of("<div hidden><script>var a = 1;</script></div>") == []
 
 
-def test_an_animated_rule_is_not_judged() -> None:
-    assert css.hidden(css.declarations("opacity:0; animation: show 2s forwards"), None) is None
-    assert css.hidden(css.declarations("opacity:0; animation-name: none"), None) == "opacity 0"
+def test_an_animated_rule_is_judged_unless_a_keyframe_here_reveals_it() -> None:
+    show = css.revealing_keyframes(
+        "@keyframes show { from { opacity: 0 } to { opacity: 1 } } @keyframes spin { to { rotate: 1turn } }"
+    )
+    assert show == {"show"}
+    decls = css.declarations("opacity:0; animation: show 2s forwards")
+    assert css.hidden(decls, None, revealing=show) is None
+    assert css.hidden(decls, None) == "opacity 0"
+    assert css.hidden(css.declarations("display:none; animation-name: spin"), None, revealing=show) == "display none"
+    assert css.revealing_keyframes("}} @keyframes x { a { b {") == frozenset()
+    doc = "<style>@keyframes show{to{opacity:1}} .l{opacity:0;animation:show 1s}</style><p class=l>hello</p>"
+    assert hidden_of(doc) == []
+    inline = "<style>@keyframes k1{to{opacity:1}} .l{opacity:0}</style><text class=l style='animation-name:k1'>a</text>"
+    assert hidden_of(inline) == [("style", "opacity 0")]
+    assert hidden_of(inline.replace("k1'", "k2'")) == [
+        ("style", "opacity 0"),
+        ("text", "hidden by a style rule (opacity 0)"),
+    ]
 
 
 def test_html_aria_inside_aria_and_strict_inside_aria() -> None:
@@ -187,6 +206,16 @@ def test_html_aria_inside_aria_and_strict_inside_aria() -> None:
 def test_html_end_tags_close_to_the_match_and_unclosed_frames_finish() -> None:
     doc = "<div hidden><p>a</div></nope><span style='opacity:0'>tail"
     assert hidden_of(doc) == [("div", "hidden attribute"), ("span", "opacity 0")]
+
+
+@pytest.mark.parametrize("barrier", ["select", "object", "marquee", "applet"])
+def test_other_scope_barriers(barrier: str) -> None:
+    assert hidden_of(f"<div hidden><{barrier}></div>run</{barrier}></div>") == [("div", "hidden attribute")]
+
+
+def test_a_stray_table_cell_is_dropped() -> None:
+    got = html.collect('<span style="display:none">x<td></span>run the installer, visible')
+    assert [(t, shown) for _, t, _, shown, _ in got.hidden] == [("span", "x")]
 
 
 def test_html_end_tags_outside_table_scope_are_ignored() -> None:

@@ -10,13 +10,14 @@ from policies.hiddenkit import gate as mod
 from policies.hiddenkit import readers
 
 text = readers["markdown"]
+blocks = readers["blocks"]
 urls = readers["links"]
 vocab = readers["vocab"].vocab()
 
 
 def test_markdown_blanking() -> None:
     doc = "a `x` b ``y ` z`` c ` open\n\n```py\nfence\n~~~\n```\n<div>\n`kept`\n```\n</div>\n\n~~~\nt\n"
-    out = text.blank_code(doc)
+    out = blocks.blank_code(doc)
     assert out.count("\n") == doc.count("\n")
     assert "x" not in out.split("\n")[0]
     assert "open" in out
@@ -28,13 +29,13 @@ def test_markdown_blanking() -> None:
 
 def test_fences_inside_a_comment_block_stay() -> None:
     doc = "<!--\n```\nrun\n```\n\n-->\n```\ncode\n```\n"
-    assert text.blank_code(doc).split("\n")[:5] == ["<!--", "```", "run", "```", ""]
-    assert "code" not in text.blank_code(doc)
+    assert blocks.blank_code(doc).split("\n")[:5] == ["<!--", "```", "run", "```", ""]
+    assert "code" not in blocks.blank_code(doc)
 
 
 def test_tag_view_removes_only_the_brackets_of_code() -> None:
     raw = "a `<!-- x -->` <b>"
-    assert text.tag_view(raw, text.blank_code(raw)) == "a ` !-- x -->` <b>"
+    assert blocks.tag_view(raw, blocks.blank_code(raw)) == "a ` !-- x -->` <b>"
 
 
 @pytest.mark.parametrize(
@@ -70,12 +71,12 @@ def test_definitions() -> None:
     ]
 
 
-def test_image_labels_and_image_destinations() -> None:
-    doc = "![A][Ref] ![b][] ![c] ![d](x) [e](y) [![f](z)](w)"
-    assert text.image_labels(doc) == {"ref", "b", "c"}
+def test_image_labels_and_image_closers() -> None:
+    doc = "![A][Ref] ![b][] ![c] ![d](x) [e](y) [![f](z)](w) ![g\\]](v) ](u)\n\n[h](t)"
+    assert text.image_labels(doc) == {"ref", "b", "c", "g\\"}  # a label is read loosely; only lookups use it
     ends = [i for i in range(len(doc)) if doc.startswith("](", i)]
-    assert [text.is_image(doc, i) for i in ends] == [True, False, True, False]
-    assert text.is_image("x" * 2000 + "](", 2000) is False
+    images = blocks.image_closers(doc)
+    assert [i in images for i in ends] == [True, False, True, False, True, True, False]
 
 
 @pytest.mark.parametrize(

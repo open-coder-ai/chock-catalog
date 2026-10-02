@@ -88,6 +88,33 @@ def test_unreadable_documents(data: bytes, why: str) -> None:
         docx.hidden_runs(data)
 
 
+def test_a_part_is_found_by_its_bytes_not_its_name() -> None:
+    data = document(VANISH, part="word/document.bin", extra={"media/a.png": b"\x89PNG", "docProps/x": b"  \n<x/>"})
+    assert [(p, r) for p, r, _ in docx.hidden_runs(data)] == [("word/document.bin", "hidden (vanish)")]
+
+
+def test_the_whole_document_and_its_elements_are_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(docx, "MAX_TOTAL", 250)
+    with pytest.raises(docx.UnreadableError, match="the document past"):
+        docx.hidden_runs(document(PLAIN, extra={"word/b.xml": part_of(PLAIN).encode()}))
+    monkeypatch.setattr(docx, "MAX_TOTAL", 64 << 20)
+    monkeypatch.setattr(docx, "MAX_ELEMENTS", 5)
+    with pytest.raises(docx.UnreadableError, match="more than 5 XML elements"):
+        docx.hidden_runs(document(PLAIN, PLAIN))
+    monkeypatch.setattr(docx, "MAX_ELEMENTS", 10_000)
+    many = "".join([VANISH] * 2100)
+    assert len(docx.hidden_runs(document(many))) == 2100
+
+
+@pytest.mark.parametrize("bom", [b"\xff\xfe", b"\xfe\xff", b"<\x00"])
+def test_utf16_parts_are_unreadable(bom: bytes) -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("word/document.xml", bom + b"<\x00d\x00/\x00>\x00")
+    with pytest.raises(docx.UnreadableError, match="UTF-16"):
+        docx.hidden_runs(buffer.getvalue())
+
+
 @pytest.mark.parametrize(
     ("xml", "why"),
     [

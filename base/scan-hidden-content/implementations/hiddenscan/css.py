@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import colorsys
 import re
 
-from hiddenscan.vocab import vocab
+from hiddenscan.colours import COLOUR_TOKEN, NUM, color
 
 COMMENT = re.compile(r"/\*[\s\S]*?(?:\*/|$)")
 HEX_ESCAPE = re.compile(r"\\([0-9a-fA-F]{1,6})[ \t\n]?")
@@ -18,11 +17,6 @@ URL_FUNC = re.compile(
     re.IGNORECASE,
 )
 NUMBER = re.compile(r"^(-?(?:\d+\.?\d*|\.\d+))([a-z%]*)$")
-NUM = r"(?:\d+(?:\.\d*)?|\.\d+)"
-RGB = re.compile(rf"^rgba?\(\s*({NUM}%?)\s*[, ]\s*({NUM}%?)\s*[, ]\s*({NUM}%?)\s*(?:[,/]\s*({NUM}%?)\s*)?\)$")
-HSL = re.compile(rf"^hsla?\(\s*({NUM})(?:deg)?\s*[, ]\s*({NUM})%\s*[, ]\s*({NUM})%\s*(?:[,/]\s*({NUM}%?)\s*)?\)$")
-HEX = re.compile(r"^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$")
-COLOUR_TOKEN = re.compile(r"(?:rgba?|hsla?)\([^)]*\)|#[0-9a-f]+|[a-z]+")
 GLOBAL = {"inherit", "initial", "unset", "revert", "revert-layer"}
 DISPLAY = GLOBAL | set(
     [
@@ -66,9 +60,13 @@ DEFAULT_BACKGROUND = "#ffffff"
 LAST_CODE_POINT = 0x10FFFF
 SURROGATES = range(0xD800, 0xE000)
 #: Offsets past these put a box out of any viewport.
-OFF_PX, OFF_EM, OFF_VW = -999, -50, -50
+OFF_PX, OFF_EM, OFF_VW, FAR_PX = -999, -50, -50, 9999
+#: Properties a keyframe may change to show what a block hides.
+REVEALING = re.compile(
+    r"opacity|visibility|display|color|transform|scale|translate|font|clip|fill|left|top|right|bottom|height|width|indent|margin"
+)
+KEYFRAME_TOKENS = re.compile(rf"@(?:-webkit-)?keyframes\s+([\w-]+)\s*\{{|\{{|\}}|{REVEALING.pattern}")
 FAINT = 0.05
-FULL = 255
 
 
 def unescape(text: str) -> str:
@@ -79,46 +77,6 @@ def unescape(text: str) -> str:
         return chr(value) if 0 < value <= LAST_CODE_POINT and value not in SURROGATES else "�"
 
     return CHAR_ESCAPE.sub(r"\1", HEX_ESCAPE.sub(code, text))
-
-
-def _channel(text: str) -> int:
-    value = float(text.rstrip("%")) * (FULL / 100 if text.endswith("%") else 1)
-    return max(0, min(FULL, round(value)))
-
-
-def _alpha_zero(text: str | None) -> bool:
-    return text is not None and float(text.rstrip("%")) == 0
-
-
-def _rgb(value: str) -> str | None:
-    if m := RGB.match(value):
-        if _alpha_zero(m.group(4)):
-            return "transparent"
-        return "#" + "".join(f"{_channel(m.group(i)):02x}" for i in (1, 2, 3))
-    if m := HSL.match(value):
-        if _alpha_zero(m.group(4)):
-            return "transparent"
-        hue, sat, light = float(m.group(1)) % 360 / 360, float(m.group(2)) / 100, float(m.group(3)) / 100
-        red, green, blue = colorsys.hls_to_rgb(hue, min(light, 1), min(sat, 1))
-        return "#" + "".join(f"{round(c * FULL):02x}" for c in (red, green, blue))
-    return None
-
-
-def _hex(value: str) -> str | None:
-    if not (m := HEX.match(value)):
-        return None
-    digits = m.group(1)
-    if len(digits) in (3, 4):
-        digits = "".join(c * 2 for c in digits)
-    return "transparent" if digits[6:] == "00" else "#" + digits[:6]
-
-
-def color(value: str) -> str | None:
-    """A colour as #rrggbb or 'transparent'; None for anything else (variables, system colours, keywords)."""
-    value = value.strip()
-    if value == "transparent":
-        return value
-    return vocab().colours.get(value) or _rgb(value) or _hex(value)
 
 
 def number(value: str) -> tuple[float, str] | None:
@@ -135,6 +93,7 @@ VALID = {
     "font-size": lambda v: v in FONT_SIZES or number(v) is not None or "(" in v,
     "color": lambda v: color(v) is not None or v in GLOBAL | {"currentcolor"} or "(" in v,
     "background-color": lambda v: color(v) is not None or v in GLOBAL | {"currentcolor"} or "(" in v,
+    "-webkit-text-fill-color": lambda v: color(v) is not None or v in GLOBAL | {"currentcolor"} or "(" in v,
     "fill": lambda v: color(v) is not None or v in GLOBAL | {"currentcolor", "none"} or "(" in v,
 }
 
@@ -159,8 +118,8 @@ def background(decls: dict[str, str]) -> str | None:
     """The background colour a block declares, from background-color or the first colour in background."""
     if "background-color" in decls:
         return color(decls["background-color"])
-    for token in COLOUR_TOKEN.findall(decls.get("background", "")):
-        if found := color(token):
+    for piece in COLOUR_TOKEN.findall(decls.get("background", "")):
+        if found := color(piece):
             return found
     return None
 
@@ -180,6 +139,8 @@ def _far(value: str) -> bool:
     if not size:
         return False
     amount, unit = size
+    if unit in ("px", "") and amount >= FAR_PX:
+        return True
     return amount <= (OFF_EM if unit in ("em", "rem") else OFF_VW if unit in ("vw", "vh", "%") else OFF_PX)
 
 
@@ -211,13 +172,49 @@ def _faint(value: str) -> bool:
     return bool(opacity) and opacity[0] <= (FAINT * 100 if opacity[1] == "%" else FAINT)
 
 
-def hidden(decls: dict[str, str], under: str | None, *, svg: bool = False) -> str | None:
+def revealing_keyframes(sheet: str) -> frozenset[str]:
+    """Names of @keyframes in a style sheet that change a property hiding could use, in one pass."""
+    out, open_frames, depth = set(), [], 0
+    for m in KEYFRAME_TOKENS.finditer(sheet.lower()):
+        piece = m.group(0)
+        if m.group(1):
+            depth += 1
+            open_frames.append((m.group(1), depth))
+        elif piece == "{":
+            depth += 1
+        elif piece == "}":
+            if open_frames and open_frames[-1][1] == depth:
+                open_frames.pop()
+            depth = max(depth - 1, 0)
+        elif open_frames:
+            out.add(open_frames[-1][0])
+    return frozenset(out)
+
+
+def animated(decls: dict[str, str], revealing: frozenset[str]) -> bool:
+    """Whether a block runs a keyframe of this file that can reveal what hiding sets."""
+    names = re.split(r"[\s,]+", decls.get("animation-name", "") + " " + decls.get("animation", ""))
+    return bool(revealing & set(names))
+
+
+def hidden(
+    decls: dict[str, str], under: str | None, *, svg: bool = False, revealing: frozenset[str] = frozenset()
+) -> str | None:
     """Why a declaration block hides its text, or None. `under` is the background behind the text, when
     known; without it, only a colour equal to the block's own background or transparent counts. In SVG
     the text colour is `fill`."""
-    if not decls or decls.get("animation-name", decls.get("animation", "none")) != "none":
-        return None  # an animated block is revealed (or hidden) over time; this reader does not play it
-    text = color(decls.get("fill", "") if svg and "fill" in decls else decls.get("color", ""))
+    if not decls:
+        return None
+    if animated(decls, revealing):
+        return None  # a keyframe in this file changes what hides it, so it may be shown over time
+    source = (
+        "fill"
+        if svg and "fill" in decls
+        else "-webkit-text-fill-color"
+        if "-webkit-text-fill-color" in decls
+        else "color"
+    )
+    text = color(decls.get(source, ""))
     behind = background(decls) or under
     checks = (
         (decls.get("display") == "none", "display none"),

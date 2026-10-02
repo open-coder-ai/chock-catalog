@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from chock_scan.urls import UnparseableError, parse_url
 
-from hiddenscan.markdown import is_image
+from hiddenscan.blocks import image_closers
 
 BARE = re.compile(r"(?:https?|ftp|wss?)://[^\s<>\"'`]+", re.IGNORECASE)
 DESTINATION = re.compile(r"\]\(\s*(<[^>\n]*>|[^\s)]*)")
@@ -158,10 +158,11 @@ def text_urls(text: str) -> list[tuple[int, str, bool]]:
     """(offset, URL, is an image) of bare URLs and Markdown link and image destinations, backslash escapes
     in destinations decoded as CommonMark decodes them."""
     found = [(m.start(), _trim(m.group(0)), False) for m in BARE.finditer(text)]
+    images = image_closers(text)
     for m in DESTINATION.finditer(text):
         dest = MD_ESCAPE.sub(r"\1", m.group(1))
         if "/" in dest or ":" in dest:
-            found.append((m.start(1), dest, is_image(text, m.start())))
+            found.append((m.start(1), dest, m.start() in images))
     return found
 
 
