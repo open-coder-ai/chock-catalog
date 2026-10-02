@@ -17,11 +17,16 @@ from trees import ROOT
 
 CORPUS = Path(__file__).parent / "corpus" / "entropy"
 FILES = [
-    *sorted(p for p in CORPUS.iterdir() if p.name != "SOURCES.txt"),
+    *sorted(p for p in CORPUS.iterdir() if p.name not in {"SOURCES.txt", "LICENSES.txt"}),
     ROOT / "requirements" / "test.txt",
     ROOT / "chock.lock",
 ]
 TOKEN = re.compile(r"[A-Za-z0-9+/=_.:-]{16,150}")
+SHAPED = re.compile(
+    r"(?:sha(?:1|256|384|512)[-:=]|h1:)[A-Za-z0-9+/=_-]+"
+    r"|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    r"|data:image/png;base64,[A-Za-z0-9+/=]+"
+)
 
 
 @pytest.fixture(scope="module")
@@ -49,13 +54,14 @@ def test_no_token_in_real_files_is_a_confirmed_credential(mods: dict[str, Module
 
 
 def test_the_corpus_reaches_the_allow_reasons(mods: dict[str, ModuleType]) -> None:
+    # Every real value placed under a secret-like key, then judged: the reasons that fire are the
+    # shapes the corpus is there to prove (lockfile, RECORD, go.sum and pip digests; UUIDs).
     reasons = set()
     for path in FILES:
-        for c in mods["keyword_values"].candidates(mods["safe_read"].read_text(path)):
-            reasons.add(mods["entropy"].assess(c.value).reason)
-    assert "uuid" in reasons
-    raw = " ".join(TOKEN.findall((CORPUS / "package-lock.json").read_text(encoding="utf-8")))
-    assert {mods["entropy"].assess(t).reason for t in raw.split() if t.startswith("sha512-")} == {"digest"}
+        values = SHAPED.findall(mods["safe_read"].read_text(path))
+        text = "\n".join(f"client_secret: {v}" for v in values)
+        reasons |= {mods["entropy"].assess(c.value).reason for c in mods["keyword_values"].candidates(text)}
+    assert reasons == {"uuid", "digest"}
 
 
 @pytest.mark.parametrize("seed", range(40))
@@ -70,13 +76,6 @@ def test_positive_control_random_values_next_to_secret_keys_are_reported(
     text = "name: demo\n" + form.format(k=key, v=value) + "\nport: 8080\n"
     found = [(c, mods["entropy"].assess(c.value)) for c in mods["keyword_values"].candidates(text)]
     assert [(c.line, c.value, a.suspicious) for c, a in found] == [(2, value, True)]
-
-
-SHAPED = re.compile(
-    r"(?:sha(?:1|256|384|512)[-:=]|h1:)[A-Za-z0-9+/=_-]+"
-    r"|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-    r"|data:image/png;base64,[A-Za-z0-9+/=]+"
-)
 
 
 @pytest.mark.parametrize("path", FILES, ids=[p.name for p in FILES])

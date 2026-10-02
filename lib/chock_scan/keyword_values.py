@@ -7,8 +7,11 @@ separators) is a secret noun, or two adjacent words are a key bigram (api key, c
 Limits, stated rather than hidden:
 - one line at a time: a key and value split across lines (YAML block scalars, continuation lines)
   are missed;
-- a quoted value ends at the next quote character of any kind, a bare one at whitespace or `,;&#)}]`;
-  an escaped quote ends a value early (the prefix is still judged);
+- a quoted value (one to three quote characters, so Python and TOML triple quotes count) ends at the
+  next quote character of any kind, a bare one at whitespace or `,;&#)}]`; an escaped quote or a `#`
+  ends a value early, and the prefix is judged only if it is still MIN_LEN long;
+- only space and tab count as blanks, at most 16 either side of the operator (a no-break space or a
+  wider gap is missed); XML forms (`<password>v</password>`, `key="password" value="v"`) are missed;
 - every offset is tried, so a key inside another assignment's value (`url=https://h/?token=...`)
   is still found, and a value is reported once, under the first key that names it;
 - keys are ASCII words; a key longer than 128 characters is seen only from a dash or dot inside its
@@ -24,22 +27,26 @@ from collections.abc import Iterator
 from itertools import pairwise
 from typing import NamedTuple
 
-MAX_CHARS = 1 << 22
+MAX_CHARS = 1 << 20
 MIN_LEN = 16
 MAX_LEN = 150
 
 #: A key starts only where no word character precedes it, so a long word is tried once, not at
 #: every offset; a key is at most 128 characters, at most 16 blanks sit either side of the operator
-#: and a value is at most 400 characters, so each offset costs a bounded amount (no nested
-#: quantifier can backtrack). Keys may hold dots and dashes (`spring.datasource.password`, `api-key`).
+#: and a value is read to at most MAX_LEN + 1 characters (enough to tell it is too long), so each offset costs a bounded amount (no nested
+#: quantifier can backtrack; every quantifier is possessive, so no offset re-scans its own key).
+#: Keys may hold dots and dashes (`spring.datasource.password`, `api-key`). A YAML tag or anchor
+#: (`!!str`, `&a`) and an auth scheme word (`Bearer`, `Basic`, `Token`, `Bot`) before the value are skipped.
 _ASSIGN = re.compile(
-    r"""(?<![A-Za-z0-9_])(?P<kq>["'`]?)(?P<key>[A-Za-z_][A-Za-z0-9_.-]{0,127})(?P=kq)[ \t]{0,16}(?::=|=>|[:=])"""
-    r"""[ \t]{0,16}(?:(?P<q>["'`])(?P<qval>[^"'`\r\n]{0,400})|(?P<val>[^\s"'`,;&#)}\]]{1,400}))"""
+    r"""(?<![A-Za-z0-9_])(?P<kq>["'`]?)(?P<key>[A-Za-z_][A-Za-z0-9_.-]{0,127}+)(?P=kq)[ \t]{0,16}+(?::=|=>|[:=])"""
+    r"""[ \t]{0,16}+(?:(?:!{1,2}[\w./:-]{0,64}+|&[\w.-]{1,64}+)[ \t]{1,16}+){0,2}+"""
+    r"""(?:(?i:bearer|basic|token|bot)[ \t]{1,16}+)?+"""
+    r"""(?:(?P<q>["'`]{1,3}+)(?P<qval>[^"'`\r\n]{0,151}+)|(?P<val>[^\s"'`,;&#)}\]]{1,151}+))"""
 )
 _WORDS = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])")
 _NOUNS = frozenset({
     "password", "passwords", "passwd", "pwd", "passphrase", "secret", "secrets", "token", "tokens",
-    "credential", "credentials", "apikey", "apikeys", "bearer", "auth", "dsn", "privatekey",
+    "credential", "credentials", "apikey", "apikeys", "bearer", "auth", "authorization", "dsn", "privatekey",
 })  # fmt: skip
 _KEY_HEADS = frozenset({
     "api", "access", "secret", "private", "signing", "encryption", "master", "client", "app",

@@ -1,15 +1,16 @@
 """Structural validators that tell a real-shaped provider token from a fake one, offline, with each source cited.
 
-check(token) picks the validator by prefix and returns a Check: CONFIRMED (a checksum the vendor
-built into the format verifies), FORMAT (the documented shape matches, and the format carries no
-checksum to verify), FAILED (the vendor's prefix with a shape or checksum that does not hold) or
-UNKNOWN (no validator for this shape). luhn() and aws_secret_key() are called directly: neither
+check(token) picks the validator by prefix and returns a Check: CONFIRMED (a checksum built into
+the format verifies), FORMAT (the expected shape matches; the format carries no checksum), FAILED
+(a checksum or a published structure does not hold: the GitHub 40-character and npm CRC32, JWT
+structure, Luhn) or UNKNOWN (no validator applies, or a shape-only check does not match, since
+vendors publish prefixes, not lengths). luhn() and aws_secret_key() are called directly: neither
 shape has a prefix to dispatch on.
 
 What a verdict is not: CONFIRMED says the token could have been issued, never that it is live
-(that needs the network, which a gate never uses). FAILED from a format check is not proof of
-harmlessness; only a failed checksum (GitHub 40-character forms, npm) is strong evidence the
-string was not issued. A token longer than MAX_TOKEN raises TokenTooLongError instead of a verdict.
+(that needs the network, which a gate never uses). FAILED is never proof of harmlessness: a
+consumer may lower its verdict on FAILED, never drop the finding. A token longer than MAX_TOKEN
+raises TokenTooLongError instead of a verdict.
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ SOURCES = {
     "slack": "https://docs.slack.dev/authentication/tokens",
     "stripe": "https://docs.stripe.com/keys",
     "aws": "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-unique-ids",
-    "jwt": "https://www.rfc-editor.org/rfc/rfc7519 (sections 3, 7.2); RFC 7515 section 7.1; RFC 4648 section 5",
+    "jwt": "https://www.rfc-editor.org/rfc/rfc7519 (sections 3, 6.1, 7.2); RFC 7515 7.1; RFC 7516 7.1; RFC 4648 5",
     "luhn": "ISO/IEC 7812-1:2017 Annex B (Luhn formula for computing modulus-10 double-add-double check digits)",
 }  # fmt: skip
 
@@ -67,29 +68,34 @@ UNKNOWN = Check("", Verdict.UNKNOWN, "")
 
 #: GitHub (blog above): a gh + type letter prefix and `_`, 30 base62 characters, then a CRC32 of
 #: those 30 encoded in base62, left-padded with zeros to 6. Which bytes the CRC covers (the 30, not
-#: the prefix) and the alphabet order (digits, upper, lower) are not in the blog; they are what
-#: public implementations use, and the blog's GitHub-staff example verifies under them (tests).
+#: the prefix) and the alphabet order (digits, upper, lower) are not in the blog: they come from a
+#: third-party implementation (therootcompany/base62-token.js), whose published vector the tests pin.
 _GITHUB = re.compile(r"(gh[pousr])_([0-9A-Za-z]{30})([0-9A-Za-z]{6})")
 _GITHUB_ANY = re.compile(r"gh[pousr]_[0-9A-Za-z_]{36,251}")
-#: Fine-grained PATs: the prefix is documented; the 22 + `_` + 59 layout is observed, not published.
+#: Fine-grained PATs: the prefix is documented; the 22 + `_` + 59 layout is observed, not published,
+#: so another layout is UNKNOWN.
 _GITHUB_PAT = re.compile(r"github_pat_[0-9A-Za-z]{22}_[0-9A-Za-z]{59}")
 _NPM = re.compile(r"(npm)_([0-9A-Za-z]{30})([0-9A-Za-z]{6})")
 #: Slack (docs above): bot xoxb-, user xoxp-, refresh xoxe-, rotating xoxe.xoxb-/xoxe.xoxp-,
-#: app-level xapp-, legacy workspace xoxa-/xoxr-. The docs publish prefixes, not lengths: the shape
-#: checked is a numeric first segment then at least one more segment of at least 8 characters.
-_SLACK = re.compile(r"(?:xoxe\.)?(?:xox[abpre]|xapp)-[0-9]+-[0-9A-Za-z][0-9A-Za-z-]{7,}")
-_SLACK_PREFIX = re.compile(r"(?:xoxe\.)?(?:xox[abpre]|xapp)-")
+#: app-level xapp-, legacy workspace xoxa-/xoxr-, and the xoxc-/xoxs-/xoxo- forms seen in use. The
+#: docs publish prefixes, not lengths: FORMAT is a numeric first segment then at least one more of
+#: at least 8 characters; anything else under a Slack prefix is UNKNOWN.
+_SLACK = re.compile(r"(?:xoxe\.)?(?:xox[abcopres]|xapp)-[0-9]+-[0-9A-Za-z][0-9A-Za-z-]{7,}")
+_SLACK_PREFIX = re.compile(r"(?:xoxe\.)?(?:xox[abcopres]|xapp)-")
 #: Stripe (docs above): sk_ secret, rk_ restricted, pk_ publishable (safe to expose), each _test_ or
-#: _live_. Lengths are not published; 24 is the shortest key Stripe has issued.
+#: _live_. Lengths are not published: FORMAT needs 24 or more base62 characters (a floor chosen
+#: here, not a vendor rule); anything else under a Stripe prefix is UNKNOWN.
 _STRIPE = re.compile(r"(sk|rk|pk)_(test|live)_[0-9A-Za-z]{24,247}")
 _STRIPE_PREFIX = re.compile(r"(sk|rk|pk)_(test|live)_")
 _STRIPE_KIND = {"sk": "stripe-secret", "rk": "stripe-restricted", "pk": "stripe-publishable"}
 #: AWS (IAM identifiers above): the credential prefixes AKIA (access key), ASIA (temporary access
-#: key), ABIA (STS bearer token), ACCA (context-specific credential); IDs are 20 characters.
+#: key), ABIA (STS bearer token), ACCA (context-specific credential). FORMAT is the 20-character
+#: upper-case alphanumeric ID AWS issues today (the IAM API allows 16..128), else UNKNOWN.
 _AWS_ID = re.compile(r"(AKIA|ASIA|ABIA|ACCA)[0-9A-Z]{16}")
 _AWS_PREFIX = re.compile(r"AKIA|ASIA|ABIA|ACCA")
 _AWS_SECRET = re.compile(r"[0-9A-Za-z/+]{40}")
 _JWT = re.compile(r"([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]*)")
+_JWE = re.compile(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
 _CARD = re.compile(r"[0-9]+(?:[ -][0-9]+)*")
 #: A doubled digit with its two digits added: 0 2 4 6 8 1 3 5 7 9.
 _DOUBLED = tuple(sum(divmod(2 * d, 10)) for d in range(10))
@@ -117,6 +123,11 @@ def check(token: str) -> Check:
     return UNKNOWN
 
 
+def _shape(token: str, pattern: re.Pattern[str], kind: str, source: str) -> Check:
+    """FORMAT when the expected shape matches, else UNKNOWN: a shape-only check never says FAILED."""
+    return Check(kind, Verdict.FORMAT if pattern.fullmatch(token) else Verdict.UNKNOWN, source)
+
+
 def _crc_token(token: str, pattern: re.Pattern[str], kind: str, source: str) -> Check:
     """CONFIRMED when the 6-character tail is the base62 CRC32 of the 30 before it, else FAILED."""
     match = pattern.fullmatch(token)
@@ -126,8 +137,7 @@ def _crc_token(token: str, pattern: re.Pattern[str], kind: str, source: str) -> 
 
 def _github(token: str) -> Check | None:
     if token.startswith("github_pat_"):
-        ok = _GITHUB_PAT.fullmatch(token) is not None
-        return Check("github-fine-grained", Verdict.FORMAT if ok else Verdict.FAILED, "github-fine-grained")
+        return _shape(token, _GITHUB_PAT, "github-fine-grained", "github-fine-grained")
     if not re.match(r"gh[pousr]_", token):
         return None
     if len(token) != GITHUB_LEN and _GITHUB_ANY.fullmatch(token):
@@ -143,26 +153,25 @@ def _npm(token: str) -> Check | None:
 def _slack(token: str) -> Check | None:
     if not _SLACK_PREFIX.match(token):
         return None
-    return Check("slack", Verdict.FORMAT if _SLACK.fullmatch(token) else Verdict.FAILED, "slack")
+    return _shape(token, _SLACK, "slack", "slack")
 
 
 def _stripe(token: str) -> Check | None:
     prefix = _STRIPE_PREFIX.match(token)
     if prefix is None:
         return None
-    ok = _STRIPE.fullmatch(token) is not None
-    return Check(_STRIPE_KIND[prefix[1]], Verdict.FORMAT if ok else Verdict.FAILED, "stripe")
+    return _shape(token, _STRIPE, _STRIPE_KIND[prefix[1]], "stripe")
 
 
 def _aws_id(token: str) -> Check | None:
     if not _AWS_PREFIX.match(token):
         return None
-    return Check("aws-access-key-id", Verdict.FORMAT if _AWS_ID.fullmatch(token) else Verdict.FAILED, "aws")
+    return _shape(token, _AWS_ID, "aws-access-key-id", "aws")
 
 
 def aws_secret_key(token: str) -> Check:
-    """FORMAT for the 40-character base64-alphabet shape of an AWS secret access key, else FAILED."""
-    return Check("aws-secret-access-key", Verdict.FORMAT if _AWS_SECRET.fullmatch(token) else Verdict.FAILED, "aws")
+    """FORMAT for the 40-character base64-alphabet shape of an AWS secret access key, else UNKNOWN."""
+    return _shape(token, _AWS_SECRET, "aws-secret-access-key", "aws")
 
 
 def _jwt(token: str) -> Check | None:
@@ -170,10 +179,13 @@ def _jwt(token: str) -> Check | None:
 
     Only tokens starting `eyJ` (base64url of `{"`) are claimed; the signature part may be empty (an
     unsecured JWT, RFC 7519 6.1). The payload must decode as base64url; its JSON is not required
-    (a JWS payload need not be JSON). The signature is never verified.
+    (a JWS payload need not be JSON). The signature is never verified. A five-part token is a JWE
+    (RFC 7516 7.1), which this does not validate: UNKNOWN.
     """
     if not token.startswith("eyJ"):
         return None
+    if _JWE.fullmatch(token):
+        return Check("jwt", Verdict.UNKNOWN, "jwt")
     match = _JWT.fullmatch(token)
     header = _b64url(match[1]) if match and len(match[1]) <= MAX_JWT_HEADER else None
     ok = header is not None and _b64url(match[2]) is not None and _has_alg(header)

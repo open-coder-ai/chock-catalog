@@ -141,3 +141,37 @@ def test_pathological_lines_are_linear(kv: ModuleType, text: str) -> None:
 
 def test_stdlib_only() -> None:
     assert stdlib_only("keyword_values")
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        'password = """{v}"""',
+        "password = '''{v}'''",
+        "password: !!str {v}",
+        "password: &anchor {v}",
+        "password: !vault &a {v}",
+        "Authorization: Bearer {v}",
+        "token=Basic {v}",
+        "headers.authorization = 'Token {v}'",
+    ],
+)
+def test_review_forms_are_found(kv: ModuleType, form: str) -> None:
+    found = list(kv.candidates(form.format(v=VALUE)))
+    value = found[0].value if found else None
+    assert value is not None
+    assert value.endswith(VALUE)
+
+
+@pytest.mark.parametrize(
+    "form",
+    [
+        "<password>{v}</password>",  # XML element text
+        '<add key="password" value="{v}"/>',  # XML attribute pair
+        "password\u00a0= {v}",  # a no-break space is not a blank
+        "password" + " " * 17 + "= {v}",  # a gap wider than 16 blanks
+        "PW=abc#{v}",  # `#` ends a bare value; the 3-character prefix is too short
+    ],
+)
+def test_documented_form_misses(kv: ModuleType, form: str) -> None:
+    assert list(kv.candidates(form.format(v=VALUE))) == []

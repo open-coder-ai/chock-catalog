@@ -1,7 +1,7 @@
 """Vendor-shaped tokens drawn from a seeded generator: the property-test inputs for chock_scan.checksums.
 
 These are random draws, built per run from a seed, so no credential-shaped literal sits in the
-repository; the literal vectors the tests do commit carry scan-secrets' documented same-line pragma.
+repository (scan-secrets refuses an agent-written waiver pragma; a person may add cited vectors).
 The checksum here is an independent oracle (binascii, own base62), not the module under test.
 """
 

@@ -95,7 +95,7 @@ def test_random_secrets_are_suspicious(en: ModuleType, seed: int) -> None:
         ("!Ref DatabasePasswordParameter", "reference"),
         ("arn:aws:secretsmanager:us-east-1:123456789012:secret:x", "reference"),
         ("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAE", "data-uri"),
-        ("sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I", "digest"),
+        ("sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==", "digest"),
         ("sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", "digest"),
         ("h1:Bk3ldh4fCUyN3Zx8HuUi8cg7SsZR21qcMsS4WaxUBZw=", "digest"),
         ("123e4567-e89b-42d3-a456-426614174000", "uuid"),
@@ -178,3 +178,57 @@ def test_pathological_values_are_fast(en: ModuleType, value: str) -> None:
     for _ in range(100):
         en.assess(value)
     assert time.perf_counter() - started < 0.5
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Xk9$Lm2pQ7rT4vW8zN",  # review repro: `$L` inside a password once read as a reference
+        "aZ9kL3m{{Qp7xR2vT8",
+        "Qz8pL2wXy7Kd3mNv9aBenv(x",
+        "Qz8p<L2w>Xy7Kd3mNv9",
+        "Qz8pL2wXy7Kd3mNv9ENC[x]",
+        "h1:Qz8pL2wXy7Kd3mNv9aBcD",  # review repro: a digest prefix with the wrong body length
+        "sha1=Qz8pL2wXy7Kd3mNv9aBcD",
+        "md5-Qz8pL2wXy7Kd3mNv9aBcD!",
+        "data:Qz8pL2wXy7Kd3mNv9aBcD",  # review repro: `data:` without a mime and base64 marker
+    ],
+)
+def test_reference_digest_and_data_shapes_inside_a_secret_allow_nothing(en: ModuleType, value: str) -> None:
+    result = en.assess(value)
+    assert result.suspicious, result
+
+
+@pytest.mark.parametrize("seed", range(300))
+def test_random_printable_passwords_stay_suspicious(en: ModuleType, seed: int) -> None:
+    # The alphabet generated passwords use: printable ASCII 33..126, so `$ < { % ( [` all occur.
+    r = rng(seed)
+    value = tokens.draw(r, "".join(chr(c) for c in range(33, 127)), r.randrange(16, 65))
+    result = en.assess(value)
+    if result.reason == "placeholder":
+        assert en._PLACEHOLDER.search(value)  # a draw that happens to spell a stopword (documented)
+    else:
+        assert result.suspicious, (value, result)
+
+
+@pytest.mark.parametrize(
+    ("value", "reason"),
+    [
+        ("your-api-key-goes-right-here", "placeholder"),
+        ("md5:9e107d9d372bb6826bd81d3542a419d6", "digest"),
+        ("sha1-L4ARnHHNFx3y2HvdnPV9GOrPIqA=", "digest"),
+        ("sha256=n4bQgYhMfWWaL-qgxVrQFaO_TxsrC4Is0V1sFbDwCgg", "digest"),
+        ("data:image/svg+xml;charset=utf-8;base64,PHN2ZyB4bWxucz0i", "data-uri"),
+        ("%(db_password)s", "short"),
+        ("%(database_password_x)s", "reference"),
+        ('System.getenv("DB_PASSWORD")', "reference"),
+        ("!GetAtt Database.Endpoint", "reference"),
+    ],
+)
+def test_more_allow_shapes(en: ModuleType, value: str, reason: str) -> None:
+    assert en.assess(value).reason == reason
+
+
+def test_a_txt_file_is_not_a_doc(en: ModuleType) -> None:
+    assert en.path_class("config/secrets.txt") is None
+    assert en.path_class("credentials.txt") is None

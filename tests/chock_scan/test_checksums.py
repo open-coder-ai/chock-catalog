@@ -64,7 +64,7 @@ def test_longer_github_forms_are_unknown_not_failed(cs: ModuleType) -> None:
 def test_fine_grained_pat_shape(cs: ModuleType, seed: int) -> None:
     token = tokens.github_pat(rng(seed))
     assert cs.check(token) == cs.Check("github-fine-grained", cs.Verdict.FORMAT, "github-fine-grained")
-    assert cs.check(token[:-1]).verdict is cs.Verdict.FAILED
+    assert cs.check(token[:-1]).verdict is cs.Verdict.UNKNOWN
     assert cs.check(token.replace("_", "-", 2)) is cs.UNKNOWN
 
 
@@ -74,8 +74,8 @@ def test_slack_shapes(cs: ModuleType, seed: int) -> None:
 
 
 @pytest.mark.parametrize("token", ["xoxb-", "xoxb-abc-def", "xoxp-123-short", "xapp-1-", "xoxe.xoxb-x"])
-def test_slack_prefix_with_a_bad_shape_fails(cs: ModuleType, token: str) -> None:
-    assert cs.check(token) == cs.Check("slack", cs.Verdict.FAILED, "slack")
+def test_slack_prefix_with_an_unexpected_shape_is_unknown(cs: ModuleType, token: str) -> None:
+    assert cs.check(token) == cs.Check("slack", cs.Verdict.UNKNOWN, "slack")
 
 
 @pytest.mark.parametrize("seed", SEEDS[:20])
@@ -85,12 +85,12 @@ def test_stripe_shapes_name_the_key_kind(cs: ModuleType, seed: int) -> None:
     kind = {"sk": "stripe-secret", "rk": "stripe-restricted", "pk": "stripe-publishable"}[head]
     token = tokens.stripe(r, head)
     assert cs.check(token) == cs.Check(kind, cs.Verdict.FORMAT, "stripe")
-    assert cs.check(token[:12]).verdict is cs.Verdict.FAILED
+    assert cs.check(token[:12]).verdict is cs.Verdict.UNKNOWN  # shape-only checks never say FAILED
 
 
 def test_stripe_edges(cs: ModuleType) -> None:
-    assert cs.check("sk_live_" + "a" * 23).verdict is cs.Verdict.FAILED
-    assert cs.check("sk_test_" + "a1" * 12 + "!").verdict is cs.Verdict.FAILED
+    assert cs.check("sk_live_" + "a" * 23).verdict is cs.Verdict.UNKNOWN
+    assert cs.check("sk_test_" + "a1" * 12 + "!").verdict is cs.Verdict.UNKNOWN
     assert cs.check("sk_org_" + "a" * 30) is cs.UNKNOWN
 
 
@@ -99,7 +99,7 @@ def test_aws_access_key_id_shapes(cs: ModuleType, seed: int) -> None:
     token = tokens.aws_id(rng(seed))
     assert cs.check(token) == cs.Check("aws-access-key-id", cs.Verdict.FORMAT, "aws")
     assert cs.check(token.lower()) is cs.UNKNOWN
-    assert cs.check(token[:-1]).verdict is cs.Verdict.FAILED
+    assert cs.check(token[:-1]).verdict is cs.Verdict.UNKNOWN
     assert cs.check("AIDA" + token[4:]) is cs.UNKNOWN  # an IAM user id is not a credential
 
 
@@ -107,8 +107,8 @@ def test_aws_access_key_id_shapes(cs: ModuleType, seed: int) -> None:
 def test_aws_secret_key_shape(cs: ModuleType, seed: int) -> None:
     secret = tokens.draw(rng(seed), tokens.BASE62 + "/+", 40)
     assert cs.aws_secret_key(secret) == cs.Check("aws-secret-access-key", cs.Verdict.FORMAT, "aws")
-    assert cs.aws_secret_key(secret[:-1]).verdict is cs.Verdict.FAILED
-    assert cs.aws_secret_key(secret[:-1] + "-").verdict is cs.Verdict.FAILED
+    assert cs.aws_secret_key(secret[:-1]).verdict is cs.Verdict.UNKNOWN
+    assert cs.aws_secret_key(secret[:-1] + "-").verdict is cs.Verdict.UNKNOWN
 
 
 @pytest.mark.parametrize("seed", SEEDS)
@@ -138,6 +138,18 @@ def _jwt(header: bytes, payload: str = "e30", signature: str = "sig") -> str:
 )
 def test_malformed_jwts_fail(cs: ModuleType, token: str) -> None:
     assert cs.check(token) == cs.Check("jwt", cs.Verdict.FAILED, "jwt")
+
+
+def test_a_five_part_jwe_is_unknown_not_failed(cs: ModuleType) -> None:
+    header = tokens.b64url(b'{"alg":"RSA-OAEP","enc":"A256GCM"}')
+    assert cs.check(f"{header}.a2V5.aXY.Y2lwaGVy.dGFn") == cs.Check("jwt", cs.Verdict.UNKNOWN, "jwt")
+    assert cs.check(f"{header}..aXY.Y2lwaGVy.dGFn").verdict is cs.Verdict.UNKNOWN  # direct encryption: empty key
+
+
+@pytest.mark.parametrize("prefix", ["xoxc", "xoxs", "xoxo"])
+def test_more_slack_prefixes(cs: ModuleType, prefix: str) -> None:
+    token = tokens.slack(rng(7)).split("-", 1)[1]
+    assert cs.check(f"{prefix}-{token}") == cs.Check("slack", cs.Verdict.FORMAT, "slack")
 
 
 def test_a_header_array_or_deep_nesting_never_escapes_as_an_exception(cs: ModuleType) -> None:
