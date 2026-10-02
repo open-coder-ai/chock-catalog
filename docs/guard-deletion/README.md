@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 22 total, 21 executable |
+| **Eval cases** | 23 total, 22 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check, row-level security or narrow file mode, or swaps one for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.
+trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check or row-level security, or swaps one of those or a narrow file mode for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.
 
 ## What it solves
 
@@ -55,7 +55,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The check shapes and the mitigation families are regexes in `implementations/data/shapes.json`, and the judged paths in `implementations/data/scope.json` (EP12 tables, dated and schema-checked); add a family there with a bad and a good eval. A person waives a reviewed hunk with `pragma: allowlist guard-removal` or `pragma: allowlist mitigation-removal` on a line in it; an agent's pragma counts only on a removed line HEAD already holds, and one an agent adds to a guard or mitigation line is a finding. Known limits, each a miss rather than a refusal: it is hunk-local, so a guard moved across hunks or files is not followed; a guard neutralised in place (`assert True`, a swapped middleware) is not seen; an insecure setting added with nothing removed is left to other policies; a commit whose only change is deleted files never reaches a script gate; a strong-to-plain stack protector downgrade is not seen; files over 4000 lines are compared by line counts, not hunks; CI without a base ref or a push event file reads only the tip commit; the path scope skips root `test`, `fixtures`, `evals`, `docs` and any `tests`, `vendor`, `node_modules` directory.
+The check shapes and the mitigation families are regexes in `implementations/data/shapes.json`, and the judged paths in `implementations/data/scope.json` (EP12 tables, dated and schema-checked); add a family there with a bad and a good eval. A person waives a reviewed hunk with `pragma: allowlist guard-removal` or `pragma: allowlist mitigation-removal` on a line in it; an agent's pragma counts only on a removed line HEAD already holds, and one an agent adds to a guard or mitigation line is a finding. Known limits, each a miss rather than a refusal: it is hunk-local, so a guard moved across hunks or files is not followed; a guard neutralised in place (`assert True`, a swapped middleware) is not seen; an insecure setting added with nothing removed is left to other policies; a commit whose only change is deleted files never reaches a script gate; a strong-to-plain stack protector downgrade is not seen; authorization wired by dependency injection or a config chain (FastAPI `Depends`, Spring `authorizeRequests`) is not read; files over 4000 lines are compared by line counts, not hunks; CI without a base ref or a push event file reads only the tip commit; a replacement line that only names a guard or header in a string (a log message) counts as keeping it; a file mode is judged on a swap to a weaker one, so a bare removed `chmod` and `umask` are not seen; CR-only line endings read as one line; a binary file with an unlisted suffix is read as text and asks; the path scope skips root `test`, `fixtures`, `evals`, `docs` and any `tests`, `vendor`, `node_modules` directory, and an agent's move of a file into a judged path from outside it asks.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

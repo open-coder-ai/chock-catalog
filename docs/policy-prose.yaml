@@ -545,7 +545,8 @@ guard-deletion:
     hunks or files is not followed; a guard neutralised in place (`assert True`, a swapped middleware) is
     not seen; an insecure setting added with nothing removed is left to other policies; a commit whose only
     change is deleted files never reaches a script gate; a strong-to-plain stack protector downgrade is not
-    seen; files over 4000 lines are compared by line counts, not hunks; CI without a base ref or a push event
+    seen; authorization wired by dependency injection or a config chain (FastAPI `Depends`, Spring
+    `authorizeRequests`) is not read; files over 4000 lines are compared by line counts, not hunks; CI without a base ref or a push event
     file reads only the tip commit; a replacement line that only names a guard or header in a string (a log
     message) counts as keeping it; a file mode is judged on a swap to a weaker one, so a bare removed `chmod`
     and `umask` are not seen; CR-only line endings read as one line; a binary file with an unlisted suffix is

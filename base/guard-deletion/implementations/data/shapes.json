@@ -41,7 +41,7 @@
       "id": "middleware-registration",
       "group": "registration",
       "label": "a middleware or request-filter registration",
-      "pattern": "\\b(?:app|router|server|api|application|bp|blueprint)\\.use\\s*\\(|\\bMIDDLEWARE(?:_CLASSES)?\\s*=|\\badd_middleware\\s*\\(|\\b\\w{0,40}Middleware\\b|^\\s*use\\s+[A-Z]\\w*|\\bbefore_(?:request|action|filter)\\b|\\.(?:UseAuthentication|UseAuthorization|UseHttpsRedirection|UseHsts|UseCors)\\s*\\(|\\b(?:helmet|csurf)\\s*\\("
+      "pattern": "\\b(?:app|router|server|api|application|bp|blueprint|r|e|g|mux|engine|group)\\.[Uu]se\\s*\\(|->middleware\\s*\\(|\\bprotect_from_forgery\\b|@UseGuards\\b|\\bMIDDLEWARE(?:_CLASSES)?\\s*=|\\badd_middleware\\s*\\(|\\b\\w{0,40}Middleware\\b|^\\s*use\\s+[A-Z]\\w*|\\bbefore_(?:request|action|filter)\\b|\\.(?:UseAuthentication|UseAuthorization|UseHttpsRedirection|UseHsts|UseCors)\\s*\\(|\\b(?:helmet|csurf)\\s*\\("
     },
     {
       "id": "sanitizer-call",

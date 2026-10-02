@@ -115,9 +115,10 @@ guard-deletion  [deterministic]
   PASS  tc-020                             authored  mitigation-removal: this change removes or weakens a security mitig…
   PASS  tc-021                             authored  mitigation-removal: this change removes or weakens a security mitig…
   PASS  tc-022                             authored  guard-deletion: this change removes a check and puts none like it i…
+  PASS  tc-023                             authored  gate exit 0
   score 1.00
 
-5 policies: 21 pass, 42 skipped
+5 policies: 22 pass, 42 skipped
 42 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
