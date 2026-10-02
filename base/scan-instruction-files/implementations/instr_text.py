@@ -16,7 +16,7 @@ MAX_STATEMENT = 4000
 OVERLAP = 500
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, rule or front matter.
 BLOCK_START = re.compile(
-    r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|---+\s*$|===+\s*$|<(?:!--|/?(?i:address|article|aside|blockquote"
+    r"^[ \t]*(?:[-*+](?:[ \t]|$)|[0-9]{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|---+[ \t]*$|===+[ \t]*$|<(?:!--|/?(?i:address|article|aside|blockquote"
     r"|details|dialog|div|dl|fieldset|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table"
     r"|tbody|td|tfoot|th|thead|tr|ul)\b))"
 )
@@ -24,7 +24,7 @@ BLOCK_START = re.compile(
 FRONT_KEY = re.compile(r"^[^\s#-][^:]*:")
 #: A blockquote prefix, also behind a list marker or a list item's indent: its lines are read as a container,
 #: so a wrapped quoted paragraph is still one paragraph.
-QUOTE = re.compile(r"^\s{0,8}(?:(?:[-*+]|\d{1,9}[.)])\s+)?((?:>[ \t]?)+)")
+QUOTE = re.compile(r"^[ \t]{0,8}(?:(?:[-*+]|[0-9]{1,9}[.)])[ \t]+)?((?:>[ \t]?)+)")
 #: A fenced line continued on the next: a trailing backslash, pipe or && (the backslash is dropped on joining).
 CONTINUED = ("\\", "|", "&&")
 #: Quotes or brackets around one word in prose, dropped so they cannot split a phrase (not $(x), never(x) or a
@@ -56,7 +56,8 @@ FOLD = str.maketrans(
     }
 )
 #: Emphasis and strike marks in prose; underscores only when they are not inside a word.
-EMPHASIS = re.compile(r"\*+|~~|(?<!\w)_+|_+(?!\w)")
+EMPHASIS = re.compile(r"\*++|~~|(?<!\w)_++|(?<!_)_++(?!\w)")
+LINE_END = re.compile(r"\r\n|\r|\n")
 SPACE = re.compile(r"\s+")
 DROPPED = frozenset({"Cf", "Mn", "Me", "Cc"})
 
@@ -76,8 +77,8 @@ class Statement(NamedTuple):
 
 
 def lines_of(text: str) -> list[str]:
-    """The file's lines, split on LF only, with a trailing CR dropped (an editor's CRLF)."""
-    return [line.removesuffix("\r") for line in text.split("\n")]
+    """The file's lines, split at LF, CRLF or a lone CR (each ends a line in CommonMark)."""
+    return LINE_END.split(text)
 
 
 def normalize(text: str, *, code: bool = False) -> str:
@@ -167,6 +168,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     whole: list[tuple[int, str]] = []  # the paragraph across hard breaks, judged whole as well
     code: list[tuple[int, str]] = []
     fence: Fence | None = None
+    body: list[tuple[int, str]] = []  # the open fence's lines, also judged as prose (see _prose)
     quoted = [QUOTE.match(line) for line in lines[skip:]]
     inner = [line[m.end() :] if m else line for line, m in zip(lines[skip:], quoted, strict=True)]
     depths = [m.group(1).count(">") if m else 0 for m in quoted]
@@ -175,11 +177,9 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     for k, line in enumerate(inner):
         number = skip + 1 + k
         if fence is not None:
-            if fence.holds(line, depths[k]):
-                fence = _fenced(line, number, fence, code, out)
+            fence, taken = _step(fence, (number, line), depths[k], (code, body), out)
+            if taken:
                 continue
-            _flush_code(code, out)
-            fence = None
         nest(items, line, lazy=_lazy(0, whole, line))
         if depths[k] != depth and not _lazy(depths[k], parts, line):
             _end(parts, whole, out)
@@ -200,7 +200,39 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
             _flush(parts, out)
     _end(parts, whole, out)
     _flush_code(code, out)
+    _prose(body, out)
     return out
+
+
+def _step(
+    fence: Fence, at: tuple[int, str], depth: int, held: tuple[list[tuple[int, str]], ...], out: list[Statement]
+) -> tuple[Fence | None, bool]:
+    """Take one line while a fence is open: the fence still open after it, and whether the line was taken
+    (a body line or the closer); a line outside the fence's container ends the fence and is read as usual."""
+    (number, line), (code, body) = at, held
+    if fence.holds(line, depth) and (kept := _fenced(line, number, fence, code, out)):
+        body.append(at)
+        return kept, True
+    _flush_code(code, out)
+    _prose(body, out)
+    return None, fence.holds(line, depth)
+
+
+def _prose(body: list[tuple[int, str]], out: list[Statement]) -> None:
+    """Judge a fence's lines as prose paragraphs too (a blank line or a block start begins a new one, a fence
+    line stands alone), so where this reader and a markdown renderer disagree on a fence, wrapped text the
+    renderer shows as prose is still joined and judged as prose."""
+    group: list[tuple[int, str]] = []
+    for number, line in body:
+        bare = line[m.end() :] if (m := QUOTE.match(line)) else line
+        if not bare.strip() or BLOCK_START.match(bare) or FENCE.match(bare):
+            _flush(group, out)
+        if bare.strip():
+            group.append((number, bare))
+        if FENCE.match(bare):
+            _flush(group, out)
+    _flush(group, out)
+    body.clear()
 
 
 def _end(parts: list[tuple[int, str]], whole: list[tuple[int, str]], out: list[Statement]) -> None:

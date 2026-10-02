@@ -7,11 +7,11 @@ import re
 from typing import NamedTuple
 
 #: A fence opener: three or more backticks or tildes, and its info string.
-FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)")
+FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)")
 #: A fence or closer indented this much or more past its container's content is indented code or text.
 CODE_INDENT = 4
 #: A list item's marker and the whitespace after it.
-LIST_ITEM = re.compile(r"^([ \t]*(?:[-*+]|\d{1,9}[.)]))[ \t]+")
+LIST_ITEM = re.compile(r"^([ \t]*(?:[-*+]|[0-9]{1,9}[.)]))(?:[ \t]+|$)")
 #: A table's delimiter row, matched on the stripped line; possessive, so a long run of spaces is linear.
 TABLE_DELIMITER = re.compile(r"\|?[ \t]*+:?-{3,}+:?[ \t]*+(?:\|[ \t]*+:?-{3,}+:?[ \t]*+)*+\|?")
 
@@ -33,7 +33,7 @@ class Fence(NamedTuple):
 
     def closes(self, line: str) -> bool:
         """A closing fence: the marker alone, indented less than CODE_INDENT past the container's content."""
-        bare = line.strip()
+        bare = line.strip(" \t")
         return bare.startswith(self.mark) and not bare.strip(self.mark[0]) and indent(line) - self.base < CODE_INDENT
 
 
@@ -42,7 +42,7 @@ def columns(text: str) -> int:
 
 
 def indent(line: str) -> int:
-    return columns(line[: len(line) - len(line.lstrip())])
+    return columns(line[: len(line) - len(line.lstrip(" \t"))])
 
 
 def item_indent(line: str) -> int | None:

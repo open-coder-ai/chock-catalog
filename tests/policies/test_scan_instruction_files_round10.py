@@ -34,12 +34,22 @@ def test_round_ten_variants_are_caught(text: str, rule: str) -> None:
 
 def test_a_list_marker_fence_holds_its_code() -> None:
     sts = text_mod.statements(f"- {FENCE}sh\n  make test\n  {FENCE}\n\nDone.\n")
-    assert [(st.code, st.norm) for st in sts] == [(False, "sh"), (True, "make test"), (False, "done.")]
+    assert [(st.code, st.norm) for st in sts] == [
+        (False, "sh"),
+        (True, "make test"),
+        (False, "make test"),
+        (False, "done."),
+    ]
 
 
 def test_a_top_level_fence_keeps_margin_content() -> None:
     sts = text_mod.statements(f"   {FENCE}\nmake\nmake test\n   {FENCE}\nDone.\n")
-    assert [st.code for st in sts] == [True, True, False]
+    assert [(st.code, st.norm) for st in sts] == [
+        (True, "make"),
+        (True, "make test"),
+        (False, "make make test"),
+        (False, "done."),
+    ]
 
 
 def test_many_hard_breaks_judge_in_linear_time() -> None:
