@@ -227,6 +227,8 @@ def test_a_non_string_is_a_caller_error(hk: SimpleNamespace) -> None:
 
 
 def test_the_error_is_a_value_error_naming_the_reason(hk: SimpleNamespace) -> None:
+    with pytest.raises(ValueError, match="U\\+200D \\(Cf\\)"):
+        hk.hosts.normalize_host("xn--1ug.example")
     with pytest.raises(ValueError, match="dotted quad"):
         hk.hosts.normalize_host("0177.0.0.1")
     with pytest.raises(ValueError, match="U\\+00DF"):

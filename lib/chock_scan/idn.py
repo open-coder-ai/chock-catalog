@@ -94,13 +94,12 @@ def decode_alabel(label: str) -> str:
         text = body.encode("ascii").decode("punycode")
     except UnicodeError:
         text = ""
-    if (
-        not text
-        or text.isascii()
-        or text.encode("punycode") != body.encode("ascii")
-        or any(unicodedata.category(char) in UNNAMED for char in text)
-    ):
+    if not text or text.isascii() or text.encode("punycode") != body.encode("ascii"):
         msg = f"'{label}' is not canonical punycode for a non-ASCII label"
+        raise UnparseableError(msg)
+    bad = next((char for char in text if unicodedata.category(char) in UNNAMED), None)
+    if bad is not None:
+        msg = f"'{label}' decodes to U+{ord(bad):04X} ({unicodedata.category(bad)}), which no valid label holds"
         raise UnparseableError(msg)
     return text
 

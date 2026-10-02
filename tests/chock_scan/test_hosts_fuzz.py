@@ -139,7 +139,8 @@ def test_a_wildcard_matches_exactly_the_hosts_below_its_domain(hk: SimpleNamespa
 def test_allowlists_parse_whole_or_refuse(hk: SimpleNamespace, seed: int) -> None:
     rng = _rng(seed)
     lines = [rng.choice(["# c", "", "  ", "*." + _domain(rng), _domain(rng), _text(rng, 6)]) for _ in range(8)]
-    bodies = [b for b in (line.partition("#")[0].strip(" \t") for line in lines) if b]
+    split = "\n".join(lines).split("\n")
+    bodies = [b for b in (line.partition("#")[0].strip(" \t") for line in split) if b]
     try:
         entries = hk.hostmatch.parse_allowlist("\n".join(lines))
     except hk.hosts.UnparseableError:

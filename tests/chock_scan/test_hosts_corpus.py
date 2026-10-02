@@ -69,7 +69,7 @@ def test_never_disagrees_with_the_url_standards_idna_tests(hk: SimpleNamespace) 
         if want is None or host.name != want.removesuffix("."):
             disagreements.append((case["input"], want, host))
     assert not disagreements
-    assert accepted >= 500
+    assert accepted >= 585  # 587 on Python 3.11 (Unicode 14), 589 on 3.12 and 3.13
 
 
 @pytest.mark.parametrize("case", SSRF, ids=[f"{c['source']}:{c['input']!r}" for c in SSRF])
