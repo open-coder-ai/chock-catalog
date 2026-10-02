@@ -756,3 +756,18 @@ policies:
     or agent config; a plan adding a handler, parser, auth path, crypto or sink; an ask-tier gate finding.
     Self-review of the diff in twelve red-team techniques, triaged by references/triage.json, reported
     as findings with exploit scenarios. Advisory: refuses nothing, writes no waiver, lowers no gate.'
+- id: block-hook-bypass-in-files
+  path: base/block-hook-bypass-in-files
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 28
+  eval_executed: 28
+  description: 'Friction, not a security boundary: flags lines added to hook launchers and scripts that
+    switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
+    set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit,
+    lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile,
+    justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.'
