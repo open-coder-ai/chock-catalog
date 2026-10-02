@@ -33,7 +33,10 @@ MAX_FINDINGS = 10000
 MAX_TEXT = 1 << 20
 #: The engine gives the change run and the baseline run 30 seconds together. Past this many seconds in one
 #: run, the files not yet read are reported, marked new, so one slow file cannot cost every finding.
-DEADLINE = 12.0
+DEADLINE = 10.0
+#: Would block once promoted: a secret-bearing beacon, a URL dictionary, and a file the run had no time to
+#: read (it may hold either, so running out of time never softens the verdict).
+BLOCKING = hidden_urls.BLOCKING | {"not-judged"}
 SHOWN = 50
 MARKDOWN = {".md", ".mdx", ".markdown", ".mdc"}
 MARKUP = {".html", ".htm", ".xhtml", ".svg", ".xml"}
@@ -84,7 +87,7 @@ def digest(text: str) -> str:
 
 
 def _finding(path: str, line: int, rule: str, key: str, message: str) -> dict:
-    tier = "would block" if rule in hidden_urls.BLOCKING else "would ask"
+    tier = "would block" if rule in BLOCKING else "would ask"
     return {"key": f"{rule}|{key}", "path": path, "line": line, "rule": rule, "message": f"[{tier}] {message}"}
 
 
@@ -179,7 +182,7 @@ def waived(finding: dict, lines: list[str], event: str, seen: dict[int, bool]) -
     """A person's waiver: a marker-only comment line just above the finding, each line read once. CI does
     not honour one on a would-block finding, since a pull request's author may be anyone."""
     number = finding["line"]
-    if number <= 1 or (event == "ci" and finding["rule"] in hidden_urls.BLOCKING):
+    if number <= 1 or (event == "ci" and finding["rule"] in BLOCKING):
         return False
     if number not in seen:
         seen[number] = bool(WAIVER.fullmatch(lines[number - 2].strip()))
@@ -195,7 +198,8 @@ def findings(payload: dict) -> list[dict]:
     event = str(payload.get("event", ""))
     out: list[dict] = []
     started = time.monotonic()
-    for raw_path, text in sorted(writes.items()):
+    # Smallest first, so a slow large file cannot keep the deadline from the small ones.
+    for raw_path, text in sorted(writes.items(), key=lambda item: (len(str(item[1])), str(item[0]))):
         path = str(raw_path).replace("\\", "/")
         kind = kind_of(path)
         if kind and time.monotonic() - started > DEADLINE:
@@ -249,7 +253,7 @@ def main() -> int:
     print(ADVICE, file=sys.stderr)
     if OBSERVE:
         return WARN
-    return BLOCK if any(f["rule"] in hidden_urls.BLOCKING for f in found) else ASK
+    return BLOCK if any(f["rule"] in BLOCKING for f in found) else ASK
 
 
 if __name__ == "__main__":

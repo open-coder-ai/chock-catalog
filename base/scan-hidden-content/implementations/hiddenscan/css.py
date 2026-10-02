@@ -168,10 +168,11 @@ def _faint(value: str) -> bool:
     return bool(opacity) and opacity[0] <= (FAINT * 100 if opacity[1] == "%" else FAINT)
 
 
-def hidden(decls: dict[str, str], under: str | None, *, svg: bool = False, motion: object = None) -> str | None:
+def hidden(decls: dict[str, str], under: str | None, *, svg: bool = False) -> str | None:
     """Why a declaration block hides its text, or None. `under` is the background behind the text, when
     known; without it, only a colour equal to the block's own background or transparent counts. In SVG
-    the text colour is `fill`. With `motion` (a motion.Motion), a block a keyframe of the file shows is not hidden."""
+    the text colour is `fill`. An animation never exempts a block:
+    whether one ever shows the text, and for how long, is not something this reader can settle."""
     if not decls:
         return None
     source = (
@@ -199,8 +200,7 @@ def hidden(decls: dict[str, str], under: str | None, *, svg: bool = False, motio
         (_offscreen(decls) or _collapsed(decls), "positioned off screen, clipped or collapsed"),
         (text == "transparent" or (text is not None and text == behind), "text colour equal to background"),
     )
-    reason = next((reason for hit, reason in checks if hit), None)
-    return None if reason and motion is not None and motion.reveals(decls, reason) else reason
+    return next((reason for hit, reason in checks if hit), None)
 
 
 def no_text(selector: str) -> bool:

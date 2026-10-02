@@ -24,6 +24,11 @@ HTML_ENDS = (
 #: Any indentation: inside a list item an HTML block sits at the item's content column; outside one an
 #: indented line is code, shown either way, so reading it as HTML only reports more.
 HTML_OTHER = re.compile(r"^[ \t]*</?[A-Za-z]")
+#: An indented code block starts this far past the margin or the list item's content column; a line indented
+#: less than LIST_INDENT after a break ends a list.
+CODE_INDENT, LIST_INDENT = 4, 2
+#: A list item's marker and the spaces after it, which set the column its content starts at.
+LIST_ITEM = re.compile(r"^[ \t]*(?:[-+*]|\d{1,9}[.)])([ \t]+|$)")
 #: Lines that start a block of their own, so a code span never pairs backticks across them.
 BLOCK_START = re.compile(r"^[ \t]*(?:>|[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$))")
 #: Lines that end a run on both sides: an ATX heading, a thematic break, a setext underline.
@@ -34,9 +39,9 @@ TABLE_DELIMITER = re.compile(
 )
 CELL = re.compile(r"((?<!\\)\|)")
 TICKS = re.compile(r"(\\*)(`+)")
-#: Tokens of link text: an escape, an image or link opener, a closer followed by a destination, and a
-#: blank line (which ends any open link text).
-BRACKETS = re.compile(r"\\.|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
+#: Tokens of link text: an escape, an inline tag or autolink (whose brackets are not link text), an image or
+#: link opener, a closer followed by a destination, and a blank line (which ends any open link text).
+BRACKETS = re.compile(r"\\.|<[^<>\n]*>|!\[|\[|\]\(|\n[ \t]*\n", re.DOTALL)
 CODE, HTML, TEXT, BREAK = "code", "html", "text", "break"
 
 
@@ -64,11 +69,38 @@ def _opens(line: str) -> tuple[str, tuple[str, ...] | str | None]:
     return TEXT, None
 
 
+def _width(text: str) -> int:
+    """Columns `text` spans, a tab reaching the next multiple of four."""
+    width = 0
+    for char in text:
+        width += 4 - width % 4 if char == "\t" else 1
+    return width
+
+
+def _indent(line: str) -> int:
+    return _width(line[: len(line) - len(line.lstrip(" \t"))])
+
+
 def classify(lines: list[str]) -> list[str]:
-    """The kind of each line: code (a fence or inside one), html (inside an HTML block), text or break."""
-    kinds, inside = [], None
+    """The kind of each line: code (a fence, an indented code block, or inside one), html (inside an HTML
+    block), text or break. A line indented four or more past the open list item's content column (the
+    margin, outside a list) after a break is code; less indented, it may open an HTML block."""
+    kinds, inside, column, indented = [], None, -1, False
     for line in lines:
-        if isinstance(inside, str) and inside[0] in "`~":
+        previous = kinds[-1] if kinds else BREAK
+        if inside is None and line.strip():
+            if item := LIST_ITEM.match(line):
+                column = (
+                    _width(item.group(0))
+                    if len(item.group(1)) <= CODE_INDENT
+                    else _width(item.group(0)) - len(item.group(1)) + 1
+                )
+            elif _indent(line) < LIST_INDENT and previous == BREAK:
+                column = -1
+            indented = _indent(line) >= max(column, 0) + CODE_INDENT and (previous == BREAK or indented)
+        if inside is None and indented:
+            kinds.append(CODE if line.strip() else BREAK)
+        elif isinstance(inside, str) and inside[0] in "`~":
             closing = re.match(rf"^ {{0,3}}{re.escape(inside[0])}{{{len(inside)},}}[ \t]*$", line)
             inside = None if closing else inside
             kinds.append(CODE)
@@ -129,7 +161,10 @@ def blank_code(text: str) -> str:
     for line, kind in zip(lines, classify(lines), strict=True):
         table = table and kind == TEXT
         if kind == TEXT and TABLE_DELIMITER.match(line):
+            header = segment.pop() if segment else None
             flush()
+            if header is not None:
+                out.append("".join(_blank_spans(cell) for cell in CELL.split(header)))
             table = True
             out.append(line)
         elif table:
@@ -174,4 +209,5 @@ def image_closers(text: str) -> set[int]:
                 images -= stack.pop()
         elif piece[0] == "\n":
             stack, images = [], 0
+        # an escape or an inline tag or autolink: nothing to count
     return out
