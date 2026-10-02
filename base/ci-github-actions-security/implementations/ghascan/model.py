@@ -140,12 +140,6 @@ def with_values(tree: Tree, step: Step, name: str) -> list[str]:
     return [n.value for n in tree.values((*step.path, "with", name))]
 
 
-def conditions(tree: Tree, step: Step) -> str:
-    """The job's and the step's `if:` text, joined."""
-    texts = [n.value for n in tree.values((*job_path(step), "if"))] + [n.value for n in tree.values((*step.path, "if"))]
-    return "\n".join(texts)
-
-
 SUBSTRING, IN_EXPR, WHOLE_LINE = "substring", "in-expr", "whole-line"
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from ghascan import expr
-from ghascan.model import PR_EVENTS, RISKY, WORKFLOW, Ctx, Hit, conditions, is_action, jobs, steps
+from ghascan.model import PR_EVENTS, RISKY, WORKFLOW, Ctx, Hit, is_action, job_path, jobs, steps
 
 AGENT_EVENTS = RISKY | {"pull_request_review", "pull_request_review_comment"}
 ID_TOKEN_EVENTS = PR_EVENTS | {"issue_comment"}
@@ -27,23 +27,34 @@ def _set(ctx: Ctx, path: tuple) -> bool:
     return any(n.kind == "map" or n.value.strip() not in NULLS for n in nodes)
 
 
-def _gated(text: str, on: set[str]) -> bool:
-    """Whether a condition admits only OWNER, MEMBER or COLLABORATOR authors of the triggering object.
+def _gated(texts: list[str], on: set[str]) -> bool:
+    """Whether the job's and step's conditions admit only OWNER, MEMBER or COLLABORATOR authors of the
+    triggering object.
 
-    Accepted terms, joined by `&&` only: `github.event.<object>.author_association == '<ROLE>'` and a
-    non-negated `contains(fromJSON('[<ROLES>]'), github.event.<object>.author_association)`. Every
-    object named must be one of the triggers' own (a comment for issue_comment, never the issue),
-    and every trigger's object must be named. `||`, `!=`, `!` and a comparison of the result are refused.
+    The conditions are `&&`-joined; each must be one whole expression or a bare one (a mixed or block
+    scalar `if:` is always true). Gate terms are whole `&&` terms: `github.event.<object>.author_association
+    == '<ROLE>'` or `contains(fromJSON('[<ROLES>]'), github.event.<object>.author_association)`.
+    Every object named must be one of the triggers' own (a comment for issue_comment, never the issue)
+    and every trigger's object must be named. `||`, `!=`, `!` and backslashes anywhere refuse.
     """
-    flat = re.sub(r"\s+", "", "".join(expr.expressions(text)) or text).replace('"', "'").lower()
-    if "||" in flat or "!=" in flat or "!" in flat or ")==" in flat:
-        return False
-    used = {m.group(1) for m in EQUALS.finditer(flat)}
-    for match in LISTED.finditer(flat):
-        roles = set(re.findall(r"'([a-z]+)'", match.group(1)))
-        if not roles or not roles <= ROLES:
+    bodies = []
+    for text in texts:
+        found = expr.expressions(text)
+        if found and (len(found) != 1 or text != text.strip() or not text.startswith("${{") or not text.endswith("}}")):
             return False
-        used.add(match.group(2))
+        bodies.append(found[0] if found else text)
+    flat = re.sub(r"\s+", "", "&&".join(bodies)).replace('"', "'").lower()
+    if any(bad in flat for bad in ("||", "!", "\\")):
+        return False
+    used = set()
+    for term in flat.split("&&"):
+        if match := EQUALS.fullmatch(term):
+            used.add(match.group(1))
+        elif match := LISTED.fullmatch(term):
+            roles = re.findall(r"'([^']*)'", match.group(1))
+            if not roles or not set(roles) <= ROLES:
+                return False
+            used.add(match.group(2))
     needed = {OBJECT[t] for t in on if t in OBJECT}
     return bool(used) and used == needed
 
@@ -95,7 +106,8 @@ def agent_step_untrusted(ctx: Ctx) -> list[Hit]:
     for step in steps(ctx.tree, ctx.kind):
         if not is_action(step.uses, *agents):
             continue
-        if _gated(conditions(ctx.tree, step), on):
+        conds = [n.value for n in ctx.tree.values((*job_path(step), "if"))]
+        if _gated(conds + [n.value for n in ctx.tree.values((*step.path, "if"))], on):
             continue
         name = step.uses.split("@", 1)[0].strip()
         message = (

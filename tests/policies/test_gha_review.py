@@ -198,3 +198,39 @@ def test_round2_waivers_count_only_their_own_occurrence() -> None:
         "          echo A >> $GITHUB_ENV\n"
     )
     assert len(found(workflow(PRT, env_file), event="commit")) == 2
+
+
+@pytest.mark.parametrize(
+    "cond",
+    [
+        "github.event.comment.author_association == 'OWNER' == false",
+        "github.event.comment.author_association == 'OWNER' < true",
+        'contains(fromJSON(\'["OWNER","FIRST_TIME_CONTRIBUTOR"]\'), github.event.comment.author_association)',
+        'contains(fromJSON(\'["OWNER","\\u004eONE"]\'), github.event.comment.author_association)',
+        "${{ github.event.comment.author_association == 'OWNER' }} ok",
+        "|\n      ${{ github.event.comment.author_association == 'OWNER' }}",
+    ],
+)
+def test_round3_gates_that_never_restrict(cond: str) -> None:
+    assert of("gha-agent-step-untrusted", workflow("  issue_comment:", AGENT_STEP, job=f"    if: {cond}\n"))
+
+
+def test_round3_gate_with_other_conjuncts_and_a_step_condition() -> None:
+    job = "    if: contains(github.event.comment.body, '@bot') && github.event.comment.author_association == 'OWNER'\n"
+    step = AGENT_STEP + "        if: github.event.comment.author_association == 'MEMBER'\n"
+    assert not of("gha-agent-step-untrusted", workflow("  issue_comment:", AGENT_STEP, job=job))
+    assert not of("gha-agent-step-untrusted", workflow("  issue_comment:", step))
+
+
+@pytest.mark.parametrize(
+    "password",
+    [
+        "${{ github.token }}",
+        "${{ needs.login.outputs.token }}",
+        "${{ secrets['REG_PW'] }}",
+        "${{ steps.l.outputs.pw }}",
+    ],
+)
+def test_round3_stored_credential_references(password: str) -> None:
+    job = f'    container:\n      image: i\n      credentials:\n        password: "{password}"\n'
+    assert not of("gha-container-credentials", workflow("  push:", "      - run: echo\n", job=job))

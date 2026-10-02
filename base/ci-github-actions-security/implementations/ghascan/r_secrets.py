@@ -143,11 +143,16 @@ def container_credentials(ctx: Ctx) -> list[Hit]:
     return hits
 
 
-STORED = re.compile(r"\$\{\{\s*(?:secrets|vars|inputs)\.[A-Za-z_][A-Za-z0-9_-]*\s*\}\}")
+#: One bare reference to where a credential is kept or handed over: a secret, variable or input, the
+#: job token, or another job's or step's output (registry-login actions hand passwords on that way).
+STORED = re.compile(
+    r"\$\{\{\s*(?:(?:secrets|vars|inputs)(?:\.[A-Za-z_][\w-]*|\[\s*'[A-Za-z_][\w-]*'\s*\])"
+    r"|github\.token|(?:needs|steps)\.[A-Za-z_][\w-]*\.outputs\.[A-Za-z_][\w-]*)\s*\}\}"
+)
 
 
 def _literal(text: str) -> bool:
-    """Whether a password is anything but one bare `${{ secrets.X }}` (or vars/inputs) reference."""
+    """Whether a password is anything but one bare stored-credential reference (STORED)."""
     return bool(text.strip()) and not STORED.fullmatch(text.strip())
 
 
