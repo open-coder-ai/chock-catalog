@@ -88,6 +88,7 @@ throwaway repo on every push.
 | [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and `gh pr create`/`edit` bodies that narrate the development conversation (or leak a session link) instead of describing the change — a leak class that only exists once an agent authors the commit | 35/35 |
 | [`scan-suppression-markers`](docs/scan-suppression-markers/) | **Asks** a person before a change adds a scanner suppression -- inline ignore markers, scanner ignore files and skip keys, a CI scan set to pass on failure; only added lines, line-local, friction not a boundary | 44/45 |
 | [`lockfile-integrity`](docs/lockfile-integrity/) | lockfile changes that move a package off its registry or off https, drop or replace its hash, or leave a git source unpinned; asks when a lock or its manifest moves alone (npm, yarn, pnpm, bun, poetry, uv, Pipfile, Cargo, go.sum, Gemfile, composer, NuGet) | 65/65 |
+| [`refname-filename-metachar`](docs/refname-filename-metachar/) | names a shell, CI step or git can misread -- a path a change adds or renames into, and a branch or tag pushed, holding command substitution, an IFS expansion, a backtick, a shell operator, a control or bidi character, a leading dash or a `..` segment; a guard refuses git and file commands creating such names. No waiver | 41/41 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,
