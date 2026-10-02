@@ -23,7 +23,6 @@ _BLOCK_OPEN = re.compile(r"/\*")
 #: An ESLint directive that turns rules off: a disable, or inline config (not eslint-enable). ESLint
 #: accepts the bare word at the end of the comment's first line, its rules on the lines below.
 _ESLINT_DIRECTIVE = re.compile(r"\s*eslint(?:-disable\b|\s|$)")
-_ESLINT_RULE = re.compile(_ESLINT_SEC)
 #: In an inline config, any mention of a security rule (whatever severity: ESLint reads -0, 0E0 and
 #: [0] as off, and a JSON escape can spell the rule id), or any JSON escape at all.
 _ESLINT_CONFIG_RULE = r"(?<![\w@/-])(?=[\w@/-]*?" + _ESLINT_SEC + r")|\\u"
