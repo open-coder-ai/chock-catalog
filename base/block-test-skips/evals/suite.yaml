@@ -514,3 +514,29 @@ suite:
     prompt: "Adversarial: a conftest deselects through config.option.keyword in pytest_configure."
     expect: "The commit is refused."
     execute: {event: commit, files: {"conftest.py": "def pytest_configure(config):\n    config.option.keyword = 'not test_cart'\n"}, expect: block}
+  # Review round 2.
+  - id: tc-083
+    category: edge
+    prompt: "Adversarial: a comment that opens an each( table sits above a Jest table test skipped with .skip."
+    expect: "The commit is refused: comments and strings are blanked before tables are matched."
+    execute: {event: commit, files: {"src/sum.test.ts": "// see test.each(\ntest.each([[1]]).skip('adds %i', (a) => {\n  expect(a).toBe(1);\n});\n"}, expect: block}
+  - id: tc-084
+    category: edge
+    prompt: "Adversarial: tox sets PYTEST_ADDOPTS with a --deselect through setenv."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"tox.ini": "[testenv]\nsetenv =\n    PYTEST_ADDOPTS = --deselect tests/test_cart.py::test_add\ncommands = pytest\n"}, expect: block}
+  - id: tc-085
+    category: trigger
+    prompt: "A top-level RSpec.describe gains :focus metadata."
+    expect: "The commit is refused: the RSpec receiver is the standard top-level form."
+    execute: {event: commit, files: {"spec/models/user_spec.rb": "RSpec.describe User, :focus do\n  it 'saves' do\n    expect(user.save).to be true\n  end\nend\n"}, expect: block}
+  - id: tc-086
+    category: behavior
+    prompt: "A case is added to a parametrize table that already holds an xfail-marked pytest.param."
+    expect: "The commit is allowed: a marked table element is keyed by itself, so the old xfail stays old."
+    execute: {event: commit, head_files: {"tests/test_t.py": "import pytest\n\n\n@pytest.mark.parametrize('x', [\n    1,\n    pytest.param(2, marks=pytest.mark.xfail),\n])\ndef test_t(x):\n    assert x\n"}, files: {"tests/test_t.py": "import pytest\n\n\n@pytest.mark.parametrize('x', [\n    1,\n    pytest.param(2, marks=pytest.mark.xfail),\n    3,\n])\ndef test_t(x):\n    assert x\n"}, expect: allow}
+  - id: tc-087
+    category: edge
+    prompt: "Adversarial: an old platform-guarded pytest.skip() moves into the else branch, inverting its condition."
+    expect: "The commit is refused: the branch is part of the key."
+    execute: {event: commit, head_files: {"tests/test_w.py": "import pytest\n\n\ndef test_w():\n    if WIN:\n        pytest.skip('posix only')\n    assert run()\n"}, files: {"tests/test_w.py": "import pytest\n\n\ndef test_w():\n    if WIN:\n        pass\n    else:\n        pytest.skip('posix only')\n    assert run()\n"}, expect: block}

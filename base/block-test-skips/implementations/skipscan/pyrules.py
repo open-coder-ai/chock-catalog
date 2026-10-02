@@ -6,6 +6,7 @@ import ast
 import re
 
 from skipscan import CONFIG, SKIP
+from skipscan.scan import PY_BREAK, split_lines
 
 PYTEST_STOPS = frozenset({"skip", "xfail", "importorskip", "Skipped", "XFailed"})
 UNITTEST_STOPS = frozenset({"skip", "skipIf", "skipUnless", "expectedFailure"})
@@ -149,6 +150,15 @@ def _drops(node: ast.AST, params: set[str]) -> bool:
     return any(isinstance(t, ast.Subscript) and isinstance(t.value, ast.Name) and t.value.id in params for t in targets)
 
 
+def _sets_option(node: ast.AST) -> bool:
+    """`setattr(config.option, "keyword", ...)`: the option assignment reached by string."""
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "setattr"):
+        return False
+    owner = _dotted(node.args[0]) if node.args else None
+    named = node.args[1] if len(node.args) > 1 else None
+    return bool(owner and owner.endswith("option")) and isinstance(named, ast.Constant) and named.value in OPTIONS
+
+
 def _hook_hits(tree: ast.AST) -> list[Hit]:
     """Collection hooks and options that drop tests: `pytest_ignore_collect`, `..._modifyitems`, `option.*`."""
     hits: list[Hit] = []
@@ -158,6 +168,8 @@ def _hook_hits(tree: ast.AST) -> list[Hit]:
             and node.attr in OPTIONS
             and (_dotted(node) or "").endswith(".option." + node.attr)
         ):
+            hits.append((node.lineno, CONFIG, None))
+        if _sets_option(node):
             hits.append((node.lineno, CONFIG, None))
         if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             continue
@@ -176,10 +188,11 @@ def _span(lines: list[str], node: ast.AST) -> str:
     return " ".join(" ".join(lines[node.lineno - 1 : end]).split())
 
 
-def _anchor(node: ast.AST, parents: dict[int, ast.AST], lines: list[str]) -> str:
-    """What a skip is keyed by: its decorator or statement in full, behind the conditions that guard it.
+def _anchor(node: ast.AST, parents: dict[int, ast.AST], lines: list[str], source: str) -> str:
+    """What a skip is keyed by: its list element, decorator or statement in full, behind the conditions guarding it.
 
-    Widening a multi-line `skipif(...)`, or the `if` around a `pytest.skip()`, changes the key, so it is new.
+    Widening a multi-line `skipif(...)`, or the `if` around a `pytest.skip()`, changes the key, so it is new;
+    a case added beside a `pytest.param(..., marks=...)` in a table leaves that element's key alone.
     """
     guards: list[str] = []
     text = ""
@@ -188,17 +201,21 @@ def _anchor(node: ast.AST, parents: dict[int, ast.AST], lines: list[str]) -> str
         decorated = isinstance(parent, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
         if not text and decorated and child in parent.decorator_list:
             text = _span(lines, child)
+        if not text and isinstance(parent, ast.List | ast.Tuple | ast.Set) and child in parent.elts:
+            text = " ".join((ast.get_source_segment(source, child) or _span(lines, child)).split())
         if not text and isinstance(parent, ast.stmt):
             simple = not hasattr(parent, "body")
             text = _span(lines, parent) if simple else " ".join(lines[parent.lineno - 1].split())
         if isinstance(parent, ast.If | ast.While) and child is not parent.test:
-            guards.insert(0, _span(lines, parent.test))
+            # A skip moved into the `else` inverts its condition, so the branch is part of the key.
+            branch = "else of " if child in parent.orelse else ""
+            guards.insert(0, branch + _span(lines, parent.test))
         child, parent = parent, parents.get(id(parent))
     return " => ".join([*guards, text])
 
 
 def _coding_hit(text: str) -> list[Hit]:
-    for number, line in enumerate(text.splitlines()[:2], 1):
+    for number, line in enumerate(split_lines(text, PY_BREAK)[:2], 1):
         found = CODING.match(line)
         if found and found.group(1).lower().replace("_", "-") not in PLAIN_CODINGS:
             return [(number, SKIP, f"coding|{found.group(1)}")]
@@ -212,15 +229,15 @@ def python_hits(text: str) -> list[Hit]:
     except (SyntaxError, ValueError):
         return [
             (number, SKIP, None)
-            for number, line in enumerate(text.splitlines(), 1)
+            for number, line in enumerate(split_lines(text, PY_BREAK), 1)
             if not line.lstrip().startswith("#") and FALLBACK.search(line)
         ]
     aliases = _aliases(tree)
     exempt = {id(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call) and _strict_xfail(node, aliases)}
     parents = {id(child): node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
-    lines = text.splitlines()
+    lines = split_lines(text, PY_BREAK)
     markers = [
-        (node.lineno, SKIP, _anchor(node, parents, lines))
+        (node.lineno, SKIP, _anchor(node, parents, lines, text))
         for node in ast.walk(tree)
         if _is_marker(node, aliases, exempt)
     ]

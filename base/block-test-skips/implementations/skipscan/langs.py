@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 
 from skipscan import SKIP
-from skipscan.scan import group, line_index
+from skipscan.scan import blank_code, group, line_index, split_lines
 
 C_COMMENTS = ("//", "*", "/*")
 #: v1's one pattern, still applied to a test-path file whose extension no table below names.
@@ -41,10 +41,10 @@ RULES: dict[str, tuple[re.Pattern[str], tuple[str, ...]]] = {
     # Statement-initial calls and example metadata only: `:pending` and `skip:` elsewhere are ordinary Ruby.
     "ruby": (
         re.compile(
-            r"^\s*(?:x(?:it|describe|context|specify|example|scenario|feature)|f(?:it|describe|context|specify|example)"
-            r"|focus)\b(?!\s*(?:=[^=>~]|[.?!:]))"
-            r"|^\s*(?:skip|pending)\b(?!\s*(?:=[^=>~]|[.?!:)\]]))"
-            r"|^\s*(?:it|specify|example|scenario|describe|context|feature)\b.*"
+            r"^\s*(?:RSpec\s*\.\s*)?(?:x(?:it|describe|context|specify|example|scenario|feature)"
+            r"|f(?:it|describe|context|specify|example|scenario|feature)|focus)\b(?!\s*(?:[-+*/|&]?=[^=>~]|<<|[.?!:]))"
+            r"|^\s*(?:skip|pending)\b(?!\s*(?:[-+*/|&]?=[^=>~]|<<|[.?!:)\]]))"
+            r"|^\s*(?:RSpec\s*\.\s*)?(?:it|specify|example|scenario|describe|context|feature)\b.*"
             r"(?:,\s*:(?:skip|pending|focus)\b|\b(?:skip|pending|focus):(?!\s*(?:false|nil)\b))"
         ),
         ("#",),
@@ -85,10 +85,12 @@ EACH_TAIL = re.compile(r"\s*\.(?:skip|only)\b")
 
 #: A Go `if` whose condition calls `testing.Short()`: a skip only when its block returns or skips.
 SHORT = re.compile(r"\bif\b[^{\n]*\btesting\.Short\s*\(\s*\)[^{\n]*\{")
-SHORT_EXIT = re.compile(r"\breturn\b|\.Skip")
+#: A bare `return` (a helper's `return 10` scales, it does not skip) or a skip call.
+SHORT_EXIT = re.compile(r"\breturn\s*(?:[;}\r\n]|$)|\.\s*Skip")
 
 
 def _each_hits(text: str, line_of: Callable[[int], int]) -> list[int]:
+    """`.each(...).skip` in code; `text` is blanked, so a comment or string cannot open a table."""
     hits = []
     for match in EACH.finditer(text):
         end, _ = group(text, match.end()) if text[match.end()] == "(" else _template(text, match.end())
@@ -126,7 +128,7 @@ def _is_comment(line: str, comments: tuple[str, ...]) -> bool:
 def line_hits(lang: str, text: str) -> list[tuple[int, str, None]]:
     """Each line of a test file that holds one of its language's markers, comment lines aside."""
     pattern, comments = RULES[lang]
-    lines = text.splitlines()
+    lines = split_lines(text)
     numbers = [
         number
         for number, line in enumerate(lines, 1)
@@ -134,6 +136,5 @@ def line_hits(lang: str, text: str) -> list[tuple[int, str, None]]:
     ]
     extra = {"js": _each_hits, "go": _short_hits}.get(lang)
     if extra:
-        line_of = line_index(text)
-        numbers += [n for n in extra(text, line_of) if not _is_comment(lines[n - 1], comments)]
+        numbers += extra(blank_code(text), line_index(text))
     return [(number, SKIP, None) for number in sorted(set(numbers))]

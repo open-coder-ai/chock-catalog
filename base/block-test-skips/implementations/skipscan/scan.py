@@ -2,17 +2,57 @@
 
 from __future__ import annotations
 
-from bisect import bisect_left
+import re
+from bisect import bisect_right
 from collections.abc import Callable
 
 QUOTES = "'\"`"
 PAIRS = {"(": ")", "[": "]", "{": "}"}
 
 
-def line_index(text: str) -> Callable[[int], int]:
+#: Line breaks as Python's own reader counts them, and as JS and C# count them (LS and PS too).
+PY_BREAK = re.compile(r"\r\n|[\r\n]")
+ANY_BREAK = re.compile(r"\r\n|[\r\n\u2028\u2029]")
+
+
+def breaks_for(kind: str) -> re.Pattern[str]:
+    return PY_BREAK if kind in ("python", "pytest-config") else ANY_BREAK
+
+
+def split_lines(text: str, breaks: re.Pattern[str] = ANY_BREAK) -> list[str]:
+    """The text's lines, split where its language breaks them: hit lines and key text then agree."""
+    lines = breaks.split(text)
+    return lines[:-1] if lines[-1] == "" else lines
+
+
+def line_index(text: str, breaks: re.Pattern[str] = ANY_BREAK) -> Callable[[int], int]:
     """Offset -> 1-based line number, from one pass over the text."""
-    breaks = [index for index, char in enumerate(text) if char == "\n"]
-    return lambda offset: bisect_left(breaks, offset) + 1
+    ends = [found.end() for found in breaks.finditer(text)]
+    return lambda offset: bisect_right(ends, offset) + 1
+
+
+def blank_code(text: str) -> str:
+    """Comments and string contents turned to spaces, offsets and breaks kept, so a scan sees code only."""
+    out = list(text)
+    index = 0
+    while index < len(text):
+        if text[index] in QUOTES:
+            end = _string_end(text, index)
+            start, index = index + 1, end
+            end -= 1
+        elif text.startswith("//", index):
+            found = ANY_BREAK.search(text, index)
+            start, end = index, found.start() if found else len(text)
+            index = end
+        elif text.startswith("/*", index):
+            close = text.find("*/", index + 2)
+            start, end = index, len(text) if close < 0 else close + 2
+            index = end
+        else:
+            index += 1
+            continue
+        out[start:end] = [char if char in "\r\n\u2028\u2029" else " " for char in text[start:end]]
+    return "".join(out)
 
 
 def _string_end(text: str, start: int) -> int:

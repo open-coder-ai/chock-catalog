@@ -17,6 +17,7 @@ from skipscan import CONFIG, SKIP
 from skipscan.config import config_hits, config_kind
 from skipscan.langs import EXTENSIONS, line_hits
 from skipscan.pyrules import python_hits
+from skipscan.scan import breaks_for, split_lines
 from skipscan.scope import scopes_for
 
 #: protect-test-integrity's test paths, kept identical; MORE_TEST_PATHS widens them for this gate.
@@ -75,7 +76,7 @@ def findings(payload: dict) -> list[dict]:
         kind = kind_of(norm)
         if kind is None:
             continue
-        lines = text.splitlines()
+        lines = split_lines(text, breaks_for(kind))
         scope = scopes_for(norm, text)
         for number, rule, detail in sorted(set(hits_of(kind, text)), key=lambda hit: (hit[0], hit[1], hit[2] or "")):
             line = lines[number - 1]

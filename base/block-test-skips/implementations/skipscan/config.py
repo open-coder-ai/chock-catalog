@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from skipscan import CONFIG
-from skipscan.scan import group, line_index
+from skipscan.scan import PY_BREAK, group, line_index, split_lines
 
 PYTEST_FILES = frozenset(
     {"pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml", "pyproject.toml", "setup.cfg", "tox.ini"}
@@ -16,7 +16,10 @@ OPTIONS = re.compile(r"(?<![\w-])--(?:deselect|ignore(?:-glob)?)(?![\w-])|(?<![\
 #: A section header, `[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`, `[testenv]`.
 SECTION = re.compile(r"^\[{1,2}([\w.:\- ]+)\]{1,2}\s*(?:[#;].*)?$")
 #: Outside a pytest section only a line that runs pytest counts, so `flake8 --ignore=E501` is not judged.
-RUNS_PYTEST = re.compile(r"\bpy\.?test\b")
+#: `PYTEST_ADDOPTS` set from tox `setenv` or hatch `env-vars` counts too, by the same word.
+RUNS_PYTEST = re.compile(r"\bpy\.?test\b|\bPYTEST_ADDOPTS\b", re.IGNORECASE)
+#: pytest's own sections: `[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]` (not `[testenv:pytest-lint]`).
+PYTEST_SECTION = re.compile(r"^(?:pytest|tool[:.]pytest\b.*)$")
 JEST_KEY = re.compile(r"\btestPathIgnorePatterns\b[\"']?\s*[:=]\s*")
 #: Jest's own default: restating it hides nothing.
 JEST_DEFAULT = frozenset({"/node_modules/"})
@@ -45,19 +48,19 @@ def _code(line: str) -> str:
 def _pytest_hits(text: str) -> list[tuple[int, str, str | None]]:
     hits: list[tuple[int, str, str | None]] = []
     section = ""
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(split_lines(text, PY_BREAK), 1):
         if header := SECTION.match(line):
             section = header.group(1)
             continue
         code = _code(line)
-        if OPTIONS.search(code) and ("pytest" in section or RUNS_PYTEST.search(code)):
+        if OPTIONS.search(code) and (PYTEST_SECTION.match(section) or RUNS_PYTEST.search(code)):
             hits.append((number, CONFIG, None))
     return hits
 
 
 def _jest_hits(text: str) -> list[tuple[int, str, str | None]]:
     """One hit per ignore pattern, so a pattern added to the list is new; a computed value is one hit."""
-    lines = text.splitlines()
+    lines = split_lines(text)
     line_of = line_index(text)
     hits: list[tuple[int, str, str | None]] = []
     for match in JEST_KEY.finditer(text):

@@ -10,6 +10,7 @@ from policies import gatekit, scriptkit
 
 mod = scriptkit.load("block-test-skips", "block-test-skips-gate.py")
 POLICY = "block-test-skips"
+LS = chr(0x2028)
 
 
 def lines(path: str, text: str) -> list[int]:
@@ -143,3 +144,80 @@ def test_a_guarded_skip_is_keyed_behind_its_guard() -> None:
     text = "def test_a():\n    while flaky():\n        if not net():\n            pytest.skip('x')\n"
     (found,) = mod.findings({"event": "tool_use", "writes": {"tests/test_a.py": text}})
     assert found["key"] == "test-skip|test_a|while flaky(): => if not net(): => pytest.skip('x')"
+
+
+# Round 2 of the review.
+
+
+@pytest.mark.parametrize(
+    "opener",
+    ["// see test.each(\n", "const doc = 'uses it.each(';\n", "/* it.each( */\n", "// note" + LS],
+)
+def test_a_comment_or_string_cannot_open_an_each_table(opener: str) -> None:
+    text = opener + "test.each([[1]]).skip('x %i', () => {});\n"
+    assert lines("src/a.test.ts", text) == [2]
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "found"),
+    [
+        ("tox.ini", "[testenv]\nsetenv =\n    PYTEST_ADDOPTS = --deselect tests/test_a.py::test_x\n", [3]),
+        ("pyproject.toml", '[tool.hatch.envs.default.env-vars]\nPYTEST_ADDOPTS = "--deselect a"\n', [2]),
+        ("tox.ini", "[testenv:pytest-lint]\ncommands = flake8 --ignore=E501 src\n", []),
+        ("spec/models/user_spec.rb", "RSpec.describe User, :focus do\n", [1]),
+        ("spec/models/user_spec.rb", "RSpec.describe User, skip: 'later' do\n", [1]),
+        ("spec/models/user_spec.rb", "RSpec.xdescribe User do\n", [1]),
+        ("spec/features/pay_spec.rb", "  fscenario 'pays' do\n", [1]),
+        ("spec/models/user_spec.rb", "    skip += 1\n    pending << order\n", []),
+        ("pkg/a_test.go", "func n() int {\n\tif testing.Short() {\n\t\treturn 10\n\t}\n\treturn 100\n}\n", []),
+        (
+            "pkg/a_test.go",
+            "func TestA(t *testing.T) {\n\t// a" + LS + "// b\n\tif testing.Short() {\n\t\treturn\n\t}\n}\n",
+            [4],
+        ),
+        ("tests/conftest.py", "def pytest_configure(config):\n    setattr(config.option, 'keyword', 'not x')\n", [2]),
+        ("tests/conftest.py", "setattr(config.option, name, 1)\nsetattr(obj, 'keyword', 1)\nsetattr()\n", []),
+    ],
+)
+def test_round_two_forms(path: str, text: str, found: list[int]) -> None:
+    assert lines(path, text) == found
+
+
+@pytest.mark.parametrize(
+    ("head", "after"),
+    [
+        (
+            "import pytest\n\n\n@pytest.mark.parametrize('x', [\n    1,\n    pytest.param(2, marks=pytest.mark.xfail),\n])\n"
+            "def test_a(x):\n    assert x\n",
+            "import pytest\n\n\n@pytest.mark.parametrize('x', [\n    1,\n    pytest.param(2, marks=pytest.mark.xfail),\n"
+            "    3,\n])\ndef test_a(x):\n    assert x\n",
+        ),
+        (
+            "import pytest\n\npytestmark = [pytest.mark.skip]\n",
+            "import pytest\n\npytestmark = [pytest.mark.skip, pytest.mark.slow]\n",
+        ),
+    ],
+)
+def test_a_case_added_beside_an_old_marked_element_is_old(tmp_path: Path, head: str, after: str) -> None:
+    assert engine(tmp_path, "tests/test_a.py", head, after) == 0
+
+
+def test_a_skip_moved_into_the_else_branch_is_new(tmp_path: Path) -> None:
+    head = "import pytest\n\n\ndef test_a():\n    if WIN:\n        pytest.skip('x')\n"
+    after = "import pytest\n\n\ndef test_a():\n    if WIN:\n        pass\n    else:\n        pytest.skip('x')\n"
+    assert engine(tmp_path, "tests/test_a.py", head, after) == 1
+
+
+def test_lines_split_as_python_reads_them_so_a_hidden_break_cannot_reuse_an_old_key(tmp_path: Path) -> None:
+    head = "import pytest\n\nif WIN:\n    pytest.skip('x', allow_module_level=True)\n"
+    after = (
+        "import pytest\n\nx = 1  # pad\x1c\x1c\x1c\ns = '''\nif WIN:\n    pytest.skip('x', allow_module_level=True)'''\n"
+        "if True:\n    pytest.skip('x', allow_module_level=True)\n"
+    )
+    assert engine(tmp_path, "tests/test_a.py", head, after) == 1
+
+
+def test_a_marked_table_element_is_keyed_by_that_element() -> None:
+    text = "import pytest\n\nCASES = [1, pytest.param(2,\n    marks=pytest.mark.xfail)]\n"
+    (found,) = mod.findings({"event": "tool_use", "writes": {"tests/test_a.py": text}})
+    assert found["key"] == "test-skip||pytest.param(2, marks=pytest.mark.xfail)"

@@ -6,6 +6,8 @@ import ast
 import re
 from collections.abc import Callable
 
+from skipscan.scan import ANY_BREAK, PY_BREAK, split_lines
+
 #: A declaration a skip sits under: a type, method or function (Kotlin backtick names and C#/Java
 #: modifiers included), or a describe/it/test block's title.
 DECLARES = re.compile(
@@ -73,12 +75,17 @@ def python_scopes(text: str) -> Callable[[int], str] | None:
         for n in ast.walk(parsed)
         if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
     )
-    return lambda number: ".".join(name for start, end, name in holders if start <= number <= end)
+    # One table per file, filled outermost first: a lookup is then O(1) however many skips the file holds.
+    names: dict[int, list[str]] = {}
+    for start, end, name in holders:
+        for number in range(start, end + 1):
+            names.setdefault(number, []).append(name)
+    return lambda number: ".".join(names.get(number, []))
 
 
 def scopes_for(path: str, text: str) -> Callable[[int], str]:
     """A lookup from line number to enclosing scope for one file."""
     if path.endswith(".py") and (named := python_scopes(text)) is not None:
         return named
-    outline = outline_scopes(text.splitlines())
+    outline = outline_scopes(split_lines(text, PY_BREAK if path.endswith(".py") else ANY_BREAK))
     return lambda number: outline[number - 1]
