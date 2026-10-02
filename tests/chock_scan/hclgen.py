@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import random
 from dataclasses import dataclass, field
 
@@ -33,7 +32,17 @@ STRING_POOL = [
 #: Comments carrying text a careless scanner would read as a key, a block, a string or a heredoc.
 COMMENT_POOL = ['evil = "x"', "}", "{", 'r "a" {', '"', "<<EOT", "${", "*", "# //"]
 MARKER = "EOT_X"
-REF = object()  # in a JSON model: a reference the scanner must report as COMPUTED
+REF = object()  # in a model: a value the scanner must report as COMPUTED
+#: Expressions that are not literals, each of which must read as COMPUTED.
+REFS = ["var.a", "local.b[0]", 'f(1, "x")', '"${var.c}-x"', "1 + 2", "x ? 1 : 2", "[for v in l : v]", "-x"]
+
+
+class Ref(str):
+    """An expression rendered as written; the model expects COMPUTED in its place."""
+
+
+class Flush(str):
+    """A `<<-` heredoc's decoded value; rendered with every non-blank line indented further."""
 
 
 @dataclass
@@ -94,22 +103,35 @@ def literal(rng: random.Random, depth: int) -> object:
         lambda: rng.randrange(1000) + rng.randrange(1, 100) / 100,
         lambda: rng.choice([True, False, None]),
         lambda: "\n".join(rng.choice(["a b", "  x", "${", '"q"', "# h", "EOT", ""]) for _ in range(3)) + "\n",
+        lambda: Ref(rng.choice(REFS)),
+        lambda: Flush("a b\n" + "".join(rng.choice(["  x\n", "\n", "${y}\n", "\tz\n", "EOT\n"]) for _ in range(3))),
         lambda: tuple(literal(rng, depth + 1) for _ in range(rng.randrange(4))),
         lambda: {
             ident(rng) if rng.random() < 0.5 else text(rng): literal(rng, depth + 1) for _ in range(rng.randrange(4))
         },
     ]
-    return rng.choice(forms if depth < 3 else forms[:5])()
+    return rng.choice(forms if depth < 3 else forms[:7])()
+
+
+def expected(value: object) -> object:
+    """What the scanner must read for a generated value: REF wherever a Ref was written."""
+    if isinstance(value, Ref):
+        return REF
+    if isinstance(value, tuple):
+        return tuple(expected(v) for v in value)
+    if isinstance(value, dict):
+        return {k: expected(v) for k, v in value.items()}
+    return value
 
 
 def render(value: object, out: Out) -> bool:
     """Write `value` as HCL; True if it ended a line (a heredoc's closing marker must stand alone)."""
     rng = out.rng
+    if isinstance(value, Ref):
+        out.add(value)
+        return False
     if isinstance(value, str) and value.endswith("\n") and "\r" not in value:
-        out.add(
-            "<<" + MARKER + "\n" + value.replace("${", "$${").replace("%{", "%%{") + rng.choice(["", "  "]) + MARKER
-        )
-        out.newline()
+        heredoc(value, out)
         return True
     if isinstance(value, str):
         out.add(quote(value, rng))
@@ -128,18 +150,35 @@ def render(value: object, out: Out) -> bool:
         out.add("]")
     else:
         assert isinstance(value, dict)
-        out.add("{")
-        line_ended = True
-        for key, item in value.items():
-            out.newline() if line_ended or rng.random() < 0.5 else out.pad()
-            out.add(key if _bare(key) else quote(key, rng))
-            out.add(rng.choice([" = ", "=", ": "]))
-            line_ended = render(item, out) or rng.random() < 0.5
-            if not line_ended:
-                out.add(",")
-        out.newline()
-        out.add("}")
+        mapping(value, out)
     return False
+
+
+def mapping(value: dict, out: Out) -> None:
+    """An object; items end with a comma or a newline (a heredoc's own newline counts)."""
+    rng = out.rng
+    out.add("{")
+    line_ended = True
+    for key, item in value.items():
+        out.newline() if line_ended or rng.random() < 0.5 else out.pad()
+        out.add(key if _bare(key) else quote(key, rng))
+        out.add(rng.choice([" = ", "=", ": "]))
+        line_ended = render(item, out) or rng.random() < 0.5
+        if not line_ended:
+            out.add(",")
+    out.newline()
+    out.add("}")
+
+
+def heredoc(value: str, out: Out) -> None:
+    """A heredoc decoding to `value`: `<<-` with every non-blank line indented further for a Flush, else `<<`."""
+    body = value.replace("${", "$${").replace("%{", "%%{")
+    if isinstance(value, Flush):
+        pad = out.rng.choice([" ", "    ", "\t"])
+        out.add("<<-" + MARKER + "\n" + "\n".join(pad + ln if ln.strip() else ln for ln in body.split("\n")) + MARKER)
+    else:
+        out.add("<<" + MARKER + "\n" + body + out.rng.choice(["", "  "]) + MARKER)
+    out.newline()
 
 
 def _bare(name: str) -> bool:
@@ -157,7 +196,7 @@ def body(rng: random.Random, out: Out, depth: int) -> dict:
             if key in model["attrs"]:
                 continue
             value = literal(rng, 0)
-            model["attrs"][key] = (value, out.line)
+            model["attrs"][key] = (expected(value), out.line)
             out.add(key + rng.choice([" = ", "=", "\t=\t"]))
             render(value, out)
         else:
@@ -187,37 +226,3 @@ def document(seed: int) -> tuple[str, dict]:
         out.parts.append("\ufeff")
     model = body(rng, out, 0)
     return "".join(out.parts), model
-
-
-def json_document(seed: int) -> tuple[str, dict]:
-    """A Terraform JSON file of resources whose bodies hold scalar and list literals; the model they must read as."""
-    rng = random.Random(seed)  # noqa: S311 -- reproducible test data, not a secret
-    written: dict = {}
-    model: dict = {}
-    for _ in range(rng.randrange(1, 4)):
-        kind, name = ident(rng), ident(rng)
-        pairs = [(ident(rng), *_json_value(rng)) for _ in range(rng.randrange(4))]
-        written.setdefault(kind, {})[name] = {key: raw for key, raw, _ in pairs}
-        model.setdefault(kind, {})[name] = {key: want for key, _, want in pairs}
-    src = json.dumps({"resource": written}, indent=rng.choice([None, 1, 2]), ensure_ascii=rng.random() < 0.5)
-    return src, model
-
-
-def _json_value(rng: random.Random) -> tuple[object, object]:
-    """(what the file holds, what the scanner must read): templates escaped, one reference left COMPUTED."""
-    pick = rng.randrange(5)
-    if pick == 0:
-        value = text(rng)
-        return _escape(value), value
-    if pick == 1:
-        return (value := rng.randrange(-5, 5000)), value
-    if pick == 2:
-        return (value := rng.choice([True, False, None])), value
-    if pick == 3:
-        items = [text(rng) for _ in range(rng.randrange(3))]
-        return [_escape(v) for v in items], tuple(items)
-    return "${var." + ident(rng) + "}", REF
-
-
-def _escape(value: str) -> str:
-    return value.replace("${", "$${").replace("%{", "%%{")

@@ -197,7 +197,10 @@ def test_text_terraform_would_refuse_raises(m: SimpleNamespace, src: str, messag
 
 def test_the_depth_caps_raise(m: SimpleNamespace) -> None:
     cap = m.hcl_lex.MAX_DEPTH
-    assert m.hcl.parse("x = " + "[" * cap + "]" * cap).attributes[0].value is not None
+    nested: object = ()
+    for _ in range(cap - 1):
+        nested = (nested,)
+    assert m.hcl.parse("x = " + "[" * cap + "]" * cap).attributes[0].value == nested
     with pytest.raises(m.hcl.HclError, match="brackets nested deeper than 64"):
         m.hcl.parse("x = " + "[" * (cap + 1) + "]" * (cap + 1))
     nested = "b {\n" * cap + "}\n" * cap

@@ -1,19 +1,22 @@
 """HCL2 block scanner for Terraform, OpenTofu and Packer: blocks, labels, attributes and literal values, with lines.
 
 Nothing is evaluated. An attribute keeps its expression as raw source text; `value` is the literal it
-spells (str, int, float, bool, None, tuple, dict) and COMPUTED wherever it is anything else: a
-reference, call, operator, template interpolation, for-expression, `count`, `for_each`. A `dynamic`
-block is returned as written (type "dynamic", label the generated block type, its `content` nested):
-a caller looking for a block type must also look there, and treat it as computed. Text this scanner
-cannot read raises HclError (also exported here); it never yields a partial or empty result instead.
-"""
+spells (str, NFC-normalised as Terraform holds it; int, float, bool, None, tuple, dict) and COMPUTED
+wherever it is anything else: a reference, call, operator, conditional, template interpolation or
+for-expression. Meta-arguments are not special: `count = 0` is 0, `for_each = var.x` is COMPUTED.
+Types are not converted as Terraform later converts them, so where an argument is a bool a caller
+must treat "false" as false. A `dynamic` block is returned as written (type "dynamic", label the
+generated block type, its `content` nested): a caller looking for a block type must look there too,
+and treat it as computed. Text this scanner cannot read raises HclError (also exported here) rather
+than giving a partial result; a file holding nothing (empty, or only comments) is an empty root, as
+it is to Terraform."""
 
 from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from .hcl_lex import BOM, COMPUTED, MAX_DEPTH, Computed, HclError, Lines, Token, tokens
+from .hcl_lex import BOM, COMPUTED, MAX_DEPTH, Computed, HclError, Lines, Token, nfc, tokens
 
 __all__ = ["COMPUTED", "Attribute", "Block", "Computed", "HclError", "is_computed", "parse", "walk"]
 
@@ -254,7 +257,9 @@ def _mapping(toks: list[Token], start: int) -> tuple[object, int]:
     i = _skip_nl(toks, start + 1)
     while not _is(toks[i], "}"):
         key = toks[i]
-        name = key.text if key.kind == "IDENT" and key.text != "for" else key.value if key.kind == "STRING" else None
+        name = (
+            nfc(key.text) if key.kind == "IDENT" and key.text != "for" else key.value if key.kind == "STRING" else None
+        )
         if not isinstance(name, str) or name in items or not (_is(toks[i + 1], "=") or _is(toks[i + 1], ":")):
             return COMPUTED, _close(toks, start)
         value, i = _element(toks, i + 2, OBJECT_STOPS)

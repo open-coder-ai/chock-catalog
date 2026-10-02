@@ -103,23 +103,28 @@ def test_an_empty_object_and_comment_only_object(m: SimpleNamespace) -> None:
     [
         ("", "expected a JSON value"),
         ("  \n", "expected a JSON value"),
-        ("[]", "one object"),
-        ('"x"', "one object"),
+        ("null", "not null"),
+        ('"x"', "the file: expected an object or an array of objects"),
+        ("[1]", "the file: expected an object or an array of objects"),
         ("{} {}", "extra data"),
         ("{", "Expecting property name"),
         ('{"resource": {"a": {"b": {}}},}', "Expecting property name"),
         ('{"bogus": {}}', "unknown top-level block type 'bogus'"),
         ('{"builders": []}', "unknown top-level block type"),
-        ('{"resource": 1}', "resource: expected an object, found int"),
-        ('{"resource": {"a": "b"}}', "expected an object, found str"),
-        ('{"resource": []}', "expected an object, found list"),
-        ('{"resource": [1]}', "expected an object, found int"),
+        ('{"resource": 1}', "resource labels: expected an object or an array of objects"),
+        ('{"resource": {"a": "b"}}', "resource labels: expected an object"),
+        ('{"resource": {"a": {"b": 1}}}', "a body: expected an object"),
+        ('{"resource": {"a": {"b": [1]}}}', "a body: expected an object"),
+        ('{"resource": []}', "resource: missing block label"),
+        ('{"resource": {}}', "resource: missing block label"),
+        ('{"resource": {"a": {}}}', "resource: missing block label"),
+        ('{"resource": {"a": null}}', "resource: missing block label"),
+        ('{"resource": [1]}', "resource labels: expected an object"),
         ('{"locals": {"a": 1, "a": 2}}', "duplicate key 'a'"),
-        ('{"locals": {"a": {"b": 1, "b": 1}}}', "duplicate key 'b'"),
-        ('{"locals": {}, "locals": {}}', "duplicate key 'locals'"),
+        ('{"locals": {"a": {"b": 1, "b": 1}}}', "duplicate key in an object"),
+        ('{"resource": {"t": {"n": [[{"a": 1}, {"a": 2}]]}}}', "duplicate key 'a'"),
         ('{"locals": {"a": NaN}}', "NaN is not JSON"),
         ('{"locals": {"a": -Infinity}}', "Infinity is not JSON"),
-        ('{"locals": {"a": "${x"}}', "bad template in a string"),
         ('{"locals": {"a": "\\u0000"}}' + "\x00", "extra data"),
         ('{"locals": {"a": "tab\there"}}', "Invalid control character"),
         ('{"locals": {"a": ' + "1" * 5000 + "}}", "digits"),
@@ -154,3 +159,52 @@ def test_nesting_is_capped(m: SimpleNamespace) -> None:
 def test_the_size_cap(m: SimpleNamespace) -> None:
     with pytest.raises(m.hcl.HclError, match="larger than"):
         m.hcl_json.parse_json(" " * (m.hcl_lex.MAX_CHARS + 1))
+
+
+def test_repeated_keys_spell_more_blocks_at_the_top_and_label_levels(m: SimpleNamespace) -> None:
+    src = '[{"locals": {"a": 1}}, {"locals": {"b": 2}, "resource": [{"t": {"x": {}}}, {"t": {"y": {}}}]}]'
+    root = m.hcl_json.parse_json(src)
+    assert summary(m, root) == [
+        ("locals", (), 1),
+        ("locals", (), 1),
+        ("resource", ("t", "x"), 1),
+        ("resource", ("t", "y"), 1),
+    ]
+
+
+def test_a_body_split_across_an_array_is_merged_and_null_is_an_empty_block(m: SimpleNamespace) -> None:
+    src = '{"resource": {"t": {"n": [[{"type": "ingress"}, {"cidr": "0.0.0.0/0"}], null]}}}'
+    first, second = m.hcl_json.parse_json(src).blocks
+    assert {a.key: a.value for a in first.attributes} == {"type": "ingress", "cidr": "0.0.0.0/0"}
+    assert (second.labels, second.attributes) == (("t", "n"), ())
+
+
+def test_a_labelled_block_that_does_not_fit_its_labels_is_still_a_block(m: SimpleNamespace) -> None:
+    src = '{"resource": {"t": {"n": {"provisioner": {"local-exec": {"command": "sh"}, "when": "destroy"}}}}}'
+    (block,) = m.hcl_json.parse_json(src).blocks[0].children("provisioner")
+    assert block.labels == ()
+    assert block.attr("when").value == "destroy"
+    assert block.children("local-exec")[0].attr("command").value == "sh"
+
+
+def test_object_value_keys_are_templates_and_nfc(m: SimpleNamespace) -> None:
+    def value(obj: str) -> object:
+        return m.hcl_json.parse_json('{"locals": {"m": ' + obj + "}}").blocks[0].attr("m").value
+
+    assert value('{"//": 1, "$${a}": 2}') == {"//": 1, "${a}": 2}
+    assert value('{"${var.k}": 1}') is m.hcl.COMPUTED
+    assert value('{"e\\u0301": 1, "\\u00e9": 2}') is m.hcl.COMPUTED
+    assert value('"fals\\u0065\\u0300"') == "falsè"
+    assert value('"${"') is m.hcl.COMPUTED
+
+
+def test_the_schema_decides_nested_labels(m: SimpleNamespace) -> None:
+    tf = '{"resource": {"aws_codebuild_project": {"p": {"source": {"type": "GITHUB"}}}}}'
+    (source,) = m.hcl_json.parse_json(tf).blocks[0].children("source")
+    assert (source.labels, source.attr("type").value) == ((), "GITHUB")
+    check = '{"check": {"c": {"data": {"http": {"h": {"url": "x"}}}}}}'
+    assert m.hcl_json.parse_json(check).blocks[0].children("data")[0].labels == ("http", "h")
+    packer = '{"build": {"source": {"amazon-ebs.x": {"name": "n"}}}}'
+    assert m.hcl_json.parse_json(packer, m.hcl_json.PACKER).blocks[0].children("source")[0].labels == ("amazon-ebs.x",)
+    with pytest.raises(m.hcl.HclError, match="unknown top-level block type 'build'"):
+        m.hcl_json.parse_json(packer)

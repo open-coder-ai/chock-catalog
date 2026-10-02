@@ -1,12 +1,14 @@
-"""The JSON syntax of HCL (`*.tf.json`, `*.pkr.json`) read into chock_scan.hcl Blocks, with lines.
+"""The JSON syntax of HCL (`*.tf.json`, `*.pkr.json`) read into chock_scan.hcl Blocks, with lines, as HCL's json package reads it.
 
-Top-level keys are block types whose label count comes from a table (TERRAFORM or PACKER); an
-unknown one raises HclError. Inside a body, whether a key is an argument or a nested block depends
-on the provider schema this scanner does not have, so every key is an Attribute and a key whose
-value is an object (or a list of objects) is also a nested Block (`provisioner`, `dynamic`,
-`backend`, `source`, `post-processor` take one label, the rest none). String values are templates:
-one that interpolates is COMPUTED. A duplicate key anywhere raises HclError rather than letting the
-last one win; `"//"` keys are comments, skipped as Terraform skips them.
+A body is an object, an array of objects (merged into one body, as HCL merges them) or null (empty).
+Top-level keys are block types whose label count comes from Schema.top; an unknown one raises
+HclError. Inside a body, whether a key is an argument or a nested block depends on the provider
+schema this scanner does not have, so every key is an Attribute, and a key whose value can be read
+as blocks is also nested Blocks: labelled as Schema.nested says (`parent/key` overrides `key`), or
+with no labels when the value does not fit that shape (the data stays reachable either way). String
+values and the keys of object values are templates: one that interpolates is COMPUTED, as is an
+object with such a key. A duplicate key raises HclError rather than letting the last one win; `"//"`
+keys in a body are comments, skipped as HCL skips them (elsewhere they are ordinary keys).
 """
 
 from __future__ import annotations
@@ -18,18 +20,30 @@ from collections.abc import Callable
 from json import decoder, scanner
 from typing import NamedTuple
 
-from .hcl import Attribute, Block
+from .hcl import COMPUTED, Attribute, Block
 from .hcl_lex import BOM, MAX_CHARS, MAX_DEPTH, HclError, template
 
-TERRAFORM = {
-    "resource": 2, "data": 2, "ephemeral": 2, "module": 1, "provider": 1, "variable": 1, "output": 1,
-    "check": 1, "terraform": 0, "locals": 0, "moved": 0, "import": 0, "removed": 0,
-}  # fmt: skip
-PACKER = {"source": 2, "data": 2, "build": 0, "variable": 1, "variables": 0, "local": 1, "locals": 0, "packer": 0}
-NESTED = {"provisioner": 1, "dynamic": 1, "backend": 1, "source": 1, "post-processor": 1}
+
+class Schema(NamedTuple):
+    top: dict[str, int]  # top-level block type -> label count; any other top-level key raises
+    nested: dict[str, int]  # nested block type (or "parent/type") -> label count; any other: none
+
+
+TERRAFORM = Schema(
+    {
+        "resource": 2, "data": 2, "ephemeral": 2, "module": 1, "provider": 1, "variable": 1, "output": 1,
+        "check": 1, "terraform": 0, "locals": 0, "moved": 0, "import": 0, "removed": 0,
+    },
+    {"provisioner": 1, "dynamic": 1, "terraform/backend": 1, "terraform/provider_meta": 1, "check/data": 2},
+)  # fmt: skip
+PACKER = Schema(
+    {"source": 2, "data": 2, "build": 0, "variable": 1, "variables": 0, "local": 1, "locals": 0, "packer": 0},
+    {"provisioner": 1, "error-cleanup-provisioner": 1, "post-processor": 1, "dynamic": 1, "build/source": 1},
+)
 COMMENT = "//"
 JSON_WS = " \t\n\r"
 Scan = Callable[[str, int], tuple[object, int]]
+Pairs = list[tuple[str, "_Node"]]
 
 
 class _Pairs(list):
@@ -42,34 +56,40 @@ class _Node(NamedTuple):
     end: int
 
 
-def parse_json(text: str, block_types: dict[str, int] = TERRAFORM) -> Block:
+def parse_json(text: str, schema: Schema = TERRAFORM) -> Block:
     """The file as a root Block (type "", line 1) holding the top-level blocks; HclError if it cannot be read."""
     if len(text) > MAX_CHARS:
         msg = f"larger than {MAX_CHARS} characters"
         raise HclError(msg, 1)
-    return _Reader(text.removeprefix(BOM), block_types).root()
+    return _Reader(text.removeprefix(BOM), schema).root()
 
 
 class _Reader:
-    def __init__(self, text: str, block_types: dict[str, int]) -> None:
+    def __init__(self, text: str, schema: Schema) -> None:
         self.text = text
-        self.types = block_types
+        self.schema = schema
         self.newlines = [m.start() for m in re.finditer("\n", text)]
+        self.values: dict[int, object] = {}  # id(node) -> value: each subtree is read once, not once per level
 
     def line(self, pos: int) -> int:
         return bisect.bisect_left(self.newlines, pos) + 1
 
+    def fail(self, message: str, node: _Node) -> HclError:
+        return HclError(message, self.line(node.start))
+
     def root(self) -> Block:
-        node = self.load()
-        if not isinstance(node.value, _Pairs):
-            msg = "a Terraform/Packer JSON file is one object"
-            raise HclError(msg, self.line(node.start))
         blocks: list[Block] = []
-        for key, child in self.pairs(node):
-            if key not in self.types:
+        node = self.load()
+        if node.value is None:
+            msg = "a JSON configuration is an object (or an array of objects), not null"
+            raise self.fail(msg, node)
+        for key, child in self.merged(node, "the file", body=False):
+            if key == COMMENT:
+                continue
+            if key not in self.schema.top:
                 msg = f"unknown top-level block type {key!r}"
-                raise HclError(msg, self.line(child.start))
-            blocks += self.blocks(key, child, self.types[key], (), 1, strict=True)
+                raise self.fail(msg, child)
+            blocks += self.blocks(key, child, self.schema.top[key], (), 1)
         return Block("", (), 1, (), tuple(blocks))
 
     def load(self) -> _Node:
@@ -95,66 +115,119 @@ class _Reader:
             raise HclError(msg, self.line(node.end))
         return node
 
-    def pairs(self, node: _Node) -> list[tuple[str, _Node]]:
-        """An object's pairs without `//` comments; a duplicate key raises."""
+    def objects(self, node: _Node, what: str) -> list[_Node]:
+        """An object, or an array of objects, as the objects; null is none; anything else raises."""
+        value = node.value
+        items = (
+            [node] if isinstance(value, _Pairs) else [] if value is None else value if isinstance(value, list) else None
+        )
+        if items is None or not all(isinstance(item.value, _Pairs) for item in items):
+            msg = f"{what}: expected an object or an array of objects"
+            raise self.fail(msg, node)
+        return items
+
+    def merged(self, node: _Node, what: str, *, body: bool) -> Pairs:
+        """The pairs of every object `node` holds, in order, as HCL merges them.
+
+        In a body (`body`), `//` keys are comments and a key seen twice raises: it may be an argument,
+        and HCL would refuse or one copy would hide the other. Elsewhere (top level, labels) every key
+        spells blocks, and HCL reads a repeated one as more blocks.
+        """
         seen: set[str] = set()
-        out = []
-        for key, child in node.value:
-            if key in seen:
-                msg = f"duplicate key {key!r}"
-                raise HclError(msg, self.line(child.start))
-            seen.add(key)
-            if key != COMMENT:
-                out.append((key, child))
+        out: Pairs = []
+        for obj in self.objects(node, what):
+            for key, child in obj.value:
+                if body and key in seen:
+                    msg = f"duplicate key {key!r}"
+                    raise self.fail(msg, child)
+                seen.add(key)
+                if not (body and key == COMMENT):
+                    out.append((key, child))
         return out
 
-    def blocks(  # noqa: PLR0913 -- the label walk carries its position
-        self, kind: str, node: _Node, labels: int, have: tuple[str, ...], depth: int, *, strict: bool
-    ) -> list[Block]:
-        """The blocks a property spells: `labels` levels of objects keyed by label, then a body or list of bodies."""
-        value = node.value
-        if isinstance(value, list) and not isinstance(value, _Pairs) and value:
-            items = [self.blocks(kind, item, labels, have, depth, strict=strict) for item in value]
-            if all(items) or strict:
-                return [b for found in items for b in found]
-            return []
-        if not isinstance(value, _Pairs):
-            if strict:
-                msg = f"{kind}: expected an object, found {type(value).__name__}"
-                raise HclError(msg, self.line(node.start))
-            return []
+    def body_pairs(self, node: _Node) -> Pairs:
+        return self.merged(node, "a body", body=True)
+
+    def blocks(self, kind: str, node: _Node, labels: int, have: tuple[str, ...], depth: int) -> list[Block]:
+        """The blocks a property spells: `labels` levels of objects keyed by label, then a body or array of bodies."""
         if labels:
+            pairs = self.merged(node, f"{kind} labels", body=False)
+            if not pairs:
+                msg = f"{kind}: missing block label"
+                raise self.fail(msg, node)
             found: list[Block] = []
-            for label, child in self.pairs(node):
-                found += self.blocks(kind, child, labels - 1, (*have, label), depth + 1, strict=strict)
+            for label, child in pairs:
+                found += self.blocks(kind, child, labels - 1, (*have, label), depth + 1)
             return found
-        return [self.body(kind, have, node, depth)]
+        value = node.value
+        if value is None:
+            return []
+        if not isinstance(value, list) or isinstance(value, _Pairs):
+            return [self.body(kind, have, node, depth)]
+        return [self.body(kind, have, item, depth) for item in value]
 
     def body(self, kind: str, labels: tuple[str, ...], node: _Node, depth: int) -> Block:
         attributes: list[Attribute] = []
         blocks: list[Block] = []
-        for key, child in self.pairs(node):
+        for name, child in self.body_pairs(node):
             text = self.text[child.start : child.end]
-            attributes.append(Attribute(key, text, self.line(child.start), self.value(child, depth + 1)))
-            blocks += self.blocks(key, child, NESTED.get(key, 0), (), depth + 1, strict=False)
+            attributes.append(Attribute(name, text, self.line(child.start), self.value(child, depth + 1)))
+            blocks += self.nested(kind, name, child, depth + 1)
         return Block(kind, labels, self.line(node.start), tuple(attributes), tuple(blocks))
 
+    def nested(self, parent: str, kind: str, node: _Node, depth: int) -> list[Block]:
+        """The blocks a body key spells if its value has a block's shape: schema labels first, then none."""
+        nested = self.schema.nested
+        for labels in dict.fromkeys((nested.get(f"{parent}/{kind}", nested.get(kind, 0)), 0)):
+            if isinstance(node.value, list) and self.fits(node, labels):
+                return self.blocks(kind, node, labels, (), depth)
+        return []
+
+    def fits(self, node: _Node, labels: int) -> bool:
+        """Whether `node` reads as blocks with `labels` labels; checks only the label levels and body tops."""
+        try:
+            if labels:
+                pairs = self.merged(node, "labels", body=False)
+                return bool(pairs) and all(self.fits(child, labels - 1) for _, child in pairs)
+            value = node.value
+            for item in value if isinstance(value, list) and not isinstance(value, _Pairs) else [node]:
+                self.body_pairs(item)
+        except HclError:
+            return False
+        return True
+
     def value(self, node: _Node, depth: int) -> object:
-        value = node.value
         if depth > MAX_DEPTH:
             msg = f"JSON nested deeper than {MAX_DEPTH}"
-            raise HclError(msg, self.line(node.start))
+            raise self.fail(msg, node)
+        if id(node) not in self.values:
+            self.values[id(node)] = self.read(node, depth)
+        return self.values[id(node)]
+
+    def read(self, node: _Node, depth: int) -> object:
+        value = node.value
         if isinstance(value, _Pairs):
-            return {key: self.value(child, depth + 1) for key, child in self.pairs(node)}
+            pairs = list(value)
+            if len({key for key, _ in pairs}) < len(pairs):
+                msg = "duplicate key in an object"
+                raise self.fail(msg, node)
+            keys = [self.string(key) for key, _ in pairs]
+            values = [self.value(child, depth + 1) for _, child in pairs]
+            if COMPUTED in keys or len(set(keys)) < len(keys):
+                return COMPUTED
+            return dict(zip(keys, values, strict=True))
         if isinstance(value, list):
             return tuple(self.value(item, depth + 1) for item in value)
         if isinstance(value, str):
-            try:
-                return template(value)
-            except HclError as exc:
-                msg = f"bad template in a string: {exc}"
-                raise HclError(msg, self.line(node.start)) from None
+            return self.string(value)
         return value
+
+    def string(self, text: str) -> object:
+        """A JSON string as Terraform evaluates it: a template; one HCL cannot evaluate is COMPUTED too."""
+        try:
+            return template(text)
+        except HclError:
+            return COMPUTED
 
 
 def _located(scan: Scan) -> Callable[[str, int], tuple[_Node, int]]:

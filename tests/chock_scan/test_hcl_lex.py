@@ -48,10 +48,9 @@ def test_identifiers_take_unicode_letters_underscore_and_dashes(m: SimpleNamespa
         (r'"\u00e9\U0001F600"', "\u00e9\U0001f600"),
         ('"$${x} %%{y} $$ %% $x %x"', "${x} %{y} $$ %% $x %x"),
         ('"it\'s"', "it's"),
-        ('"a\rb"', "a\rb"),
         ('""', ""),
     ],
-    ids=["escapes", "unicode", "template-escapes", "single-quote", "lone-cr", "empty"],
+    ids=["escapes", "unicode", "template-escapes", "single-quote", "empty"],
 )
 def test_quoted_strings_decode(m: SimpleNamespace, src: str, want: str) -> None:
     assert value(m, src) == want
@@ -75,6 +74,7 @@ def test_a_template_is_computed_and_ends_at_its_own_quote(m: SimpleNamespace, sr
         ('"abc', "unterminated string"),
         ('"ab\nc"', "unterminated string"),
         ('"a\r\nb"', "unterminated string"),
+        ('"a\rb"', "unterminated string"),
         (r'"\x"', r"invalid escape '\\\\x'"),
         (r'"\u12"', "invalid escape"),
         (r'"\uD800"', "invalid escape"),
@@ -103,7 +103,7 @@ def test_templates_nest_only_to_the_depth_cap(m: SimpleNamespace) -> None:
     ("src", "want"),
     [
         ("<<EOT\nFoo\n  Bar\nEOT\n", "Foo\n  Bar\n"),
-        ("<<EOT\nEOT", ""),
+        ("<<EOT\nEOT\n", ""),
         ("<<EOT\r\nA\r\n  EOT  \r\n", "A\r\n"),
         ("<<EOT\n  NOT EOT\n EOTX\nEOT\n", "  NOT EOT\n EOTX\n"),
         ("<<EOT\n$${x} %%{y}\nEOT\n", "${x} %{y}\n"),
@@ -133,8 +133,28 @@ def test_a_heredoc_with_a_template_is_computed(m: SimpleNamespace) -> None:
 
 @pytest.mark.parametrize(
     "src",
-    ["<<EOT\nx\n", "<<EOT", "<< EOT\nx\nEOT", "<<EOT x\nEOT", "<<\nx", "<<-\nx", "<<1A\nx\n1A", "<<EOT\n${x\nEOT\n"],
-    ids=["never-closed", "no-newline", "space", "trailing", "no-marker", "flush-no-marker", "digit", "open-template"],
+    [
+        "<<EOT\nx\n",
+        "<<EOT\nx\nEOT",
+        "<<EOT",
+        "<< EOT\nx\nEOT",
+        "<<EOT x\nEOT",
+        "<<\nx",
+        "<<-\nx",
+        "<<1A\nx\n1A",
+        "<<EOT\n${x\nEOT\n",
+    ],
+    ids=[
+        "never-closed",
+        "marker-at-eof",
+        "no-newline",
+        "space",
+        "trailing",
+        "no-marker",
+        "flush-no-marker",
+        "digit",
+        "open-template",
+    ],
 )
 def test_a_bad_heredoc_is_refused(m: SimpleNamespace, src: str) -> None:
     with pytest.raises(m.hcl_lex.HclError, match=r"heredoc|\$\{"):

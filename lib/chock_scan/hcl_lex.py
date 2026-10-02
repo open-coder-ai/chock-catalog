@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import bisect
 import re
+import unicodedata
 from typing import NamedTuple
 
 MAX_CHARS = 1 << 20
@@ -149,12 +150,12 @@ class _Lexer:
         computed = False
         pos = start + 1
         while True:
-            if pos >= len(src) or src[pos] == "\n":
+            if pos >= len(src) or src[pos] in "\r\n":
                 msg = "unterminated string"
                 raise self.fail(msg, start)
             ch = src[pos]
             if ch == '"':
-                value = COMPUTED if computed else "".join(parts)
+                value = COMPUTED if computed else nfc("".join(parts))
                 return Token("STRING", src[start : pos + 1], start, pos + 1, value)
             if ch == "\\":
                 text, pos = self.escape(pos)
@@ -233,6 +234,9 @@ class _Lexer:
                 eol = src.find("\n", pos)
                 eol = len(src) if eol == -1 else eol
                 if src[pos:eol].strip(WS) == marker:
+                    if eol == len(src):
+                        msg = f"heredoc {marker}: a newline must follow the closing marker"
+                        raise self.fail(msg, start)
                     break
                 at_line_start = False
             if src[pos] == "\n":
@@ -243,7 +247,8 @@ class _Lexer:
             text, pos, interpolated = self.template_char(pos)
             computed = computed or interpolated
             parts.append(text)
-        value = COMPUTED if computed else _flush("".join(parts)) if src[start + 2] == "-" else "".join(parts)
+        body = "".join(parts)
+        value = COMPUTED if computed else nfc(_flush(body) if src[start + 2] == "-" else body)
         return Token("HEREDOC", src[start:eol], start, eol, value)
 
 
@@ -265,4 +270,9 @@ def template(text: str) -> object:
         part, pos, interpolated = lexer.template_char(pos)
         computed = computed or interpolated
         parts.append(part)
-    return COMPUTED if computed else "".join(parts)
+    return COMPUTED if computed else nfc("".join(parts))
+
+
+def nfc(text: str) -> str:
+    """Text as Terraform holds it: cty normalises every string (and object key) to NFC."""
+    return unicodedata.normalize("NFC", text)
