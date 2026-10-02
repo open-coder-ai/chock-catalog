@@ -70,10 +70,10 @@ TOML_KEYS = {
     "pipfile": ("packages", "dev-packages", "source", "requires"),
 }  # fmt: skip
 GO_DIRECTIVE = re.compile(r"^(require|replace|exclude)\b")
-NUGET_ITEM = re.compile(
-    r"<(?:Global)?Package(?:Reference|Version)\b[^>]*?(?:/>|>.*?</(?:Global)?Package(?:Reference|Version)>)", re.S
-)
-GEMSPEC_DEP = re.compile(r"^\s*\w+\.add_(?:runtime_|development_)?dependency\b.*$", re.M)
+#: Line-at-a-time patterns, linear on any input: a NuGet package item opening and closing, a gemspec dependency.
+NUGET_OPEN = re.compile(r"<(?:Global)?Package(?:Reference|Version)\b")
+NUGET_CLOSE = re.compile(r"/>|</(?:Global)?Package(?:Reference|Version)>")
+GEMSPEC_DEP = re.compile(r"[ \t]*\w+\.add_(?:runtime_|development_)?dependency\b")
 
 
 def lock_eco(path: str) -> str | None:
@@ -111,14 +111,26 @@ def dependency_digest(path: str, text: str) -> str:
         elif name == "go.mod":
             picked = _go_directives(text)
         elif name.endswith(".gemspec"):
-            picked = GEMSPEC_DEP.findall(text)
+            picked = [line.strip() for line in text.splitlines() if GEMSPEC_DEP.match(line)]
         elif manifest_eco(path) == "nuget":
-            picked = [" ".join(item.split()) for item in NUGET_ITEM.findall(text)]
+            picked = _nuget_items(text)
         else:
             picked = [line.strip() for line in text.splitlines() if line.strip() and not line.lstrip().startswith("#")]
     except (ValueError, tomllib.TOMLDecodeError):
         picked = text  # unreadable: every edit counts as a dependency change
     return digest(json.dumps(picked, sort_keys=True, default=str))
+
+
+def _nuget_items(text: str) -> list[str]:
+    """The lines of every PackageReference/PackageVersion item, each item from its opening tag to its close."""
+    kept, inside = [], False
+    for raw in text.splitlines():
+        line = " ".join(raw.split())
+        inside = inside or bool(NUGET_OPEN.search(line))
+        if inside:
+            kept.append(line)
+            inside = not NUGET_CLOSE.search(line)
+    return kept
 
 
 def _go_directives(text: str) -> list[str]:

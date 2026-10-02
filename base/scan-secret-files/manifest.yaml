@@ -1,0 +1,52 @@
+id: scan-secret-files
+name: "Scan Secret Files"
+version: "0.0.1"
+description: >
+  Friction, not a security boundary: flags files that are secrets by name or content -- private
+  keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc,
+  git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env,
+  framework secret files, browser stores. Warns only (observe). Misses: renamed binary stores
+  other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.
+artifact: hook
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      This file is a secret, or holds one: a private key or key store, a cloud, registry or tool
+      credential file, Terraform state, a dotenv file with live values, or a browser credential store.
+      Keep it out of the repository: add it to .gitignore, load the value from the environment or a
+      secret manager, and commit a template with placeholders (.env.example) instead. Rotate any
+      credential that was written or pushed. There is no inline waiver; a person who has reviewed a
+      fixture commits it from their own shell.
+    params:
+      script: scan-secret-files-gate.py
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap 5.1 HP01, files tier; the secret-bearing-files bundle). A script gate judging every file a change writes, at commit and on the agent's writes, by name and by content: chock_scan's EP13 sniffer, EP01 YAML key paths and EP03 JSONC reader read kubeconfig, JSON and YAML files whatever they are called. Ships as action: warn, the per-policy form of rollout observe (D15); a separate PR promotes it to block once its false-positive rate is measured at 5% or less. Test, fixture, example, doc, lock and eval paths ask instead of refusing. Encrypted private keys and notebook outputs ask. No inline waiver: binary and JSON files cannot carry one."

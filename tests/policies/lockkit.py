@@ -6,6 +6,7 @@ import importlib
 import json
 import sys
 from pathlib import Path
+from types import ModuleType
 
 from policies import scriptkit
 
@@ -13,7 +14,7 @@ POLICY = "lockfile-integrity"
 NAME = "lockfile-integrity-gate.py"
 
 
-def _load() -> tuple:
+def _load() -> tuple[ModuleType, dict[str, ModuleType]]:
     """The gate and its lockscan modules, bound to the chock_scan copy the policy ships.
 
     Loading the gate puts its implementations folder on sys.path, as the runner does; under pytest the name
@@ -23,7 +24,7 @@ def _load() -> tuple:
     try:
         loaded = scriptkit.load(POLICY, NAME)
         names = ("model", "sources", "npm", "yarn", "pnpm", "python", "other", "rules", "sync")
-        return (loaded, *(importlib.import_module(f"lockscan.{name}") for name in names))
+        return loaded, {name: importlib.import_module(f"lockscan.{name}") for name in names}
     finally:
         for key in [k for k in sys.modules if k == "chock_scan" or k.startswith("chock_scan.")]:
             del sys.modules[key]
@@ -32,7 +33,16 @@ def _load() -> tuple:
         sys.path[:] = [p for p in sys.path if p != here]
 
 
-gate, model, sources, npm, yarn, pnpm, python, other, rules, sync = _load()
+gate, _modules = _load()
+model = _modules["model"]
+sources = _modules["sources"]
+npm = _modules["npm"]
+yarn = _modules["yarn"]
+pnpm = _modules["pnpm"]
+python = _modules["python"]
+other = _modules["other"]
+rules = _modules["rules"]
+sync = _modules["sync"]
 SHA40 = "a" * 40
 
 

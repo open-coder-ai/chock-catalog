@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="56 policies" src="https://img.shields.io/badge/policies-56-blue">
-<img alt="30 enforced" src="https://img.shields.io/badge/enforced-30-brightgreen">
+<img alt="58 policies" src="https://img.shields.io/badge/policies-58-blue">
+<img alt="32 enforced" src="https://img.shields.io/badge/enforced-32-brightgreen">
 <img alt="26 advisory" src="https://img.shields.io/badge/advisory-26-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -45,8 +45,8 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 21 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 9 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 22 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 10 |
 | `advisory` | text an agent reads and may or may not follow | 26 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
@@ -79,6 +79,7 @@ throwaway repo on every push.
 | [`java-security`](docs/java-security/) | 129 rules in sixteen packs, each citing its CWE and evidence, as they are written and at the commit -- core Java (command, code, reflection, LDAP and XPath injection, XXE, SSRF, zip slip, unsafe deserialization, unverified JWT), crypto and TLS, Spring (CSRF, catch-all `permitAll`, weak encoders, SpEL, actuator, secrets in config), Jakarta EE, Struts, Quarkus, Micronaut and Vert.x, persistence (SQL/JPQL/HQL built by concatenation, MyBatis `${}`, unsafe JDBC URLs), templates, logging (Log4j lookups, secrets in logs), Maven and Gradle builds (plain-HTTP repositories, Log4Shell- and Spring4Shell-class versions), and Android; and seven quality packs -- bugs, concurrency, resources, exceptions, performance, style, tests -- mirroring SpotBugs, Sonar, PMD and Checkstyle -- each pack or rule `allow\|deny\|ask` in `.chock/security.json`, silence denies; the correct sibling of each (`#{}` and bind parameters, `th:text`, `parseClaimsJws`, AES-GCM) stays silent | 167/177 |
 | [`protect-test-integrity`](docs/protect-test-integrity/) | Blocks a deleted test file, a net loss of assertions across the change, and an added vacuous assertion (`assert True`, `expect(true)`) in Python, JS/TS, Go and Java test layouts -- commit only, waiver `chock: allow test-integrity` | 17/19 |
 | [`block-test-skips`](docs/block-test-skips/) | Blocks newly added test skips and focus markers (`@pytest.mark.skip`, `it.skip`, `.only`, `@Disabled`, `t.Skip`) in test files, at commit and at agent tool-use -- judged against HEAD, waiver `chock: allow test-skip` at commit only | 89/90 |
+| [`compromised-package-ioc`](docs/compromised-package-ioc/) | a known-malicious package version, re-pointed action ref or IOC file name from a dated, sourced list (`data/ioc.json`), in manifests, lockfiles and workflows, at commit and at agent tool-use -- exact versions only, judged against HEAD, no in-line waiver | 43/43 |
 | [`limit-diff-size`](docs/limit-diff-size/) | **Asks** (exit 3) before a commit whose staged added plus removed lines exceed 500 (`CHOCK_DIFF_LIMIT`), not counting lockfiles, vendored or generated paths and binaries -- a person answers with `CHOCK_ALLOW=limit-diff-size` (or `CHOCK_ALLOW_LARGE_DIFF=1`); an agent's commit cannot | 3/11 |
 | [`guard-memory-writes`](docs/guard-memory-writes/) | Refuses memory files (`MEMORY.md`, `CLAUDE.local.md`, `.claude/memory/`) that paste git history, hold a code block over 20 lines, repeat a line or store a secret -- at commit and at agent tool-use, no waiver | 24/25 |
 | [`agentic-code-security`](agentic-security/agentic-code-security) | trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. |  |
@@ -104,6 +105,7 @@ per-hook trust review before its hooks run.
 | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 25/25 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
+| [`scan-secret-files`](docs/scan-secret-files/) | warns (never blocks, observe) on files that are secrets by name or content: private keys and key stores, service-account and OAuth JSON, kubeconfig users, AWS and registry credential files, Terraform state, non-template `.env`, browser credential stores | 25/25 |
 
 <details>
 <summary>21 advisory policies — expand</summary>

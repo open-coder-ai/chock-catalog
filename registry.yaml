@@ -853,3 +853,33 @@ policies:
     build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven,
     Gradle exec. Never refuses yet; judges file text, not what a hook runs. Friction, not a security
     boundary.'
+- id: compromised-package-ioc
+  path: base/compromised-package-ioc
+  version: 0.1.0
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Blocks adding a known-malicious package version (npm, PyPI, crates, Go, RubyGems, Packagist
+    manifests and lockfiles), a re-pointed action ref, or an IOC file name, from a dated, sourced list
+    (data/ioc.json, CI fails 120 days after as_of). Runs: commit, agent write, turn''s end; only additions
+    judged. Exact versions only: a range is not resolved. A snapshot, not a feed; friction, not a boundary.
+    Adopt under rollout observe.'
+- id: scan-secret-files
+  path: base/scan-secret-files
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Friction, not a security boundary: flags files that are secrets by name or content --
+    private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI,
+    netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env,
+    framework secret files, browser stores. Warns only (observe). Misses: renamed binary stores other
+    than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.'

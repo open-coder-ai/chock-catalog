@@ -31,3 +31,7 @@ base/package-lifecycle-scripts:
   chock_scan: [safe_read]
 base/lockfile-integrity:
   chock_scan: [hostmatch, hosts, idn, jsonc, urls, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+base/compromised-package-ioc:
+  chock_scan: [data_table, jsonc, safe_read]
+base/scan-secret-files:
+  chock_scan: [entropy, jsonc, keyword_values, sniff, sniff_keys, sniff_shebang, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
