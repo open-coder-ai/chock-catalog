@@ -7,7 +7,9 @@ import re
 from reg_core import CONFUSION, TLS, Ctx, add, falsy, line_of, secret, truthy, url
 from reg_parse import json_doc, walk
 
-GEM_SOURCE = re.compile(r"""\bsource\b\s*\(?\s*:?\s*["']([^"']+)["']([^#\n]*)""")
+GEM_SOURCE = re.compile(r"""\bsource\b\s*\(?\s*:?\s*["']([^"']+)["']([^#;\n]*)""")
+#: A gem fetched from a git repository: `git: "url"` or `:git => "url"`.
+GEM_GIT = re.compile(r"""(?:\bgit:|:git\s*=>)\s*["']([^"']+)["']""")
 QUOTED_URL = re.compile(r"""["']([A-Za-z][A-Za-z0-9+.-]*://[^"']*)["']""")
 #: Composer auth keys under config, each a host map of secrets (http-basic holds username/password).
 COMPOSER_AUTH = frozenset({"http-basic", "github-oauth", "gitlab-oauth", "gitlab-token", "bearer", "bitbucket-oauth"})
@@ -22,6 +24,8 @@ def gemfile(ctx: Ctx) -> None:
     """Gemfile / gems.rb: source URLs (global, block or per-gem `source:`); each global source past the first asks."""
     globals_ = 0
     for number, line in _code_lines(ctx, "#"):
+        for match in GEM_GIT.finditer(line):
+            url(ctx, number, "git", match[1], registry=False)
         for match in GEM_SOURCE.finditer(line):
             url(ctx, number, "source", match[1])
             top = line.lstrip().startswith("source") and not re.search(r"\bdo\b|\{", match[2])
@@ -41,9 +45,12 @@ def composer(ctx: Ctx) -> None:
     doc = json_doc(ctx)
     if not isinstance(doc, dict):
         return
-    for path, value in walk(doc.get("repositories", [])):
-        if path and path[-1] == "url":
-            kind = str(doc["repositories"][_index(path[0])].get("type", "composer")).lower()
+    repositories = doc.get("repositories")
+    entries = list(repositories.values()) if isinstance(repositories, dict) else repositories
+    for entry in entries if isinstance(entries, list) else ():
+        if isinstance(entry, dict) and "url" in entry:
+            kind = str(entry.get("type", "composer")).lower()
+            value = entry["url"]
             url(ctx, line_of(ctx, str(value)), "repositories.url", value, registry=kind == "composer")
     config = doc.get("config")
     if not isinstance(config, dict):
@@ -61,11 +68,6 @@ def composer(ctx: Ctx) -> None:
             (path == ("allow-plugins",) and value is True) or (leaf == "*" and value is True)
         ):
             add(ctx, CONFUSION, number, (top, "*"), "allow-plugins lets every installed package run a Composer plugin")
-
-
-def _index(key: str) -> int | str:
-    """A repositories entry's position: a list index, or the key of a map of repositories."""
-    return int(key) if key.isdigit() else key
 
 
 def mix(ctx: Ctx) -> None:

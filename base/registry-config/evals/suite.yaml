@@ -738,3 +738,54 @@ suite:
           [patch.crates-io]
           serde = { git = "https://github.com/someone/serde" }
       expect: ask
+  - id: tc-051
+    category: trigger
+    prompt: 'Adversarial: .yarnrc sets the registry in the `key: value` form Yarn classic also reads.'
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        .yarnrc: |
+          registry: "http://npm.mirror.example/"
+      expect: block
+  - id: tc-052
+    category: trigger
+    prompt: 'Adversarial: a double-quoted .npmrc value spells http with a JSON escape.'
+    expect: 'The commit is blocked: npm JSON-decodes a double-quoted value.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          registry="http://npm.mirror.example/"
+      expect: block
+  - id: tc-053
+    category: trigger
+    prompt: 'Adversarial: requirements.txt abbreviates --index-url to --index with a clear-text URL.'
+    expect: 'The commit is blocked: pip reads any unambiguous prefix of an option.'
+    execute:
+      event: commit
+      files:
+        requirements.txt: |
+          --index http://pypi.mirror.example/simple
+          requests==2.32.3
+      expect: block
+  - id: tc-054
+    category: trigger
+    prompt: 'Adversarial: a workflow sets GONOSUMDB to github.com/* in a flow mapping.'
+    expect: 'The commit is blocked: the pattern covers every module on GitHub.'
+    execute:
+      event: commit
+      files:
+        .github/workflows/go.yml: |
+          on: push
+          jobs:
+            b:
+              runs-on: ubuntu-latest
+              env: {GONOSUMDB: "github.com/*"}
+              steps:
+                - run: go build ./...
+      expect: block

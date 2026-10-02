@@ -42,7 +42,7 @@ NUGET_TAIL = "</packageSources>\n</configuration>\n"
         (
             "deny.toml",
             '[sources]\nallow-registry = ["https://evil.example/index"]\nallow-git = ["http://g.example/r"]\n',
-            [B_HOST, B_HTTP],
+            [B_HTTP],
         ),
         ("deny.toml", "[advisories]\nyanked = 'deny'\n", []),
         ("deny.toml", "x = \n", [B_UNREAD]),

@@ -10,12 +10,14 @@ from reg_parse import refuse
 
 COMMENT = re.compile(r"<!--.*?-->", re.S)
 ATTR = re.compile(r"""([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
-ADD = re.compile(r"<add\b([^>]*)>", re.I)
+#: A start tag's attributes: a '>' inside a quoted value does not end the tag.
+TAG_BODY = r"""((?:[^>"']|"[^"]*"|'[^']*')*)"""
+ADD = re.compile(rf"<add\b{TAG_BODY}>", re.I)
 #: Credential keys NuGet reads from packageSourceCredentials and from <config>.
 NUGET_SECRETS = frozenset({"cleartextpassword", "password", "http_proxy.password"})
-RESTORE = re.compile(r"<(RestoreSources|RestoreAdditionalProjectSources)\b[^>]*>(.*?)</\1\s*>", re.I | re.S)
-MAVEN_URL = re.compile(r"<url>\s*(.*?)\s*</url>", re.I | re.S)
-MAVEN_SECRET = re.compile(r"<(password|passphrase)>\s*(.*?)\s*</\1>", re.I | re.S)
+RESTORE = re.compile(rf"<(RestoreSources|RestoreAdditionalProjectSources)\b{TAG_BODY}>(.*?)</\1\s*>", re.I | re.S)
+MAVEN_URL = re.compile(rf"<url\b{TAG_BODY}>\s*(.*?)\s*</url\s*>", re.I | re.S)
+MAVEN_SECRET = re.compile(rf"<(password|passphrase)\b{TAG_BODY}>\s*(.*?)\s*</\1\s*>", re.I | re.S)
 
 
 class XmlError(ValueError):
@@ -42,8 +44,10 @@ def _attrs(body: str) -> dict[str, str]:
 
 
 def _section(text: str, name: str) -> tuple[int, str] | None:
-    match = re.search(rf"<{name}\b[^>]*?(?:/>|>(.*?)</{name}\s*>)", text, re.I | re.S)
-    return (match.start(), match[1] or "") if match else None
+    match = re.search(rf"<{name}\b{TAG_BODY}(?:(?<=/)>|>(.*?)</{name}\s*>)", text, re.I | re.S)
+    if match is None:
+        return None
+    return (match.start(2), match[2]) if match[2] is not None else (match.start(), "")
 
 
 def nuget(ctx: Ctx) -> None:
@@ -94,7 +98,7 @@ def props(ctx: Ctx) -> None:
     """Directory.Build.props: RestoreSources and RestoreAdditionalProjectSources, ';'-separated."""
     text = _clean(ctx)
     for match in RESTORE.finditer(text or ""):
-        for item in html.unescape(match[2]).split(";"):
+        for item in html.unescape(match[3]).split(";"):
             url(ctx, _line(text, match.start()), match[1], item.strip())
 
 
@@ -104,6 +108,6 @@ def maven(ctx: Ctx) -> None:
     if text is None or "<settings" not in text:
         return
     for match in MAVEN_URL.finditer(text):
-        url(ctx, _line(text, match.start()), "url", html.unescape(match[1]))
+        url(ctx, _line(text, match.start()), "url", html.unescape(match[2]))
     for match in MAVEN_SECRET.finditer(text):
-        secret(ctx, _line(text, match.start()), match[1].lower(), html.unescape(match[2]))
+        secret(ctx, _line(text, match.start()), match[1].lower(), html.unescape(match[3]))

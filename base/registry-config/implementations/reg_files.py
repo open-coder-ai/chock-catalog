@@ -46,6 +46,7 @@ BY_NAME: dict[str, Reader] = {
     "nuget.config": reg_xml.nuget,
     "directory.build.props": reg_xml.props,
     "directory.build.targets": reg_xml.props,
+    "directory.packages.props": reg_xml.props,
     "settings.xml": reg_xml.maven,
     "gemfile": reg_misc.gemfile,
     "gems.rb": reg_misc.gemfile,
@@ -63,6 +64,9 @@ BY_NAME: dict[str, Reader] = {
 #: (pattern on the lower-cased path, reader), tried in order when the name alone does not decide.
 BY_PATH: tuple[tuple[re.Pattern[str], Reader], ...] = (
     (re.compile(r"(?:^|/)\.cargo/config(?:\.toml)?$"), reg_cargo.cargo_config),
+    # Yarn's committed release and plugins are code Yarn runs for every command.
+    (re.compile(r"(?:^|/)\.yarn/(?:releases|plugins)/"), reg_npm.pnpmfile),
+    (re.compile(r"\.(?:cs|fs|vb)proj$"), reg_xml.props),
     (re.compile(r"(?:^|/)\.github/dependabot\.ya?ml$"), reg_bots.dependabot),
     (
         re.compile(
@@ -75,7 +79,9 @@ BY_PATH: tuple[tuple[re.Pattern[str], Reader], ...] = (
         re.compile(
             r"(?:^|/)(?:(?:docker|container)file[^/]*|[^/]+\.dockerfile|makefile|gnumakefile|[^/]+\.mk|\.env(?:\.[^/]*)?"
             r"|[^/]+\.env|\.envrc|jenkinsfile|\.gitlab-ci\.ya?ml|bitbucket-pipelines\.ya?ml|azure-pipelines[^/]*\.ya?ml"
-            r"|\.travis\.ya?ml|\.drone\.ya?ml|cloudbuild[^/]*\.ya?ml|buildspec[^/]*\.ya?ml|action\.ya?ml)$"
+            r"|\.travis\.ya?ml|\.drone\.ya?ml|cloudbuild[^/]*\.ya?ml|buildspec[^/]*\.ya?ml|action\.ya?ml"
+            r"|[^/]*\.gitlab-ci\.ya?ml|(?:docker-)?compose[^/]*\.ya?ml|taskfile[^/]*\.ya?ml|\.?justfile|[^/]+\.just"
+            r"|\.goreleaser\.ya?ml|devcontainer\.json|[^/]+\.(?:sh|bash|zsh|ps1))$"
             r"|(?:^|/)\.github/workflows/[^/]+\.ya?ml$|(?:^|/)\.circleci/[^/]+\.ya?ml$|(?:^|/)\.buildkite/[^/]+\.ya?ml$"
         ),
         reg_go.go_env,

@@ -76,6 +76,7 @@ def deny_toml(ctx: Ctx) -> None:
         if leaf in ("unknown-registry", "unknown-git") and norm(value).lower() == "allow":
             add(ctx, CONFUSION, number, (leaf, "allow"), f'{leaf} = "allow" accepts crates from any source')
         elif leaf == "allow-registry":
-            url(ctx, number, leaf, value)
+            # A restriction list, not a fetch source: its default names the crates.io git index on github.com.
+            url(ctx, number, leaf, value, registry=False)
         elif leaf == "allow-git":
             url(ctx, number, leaf, value, registry=False)

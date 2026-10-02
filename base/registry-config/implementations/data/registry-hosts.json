@@ -15,20 +15,61 @@
     "hex": "https://hex.pm/docs/mirrors",
     "cocoapods": "https://blog.cocoapods.org/CocoaPods-1.7.2/",
     "maven": "https://maven.apache.org/guides/mini/guide-mirror-settings.html",
-    "go": "https://go.dev/ref/mod#module-proxy"
+    "go": "https://go.dev/ref/mod#module-proxy",
+    "pytorch": "https://pytorch.org/get-started/locally/"
   },
-  "use": "The public registry hosts each package manager uses by default. A registry, index or mirror setting naming any other host is refused unless the repository's own reviewed allowlist (.chock/registry-hosts.txt) names it. Hosts where anyone can publish under any name and that no package manager uses as its default index (github.com, test.pypi.org) are deliberately absent.",
+  "use": "The public registry hosts each package manager uses by default, and PyTorch's own wheel index. A registry, index or mirror setting naming any other host is refused unless the repository's own reviewed allowlist (.chock/registry-hosts.txt) names it. Hosts where anyone can publish under any name and that no package manager uses as its default index (github.com, test.pypi.org) are deliberately absent.",
   "hosts": {
-    "npm": ["registry.npmjs.org", "registry.yarnpkg.com", "npm.pkg.github.com"],
-    "pypi": ["pypi.org", "files.pythonhosted.org", "upload.pypi.org"],
-    "conda": ["conda.anaconda.org", "repo.anaconda.com"],
-    "cargo": ["index.crates.io", "crates.io", "static.crates.io"],
-    "nuget": ["api.nuget.org", "nuget.pkg.github.com"],
-    "rubygems": ["rubygems.org", "index.rubygems.org", "rubygems.pkg.github.com"],
-    "packagist": ["repo.packagist.org", "packagist.org"],
-    "hex": ["repo.hex.pm", "hex.pm"],
-    "cocoapods": ["cdn.cocoapods.org"],
-    "maven": ["repo.maven.apache.org", "repo1.maven.org", "maven.pkg.github.com"],
-    "go": ["proxy.golang.org", "sum.golang.org"]
+    "npm": [
+      "registry.npmjs.org",
+      "registry.yarnpkg.com",
+      "npm.pkg.github.com"
+    ],
+    "pypi": [
+      "pypi.org",
+      "files.pythonhosted.org",
+      "upload.pypi.org"
+    ],
+    "conda": [
+      "conda.anaconda.org",
+      "repo.anaconda.com"
+    ],
+    "cargo": [
+      "index.crates.io",
+      "crates.io",
+      "static.crates.io"
+    ],
+    "nuget": [
+      "api.nuget.org",
+      "nuget.pkg.github.com"
+    ],
+    "rubygems": [
+      "rubygems.org",
+      "index.rubygems.org",
+      "rubygems.pkg.github.com"
+    ],
+    "packagist": [
+      "repo.packagist.org",
+      "packagist.org"
+    ],
+    "hex": [
+      "repo.hex.pm",
+      "hex.pm"
+    ],
+    "cocoapods": [
+      "cdn.cocoapods.org"
+    ],
+    "maven": [
+      "repo.maven.apache.org",
+      "repo1.maven.org",
+      "maven.pkg.github.com"
+    ],
+    "go": [
+      "proxy.golang.org",
+      "sum.golang.org"
+    ],
+    "pytorch": [
+      "download.pytorch.org"
+    ]
   }
 }

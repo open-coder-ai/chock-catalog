@@ -50,7 +50,7 @@ def test_exit_code_follows_the_strictest_finding(monkeypatch, capsys, writes: di
 def test_a_payload_that_is_not_the_gate_json_is_a_fault(monkeypatch, capsys, stdin: str) -> None:
     code, _, err = run_main(monkeypatch, capsys, stdin)
     assert code == 2
-    assert "cannot judge" in err
+    assert "gate JSON" in err
 
 
 def test_a_broken_host_table_is_a_fault_never_an_allow(monkeypatch, capsys, tmp_path: Path) -> None:

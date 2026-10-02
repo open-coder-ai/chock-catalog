@@ -736,8 +736,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 50
-  eval_executed: 50
+  eval_cases: 54
+  eval_executed: 54
   description: 'Refuses package-manager config that redirects installs or weakens them: literal tokens,
     http or unlisted registry hosts (parsed, so lookalike and userinfo spellings fail), TLS or checksum
     checks off, install scripts on (npm, Yarn, pnpm, Bun, pip, uv, Poetry, conda, Go, Cargo, NuGet,

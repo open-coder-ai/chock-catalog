@@ -9,6 +9,8 @@ from reg_core import COOLDOWN, SCRIPTS, VCS, Ctx, add, line_of, norm, secret, tr
 from reg_parse import json_doc, walk, yaml_scalars
 
 BOT_SECRETS = frozenset({"token", "password", "key"})
+#: A JSON5 credential written out: token: '...', "password": "...".
+JSON5_SECRET = re.compile(r"""\b(token|password)["']?\s*:\s*["']([^"']*)["']""")
 
 
 def dependabot(ctx: Ctx) -> None:
@@ -18,10 +20,14 @@ def dependabot(ctx: Ctx) -> None:
         return
     updates: dict[str, list[str]] = {}
     cooled: set[str] = set()
+    # A registry of type git names a repository host (github.com), not a package index: clear text only.
+    gits = {
+        path[1] for path, value, _ in nodes if path[:1] == ("registries",) and path[2:] == ("type",) and value == "git"
+    }
     for path, value, number in nodes:
         head, setting = path[:2], path[2:3]
         if head[:1] == ("registries",) and setting:
-            _registry(ctx, number, path, value)
+            _registry(ctx, number, path, value, index=path[1] not in gits)
         elif head[:1] == ("updates",) and setting:
             entry = updates.setdefault(path[1], [str(number), "", ""])
             if path[2:] in (("package-ecosystem",), ("directory",)):
@@ -41,9 +47,9 @@ def dependabot(ctx: Ctx) -> None:
             )
 
 
-def _registry(ctx: Ctx, number: int, path: tuple[str, ...], value: str) -> None:
+def _registry(ctx: Ctx, number: int, path: tuple[str, ...], value: str, *, index: bool) -> None:
     if path[2:] == ("url",):
-        url(ctx, number, ".".join(path), value)
+        url(ctx, number, ".".join(path), value, registry=index)
     elif path[2:] in {(name,) for name in BOT_SECRETS}:
         secret(ctx, number, ".".join(path), value)
 
@@ -71,6 +77,9 @@ def renovate(ctx: Ctx) -> None:
     else:
         doc = json_doc(ctx)
     for path, value in walk(doc):
+        if "encrypted" in path:
+            # Renovate's encrypted secrets are made to be committed: only the app's private key opens them.
+            continue
         named = [p for p in path if not p.isdigit()]
         leaf = named[-1] if named else ""
         number = line_of(ctx, leaf)
@@ -100,6 +109,8 @@ def _renovate_lines(ctx: Ctx) -> None:
             add(ctx, SCRIPTS, number, ("postUpgradeTasks", "json5"), "postUpgradeTasks runs commands on every update")
         if re.search(r"""\bautomerge["']?\s*:\s*true\b""", line):
             add(ctx, VCS, number, ("automerge", "true"), "automerge merges updates without a person's review")
+        for match in () if "encrypted" in line else JSON5_SECRET.finditer(line):
+            secret(ctx, number, f"hostRules.{match[1]}", match[2])
         listing = listing or re.search(r"\bregistryUrls\b", line) is not None
         if listing:
             urls_in(ctx, number, "registryUrls", line)

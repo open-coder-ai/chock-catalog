@@ -24,9 +24,16 @@ from reg_parse import ini_pairs, toml, unquote, walk, yaml_scalars
 #: npm and pnpm credential keys, after any '//host/:' prefix.
 NPM_SECRETS = frozenset({"_authtoken", "_auth", "_password", "password", "token"})
 #: A version spec that is not a version: an alias, a link, a path, a git or tarball URL.
-EXOTIC = re.compile(r"^(?:npm|link|file|portal|patch|git|git\+[a-z]+|github|gitlab|bitbucket|https?|workspace):", re.I)
+EXOTIC = re.compile(
+    r"^(?:(?:npm|link|file|portal|patch|git|git\+[a-z]+|github|gitlab|bitbucket|https?|workspace):"
+    r"|[\w.-]+/[\w.-]+(?:#.*)?$|[\w.-]+@[\w.-]+:)",
+    re.IGNORECASE,
+)
 NPM_COOLDOWN = ("min-release-age", "minimum-release-age")
-YARN_V1 = re.compile(r'^\s*("[^"]*"|\S+)\s+(.*?)\s*$')
+#: A Yarn classic line: `key value`, `"key" "value"` or `key: value` (its parser takes an optional colon).
+YARN_V1 = re.compile(r'^\s*("[^"]*"|[^\s:]+(?::[^\s:]+)*?):?\s+(.*?)\s*$')
+#: A release age of zero is no cooldown at all.
+NO_AGE = frozenset({"", "0", "0s", "0m", "0h", "0d", "false"})
 
 
 def _scripts_on(ctx: Ctx, key: str, value: str, number: int) -> bool:
@@ -66,7 +73,7 @@ def npmrc(ctx: Ctx) -> None:
         elif "pnpmfile" in name:
             add(ctx, REDIRECT, number, (name, norm(value)), f"{name} runs a hook that can rewrite every package")
         elif name in NPM_COOLDOWN:
-            cooled = True
+            cooled = norm(value).lower() not in NO_AGE
         else:
             _scripts_on(ctx, name, value, number)
     if not cooled:
@@ -105,7 +112,7 @@ def yarnrc_yml(ctx: Ctx) -> None:
         elif leaf in ("npmauthtoken", "npmauthident"):
             secret(ctx, number, ".".join(path), value)
         elif path == ("npmminimalagegate",):
-            cooled = True
+            cooled = norm(value).lower() not in NO_AGE
         else:
             _berry_setting(ctx, number, path, value)
     if not cooled:
@@ -148,7 +155,7 @@ def pnpm_workspace(ctx: Ctx) -> None:
                 f"{'.'.join(path)[:80]} resolves to {norm(value)[:80]}",
             )
         elif top == "minimumreleaseage":
-            cooled = True
+            cooled = norm(value).lower() not in NO_AGE
         elif not path[2:]:
             _scripts_on(ctx, top, value, number)
     if not cooled:
@@ -156,8 +163,15 @@ def pnpm_workspace(ctx: Ctx) -> None:
 
 
 def pnpmfile(ctx: Ctx) -> None:
-    """.pnpmfile.cjs: code pnpm runs on every manifest it resolves; any new or changed content asks."""
-    add(ctx, REDIRECT, 1, ("pnpmfile", digest(ctx.text)), "the pnpmfile hook can rewrite every package pnpm installs")
+    """.pnpmfile.cjs, and Yarn's committed releases and plugins: code the package manager runs on every
+    install; any new or changed content asks, keyed by its digest (read whatever its size)."""
+    add(
+        ctx,
+        REDIRECT,
+        1,
+        ("loaded code", digest(ctx.text)),
+        "this file is code the package manager runs on every install",
+    )
 
 
 def bunfig(ctx: Ctx) -> None:
@@ -177,7 +191,8 @@ def bunfig(ctx: Ctx) -> None:
             path[-1] in ("registry", "url") or (path[1] == "scopes" and not path[3:])
         ):
             url(ctx, number, setting, value)
-    if "minimumreleaseage" not in {str(k).lower() for k in install}:
+    ages = {str(k).lower(): v for k, v in install.items()}
+    if norm(ages.get("minimumreleaseage", "")).lower() in NO_AGE:
         add(
             ctx,
             COOLDOWN,

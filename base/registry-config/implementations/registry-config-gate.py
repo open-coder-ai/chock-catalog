@@ -17,10 +17,12 @@ from chock_scan.data_table import TableError  # noqa: E402 -- after the path and
 from reg_core import ALLOWLIST, BLOCK, UNREADABLE, Ctx, add, digest  # noqa: E402
 from reg_files import reader_for  # noqa: E402
 from reg_hosts import REPO_LIST, committed, repo_entries, table  # noqa: E402
+from reg_npm import pnpmfile  # noqa: E402
 
 ALLOW, BLOCKED, FAULT, ASK = 0, 1, 2, 3
 #: Registry configs are small; past this a file is not read but refused, keyed by its digest.
 MAX_TEXT = 1 << 20
+BOM = "\ufeff"
 #: Past this many findings the document is one finding marked new: never compared, always judged.
 MAX_FINDINGS = 5000
 SHOWN = 50
@@ -61,8 +63,9 @@ def findings(payload: dict) -> list[dict]:
         reader = reader_for(str(path))
         if reader is None or not isinstance(text, str):
             continue
-        ctx = Ctx(_repo_path(str(path)), text, allow)
-        if len(text) > MAX_TEXT:
+        # Every reader here (npm, Yarn, pip, TOML, YAML) drops a leading byte order mark, so the gate does too.
+        ctx = Ctx(_repo_path(str(path)), text.removeprefix(BOM), allow)
+        if len(text) > MAX_TEXT and reader is not pnpmfile:
             add(ctx, UNREADABLE, 1, ("size", digest(text)), f"larger than {MAX_TEXT} characters; not read")
         else:
             reader(ctx)
@@ -76,8 +79,8 @@ def main() -> int:
     except TableError as exc:
         print(f"registry-config: the shipped host table cannot be used: {exc}", file=sys.stderr)
         return FAULT
-    except (ValueError, TypeError, AttributeError):
-        print("registry-config: stdin is not the gate JSON; cannot judge", file=sys.stderr)
+    except (ValueError, TypeError, AttributeError, RecursionError):
+        print("registry-config: stdin is not the gate JSON, or a file in it cannot be judged", file=sys.stderr)
         return FAULT
     if len(found) > MAX_FINDINGS:
         first = found[0]

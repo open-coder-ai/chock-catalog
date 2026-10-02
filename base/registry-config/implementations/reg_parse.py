@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 
@@ -19,7 +20,13 @@ INI_COMMENT = re.compile(r"(?<!\\)[;#]")
 def refuse(ctx: Ctx, what: str, exc: Exception) -> None:
     """A registry config that cannot be read cannot be judged: one finding keyed by the whole text."""
     line = next((n for n in (getattr(exc, "lineno", None), getattr(exc, "line", None)) if isinstance(n, int)), 1)
-    add(ctx, UNREADABLE, line, (what, digest(ctx.text)), f"cannot read this {what}: {str(exc).splitlines()[0][:120]}")
+    add(
+        ctx,
+        UNREADABLE,
+        line,
+        (what, digest(ctx.text)),
+        f"cannot read this {what}: {(str(exc).splitlines() or [type(exc).__name__])[0][:120]}",
+    )
 
 
 def yaml_scalars(ctx: Ctx) -> list[tuple[tuple[str, ...], str, int]] | None:
@@ -51,7 +58,7 @@ def toml(ctx: Ctx) -> dict | None:
     """The TOML document; None (and a finding) when it is not valid TOML."""
     try:
         return tomllib.loads(ctx.text)
-    except tomllib.TOMLDecodeError as exc:
+    except (tomllib.TOMLDecodeError, RecursionError) as exc:
         refuse(ctx, "TOML file", exc)
         return None
 
@@ -69,8 +76,16 @@ def json_doc(ctx: Ctx) -> object | None:
 
 
 def unquote(text: str) -> str:
+    """A quoted value as npm's ini and Yarn read it: double quotes JSON-decoded (escapes resolved), single
+    quotes stripped; anything else as written."""
     text = text.strip()
-    if len(text) > 1 and text[0] == text[-1] and text[0] in "\"'":
+    if len(text) > 1 and text[0] == text[-1] == '"':
+        try:
+            decoded = json.loads(text)
+        except ValueError:
+            return text[1:-1]
+        return decoded if isinstance(decoded, str) else text[1:-1]
+    if len(text) > 1 and text[0] == text[-1] == "'":
         return text[1:-1]
     return text
 
@@ -82,7 +97,7 @@ def ini_value(raw: str | None) -> str:
         return "true"
     text = raw.strip()
     if len(text) > 1 and text[0] == text[-1] and text[0] in "\"'":
-        return text[1:-1]
+        return unquote(text)
     return INI_COMMENT.split(text, maxsplit=1)[0].strip()
 
 
