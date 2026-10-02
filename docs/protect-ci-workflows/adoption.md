@@ -50,10 +50,10 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~336 tokens (chars/4, max 2000)
+INDEX.md: ~393 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-ci-workflows:
   claude: best-effort (live-run)
@@ -73,17 +73,17 @@ Installed pre-push dispatcher to …/.git/hooks/pre-push
 No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
-Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
-Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
-Registered 1 hook entr(y/ies) in .agents/hooks.json
-Registered 1 hook entr(y/ies) in .codex/hooks.json
-Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
-Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+Registered 3 Cursor hook entr(y/ies) in .cursor/hooks.json
+Registered 2 hook entr(y/ies) in .agents/hooks.json
+Registered 3 hook entr(y/ies) in .codex/hooks.json
+Registered 2 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
-Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
+Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~336 tokens (chars/4, max 2000)
+INDEX.md: ~393 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -132,9 +132,26 @@ protect-ci-workflows  [deterministic]
   PASS  tc-034                             authored  BLOCKED: shell write touching CI/CD workflow config is refused -- a…
   PASS  tc-035                             authored  BLOCKED: shell write touching CI/CD workflow config is refused -- a…
   PASS  tc-036                             authored  guard exit 0
+  PASS  tc-037                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-038                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-039                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-040                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-041                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-042                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-043                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-044                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-045                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-046                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-047                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-048                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-049                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-050                             authored  This path is CI, release, hook or dependency-bot configuration: the…
+  PASS  tc-051                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-052                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-053                             authored  This path is CI, release, hook or dependency-bot configuration: the…
   score 1.00
 
-5 policies: 36 pass, 41 skipped
+5 policies: 53 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -142,23 +159,40 @@ protect-ci-workflows  [deterministic]
 
 ```text
 .chock/compiled/protect-ci-workflows/agent-hooks/agent-hooks.json
+.chock/compiled/protect-ci-workflows/agent-hooks/gate-hooks.json
+.chock/compiled/protect-ci-workflows/agent-hooks/gate.json
 .chock/compiled/protect-ci-workflows/ambient-rule/ambient.md
 .chock/compiled/protect-ci-workflows/managed-setting/managed-settings.json
+.chock/compiled/protect-ci-workflows/mcp-gateway/gateway-gate.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/antigravity-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/codex_cli-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/cursor-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/devin-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/gate.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/gemini_cli-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/gemini_cli-write-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/grok-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/pretooluse-write.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/pretooluse.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/tabnine-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/windsurf-hooks.json
+.chock/compiled/protect-ci-workflows/stop/antigravity-hooks.json
+.chock/compiled/protect-ci-workflows/stop/codex_cli-hooks.json
+.chock/compiled/protect-ci-workflows/stop/cursor-hooks.json
+.chock/compiled/protect-ci-workflows/stop/devin-hooks.json
+.chock/compiled/protect-ci-workflows/stop/gate.json
+.chock/compiled/protect-ci-workflows/stop/gemini_cli-hooks.json
+.chock/compiled/protect-ci-workflows/stop/stop.json
+.chock/compiled/protect-ci-workflows/stop/tabnine-hooks.json
+.chock/compiled/protect-ci-workflows/stop/vscode_copilot-hooks.json
 ```
 
 ## INDEX.md entry
 
 ```text
 - **protect-ci-workflows**:
-  ci_config(.github/workflows|.github/actions|.github/dependabot.yml|yaml): never(shell_edit|delete); ask_person
+  ci_config(.github/{workflows,actions,dependabot.y*ml}): never(shell_edit|delete); edit_or_write(those|CODEOWNERS|.gitlab-ci.yml|.gitlab/|Jenkinsfile*|.circleci/|azure-pipelines*|bitbucket-pipelines.yml|.buildkite/|.drone.yml|cloudbuild*|renovate|.pre-commit-config.yaml|.husky/|lefthook|.githooks/|.travis.yml|action.yml|more): ask_person
   if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
 ```

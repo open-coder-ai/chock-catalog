@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "protect-ci-workflows",
-  "version": "0.1.1",
-  "description": "Stops an agent weakening the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/ and .github/dependabot.yml|yaml: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, Set-Content/Add-Content/Out-File. Reads and `chock sync` pass. Best-effort, coarse. No marker bypass: a person edits from their own shell. Shell only: Edit/Write to these paths is not checked (no gate). Backstop: server-side branch protection.",
+  "version": "0.2.0",
+  "description": "Stops an agent weakening the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, Azure, Buildkite, CODEOWNERS, husky, pre-commit, more). Not yet: shell writes to non-GitHub CI paths; plugin installs ship no gate.",
   "author": {
     "name": "chock-core"
   },
