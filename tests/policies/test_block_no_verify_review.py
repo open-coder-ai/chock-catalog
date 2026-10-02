@@ -114,6 +114,12 @@ ROWS: list[tuple[str, int]] = [
     ("[Environment]::SetEnvironmentVariable('HUSKY','0'); git commit -m x", BLOCK),
     ("[Environment]::SetEnvironmentVariable('GIT_DIR','C:/o.git'); git commit -m x", ASK),
     ("export XDG_CONFIG_HOME=$HOME/.config", OK),
+    # round 3: a here-document body is input, not syntax; a shell behind a launcher is read
+    ("git commit -F- <<'EOF'\nmsg with --no-verify and it's\nEOF", OK),
+    ("git commit -F- <<-EOF\n\tit's about core.hooksPath\n\tEOF", OK),
+    ('echo "<<X"\ngit commit -m it\'s --no-verify', BLOCK),  # a quoted marker opens no body
+    ("uv run bash -c 'git commit --no-verify -m x'", BLOCK),
+    ("uv run bash -c 'pytest -q'", OK),
     ("fish -c 'git status'", OK),
 ]
 

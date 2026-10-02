@@ -2,7 +2,19 @@
 
 from .flags import HOOK_SUBS, rebase_execs, skips_verify
 from .gitargs import HOOKS_KEY, aliases, asks_for, config_pairs, config_writes, env_asks, submodule_scripts
-from .managers import DECLARERS, END, PS_PATH, PS_SETTERS, declared, env_hits, launched, normalise, uninstalls
+from .managers import (
+    DECLARERS,
+    END,
+    PS_PATH,
+    PS_SETTERS,
+    SHELLS,
+    declared,
+    env_hits,
+    launched,
+    normalise,
+    uninstalls,
+    without_bodies,
+)
 
 __all__ = [
     "DECLARERS",
@@ -11,6 +23,7 @@ __all__ = [
     "HOOK_SUBS",
     "PS_PATH",
     "PS_SETTERS",
+    "SHELLS",
     "aliases",
     "asks_for",
     "config_pairs",
@@ -24,4 +37,5 @@ __all__ = [
     "skips_verify",
     "submodule_scripts",
     "uninstalls",
+    "without_bodies",
 ]

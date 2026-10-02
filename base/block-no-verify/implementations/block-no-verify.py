@@ -18,6 +18,7 @@ from hook_bypass import (
     HOOKS_KEY,
     PS_PATH,
     PS_SETTERS,
+    SHELLS,
     aliases,
     asks_for,
     config_pairs,
@@ -31,6 +32,7 @@ from hook_bypass import (
     skips_verify,
     submodule_scripts,
     uninstalls,
+    without_bodies,
 )
 
 BLOCK, ASK = 1, 3
@@ -197,8 +199,9 @@ def judge(cmd: Cmd, depth: int, kept: dict[str, str]) -> Verdict:
     if tool := uninstalls(cmd.name, cmd.args):
         return BLOCK, f"{tool} removes the git hooks it installed, which skips every check they run. {FIX}"
     if inner := launched(cmd.name, cmd.args):
-        name = inner[0].replace("\\", "/").rsplit("/", 1)[-1].lower().removesuffix(".exe")
-        return judge(cmd._replace(name=name, args=inner[1:]), depth, kept)
+        if inner[0] in SHELLS:  # uv run bash -c '...': the lexer unwraps the shell once it sees it as a command
+            return check(shlex.join(inner), depth + 1)
+        return judge(cmd._replace(name=inner[0], args=inner[1:]), depth, kept)
     if cmd.name in SCRIPT_RUNNERS:
         at = next((i for i, a in enumerate(cmd.args) if SCRIPT_FLAG.fullmatch(a)), -1)
         script = (
@@ -261,8 +264,9 @@ def splits(raw: str) -> bool:
 
 def unparsed(raw: str) -> Verdict:
     """Fail closed: a line shlex cannot split (the hook sets CHOCK_ARGV_FALLBACK) that names a hook bypass is refused."""
-    fallback = os.environ.get("CHOCK_ARGV_FALLBACK") == "1" or not splits(raw)
-    if fallback and (hit := FALLBACK.search(raw)):
+    text = without_bodies(raw)
+    fallback = os.environ.get("CHOCK_ARGV_FALLBACK") == "1" or not splits(text)
+    if fallback and (hit := FALLBACK.search(text)):
         return (
             BLOCK,
             f"this command does not parse (unbalanced quote or trailing backslash) and names `{hit.group()}`. {FIX}",

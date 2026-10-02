@@ -25,6 +25,7 @@ LAUNCHERS = frozenset(
         *("python", "python3", "py", "node", "exec", "dlx", "run", "x", "tool"),
     )
 )
+SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh", "fish"))
 DECLARERS = frozenset(("declare", "typeset", "readonly", "local", "make", "gmake"))
 PS_SETTERS = frozenset(("set-item", "si", "new-item", "ni", "set-content", "sc", "add-content", "ac"))
 PYTHON = re.compile(r"python[\d.]*", re.IGNORECASE)
@@ -41,6 +42,7 @@ ANSI_C = re.compile(r"\$'((?:[^'\\]|\\.)*)'", re.DOTALL)
 LOCALE = re.compile(r'\$"((?:[^"\\]|\\.)*)"', re.DOTALL)
 ESCAPE = re.compile(r"\\(x[0-9a-fA-F]{1,2}|[0-7]{1,3}|u[0-9a-fA-F]{1,4}|.)", re.DOTALL)
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b", "f": "\f", "v": "\v"}
+HEREDOC = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][\w.-]*)\1")
 END = "chock_end_of_line"  # a final command whose environment is what the line leaves set for later commands
 
 
@@ -78,11 +80,11 @@ def program(word: str) -> str:
 
 
 def launched(name: str, args: list[str]) -> list[str]:
-    """What a launcher (npx, pnpm exec, uv run, pipx run, python -m ...) runs, from the first word that is git or a
-    hook manager, so a launcher option's value cannot hide it; [] when the command is no launcher or runs neither."""
+    """What a launcher (npx, pnpm exec, uv run, pipx run, python -m ...) runs, from the first word that is git, a
+    shell or a hook manager, so a launcher option's value cannot hide it; [] when the command is no launcher or runs neither."""
     if not (name.lower() in LAUNCHERS or PYTHON.fullmatch(name)):
         return []
-    at = next((i for i, word in enumerate(args) if program(word) in MANAGERS | {"git"}), -1)
+    at = next((i for i, word in enumerate(args) if program(word) in MANAGERS | SHELLS | {"git"}), -1)
     return [program(args[at]), *args[at + 1 :]] if at >= 0 else []
 
 
@@ -111,3 +113,21 @@ def normalise(text: str) -> str:
     text = LOCALE.sub(lambda m: f'"{m.group(1)}"', ANSI_C.sub(_ansi, text))
     text = DOTNET_SET.sub(lambda m: f"{m.group(1).upper()}={shlex.quote(m.group(2))}", text)
     return PS_ASSIGN.sub(lambda m: f"{m.group(1).upper()}=", text)
+
+
+def without_bodies(text: str) -> str:
+    """The line with here-document bodies dropped: a body is input to a program, not shell syntax, so an apostrophe
+    in a commit message read from one does not make the line unparsed. A marker inside quotes is not a marker."""
+    out: list[str] = []
+    pending: list[str] = []
+    for line in text.split("\n"):
+        if pending:
+            pending = pending[1:] if line.strip("\t") == pending[0] else pending
+            continue
+        out.append(line)
+        pending += [m.group(2) for m in HEREDOC.finditer(line) if _unquoted(line[: m.start()])]
+    return "\n".join(out)
+
+
+def _unquoted(before: str) -> bool:
+    return before.count("'") % 2 == 0 and before.count('"') % 2 == 0
