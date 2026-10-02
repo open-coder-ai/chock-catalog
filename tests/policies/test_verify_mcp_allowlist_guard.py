@@ -265,3 +265,8 @@ def test_the_flags_of_an_add_are_read_in_every_shape() -> None:
 def test_the_guard_passes_an_unrelated_inline_json_and_ignores_text_that_is_not_json() -> None:
     cmds = guard.commands("echo '{\"other\": 1}' > a.json; echo not-json; echo '[1]'")
     assert guard.inline_servers(cmds) == []
+
+
+def test_a_flag_before_the_name_is_skipped_and_a_flag_after_it_is_part_of_the_command() -> None:
+    assert guard.parse_add(["--unknown", "evil", "--", "x"])[:2] == (["evil"], ["x"])
+    assert guard.parse_add(["evil", "npx", "-y", "pkg"])[0] == ["evil", "npx", "-y", "pkg"]

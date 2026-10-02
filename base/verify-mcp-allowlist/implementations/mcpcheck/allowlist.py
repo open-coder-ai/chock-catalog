@@ -101,9 +101,7 @@ def load(repo_root: Path, event: str) -> tuple[tuple[Allowed, ...], str | None]:
 
 
 def matches(server: Server, allowed: Allowed) -> bool:
-    """Whether a server is the approved one: same name, same launcher and arguments, or a url on the approved host."""
-    if server.name != allowed.name:
-        return False
+    """Whether a server (already named like `allowed`) is the approved one: same launcher and arguments, or an approved url host."""
     if allowed.host is None:
         return not server.urls and server.launcher == allowed.launcher and " ".join(server.args) == allowed.spec
     if server.launcher or not server.urls:

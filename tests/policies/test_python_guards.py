@@ -18,6 +18,7 @@ import pytest
 from policies import guard_cases_agent_env as env_cases
 from policies import guard_cases_files as file_cases
 from policies import guard_cases_git as git_cases
+from policies import guard_cases_mcp_spawn as mcp_cases
 from policies import guardkit
 from trees import ROOT
 
@@ -68,7 +69,7 @@ def assert_case(policy: str, command: str, want: int, capsys: pytest.CaptureFixt
         assert err == ""
 
 
-CASES = {**git_cases.CASES, **file_cases.CASES}
+CASES = {**git_cases.CASES, **file_cases.CASES, **mcp_cases.CASES}
 ALL_CASES = [(policy, command, want) for policy, rows in CASES.items() for command, want in rows]
 ALL_CASES += [("block-no-verify", command, want) for command, want in env_cases.ROWS]
 
