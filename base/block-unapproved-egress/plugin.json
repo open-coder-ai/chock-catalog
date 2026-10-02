@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-unapproved-egress",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod) that UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*, -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact or .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a person. A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.",
   "author": {
     "name": "chock-core"

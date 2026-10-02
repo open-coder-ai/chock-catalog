@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "protect-agent-config",
-  "version": "0.2.5",
-  "description": "Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, .claude/settings, MCP and hook client configs (.mcp.json, ...), .git/{hooks,config}, policy implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Coarse: also eval, sh -c, shells fed by pipe or variable, interpreter one-liners that name such a path. Reads and `chock sync` pass. Edit/Write: tool_use gate.",
+  "version": "0.2.6",
+  "description": "Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, .claude/settings, MCP/hook client configs (.mcp.json, ...), .git/{hooks,config}, policy implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Coarse: also eval or sh -c of computed text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write: tool gate.",
   "author": {
     "name": "chock-core"
   },

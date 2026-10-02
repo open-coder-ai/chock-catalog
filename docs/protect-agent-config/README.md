@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `pathconf.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 1109 total, 1109 executable |
+| **Eval cases** | 1241 total, 1241 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, .claude/settings, MCP and hook client configs (.mcp.json, ...), .git/{hooks,config}, policy implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Coarse: also eval, sh -c, shells fed by pipe or variable, interpreter one-liners that name such a path. Reads and `chock sync` pass. Edit/Write: tool_use gate.
+Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, .claude/settings, MCP/hook client configs (.mcp.json, ...), .git/{hooks,config}, policy implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Coarse: also eval or sh -c of computed text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write: tool gate.
 
 ## What it solves
 
