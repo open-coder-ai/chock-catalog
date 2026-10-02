@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import colorsys
 import re
+
+from hiddenscan.vocab import vocab
 
 COMMENT = re.compile(r"/\*[\s\S]*?(?:\*/|$)")
 HEX_ESCAPE = re.compile(r"\\([0-9a-fA-F]{1,6})[ \t\n]?")
@@ -10,18 +13,62 @@ CHAR_ESCAPE = re.compile(r"\\(.)")
 IMPORTANT = re.compile(r"!\s*important\s*$")
 #: Anchored at the start or just after a brace, so a long run without one is read once, not once per character.
 RULE = re.compile(r"(?:^|(?<=[{}]))([^{}]*)\{([^{}]*)\}")
-URL_FUNC = re.compile(r"url\(\s*(['\"]?)([^'\")\s]*)\1\s*\)|@import\s+(['\"])([^'\"]*)\3", re.IGNORECASE)
+URL_FUNC = re.compile(
+    r"url\(\s*(['\"]?)([^'\")\s]*)\1\s*\)|@import\s+(['\"])([^'\"]*)\3|image-set\(\s*(['\"])([^'\"]*)\5",
+    re.IGNORECASE,
+)
 NUMBER = re.compile(r"^(-?(?:\d+\.?\d*|\.\d+))([a-z%]*)$")
-NAMED = {"white": "#ffffff", "black": "#000000", "transparent": "transparent"}
-RGB = re.compile(r"^rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$")
+NUM = r"(?:\d+(?:\.\d*)?|\.\d+)"
+RGB = re.compile(rf"^rgba?\(\s*({NUM}%?)\s*[, ]\s*({NUM}%?)\s*[, ]\s*({NUM}%?)\s*(?:[,/]\s*({NUM}%?)\s*)?\)$")
+HSL = re.compile(rf"^hsla?\(\s*({NUM})(?:deg)?\s*[, ]\s*({NUM})%\s*[, ]\s*({NUM})%\s*(?:[,/]\s*({NUM}%?)\s*)?\)$")
 HEX = re.compile(r"^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$")
+COLOUR_TOKEN = re.compile(r"(?:rgba?|hsla?)\([^)]*\)|#[0-9a-f]+|[a-z]+")
+GLOBAL = {"inherit", "initial", "unset", "revert", "revert-layer"}
+DISPLAY = GLOBAL | set(
+    [
+        "none",
+        "block",
+        "inline",
+        "inline-block",
+        "flex",
+        "inline-flex",
+        "grid",
+        "inline-grid",
+        "table",
+        "inline-table",
+        "table-row",
+        "table-cell",
+        "table-caption",
+        "table-column",
+        "table-column-group",
+        "table-header-group",
+        "table-footer-group",
+        "table-row-group",
+        "list-item",
+        "contents",
+        "flow-root",
+        "flow",
+        "run-in",
+        "ruby",
+        "ruby-text",
+        "ruby-base",
+        "ruby-text-container",
+        "ruby-base-container",
+        "math",
+    ]
+)
+FONT_SIZES = GLOBAL | set(
+    ["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large", "xxx-large", "larger", "smaller", "math"]
+)
 OFFSCREEN = ("left", "top", "right", "bottom", "text-indent", "margin-left", "margin-top")
 #: The page a reader sees when nothing sets a background.
 DEFAULT_BACKGROUND = "#ffffff"
 LAST_CODE_POINT = 0x10FFFF
 SURROGATES = range(0xD800, 0xE000)
 #: Offsets past these put a box out of any viewport.
-OFF_PX, OFF_EM = -999, -50
+OFF_PX, OFF_EM, OFF_VW = -999, -50, -50
+FAINT = 0.05
+FULL = 255
 
 
 def unescape(text: str) -> str:
@@ -34,91 +81,158 @@ def unescape(text: str) -> str:
     return CHAR_ESCAPE.sub(r"\1", HEX_ESCAPE.sub(code, text))
 
 
-def declarations(block: str) -> dict[str, str]:
-    """Property to value, lower-cased, comments and `!important` dropped; the last declaration wins."""
-    out: dict[str, str] = {}
-    for part in unescape(COMMENT.sub(" ", block)).split(";"):
-        name, colon, value = part.partition(":")
-        if colon:
-            out[name.strip().lower()] = IMPORTANT.sub("", value.strip().lower()).strip()
-    return out
+def _channel(text: str) -> int:
+    value = float(text.rstrip("%")) * (FULL / 100 if text.endswith("%") else 1)
+    return max(0, min(FULL, round(value)))
+
+
+def _alpha_zero(text: str | None) -> bool:
+    return text is not None and float(text.rstrip("%")) == 0
+
+
+def _rgb(value: str) -> str | None:
+    if m := RGB.match(value):
+        if _alpha_zero(m.group(4)):
+            return "transparent"
+        return "#" + "".join(f"{_channel(m.group(i)):02x}" for i in (1, 2, 3))
+    if m := HSL.match(value):
+        if _alpha_zero(m.group(4)):
+            return "transparent"
+        hue, sat, light = float(m.group(1)) % 360 / 360, float(m.group(2)) / 100, float(m.group(3)) / 100
+        red, green, blue = colorsys.hls_to_rgb(hue, min(light, 1), min(sat, 1))
+        return "#" + "".join(f"{round(c * FULL):02x}" for c in (red, green, blue))
+    return None
+
+
+def _hex(value: str) -> str | None:
+    if not (m := HEX.match(value)):
+        return None
+    digits = m.group(1)
+    if len(digits) in (3, 4):
+        digits = "".join(c * 2 for c in digits)
+    return "transparent" if digits[6:] == "00" else "#" + digits[:6]
 
 
 def color(value: str) -> str | None:
-    """A colour as #rrggbb or 'transparent'; None for anything else (hsl, variables, keywords)."""
+    """A colour as #rrggbb or 'transparent'; None for anything else (variables, system colours, keywords)."""
     value = value.strip()
-    if value in NAMED:
-        return NAMED[value]
-    if m := RGB.match(value):
-        alpha = m.group(4)
-        if alpha is not None and _number(alpha.rstrip("%")) == 0:
-            return "transparent"
-        channels = [min(int(m.group(i)), 255) for i in (1, 2, 3)]
-        return "#" + "".join(f"{c:02x}" for c in channels)
-    if m := HEX.match(value):
-        digits = m.group(1)
-        if len(digits) in (3, 4):
-            digits = "".join(c * 2 for c in digits)
-        return "transparent" if digits[6:] == "00" else "#" + digits[:6]
-    return None
+    if value == "transparent":
+        return value
+    return vocab().colours.get(value) or _rgb(value) or _hex(value)
+
+
+def number(value: str) -> tuple[float, str] | None:
+    m = NUMBER.match(value.strip())
+    return (float(m.group(1)), m.group(2)) if m else None
+
+
+VALID = {
+    "display": lambda v: all(word in DISPLAY for word in v.split()),
+    "visibility": lambda v: v in GLOBAL | {"visible", "hidden", "collapse"},
+    "content-visibility": lambda v: v in GLOBAL | {"visible", "hidden", "auto"},
+    "opacity": lambda v: v in GLOBAL or number(v) is not None,
+    "fill-opacity": lambda v: v in GLOBAL or number(v) is not None,
+    "font-size": lambda v: v in FONT_SIZES or number(v) is not None or "(" in v,
+    "color": lambda v: color(v) is not None or v in GLOBAL | {"currentcolor"} or "(" in v,
+    "background-color": lambda v: color(v) is not None or v in GLOBAL | {"currentcolor"} or "(" in v,
+    "fill": lambda v: color(v) is not None or v in GLOBAL | {"currentcolor", "none"} or "(" in v,
+}
+
+
+def _valid(name: str, value: str) -> bool:
+    """Whether a browser keeps this declaration: an invalid one is dropped and the earlier one stands."""
+    return bool(value) and VALID.get(name, bool)(value)
+
+
+def declarations(block: str) -> dict[str, str]:
+    """Property to value, lower-cased, comments and `!important` dropped; the last valid declaration wins."""
+    out: dict[str, str] = {}
+    for part in unescape(COMMENT.sub(" ", block)).split(";"):
+        name, colon, value = part.partition(":")
+        name, value = name.strip().lower(), IMPORTANT.sub("", value.strip().lower()).strip()
+        if colon and _valid(name, value):
+            out[name] = value
+    return out
 
 
 def background(decls: dict[str, str]) -> str | None:
     """The background colour a block declares, from background-color or the first colour in background."""
     if "background-color" in decls:
         return color(decls["background-color"])
-    for token in decls.get("background", "").split():
+    for token in COLOUR_TOKEN.findall(decls.get("background", "")):
         if found := color(token):
             return found
     return None
 
 
-def _number(text: str) -> float | None:
-    try:
-        return float(text)
-    except ValueError:
-        return None
-
-
-def _length(value: str) -> tuple[float, str] | None:
-    m = NUMBER.match(value.strip())
-    return (float(m.group(1)), m.group(2)) if m else None
-
-
 def tiny_font(value: str) -> bool:
     """A font size nobody reads: zero in any unit, 1px/1pt or less, a tenth of an em, a tenth of the parent."""
-    size = _length(value.split(maxsplit=1)[0].split("/", maxsplit=1)[0]) if value.split() else None
+    size = number(value.split(maxsplit=1)[0].split("/", maxsplit=1)[0]) if value.split() else None
     if size is None:
         return False
-    number, unit = size
+    amount, unit = size
     limits = {"px": 1, "pt": 1, "em": 0.1, "rem": 0.1, "ex": 0.2, "ch": 0.2, "%": 10, "vw": 0.1, "vh": 0.1}
-    return number <= 0 or number <= limits.get(unit, 0)
+    return amount <= 0 or amount <= limits.get(unit, 0)
+
+
+def _far(value: str) -> bool:
+    size = number(value)
+    if not size:
+        return False
+    amount, unit = size
+    return amount <= (OFF_EM if unit in ("em", "rem") else OFF_VW if unit in ("vw", "vh", "%") else OFF_PX)
 
 
 def _offscreen(decls: dict[str, str]) -> bool:
-    for prop in OFFSCREEN:
-        size = _length(decls.get(prop, ""))
-        if size and (size[0] <= OFF_PX or (size[1] in ("em", "rem") and size[0] <= OFF_EM)):
-            return True
+    if any(_far(decls.get(prop, "")) for prop in OFFSCREEN):
+        return True
+    translate = re.findall(
+        r"translate[xy]?\(\s*([^,)\s]+)", decls.get("transform", "") + " " + decls.get("translate", "")
+    )
+    if any(_far(t) for t in translate):
+        return True
     clip = decls.get("clip", "").replace(",", " ")
     if re.fullmatch(r"rect\(\s*(?:0(?:px)?\s+){3}0(?:px)?\s*\)|rect\(\s*(?:1px\s+){3}1px\s*\)", clip):
         return True
     return bool(re.fullmatch(r"inset\(\s*(?:50|100)%\s*\)|circle\(\s*0(?:px|%)?\s*\)", decls.get("clip-path", "")))
 
 
-def hidden(decls: dict[str, str], under: str | None) -> str | None:
-    """Why a declaration block hides its text, or None. `under` is the background behind the text,
-    when known; without it, only a colour equal to the block's own background or transparent counts."""
-    opacity = _length(decls.get("opacity", ""))
-    text = color(decls.get("color", ""))
+def _scaled_away(transform: str) -> bool:
+    return any(abs(float(s)) <= FAINT for s in re.findall(rf"scale[xy]?\(\s*(-?{NUM})\s*[,)]", transform))
+
+
+def _collapsed(decls: dict[str, str]) -> bool:
+    zero = any((number(decls.get(p, "")) or (1, ""))[0] == 0 for p in ("height", "max-height", "width", "max-width"))
+    return zero and decls.get("overflow", "").split()[:1] in (["hidden"], ["clip"])
+
+
+def _faint(value: str) -> bool:
+    opacity = number(value)
+    return bool(opacity) and opacity[0] <= (FAINT * 100 if opacity[1] == "%" else FAINT)
+
+
+def hidden(decls: dict[str, str], under: str | None, *, svg: bool = False) -> str | None:
+    """Why a declaration block hides its text, or None. `under` is the background behind the text, when
+    known; without it, only a colour equal to the block's own background or transparent counts. In SVG
+    the text colour is `fill`."""
+    if not decls or decls.get("animation-name", decls.get("animation", "none")) != "none":
+        return None  # an animated block is revealed (or hidden) over time; this reader does not play it
+    text = color(decls.get("fill", "") if svg and "fill" in decls else decls.get("color", ""))
     behind = background(decls) or under
     checks = (
         (decls.get("display") == "none", "display none"),
-        (decls.get("visibility") in ("hidden", "collapse"), "visibility hidden"),
-        (bool(opacity) and opacity[0] <= (5 if opacity[1] == "%" else 0.05), "opacity 0"),
+        (
+            decls.get("visibility") in ("hidden", "collapse") or decls.get("content-visibility") == "hidden",
+            "visibility hidden",
+        ),
+        (_faint(decls.get("opacity", "")) or (svg and _faint(decls.get("fill-opacity", ""))), "opacity 0"),
+        (svg and decls.get("fill") == "none", "fill none"),
         (tiny_font(decls.get("font-size", "")) or tiny_font(decls.get("font", "")), "font size 0 or 1"),
-        (bool(re.fullmatch(r"scale\(\s*0(?:\.0*)?\s*\)", decls.get("transform", ""))), "scaled to 0"),
-        (_offscreen(decls), "positioned off screen or clipped"),
+        (
+            _scaled_away(decls.get("transform", "") + (f" scale({decls['scale']})" if "scale" in decls else "")),
+            "scaled to 0",
+        ),
+        (_offscreen(decls) or _collapsed(decls), "positioned off screen, clipped or collapsed"),
         (text == "transparent" or (text is not None and text == behind), "text colour equal to background"),
     )
     return next((reason for hit, reason in checks if hit), None)
@@ -137,7 +251,16 @@ def rules(css: str) -> list[tuple[int, str, dict[str, str]]]:
     return [(m.start(), m.group(1).strip(), declarations(m.group(2))) for m in RULE.finditer(clean)]
 
 
+def selector_targets(selector: str) -> list[str]:
+    """The `.class` and `#id` names a selector's parts end in, lower-cased; other selectors name none."""
+    out = []
+    for part in selector.split(","):
+        last = part.strip().split()[-1:] or [""]
+        out += [m.lower() for m in re.findall(r"[.#][\w-]+", last[0])]
+    return out
+
+
 def urls(css: str) -> list[tuple[int, str]]:
-    """(offset, URL) of each `url()` and `@import` in CSS text."""
+    """(offset, URL) of each `url()`, `@import` and `image-set()` in CSS text."""
     clean = unescape(css)
-    return [(m.start(), m.group(2) if m.group(2) is not None else m.group(4)) for m in URL_FUNC.finditer(clean)]
+    return [(m.start(), next(g for g in m.group(2, 4, 6) if g is not None)) for m in URL_FUNC.finditer(clean)]

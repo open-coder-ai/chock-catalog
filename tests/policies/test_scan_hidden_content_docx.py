@@ -14,10 +14,15 @@ from policies.hiddenkit import readers
 docx = readers["word"]
 
 RUN = '<w:r><w:rPr>{props}</w:rPr><w:t xml:space="preserve">{text}</w:t></w:r>'
+WML = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+
+
+def part_of(*runs: str) -> str:
+    return f"<w:document {WML}><w:body><w:p>" + "".join(runs) + "</w:p></w:body></w:document>"
 
 
 def document(*runs: str, part: str = "word/document.xml", extra: dict[str, bytes] | None = None) -> bytes:
-    body = "<w:document><w:body><w:p>" + "".join(runs) + "</w:p></w:body></w:document>"
+    body = part_of(*runs)
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("[Content_Types].xml", "<Types/>")
@@ -42,20 +47,33 @@ PLAIN = RUN.format(props="<w:b/>", text="Quarterly report")
         ((RUN.format(props="<w:vanish/>", text="  "),), []),
         (("<w:r><w:t>no properties</w:t></w:r>",), []),
         ((PLAIN, "<w:rPr><w:vanish/></w:rPr>"), []),
+        (("<w:r><w:rPr ><w:vanish></w:vanish></w:rPr ><w:delText>gone</w:delText></w:r>",), ["hidden (vanish)"]),
+        (
+            (RUN.format(props="<w:color w:val='FfFfFf'/><w:sz w:val='1'/>", text="x"),),
+            ["white text", "1-point text or smaller"],
+        ),
+        ((RUN.format(props='<w:color w:val="&#70;FFFFF"/>', text="x"),), ["white text"]),
+        ((RUN.format(props='<w:sz w:val="' + "9" * 5000 + '"/>', text="x"),), []),
+        (
+            (
+                '<x:r xmlns:x="http://purl.oclc.org/ooxml/wordprocessingml/main"><x:rPr><x:vanish/></x:rPr><x:t>s</x:t></x:r>',
+            ),
+            ["hidden (vanish)"],
+        ),
     ],
 )
 def test_hidden_runs(runs: tuple[str, ...], reasons: list[str]) -> None:
     assert [r for _, r, _ in docx.hidden_runs(document(*runs))] == reasons
 
 
-def test_headers_and_comments_are_read_and_other_parts_are_not() -> None:
-    data = document(PLAIN, extra={"word/footer2.xml": WHITE.encode(), "word/styles.xml": VANISH.encode()})
-    assert [(p, r) for p, r, _ in docx.hidden_runs(data)][:1] == [("word/footer2.xml", "white text")]
-    assert all(p != "word/styles.xml" for p, _, _ in docx.hidden_runs(data))
-
-
-def test_run_lookalike_tags_are_not_runs() -> None:
-    assert docx._runs("<w:rPr>x</w:r><w:r>a</w:r><w:r>") == ["<w:r>a"]
+def test_every_xml_part_is_read_whatever_its_name() -> None:
+    data = document(
+        PLAIN, part="word/Main.XML", extra={"word/footer2.xml": part_of(WHITE).encode(), "media/a.png": b"x"}
+    )
+    assert [(p, r) for p, r, _ in docx.hidden_runs(data)] == [
+        ("word/footer2.xml", "white text"),
+        ("word/footer2.xml", "1-point text or smaller"),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -68,6 +86,21 @@ def test_run_lookalike_tags_are_not_runs() -> None:
 def test_unreadable_documents(data: bytes, why: str) -> None:
     with pytest.raises(docx.UnreadableError, match=why):
         docx.hidden_runs(data)
+
+
+@pytest.mark.parametrize(
+    ("xml", "why"),
+    [
+        ('<!DOCTYPE d [<!ENTITY a "b">]><d>&a;</d>', "declares a DTD"),
+        ("<w:document>", "not well-formed"),
+    ],
+)
+def test_unreadable_parts(xml: str, why: str) -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("word/document.xml", xml)
+    with pytest.raises(docx.UnreadableError, match=why):
+        docx.hidden_runs(buffer.getvalue())
 
 
 def test_bounds_on_members_and_part_size(monkeypatch: pytest.MonkeyPatch) -> None:

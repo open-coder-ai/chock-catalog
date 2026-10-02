@@ -29,8 +29,6 @@ MAX_FINDINGS = 10000
 #: A text file past this is not parsed (the 30-second budget covers the baseline run too); it is
 #: reported, keyed by its whole text, so every change to it is new.
 MAX_TEXT = 1 << 20
-#: A KaTeX finding is keyed by the command and what follows it, not by its whole line.
-KATEX_WINDOW = 120
 SHOWN = 50
 MARKDOWN = {".md", ".mdx", ".markdown", ".mdc"}
 MARKUP = {".html", ".htm", ".xhtml", ".svg", ".xml"}
@@ -44,14 +42,19 @@ RULE_DIRS = re.compile(
 DOCS = re.compile(r"(^|/)docs?/[^/]+(/[^/]+)*\.(rst|txt|adoc)$")
 #: chock's managed copies: installed policy text describes the patterns it judges.
 MANAGED = re.compile(r"^\.agents/policies/|^\.chock/")
-WAIVER = re.compile(r"chock:\s*allow\s+scan-hidden-content")
-COMMENT_ONLY = re.compile(r"^\s*(<!--.*-->|\{/\*.*\*/\}|\[[^\]]*\]:\s*(#|<>)\s.*|#.*)\s*$")
+#: A waiver is a line holding nothing but the marker, as a comment, just above the finding: a marker
+#: inside the hidden text or the URL itself is part of what is judged, never a waiver.
+WAIVER = re.compile(
+    r"\s*(?:<!--\s*{m}\s*-->|\{{/\*\s*{m}\s*\*/\}}|\[//\]:\s*#\s*\(\s*{m}\s*\)|#\s*{m})\s*".format(
+        m=r"chock:\s*allow\s+scan-hidden-content"
+    )
+)
 WAIVABLE = frozenset({"commit", "push", "ci"})
 ADVICE = (
     "Remove the hidden text or make it visible, and link to fixed URLs that carry nothing from the repository "
-    "or the session. A person may keep a reviewed line with 'chock: allow scan-hidden-content' on it (or on a "
-    "comment line just above) and commit from their own shell; in the agent only a waiver already committed "
-    "in HEAD counts. This policy is in observe: it warns and records."
+    "or the session. A person may keep a reviewed line with a comment line just above it holding only "
+    "'chock: allow scan-hidden-content', committed from their own shell; in the agent only a waiver already "
+    "committed in HEAD counts. This policy is in observe: it warns and records."
 )
 
 
@@ -80,58 +83,67 @@ def _finding(path: str, line: int, rule: str, key: str, message: str) -> dict:
     return {"key": f"{rule}|{key}", "path": path, "line": line, "rule": rule, "message": f"[{tier}] {message}"}
 
 
-def _url_findings(path: str, scan: str, lines: hidden_text.Lines, kind: str, tags: hidden_html.Collected) -> list[dict]:
-    words = vocab()
-    found: list[tuple[int, str, bool]] = []
-    for offset, url in hidden_urls.text_urls(scan):
-        found.append((lines.line(offset), url, False))
+def _urls(scan: str, lines: hidden_text.Lines, kind: str, tags: hidden_html.Collected) -> dict[tuple[int, str], int]:
+    """Each distinct (line, URL as a client reads it) with how it is fetched (links.LINK, IMAGE or TAG)."""
+    image, link, tag = hidden_urls.IMAGE, hidden_urls.LINK, hidden_urls.TAG
+    found = [(lines.line(at), url, image if is_image else link) for at, url, is_image in hidden_urls.text_urls(scan)]
     if kind == "markdown":
-        found += [(lines.line(at), dest, False) for at, dest, _ in hidden_text.definitions(scan)]
-    found += tags.urls
-    best: dict[tuple[int, str], hidden_urls.Verdict] = {}
-    for line, url, embed in found:
-        verdict = hidden_urls.judge(url, words, embed=embed)
-        if verdict is None:
-            continue
-        slot = (line, verdict.host)
-        held = best.get(slot)
-        if held is None or (verdict.rule in hidden_urls.BLOCKING and held.rule not in hidden_urls.BLOCKING):
-            best[slot] = verdict
-    out = [
-        _finding(path, line, v.rule, f"{v.host}|{v.shape}", f"URL to {v.host}: {v.reason}")
-        for (line, _), v in sorted(best.items())
-    ]
-    for line, v in hidden_urls.runs([(line, url) for line, url, _ in found], words):
+        images = hidden_text.image_labels(scan)
+        found += [
+            (lines.line(at), dest, image if label in images else link)
+            for at, label, dest, _ in hidden_text.definitions(scan)
+        ]
+    found += [(line, url, tag if embed else link) for line, url, embed in tags.urls]
+    out: dict[tuple[int, str], int] = {}
+    for line, raw, load in found:
+        slot = (line, hidden_urls.clean(raw))
+        out[slot] = max(out.get(slot, link), load)
+    return out
+
+
+def _url_findings(path: str, urls: dict[tuple[int, str], int]) -> list[dict]:
+    words, out = vocab(), []
+    for (line, url), load in sorted(urls.items()):
+        if hidden_text.DATA_HTML.match(url):
+            out.append(_finding(path, line, "data-uri-html", digest(url), "a data: URI carrying a whole HTML page"))
+        elif verdict := hidden_urls.judge(url, words, load=load):
+            key = f"{verdict.host}|{verdict.shape}"
+            out.append(_finding(path, line, verdict.rule, key, f"URL to {verdict.host}: {verdict.reason}"))
+    for line, v in hidden_urls.runs(list(urls), words):
         out.append(_finding(path, line, v.rule, f"{v.host}|{v.shape}", f"URL dictionary on {v.host}: {v.reason}"))
     return out
 
 
 def text_findings(path: str, text: str, kind: str) -> list[dict]:
-    """Every hidden comment, hidden element, KaTeX trick, data-carrying URL and HTML data URI in one file."""
+    """Every hidden comment, hidden element, KaTeX trick, data-carrying URL and HTML data URI in one file.
+
+    In Markdown, URLs are read with code blanked (code is shown, not fetched), and tags and comments from the
+    text with only the '<' of code removed, so code inside a comment or an HTML block still counts."""
     scan = hidden_text.blank_code(text) if kind == "markdown" else text
+    tags = hidden_text.tag_view(text, scan) if kind == "markdown" else text
     lines, scan_lines = hidden_text.Lines(scan), scan.split("\n")
     words = vocab()
-    collected = hidden_html.collect(scan)
-    out = _url_findings(path, scan, lines, kind, collected)
-    bodies = [(at, body, "comment") for at, body in hidden_text.comments(scan)]
+    collected = hidden_html.collect(tags, xml=PurePosixPath(path).suffix.lower() in (".svg", ".xml"))
+    out = _url_findings(path, _urls(scan, lines, kind, collected))
+    bodies = [(at, body, "comment") for at, body in hidden_text.comments(tags)]
     if path.lower().endswith(".mdx"):
-        bodies += [(at, body, "MDX comment") for at, body in hidden_text.comments(scan, mdx=True)]
+        bodies += [(at, body, "MDX comment") for at, body in hidden_text.comments(tags, mdx=True)]
     if kind == "markdown":
-        bodies += [(at, t, "reference definition title") for at, _, t in hidden_text.definitions(scan) if t]
+        bodies += [(at, t, "reference definition title") for at, _, _, t in hidden_text.definitions(scan) if t]
     for at, body, where in bodies:
         if reason := words.instruction(body):
             key = f"comment|{digest(body)}"
             out.append(_finding(path, lines.line(at), "hidden-comment", key, f"hidden {where}: {reason}"))
-    for line, tag, reason, hidden in collected.hidden:
-        key = f"{tag}|{reason}|{digest(hidden)}"
-        out.append(_finding(path, line, "hidden-style", key, f"<{tag}> {reason}: {normalized(hidden)[:80]}"))
-    if kind == "markdown":
-        for at in hidden_text.katex(scan):
-            key = f"katex|{digest(scan[at : at + KATEX_WINDOW])}"
-            out.append(
-                _finding(path, lines.line(at), "hidden-style", key, "KaTeX text coloured white, transparent or phantom")
-            )
-    for line in sorted({lines.line(at) for at in hidden_text.data_html(scan)} | set(collected.data_html)):
+    for line, tag, reason, shown, key in collected.hidden:
+        out.append(
+            _finding(path, line, "hidden-style", f"{tag}|{reason}|{key}", f"<{tag}> {reason}: {normalized(shown)}")
+        )
+    katex_lines = {lines.line(at) for at in hidden_text.katex(scan)} if kind == "markdown" else set()
+    for line in sorted(katex_lines):
+        key = f"katex|{digest(scan_lines[line - 1])}"
+        out.append(_finding(path, line, "hidden-style", key, "KaTeX text coloured white, transparent or phantom"))
+    judged = {f["line"] for f in out if f["rule"] == "data-uri-html"}
+    for line in sorted(({lines.line(at) for at in hidden_text.data_html(scan)} | set(collected.data_html)) - judged):
         key = digest(scan_lines[line - 1])
         out.append(_finding(path, line, "data-uri-html", key, "a data: URI carrying a whole HTML page"))
     return out
@@ -158,12 +170,13 @@ def docx_findings(path: str, payload: dict) -> list[dict]:
     ]
 
 
-def waived(finding: dict, lines: list[str]) -> bool:
-    """A person's waiver on the finding's line, or on a comment-only line just above it."""
+def waived(finding: dict, lines: list[str], event: str) -> bool:
+    """A person's waiver: a marker-only comment line just above the finding. CI does not honour one on a
+    would-block finding, since a pull request's author may be anyone."""
     number = finding["line"]
-    if WAIVER.search(lines[number - 1]):
-        return True
-    return number > 1 and bool(COMMENT_ONLY.match(lines[number - 2])) and bool(WAIVER.search(lines[number - 2]))
+    if event == "ci" and finding["rule"] in hidden_urls.BLOCKING:
+        return False
+    return number > 1 and bool(WAIVER.fullmatch(lines[number - 2]))
 
 
 def findings(payload: dict) -> list[dict]:
@@ -172,7 +185,7 @@ def findings(payload: dict) -> list[dict]:
     writes = payload.get("writes")
     if not isinstance(writes, dict):
         raise TypeError("writes")
-    waive = str(payload.get("event", "")) in WAIVABLE
+    event = str(payload.get("event", ""))
     out: list[dict] = []
     for raw_path, text in sorted(writes.items()):
         path = str(raw_path).replace("\\", "/")
@@ -181,19 +194,23 @@ def findings(payload: dict) -> list[dict]:
             out += docx_findings(path, payload)
         elif kind and isinstance(text, str) and len(text) > MAX_TEXT:
             message = f"{len(text)} characters, more than {MAX_TEXT}: not parsed, judged as changed"
-            out.append(_finding(path, 1, "too-large", digest(text), message))
+            raw = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+            out.append(_finding(path, 1, "too-large", raw, message))
         elif kind and isinstance(text, str):
             lines = text.split("\n")
-            out += [f for f in text_findings(path, text, kind) if not (waive and waived(f, lines))]
+            out += [f for f in text_findings(path, text, kind) if not (event in WAIVABLE and waived(f, lines, event))]
     return out
 
 
 def main() -> int:
     try:
-        found = findings(json.load(sys.stdin))
-    except (ValueError, TypeError, AttributeError):
+        payload = json.load(sys.stdin)
+    except ValueError:
+        payload = None
+    if not isinstance(payload, dict) or not isinstance(payload.get("writes"), dict):
         print("scan-hidden-content: stdin is not the gate JSON; cannot judge", file=sys.stderr)
         return UNREADABLE
+    found = findings(payload)
     if len(found) > MAX_FINDINGS:
         first = found[0]
         message = f"[would ask] {len(found)} findings, more than {MAX_FINDINGS}: judged as new"

@@ -736,10 +736,10 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 39
-  eval_executed: 38
+  eval_cases: 45
+  eval_executed: 44
   description: 'Warns (observe) when a change adds text a reader cannot see, or a URL that carries data
-    out, to Markdown, HTML, SVG, XML, Word, agent instruction files, docs and templates: imperative
-    or long HTML comments, CSS-hidden, white or 1pt text, URLs with secret words, long queries, placeholders
-    or encoded parts, remote embeds, camo runs, HTML data URIs. Runs: commit, agent write, turn''s end.
-    A person''s waiver: ''chock: allow scan-hidden-content''. Friction, not a boundary.'
+    out, to Markdown, HTML, SVG, XML, Word, agent instruction files, docs and templates: instruction-like
+    or long comments, CSS-hidden, white or 1pt text, hidden Word runs, URLs with secret words, long
+    queries, placeholders or encoded parts, remote embeds, camo runs, HTML data URIs. Runs: commit,
+    agent write, turn''s end. Waiver: a person''s marker comment line above. Friction, not a boundary.'

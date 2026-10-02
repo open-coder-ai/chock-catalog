@@ -21,6 +21,7 @@ KEYS = (
     "secret_nouns",
     "marker_comments",
 )
+HEX_COLOUR = re.compile(r"#[0-9a-f]{6}")
 #: Past this, a comment counts as long whatever it says (roadmap NP01 (b)).
 LONG_COMMENT = 200
 SPACES = re.compile(r"\s+")
@@ -30,7 +31,11 @@ WORDS = re.compile(r"[^A-Za-z0-9]+")
 
 def _strings(doc: dict) -> list[str]:
     bad = [k for k in KEYS if not (isinstance(doc[k], list) and doc[k] and all(isinstance(v, str) for v in doc[k]))]
-    return [f"{k} must be a non-empty list of strings" for k in bad]
+    out = [f"{k} must be a non-empty list of strings" for k in bad]
+    colours = doc["css_colours"]
+    if not isinstance(colours, dict) or not colours or not all(HEX_COLOUR.fullmatch(str(v)) for v in colours.values()):
+        out.append("css_colours must map names to #rrggbb")
+    return out
 
 
 class Vocab:
@@ -38,6 +43,7 @@ class Vocab:
 
     def __init__(self, doc: dict) -> None:
         self.allowed = tuple(parse_entry(v) for v in doc["allowed_hosts"])
+        self.colours: dict[str, str] = dict(doc["css_colours"])
         self.camo = tuple(parse_entry(v) for v in doc["camo_hosts"])
         self.secret_nouns = frozenset(doc["secret_nouns"])
         words = "|".join(map(re.escape, doc["imperative_words"]))
@@ -75,7 +81,7 @@ class Vocab:
 
 @cache
 def vocab() -> Vocab:
-    return Vocab(load(TABLE, kind="curated", schema=1, keys=KEYS, check=_strings))
+    return Vocab(load(TABLE, kind="curated", schema=1, keys=(*KEYS, "css_colours"), check=_strings))
 
 
 def visible(text: str) -> str:

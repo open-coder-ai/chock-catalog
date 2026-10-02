@@ -1,21 +1,23 @@
-"""Hidden runs in a Word document: vanished, white or 1-point text, read from the zip without an XML parser."""
+"""Hidden runs in a Word document: vanished, white or 1-point text, read namespace-aware from every XML part."""
 
 from __future__ import annotations
 
-import html
 import io
 import re
 import subprocess
 import zipfile
+from xml.etree import ElementTree as ET
 
-#: Word's story parts: body, headers, footers, notes and comments.
-PARTS = re.compile(r"word/(?:document|header\d*|footer\d*|footnotes|endnotes|comments)\.xml")
-PROPS = re.compile(r"<w:rPr>([\s\S]*?)</w:rPr>")
-TEXT = re.compile(r"<w:t(?:\s[^>]*)?>([^<]*)</w:t>")
-OFF = re.compile(r'w:val="(?:0|false|off)"')
-VANISH = re.compile(r"<w:(?:vanish|specVanish|webHidden)(?:\s[^>]*)?/>")
-WHITE = re.compile(r'<w:color\s[^>]*w:val="(?:FFFFFF|ffffff)"')
-SIZE = re.compile(r'<w:sz\s[^>]*w:val="(\d+)"')
+#: WordprocessingML, transitional and strict: a run is found by namespace, whatever its prefix.
+NAMESPACES = (
+    "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    "http://purl.oclc.org/ooxml/wordprocessingml/main",
+)
+HIDING = ("vanish", "specVanish", "webHidden")
+OFF = {"0", "false", "off"}
+SIZE = re.compile(r"\d{1,6}")
+#: A DTD can expand entities without bound; no Word part carries one, so a part with one is refused.
+DTD = re.compile(r"<!(?:DOCTYPE|ENTITY)", re.IGNORECASE)
 #: Bounds on what is unpacked, so a zip bomb or a huge part is reported, not expanded.
 MAX_PART = 32 << 20
 #: Word sizes are in half-points: 2 is 1 point.
@@ -48,44 +50,45 @@ def blob(repo_root: str, event: str, path: str, *, baseline: bool) -> bytes | No
     return proc.stdout
 
 
-def _reasons(props: str) -> list[str]:
+def _reasons(props: ET.Element, ns: str) -> list[str]:
     out = []
-    if any(not OFF.search(m.group(0)) for m in VANISH.finditer(props)):
+    if any(props.find(f"{{{ns}}}{tag}") is not None and _val(props, tag, ns) not in OFF for tag in HIDING):
         out.append("hidden (vanish)")
-    if WHITE.search(props):
+    if (_val(props, "color", ns) or "").upper() == "FFFFFF":
         out.append("white text")
-    if (size := SIZE.search(props)) and int(size.group(1)) <= ONE_POINT:
+    size = _val(props, "sz", ns) or ""
+    if SIZE.fullmatch(size) and int(size) <= ONE_POINT:
         out.append("1-point text or smaller")
     return out
 
 
-def _runs(xml: str) -> list[str]:
-    """Each `<w:r>` element's text, found by plain search so a part without closing tags stays linear."""
-    out, at = [], xml.find("<w:r")
-    while at != -1:
-        end = xml.find("</w:r>", at)
-        if end == -1:
-            break
-        if xml[at + 4 : at + 5] in (">", " ", "\t", "\n", "\r"):
-            out.append(xml[at:end])
-            at = xml.find("<w:r", end)
-        else:
-            at = xml.find("<w:r", at + 4)
-    return out
+def _val(props: ET.Element, tag: str, ns: str) -> str | None:
+    found = props.find(f"{{{ns}}}{tag}")
+    return None if found is None else (found.get(f"{{{ns}}}val") or "").strip()
 
 
 def _part(name: str, xml: str) -> list[tuple[str, str, str]]:
+    if DTD.search(xml):
+        msg = f"{name} declares a DTD"
+        raise UnreadableError(msg)
+    try:
+        root = ET.fromstring(xml)  # noqa: S314 -- no DTD (refused above), so no entity expansion
+    except ET.ParseError:
+        msg = f"{name} is not well-formed XML"
+        raise UnreadableError(msg) from None
     found = []
-    for run in _runs(xml):
-        props = PROPS.search(run)
-        text = "".join(html.unescape(t) for t in TEXT.findall(run)).strip()
-        if props and text:
-            found += [(name, reason, text) for reason in _reasons(props.group(1))]
+    for ns in NAMESPACES:
+        for run in root.iter(f"{{{ns}}}r"):
+            props = run.find(f"{{{ns}}}rPr")
+            text = "".join(t.text or "" for t in run.iter() if t.tag in (f"{{{ns}}}t", f"{{{ns}}}delText")).strip()
+            if props is not None and text:
+                found += [(name, reason, text) for reason in _reasons(props, ns)]
     return found
 
 
 def _parts(data: bytes) -> list[tuple[str, str]]:
-    """(name, text) of each story part, within the bounds; zipfile's own errors pass up."""
+    """(name, text) of every XML part, within the bounds: Word finds its parts through relationships, so a
+    renamed main part is still read. zipfile's own errors pass up."""
     archive = zipfile.ZipFile(io.BytesIO(data))
     members = archive.infolist()
     if len(members) > MAX_MEMBERS:
@@ -93,7 +96,7 @@ def _parts(data: bytes) -> list[tuple[str, str]]:
         raise UnreadableError(msg)
     out = []
     for info in members:
-        if not PARTS.fullmatch(info.filename):
+        if not info.filename.lower().endswith(".xml"):
             continue
         with archive.open(info) as handle:
             raw = handle.read(MAX_PART + 1)

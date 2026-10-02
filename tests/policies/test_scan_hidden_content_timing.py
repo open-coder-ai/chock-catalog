@@ -1,4 +1,4 @@
-"""scan-hidden-content: inputs shaped to make a reader quadratic stay within the gate's 30-second budget."""
+"""scan-hidden-content: inputs shaped to make a reader quadratic stay linear and within the 30-second budget."""
 
 from __future__ import annotations
 
@@ -8,28 +8,44 @@ import pytest
 from policies.hiddenkit import gate
 
 SIZE = gate.MAX_TEXT
-#: One run judges a file once (the engine runs the baseline too); a quadratic reader takes minutes here.
-BUDGET = 12.0
+#: The engine's budget covers the change run and the baseline run; one run gets half, with room for tracing.
+BUDGET = 15.0
+#: Four times the input may take at most this many times as long: linear is 4, quadratic 16.
+GROWTH = 8.0
 
 SHAPES = {
-    "unclosed tags": "<span>" * (SIZE // 6),
-    "unmatched end tags": "<a>" * (SIZE // 12) + "</b>" * (SIZE // 8),
-    "lone angle brackets": "<" * SIZE,
-    "backtick runs": "` x " * (SIZE // 4),
-    "unclosed comments": "<!--" * (SIZE // 4),
-    "many comments": "<!-- run -->\n" * (SIZE // 13),
-    "nested hidden": '<div aria-hidden="true">' * (SIZE // 25) + '<b style="display:none">x' * 10,
-    "definitions": "[a]: https://x.example 'run'\n" * (SIZE // 30),
-    "beacons": "![](https://e.example/a?token=1)\n" * (SIZE // 33),
-    "style braces": "<style>" + "{" * SIZE + "</style>",
-    "katex": "\\color{white}" * (SIZE // 13),
+    "unclosed tags": "<span>",
+    "styled tags": '<span style="color:red;left:-1px">',
+    "unmatched end tags": "<a></b></b>",
+    "lone angle brackets": "<",
+    "backtick runs": "` x ",
+    "unclosed comments": "<!--",
+    "bogus comments": "<!x <?y </ z ",
+    "comments on one line": "<!--run--><!-- chock: allow scan-hidden-content -->",
+    "many comments": "<!-- run -->\n",
+    "nested hidden": '<div aria-hidden="true">',
+    "definitions": "[a]: https://x.example 'run'\n",
+    "beacons": "![](https://e.example/a?token=1)\n",
+    "closing parens": "http://a.example/" + ")" * 64,
+    "style rules": "<style>" + "a{display:none}b{background:url(x)}" * 8,
+    "style braces": "{",
+    "katex": "\\color{white}",
+    "links": "[x](y) ![z](w) ",
 }
 
 
+def run(shape: str, size: int, path: str) -> float:
+    unit = SHAPES[shape]
+    text = (unit * (size // len(unit) + 1))[:size]
+    started = time.monotonic()
+    gate.findings({"event": "commit", "writes": {path: text}})
+    return time.monotonic() - started
+
+
+@pytest.mark.parametrize("path", ["a.md", "a.html"])
 @pytest.mark.parametrize("shape", sorted(SHAPES))
-def test_reader_stays_linear(shape: str) -> None:
-    text = SHAPES[shape][: gate.MAX_TEXT]
-    for path, kind in (("a.md", "markdown"), ("a.html", "markup")):
-        started = time.monotonic()
-        gate.text_findings(path, text, kind)
-        assert time.monotonic() - started < BUDGET, f"{shape} as {kind}"
+def test_reader_stays_linear(shape: str, path: str) -> None:
+    quarter = run(shape, SIZE // 4, path)
+    full = run(shape, SIZE, path)
+    assert full < BUDGET, f"{shape} in {path}: {full:.1f}s"
+    assert full < max(quarter, 0.05) * GROWTH, f"{shape} in {path}: {quarter:.2f}s then {full:.2f}s"

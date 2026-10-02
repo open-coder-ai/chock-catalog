@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import re
 from dataclasses import dataclass
 
 from chock_scan.urls import UnparseableError, parse_url
 
+from hiddenscan.markdown import is_image
+
 BARE = re.compile(r"(?:https?|ftp|wss?)://[^\s<>\"'`]+", re.IGNORECASE)
 DESTINATION = re.compile(r"\]\(\s*(<[^>\n]*>|[^\s)]*)")
 TRAILING = ".,;:!?*_"
+#: CommonMark backslash escapes: any ASCII punctuation.
+MD_ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 REMOTE = re.compile(r"(?:https?|ftp|wss?):|//", re.IGNORECASE)
 #: The URL Standard deletes tabs and newlines inside a URL, so `ht<tab>tps:` is still https.
 STRIPPED = re.compile(r"[\t\n\r]")
@@ -25,6 +30,9 @@ LONG_QUERY = 40
 RUN = 5
 #: A dictionary entry's name: one or two characters, the extension aside.
 MAX_STEM = 2
+LINK_NAMED = "exfil-link-secret"
+#: How a URL is fetched: when a link is followed, as a Markdown image on render, or by an HTML tag or CSS.
+LINK, IMAGE, TAG = 0, 1, 2
 SECRET, SHAPE, EMBED, UNPARSEABLE, CAMO = (
     "exfil-url-secret",
     "exfil-url-shape",
@@ -102,8 +110,10 @@ def _carries_data(path: str, query: str, vocab: object, *, allowed: bool) -> tup
     return None
 
 
-def judge(raw: str, vocab: object, *, embed: bool) -> Verdict | None:
-    """The finding a URL earns, or None for a relative, allowlisted or data-free one."""
+def judge(raw: str, vocab: object, *, load: int) -> Verdict | None:
+    """The finding a URL earns, or None for a relative, allowlisted or data-free one. `load` is LINK (fetched
+    when followed), IMAGE (a Markdown image: fetched on render, judged by shape) or TAG (an HTML or CSS source:
+    fetched on render, and judged by host too)."""
     url = clean(raw)
     head = url.partition("#")[0]
     rest, _, query = head.partition("?")
@@ -120,30 +130,54 @@ def judge(raw: str, vocab: object, *, embed: bool) -> Verdict | None:
     if allowed and not query:
         return None
     found = _carries_data(path, query, vocab, allowed=allowed)
-    if found is None and embed and not allowed:
+    if found is not None and found[0] == SECRET and load == LINK:
+        found = LINK_NAMED, found[1] + " (a link: fetched only when followed)"
+    if found is None and load == TAG and not allowed:
         found = EMBED, "it is fetched when the file is rendered"
     return Verdict(found[0], host.name, shape, found[1]) if found else None
 
 
 def _trim(url: str) -> str:
-    url = url.rstrip(TRAILING)
-    while url.endswith((")", "]")) and url.count(url[-1]) > url.count("(" if url[-1] == ")" else "["):
-        url = url[:-1].rstrip(TRAILING)
-    return url
+    """A bare URL without the punctuation around it, and cut where a Markdown link wraps it (`](`, `)[`)."""
+    for joint in ("](", ")["):
+        url = url.split(joint, 1)[0]
+    end = len(url.rstrip(TRAILING))
+    surplus = {
+        ")": url.count(")", 0, end) - url.count("(", 0, end),
+        "]": url.count("]", 0, end) - url.count("[", 0, end),
+    }
+    while end and url[end - 1] in surplus and surplus[url[end - 1]] > 0:
+        surplus[url[end - 1]] -= 1
+        end -= 1
+        while end and url[end - 1] in TRAILING:
+            end -= 1
+    return url[:end]
 
 
-def text_urls(text: str) -> list[tuple[int, str]]:
-    """(offset, URL) of bare URLs and Markdown link and image destinations."""
-    found = [(m.start(), _trim(m.group(0))) for m in BARE.finditer(text)]
-    found += [(m.start(1), m.group(1)) for m in DESTINATION.finditer(text) if "/" in m.group(1)]
+def text_urls(text: str) -> list[tuple[int, str, bool]]:
+    """(offset, URL, is an image) of bare URLs and Markdown link and image destinations, backslash escapes
+    in destinations decoded as CommonMark decodes them."""
+    found = [(m.start(), _trim(m.group(0)), False) for m in BARE.finditer(text)]
+    for m in DESTINATION.finditer(text):
+        dest = MD_ESCAPE.sub(r"\1", m.group(1))
+        if "/" in dest or ":" in dest:
+            found.append((m.start(1), dest, is_image(text, m.start())))
     return found
+
+
+def _family(url: str) -> tuple[str, str] | None:
+    path = url.partition("#")[0].partition("?")[0].split("//", 1)[-1].partition("/")[2]
+    prefix, _, last = path.rpartition("/")
+    stem = last.rpartition(".")[0] or last
+    return (prefix, stem) if 0 < len(stem) <= MAX_STEM else None
 
 
 def runs(urls: list[tuple[int, str]], vocab: object) -> list[tuple[int, Verdict]]:
     """A dictionary of URLs, one per character to leak: five or more camo-style URLs, or one host serving
-    five or more one- or two-character names under one path."""
-    camo: list[int] = []
-    families: dict[tuple[str, str], dict[str, int]] = {}
+    five or more one- or two-character names under one path. Each member is its own finding, keyed by a
+    hash of the URL, so a run that grows reports the URLs it gains."""
+    camo: dict[str, int] = {}
+    families: dict[tuple[str, str], dict[str, tuple[int, str]]] = {}
     for line, raw in urls:
         url = clean(raw)
         if not REMOTE.match(url):
@@ -153,20 +187,17 @@ def runs(urls: list[tuple[int, str]], vocab: object) -> list[tuple[int, Verdict]
         except (UnparseableError, ValueError):
             continue
         if vocab.camo_host(host):
-            camo.append(line)
-            continue
-        if vocab.allowed_host(host):
-            continue
-        path = url.partition("#")[0].partition("?")[0].split("//", 1)[-1].partition("/")[2]
-        prefix, _, last = path.rpartition("/")
-        stem = last.rpartition(".")[0] or last
-        if 0 < len(stem) <= MAX_STEM:
-            families.setdefault((host.name, prefix), {}).setdefault(stem, line)
+            camo.setdefault(url, line)
+        elif not vocab.allowed_host(host) and (member := _family(url)):
+            families.setdefault((host.name, member[0]), {}).setdefault(member[1], (line, url))
+    groups = [("camo", {u: (n, u) for u, n in camo.items()}, "camo-style image URLs")]
+    groups += [
+        (host, stems, "one- or two-character names under one path") for (host, _), stems in sorted(families.items())
+    ]
     out = []
-    if len(camo) >= RUN:
-        out.append((min(camo), Verdict(CAMO, "camo", "camo", f"{len(camo)} camo-style image URLs")))
-    for (host, prefix), stems in sorted(families.items()):
-        if len(stems) >= RUN:
-            reason = f"{len(stems)} one- or two-character names under one path"
-            out.append((min(stems.values()), Verdict(CAMO, host, "/" + prefix, reason)))
+    for host, members, what in groups:
+        if len(members) >= RUN:
+            for line, url in sorted(members.values()):
+                shape = hashlib.sha256(url.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+                out.append((line, Verdict(CAMO, host, shape, f"one of {len(members)} {what}")))
     return out

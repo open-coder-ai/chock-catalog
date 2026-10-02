@@ -10,14 +10,14 @@
 | **Mechanism** | guard script `scan-hidden-content-gate.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 39 total, 38 executable |
+| **Eval cases** | 45 total, 44 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Warns (observe) when a change adds text a reader cannot see, or a URL that carries data out, to Markdown, HTML, SVG, XML, Word, agent instruction files, docs and templates: imperative or long HTML comments, CSS-hidden, white or 1pt text, URLs with secret words, long queries, placeholders or encoded parts, remote embeds, camo runs, HTML data URIs. Runs: commit, agent write, turn's end. A person's waiver: 'chock: allow scan-hidden-content'. Friction, not a boundary.
+Warns (observe) when a change adds text a reader cannot see, or a URL that carries data out, to Markdown, HTML, SVG, XML, Word, agent instruction files, docs and templates: instruction-like or long comments, CSS-hidden, white or 1pt text, hidden Word runs, URLs with secret words, long queries, placeholders or encoded parts, remote embeds, camo runs, HTML data URIs. Runs: commit, agent write, turn's end. Waiver: a person's marker comment line above. Friction, not a boundary.
 
 ## What it solves
 
