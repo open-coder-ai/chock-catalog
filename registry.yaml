@@ -637,8 +637,8 @@ policies:
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 89
-  eval_executed: 88
+  eval_cases: 90
+  eval_executed: 89
   description: 'Blocks newly added test skips, focus markers and runner options that hide tests: pytest/unittest
     skips, non-strict xfail, importorskip; JS skip/only/todo/fixme, x/f prefixes; JUnit Disabled/Assume;
     Go Skip, Short(); Rust ignore; RSpec, PHPUnit, C#, Swift skips; --deselect/-k not, collect_ignore,
