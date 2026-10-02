@@ -1,0 +1,73 @@
+id: dockerfile-compose-security
+name: "Dockerfile and Compose Security"
+version: "0.0.1"
+description: >
+  Warns (observe rollout, never refuses) when a change to a Dockerfile, Containerfile or compose
+  file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware: FROM
+  or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature
+  checks switched off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote
+  ADD without checksum; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd; unpinned
+  git clone; ONBUILD RUN; compose privileged, dangerous cap_add, unconfined seccomp/apparmor,
+  devices, host namespaces, Docker socket or sensitive host mounts, database ports on every
+  interface, untagged images. Left to other gates: one-line fetch-exec and ADD URL
+  (block-fetch-exec-in-files), FROM/image at latest or untagged with a slash
+  (block-unpinned-agent-components), scan-secrets token lines. Misses: build args overriding
+  defaults, variables in commands, bake/k8s files. Friction, not a boundary.
+artifact: rule
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+rule:
+  text: |
+    flag(container_change): Dockerfile|Containerfile|compose adds floating/undigested image, root final stage, TLS|signature off, literal secret, key-file COPY, privileged|cap_add|host ns|docker.sock|host-root mount, db port on 0.0.0.0
+    prefer: pinned tag@sha256, USER <uid>, RUN --mount=type=secret, cap_add narrow, named volumes; waiver: '# chock: allow <rule-id>', person only
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      A Dockerfile or compose change weakens the container's isolation or supply chain (each finding
+      names its rule, weakness and fix). Pin images by tag and digest, end the final stage with a
+      non-root USER, keep TLS and signature checks on, pass secrets with RUN --mount=type=secret or
+      compose secrets, and drop privileged, broad cap_add, host namespaces and host-root or Docker
+      socket mounts. This policy only warns while it is measured. A person may keep a reviewed
+      finding with '# chock: allow <rule-id>' on the line or the comment line above it; in the agent
+      only a line already committed in HEAD counts, so an agent asks a person.
+    params:
+      script: dockerfile-compose-security-gate.py
+
+compliance:
+  owasp_asi:
+  - control: ASI04
+    coverage: partial
+    note: "flags floating base images and unpinned remote sources in container builds; warns only (observe)"
+  - control: ASI05
+    coverage: partial
+    note: "flags privileged containers, host namespaces and Docker socket mounts an agent writes into compose files; warns only (observe)"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap 6.4 dockerfile-compose-security, plus the HP06 stage-aware Dockerfile script deferred from W1-C5): a script gate at commit and agent write over Dockerfile*, Containerfile*, *.dockerfile and compose*/docker-compose* YAML. Ships with action: warn -- the observe stage of rollout decision D15 -- so it reports and never refuses; each finding still carries its tier (deny exits 1, ask exits 3) for the later enforce change. Only findings a change adds are judged (baseline run). Waiver '# chock: allow <rule-id>' (person; HEAD-only for agents)."

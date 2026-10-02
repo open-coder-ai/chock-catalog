@@ -77,7 +77,7 @@ cover, is in the framework's
   reason). On agents without hooks, and for a human at a terminal, nothing stops it.
 - **Git hooks live in `.git/hooks`, which is not cloned.** A fresh clone of an adopting repo
   enforces nothing until someone runs `chock sync`.
-- **<!-- gen:advisory -->20<!-- /gen --> of the <!-- gen:policies -->48<!-- /gen --> policies are advisory.** They compile to text an agent reads and may or
+- **<!-- gen:advisory -->21<!-- /gen --> of the <!-- gen:policies -->49<!-- /gen --> policies are advisory.** They compile to text an agent reads and may or
   may not follow. Their eval cases report as `skipped`, never as passing. Another
   <!-- gen:best-effort -->9<!-- /gen --> are best-effort: they run inside the agent (before a command, or on a tool call,
   where some only warn) only on agents whose hooks `chock sync` wires, and fail open if the

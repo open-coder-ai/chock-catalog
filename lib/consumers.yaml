@@ -10,6 +10,8 @@ base/block-unapproved-egress:
   chock_shellparse: [args, parse, targets, writes]
 base/block-unguarded-agent-spawn:
   chock_shellparse: [args, parse, targets, writes]
+base/dockerfile-compose-security:
+  chock_scan: [yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/protect-agent-config:
   chock_shellparse: [args, parse, targets, writes]
 base/protect-ci-workflows:
