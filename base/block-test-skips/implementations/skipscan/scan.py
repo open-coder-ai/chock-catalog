@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from bisect import bisect_left
+from collections.abc import Callable
+
 QUOTES = "'\"`"
 PAIRS = {"(": ")", "[": "]", "{": "}"}
 
 
-def line_of(text: str, offset: int) -> int:
-    return text.count("\n", 0, offset) + 1
+def line_index(text: str) -> Callable[[int], int]:
+    """Offset -> 1-based line number, from one pass over the text."""
+    breaks = [index for index, char in enumerate(text) if char == "\n"]
+    return lambda offset: bisect_left(breaks, offset) + 1
 
 
 def _string_end(text: str, start: int) -> int:

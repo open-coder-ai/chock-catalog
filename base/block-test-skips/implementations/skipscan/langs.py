@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 
 from skipscan import SKIP
-from skipscan.scan import group, line_of
+from skipscan.scan import group, line_index
 
 C_COMMENTS = ("//", "*", "/*")
 #: v1's one pattern, still applied to a test-path file whose extension no table below names.
@@ -16,40 +17,53 @@ LEGACY = re.compile(
 RULES: dict[str, tuple[re.Pattern[str], tuple[str, ...]]] = {
     "js": (
         re.compile(
-            r"\b(?:it|describe|test|context|suite|specify|bench)(?:\.\w+)*\.(?:skip|only|todo|fixme|skipIf|runIf)\b"
-            r"|\b(?:it|test)\.fails?\b|(?<![\w$.])[xf](?:it|describe|test|context|specify)\s*\(|\bthis\.skip\s*\("
+            r"\b(?:it|describe|test|context|suite|specify|bench)(?:\s*\??\.\s*\w+)*\s*\??\.\s*"
+            r"(?:skip|only|todo|fixme|skipIf|runIf)\b(?=\s*[(.`])"
+            r"|\b(?:it|test)\s*\??\.\s*fails?\b(?=\s*[(.`])"
+            r"|(?<![\w$.])[xf](?:it|describe|test|context|specify)(?:\s*\.\s*each)?\s*[(`]|\bthis\.skip\s*\("
         ),
         C_COMMENTS,
     ),
     "jvm": (
         re.compile(
-            r"@(?:Disabled|Ignore)\w*|@Enabled(?:If|On|For|In)\w*|\b(?:Assume|Assumptions)\.\w+\s*\("
+            r"@(?:[\w.]+\.)?(?:Disabled\w*|Ignore(?:If)?\b|Enabled(?:If|On|For|In)\w*)"
+            r"|\b(?:Assume|Assumptions)\.\w+\s*\("
             r"|(?<![\w.])(?:assume(?:True|False|That|NotNull|NoException)|assumingThat)\s*\("
-            r"|@Test\s*\([^)]*\benabled\s*=\s*false|\.config\s*\([^)]*\benabled\s*=\s*false|\bSkipException\b"
+            r"|@Test\s*\([^)]*\benabled\s*=\s*false|\.config\s*\([^)]*\benabled\s*=\s*false"
+            r"|\b(?:SkipException|AssumptionViolatedException|TestAbortedException)\b"
             r"|(?<![\w$.])x(?:it|describe|test|context|should)\s*\("
         ),
         C_COMMENTS,
     ),
-    "go": (re.compile(r"\.Skip(?:Now|f)?\s*\(|\btesting\.Short\s*\(\s*\)"), C_COMMENTS),
-    "rust": (re.compile(r"#\[\s*ignore\b|#\[\s*cfg_attr\s*\(.*\bignore\b"), ("//",)),
+    # A testing receiver (t, b, tb, tt, tc, f, or a suite's T()); `testing.Short()` is judged by its block below.
+    "go": (re.compile(r"(?:\b(?:t|b|tb|tt|tc|f)|\bT\(\))\s*\.\s*Skip(?:Now|f)?\s*\("), C_COMMENTS),
+    "rust": (re.compile(r"#\s*\[\s*ignore\b|#\s*\[\s*cfg_attr\s*\(.*\bignore\b"), C_COMMENTS),
+    # Statement-initial calls and example metadata only: `:pending` and `skip:` elsewhere are ordinary Ruby.
     "ruby": (
         re.compile(
-            r"(?<![\w.:@$])(?:x(?:it|describe|context|specify|example|scenario|feature)"
-            r"|f(?:it|describe|context|specify|example)|focus)\b(?!\s*=[^=>~])"
-            r"|(?<![\w.:@$])(?:skip|pending)\b(?![?!:]|\s*=[^=>~])"
-            r"|(?<![\w:]):(?:skip|pending|focus)\b|\b(?:skip|pending|focus):\s"
+            r"^\s*(?:x(?:it|describe|context|specify|example|scenario|feature)|f(?:it|describe|context|specify|example)"
+            r"|focus)\b(?!\s*(?:=[^=>~]|[.?!:]))"
+            r"|^\s*(?:skip|pending)\b(?!\s*(?:=[^=>~]|[.?!:)\]]))"
+            r"|^\s*(?:it|specify|example|scenario|describe|context|feature)\b.*"
+            r"(?:,\s*:(?:skip|pending|focus)\b|\b(?:skip|pending|focus):(?!\s*(?:false|nil)\b))"
         ),
         ("#",),
     ),
     "php": (re.compile(r"\bmarkTest(?:Skipped|Incomplete)\s*\("), (*C_COMMENTS, "#")),
     "csharp": (
         re.compile(
-            r"\[\s*(?:Fact|Theory)\s*\([^\]]*\bSkip\s*=|[\[,]\s*(?:Ignore|Explicit)\b"
+            r"\[\s*(?:[\w.]+\.)?(?:Fact|Theory)(?:Attribute)?\s*\([^\]]*\bSkip\s*="
+            r"|[\[,]\s*(?:[\w.]+\.)?(?:Ignore|Explicit)(?:Attribute)?\b"
             r"|\bSkip\.(?:If|IfNot|Unless|When)\s*\(|\bAssert\.(?:Ignore|Inconclusive)\s*\(|\bAssume\.\w+\s*\("
         ),
         C_COMMENTS,
     ),
-    "swift": (re.compile(r"\bXCTSkip(?:If|Unless)?\b|\bXCTExpectFailure\s*\(|\.disabled\s*\("), C_COMMENTS),
+    "swift": (
+        re.compile(
+            r"\bXCTSkip(?:If|Unless)?\b|\bXCTExpectFailure\s*\(|@(?:Test|Suite)\b.*\.(?:disabled\s*\(|enabled\s*\(\s*if:)"
+        ),
+        C_COMMENTS,
+    ),
     "legacy": (LEGACY, ("#", *C_COMMENTS)),
 }
 EXTENSIONS = {
@@ -69,13 +83,30 @@ EACH = re.compile(r"\b(?:it|describe|test)(?:\.\w+)*\.each\s*(?=[(`])")
 EACH_TAIL = re.compile(r"\s*\.(?:skip|only)\b")
 
 
-def _each_hits(text: str) -> list[int]:
+#: A Go `if` whose condition calls `testing.Short()`: a skip only when its block returns or skips.
+SHORT = re.compile(r"\bif\b[^{\n]*\btesting\.Short\s*\(\s*\)[^{\n]*\{")
+SHORT_EXIT = re.compile(r"\breturn\b|\.Skip")
+
+
+def _each_hits(text: str, line_of: Callable[[int], int]) -> list[int]:
     hits = []
     for match in EACH.finditer(text):
         end, _ = group(text, match.end()) if text[match.end()] == "(" else _template(text, match.end())
+        if end >= len(text):
+            # An unclosed table runs to the end, and so would every one after it.
+            break
         tail = EACH_TAIL.match(text, end)
         if tail:
-            hits.append(line_of(text, tail.end()))
+            hits.append(line_of(tail.end()))
+    return hits
+
+
+def _short_hits(text: str, line_of: Callable[[int], int]) -> list[int]:
+    hits = []
+    for match in SHORT.finditer(text):
+        end, _ = group(text, match.end() - 1)
+        if SHORT_EXIT.search(text, match.end(), end):
+            hits.append(line_of(match.start()))
     return hits
 
 
@@ -84,15 +115,25 @@ def _template(text: str, start: int) -> tuple[int, list[tuple[int, str]]]:
     return (len(text) if close < 0 else close + 1), []
 
 
+def _is_comment(line: str, comments: tuple[str, ...]) -> bool:
+    """A line that is only comment; `/* x */ code` is code."""
+    stripped = line.lstrip()
+    if stripped.startswith("/*") and "*/" in stripped:
+        return not stripped.split("*/", 1)[1].strip()
+    return stripped.startswith(comments)
+
+
 def line_hits(lang: str, text: str) -> list[tuple[int, str, None]]:
     """Each line of a test file that holds one of its language's markers, comment lines aside."""
     pattern, comments = RULES[lang]
+    lines = text.splitlines()
     numbers = [
         number
-        for number, line in enumerate(text.splitlines(), 1)
-        if not line.lstrip().startswith(comments)
-        and pattern.search(line if lang == "legacy" else QUOTED.sub('""', line))
+        for number, line in enumerate(lines, 1)
+        if not _is_comment(line, comments) and pattern.search(line if lang == "legacy" else QUOTED.sub('""', line))
     ]
-    if lang == "js":
-        numbers += _each_hits(text)
+    extra = {"js": _each_hits, "go": _short_hits}.get(lang)
+    if extra:
+        line_of = line_index(text)
+        numbers += [n for n in extra(text, line_of) if not _is_comment(lines[n - 1], comments)]
     return [(number, SKIP, None) for number in sorted(set(numbers))]

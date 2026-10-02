@@ -436,7 +436,7 @@ suite:
   - id: tc-067
     category: negative_trigger
     prompt: "A known bug is marked @pytest.mark.xfail(strict=True)."
-    expect: "The commit is allowed: a strict xfail fails the run as soon as the test passes, so nothing is hidden."
+    expect: "The commit is allowed: HP07 judges only non-strict xfail; a strict one fails the run once the test passes, so the marker cannot outlive the bug."
     execute: {event: commit, files: {"tests/test_bug.py": "import pytest\n\n\n@pytest.mark.xfail(strict=True, reason='BUG-7')\ndef test_bug():\n    assert bug() == 1\n"}, expect: allow}
   - id: tc-068
     category: negative_trigger
@@ -478,3 +478,39 @@ suite:
     prompt: "An unrelated edit to pyproject.toml keeps the --deselect HEAD already held."
     expect: "The commit is allowed: only what the change adds is judged."
     execute: {event: commit, head_files: {"pyproject.toml": "[project]\nname = \"a\"\n\n[tool.pytest.ini_options]\naddopts = \"--deselect tests/test_a.py::test_x\"\n"}, files: {"pyproject.toml": "[project]\nname = \"a\"\nversion = \"2\"\n\n[tool.pytest.ini_options]\naddopts = \"--deselect tests/test_a.py::test_x\"\n"}, expect: allow}
+  # Review round of 0.1.0: false positives removed and bypasses closed, each pinned.
+  - id: tc-076
+    category: negative_trigger
+    prompt: "A Rails spec uses :pending as a status symbol, pending: as a hash key and skip: as a keyword argument."
+    expect: "The commit is allowed: only a statement-initial skip/pending or example metadata counts."
+    execute: {event: commit, files: {"spec/models/order_spec.rb": "describe Order do\n  it 'counts' do\n    create(:order, status: :pending)\n    expect(Order.counts).to eq(pending: 1)\n    expect(Pager.new(skip: 2).page).to eq 2\n  end\nend\n"}, expect: allow}
+  - id: tc-077
+    category: negative_trigger
+    prompt: "tox.ini's lint environment runs flake8 --ignore=E501."
+    expect: "The commit is allowed: outside a pytest section only a line that runs pytest is judged."
+    execute: {event: commit, files: {"tox.ini": "[testenv:lint]\ncommands = flake8 --ignore=E501 src\n"}, expect: allow}
+  - id: tc-078
+    category: negative_trigger
+    prompt: "A Go test scales its iteration count down under testing.Short()."
+    expect: "The commit is allowed: a short-mode guard counts only when its block returns or skips."
+    execute: {event: commit, files: {"cart/cart_test.go": "func TestAdd(t *testing.T) {\n\tn := 1000\n\tif testing.Short() {\n\t\tn = 10\n\t}\n\tfor i := 0; i < n; i++ {\n\t\tif add() != 1 {\n\t\t\tt.Fatal(\"add\")\n\t\t}\n\t}\n}\n"}, expect: allow}
+  - id: tc-079
+    category: edge
+    prompt: "Adversarial: a Jest table test is skipped with xit.each."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"src/sum.test.js": "xit.each([[1, 1, 2]])('adds %i + %i', (a, b, sum) => {\n  expect(a + b).toBe(sum);\n});\n"}, expect: block}
+  - id: tc-080
+    category: edge
+    prompt: "Adversarial: an xUnit skip moves from an old async test to a newly broken one."
+    expect: "The commit is refused: async Task methods are named, so the moved skip is on a different test."
+    execute: {event: commit, head_files: {"Tests/CartTests.cs": "public class CartTests {\n    [Fact(Skip = \"flaky\")]\n    public async Task Old() {}\n    [Fact]\n    public async Task Broken() {}\n}\n"}, files: {"Tests/CartTests.cs": "public class CartTests {\n    [Fact]\n    public async Task Old() {}\n    [Fact(Skip = \"flaky\")]\n    public async Task Broken() {}\n}\n"}, expect: block}
+  - id: tc-081
+    category: edge
+    prompt: "Adversarial: the guard around an old pytest.skip() is widened to if True."
+    expect: "The commit is refused: a skip is keyed behind the conditions that guard it, so the widened skip is new."
+    execute: {event: commit, head_files: {"tests/test_net.py": "import pytest\n\n\ndef test_net():\n    if os.environ.get('NO_NET'):\n        pytest.skip('offline')\n    assert fetch()\n"}, files: {"tests/test_net.py": "import pytest\n\n\ndef test_net():\n    if True:\n        pytest.skip('offline')\n    assert fetch()\n"}, expect: block}
+  - id: tc-082
+    category: edge
+    prompt: "Adversarial: a conftest deselects through config.option.keyword in pytest_configure."
+    expect: "The commit is refused."
+    execute: {event: commit, files: {"conftest.py": "def pytest_configure(config):\n    config.option.keyword = 'not test_cart'\n"}, expect: block}

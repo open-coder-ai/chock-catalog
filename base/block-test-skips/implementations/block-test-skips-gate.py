@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import ast
 import json
 import os
 import re
@@ -18,66 +17,19 @@ from skipscan import CONFIG, SKIP
 from skipscan.config import config_hits, config_kind
 from skipscan.langs import EXTENSIONS, line_hits
 from skipscan.pyrules import python_hits
+from skipscan.scope import scopes_for
 
 #: protect-test-integrity's test paths, kept identical; MORE_TEST_PATHS widens them for this gate.
 TEST_PATH = re.compile(
     r"(^|/)(tests?/|__tests__/|test_[^/]*\.py$|[^/]*_test\.(py|go)$|[^/]*\.(test|spec)\.[cm]?[jt]sx?$|src/test/)"
 )
 MORE_TEST_PATHS = re.compile(
-    r"(^|/)([Tt]ests?/|[Ss]pecs?/|e2e/|cypress/|playwright/|[^/]*_(spec|test)\.rb$"
+    r"(^|/)([Tt]ests?/|[Ss]pecs?/|e2e/|cypress/|playwright/|[^/]*_(spec|test)\.rb$|tests?\.py$|[^/]*\.Tests?/"
     r"|[^/]*Tests?\.(java|kt|kts|groovy|scala|cs|php|swift)$|[^/]*\.(test|spec)\.[^/.]+$)"
 )
 WAIVER = re.compile(r"chock:\s*allow\s+test-skip")
-#: A declaration a skip sits under: a class, method or function, or a describe/it/test block's title.
-DECLARES = re.compile(
-    r"\b(?:class|void|func|fun|fn|def|function|module|mod)\s+(?:\([^)]*\)\s*)?(\w+)"
-    r"|\b(?:describe|context|it|test|specify)(?:\.\w+)?[\s(]\s*['\"`]([^'\"`]+)"
-)
-ANNOTATIONS = ("@", "#[", "[")
 FALSY = {"", "0", "false", "no", "off"}
 LABELS = {SKIP: "test skip or focus marker", CONFIG: "runner config that hides tests"}
-
-
-def _python_scope(text: str, number: int) -> str | None:
-    """Dotted names of the classes and functions holding a line, a decorator counting as its function's."""
-    try:
-        parsed = ast.parse(text)
-    except (SyntaxError, ValueError):
-        return None
-    holders = [
-        (min([n.lineno, *(d.lineno for d in n.decorator_list)]), n.end_lineno or n.lineno, n.name)
-        for n in ast.walk(parsed)
-        if isinstance(n, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
-    ]
-    return ".".join(name for start, end, name in sorted(holders) if start <= number <= end)
-
-
-def _declared(line: str) -> str | None:
-    """The test or class a line declares, if it does."""
-    found = DECLARES.search(line)
-    return next((group for group in found.groups() if group), None) if found else None
-
-
-def _outline_scope(lines: list[str], index: int) -> str:
-    """Names of the declarations around a line that are indented less than it; an annotation names what it marks."""
-    names: list[str] = []
-    if lines[index].lstrip().startswith(ANNOTATIONS):
-        below = next((line for line in lines[index + 1 :] if not line.lstrip().startswith(ANNOTATIONS)), "")
-        names.append(_declared(below) or "")
-    limit = len(lines[index]) - len(lines[index].lstrip())
-    for line in reversed(lines[:index]):
-        indent = len(line) - len(line.lstrip())
-        if line.strip() and indent < limit and (name := _declared(line)):
-            names.insert(0, name)
-            limit = indent
-    return ".".join(name for name in names if name)
-
-
-def scope_of(path: str, text: str, number: int) -> str:
-    """The test function or class a line sits in: from the syntax tree for Python, from indentation elsewhere."""
-    if path.endswith(".py") and (named := _python_scope(text, number)) is not None:
-        return named
-    return _outline_scope(text.splitlines(), number - 1)
 
 
 def kind_of(path: str) -> str | None:
@@ -124,11 +76,12 @@ def findings(payload: dict) -> list[dict]:
         if kind is None:
             continue
         lines = text.splitlines()
+        scope = scopes_for(norm, text)
         for number, rule, detail in sorted(set(hits_of(kind, text)), key=lambda hit: (hit[0], hit[1], hit[2] or "")):
             line = lines[number - 1]
             if waive and WAIVER.search(line):
                 continue
-            key = f"{rule}|{scope_of(norm, text, number)}|{detail or ' '.join(line.split())}"
+            key = f"{rule}|{scope(number)}|{detail or ' '.join(line.split())}"
             found.append({"key": key, "path": norm, "line": number, "message": f"{LABELS[rule]}: {line.strip()[:120]}"})
     return found
 

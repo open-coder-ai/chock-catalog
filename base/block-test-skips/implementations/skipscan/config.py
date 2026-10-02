@@ -5,12 +5,18 @@ from __future__ import annotations
 import re
 
 from skipscan import CONFIG
-from skipscan.scan import group, line_of
+from skipscan.scan import group, line_index
 
-PYTEST_FILES = frozenset({"pytest.ini", ".pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"})
-JEST_FILE = re.compile(r"^(?:jest\.config\.[cm]?[jt]s(?:on)?|package\.json)$")
-#: `--deselect`, `--ignore`/`--ignore-glob` (not `--ignore-installed`), and `-k` with a `not`.
-OPTIONS = re.compile(r"(?<![\w-])--(?:deselect|ignore(?:-glob)?)(?![\w-])|(?<![\w-])-k\b.*\bnot\b")
+PYTEST_FILES = frozenset(
+    {"pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml", "pyproject.toml", "setup.cfg", "tox.ini"}
+)
+JEST_FILE = re.compile(r"^(?:jest\.config(?:\.[\w-]+)*\.[cm]?[jt]s(?:on)?|package\.json)$")
+#: `--deselect`, `--ignore`/`--ignore-glob` (not `--ignore-installed`), and `-k` (`-vk` too) with a `not`.
+OPTIONS = re.compile(r"(?<![\w-])--(?:deselect|ignore(?:-glob)?)(?![\w-])|(?<![\w-])-[A-Za-z]*k\b.*\bnot\b")
+#: A section header, `[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`, `[testenv]`.
+SECTION = re.compile(r"^\[{1,2}([\w.:\- ]+)\]{1,2}\s*(?:[#;].*)?$")
+#: Outside a pytest section only a line that runs pytest counts, so `flake8 --ignore=E501` is not judged.
+RUNS_PYTEST = re.compile(r"\bpy\.?test\b")
 JEST_KEY = re.compile(r"\btestPathIgnorePatterns\b[\"']?\s*[:=]\s*")
 #: Jest's own default: restating it hides nothing.
 JEST_DEFAULT = frozenset({"/node_modules/"})
@@ -23,20 +29,39 @@ def config_kind(name: str) -> str | None:
     return "jest-config" if JEST_FILE.match(name) else None
 
 
+def _code(line: str) -> str:
+    """The line before a `#` or `;` comment that starts outside quotes, after a blank or at the start."""
+    quote = ""
+    for index, char in enumerate(line):
+        if quote:
+            quote = "" if char == quote else quote
+        elif char in "'\"":
+            quote = char
+        elif char in "#;" and (index == 0 or line[index - 1].isspace()):
+            return line[:index]
+    return line
+
+
 def _pytest_hits(text: str) -> list[tuple[int, str, str | None]]:
-    return [
-        (number, CONFIG, None)
-        for number, line in enumerate(text.splitlines(), 1)
-        if not line.lstrip().startswith(("#", ";")) and OPTIONS.search(line)
-    ]
+    hits: list[tuple[int, str, str | None]] = []
+    section = ""
+    for number, line in enumerate(text.splitlines(), 1):
+        if header := SECTION.match(line):
+            section = header.group(1)
+            continue
+        code = _code(line)
+        if OPTIONS.search(code) and ("pytest" in section or RUNS_PYTEST.search(code)):
+            hits.append((number, CONFIG, None))
+    return hits
 
 
 def _jest_hits(text: str) -> list[tuple[int, str, str | None]]:
     """One hit per ignore pattern, so a pattern added to the list is new; a computed value is one hit."""
     lines = text.splitlines()
+    line_of = line_index(text)
     hits: list[tuple[int, str, str | None]] = []
     for match in JEST_KEY.finditer(text):
-        number = line_of(text, match.start())
+        number = line_of(match.start())
         if lines[number - 1].lstrip().startswith(("//", "*", "/*")):
             continue
         if text[match.end() : match.end() + 1] != "[":
@@ -44,7 +69,7 @@ def _jest_hits(text: str) -> list[tuple[int, str, str | None]]:
             continue
         end, values = group(text, match.end())
         hits += [
-            (line_of(text, at), CONFIG, f"testPathIgnorePatterns|{value}")
+            (line_of(at), CONFIG, f"testPathIgnorePatterns|{value}")
             for at, value in values
             if value not in JEST_DEFAULT
         ]
