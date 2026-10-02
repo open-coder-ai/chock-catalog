@@ -22,6 +22,7 @@ DELETED = "lock-deleted"
 IGNORED = "lock-ignored"
 ALLOWLIST_EDIT = "lock-allowlist-edited"
 REKEYED = "lock-integrity-rekeyed"
+NESTED_ALIAS = "lock-nested-alias"
 
 TIERS = {
     UNPARSEABLE: BLOCK,
@@ -33,6 +34,7 @@ TIERS = {
     WEAK: ASK,
     INSTALL: ASK,
     REKEYED: ASK,
+    NESTED_ALIAS: ASK,
     REMOVED: ASK,
     LOCK_ONLY: ASK,
     MANIFEST_ONLY: ASK,
@@ -66,6 +68,7 @@ class Entry:
     pinned: for a git source, whether the lock names a full commit id.
     install: the lock marks it as running an install script; transitive: no manifest names it directly.
     tarball: `source` is the package's own npm tarball URL, so on a default registry its path must name it.
+    alias: its name comes from an npm: alias only a dependency's lock entry declares, which nothing checks.
     """
 
     name: str
@@ -81,6 +84,7 @@ class Entry:
     install: bool = False
     transitive: bool = True
     tarball: bool = False
+    alias: bool = False
 
     @property
     def ident(self) -> str:

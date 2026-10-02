@@ -924,16 +924,16 @@ suite:
           '
       expect: block
   - id: tc-059
-    category: negative_trigger
+    category: behavior
     prompt: A lock adds npm's hoisted alias string-width-cjs, which @isaacs/cliui declares as npm:string-width.
-    expect: 'Allowed: an alias any package in the lock declares names the package the folder holds.'
+    expect: 'Asks, never refuses: an alias only a dependency''s lock entry declares is checked by nothing, so a person confirms it.'
     execute:
       event: commit
       head_files: *id001
       files:
         package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.0\",\n    \"@isaacs/cliui\": \"^8.0.2\"\n  }\n}\n"
         package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\",\n        \"@isaacs/cliui\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.0\",\n      \"resolved\": \"https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz\",\n      \"integrity\": \"sha512-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"\n    },\n    \"node_modules/@isaacs/cliui\": {\n      \"version\": \"8.0.2\",\n      \"resolved\": \"https://registry.npmjs.org/@isaacs/cliui/-/@isaacs/cliui-8.0.2.tgz\",\n      \"integrity\": \"sha512-GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG==\",\n      \"dependencies\": {\n        \"string-width-cjs\": \"npm:string-width@^4.2.0\"\n      }\n    },\n    \"node_modules/string-width-cjs\": {\n      \"version\": \"4.2.3\",\n      \"resolved\": \"https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz\",\n      \"integrity\": \"sha512-HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH==\",\n      \"name\": \"string-width\"\n    }\n  }\n}\n"
-      expect: allow
+      expect: ask
   - id: tc-060
     category: adversarial
     prompt: 'A Berry git source on an allowlisted host hides #commit= inside the value of another selector and follows a branch.'
@@ -949,6 +949,17 @@ suite:
         yarn.lock: "__metadata:\n  version: 8\n  cacheKey: 10c0\n\n\"left-pad@https://github.com/a/left-pad.git\":\n  version: 1.3.0\n  resolution: \"left-pad@https://github.com/a/left-pad.git#head=main&x=#commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"\n"
       expect: block
   - id: tc-061
+    category: adversarial
+    prompt: 'A lock forges an npm: alias on glob''s entry so left-pad''s folder holds evil-pad from the registry.'
+    expect: 'Held for a person, not passed: an alias only a dependency declares is asked about.'
+    execute:
+      event: commit
+      head_files: *id001
+      files:
+        package.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {\n    \"left-pad\": \"^1.3.1\"\n  }\n}\n"
+        package-lock.json: "{\n  \"name\": \"app\",\n  \"version\": \"1.0.0\",\n  \"lockfileVersion\": 3,\n  \"requires\": true,\n  \"packages\": {\n    \"\": {\n      \"name\": \"app\",\n      \"version\": \"1.0.0\",\n      \"dependencies\": {\n        \"left-pad\": \"^1.0.0\"\n      }\n    },\n    \"node_modules/glob\": {\n      \"version\": \"10.4.5\",\n      \"resolved\": \"https://registry.npmjs.org/glob/-/glob-10.4.5.tgz\",\n      \"integrity\": \"sha512-GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG==\",\n      \"dependencies\": {\n        \"left-pad\": \"npm:evil-pad@^1.3.1\"\n      }\n    },\n    \"node_modules/left-pad\": {\n      \"version\": \"1.3.1\",\n      \"resolved\": \"https://registry.npmjs.org/evil-pad/-/evil-pad-1.3.1.tgz\",\n      \"integrity\": \"sha512-EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE==\",\n      \"name\": \"evil-pad\"\n    }\n  }\n}\n"
+      expect: ask
+  - id: tc-062
     category: adversarial
     prompt: A uv.lock keeps idna 3.7's wheel but swaps its sdist hash for one under another algorithm.
     expect: 'Blocked: each PyPI file keeps its hash, whatever the algorithm.'

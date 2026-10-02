@@ -182,7 +182,8 @@ def test_an_npm_name_field_counts_only_for_a_declared_alias() -> None:
     text = json.dumps({"lockfileVersion": 3, "packages": packages})
     got = [e.name for e in npm.package_lock(text)]
     assert got == ["real-pad", "a", "real-b", "c", "d", "e"]
-    assert rules_of("package-lock.json", text) == [model.SOURCE]  # d's URL is another package's
+    # b's alias only a dependency declares is held for a person; d's URL is another package's
+    assert rules_of("package-lock.json", text) == [model.NESTED_ALIAS, model.SOURCE]
     orphan = json.dumps({"packages": {"x/node_modules/y": {**pkg("z", "1.0.0"), "name": "z"}, "x": 1}})
     with pytest.raises(model.LockError):
         npm.package_lock(orphan)
@@ -200,4 +201,22 @@ def test_npm_hoists_an_alias_a_dependency_declares() -> None:
     }
     text = json.dumps({"lockfileVersion": 3, "packages": packages})
     assert [e.name for e in npm.package_lock(text)][-1] == "string-width"
-    assert rules_of("package-lock.json", text) == []
+    assert rules_of("package-lock.json", text) == [model.NESTED_ALIAS]  # asked, not refused
+    rooted = json.dumps(
+        {
+            "lockfileVersion": 3,
+            "packages": {**packages, "": {"dependencies": {"string-width-cjs": "npm:string-width@^4.2.0"}}},
+        }
+    )
+    assert rules_of("package-lock.json", rooted) == []  # the root's declaration is checked against package.json
+
+
+def test_a_forged_alias_on_another_entry_does_not_pass_silently() -> None:
+    evil = "https://registry.npmjs.org/evil-pad/-/evil-pad-1.3.1.tgz"
+    lock = npm_lock(
+        {
+            "glob": {**pkg("glob", "10.4.5"), "dependencies": {"left-pad": "npm:evil-pad@^1.3.1"}},
+            "left-pad": {**pkg("evil-pad", "1.3.1", resolved=evil), "name": "evil-pad"},
+        }
+    )
+    assert rules_of("package-lock.json", lock) == [model.NESTED_ALIAS]

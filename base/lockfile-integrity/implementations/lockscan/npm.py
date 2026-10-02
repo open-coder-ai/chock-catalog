@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 from chock_scan import jsonc
 
@@ -75,34 +76,43 @@ def _v2(lines: Lines, packages: dict) -> list[Entry]:
         nested = key.count(MODULES) > 1
         if MODULES not in key or raw.get("link") is True or (raw.get("inBundle") is True and nested):
             continue  # the root, a workspace folder, a symlink, or a package shipped inside a dependency's tarball
-        name = _installed_name(aliases, key, raw)
+        name, nested_alias = _installed_name(aliases, key, raw)
         transitive = nested or key.rsplit(MODULES, 1)[1] not in direct
         line = lines(json.dumps(key))
-        found.append(_source_entry(name, str(raw.get("version", "")), raw, line, transitive=transitive))
+        version = str(raw.get("version", ""))
+        entry = _source_entry(name, version, raw, line, transitive=transitive)
+        found.append(replace(entry, alias=True) if nested_alias else entry)
     return found
 
 
-def _aliases(packages: dict) -> set[tuple[str, str]]:
-    """(folder, package) for every npm: alias any package in the lock declares; npm hoists an alias anywhere."""
-    found = set()
-    for raw in packages.values():
-        for key in DIRECT_KEYS:
-            deps = raw.get(key) if isinstance(raw, dict) else None
+def _aliases(packages: dict) -> dict[tuple[str, str], bool]:
+    """(folder, package) -> trusted, for every npm: alias the lock declares; npm hoists an alias anywhere.
+
+    Trusted when the root or a workspace declares it: npm ci checks those against their package.json. A
+    dependency's declaration is lock text only, so an alias found only there is reported, not trusted.
+    """
+    found: dict[tuple[str, str], bool] = {}
+    for key, raw in packages.items():
+        for deps_key in DIRECT_KEYS:
+            deps = raw.get(deps_key) if isinstance(raw, dict) else None
             for folder, spec in deps.items() if isinstance(deps, dict) else ():
                 if isinstance(spec, str) and spec.startswith("npm:"):
-                    found.add((folder, split_spec(spec[4:])[0]))
+                    pair = (folder, split_spec(spec[4:])[0])
+                    found[pair] = found.get(pair, False) or MODULES not in key
     return found
 
 
-def _installed_name(aliases: set[tuple[str, str]], key: str, raw: dict) -> str:
-    """The package a node_modules folder holds: its folder name, unless the lock declares that npm: alias.
+def _installed_name(aliases: dict[tuple[str, str], bool], key: str, raw: dict) -> tuple[str, bool]:
+    """(package, alias declared only inside the lock) for a node_modules folder.
 
-    A `name` field alone does not count: npm installs whatever the lock resolves, so a forged name would let a
-    registry URL for another package pass as this one's.
+    The folder name, unless the lock declares that npm: alias: a `name` field alone does not count, since npm
+    installs whatever the lock resolves and a forged name would let another package's registry URL pass.
     """
     folder = key.rsplit(MODULES, 1)[1]
     named = raw.get("name")
-    return named if isinstance(named, str) and (folder, named) in aliases else folder
+    if isinstance(named, str) and (folder, named) in aliases:
+        return named, not aliases[(folder, named)]
+    return folder, False
 
 
 def _v1(lines: Lines, deps: object, depth: int) -> list[Entry]:
