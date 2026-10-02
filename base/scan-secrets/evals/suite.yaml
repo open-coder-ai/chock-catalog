@@ -272,10 +272,10 @@ suite:
   - id: tc-044
     category: negative_trigger
     prompt: A commit adds config whose credential values are placeholders.
-    expect: The hook allows changeme, YOUR_API_KEY, <token> and ******** placeholders.
+    expect: The hook allows changeme, YOUR_API_KEY_HERE, <token> and ******** placeholders.
     execute:
       files:
-        config.json: "{\"password\": \"changeme\", \"api_key\": \"YOUR_API_KEY_HERE_123\"}\n"
+        config.json: "{\"password\": \"changeme\", \"api_key\": \"YOUR_API_KEY_HERE\"}\n"
         app.yaml: "access_token: \"<access-token-2>\"\nprivate_key: \"**************\"\n"
       expect: allow
   - id: tc-045

@@ -32,7 +32,7 @@ SECRET = re.compile(
 |npm_[0-9A-Za-z]{36}
 |SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}
 # JWT: segment lengths bounded so a hostile line is judged in linear time
-|eyJ[A-Za-z0-9_-]{0,1024}\.[A-Za-z0-9_-]{0,16384}\.[A-Za-z0-9_-]*
+|eyJ[A-Za-z0-9_-]{0,512}\.[A-Za-z0-9_-]{0,16384}\.[A-Za-z0-9_-]*
 |api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
@@ -46,16 +46,20 @@ SECRET = re.compile(
 |(?:api[_.-]?key|secret[_.-]?(?:access[_.-]?)?key(?:[_.-]?base)?|access[_.-]?key
    |(?:client|consumer|jwt|webhook|app|session|signing|cookie)[_.-]?secret
    |(?:auth|access|refresh|api|bearer|bot)[_.-]?token|(?:private|signing|encryption|master)[_.-]?key
-   |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,64}_(?:TOKEN|SECRET|PASS|PWD)))
- ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bru]{1,2}(?=["'`]))?(?P<kv_quote>["'`])?
- (?!(?:\$|\{|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/|/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
+   |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
+ ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?P<kv_quote>["'`])?
+ (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/
+   |/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
    |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
-   |[\w.]{0,64}(?:env|getenv|environ)[.(\[]|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)(?:["'`\s,;)\]}]|$)
-   |(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_]|$)))
- (?(kv_quote)(?=[^"'`\s]{0,512}[^a-z._\-"'`\s])(?![^"'`\s]{0,512}\.(?:txt|pem|key|crt|cer|json|ya?ml|env|cfg|conf|ini|p12|pfx|jks)["'`])
-    [^"'`\s]{12,512}["'`]
-   |(?=[A-Za-z0-9/+=_~-]{0,512}\d)(?![A-Za-z0-9/+=_~-]{0,512}(?-i:Key|Token|Secret|Passw|Type|Str|Bytes|Cred))
-    [A-Za-z0-9/+=_~-]{16,512}(?=[\s,;)\]}]|$))
+   |[\w.]{0,64}(?:env|getenv|environ)[.(\[]
+   |(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+(?:_[0-9]{1,3})?)["'`]
+   |(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+|[a-z]+[0-9]{0,3}(?:_[a-z]+[0-9]{0,3})+)(?:_[0-9]{1,3})?(?(kv_quote)(?!)|(?:[\s,;)\]}]|$))
+   |(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)
+    (?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$)))
+ (?(kv_quote)(?=[^"'`\s]{0,128}[^a-z._\-"'`\s])(?![^"'`\s]{0,128}/[^"'`\s]{0,128}\.(?:txt|pem|key|crt|cer|json|ya?ml|env|cfg|conf|ini|p12|pfx|jks)["'`])
+    [^"'`\s]{12}
+   |(?=[A-Za-z0-9/+=_~-]{0,128}\d)(?![A-Za-z0-9/+=_~-]{0,128}(?-i:Key|Token|Secret|Passw|Type|Str|Bytes|Cred))
+    [A-Za-z0-9/+=_~-]{16})
 # credentials in a URI: scheme://user:password@host, not localhost or example hosts, not a placeholder
 |\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"]*):(?!(?P=uri_user)@)
  (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token|example|dummy|redacted|placeholder)@))
