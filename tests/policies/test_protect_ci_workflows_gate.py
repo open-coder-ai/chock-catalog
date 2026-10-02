@@ -253,6 +253,10 @@ def test_on_this_catalog_only_its_ci_files_match() -> None:
     listed = subprocess.run([scriptkit.GIT, "ls-files", "-z"], cwd=ROOT, capture_output=True, text=True, check=True)
     tracked = listed.stdout.split("\0")
     hits = [path for path in tracked if path and pattern().search(path)]
-    ci = re.compile(r"\.github/(workflows/[^/]+\.ya?ml|dependabot\.yml|CODEOWNERS)")
+    # The chock_scan corpus vendors three upstream GitLab CI templates as parser fixtures; they are data, not CI.
+    ci = re.compile(
+        r"\.github/(workflows/[^/]+\.ya?ml|dependabot\.yml|CODEOWNERS)"
+        r"|tests/chock_scan/corpus/vendor/gitlab-ci/(Docker|Python|SAST)\.gitlab-ci\.yml"
+    )
     assert hits
     assert [path for path in hits if not ci.fullmatch(path)] == []

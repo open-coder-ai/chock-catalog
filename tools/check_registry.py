@@ -29,21 +29,27 @@ def suite_counts(policy_dir: Path) -> tuple[int, int]:
     return sum(1 for c in cases if c.get("execute")), len(cases)
 
 
+def entries_on_disk() -> dict[str, str]:
+    """Policy and skill ids found under the trees and skills/, each with its repo-relative path."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    from trees import policy_dirs
+
+    found = {}
+    for d in policy_dirs(ROOT):
+        m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
+        found[m["id"]] = d.relative_to(ROOT).as_posix()
+    skills = ROOT / "skills"
+    if skills.is_dir():
+        for d in sorted(p for p in skills.iterdir() if p.is_dir()):
+            found[d.name] = f"skills/{d.name}"
+    return found
+
+
 def main() -> int:
     reg = yaml.safe_load((ROOT / "registry.yaml").read_text(encoding="utf-8"))
     listed = {p["id"]: p["path"] for p in reg["policies"]}
     listed |= {s["id"]: s["path"] for s in reg.get("skills") or []}
-    sys.path.insert(0, str(ROOT / "tools"))
-    from trees import policy_dirs
-
-    on_disk = {}
-    for d in policy_dirs(ROOT):
-        m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
-        on_disk[m["id"]] = d.relative_to(ROOT).as_posix()
-    skills = ROOT / "skills"
-    if skills.is_dir():
-        for d in sorted(p for p in skills.iterdir() if p.is_dir()):
-            on_disk[d.name] = f"skills/{d.name}"
+    on_disk = entries_on_disk()
     from gen_lib_copies import problems as lib_problems
 
     if lib := lib_problems(ROOT):
