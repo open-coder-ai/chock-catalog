@@ -12,6 +12,8 @@ base/ci-github-actions-security:
   chock_scan: [data_table, safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/block-unguarded-agent-spawn:
   chock_shellparse: [args, parse, targets, writes]
+base/dockerfile-compose-security:
+  chock_scan: [yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/protect-agent-config:
   chock_shellparse: [args, parse, targets, writes]
 base/protect-ci-workflows:

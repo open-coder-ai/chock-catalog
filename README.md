@@ -117,7 +117,8 @@ per-hook trust review before its hooks run.
 [`injection-defense`](docs/injection-defense/) ·
 [`memory-discipline`](docs/memory-discipline/) ·
 [`review-like-a-red-team`](docs/review-like-a-red-team/) ·
-[`block-hook-bypass-in-files`](docs/block-hook-bypass-in-files/)
+[`block-hook-bypass-in-files`](docs/block-hook-bypass-in-files/) ·
+[`dockerfile-compose-security`](docs/dockerfile-compose-security/)
 
 </details>
 
