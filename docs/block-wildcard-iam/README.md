@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 12 total, 12 executable |
+| **Eval cases** | 38 total, 38 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Commit and agent-write gate, 1-line slice of ASI03: IAM Action or Resource set to a bare * (JSON double-quoted, YAML single-quoted), a one-element Terraform * list, the AdministratorAccess ARN, quoted GCP roles/owner or roles/editor. Probed misses: * in a JSON list, service wildcards (s3:*), YAML double-quoted or bare *, Terraform jsonencode, NotAction, Principal *, PowerUser, multi-line lists, Azure Owner, K8s RBAC. Waiver: 'pragma: allowlist broad-privilege' same line; agent: only if in HEAD.
+Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a wildcard action, resource or principal in string or list form, any quote style (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on s3, iam, sts, kms and ec2 actions, Allow with an inverted key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-line strict-JSON AWS Deny statement is exempt. Friction, not a security boundary: grants split across lines, partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants pass; other Deny forms and admission-webhook wildcards are refused. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit; at agent tool-use only when that exact line is already committed in HEAD.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Broad privilege grant detected. Scope Action and Resource to what the task needs, or a person adds 'pragma: allowlist broad-privilege' on the same line for a reviewed exception (in the agent it counts only when that exact line is already committed in HEAD, so an agent asks a person). Strict JSON cannot carry the pragma; narrow the grant or manage that document in Terraform/YAML.
+> Broad privilege grant detected. Name the actions and resources the task needs (no wildcard action, resource or principal, no whole-service wildcard, no admin managed policy, owner role, public member or cluster-admin binding), or a person adds 'pragma: allowlist broad-privilege' on the same line for a reviewed exception (in the agent it counts only when that exact line is already committed in HEAD, so an agent asks a person). Strict JSON cannot carry the pragma; narrow the grant, or keep that document in Terraform/YAML.
 
 ## Which primitive it becomes
 
