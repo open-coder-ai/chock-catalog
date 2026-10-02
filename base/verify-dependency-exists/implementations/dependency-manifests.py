@@ -5,7 +5,7 @@ Runs as the policy's script gate: stdin is {"event", "repo_root", "writes": {pat
 2 is a fault in this check. It prints a findings document, one finding per unlisted name keyed by ecosystem and normalised
 name, and the engine runs it again on the baseline text and refuses only the keys the change holds more of. `--seed`
 prints the names the tracked manifests hold now, for a first allowlist. Manifests are parsed, never run, and no file
-outside the written set is read.
+outside the written set is read, bar the allowlist (and the tracked files under --seed).
 """
 
 from __future__ import annotations
@@ -125,7 +125,9 @@ def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict]]:
         except Exception as exc:  # noqa: BLE001 -- untrusted manifest text; a file the reader cannot parse is not a pass
             digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
             message = f"{fam.kind} could not be parsed ({type(exc).__name__}), so its dependencies were not checked"
-            locks.append({"key": f"unreadable|{type(exc).__name__}|{digest}", "path": path, "line": 1, "message": message})
+            locks.append(
+                {"key": f"unreadable|{type(exc).__name__}|{digest}", "path": path, "line": 1, "message": message}
+            )
             continue
         if fam.lock and any(eco == fam.eco and covers(each, posixpath.dirname(path)) for eco, each in manifest_dirs):
             continue
@@ -172,7 +174,11 @@ def main() -> int:
     found = manifest or locks
     if not found:
         return 0
-    kind = "Unlisted dependency refused" if manifest else "Unlisted lockfile package, or a manifest that could not be parsed"
+    kind = (
+        "Unlisted dependency refused"
+        if manifest
+        else "Unlisted lockfile package, or a manifest that could not be parsed"
+    )
     print(f"dependency-manifests: {kind}:", file=sys.stderr)
     for item in found:
         print(f"  {item['path']}:{item['line']}: {item['message']}", file=sys.stderr)

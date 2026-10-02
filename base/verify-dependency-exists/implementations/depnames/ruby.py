@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-_GEM = re.compile(r"""(?:^|[\s;])gem\s*\(?\s*['"]([^'"\s]+)['"]""")
-_SPEC = re.compile(r"""\badd_(?:runtime_|development_)?dependency\s*\(?\s*(?:%q<|['"])([^'"\s>]+)""")
+_GEM = re.compile(r"""(?:^|[\s;(])gem[ \t]*(?:\([ \t]*)?['"]([^'"\s]+)['"]""")
+_SPEC = re.compile(r"""\badd_(?:runtime_|development_)?dependency[ \t]*(?:\([ \t]*)?(?:%q<|['"])([^'"\s>]+)""")
 
 
 def gemfile_names(text: str) -> list[str]:

@@ -15,6 +15,10 @@ def pubspec_names(text: str) -> list[str]:
     A YAML stream the scanner refuses raises yamlpath.ParseError, so the caller reports it instead of guessing.
     """
     nodes = yamlpath.scan(text)
+    for section in _SECTIONS:
+        if yamlpath.unknown(nodes, (section,)):
+            msg = f"{section} uses an alias, a merge key or a repeated key, which a loader may resolve to other names"
+            raise yamlpath.ParseError(msg, 1)
     sdk = {
         n.path[:_NAME_DEPTH]
         for n in nodes

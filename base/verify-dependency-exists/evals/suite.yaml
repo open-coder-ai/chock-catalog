@@ -278,3 +278,28 @@ suite:
     prompt: "package.json adds a listed package and its lockfile gains the transitive packages that brings."
     expect: "The commit is allowed: with a manifest change beside it, the lockfile's transitive names are not asked about."
     execute: {"event": "commit", "head_files": {"package.json": "{\"dependencies\": {}}\n", "package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}}}\n"}, "files": {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\"}}\n", "package-lock.json": "{\"lockfileVersion\": 3, \"packages\": {\"\": {}, \"node_modules/requests\": {}, \"node_modules/its-transitive\": {}}}\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "allow"}
+  - id: tc-050
+    category: adversarial
+    prompt: "pubspec.yaml fills dependencies through a YAML alias."
+    expect: "The commit asks: a loader would resolve the alias to names the scanner does not show."
+    execute: {"event": "commit", "files": {"pubspec.yaml": "deps: &d\n  evil: ^1.0.0\ndependencies: *d\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "ask"}
+  - id: tc-051
+    category: adversarial
+    prompt: "build.gradle adds a JitPack coordinate whose version starts with a letter."
+    expect: "The commit is blocked: any version form counts."
+    execute: {"event": "commit", "head_files": {"build.gradle": "dependencies {\n  implementation 'requests:requests:1.0'\n}\n"}, "files": {"build.gradle": "dependencies {\n  implementation 'requests:requests:1.0'\n  implementation 'com.github.User:Repo:master-SNAPSHOT'\n}\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests:requests\n"}, "expect": "block"}
+  - id: tc-052
+    category: adversarial
+    prompt: "The agent adds an unlisted gem to Gemfile.ci, which Bundler reads through BUNDLE_GEMFILE."
+    expect: "The commit is blocked: a Gemfile with any suffix is a Gemfile."
+    execute: {"event": "commit", "files": {"Gemfile.ci": "gem 'evil-ci-gem'\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "block"}
+  - id: tc-053
+    category: adversarial
+    prompt: "A requirements file sits two folders below a folder named requirements."
+    expect: "The commit is blocked."
+    execute: {"event": "commit", "files": {"requirements/dev/base.txt": "evil-dev-pkg==1.0\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "block"}
+  - id: tc-054
+    category: adversarial
+    prompt: "mix.exs renames a listed dependency to another Hex package with hex:."
+    expect: "The commit is blocked: the real package is the hex: name."
+    execute: {"event": "commit", "head_files": {"mix.exs": "defmodule M do\n  defp deps, do: [{:requests, \"~> 1\"}]\nend\n"}, "files": {"mix.exs": "defmodule M do\n  defp deps, do: [{:requests, \"~> 1\", hex: :evil_pkg}]\nend\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "block"}

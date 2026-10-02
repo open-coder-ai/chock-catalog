@@ -5,11 +5,13 @@ from __future__ import annotations
 import re
 import tomllib
 
-_VERSIONED = re.compile(r"""['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+):[\d$+\[{][^'"\s]*['"]""")
+_VERSIONED = re.compile(r"""['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+):[^'"\s:]+['"]""")
 _KEYWORDED = re.compile(
-    r"""\b(?:\w*(?:mplementation|Only|lasspath|ompile|untime|rocessor)|api|kapt|ksp|provided|optional)\b"""
-    r"""\s*\(?\s*['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+)['"]"""
+    r"""\b(?:\w*(?:mplementation|Only|lasspath|ompile|untime|rocessor|Api)|api|kapt|ksp|provided|optional)\b"""
+    r"""\s*(?:\(\s*)?(?:(?:enforced)?[Pp]latform\s*\(\s*)?"""
+    r"""['"]([\w\-]+(?:\.[\w\-]+)*):([\w.\-]+)(?::[^'"\s]*)?['"]"""
 )
+_CONTINUED = re.compile(r",[ \t]*\n[ \t]*")
 _ID = r"""['"]([\w.\-]+)['"]"""
 _GROUP = re.compile(rf"\bgroup\s*[:=]\s*{_ID}")
 _NAME = re.compile(rf"\bname\s*[:=]\s*{_ID}")
@@ -25,14 +27,16 @@ def gradle_names(text: str) -> list[str]:
     so a commented-out dependency is reported too, and the baseline absorbs one that was already there. Plugins
     without a version are the ones Gradle ships. Computed coordinates are not read.
     """
-    code = "\n".join(line for line in text.removeprefix("\ufeff").splitlines() if not line.lstrip().startswith("//"))
+    lines = (line for line in text.removeprefix("\ufeff").splitlines() if not line.lstrip().startswith("//"))
+    code = _CONTINUED.sub(", ", "\n".join(lines))
     names = [f"{g}:{a}" for g, a in _VERSIONED.findall(code) + _KEYWORDED.findall(code)]
     for line in code.splitlines():
         group, name = _GROUP.search(line), _NAME.search(line)
         if group and name:
             names.append(f"{group.group(1)}:{name.group(1)}")
     names += [f"plugin:{plugin}" for plugin in _PLUGIN.findall(code)]
-    return names + [f"plugin:org.jetbrains.kotlin.{short}" for short in _KOTLIN.findall(code)]
+    names += [f"plugin:org.jetbrains.kotlin.{short}" for short in _KOTLIN.findall(code)]
+    return list(dict.fromkeys(names))
 
 
 def _library(entry: object) -> str | None:

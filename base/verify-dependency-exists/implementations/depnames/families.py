@@ -18,8 +18,8 @@ class Family(NamedTuple):
 
 
 REQUIREMENTS = Family("py", "requirements", pyreq.requirement_names)
-_REQ_NAME = re.compile(r"^(?:.*[-_.])?(?:requirements|constraints)(?:[-_.].*)?\.(?:txt|in)$")
-_REQ_DIR_FILE = re.compile(r"\.(?:txt|in)$")
+_REQ_NAME = re.compile(r"^(?:.*[-_.])?(?:requirements|constraints)(?:[-_.].*)?\.(?:txt|in|pip)$")
+_REQ_DIR_FILE = re.compile(r"\.(?:txt|in|pip)$")
 _EXACT = {
     "pyproject.toml": Family("py", "pyproject.toml", pytoml.pyproject_names),
     "pipfile": Family("py", "Pipfile", pytoml.pipfile_names),
@@ -66,10 +66,14 @@ def family(path: str) -> Family | None:
     name = pure.name.lower()
     if found := _EXACT.get(name):
         return found
+    if name.startswith("gemfile.") or name.endswith(".gemfile"):
+        return _EXACT["gemfile"]
     if name.startswith("package") and name.endswith(".swift"):
         return _EXACT["package.swift"]
     if name.endswith(".versions.toml"):
         return _EXACT["libs.versions.toml"]
-    if _REQ_NAME.match(name) or (pure.parent.name.lower() == "requirements" and _REQ_DIR_FILE.search(name)):
+    if _REQ_NAME.match(name) or (
+        any(part.lower() == "requirements" for part in pure.parent.parts) and _REQ_DIR_FILE.search(name)
+    ):
         return REQUIREMENTS
     return next((fam for suffix, fam in _SUFFIX.items() if name.endswith(suffix)), None)

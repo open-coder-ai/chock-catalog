@@ -39,8 +39,12 @@ def pyproject_names(text: str) -> list[str]:
     uv = _table(tool.get("uv"))
     for key in ("dev-dependencies", "override-dependencies", "constraint-dependencies"):
         names += _specs(uv.get(key))
-    for env in _table(_table(_table(tool.get("hatch")).get("envs"))).values():
-        names += _specs(_table(env).get("dependencies"))
+    hatch = _table(tool.get("hatch"))
+    for env in _table(hatch.get("envs")).values():
+        names += _specs(_table(env).get("dependencies")) + _specs(_table(env).get("extra-dependencies"))
+    for hook in _table(_table(hatch.get("build")).get("hooks")).values():
+        names += _specs(_table(hook).get("dependencies"))
+    names += _keys(poetry.get("requires-plugins")) + _specs(_table(tool.get("tox")).get("requires"))
     for group in _table(_table(tool.get("pdm")).get("dev-dependencies")).values():
         names += _specs(group)
     return names
