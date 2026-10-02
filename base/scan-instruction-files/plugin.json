@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "scan-instruction-files",
+  "version": "0.0.1",
+  "description": "Asks a person before a change adds injection text to an agent instruction file (AGENTS.md, CLAUDE.md, GEMINI.md, Cursor/Windsurf/Cline/Roo/Kiro rules, Copilot instructions and prompts, SKILL.md, agent commands): rule overrides, secrecy, auto-approve, hook or review bypass, fetch-and-run, remote instructions, role swaps, fake system tags, removed guardrails. Refuses secret exfiltration and encoded payloads. Added text only; English phrases; friction, not a boundary.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block",
+    "asi01"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

@@ -39,3 +39,5 @@ base/refname-filename-metachar:
   chock_shellparse: [args, parse, targets, writes]
 base/block-curl-pipe-sh:
   chock_shellparse: [args, parse, targets, writes]
+base/scan-instruction-files:
+  chock_scan: [data_table, entropy, safe_read]
