@@ -1,0 +1,77 @@
+id: scan-hidden-content
+name: "Scan Hidden Content"
+version: "0.0.1"
+description: >
+  Warns (observe) when a change adds text a reader cannot see, or a URL that carries data out, to
+  Markdown, HTML, SVG, XML, Word, agent instruction files, docs and templates: imperative or long
+  HTML comments, CSS-hidden, white or 1pt text, URLs with secret words, long queries, placeholders or
+  encoded parts, remote embeds, camo runs, HTML data URIs. Runs: commit, agent write, turn's end. A
+  person's waiver: 'chock: allow scan-hidden-content'. Friction, not a boundary.
+artifact: hook
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      This change adds text a reader cannot see (a comment or hidden element that reads as an
+      instruction, white or zero-size text) or a URL that can carry data out (a secret word or
+      data-shaped part in its query or path, a remote embed, a dictionary of image URLs). Remove the
+      hidden text or make it visible, and link only to fixed URLs that carry nothing from the
+      repository or the session. A person may keep a reviewed line with 'chock: allow
+      scan-hidden-content' on it and commit from their own shell; in the agent only a waiver already
+      committed in HEAD counts, so an agent asks the person instead.
+    params:
+      script: scan-hidden-content-gate.py
+
+compliance:
+  mitre_atlas:
+  - control: AML.T0051
+    coverage: partial
+    note: "warns on instructions hidden from a human reviewer in committed Markdown, HTML, SVG, XML and Word files; plain-text injection is not judged"
+  - control: AML.T0086
+    coverage: partial
+    note: "warns on image and link URLs shaped to carry data out when rendered; URLs built at run time or fetched are not seen"
+  owasp_asi:
+  - control: ASI01
+    coverage: partial
+    note: "warns on the hidden-comment and hidden-styling carriers of goal hijack in committed files; semantic injection stays with injection-defense"
+  owasp_llm_2025:
+  - control: LLM01
+    coverage: partial
+    note: "Prompt Injection: hidden comments, hidden styling and hidden Word runs in committed files only"
+  - control: LLM02
+    coverage: partial
+    note: "Sensitive Information Disclosure: Markdown and HTML URLs whose query or path is shaped to carry data, in committed files only"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap NP01, class K07). A script gate that ships in observe (D15): every finding warns (exit 4, action warn), and each finding's message names the verdict it will have once a separate PR promotes it: block for a URL whose query names a secret word and for a URL dictionary, ask for the rest. The script prints a findings document and the engine re-runs it on the baseline, so only what a change adds is judged. Keys carry the rule, the host and the path shape (segments that are not plain words become *, query names sorted, never values or the full URL), or a hash of the normalized hidden text, never a line number."
+  - "Scope: *.md, *.mdx, *.markdown, *.mdc, *.html, *.htm, *.xhtml, *.svg, *.xml and *.docx anywhere; .cursorrules, .windsurfrules, .clinerules, .goosehints, llms.txt and llms-full.txt (read as Markdown); every file under .cursor/rules, .roo/rules, .kiro/steering, .clinerules/ and .github/instructions, prompts, agents, ISSUE_TEMPLATE, PULL_REQUEST_TEMPLATE and DISCUSSION_TEMPLATE; .rst, .txt and .adoc under docs/ or doc/. Not judged: chock's managed .agents/policies/ and .chock/. A text file over 1 MiB is not parsed (the 30-second budget covers the baseline run too): it is reported as too large, keyed by its whole text, so every change to it is new; more than 10000 findings in one run collapse to one finding marked new. Markdown fenced code blocks and code spans are blanked first: code is shown, not hidden or fetched."
+  - "Judged: (a) remote URLs (bare, Markdown link, image and reference destinations with entities decoded, and HTML attribute URLs, CSS url() and @import): any whose query names a secret word (token, key, env, ssh, secret, password, credential, apikey, auth, bearer; split on punctuation and camelCase) would block; a query of 40 or more characters (on an allowlisted host, one value that long), a placeholder ({x}, ${, $VAR, [DATA], <x>, %s) or a hex or mixed-case base64 segment of 32 or more characters would ask; an HTML or CSS source the renderer fetches (img, script, iframe, object, embed, link, form action, source, video, audio, SVG image and use, background, url()) on a host not in the allowlist would ask; a URL the EP11 parser refuses (backslash, two @, controls) would ask; five or more camo.githubusercontent.com URLs, or five or more one- or two-character names under one path on one host, would block. Hosts are normalised with chock_scan (EP11): case, IDN, trailing dot, userinfo and IP spellings. Allowlisted (only without a query, the roadmap's FP control): shields.io, badgen.net, badge.fury.io, codecov.io, coveralls.io, github.com, gitlab.com, raw, user-images, avatars and private-user-images.githubusercontent.com, Scorecard and Best Practices badges, readthedocs. (b) HTML comments, MDX comments and Markdown reference-definition titles with an imperative (run, execute, exec, send, upload, approve, push, curl, wget, exfiltrate), override wording, a key or env path, or more than 200 characters; lint, TOC, generator and chock marker comments that match a marker exactly are not. Matching drops format characters (HP15 reports those), decodes entities and applies NFKC. (c) Elements whose text is hidden: the hidden attribute, display none, visibility hidden, opacity 0, font size 0 or 1px/1pt, scale 0, off-screen positioning or clipping, text colour equal to the background behind it (inherited from ancestors, white when none) or transparent, aria-hidden over 100 or more characters, SVG presentation attributes, font color; hidden rules in style elements; KaTeX white or transparent colour and phantom boxes. CSS escapes are decoded and the first of duplicate attributes wins, as browsers read them. (d) Word documents: runs with vanish, white colour or a size of 1 point or less, in the body, headers, footers, notes and comments; HTML data URIs anywhere in scope."
+  - "Word documents are read from git (the index at commit, HEAD at push and CI) because the write tools carry text, not a zip; they are not judged at tool use, and at push and CI every hidden run in a changed document counts as new (the base revision is not in the gate's input). A document that is not a bounded zip (encrypted, a member past 32 MB, over 4096 members) is reported as unreadable."
+  - "Limits (not caught): a URL built from parts or by a script, or fetched at run time; a URL with no data-shaped part on a host outside the allowlist in a Markdown image (the roadmap judges Markdown images by shape); exfiltration through an allowlisted host's path with no query (a GitHub issue link is judged only when it has a query); text hidden by a class whose style sheet is elsewhere, by a background image, by a parent's overflow, or by a colour close to but not equal to the background; Word text hidden through a style, a theme colour or a near-white colour; text inside details, template or noscript elements (collapsed or unrendered, the roadmap does not list them); a reference-definition title spanning lines; instructions in a language or wording the vocabulary does not hold; indented code blocks and fences indented four or more spaces are judged as text (errs toward reporting). A comment that only explains a maintenance step ('run the generator') is reported. Data in a URL fragment (after #) is not judged: it is not sent with the request. Known false positives: on allowlisted hosts with a query, a Codecov badge token and a GitHub search link with a long query; a license header or other long explanatory comment over 200 characters in HTML, XML or SVG; a generated-file header that says which command regenerates it; hex digests in URL paths on hosts outside the allowlist. Measured before merge over every file in scope in chock-catalog, chock and org-plan (850 files, read whole rather than as changes): 17 files reported, all of these kinds. The allowlist ships in the policy's data table; widening it is a change to this policy."
