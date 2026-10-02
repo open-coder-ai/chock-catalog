@@ -556,3 +556,13 @@ agentic-code-security:
     waived by a human reviewer with `# chock: allow <rule-id>` (`//` in JavaScript); the agent's own waiver is
     refused, and a JSON config, which has no comments, is waived in the selection file. The rule catalogue in
     `references/rule-catalogue.md` lists every rule with its weakness, ASI entry and fix.
+scan-suppression-markers:
+  solves: 'An agent told to make a scanner pass can silence the scanner instead of fixing the finding:
+    an inline ignore marker, an entry in a scanner''s ignore file, or a CI security step told to pass
+    when it fails. This gate asks a person before such a change lands, so a suppression is a decision
+    a person made, not one an agent slipped into a diff. Only what the change adds is judged; suppressions
+    already committed stay quiet.'
+  customise: 'A reviewed false positive is kept by a person committing from their own shell with CHOCK_ALLOW=scan-suppression-markers
+    set for that one commit. Ship it under `rollout: observe` in .chock/config.yaml first, read the gate
+    log, and move to enforce once the asks it records are the ones you want asked. To stop judging the
+    policy, list it under policies.disabled.'
