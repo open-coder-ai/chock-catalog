@@ -123,6 +123,14 @@ ROWS: list[tuple[str, int]] = [
     # final pass: a lone double quote in a here-document inside $() sends the lexer to its fallback
     ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" -n', BLOCK),
     ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)"', OK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" -nq', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" -na', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" "-n"', BLOCK),
+    ("git commit -m \"$(cat <<'EOF'\nsay \"hi\nEOF\n)\" '-n'", BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" -n""', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" -"n"', BLOCK),
+    ('git commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" \\-n', BLOCK),
+    ('git -C . commit -m "$(cat <<\'EOF\'\nsay "hi\nEOF\n)" -nv', BLOCK),
     ("fish -c 'git status'", OK),
 ]
 

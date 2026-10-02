@@ -266,7 +266,7 @@ def unparsed(raw: str) -> Verdict:
     """Fail closed: a line shlex cannot split (the hook sets CHOCK_ARGV_FALLBACK) that names a hook bypass is refused."""
     text = without_bodies(raw)
     fallback = os.environ.get("CHOCK_ARGV_FALLBACK") == "1" or not splits(text)
-    if fallback and (hit := FALLBACK.search(text)):
+    if fallback and (hit := FALLBACK.search(text) or FALLBACK.search(re.sub(r"[\"'\\\\]", "", text))):
         return (
             BLOCK,
             f"this command does not parse (unbalanced quote or trailing backslash) and names `{hit.group()}`. {FIX}",
