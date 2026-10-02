@@ -1,0 +1,837 @@
+# The gate ships in observe (action: warn, D15): every case it flags expects `warn`, which becomes the rule's
+# tier (block or ask) when a separate change raises the action. Each case stages files in a throwaway repo and
+# replays the script gate at commit (with head_files as HEAD, so only added findings count) or at tool_use.
+suite:
+  id: ci-github-actions-security-tests-v1
+  policy_id: ci-github-actions-security
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: An issue-triage workflow echoes the issue title inside run:.
+    expect: Warned (gha-template-injection); the title is expanded into the script, so its author writes shell.
+    execute:
+      files:
+        .github/workflows/triage.yml: |
+          on:
+            issues:
+              types: [opened]
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo "New issue - ${{ github.event.issue.title }}"
+      event: commit
+      expect: warn
+  - id: tc-002
+    category: trigger
+    prompt: A composite action pastes an input into run:.
+    expect: Warned (gha-template-injection); a caller can pass event text as the input.
+    execute:
+      files:
+        tools/notify/action.yml: |
+          name: notify
+          runs:
+            using: composite
+            steps:
+              - run: echo ${{ inputs.message }}
+                shell: bash
+      event: commit
+      expect: warn
+  - id: tc-003
+    category: adversarial
+    prompt: The title is reached with index syntax and upper case, inside format().
+    expect: Warned (gha-template-injection); contexts are read case-insensitively and index syntax is the same path.
+    execute:
+      files:
+        .github/workflows/triage.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ format('{0}', GITHUB.event['issue']['TITLE']) }}
+      event: commit
+      expect: warn
+  - id: tc-004
+    category: adversarial
+    prompt: 'The title goes through an env var set from the event and then back into run: as env.T.'
+    expect: Warned (gha-template-injection); an env value set from an untrusted expression is followed into env.X.
+    execute:
+      files:
+        .github/workflows/triage.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              env:
+                T: ${{ github.event.issue.title }}
+              steps:
+                - run: echo ${{ env.T }}
+      event: commit
+      expect: warn
+  - id: tc-005
+    category: adversarial
+    prompt: The injecting step is defined once under a YAML anchor and reused in a second job by alias.
+    expect: Warned in both jobs (gha-template-injection); aliases are expanded the way GitHub expands them.
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on: issues
+          permissions: {}
+          jobs:
+            a:
+              runs-on: x
+              steps:
+                - &s {run: 'echo ${{ github.event.issue.body }}'}
+            b:
+              runs-on: x
+              steps: [*s]
+      event: commit
+      expect: warn
+  - id: tc-006
+    category: adversarial
+    prompt: The expression is hidden behind a double-quoted YAML escape (\x74 for t) in a flow mapping.
+    expect: Warned (gha-template-injection); values are judged after YAML unescapes them.
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on: issues
+          permissions: {}
+          jobs:
+            a:
+              runs-on: x
+              steps:
+                - {run: "echo ${{ github.event.issue.\x74itle }}"}
+      event: commit
+      expect: warn
+  - id: tc-007
+    category: negative_trigger
+    prompt: 'The title is passed through env: and read as a quoted variable.'
+    expect: Silent; this is the fix the finding asks for.
+    execute:
+      files:
+        .github/workflows/triage.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo "New issue - $TITLE"
+                  env:
+                    TITLE: ${{ github.event.issue.title }}
+      event: commit
+      expect: allow
+  - id: tc-008
+    category: negative_trigger
+    prompt: 'run: uses the commit SHA, an issue number and contains() on the body.'
+    expect: Silent; numbers, hashes and booleans carry no attacker text.
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ github.sha }} ${{ github.event.issue.number }} ${{ contains(github.event.issue.body, 'x') }}
+      event: commit
+      expect: allow
+  - id: tc-009
+    category: trigger
+    prompt: A pull_request_target workflow writes to GITHUB_ENV.
+    expect: Warned (gha-github-env-injection); an outsider-shaped value becomes an env var for every later step.
+    execute:
+      head_files:
+        .github/workflows/label.yml: |
+          on: [pull_request_target]
+          permissions: {}
+          jobs: {}
+      files:
+        .github/workflows/label.yml: |
+          on:
+            pull_request_target:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo "BRANCH=$(cat branch.txt)" >> "$GITHUB_ENV"
+      event: commit
+      expect: warn
+  - id: tc-010
+    category: trigger
+    prompt: A workflow switches ACTIONS_ALLOW_UNSECURE_COMMANDS on.
+    expect: Warned (gha-insecure-commands).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo '::add-path::/opt/bin'
+                  env:
+                    ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+      event: commit
+      expect: warn
+  - id: tc-011
+    category: trigger
+    prompt: pull_request_target checks out the pull request head and runs npm install.
+    expect: Warned (gha-prt-head-checkout); fork code runs with secrets and a write token.
+    execute:
+      head_files:
+        .github/workflows/pr.yml: |
+          on: [pull_request_target]
+          permissions: {}
+          jobs: {}
+      files:
+        .github/workflows/pr.yml: |
+          on:
+            pull_request_target:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                  with:
+                    ref: ${{ github.event.pull_request.head.sha }}
+                - run: npm install && npm test
+      event: commit
+      expect: warn
+  - id: tc-012
+    category: adversarial
+    prompt: issue_comment resolves the PR head in a script with gh pr checkout.
+    expect: Warned (gha-prt-head-checkout); a checkout through the CLI is the same head checkout.
+    execute:
+      head_files:
+        .github/workflows/bot.yml: |
+          on: [issue_comment]
+          permissions: {}
+          jobs: {}
+      files:
+        .github/workflows/bot.yml: |
+          on:
+            issue_comment:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: gh pr checkout ${{ github.event.issue.number }} && make
+      event: commit
+      expect: warn
+  - id: tc-013
+    category: negative_trigger
+    prompt: A plain pull_request workflow checks out the head.
+    expect: Silent; pull_request runs fork code without secrets.
+    execute:
+      files:
+        .github/workflows/ci.yml: |
+          on:
+            pull_request:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                  with:
+                    ref: ${{ github.event.pull_request.head.sha }}
+                    persist-credentials: false
+      event: commit
+      expect: allow
+  - id: tc-014
+    category: trigger
+    prompt: A workflow_run consumer downloads the triggering run's artifact into the workspace.
+    expect: Warned (gha-workflow-run-artifact).
+    execute:
+      head_files:
+        .github/workflows/report.yml: |
+          on: [workflow_run]
+          permissions: {}
+          jobs: {}
+      files:
+        .github/workflows/report.yml: |
+          on:
+            workflow_run:
+              workflows: [CI]
+              types: [completed]
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/download-artifact@v4
+                  with:
+                    run-id: ${{ github.event.workflow_run.id }}
+                    github-token: ${{ github.token }}
+      event: commit
+      expect: warn
+  - id: tc-015
+    category: trigger
+    prompt: A pull_request workflow runs on a self-hosted runner.
+    expect: Warned (gha-self-hosted-pr).
+    execute:
+      files:
+        .github/workflows/ci.yml: |
+          on: pull_request
+          permissions: {}
+          jobs:
+            t:
+              runs-on: [self-hosted, linux]
+              steps:
+                - run: make test
+      event: commit
+      expect: warn
+  - id: tc-016
+    category: trigger
+    prompt: An auto-merge job trusts github.actor == 'dependabot[bot]'.
+    expect: Warned (gha-bot-conditions, gha-auto-merge-bot).
+    execute:
+      head_files:
+        .github/workflows/merge.yml: |
+          on: [pull_request_target]
+          permissions: {}
+          jobs: {}
+      files:
+        .github/workflows/merge.yml: |
+          on:
+            pull_request_target:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              if: github.actor == 'dependabot[bot]'
+              steps:
+                - run: gh pr merge --auto --squash "$URL"
+      event: commit
+      expect: warn
+  - id: tc-017
+    category: trigger
+    prompt: A new workflow has no permissions block anywhere.
+    expect: Warned (gha-excessive-permissions).
+    execute:
+      files:
+        .github/workflows/build.yml: |
+          on:
+            push:
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                  with:
+                    persist-credentials: false
+      event: commit
+      expect: warn
+  - id: tc-018
+    category: trigger
+    prompt: 'A workflow grants permissions: write-all.'
+    expect: Warned (gha-excessive-permissions).
+    execute:
+      files:
+        .github/workflows/build.yml: |
+          on:
+            push:
+          permissions: write-all
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: make
+      event: commit
+      expect: warn
+  - id: tc-019
+    category: negative_trigger
+    prompt: A reusable workflow (workflow_call only) leaves permissions to its caller.
+    expect: Silent; the caller's permissions apply.
+    execute:
+      files:
+        .github/workflows/reuse.yml: |
+          on:
+            workflow_call:
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: make
+      event: commit
+      expect: allow
+  - id: tc-020
+    category: trigger
+    prompt: A coding-agent action runs on every issue comment with no author-association gate.
+    expect: Warned (gha-agent-step-untrusted).
+    execute:
+      head_files:
+        .github/workflows/agent.yml: |
+          on: [issue_comment]
+          permissions: {}
+          jobs: {}
+      files:
+        .github/workflows/agent.yml: |
+          on:
+            issue_comment:
+              types: [created]
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: anthropics/claude-code-action@v1
+                  with:
+                    prompt: respond
+      event: commit
+      expect: warn
+  - id: tc-021
+    category: negative_trigger
+    prompt: The same agent job is gated on the commenter's author_association.
+    expect: Silent; HEAD already had the issue_comment trigger, and the gated agent step is not reported.
+    execute:
+      head_files:
+        .github/workflows/agent.yml: |
+          on: [issue_comment]
+          permissions: {}
+          jobs: {}
+      files:
+        .github/workflows/agent.yml: |
+          on:
+            issue_comment:
+              types: [created]
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              if: contains(fromJSON('["OWNER","MEMBER"]'), github.event.comment.author_association)
+              steps:
+                - uses: anthropics/claude-code-action@v1
+      event: commit
+      expect: allow
+  - id: tc-022
+    category: trigger
+    prompt: 'A job calls another repository''s reusable workflow with secrets: inherit.'
+    expect: Warned (gha-secrets-inherit).
+    execute:
+      files:
+        .github/workflows/deploy.yml: |
+          on: push
+          permissions: {}
+          jobs:
+            d:
+              uses: org/infra/.github/workflows/deploy.yml@v2
+              secrets: inherit
+      event: commit
+      expect: warn
+  - id: tc-023
+    category: negative_trigger
+    prompt: 'A job calls a local reusable workflow with secrets: inherit.'
+    expect: Silent; the called file is judged by this gate itself.
+    execute:
+      files:
+        .github/workflows/deploy.yml: |
+          on: push
+          permissions: {}
+          jobs:
+            d:
+              uses: ./.github/workflows/reuse.yml
+              secrets: inherit
+      event: commit
+      expect: allow
+  - id: tc-024
+    category: trigger
+    prompt: A step dumps toJSON(secrets) into an env var.
+    expect: Warned (gha-overprovisioned-secrets).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: ./deploy
+                  env:
+                    ALL: ${{ toJSON(secrets) }}
+      event: commit
+      expect: warn
+  - id: tc-025
+    category: trigger
+    prompt: 'A step pastes a secret straight into the run: text.'
+    expect: Warned (gha-secret-echo).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: curl -u ${{ secrets.API_KEY }} https://api.example.invalid
+      event: commit
+      expect: warn
+  - id: tc-026
+    category: trigger
+    prompt: A checkout keeps its token and the job uploads the whole workspace as an artifact.
+    expect: Warned (gha-artipacked).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/upload-artifact@v4
+                  with:
+                    path: .
+      event: commit
+      expect: warn
+  - id: tc-027
+    category: adversarial
+    prompt: 'persist-credentials: false is supplied only through a YAML merge key.'
+    expect: Warned (gha-artipacked); a setting that only a merge key supplies is not trusted (loaders without merge
+      keys ignore it).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - <<: {with: {persist-credentials: false}}
+                  uses: actions/checkout@v4
+                - uses: actions/upload-artifact@v4
+                  with: {path: .}
+      event: commit
+      expect: warn
+  - id: tc-028
+    category: trigger
+    prompt: A release publishes to PyPI with a stored password.
+    expect: Warned (gha-trusted-publishing).
+    execute:
+      files:
+        .github/workflows/release.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: pypa/gh-action-pypi-publish@release/v1
+                  with:
+                    password: ${{ secrets.PYPI_TOKEN }}
+      event: commit
+      expect: warn
+  - id: tc-029
+    category: trigger
+    prompt: A deploy job configures AWS with stored access keys.
+    expect: Warned (gha-static-cloud-keys).
+    execute:
+      files:
+        .github/workflows/deploy.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: aws-actions/configure-aws-credentials@v4
+                  with:
+                    aws-access-key-id: ${{ secrets.AWS_KEY }}
+      event: commit
+      expect: warn
+  - id: tc-030
+    category: trigger
+    prompt: A release workflow restores actions/cache before building.
+    expect: Warned (gha-cache-poisoning).
+    execute:
+      files:
+        .github/workflows/release.yml: |
+          on:
+            release:
+              types: [published]
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/cache@v4
+                  with:
+                    path: ~/.npm
+                    key: npm
+                - run: npm ci && npm run build
+      event: commit
+      expect: warn
+  - id: tc-031
+    category: trigger
+    prompt: dependabot.yml allows insecure external code execution.
+    expect: Warned (gha-dependabot-weaken).
+    execute:
+      files:
+        .github/dependabot.yml: |
+          version: 2
+          updates:
+            - package-ecosystem: bundler
+              directory: /
+              schedule: {interval: weekly}
+              cooldown: {default-days: 7}
+              insecure-external-code-execution: allow
+      event: commit
+      expect: warn
+  - id: tc-032
+    category: negative_trigger
+    prompt: A dependabot entry with a cooldown and a narrowed ignore.
+    expect: Silent.
+    execute:
+      files:
+        .github/dependabot.yml: |
+          version: 2
+          updates:
+            - package-ecosystem: npm
+              directory: /
+              schedule: {interval: weekly}
+              cooldown: {default-days: 7}
+              ignore:
+                - dependency-name: '*'
+                  update-types: [version-update:semver-major]
+      event: commit
+      expect: allow
+  - id: tc-033
+    category: trigger
+    prompt: 'An if: mixes ${{ }} with trailing text, so it is always true.'
+    expect: Warned (gha-unsound-condition).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: ./deploy
+                  if: ${{ github.ref == 'refs/heads/main' }} && success()
+      event: commit
+      expect: warn
+  - id: tc-034
+    category: trigger
+    prompt: The semgrep step is marked continue-on-error.
+    expect: Warned (gha-security-step-weakened).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: semgrep scan --error
+                  continue-on-error: true
+      event: commit
+      expect: warn
+  - id: tc-035
+    category: trigger
+    prompt: 'A step''s uses: is built from an expression.'
+    expect: Warned (gha-obfuscation).
+    execute:
+      files:
+        .github/workflows/a.yml: |
+          on:
+            push:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: ${{ vars.ACTION }}
+      event: commit
+      expect: warn
+  - id: tc-036
+    category: trigger
+    prompt: A workflow file is indented with a tab the scanner cannot read with certainty.
+    expect: Warned (gha-unreadable); an unreadable security config is reported, never passed.
+    execute:
+      files:
+        .github/workflows/a.yml: "on: push\njobs:\n\tbuild:\n\t\truns-on: x\n"
+      event: commit
+      expect: warn
+  - id: tc-037
+    category: negative_trigger
+    prompt: 'A hardened workflow: read-only permissions, pinned checkout without credentials, env-passed text.'
+    expect: Silent.
+    execute:
+      files:
+        .github/workflows/ci.yml: |
+          on:
+            pull_request:
+          permissions:
+            contents: read
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                  with:
+                    persist-credentials: false
+                - run: make test
+      event: commit
+      expect: allow
+  - id: tc-038
+    category: negative_trigger
+    prompt: A YAML file outside the workflow, action and Dependabot paths holds the same injection.
+    expect: Silent; out of scope.
+    execute:
+      files:
+        docs/example.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ github.event.issue.title }}
+      event: commit
+      expect: allow
+  - id: tc-039
+    category: behavior
+    prompt: An existing workflow already holds an injection; the change only edits another step's name.
+    expect: Silent; only findings the change adds are judged (baseline run on HEAD).
+    execute:
+      head_files:
+        .github/workflows/t.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - name: a
+                  run: echo ${{ github.event.issue.title }}
+      files:
+        .github/workflows/t.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - name: b
+                  run: echo ${{ github.event.issue.title }}
+      event: commit
+      expect: allow
+  - id: tc-040
+    category: behavior
+    prompt: The same edit adds a second copy of the injection in a new step.
+    expect: Warned (gha-template-injection); a second copy of an old finding is new.
+    execute:
+      head_files:
+        .github/workflows/t.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ github.event.issue.title }}
+      files:
+        .github/workflows/t.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ github.event.issue.title }}
+                - run: echo ${{ github.event.issue.title }}
+      event: commit
+      expect: warn
+  - id: tc-041
+    category: behavior
+    prompt: An agent writes an injecting workflow (tool_use).
+    expect: Warned at the write itself (gha-template-injection).
+    execute:
+      event: tool_use
+      writes:
+        .github/workflows/t.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ github.event.issue.body }}
+      expect: warn
+  - id: tc-042
+    category: behavior
+    prompt: A person waives a reviewed finding with the rule-named comment and commits.
+    expect: Silent at a person's commit.
+    execute:
+      files:
+        .github/workflows/t.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ github.event.issue.number }} ${{ github.event.issue.title }}  # chock: allow gha-template-injection
+      event: commit
+      expect: allow
+  - id: tc-043
+    category: behavior
+    prompt: An agent writes the same waiver comment itself.
+    expect: Warned (gha-template-injection); in the agent a waiver counts only for a line already in HEAD.
+    execute:
+      event: tool_use
+      writes:
+        .github/workflows/t.yml: |
+          on:
+            issues:
+          permissions: {}
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - run: echo ${{ github.event.issue.title }}  # chock: allow gha-template-injection
+      expect: warn

@@ -30,9 +30,9 @@
       "id": "block-invisible-unicode",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "5eb98043cea85921bdee701c98d3be038efcb36d16e8ca60f9fa2f7b4045c718",
+      "sha256": "1201d4eb43b462d98045009a9142f111626921deb7bdc3fa3973a1128f173b90",
       "source": "local",
-      "artifacts_sha256": "402938537b64c7e62035544849e55e524612488c834963d35694db0c7f963e2d"
+      "artifacts_sha256": "e5ed5291b4a230f56da984bfafc8500a17257cde3e3177da81008a4610633081"
     },
     {
       "id": "block-no-verify",
@@ -110,9 +110,9 @@
       "id": "pin-github-actions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "d8eca2e21ed5718a93a050966f49c34fe57e8542aec29abc681659cd268fcb97",
+      "sha256": "07a396492ea043e506b7df87cf4864c1075b2f24922c2331cd2ab823962b4baf",
       "source": "local",
-      "artifacts_sha256": "ab196803e753df7386389a95ccbafd9971320aa235e0da031872b37aef709fd8"
+      "artifacts_sha256": "79ddfab425510ecba79c97fc652688c1ac0e0e63cc4be38524c299f6678ef12b"
     },
     {
       "id": "protect-agent-config",

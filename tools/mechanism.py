@@ -66,18 +66,27 @@ def event_scripts(policy_dir: Path, policy_id: str) -> list[Path]:
     )
 
 
-def command_guards(policy_dir: Path, policy_id: str) -> list[Path]:
-    """Guards invoked with a command's argv: the in-agent kind, never the event scripts."""
+def command_guards(policy_dir: Path, policy_id: str, gate_script: str = "") -> list[Path]:
+    """Guards invoked with a command's argv: the in-agent kind, never the event scripts or the gate's own script."""
     impl = Path(policy_dir) / "implementations"
     if not impl.is_dir():
         return []
-    return sorted(p for suffix in SCRIPT_SUFFIXES for p in impl.glob(f"*{suffix}") if not is_event_script(p, policy_id))
+    return sorted(
+        p
+        for suffix in SCRIPT_SUFFIXES
+        for p in impl.glob(f"*{suffix}")
+        if not is_event_script(p, policy_id) and p.name != gate_script
+    )
 
 
 def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     """Return (kind, the mechanism label), strongest mechanism first."""
     policy_id = str(manifest.get("id") or Path(policy_dir).name)
     gate = (manifest.get("hook") or {}).get("gate") or {}
+    # A script gate that judges writes runs its own script on file text, not on a command's argv, so a
+    # warn-only one must not read as a guard. (A tool_call script gate keeps its old label.)
+    writes_gate = gate.get("kind") == "script" and "tool_call" not in (gate.get("on") or [])
+    gate_script = str((gate.get("params") or {}).get("script") or "") if writes_gate else ""
     # A gate that only warns enforces nothing (the engine withholds its enforcing surfaces): it
     # never lifts a policy above the rule text, though a script or guard it ships still counts.
     warns = gate.get("action") == "warn"
@@ -87,7 +96,7 @@ def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
         return GATE, str(gate["kind"])
     if event_scripts(policy_dir, policy_id):
         return EVENT_SCRIPT, script_mechanism(manifest)
-    if command_guards(policy_dir, policy_id):
+    if command_guards(policy_dir, policy_id, gate_script):
         return GUARD, "guard script"
     if gate.get("kind"):
         return GUARD, str(gate["kind"])
