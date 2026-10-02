@@ -52,9 +52,7 @@ def env_for(**values: str) -> dict:
     return {**clean, **values}
 
 
-WAIVED = (
-    "[core]\n\t# chock: allow dev-gitconfig-exec\n\tpager = less\n\teditor = vim # chock: allow dev-gitconfig-exec\n"
-)
+WAIVED = "[core]\n\tpager = less # chock: allow dev-gitconfig-exec\n\teditor = vim # chock: allow dev-gitconfig-exec\n"
 
 
 def test_a_persons_waiver_counts_at_commit(tmp_path: Path) -> None:
@@ -67,15 +65,15 @@ def test_a_persons_waiver_counts_at_commit(tmp_path: Path) -> None:
 
 
 def test_an_agent_waiver_counts_only_when_committed(tmp_path: Path) -> None:
-    committed = "[core]\n\t# chock: allow dev-gitconfig-exec\n\tpager = less\n"
+    committed = "[core]\n\tpager = less # chock: allow dev-gitconfig-exec\n"
     repo = scriptkit.init_repo(tmp_path / "r", {".gitconfig": committed})
     code, document, _ = run({".gitconfig": WAIVED}, repo, event="tool_use", env=env_for())
     assert code == 1
-    assert [f["line"] for f in document["findings"]] == [4]
+    assert [f["line"] for f in document["findings"]] == [3]
     moved = WAIVED.replace("pager = less", "pager = ./evil")
     assert [f["line"] for f in run({".gitconfig": moved}, repo, event="tool_use", env=env_for())[1]["findings"]] == [
+        2,
         3,
-        4,
     ]
     assert run({".gitconfig": WAIVED}, repo, env=env_for(CLAUDECODE="1"))[0] == 1
     assert run({".gitconfig": WAIVED}, repo, env=env_for(CHOCK_AGENT_COMMIT="0"))[0] == 0
@@ -89,6 +87,11 @@ def test_a_waiver_inside_a_value_does_not_count(tmp_path: Path) -> None:
 def test_a_waiver_for_another_rule_or_not_on_a_comment_line_does_not_count(tmp_path: Path) -> None:
     text = "[core]\n\tpager = less # chock: allow dev-gitmodules-untrusted\n\tx = chock: allow dev-gitconfig-exec\n\teditor = vi\n"
     assert len(found({".gitconfig": text}, event="tool_use", root=tmp_path)) == 2
+
+
+def test_a_waiver_on_the_line_above_does_not_count(tmp_path: Path) -> None:
+    text = "[core]\n\t# chock: allow dev-gitconfig-exec\n\tpager = less\n"
+    assert len(found({".gitconfig": text}, event="tool_use", root=tmp_path)) == 1
 
 
 def test_waiver_honoured_in_an_agent_event_without_git(tmp_path: Path) -> None:

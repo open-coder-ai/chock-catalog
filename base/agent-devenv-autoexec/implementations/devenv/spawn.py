@@ -3,7 +3,8 @@
 The text is read once, character by character, as a shell reads it: quotes span lines and keep their
 words (a flag passed in quotes still counts) but not their separators; a backslash-newline joins lines;
 `;`, `|`, `&` and newlines end a statement, except the `&` of a redirect (`2>&1`, `&>`); `#` at the start
-of a word begins a comment. Each raw line is read too, so a quote the reader misjudges hides nothing.
+of a word begins a comment. Each raw line is read too, and then, if neither found one, the file as a whole,
+so no quote the reader misjudges and no line break hides a flag.
 The time grows with the text, never with how it is quoted.
 """
 
@@ -103,7 +104,30 @@ def spawns(c: Collector) -> None:
             message = "an agent CLI is started with its safety checks off"
             c.add("dev-agent-spawn", f"spawn={norm(statement.strip())}", message, line=number)
             seen.add(number)
-    for number, line in enumerate(c.lines, 1):
-        if number not in seen and not line.lstrip().startswith("#") and unsafe(line):
+    code = [(number, line) for number, line in enumerate(c.lines, 1) if not line.lstrip().startswith("#")]
+    for number, line in code:
+        if number not in seen and unsafe(line):
             message = "an agent CLI is started with its safety checks off"
             c.add("dev-agent-spawn", f"spawn-line={norm(line.strip())}", message, line=number)
+            seen.add(number)
+    if not seen:
+        _whole_file(c, code)
+
+
+def _whole_file(c: Collector, code: list[tuple[int, str]]) -> None:
+    """Last pass, with no reading of quotes or continuations at all: an agent CLI anywhere in the file and a
+    skip flag anywhere after it. It errs toward reporting, so no way of splitting the two across lines hides one."""
+    joined = " ".join(line for _, line in code)
+    first = _CLI.search(joined)
+    flag = _FLAGS.search(joined, first.end()) if first else None
+    if first is None or flag is None:
+        for cli, short in _SHORT:
+            own = cli.search(joined)
+            first, flag = (own, short.search(joined, own.end())) if own else (first, None)
+            if flag:
+                break
+    if first is not None and flag is not None:
+        name = re.split(r"[/\\]", first.group(0))[-1].lower()
+        number = next((n for n, line in code if name in line.lower()), 1)
+        message = "an agent CLI and a flag that skips its checks appear in this file (judged across lines)"
+        c.add("dev-agent-spawn", f"spawn-file={first.group(0).lower()}..{flag.group(0).lower()}", message, line=number)

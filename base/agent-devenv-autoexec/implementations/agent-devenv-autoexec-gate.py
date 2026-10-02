@@ -46,20 +46,12 @@ def committed(root: Path, path: str) -> str:
 
 
 def waived(c: Collector, blanked: list[str], rule: str, line: int, head: frozenset[str] | None) -> bool:
-    """`chock: allow <rule>` in a comment (outside quotes) on the finding's line or a comment line just above it.
-
-    In the agent (`head` given) both the waiver line and the finding's line must already be committed, so
-    a waiver cannot be moved onto a new value.
-    """
-    target = c.lines[line - 1] if 0 < line <= len(c.lines) else ""
-    for number in (line, line - 1):
-        text = c.lines[number - 1] if 0 < number <= len(c.lines) else ""
-        own_line = number == line or text.lstrip().startswith(("#", "//", ";", "<!--", "/*"))
-        committed = head is None or (text in head and target in head)
-        bare = blanked[number - 1] if 0 < number <= len(blanked) else ""
-        if own_line and rule in _WAIVER.findall(bare) and committed:
-            return True
-    return False
+    """`chock: allow <rule>` in a comment on the finding's own line, outside strings (`blanked` is the file with
+    them removed). In the agent (`head` given) that line must already be committed, so a waiver cannot be moved
+    onto a new value. A comment line above does not count: text there may belong to a string spanning lines."""
+    text = c.lines[line - 1] if line <= len(c.lines) else ""
+    committed = head is None or text in head
+    return committed and rule in _WAIVER.findall(blanked[line - 1] if line <= len(blanked) else "")
 
 
 def findings(payload: dict) -> list[dict]:

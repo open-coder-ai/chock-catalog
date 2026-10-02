@@ -51,7 +51,7 @@ def test_a_real_comment_waiver_still_counts_for_a_person(monkeypatch: pytest.Mon
     for name in ("CHOCK_AGENT_COMMIT", "CLAUDECODE", "AI_AGENT"):
         monkeypatch.delenv(name, raising=False)
     assert found({".envrc": "echo hi  # chock: allow dev-shell-toolchain\n"}, event="push") == []
-    config = "[core]\n; chock: allow dev-gitconfig-exec\n\tpager = less\n"
+    config = "[core]\n\tpager = less # chock: allow dev-gitconfig-exec\n"
     repo = scriptkit.init_repo(tmp_path / "r", {".gitconfig": config})
     assert found({".gitconfig": config}, event="push", root=repo) == []
 
@@ -194,3 +194,24 @@ def test_round4_waivers_inside_multi_line_strings_never_count(text: str) -> None
 def test_blank_strings() -> None:
     blank = gate.sys.modules["devenv.core"].blank_strings
     assert blank('a "b\\"c" d \'e\n f\n"""x\ny""" z "q\\\nr') == "a  d \n f\n\n z \nr"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "cat <<EOF\ndon't\nEOF\nclaude '#' \\\n--yolo\n",
+        "cat <<EOF\ndon't\nEOF\nclaude '#' \"\n\" --yolo\n",
+    ],
+)
+def test_round5_a_flag_on_another_line_after_a_misjudged_quote(text: str) -> None:
+    assert ("dev-agent-spawn", B) in rules("run.sh", text)
+
+
+def test_round5_whole_file_pass_for_a_short_flag() -> None:
+    assert rules("run.sh", "x='\ngemini -p hi \\\n'\n -y\n") == [("dev-agent-spawn", B)]
+    assert rules("run.sh", "gemini -p hi\necho done\n") == []
+
+
+def test_round5_a_yaml_string_spanning_lines_supplies_no_waiver() -> None:
+    text = 'pre-commit:\n  tags: "x\n    # chock: allow dev-hook-launchers"\n  commands:\n    a:\n      run: ./x.sh\n'
+    assert found({"lefthook.yml": text}, event="push")
