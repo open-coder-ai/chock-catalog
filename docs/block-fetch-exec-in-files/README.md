@@ -10,14 +10,14 @@
 | **Mechanism** | rule text |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
-| **Eval cases** | 20 total, 0 executable |
+| **Eval cases** | 25 total, 0 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time: continuation lines and variables are missed. Never refuses. Friction only.
+Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time: continuation lines, variables, unicode-escaped JSON, split or quoted command names, a download saved to a file and run on a later step, and interpreters or fetchers outside the lists are missed. Never refuses. Friction only.
 
 ## What it solves
 

@@ -114,9 +114,14 @@ block-fetch-exec-in-files  [deterministic]
   PASS  tc-018                             authored  A line added to a build, CI or install file wires a network downloa…
   PASS  tc-019                             authored  gate exit 0
   PASS  tc-020                             authored  gate exit 0
+  PASS  tc-021                             authored  gate: warning: A line added to a build, CI or install file wires a …
+  PASS  tc-022                             authored  gate: warning: A line added to a build, CI or install file wires a …
+  PASS  tc-023                             authored  gate: warning: A line added to a build, CI or install file wires a …
+  PASS  tc-024                             authored  gate exit 0
+  PASS  tc-025                             authored  gate exit 0
   score 1.00
 
-5 policies: 20 pass, 41 skipped
+5 policies: 25 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

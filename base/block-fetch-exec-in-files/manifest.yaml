@@ -1,12 +1,14 @@
 id: block-fetch-exec-in-files
 name: "Flag Fetch-Exec in Files"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow or
   package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a shell,
   python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string of a
   $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time:
-  continuation lines and variables are missed. Never refuses. Friction only.
+  continuation lines, variables, unicode-escaped JSON, split or quoted command names, a download
+  saved to a file and run on a later step, and interpreters or fetchers outside the lists are
+  missed. Never refuses. Friction only.
 artifact: rule
 enforcement: advise
 mandatory: false
@@ -20,12 +22,18 @@ applies_to:
   paths:
   - "Dockerfile*"
   - "*/Dockerfile*"
+  - "dockerfile*"
+  - "*/dockerfile*"
   - "*.Dockerfile"
   - "*.dockerfile"
   - "Containerfile*"
   - "*/Containerfile*"
+  - "containerfile*"
+  - "*/containerfile*"
   - "Makefile"
   - "*/Makefile"
+  - "makefile"
+  - "*/makefile"
   - "GNUmakefile"
   - "*/GNUmakefile"
   - "*.mk"
@@ -37,9 +45,18 @@ applies_to:
   - "Taskfile.yaml"
   - "*/Taskfile.yml"
   - "*/Taskfile.yaml"
+  - "Taskfile.dist.yml"
+  - "Taskfile.dist.yaml"
+  - "*/Taskfile.dist.yml"
+  - "*/Taskfile.dist.yaml"
+  - ".justfile"
+  - "*/.justfile"
   - "*.sh"
   - "*.bash"
   - "*.zsh"
+  - "*.ksh"
+  - "*.bat"
+  - "*.cmd"
   - "*.ps1"
   - "*.psm1"
   - ".envrc"
@@ -49,7 +66,13 @@ applies_to:
   - "Procfile"
   - "*/Procfile"
   - ".github/workflows/*"
+  - "*/.github/workflows/*"
   - ".github/actions/*"
+  - "*/.github/actions/*"
+  - ".travis.yml"
+  - ".drone.yml"
+  - ".buildkite/*"
+  - ".gitlab/*"
   - ".gitlab-ci.yml"
   - "*/.gitlab-ci.yml"
   - "Jenkinsfile*"
@@ -57,7 +80,11 @@ applies_to:
   - ".circleci/*"
   - "azure-pipelines*.yml"
   - "*/azure-pipelines*.yml"
+  - "azure-pipelines*.yaml"
+  - "*/azure-pipelines*.yaml"
+  - ".azure-pipelines/*"
   - "bitbucket-pipelines.yml"
+  - "*/bitbucket-pipelines.yml"
   - "cloudbuild.yml"
   - "cloudbuild.yaml"
   - "*/cloudbuild.yml"
@@ -91,7 +118,7 @@ hook:
       # of a fetch, PowerShell iex of a download, or Dockerfile ADD of a URL with no --checksum. Comment
       # lines and echo/printf lines are skipped.
       content_pattern: |-
-        ^\s*(?i:add)\s+(?:--(?!checksum)[\w-]+(?:=\S+)?\s+)*["']?https?://|^(?!\s*(?:-\s+)?(?:echo|printf|Write-Host)\b)[^#\n]*?(?:(?<![\w.-])(?:[c]url|[w]get2?|[a]ria2c|[l]ynx|(?i:[i]wr|[i]rm|[i]nvoke-webrequest|[i]nvoke-restmethod|[d]ownloadstring))(?![\w-])(?:[^;&|\n#]|(?<!\s)#|&(?![&>])|\|(?!\|))*?\|&?\s*[({]?\s*(?:(?:sudo|doas|env|exec|command|nohup|nice|timeout|stdbuf|xargs)(?:\s+(?:-\S+|\w+=\S*|[0-9][\w.]*))*\s+)*["']?(?:[\w./-]*/)?(?:(?:ba|z|da|k|a|c|tc|mk)?sh|fish|busybox\s+sh|(?:python[0-9.]*|perl|ruby|node|php|lua)(?=\s*(?:$|-(?:\s|$)|[;&|)'"`]))|(?i:iex|invoke-expression|pwsh|powershell))(?![\w.-])|(?<![\w.-])(?:eval|source|\.|(?:ba|z|da|k|a|tc|mk)?sh|fish|python[0-9.]*|perl|ruby|node|php|lua)(?:\s+-\S+)*\s+(?:<<<\s*|<\s*)?["']?(?:\$\(|<\(|`)\s*(?:sudo\s+)?(?:[c]url|[w]get2?|[a]ria2c|[l]ynx|(?i:[i]wr|[i]rm|[i]nvoke-webrequest|[i]nvoke-restmethod|[d]ownloadstring))(?![\w-])|(?i:(?<![\w-])(?:iex|invoke-expression)\s*\(*\s*(?:[i]rm|[i]wr|[i]nvoke-webrequest|[i]nvoke-restmethod|new-object\s+(?:system\.)?net\.webclient)(?![\w-])|\[scriptblock\]::create\(\s*\(*\s*(?:[i]rm|[i]wr)))
+        ^\s*(?i:add)\s+(?:--(?!checksum)[\w-]+(?:=\S+)?\s+)*(?:\[\s*)?["']?https?://|^(?!\s*(?:-\s+)?[@+-]*(?:echo|printf|Write-Host)\b(?:[^;&|\n"']|"[^"\n]*"|'[^'\n]*')*$)(?:[^#\n]|(?<=\S)#)*?(?:(?:(?<![\w.-])(?:[c]url|[w]get2?|[a]ria2c|[l]ynx|(?i:[i]wr|[i]rm|[i]nvoke-webrequest|[i]nvoke-restmethod|[d]ownloadstring))|(?i:\.[d]ownloadstring))(?![\w-])(?:[^;&|\n#]|(?<!\s)#|&(?![&>])|\|(?!\|))*?\|&?\s*[({]?\s*(?:(?:[\w./-]*/)?(?:sudo|doas|env|exec|command|nohup|nice|timeout|stdbuf|xargs)(?:\s+(?:-\S+(?:\s+\w+(?=\s+\S))?|\w+=\S*|[0-9][\w.]*))*\s+)*["']?(?:[\w./-]*/)?(?:(?:ba|z|da|k|a|c|tc|mk)?sh|fish|busybox\s+sh|(?:python[0-9.]*|perl|ruby|node|php|lua)(?=\s*(?:$|-(?:\s|$)|[;&|)'"`])|(?:\s+-[A-Za-z]+)+(?:\s+-)?\s*(?:$|[;&|)]))|(?:source|\.)\s+/dev/(?:stdin|fd/0)|(?i:iex|invoke-expression|pwsh|powershell))(?![\w.-])|(?<![\w.-])(?:eval|source|\.|(?:ba|z|da|k|a|tc|mk)?sh|fish|python[0-9.]*|perl|ruby|node|php|lua)(?:\s+-\S+)*\s+(?:/dev/stdin\s+)?(?:<<<\s*|<\s*)?["']?(?:\$\(|<\(|`)\s*(?:(?:sudo|doas|command|env|exec)\s+(?:-\S+\s+)*)*(?:[\w./-]*/)?(?:[c]url|[w]get2?|[a]ria2c|[l]ynx|(?i:[i]wr|[i]rm|[i]nvoke-webrequest|[i]nvoke-restmethod|[d]ownloadstring))(?![\w-])|(?i:(?<![\w-])(?:iex|invoke-expression)[\s"'(]*(?:(?:&\s*\{|\$)[\s"'(]*)*(?:[i]rm|[i]wr|[c]url|[i]nvoke-webrequest|[i]nvoke-restmethod|new-object\s+(?:system\.)?net\.webclient)(?![\w-])|\[scriptblock\]::create\(\s*\(*\s*(?:[i]rm|[i]wr)))
 
 compliance:
   owasp_asi:
@@ -116,6 +143,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.2
+  date: '2026-10-02'
+  changes:
+  - "Adversarial pass. Fixed: an echo/printf/Write-Host line was skipped wholesale, so an echo followed by && and a piped download went unseen (now skipped only when the line is the echo and nothing chains after it; make's @echo and -echo included); a '#' inside a word before the downloader hid the line; the here-string/substitution runners now see '/dev/stdin <<<', 'command curl', 'env curl' and '/usr/bin/curl'; the pipe form sees a a DownloadString call piped to iex, a piped 'sudo -u root sh', '/usr/bin/env bash', 'source /dev/stdin', and python with flags before stdin ('python3 -u -', 'python3 -I'); PowerShell iex of '$(irm ...)', '& { $(irm ...) }' and curl aliases; Dockerfile exec-form 'ADD [\"URL\", \"/dst\"]'. iex matching is now linear on long runs of parentheses and spaces. Paths: lowercase dockerfile/containerfile/makefile, Taskfile.dist, .justfile, *.ksh/*.bat/*.cmd, nested .github, .travis.yml, .drone.yml, .buildkite, .gitlab, azure-pipelines*.yaml, bitbucket-pipelines.yml in subdirectories. Known limits named in the description: continuation lines, variables ($(CURL), $SHELL, x=$(curl ..); eval $x), unicode-escaped JSON, split or quoted command names (c\"\"url), download-to-file then run, fetchers and interpreters outside the lists (http, fetch, nc, deno, Rscript, tclsh, su -c, ssh, docker run -i), quoted echo arguments containing $(download piped to sh), extensionless scripts, and a line with thousands of repeated downloader words takes seconds to judge."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

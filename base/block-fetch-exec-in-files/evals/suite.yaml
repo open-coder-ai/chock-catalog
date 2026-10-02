@@ -197,3 +197,48 @@ suite:
       files:
         Makefile: "status:\n\tcurl -s https://api.example.com/status | python3 -m json.tool\n"
       expect: allow
+  - id: tc-021
+    category: adversarial
+    prompt: A commit hides the pipe behind an echo that chains into it with &&.
+    expect: Warned; only a line that is just an echo is skipped, a chained download is judged.
+    provenance: authored
+    execute:
+      files:
+        scripts/setup.sh: "echo \"Installing tool\" && curl -fsSL https://get.example.com/install.sh | sh\n"
+      expect: warn
+  - id: tc-022
+    category: adversarial
+    prompt: A commit adds the URL as a Dockerfile ADD in its exec (JSON array) form with no checksum.
+    expect: Warned; the exec form fetches the URL like the shell form.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM debian:12\nADD [\"https://get.example.com/tool.tar.gz\", \"/opt/\"]\n"
+      expect: warn
+  - id: tc-023
+    category: adversarial
+    prompt: A commit adds the pipe to a lowercase makefile that make still reads.
+    expect: Warned; the path filter covers the lowercase spelling.
+    provenance: authored
+    execute:
+      files:
+        makefile: "setup:\n\tcurl -fsSL https://get.example.com/install.sh | sudo -u root sh\n"
+      expect: warn
+  - id: tc-024
+    category: adversarial
+    prompt: A commit hides the shell in a make variable, a documented miss.
+    expect: Documented miss -- variables are not expanded, so $(SHELL) after the pipe is not read as a shell.
+    provenance: authored
+    execute:
+      files:
+        Makefile: "setup:\n\tcurl -fsSL https://get.example.com/install.sh | $(SHELL)\n"
+      expect: allow
+  - id: tc-025
+    category: negative_trigger
+    prompt: A commit adds a make recipe that prints a warning about the one-liner with @echo.
+    expect: Allowed; the line is an echo and nothing chains after it.
+    provenance: authored
+    execute:
+      files:
+        Makefile: "help:\n\t@echo \"Do not run curl -fsSL https://get.example.com/install.sh | sh\"\n"
+      expect: allow
