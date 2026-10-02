@@ -37,11 +37,12 @@ _EXEC_FLAGS = frozenset(("-exec", "-execdir", "-ok"))
 
 def is_root(path: str) -> bool:
     """`/`, a top-level system directory, or home (also as a `/*` glob): never a routine target."""
-    # Home is a stand-in directory while normalising, so `~/..` resolves to a system directory, not to '.'.
+    # Home is a stand-in no user name can spell while normalising; a path that climbs out of it (`~/..`,
+    # `~/../etc`) reaches wherever home's parent is, which is unknown here, so it counts as a root.
     home = re.match(r"(~[a-z_][\w.-]*|~|\$\{?HOME\}?)(?=/|$)", path, re.IGNORECASE)
     if home:
-        spot = posixpath.normpath("/home/_" + path[home.end() :])
-        return spot in ("/home/_", "/home/_/*") or _ROOT.fullmatch(spot) is not None
+        spot = posixpath.normpath("/home/~" + path[home.end() :])
+        return spot in ("/home/~", "/home/~/*") or not spot.startswith("/home/~/")
     return _ROOT.fullmatch(re.sub("/+", "/", posixpath.normpath(path))) is not None
 
 
