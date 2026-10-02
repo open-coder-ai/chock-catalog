@@ -180,3 +180,13 @@ suite:
     prompt: "A CMake define ends in an escaped hash and the flag follows on the same line."
     expect: "The commit is refused: an escaped hash does not start a comment."
     execute: {"event": "commit", "files": {"CMakeLists.txt": "add_compile_options(-DX=\\# -fno-stack-protector)\n"}, "expect": "block"}
+  - id: tc-035
+    category: adversarial
+    prompt: "A shell script quotes the zero in -D_FORTIFY_SOURCE."
+    expect: "The commit is refused: the shell strips the quotes, so FORTIFY_SOURCE is still set to zero."
+    execute: {"event": "commit", "files": {"build.sh": "gcc -O2 -D_FORTIFY_SOURCE='0' -o app main.c\n"}, "expect": "block"}
+  - id: tc-036
+    category: negative_trigger
+    prompt: "A shell script quotes a FORTIFY_SOURCE level that stays on."
+    expect: "The commit passes."
+    execute: {"event": "commit", "files": {"build.sh": "gcc -O2 -D_FORTIFY_SOURCE='2' -o app main.c\n"}, "expect": "allow"}

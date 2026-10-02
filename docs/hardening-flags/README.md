@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 34 total, 34 executable |
+| **Eval cases** | 36 total, 36 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Blocks added settings that weaken compiler, linker, Rust or kernel hardening, in CMake, Make, meson, configure.ac, Cargo, build.rs, Go release scripts, Dockerfiles and kernel config: no stack protector, FORTIFY_SOURCE off, non-PIE, execstack, norelro, CET off, kernel KASLR/RWX off. Asks on Rust release overflow-checks off, /dev/mem. Misses flags set by environment, generated files, toolchain defaults. Runs: commit, agent write, turn's end, CI. Waiver: 'pragma: allowlist hardening-flag'.
+Blocks added settings that weaken compiler, linker, Rust or kernel hardening, in CMake, Make, meson, configure.ac, Cargo, build.rs, Go release scripts, Dockerfiles and kernel config: no stack protector, FORTIFY_SOURCE off, non-PIE, execstack, norelro, CET off, kernel KASLR/RWX off. Asks on Rust release overflow-checks off, /dev/mem. Not MSVC, sysctl or container settings; misses environment flags, generated files. Runs: commit, agent write, turn's end, CI. Waiver: 'pragma: allowlist hardening-flag'.
 
 ## What it solves
 
