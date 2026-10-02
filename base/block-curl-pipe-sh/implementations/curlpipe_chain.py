@@ -3,7 +3,8 @@
 import re
 
 from chock_shellparse import Cmd, abbreviates, operands
-from curlpipe_rules import NONE, fetch_strength, is_interpreter, program, resolve, verifies
+from curlpipe_programs import is_interpreter, program, resolve
+from curlpipe_rules import NONE, fetch_strength, verifies
 
 _URL = re.compile(r"[a-z][a-z0-9+.-]*://", re.IGNORECASE)
 _STDOUT = frozenset(("-", "/dev/stdout", "/dev/fd/1"))

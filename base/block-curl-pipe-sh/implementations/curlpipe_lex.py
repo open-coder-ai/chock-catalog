@@ -214,33 +214,46 @@ def _tokens(text: str) -> tuple[list[Tok], bool]:
     return out, lexer.broken
 
 
-def _parse(toks: list[Tok], at: int) -> tuple[list[list[Stage]], int]:
+#: Compound commands read as one pipeline element, and the word that closes each.
+_COMPOUND = {"while": "done", "until": "done", "for": "done", "select": "done", "if": "fi", "case": "esac"}
+
+
+def _parse(toks: list[Tok], at: int, closer: str = ")") -> tuple[list[list[Stage]], int]:
+    """Pipelines up to `closer`: ')' or '}' for a group, or the done/fi/esac of a compound command."""
     pipelines: list[list[Stage]] = []
-    stages, cur, redir = [], Stage(), ""
+    stages, cur, redir, piped = [], Stage(), "", False
     while at < len(toks):
         tok, at = toks[at], at + 1
-        if tok.kind == "close":
+        word = tok.word.source if tok.word else ""
+        fresh = not (cur.words or cur.redirs or cur.group or redir)
+        if (tok.kind == "close" and closer != "esac") or (fresh and word == closer):
             break
-        if tok.kind == "open":
-            cur.group, at = _parse(toks, at)
-        elif tok.kind == "redir":
-            redir = tok.value
-        elif tok.kind == "word" and redir:
-            if redir in ("<<", "<<-"):
-                cur.heredocs.append(tok.body or "")
-            else:
-                cur.redirs.append((redir, tok.word or Word()))
-            redir = ""
-        elif tok.kind == "word":
-            cur.words.append(tok.word or Word())
-        else:
+        if tok.kind == "open" or (fresh and word in _COMPOUND):
+            cur.group, at = _parse(toks, at, _COMPOUND.get(word, ")"))
+        elif tok.kind in ("word", "redir"):
+            redir = _attach(cur, tok, redir)
+        elif not (tok.value == "\n" and piped and fresh):
             stages.append(cur)
             cur = Stage()
             if tok.value not in ("|", "|&"):
                 pipelines.append(stages)
                 stages = []
+        piped = tok.value in ("|", "|&") or (piped and tok.value == "\n")
     pipelines.append([*stages, cur])
     return pipelines, at
+
+
+def _attach(cur: Stage, tok: Tok, redir: str) -> str:
+    """Add a word or redirection to the stage; returns the redirection still waiting for its target."""
+    if tok.kind == "redir":
+        return tok.value
+    if redir in ("<<", "<<-"):
+        cur.heredocs.append(tok.body or "")
+    elif redir:
+        cur.redirs.append((redir, tok.word or Word()))
+    else:
+        cur.words.append(tok.word or Word())
+    return ""
 
 
 def lex(text: str) -> tuple[list[list[Stage]], bool]:
