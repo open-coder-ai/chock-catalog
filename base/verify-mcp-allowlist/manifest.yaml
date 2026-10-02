@@ -1,30 +1,28 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.4.1"
+version: "0.5.0"
 description: >
-  Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json or
-  `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a
-  write with no entry. Allowlist lives in the guard source; shell edits to it are refused, no
-  marker bypass. Script gate (commit, tool use incl. turn's end) parses written MCP configs
-  (.mcp.json, .cursor, .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers
-  and unparseable configs refused.
+  Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host).
+  Shell guard refuses `claude|codex|gemini|cursor-agent mcp add` and shell writes of MCP configs or the allowlist unless
+  listed. Script gate (commit, tool use, turn end) reads 13 client configs: unlisted or altered servers refuse; unpinned
+  or shell launchers, http urls, literal credentials, old versions only warn for now. Misses: aliases, scripts.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-    allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; no agent-typed marker passes, a person edits it; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex added-only at commit+tool_use
+    mcp_server(any client config): must(name+launcher+exact_args|url_host in .chock/mcp-allowlist.json); block(unlisted|altered); warn(unpinned|shell_launcher|http|literal_credential|below_floor|enable_all)
+    allowlist: file, empty by default; an agent is judged by HEAD's copy and cannot grow it, a person edits it; guard: `<agent> mcp add`, shell writes; gate: commit|tool_use|stop
 hook:
   gate:
     kind: script
     "on": [commit, tool_use]
     action: block
     message: >
-      An MCP server that is not on the allowlist is configured, or an MCP config cannot be parsed.
-      Only servers listed, by name and exact command/args/url, in
-      implementations/verify-mcp-allowlist.py may be added. Ask a person to review the server and
-      add it to that list; do not edit the allowlist yourself. Make the config valid JSON (TOML
-      for .codex) before writing it.
+      An MCP server is not on the allowlist, differs from its allowlisted entry, or its config cannot be parsed.
+      Only servers listed in .chock/mcp-allowlist.json (name with launcher and exact arguments, or url host) may be
+      configured; the server must also be pinned to an exact version or image digest, run no shell command line,
+      use https, and carry credentials only as references. Ask a person to review the server and edit the allowlist
+      from their own shell; do not edit the allowlist yourself.
     params:
       script: verify-mcp-allowlist_gate.py
 effects:
@@ -45,7 +43,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-07T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -59,6 +57,13 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.0
+  date: '2026-10-02'
+  changes:
+  - "Behaviour change: the allowlist moves out of the guard source into `.chock/mcp-allowlist.json` (closed schema: a `servers` list of objects with `name` and either `launcher` with `spec`, the arguments after it joined by single spaces, or `url_host`, which may be `*.domain`). The file is empty by default and a missing file is an empty list, so every server is unlisted. The built-in `filesystem` entry is gone: it was unpinned, so v2 would refuse it anyway; list a pinned one instead. Unknown keys, repeated keys, bad JSON or a wrong shape refuse every server and say why. An agent (tool use, turn's end, an agent's commit) is judged by the file as HEAD holds it, and a write of the file that adds or edits an entry is refused, so an agent cannot approve its own server; a person's commit reads the file on disk, so a person may add the entry and the server together. The allowlist may shrink. A shell write to the allowlist is refused like one to the guard source."
+  - "New script-gate rules, all observed (they exit 4, a warning, per decision D15; the v1 tiers still exit 1): a launcher not pinned exactly (npx, bunx, pnpm dlx, yarn dlx, npm exec, uvx, uv tool run, pipx run: `name@x.y.z` or `name==x.y.z`; a git source only at a commit; docker and podman: an `@sha256:` digest), a shell or inline-code launcher (sh, bash, cmd /c, powershell -Command, python -c, node -e, looked through env, sudo and timeout), an http url or one with embedded credentials, a literal value in an environment variable, header or argument whose name says token, key, secret, password or auth, a denied option or environment variable (data/mcp-option-denylist.json), a package below its floor (data/mcp-version-floors.json: mcp-remote 0.1.16, mcp-server-git 2025.12.18; the inspector is covered by the pin rule), a repeated key, `enableAllProjectMcpServers` that is not false, and an `enabledMcpjsonServers` name the allowlist does not hold. An allowlist entry never waives one of these. Promoting a rule is adding it to ENFORCED in the gate."
+  - "More clients read: .windsurf/mcp_config.json, .roo/mcp.json, .kiro/settings/mcp.json, .zed/settings.json (context_servers), opencode.json and opencode.jsonc (mcp), .claude/settings*.json, beside the v1 set; paths match in any case and either slash, trailing dots and spaces dropped. JSON is read as JSONC through the shared reader, so comments and trailing commas no longer hide or refuse a config; a repeated key is a finding and the values it hides are judged too. An entry is read from `command` as a string, a list or a Zed object, with `env`/`environment` and `headers`/`http_headers`; Codex TOML tables are read the same way. A server's key is its name and a digest of its whole entry, so a changed argument, environment, header or url is a new finding (the rug pull), while a reformat or a move is not."
+  - "The shell guard also refuses `codex mcp add`, `gemini mcp add` and `cursor-agent mcp add` unless the added spec is on the allowlist; it reads -e/--env, -H/--header, --url and --transport, `--` launch lines and `add-json`. It refuses on the v1 tier only: an unlisted or altered server, an unreadable command; the new rules above are observed in the gate. A shell write is checked for the dedicated MCP files only (.mcp.json, .cursor, .vscode, .windsurf, .roo, .kiro, claude_desktop_config.json); the settings files that hold other things are judged by the gate. Eval suite rewritten: 103 cases, including the roadmap's mixed-case path, `codex mcp add`, JSONC, unpinned, shell launcher, http, changed argument, literal credential and enable-all cases."
 - version: 0.4.1
   date: '2026-09-30'
   changes:

@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~364 tokens (chars/4, max 2000)
+INDEX.md: ~373 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unguarded-agent-spawn:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~364 tokens (chars/4, max 2000)
+INDEX.md: ~373 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -148,6 +148,6 @@ block-unguarded-agent-spawn  [deterministic]
 
 ```text
 - **block-unguarded-agent-spawn**:
-  never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox|-s_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f)
+  never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
   if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 ```

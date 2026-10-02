@@ -1,18 +1,16 @@
 id: block-unguarded-agent-spawn
 name: "Block Unguarded Agent Spawn"
-version: "0.0.2"
+version: "0.1.0"
 description: >
-  Best-effort guard against an agent launching a coding agent with safety checks off: claude
-  --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
-  --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini
-  --yolo, -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env,
-  npx/bunx/pnpx wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts,
-  config-set modes, unlisted agents.
+  Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
+  bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never, danger-full-access;
+  gemini --yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline, goose, opencode
+  auto-approve. Looks through cd, bash -c, sudo, env, npx and uvx; echo text passes. Misses: aliases, scripts, config.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox|-s_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f)
+    never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
     if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 effects:
 - read_only
@@ -28,7 +26,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -50,3 +48,7 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Wording only, verdicts unchanged: the description lists what the guard already catches but did not name -- cursor-agent -f, codex -s danger-full-access, and bunx and pnpx as well as npx -- and fits the 500-char budget. The refusal now gives a route forward: run the agent with default approvals, or ask the person to start an unattended run from their own shell. The rule text lists the same flags and says to ask the person."
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "Six more agents and more flags, each refused as before with the same message. codex `--ask-for-approval never` or `-a never` (also `=never`); aider `--yes-always` and `--yes`; copilot `--allow-all-tools`, `--allow-all` and `--yolo`; amp, cline, goose and opencode with the auto-approve flag family (`--dangerously-skip-permissions`, `--dangerously-allow-all`, `--yolo`, `--trust-all-tools`, `--auto-approve`, `--auto-approve-all`, `--allow-all-tools`, `--yes-always`, and `-y` for cline), and goose with `GOOSE_MODE=auto` in front of it; claude `--allowedTools` or `--allowed-tools` with a bare `*` or a `Tool(*)` or `Tool(:*)` wildcard, in the first value or a one-word later value (a scoped `Bash(git:*)` and a prompt after the list pass). `uvx` joins `npx`, `bunx` and `pnpx` as a wrapper the package name is read through, with `aider-chat`, `@github/copilot`, `@sourcegraph/amp`, `cline` and `opencode-ai` added to the packages; a `==version` suffix is dropped like `@version`. Every command of a pipeline or list is judged, as before. The flag lists are the ones each agent's documentation names; a flag spelled another way, a config file that turns approvals off, an alias or a wrapper script is not seen."

@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 65 total, 65 executable |
+| **Eval cases** | 103 total, 103 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass. Script gate (commit, tool use incl. turn's end) parses written MCP configs (.mcp.json, .cursor, .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs refused.
+Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host). Shell guard refuses `claude|codex|gemini|cursor-agent mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs: unlisted or altered servers refuse; unpinned or shell launchers, http urls, literal credentials, old versions only warn for now. Misses: aliases, scripts.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> An MCP server that is not on the allowlist is configured, or an MCP config cannot be parsed. Only servers listed, by name and exact command/args/url, in implementations/verify-mcp-allowlist.py may be added. Ask a person to review the server and add it to that list; do not edit the allowlist yourself. Make the config valid JSON (TOML for .codex) before writing it.
+> An MCP server is not on the allowlist, differs from its allowlisted entry, or its config cannot be parsed. Only servers listed in .chock/mcp-allowlist.json (name with launcher and exact arguments, or url host) may be configured; the server must also be pinned to an exact version or image digest, run no shell command line, use https, and carry credentials only as references. Ask a person to review the server and edit the allowlist from their own shell; do not edit the allowlist yourself.
 
 ## Which primitive it becomes
 

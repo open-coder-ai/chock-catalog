@@ -621,20 +621,19 @@ policies:
     commit, agent write (vs disk), turn''s end (vs HEAD).'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.4.1
+  version: 0.5.0
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 65
-  eval_executed: 65
-  description: 'Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json
-    or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write
-    with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass.
-    Script gate (commit, tool use incl. turn''s end) parses written MCP configs (.mcp.json, .cursor,
-    .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs
-    refused.'
+  eval_cases: 103
+  eval_executed: 103
+  description: 'Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher
+    with exact args, or url host). Shell guard refuses `claude|codex|gemini|cursor-agent mcp add` and
+    shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn
+    end) reads 13 client configs: unlisted or altered servers refuse; unpinned or shell launchers, http
+    urls, literal credentials, old versions only warn for now. Misses: aliases, scripts.'
 - id: block-test-skips
   path: base/block-test-skips
   version: 0.1.0
@@ -714,7 +713,7 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.0.2
+  version: 0.1.0
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -722,9 +721,8 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 25
   eval_executed: 25
-  description: 'Best-effort guard against an agent launching a coding agent with safety checks off:
-    claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
-    --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo,
-    -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
-    wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
-    unlisted agents.'
+  description: 'Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
+    bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never,
+    danger-full-access; gemini --yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools;
+    amp, cline, goose, opencode auto-approve. Looks through cd, bash -c, sudo, env, npx and uvx; echo
+    text passes. Misses: aliases, scripts, config.'

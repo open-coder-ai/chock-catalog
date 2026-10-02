@@ -10,6 +10,8 @@ from types import ModuleType
 from trees import ROOT
 
 SHELLPARSE = "chock_shellparse"
+#: Packages a shipped script imports from beside itself; tests/ holds a chock_scan of its own, so none may leak across loads.
+ISOLATED = (SHELLPARSE, "chock_scan", "mcpcheck")
 
 
 def impl_dir(policy: str) -> Path:
@@ -24,7 +26,7 @@ def policies_with_shellparse() -> list[str]:
 
 
 def _forget() -> dict[str, ModuleType]:
-    return {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] == SHELLPARSE}
+    return {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] in ISOLATED}
 
 
 def forget_shellparse() -> None:

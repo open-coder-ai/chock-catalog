@@ -19,4 +19,5 @@ base/protect-commit-privacy:
 base/rtk-dangerous-actions-blocker:
   chock_shellparse: [args, parse, targets, writes]
 base/verify-mcp-allowlist:
+  chock_scan: [data_table, hostmatch, hosts, idn, jsonc, safe_read, urls]
   chock_shellparse: [args, parse, targets, writes]

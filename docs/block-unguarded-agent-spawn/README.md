@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Best-effort guard against an agent launching a coding agent with safety checks off: claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto, --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo, -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes, unlisted agents.
+Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions, bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never, danger-full-access; gemini --yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline, goose, opencode auto-approve. Looks through cd, bash -c, sudo, env, npx and uvx; echo text passes. Misses: aliases, scripts, config.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ A guard script, `implementations/block-unguarded-agent-spawn.py`, run before the
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox|-s_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f)
+never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
 if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 ```
 
