@@ -38,7 +38,7 @@ def test_every_operator_is_one_token(m: SimpleNamespace, op: str) -> None:
 
 
 def test_identifiers_take_unicode_letters_underscore_and_dashes(m: SimpleNamespace) -> None:
-    assert kinds(m, "_x é-ü9 ж") == [("IDENT", "_x"), ("IDENT", "é-ü9"), ("IDENT", "ж"), ("EOF", "")]
+    assert kinds(m, "_x \u00e9-ü9 ж") == [("IDENT", "_x"), ("IDENT", "\u00e9-ü9"), ("IDENT", "ж"), ("EOF", "")]
 
 
 @pytest.mark.parametrize(

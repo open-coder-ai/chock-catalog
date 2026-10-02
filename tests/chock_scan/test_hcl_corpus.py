@@ -8,13 +8,17 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from chock_scan.hclload import CORPUS
 
 FILES = sorted(p for p in CORPUS.rglob("*") if p.is_file() and p.name != "NOTICE.md")
 VALID = [p for p in FILES if "invalid" not in p.parts]
 INVALID = [p for p in FILES if "invalid" in p.parts]
-EMPTY = {"valid-files-empty.tf.json", "comments-hash_comment.hcl", "comments-multiline_comment.hcl", "comments-slash_comment.hcl"}
+EMPTY = {
+    "valid-files-empty.tf.json",
+    "comments-hash_comment.hcl",
+    "comments-multiline_comment.hcl",
+    "comments-slash_comment.hcl",
+}
 
 
 def read(m: SimpleNamespace, path: Path) -> object:
@@ -64,7 +68,7 @@ def test_the_spec_suite_heredocs_match_hcls_expected_values(m: SimpleNamespace) 
     assert values["flush"] == {
         "basic": "Foo\nBar\nBaz\n", "indented": "Foo\nBar\nBaz\n", "indented_more": "Foo\n  Bar\nBaz\n",
         "indented_less": "  Foo\nBar\n  Baz\n", "interp": c, "interp_indented_more": c, "interp_indented_less": c,
-        "tabs": "Foo\n Bar\n Baz\n", "unicode_spaces": " Foo (there's two \"em spaces\" before Foo there)\nBar\nBaz\n",
+        "tabs": "Foo\n Bar\n Baz\n", "unicode_spaces": "\u2003Foo (there's two \"em spaces\" before Foo there)\nBar\nBaz\n",
         "newlines_between": "Foo\n\nBar\n\nBaz\n", "indented_newlines_between": "Foo\n\nBar\n\nBaz\n",
     }  # fmt: skip
 
