@@ -13,7 +13,7 @@ from typing import NamedTuple
 MAX_STATEMENT = 4000
 OVERLAP = 500
 #: A fence opener: up to three spaces, then three or more backticks or tildes.
-FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, rule or front matter.
 BLOCK_START = re.compile(
     r"^\s*(?:[-*+]\s|\d{1,9}[.)]\s|#{1,6}(?:\s|$)|---+\s*$|===+\s*$|<(?:!--|/?(?i:address|article|aside|blockquote"
@@ -33,7 +33,10 @@ CONTINUED = ("\\", "|", "&&")
 #: Quotes or brackets around one word in prose, dropped so they cannot split a phrase (not $(x), never(x) or a
 #: fake trust tag such as [inst]).
 WRAPPED_WORD = re.compile(r"(?<![\w$])[\"'(\[](?!(?:inst|system|sys)[\"')\]])([\w-]+)[\"')\]]")
-#: A markdown hard line break (two trailing spaces, a trailing backslash, <br>) ends a sentence.
+#: An inline <br> in prose reads as a space (a table cell's line break).
+BREAK_TAG = re.compile(r"<br\s*/?>", re.IGNORECASE)
+#: A markdown hard line break (two trailing spaces, a trailing backslash, <br>) ends a part of a paragraph;
+#: the paragraph is also judged whole.
 HARD_BREAK = re.compile(r"(?: {2,}|\\|<br\s*/?>)$", re.IGNORECASE)
 #: A sentence ends at . ! or ? followed by space and a capital, quote, bracket or markup character.
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"'(\[<`*_~#\u00c0-\u024f])")
@@ -83,6 +86,8 @@ def normalize(text: str, *, code: bool = False) -> str:
     """Casefolded text with accents, format and control characters removed and whitespace collapsed.
 
     Prose also loses emphasis marks and backticks (code spans); a fenced line keeps backticks."""
+    if not code:
+        text = BREAK_TAG.sub(" ", text)
     if not text.isascii():
         text = "".join(map(_kept, unicodedata.normalize("NFKD", text.translate(FOLD))))
     text = text.casefold()
@@ -161,6 +166,7 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
     aside and a statement ends only where the quote depth changes."""
     out: list[Statement] = []
     parts: list[tuple[int, str]] = []
+    whole: list[tuple[int, str]] = []  # the paragraph across hard breaks, judged whole as well
     code: list[tuple[int, str]] = []
     fence: str | None = None
     quoted = [QUOTE.match(line) for line in lines[skip:]]
@@ -174,20 +180,33 @@ def _body(lines: list[str], skip: int) -> list[Statement]:
             fence = _fenced(line, number, fence, code, out)
             continue
         if depths[k] != depth and not _lazy(depths[k], parts, line):
-            _flush(parts, out)
+            _end(parts, whole, out)
             depth = depths[k]
         if (opener := FENCE.match(line)) or not line.strip() or BLOCK_START.match(line) or k in tables:
-            _flush(parts, out)
+            _end(parts, whole, out)
             if opener:
                 fence = opener.group(1)
             if opener or not line.strip():
                 continue
         parts.append((number, line))
-        if line.lstrip().startswith("#") or HARD_BREAK.search(line):
+        whole.append((number, line))
+        if line.lstrip().startswith("#"):
+            _end(parts, whole, out)
+        elif HARD_BREAK.search(line):
             _flush(parts, out)
-    _flush(parts, out)
+    _end(parts, whole, out)
     _flush_code(code, out)
     return out
+
+
+def _end(parts: list[tuple[int, str]], whole: list[tuple[int, str]], out: list[Statement]) -> None:
+    """End a paragraph: its last part and, when a hard break split it, the whole paragraph again, so a hard
+    break cuts a negation's reach in one reading and cannot split a phrase or a command in the other."""
+    split = len(whole) > len(parts)
+    _flush(parts, out)
+    if split:
+        _flush(whole, out)
+    whole.clear()
 
 
 def _lazy(depth: int, parts: list[tuple[int, str]], line: str) -> bool:
