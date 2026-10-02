@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: guard-deletion
+  path: base/guard-deletion
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 18
+  eval_executed: 17
+  description: 'trigger: a change that removes a check, auth decorator, middleware registration, sanitizer
+    call or path check with none like it in the same hunk (ask), or removes or weakens a hardening flag,
+    security header, cookie attribute, TLS verification, row-level security or file mode (block). Hunk-local,
+    line-level; misses a guard moved to another hunk or file, a semantic replacement, a deletion-only
+    commit, and tests, docs and vendored code (not judged).'

@@ -1,0 +1,48 @@
+id: guard-deletion
+name: "Guard Deletion and Mitigation Removal"
+version: "0.0.1"
+description: >
+  trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check
+  with none like it in the same hunk (ask), or removes or weakens a hardening flag, security header, cookie
+  attribute, TLS verification, row-level security or file mode (block). Hunk-local, line-level; misses a guard moved
+  to another hunk or file, a semantic replacement, a deletion-only commit, and tests, docs and vendored code (not judged).
+artifact: hook
+enforcement: block
+mandatory: false
+effects: [read_only]
+approval:
+  required: false
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      guard-deletion: this change removes a check or a security mitigation (the refusal above names the file,
+      line and family). Keep it, or move its replacement into the same hunk. A removed guard asks a person; a
+      removed or weakened mitigation (hardening flag, security header, cookie attribute, TLS verification,
+      row-level security, file mode) is refused. A person who has reviewed the removal waives one line with
+      'pragma: allowlist guard-removal' or 'pragma: allowlist mitigation-removal'; an agent's own pragma counts
+      only once that exact line is committed.
+    params:
+      script: guard-deletion-gate.py
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (NP31). One script gate, two rules, over the diff of a change rather than a file. guard-deletion (ask): a removed line matches a guard shape and no added line in the same hunk matches a guard shape of the same group. mitigation-removal (block): a removed or weakened hardening flag, security header, cookie attribute, TLS verification, row-level security or file mode. Shapes live in implementations/data/shapes.json and the path scope in implementations/data/scope.json (EP12 tables)."

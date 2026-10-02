@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import subprocess
 import sys
@@ -83,3 +84,8 @@ def run_script_full(
         env=env,
         check=False,
     )
+
+
+def os_path() -> str:
+    """The PATH of this process, for a child run with a custom environment."""
+    return os.environ.get("PATH", "")

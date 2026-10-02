@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "r12": "open-coder-ai/org-plan:discovery/2026-10-01-security-research-12-model-review-techniques-to-deterministic-guards.md",
+    "roadmap": "open-coder-ai/org-plan:chock/plan/security-coverage-roadmap.md"
+  },
+  "dirs": [
+    "tests",
+    "test",
+    "__tests__",
+    "testdata",
+    "fixtures",
+    "__fixtures__",
+    "__mocks__",
+    "evals",
+    "docs",
+    "doc",
+    "vendor",
+    "node_modules",
+    "third_party"
+  ],
+  "names": [
+    "test_*.py",
+    "*_test.py",
+    "*_test.go",
+    "*.test.*",
+    "*.spec.*",
+    "*Test.java",
+    "*Tests.java",
+    "conftest.py",
+    "*.min.js",
+    "*.min.css",
+    "*.snap",
+    "*.lock",
+    "package-lock.json"
+  ],
+  "suffixes": [
+    ".md",
+    ".mdx",
+    ".rst",
+    ".adoc"
+  ]
+}
