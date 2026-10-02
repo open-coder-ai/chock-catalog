@@ -5,6 +5,10 @@
 These advise-tier policies were demoted from the main index to keep the attention
 budget focused on block and verify enforcement. Read them when the task matches.
 
+- **protect-commit-privacy**:
+  commit_message|pr_description: describe(change); never(narrate: conversation|plan|who_asked|user_quotes|session_refs|internal_doc_paths)
+  if(marker_hit|sensitive_context): ask_person before(commit); no_waiver(person removes phrase from MARKERS); never(edit MARKERS)  # history is published forever
+
 - **token-efficiency**:
   cap(tool_output): 4000_bytes; cap(search_results): top_3; cap(retry_loops): max_3_iterations
   prefer: targeted_reads|structured_output|on_demand_refs; never: re-read(unchanged_file)|load_all_upfront

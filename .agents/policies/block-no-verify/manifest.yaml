@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.3.1"
+version: "0.3.2"
 description: >
   Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am and rebase,
   -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c,
@@ -87,3 +87,7 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Wording only, verdicts unchanged: the description now says the guard also covers merge, am and rebase and -n on am (and commit), and the rule text states the person-only-variable refusal. The override message said the variable 'decides whether a gate sees an agent's commit', which is wrong for CHOCK_DIFF_LIMIT and CHOCK_ALLOW_LARGE_DIFF; it now calls each a person-only setting (who is committing, an ask answer, the diff limit). The description fits the 500-char budget. source_repo points at chock-catalog."
+- version: 0.3.2
+  date: '2026-09-30'
+  changes:
+  - "Behaviour change: CHOCK_ROLLOUT and CHOCK_GATE_LOG are person-only variables, refused like CHOCK_ALLOW. CHOCK_ROLLOUT=observe or ask lowers the compiled gates to a warning or an ask for a person's own commit or push, and the engine ignores it when it sees an agent marker; refusing it here covers agents that set no marker. CHOCK_GATE_LOG=0 switches off the gate log."

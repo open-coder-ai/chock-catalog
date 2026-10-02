@@ -7,8 +7,8 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: block`) |
-| **Mechanism** | commit-time guard script `no-a11y-regression-pre-commit.py` |
-| **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
+| **Mechanism** | commit-time guard script `no-a11y-regression-pre-commit.py` + tool-use script gate |
+| **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen; also judged at tool use, `best-effort` once `chock sync` has run (a crashed hook fails open) |
 | **Compiles to** | `git-hook`, `ambient-rule` |
 | **Eval cases** | 20 total, 7 executable |
 | **Enabled by default** | yes |
@@ -26,6 +26,8 @@ An agent remediating accessibility can make it worse while the report says it im
 ## How it works
 
 A guard script, `implementations/no-a11y-regression-pre-commit.py`, run by the git hook at every commit with no arguments. It reads the staged revision of each file from git and exits non-zero to refuse the commit.
+
+A `script` gate also runs at tool use, on what a write would leave and on what the turn left at its end. That point is best-effort: it needs the agent's hook installed and fails open if the hook crashes. The commit is the enforced point.
 
 The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:
 

@@ -57,8 +57,6 @@
     "sanitizers": [
       "FilenameUtils.getName(",
       ".getFileName()",
-      ".normalize()",
-      ".startsWith(",
       "UUID.fromString(",
       "Pattern.matches(",
       ".matches(\"",
@@ -249,10 +247,6 @@
     "sinks": [
       ".compile(",
       ".evaluate("
-    ],
-    "sanitizers": [
-      "XPathVariableResolver",
-      "setXPathVariableResolver("
     ],
     "not_xpath": [
       "Pattern.compile("

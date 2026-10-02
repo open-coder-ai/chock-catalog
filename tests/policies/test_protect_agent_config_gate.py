@@ -25,12 +25,87 @@ PATHS = [
     ".chock/compiled/scan-secrets/git-hook/gate.json",
     ".chock/dependency-allowlist.txt",
     ".chock/config.yaml",
+    ".chock/security.json",
+    ".chock/agentic-security.json",
     ".git/hooks/pre-commit",
     ".agents/policies/scan-secrets/implementations/scan.py",
     "sub/dir/AGENTS.md",
     ".claude\\settings.json",
+    ".chock//security.json",
+    ".chock/./security.json",
+    ".chock/.//agentic-security.json",
+    ".chock/SECURITY.json",
+    "Agents.md",
+    ".cursor/mcp.json",
+    ".vscode/mcp.json",
+    ".gemini/settings.json",
+    ".codex/config.toml",
+    ".junie/mcp/mcp.json",
+    ".devin/mcp_config.json",
+    ".devin/mcp_config.local.json",
+    ".devin/config.json",
+    ".devin/config.local.json",
+    ".grok/config.toml",
+    ".agents/mcp_config.json",
+    ".tabnine/agent/settings.json",
+    "sub/.cursor/mcp.json",
+    ".CURSOR/MCP.JSON",
+    ".vscode//mcp.json",
+    ".gemini/./settings.json",
+    ".codex/.//config.toml",
+    ".junie\\mcp\\mcp.json",
+    ".junie/mcp/./mcp.json",
+    ".Devin/MCP_Config.json",
+    ".tabnine//agent/./settings.json",
+    ".cursor/hooks.json",
+    ".codex/hooks.json",
+    ".windsurf/hooks.json",
+    ".github/hooks/chock.json",
+    ".github/hooks/agentseam.json",
+    ".grok/hooks/agentseam.json",
+    ".devin/hooks.v1.json",
+    ".agents/hooks.json",
+    ".CURSOR/Hooks.json",
+    ".cursor//hooks.json",
+    ".codex/./hooks.json",
+    ".windsurf\\hooks.json",
+    ".github//hooks/chock.json",
+    ".GITHUB/hooks/chock.json",
+    ".github/./hooks/chock.json",
+    ".grok/hooks//agentseam.json",
+    ".devin/./hooks.v1.json",
+    ".agents//hooks.json",
 ]
-UNRELATED = ["README.md", "src/app.py", ".claude/commands/x.md", ".chock/notes.md", ".agents/skills/a/SKILL.md"]
+# Guarded from the shell only: the engine writes its own session log there, which the turn's-end walk would refuse.
+SHELL_ONLY = (".chock/state",)
+UNRELATED = [
+    "README.md",
+    "src/app.py",
+    ".claude/commands/x.md",
+    ".chock/notes.md",
+    ".agents/skills/a/SKILL.md",
+    ".vscode/launch.json",
+    ".vscode/settings.json",
+    ".cursor/rules/chock.mdc",
+    ".gemini/commands/review.toml",
+    ".codex/prompts/review.md",
+    ".junie/guidelines.md",
+    ".devin/notes.md",
+    ".grok/GROK.md",
+    ".tabnine/agent/notes.md",
+    ".github/workflows/ci.yml",
+    ".github/ISSUE_TEMPLATE/x.md",
+    ".github/hooks.md",
+    ".github/dependabot.yml",
+    ".cursor/rules/a.mdc",
+    ".windsurf/rules/chock.md",
+    ".codex/hooks.md",
+    ".grok/notes.md",
+    ".devin/hooks.md",
+    ".agents/hooks.md",
+    "docs/mcp.json",
+    "mcp_config.json",
+]
 
 
 @pytest.fixture
@@ -73,6 +148,16 @@ def test_the_turns_end_refuses_a_changed_protected_file(repo: Path) -> None:
     assert code == 1
 
 
+@pytest.mark.parametrize("path", [".gemini/settings.json", ".tabnine/agent/settings.json", ".cursor/hooks.json"])
+def test_the_turns_end_refuses_a_client_config_that_a_sync_left_dirty(tmp_path: Path, path: str) -> None:
+    dirty = scriptkit.init_repo(tmp_path / "d", {path: "{}\n", "src/app.py": "x = 1\n"})
+    (dirty / path).write_text('{"hooks": {}}\n', encoding="utf-8")
+    code, err = gatekit.judge(POLICY, dirty, gatekit.STOP, {path: '{"hooks": {}}\n'})
+    assert code == 1
+    assert "forbidden path" in err
+    assert gatekit.judge(POLICY, dirty, gatekit.STOP, {"src/app.py": "x = 1\n"}) == (0, "")
+
+
 def test_the_turns_end_passes_a_protected_file_the_turn_did_not_change(repo: Path) -> None:
     assert gatekit.judge(POLICY, repo, gatekit.STOP, {"src/app.py": "x = 1\n"}) == (0, "")
 
@@ -90,8 +175,39 @@ def test_a_waiver_line_committed_in_head_does_not_unlock_the_file(tmp_path: Path
 
 def test_the_gate_covers_exactly_what_the_guard_protects() -> None:
     pattern = re.compile(gatekit.gate_spec(POLICY)["params"]["forbidden_path_regex"])
-    samples = PATHS + UNRELATED + [f"deep/{p}" for p in guard.PROTECTED] + [f"{p}/x" for p in guard.PROTECTED]
+    gated = [p for p in guard.PROTECTED if p not in SHELL_ONLY]
+    samples = PATHS + UNRELATED + [f"deep/{p}" for p in gated] + [f"{p}/x" for p in gated] + [p.upper() for p in gated]
     for path in samples:
         assert bool(pattern.search(path)) == guard.hit(path), path
-    for part in guard.PROTECTED:
+    for part in gated:
         assert pattern.search(part), f"the gate misses {part}"
+
+
+@pytest.mark.parametrize("part", SHELL_ONLY)
+def test_a_shell_only_path_is_guarded_but_not_gated(repo: Path, part: str) -> None:
+    assert part in guard.PROTECTED
+    assert guard.hit(f"{part}/s.stop.jsonl")
+    pattern = re.compile(gatekit.gate_spec(POLICY)["params"]["forbidden_path_regex"])
+    assert not pattern.search(f"{part}/s.stop.jsonl")
+    scriptkit.write(repo, {f"{part}/s.jsonl": "{}\n"})
+    assert gatekit.judge(POLICY, repo, gatekit.STOP, {f"{part}/s.jsonl": "{}\n"}) == (0, "")
+
+
+@pytest.mark.parametrize(
+    ("raw", "normal"),
+    [
+        (".chock//security.json", ".chock/security.json"),
+        (".chock/./security.json", ".chock/security.json"),
+        (".chock/.//./security.json", ".chock/security.json"),
+        (".chock\\SECURITY.json", ".chock/security.json"),
+        ("./.chock/x", "./.chock/x"),
+    ],
+)
+def test_a_path_is_normalised_before_it_is_matched(raw: str, normal: str) -> None:
+    assert guard.normalise(raw) == normal
+
+
+@pytest.mark.parametrize("path", [".chock//security.json", ".chock/./security.json", ".chock/SECURITY.json"])
+def test_reading_a_respelled_selection_passes_the_guard(path: str) -> None:
+    assert guard.check(f"cat {path}") is None
+    assert guard.check(f"sed -i s/deny/allow/ {path}") == guard.REASON
