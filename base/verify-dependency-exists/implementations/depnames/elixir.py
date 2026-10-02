@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import re
 
-_COMMENT = re.compile(r"(?m)(?:^|\s)#.*$")
+_COMMENT = re.compile(r"(?m)^\s*#.*$")
 _TUPLE = re.compile(r'\{\s*:([A-Za-z_][A-Za-z0-9_]*)\s*,\s*((?:"|[a-z_]+:)[^}]*)')
 _NOT_PACKAGES = frozenset({"ok", "error"})
 
 
 def _local(rest: str) -> bool:
     """An umbrella sibling or a path dependency: no registry or git source is named."""
-    return "in_umbrella:" in rest or ("path:" in rest and not re.search(r"\b(?:git|github|hex|organization)\b:|^\s*\"", rest))
+    return "in_umbrella:" in rest or (
+        "path:" in rest and not re.search(r"\b(?:git|github|hex|organization)\b:|^\s*\"", rest)
+    )
 
 
 def mix_names(text: str) -> list[str]:

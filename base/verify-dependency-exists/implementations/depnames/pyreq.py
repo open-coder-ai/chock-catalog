@@ -8,7 +8,7 @@ import re
 
 _NAME = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?")
 _TAIL = re.compile(r"\s*(?:$|\[|[=<>!~;(@,])")
-_OPTION = re.compile(r"\s+--?[A-Za-z]")
+_OPTION = re.compile(r"(?<!\s)\s+--?[A-Za-z]")
 _INCLUDE = re.compile(r"^(?:-r|-c|--requirement=|--constraint=|--requirement\s+|--constraint\s+)\s*(\S.*)$")
 _EDITABLE = re.compile(r"^(?:-e\s*|--editable(?:\s+|=))(\S.*)$")
 _EGG = re.compile(r"[#&]egg=([A-Za-z0-9][A-Za-z0-9._-]*)")

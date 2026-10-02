@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -273,3 +274,20 @@ def test_main_reads_stdin_in_process(
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload(repo, {"Gemfile": "gem 'evil'\n"}))))
     assert mod.main() == 1
     assert json.loads(capsys.readouterr().out)["findings"][0]["key"] == "gem|evil"
+
+
+def test_a_whitespace_padded_requirement_line_cannot_stall_the_gate(repo: Path) -> None:
+    started = time.monotonic()
+    run(repo, {"requirements.txt": "evil" + " " * 80_000 + "-\n"})
+    code, document, _ = run(repo, {"requirements.txt": "evil" + " " * 80_000 + "--hash=sha256:x\n"})
+    assert (code, keys(document)) == (1, ["py|evil"])
+    assert time.monotonic() - started < 5
+
+
+def test_an_oversize_requirements_file_is_not_scanned_for_includes_and_a_tall_file_skips_line_lookup(
+    repo: Path,
+) -> None:
+    code, document, _ = run(repo, {"requirements.txt": "x" * (mod.MAX_CHARS + 1)})
+    assert (code, keys(document)[0].split("|")[0]) == (1, "refused")
+    tall = "\n" * (mod.MAX_LOOKUP_LINES + 1) + "evil\n"
+    assert run(repo, {"requirements.txt": tall})[1]["findings"][0]["line"] == 1

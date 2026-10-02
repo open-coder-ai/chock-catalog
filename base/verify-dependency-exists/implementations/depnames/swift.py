@@ -20,8 +20,8 @@ def _location(url: str) -> str:
 def package_swift_names(text: str) -> list[str]:
     """Remote package locations (and registry ids) a manifest depends on; `path:` packages are local.
 
-    Block comments are not stripped: a `/*` inside a string must not hide the code after it, so a commented-out
-    package is reported too, and the baseline absorbs one that was already there.
+    No comment is stripped: a `/*` inside a string must not hide the code after it, and a `//` line can end a block
+    comment, so a commented-out package is reported too, and the baseline absorbs one that was already there.
     """
-    code = "\n".join(line for line in text.removeprefix("\ufeff").splitlines() if not line.lstrip().startswith("//"))
+    code = text.removeprefix("\ufeff")
     return [_location(value) if kind == "url" else value for kind, value in _PACKAGE.findall(code)]

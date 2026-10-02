@@ -30,6 +30,7 @@ ALLOWLIST = ".chock/dependency-allowlist.txt"
 MAX_CHARS = 16_000_000
 ASK, BLOCK = 3, 1
 MAX_LINE_LOOKUPS = 500
+MAX_LOOKUP_LINES = 20_000
 REFUSALS = {xmlsafe.RefusedError: "declares a DOCTYPE or ENTITY and is not parsed"}
 ADVICE = (
     "ask a person to add it, and confirm the package exists in its registry and is the intended one (no lookup is made)"
@@ -84,7 +85,7 @@ def targets(writes: dict[str, str]) -> dict[str, Family]:
     queue = [path for path, fam in found.items() if fam is REQUIREMENTS]
     while queue:
         path = queue.pop()
-        wanted = includes(writes[path])
+        wanted = includes(writes[path]) if len(writes[path]) <= MAX_CHARS else []
         for target in wanted:
             resolved = posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
             if resolved.startswith(("..", "/")) or resolved in found or resolved not in writes:
@@ -125,11 +126,14 @@ def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict]]:
         except Exception as exc:  # noqa: BLE001 -- untrusted manifest text; a file the reader cannot parse is not a pass
             digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
             message = f"{fam.kind} could not be parsed ({type(exc).__name__}), so its dependencies were not checked"
-            locks.append({"key": f"unreadable|{type(exc).__name__}|{digest}", "path": path, "line": 1, "message": message})
+            locks.append(
+                {"key": f"unreadable|{type(exc).__name__}|{digest}", "path": path, "line": 1, "message": message}
+            )
             continue
         if fam.lock and any(eco == fam.eco and covers(each, posixpath.dirname(path)) for eco, each in manifest_dirs):
             continue
-        lines = text.lower().splitlines() if not fam.lock and len(names) <= MAX_LINE_LOOKUPS else []
+        findable = not fam.lock and len(names) <= MAX_LINE_LOOKUPS and text.count("\n") <= MAX_LOOKUP_LINES
+        lines = text.lower().splitlines() if findable else []
         for name in names:
             if (fam.eco, name) in allowed:
                 continue
@@ -172,7 +176,11 @@ def main() -> int:
     found = manifest or locks
     if not found:
         return 0
-    kind = "Unlisted dependency refused" if manifest else "Unlisted lockfile package, or a manifest that could not be parsed"
+    kind = (
+        "Unlisted dependency refused"
+        if manifest
+        else "Unlisted lockfile package, or a manifest that could not be parsed"
+    )
     print(f"dependency-manifests: {kind}:", file=sys.stderr)
     for item in found:
         print(f"  {item['path']}:{item['line']}: {item['message']}", file=sys.stderr)

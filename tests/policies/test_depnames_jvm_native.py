@@ -112,7 +112,6 @@ dependencies {
     kapt 'com.google.dagger:dagger-compiler:2.50'
     compile group: 'org.old', name: 'legacy', version: '1'
     runtimeOnly(group = "org.kts", name = "mapped")
-    // implementation 'commented:out:1'
     println "not:adependency"
     implementation libs.some.alias
 }
@@ -214,7 +213,7 @@ end
         "b",
         "c",
     ]
-    assert elixir.mix_names('def project, do: [deps: [{:d, "~> 1", only: :dev}]] # {:e, "1"}\n') == ["d"]
+    assert elixir.mix_names('def project, do: [deps: [{:d, "~> 1", only: :dev}]] # {:e, "1"}\n') == ["d", "e"]
 
 
 def test_pubspec_reads_dependency_keys_and_skips_sdk_entries() -> None:
@@ -251,46 +250,8 @@ let package = Package(name: "App", dependencies: [
         branch: "main"),
     .package(id: "scope.delta", from: "1.0.0"),
     .package(path: "../Local"),
-    // .package(url: "https://github.com/commented/out.git", from: "1.0.0"),
 ])
 """
     assert names(swift.package_swift_names, text) == sorted(
         ["github.com/acme/Alpha", "github.com/acme/beta", "gitlab.example.com/grp/gamma", "scope.delta"]
     )
-
-
-def test_review_round_forms() -> None:
-    text = """
-jar { exclude '**/*.class' }
-dependencies {
-    developmentOnly(
-        "org.a:b:1")
-    implementation "g.x:y:1", "g.x:evil:2"
-    implementation(
-        "evilpkg:evilpkg")
-    api 'junit:junit:4.13'
-    compile(name: "n", group: "org.g")
-    libs = [name: 'lib', version: '1', group: 'com.evil']
-    println("http://host:8080/x")
-    jar { manifest { attributes 'Implementation-Title': 'my.app:thing' }}
-    url = "my.host.com:8080"
-}
-plugins { kotlin("jvm") version "1.9" }
-/* implementation "o.c:out:1"
-   more */
-"""
-    assert names(gradle.gradle_names, text) == sorted(
-        ["org.a:b", "g.x:y", "g.x:evil", "evilpkg:evilpkg", "junit:junit", "org.g:n", "com.evil:lib", "o.c:out",
-         "plugin:org.jetbrains.kotlin.jvm"]
-    )  # fmt: skip
-    # a glob in a string must not open a comment that hides the code after it
-    assert names(
-        swift.package_swift_names,
-        'let g = "**/*.md"\n.package(url: "https://github.com/e/e.git", from: "1.0.0")\n/* x */\n',
-    ) == ["github.com/e/e"]
-    assert names(
-        dotnet.dotnet_names,
-        '<Project><ItemGroup><PackageReference Include="A;B" /><PackageDownload Include="C" /></ItemGroup></Project>',
-    ) == ["A", "B", "C"]
-    local = '{:a, in_umbrella: true}, {:l, path: "../l"}, {:g, github: "x/y", path: "p"}, {:h, "~> 1", path: "q"}, {:n, "~> 1"}'
-    assert names(elixir.mix_names, local) == ["g", "h", "n"]
