@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -39,6 +40,9 @@ BAD_TABLES = {
     "path-list-bad-regex": {"file_paths": ["("]},
     "regex-key-bad": {"url_arg": "("},
     "regex-key-not-a-string": {"setid_numeric": 5},
+    "git-url-key-bad": {"git_url_key": "("},
+    "skips-not-a-map": {"skips": []},
+    "skips-value-not-a-list": {"skips": {"yarn": "workspace"}},
     "flags-not-a-map": {"value_flags": []},
     "runners-not-a-map": {"runners": []},
     "flags-value-not-a-list": {"value_flags": {"npm": "x"}},
@@ -127,3 +131,33 @@ def test_the_script_runs_from_any_directory(tmp_path: Path) -> None:
     assert done.returncode == BLOCK
     assert done.stderr.startswith("BLOCKED: npm publish:")
     assert "human decisions" in done.stderr
+
+
+def test_a_line_the_parser_cannot_read_in_time_is_refused(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A hook that times out lets the command through, so a slow read must end in a block of the guard's own."""
+    release = threading.Event()
+    monkeypatch.setattr(GUARD, "BUDGET", 0.05)
+    monkeypatch.setattr(GUARD, "check", lambda _raw: release.wait(10) and None)
+    try:
+        assert verdict("npm test", monkeypatch) == BLOCK
+    finally:
+        release.set()
+    assert "too long or too tangled" in capsys.readouterr().err
+
+
+def test_an_escaped_quote_flood_is_refused_not_run_past_the_timeout(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An unclosed quote followed by many escaped quotes makes the shared parser slow (cubic in the quote count)."""
+    flood = 'echo "' + '\\"' * 900 + "; npm publish"
+    monkeypatch.setattr(GUARD, "BUDGET", 0.05)
+    assert verdict(flood, monkeypatch) == BLOCK
+    assert "too long or too tangled" in capsys.readouterr().err
+
+
+def test_a_quick_line_is_read_whole_within_the_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(GUARD, "BUDGET", 30.0)
+    assert verdict("npm test", monkeypatch) == OK
+    assert verdict("npm publish", monkeypatch) == BLOCK

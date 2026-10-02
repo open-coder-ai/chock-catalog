@@ -8,8 +8,8 @@ from chock_scan import data_table
 
 LISTS = ("stops", "launchers", "write_exempt", "downloaders", "detachers", "iocs")
 PATH_LISTS = ("file_paths", "dir_paths")
-REGEXES = ("setid_symbolic", "setid_numeric", "url_arg")
-MAPS = ("value_flags", "runners")
+REGEXES = ("setid_symbolic", "setid_numeric", "url_arg", "git_url_key")
+MAPS = ("value_flags", "runners", "skips")
 KEYS = (*LISTS, *PATH_LISTS, *REGEXES, *MAPS, "rules")
 LEVELS = ("block", "ask")
 PATH = Path(__file__).resolve().parent / "data" / "shapes.json"

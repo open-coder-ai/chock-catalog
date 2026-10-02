@@ -7,9 +7,11 @@
 # Best effort: the command is read as text, so a script file, an alias or a program it builds at run time is out of reach.
 
 import os
+import posixpath
 import re
 import shlex
 import sys
+import threading
 
 import shapes_background
 import shapes_data
@@ -21,10 +23,16 @@ BLOCK, ASK = 1, 3
 LEVELS = {"block": BLOCK, "ask": ASK}
 Verdict = tuple[int, str]
 PUSH_VALUE = frozenset(("--repo", "-o", "--push-option", "--receive-pack", "--exec"))
+BUDGET = 5.0
+GIT_CONFIG_READS = frozenset(
+    ("--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l", "--unset", "--unset-all")
+)
+INTO_FOLDER = frozenset(("cp", "mv", "install", "ln"))
 OUTPUT_FLAGS = {
     "curl": ("-o", "--output", "--output-dir"),
     "wget": ("-O", "--output-document", "-P", "--directory-prefix"),
 }
+TIMEOUT = "The command line is too long or too tangled to check in time; split it into shorter commands, or ask the person to run it."
 TAILS = {
     BLOCK: "Publishing, persistence and visibility changes are human decisions: ask the person to run it from their own shell.",
     ASK: "Ask the person to confirm before it runs.",
@@ -33,9 +41,9 @@ TAILS = {
 
 def git_verdict(cmd: Cmd, tab: dict) -> Verdict | None:
     """`git remote add|set-url`, and `git push` to an explicit URL or through a URL override, are asked about."""
-    if cmd.name != "git":
-        return None
-    sub, conf, rest = git_parts(cmd.args)
+    sub, conf, rest = git_parts(cmd.args) if cmd.name == "git" else ("", [], [])
+    if sub == "config":
+        return config_verdict(rest, tab)
     if sub not in ("push", "remote"):
         return None
     if any(re.search(r"url|insteadof", entry.split("=", 1)[0], re.IGNORECASE) for entry in conf):
@@ -51,6 +59,14 @@ def git_verdict(cmd: Cmd, tab: dict) -> Verdict | None:
             ASK,
             "git push to an explicit URL sends the history to a host the person has not approved; push to a named remote.",
         )
+    return None
+
+
+def config_verdict(rest: list[str], tab: dict) -> Verdict | None:
+    """`git config remote.<n>.url|pushurl` or `url.<base>.insteadOf` set to a value re-points a later push."""
+    words = positionals(rest, frozenset(("--file", "-f", "--blob")))
+    if len(words) > 1 and not GIT_CONFIG_READS & set(rest) and re.search(tab["git_url_key"], words[0], re.IGNORECASE):
+        return ASK, f"git config {words[0]} points later pushes at another host."
     return None
 
 
@@ -80,12 +96,47 @@ def setid_verdict(cmd: Cmd, tab: dict) -> Verdict | None:
     return None
 
 
+def clustered(args: list[str], letter: str) -> list[str]:
+    """The values of a short option that may sit in a cluster: `-sSLo FILE`, `-qOFILE`."""
+    found = []
+    for i, arg in enumerate(args):
+        match = re.fullmatch(rf"-[A-Za-z0-9]*{letter}(.*)", arg)
+        if match:
+            found.append(match.group(1) or (args[i + 1] if i + 1 < len(args) else ""))
+    return found
+
+
+def saved_paths(cmd: Cmd) -> list[str]:
+    """Where curl and wget put the download: `-o`/`-O` alone, in a cluster or glued to the path, `--output`, `-P`."""
+    found = []
+    for flag in OUTPUT_FLAGS.get(cmd.name, ()):
+        found.append(shapes_rules.value_of(cmd.args, flag))
+        if not flag.startswith("--"):
+            found += clustered(cmd.args, flag[1])
+    return [path for path in found if path]
+
+
+def folder_paths(cmd: Cmd) -> list[str]:
+    """cp, mv, install, ln with `-t DIR` or `--target-directory DIR`: the folder, and each source named inside it."""
+    if cmd.name not in INTO_FOLDER:
+        return []
+    folders = [*clustered(cmd.args, "t"), shapes_rules.value_of(cmd.args, "--target-directory")]
+    sources = positionals(cmd.args, frozenset(("-t", "--target-directory")))
+    return [
+        path
+        for folder in folders
+        if folder
+        for path in (folder, *(posixpath.join(folder, posixpath.basename(s)) for s in sources))
+    ]
+
+
 def write_verdict(cmd: Cmd, tab: dict, *, hot: bool) -> Verdict | None:
     """A write to a startup, scheduler, sudoers or ssh login location; `hot` is a working directory in one."""
     hit = shapes_paths.hits(tab, hot=hot)
-    saved = [value for flag in OUTPUT_FLAGS.get(cmd.name, ()) if (value := shapes_rules.value_of(cmd.args, flag))]
     exempt = cmd.name in tab["write_exempt"]
-    if any(hit(path) for path in [*cmd.writes, *saved]) or (not exempt and writes_files(cmd, hit)):
+    if any(hit(path) for path in [*cmd.writes, *saved_paths(cmd), *folder_paths(cmd)]) or (
+        not exempt and writes_files(cmd, hit)
+    ):
         return (
             BLOCK,
             "writing to a service, launch agent, scheduler, sudoers or ssh login-key location keeps access after the session.",
@@ -121,10 +172,31 @@ def check(raw: str) -> Verdict | None:
     return (found[0][0], f"{found[0][1].rstrip('.')}. {TAILS[found[0][0]]}") if found else None
 
 
+def bounded(raw: str, seconds: float) -> Verdict | None:
+    """`check`, but a line the parser cannot read in `seconds` is refused (a hook timeout would let it through)."""
+    box: list[tuple[Verdict | None, Exception | None]] = []
+
+    def work() -> None:
+        try:
+            box.append((check(raw), None))
+        except Exception as exc:  # noqa: BLE001 -- handed back to the caller, which reports the fault
+            box.append((None, exc))
+
+    worker = threading.Thread(target=work, daemon=True)
+    worker.start()
+    worker.join(seconds)
+    if not box:
+        return BLOCK, TIMEOUT
+    found, fault = box[0]
+    if fault:
+        raise fault
+    return found
+
+
 def run(argv: list[str]) -> int:
     """Exit 1 blocks, 3 asks, 2 reports a guard fault (never a verdict), 0 allows."""
     try:
-        verdict = check(os.environ.get("CHOCK_RAW_COMMAND") or shlex.join(argv))
+        verdict = bounded(os.environ.get("CHOCK_RAW_COMMAND") or shlex.join(argv), BUDGET)
     except Exception as exc:  # noqa: BLE001 -- a guard fault must not look like a block
         print(f"block-persistence-shapes: internal error ({type(exc).__name__}); command not checked", file=sys.stderr)
         return 2

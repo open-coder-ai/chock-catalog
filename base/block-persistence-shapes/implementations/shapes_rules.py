@@ -7,6 +7,7 @@ from chock_shellparse import Cmd, flags_of
 PINNED = re.compile(r"(?<=.)(?:@|==)[^/@=]*$")
 
 SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh"))
+LAUNCHERS = frozenset(("py", "pyw"))
 HOPS = 3
 
 
@@ -41,11 +42,22 @@ def program(word: str) -> str:
     return PINNED.sub("", word.replace("\\", "/").rsplit("/", 1)[-1].lower())
 
 
+def python_module(args: list[str]) -> tuple[str, list[str]] | None:
+    """(module, its arguments) of `python -m mod ...` or the glued `-mmod`, or None."""
+    for i, arg in enumerate(args):
+        if arg.startswith("-m") and arg[2:]:
+            return arg[2:], args[i + 1 :]
+        if arg == "-m" and i + 1 < len(args):
+            return args[i + 1], args[i + 2 :]
+    return None
+
+
 def hop(name: str, args: list[str], tab: dict, *, eager: bool) -> tuple[str, list[str]] | None:
     """The program behind a python -m, shell script, npx-style launcher or `npm exec`, or None when `name` runs."""
-    if name.startswith("python") and "-m" in args[:-1]:
-        at = args.index("-m")
-        return args[at + 1].lower(), args[at + 2 :]
+    if name in LAUNCHERS or name.startswith("python"):
+        module = python_module(args)
+        if module:
+            return module[0].split(".")[0].lower(), module[1]
     where = indexes(args, frozenset(tab["value_flags"].get(name, ())))
     loose = bool(where) and where[0] > 0 and args[where[0] - 1].startswith("-")
     runner = [] if loose and not eager else tab["runners"].get(name, ())
@@ -119,6 +131,8 @@ def judge(cmd: Cmd, tab: dict) -> tuple[str, str] | None:
 def match(name: str, args: list[str], tab: dict) -> tuple[str, str] | None:
     bare = name.removesuffix(".cmd").removesuffix(".bat")
     where = indexes(args, frozenset(tab["value_flags"].get(bare, ())))
+    if where and args[where[0]].lower() in tab["skips"].get(bare, ()):
+        where = where[2:]
     pos = [args[i].lower() for i in where]
     loose = [i > 0 and args[i - 1].startswith("-") for i in where]
     if "--help" in args or "-h" in args:

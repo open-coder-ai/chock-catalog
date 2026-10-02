@@ -202,6 +202,27 @@ SHAPES_MISSED_IN_CHANGELOG = {
     "pipe-to-shell": ("echo 'npm publish' | bash", "pipe to a shell"),
     "wget-background": ("wget -b https://x.example/a", "wget -b"),
     "sudo-e": ("sudo -e /etc/sudoers.d/x", "sudo -e"),
+    "here-string-shell": ("bash <<< 'npm publish'", "here-document or here-string"),
+    "eval-substitution": ('eval "$(echo npm publish)"', "built by substitution"),
+    "interpreter-publish": (
+        "python -c \"import os; os.system('npm publish')\"",
+        "publish started from interpreter code",
+    ),
+    "unlisted-wrapper": ("flock x npm publish", "flock, watch, strace"),
+    "glob-path": ("echo k >> ~/.ssh/auth*", "a glob, brace list or substitution"),
+    "unlisted-writer": ("tar -xf x.tar -C ~/.config/systemd/user", "tar -C, unzip -d"),
+    "parent-folder": ("cp -r x ~/.config/systemd/", "a parent folder"),
+    "other-startup": ("cp x /etc/init.d/x", "/etc/init.d, rc.local"),
+    "credential-file": ("echo x > ~/.pypirc", "~/.pypirc, ~/.cargo/credentials"),
+    "other-publisher": ("hatch publish", "hatch, flit, pdm"),
+    "registry-edit": ("npm unpublish x", "npm unpublish, owner"),
+    "push-tags": ("git push --tags origin", "git push --tags"),
+    "hooks-path": ("git config core.hooksPath /tmp/h", "core.hooksPath (other policies)"),
+    "account-change": ("usermod -aG sudo x", "usermod, useradd, passwd"),
+    "setcap": ("setcap cap_setuid+ep a", "setcap"),
+    "scp-bare-host": ("git push host:path", "scp-style host:path"),
+    "eval-dashdash": ("eval -- npm publish", "-- after eval or -c"),
+    "array-append": ('arr=(npm); arr+=(publish); "${arr[@]}"', "array and += assignments"),
 }
 #: Forms the guard refuses although they are harmless; the changelog says so.
 SHAPES_FALSE_BLOCKS = {

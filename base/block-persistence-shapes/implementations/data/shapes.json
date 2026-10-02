@@ -765,7 +765,8 @@
     "remove-item",
     "ri"
   ],
-  "setid_symbolic": "^[ugoa]*[+=][rwxXt]*s[rwxXt]*$",
+  "setid_symbolic": "^[ugoa]*(?:[-+=][rwxXugot]*)*[+=][rwxXugot]*s[rwxXugot]*(?:[-+=][rwxXugot]*)*$",
+  "git_url_key": "^(?:remote\\..+\\.(?:push)?url|url\\..+\\.(?:push)?insteadof)$",
   "setid_numeric": "^0*[2-7][0-7]{3}$",
   "url_arg": "(?i)^(?:[a-z][a-z0-9+.-]*://|[^@\\s/]+@[^:\\s/]+:|[a-z0-9-]+(?:\\.[a-z0-9-]+)+:)",
   "downloaders": [
@@ -785,6 +786,11 @@
   "iocs": [
     "gh-token-monitor"
   ],
+  "skips": {
+    "yarn": [
+      "workspace"
+    ]
+  },
   "runners": {
     "npm": [
       "exec",
