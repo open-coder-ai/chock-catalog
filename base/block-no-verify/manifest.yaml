@@ -1,18 +1,18 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.3.2"
+version: "0.4.0"
 description: >
-  Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am and rebase,
-  -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c,
-  --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message
-  text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*,
-  CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says
-  ask the person. Bypasses: aliases, scripts.
+  Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
+  commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
+  git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; pre-commit/lefthook/husky
+  uninstall; aliases and rebase --exec it sees defined. Asks on commit-tree/update-ref, GIT_DIR and
+  config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    never(commit|merge|am|rebase|push): --no-verify|-n(commit|am); never(set): core.hooksPath; never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT
+    never(commit|merge|am|rebase|push|pull|cherry-pick|revert): --no-verify|-n(commit|am); never(set): core.hooksPath|HUSKY=0|HUSKY_SKIP_HOOKS|SKIP|LEFTHOOK=0|LEFTHOOK_EXCLUDE|PRE_COMMIT_ALLOW_NO_CONFIG; never: pre-commit|lefthook|husky uninstall
+    ask_person: commit-tree|update-ref|fast-import|GIT_DIR(other repo)|GIT_CONFIG_GLOBAL|include.path; never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT
     if(hook_fails|override_needed): fix_issue|ask_person; never(skip_hook)
 effects:
 - read_only
@@ -22,7 +22,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -91,3 +91,10 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Behaviour change: CHOCK_ROLLOUT and CHOCK_GATE_LOG are person-only variables, refused like CHOCK_ALLOW. CHOCK_ROLLOUT=observe or ask lowers the compiled gates to a warning or an ask for a person's own commit or push, and the engine ignores it when it sees an agent marker; refusing it here covers agents that set no marker. CHOCK_GATE_LOG=0 switches off the gate log."
+- version: 0.4.0
+  date: '2026-10-02'
+  changes:
+  - "Behaviour change (HP04, roadmap 5.1): the hook-skip long option is refused on pull, cherry-pick and revert too (git 2.43 rejects it on the last two; it is refused as an attempt). Hook managers' own off switches are refused on a hook-running git command or when left set for later commands (export, declare -x, set -x, setx, PowerShell $env: and Set-Item Env:): HUSKY and LEFTHOOK set to anything but 1/true, and any non-empty HUSKY_SKIP_HOOKS, SKIP, LEFTHOOK_EXCLUDE or PRE_COMMIT_ALLOW_NO_CONFIG. `HUSKY=0 npm ci` stays allowed: it skips an install step, not a hook run. pre-commit, lefthook and husky uninstall are refused, also behind npx, pnpm exec, yarn, uvx, pipx run and python -m."
+  - "Aliases and scripts git runs are read where the command defines them: `git -c alias.X=...`, `git config [set] alias.X ...`, GIT_CONFIG_KEY_n/VALUE_n, GIT_CONFIG_PARAMETERS and --config-env aliases, `git rebase -x/--exec` and `git submodule foreach`, each judged as the command it runs (three levels deep; deeper asks). `git config set` and value-taking options before the key (`--type path`) no longer hide core.hooksPath."
+  - "New asks (exit 3, a person answers): commit-tree, update-ref (not -d) and fast-import, which write commits or refs with no hook; GIT_DIR, GIT_COMMON_DIR or --git-dir naming another repository on a hook-running command; GIT_CONFIG_GLOBAL/SYSTEM and include.path/includeIf config, which can carry core.hooksPath. A block on the same line wins over an ask."
+  - "Fail closed on an unparsed line (correction C3): when shlex cannot split the command (the hook sets CHOCK_ARGV_FALLBACK=1; the guard also checks itself, for the eval runner), a line that names a bypass token is refused. Unset of core.hooksPath stays allowed: chock's hooks live in .git/hooks, so unsetting it never switches them off. Twenty-three eval cases (tc-080..tc-102) and 116 pytest rows pin both directions; the new checks live in implementations/hook_bypass/ to keep every file under 300 lines."

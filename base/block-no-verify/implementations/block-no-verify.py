@@ -11,16 +11,27 @@ import sys
 from itertools import pairwise
 
 from chock_shellparse import Cmd, commands, git_parts
-
-HOOKS_KEY = "core.hookspath"
-# git commit options whose value is the NEXT argument: a message that starts with -n is not a flag.
-TAKES_VALUE = frozenset(
-    ("-m", "-F", "-C", "-c", "-t", "--message", "--file", "--author", "--date", "--template", "--fixup", "--squash")
+from hook_bypass import (
+    DECLARERS,
+    END,
+    HOOK_SUBS,
+    HOOKS_KEY,
+    PS_PATH,
+    PS_SETTERS,
+    alias_scripts,
+    asks_for,
+    config_pairs,
+    config_writes,
+    declared,
+    env_hits,
+    nested_scripts,
+    normalise,
+    skips_verify,
+    uninstalls,
 )
-# --no-verify is a long option of these; a short -n means it only on commit and am (merge and rebase read -n as --no-stat).
-HOOK_SUBS = frozenset(("commit", "push", "merge", "am", "rebase"))
-SHORT_N_SUBS = frozenset(("commit", "am"))
-PREFIX_FLOOR = 9
+
+BLOCK, ASK = 1, 3
+DEPTH = 3  # aliases, rebase --exec and submodule foreach read this many levels deep
 # Person-only variables: the engine reads CHOCK_ALLOW (answers an ask gate), CHOCK_AGENT_COMMIT (0/false says a person is
 # committing) and the agent markers CLAUDECODE / AI_AGENT; limit-diff-size reads CHOCK_ALLOW_LARGE_DIFF, CHOCK_DIFF_LIMIT;
 # CHOCK_ROLLOUT lowers the compiled gates to ask or warn, and CHOCK_GATE_LOG=0 switches off the record of what that let through.
@@ -45,54 +56,16 @@ REWRITES = tuple(
         ),
     )
 )
-PS_PATH = re.compile(r"env:/?(\w+)$", re.IGNORECASE)
-DECLARERS = frozenset(("declare", "typeset", "readonly", "local", "make", "gmake"))
-PS_SETTERS = frozenset(("set-item", "si", "new-item", "ni", "set-content", "sc", "add-content", "ac"))
 PS_REMOVERS = frozenset(("remove-item", "ri", "clear-item", "ci", "rm", "del", "erase"))
-# A short cluster starting with one of these carries that option's value: `-mnote` is a message.
-VALUE_CLUSTER = ("-m", "-F", "-u", "-C", "-c", "-S")
-
-
-def hooks_path_keys(conf: list[str], env: dict[str, str]) -> list[str]:
-    """Config keys set for one git command by -c/--config-env, GIT_CONFIG_COUNT/KEY_n or GIT_CONFIG_PARAMETERS."""
-    keys = [item.split("=", 1)[0] for item in conf if "=" in item]
-    count = env.get("GIT_CONFIG_COUNT", "")
-    keys += [env.get(f"GIT_CONFIG_KEY_{i}", "") for i in range(min(int(count), 64) if count.isdigit() else 0)]
-    keys += re.findall(r"'([^'=]+)'?=", env.get("GIT_CONFIG_PARAMETERS", ""))
-    return [key.lower() for key in keys]
-
-
-def config_sets_hooks(rest: list[str]) -> bool:
-    """`git config core.hooksPath <value>` in any scope; reading or unsetting it is not a bypass."""
-    operands = [arg for arg in rest if not arg.startswith("-")]
-    reading = {"--get", "--get-all", "--get-regexp", "-l", "--list", "--unset", "--unset-all"} & set(rest)
-    at = [i for i, arg in enumerate(operands) if arg.lower() == HOOKS_KEY]
-    return bool(at) and not reading and at[0] + 1 < len(operands)
-
-
-def is_no_verify(arg: str) -> bool:
-    """--no-verify or any unambiguous prefix of it; git's floor is --no-veri (shorter collides with --no-verbose)."""
-    return len(arg) >= PREFIX_FLOOR and "--no-verify".startswith(arg)
-
-
-def is_short_n(arg: str) -> bool:
-    """A short cluster containing -n, unless it starts with an option whose attached text is a value."""
-    return re.fullmatch(r"-[^-].*", arg) is not None and "n" in arg and not arg.startswith(VALUE_CLUSTER)
-
-
-def skips_verify(sub: str, rest: list[str]) -> bool:
-    """--no-verify on a hook-running subcommand; a short -n only where it means that (not push --dry-run, not merge --no-stat)."""
-    skip = False
-    for arg in rest:
-        if arg == "--":
-            break
-        if skip:
-            skip = False
-        elif is_no_verify(arg) or (sub in SHORT_N_SUBS and is_short_n(arg)):
-            return True
-        else:
-            skip = arg in TAKES_VALUE
-    return False
+FIX = "Fix the failing hook instead; if it must be skipped, ask the person to run the command themselves."
+# A line the lexer could not split is refused when it names any of these (CHOCK_ARGV_FALLBACK, fail closed).
+FALLBACK = re.compile(
+    r"--no-veri|core\.hookspath|\balias\.|include(?:if\.\S*)?\.path|--git-dir|--exec\b|\bforeach\b"
+    r"|commit-tree|update-ref|fast-import|\b(?:pre-commit|pre_commit|lefthook|husky)\b.*\buninstall\b"
+    r"|\b(?:HUSKY\w*|LEFTHOOK\w*|SKIP|PRE_COMMIT_ALLOW_NO_CONFIG|GIT_DIR|GIT_COMMON_DIR|GIT_CONFIG\w*)\s*=",
+    re.IGNORECASE,
+)
+Verdict = tuple[int, str] | None
 
 
 def is_override(name: str) -> bool:
@@ -138,40 +111,90 @@ def overrides_set(raw: str) -> list[str]:
     return [name.upper() for cmd, after in zip(cmds, [*cmds[1:], None], strict=True) for name in set_by(cmd, after)]
 
 
-def check(raw: str) -> str | None:
-    """The reason a command switches hooks off or sets a person-only override, or None."""
+def judge_git(cmd: Cmd, depth: int) -> Verdict:
+    """One git command: a hook-skip flag, core.hooksPath, a hook manager's off switch, an alias or script that does so."""
+    sub, conf, rest = git_parts(cmd.args)
+    written = config_writes(rest) if sub == "config" else []
+    pairs = config_pairs(conf, cmd.env) + written
+    scripts = [(f"git alias {name}", text) for name, text in alias_scripts(pairs, cmd.env)]
+    for where, script in scripts + [(f"git {sub}", text) for text in nested_scripts(sub, rest)]:
+        if (found := check(script, depth + 1)) is not None:
+            return found[0], f"{where} runs `{script}`: {found[1]}"
+    hooked, hits = sub in HOOK_SUBS, env_hits(cmd.env)
+    blocks = (
+        (
+            any(key == HOOKS_KEY for key, _ in written),
+            "git config core.hooksPath disables every hook, exactly as --no-verify does.",
+        ),
+        (
+            hooked and any(key == HOOKS_KEY for key, _ in pairs),
+            f"git {sub} with core.hooksPath set disables every hook, exactly as --no-verify does.",
+        ),
+        (hooked and skips_verify(sub, rest), f"git {sub} --no-verify is not allowed."),
+        (
+            hooked and bool(hits),
+            f"git {sub} with {''.join(hits[:1])} switches the hook manager off, exactly as --no-verify does.",
+        ),
+    )
+    if reason := next((reason for hit, reason in blocks if hit), ""):
+        return BLOCK, f"{reason} {FIX}"
+    reason = asks_for(sub, rest, cmd.args, cmd.env, pairs)
+    return (ASK, reason) if reason else None
+
+
+def judge(cmd: Cmd, depth: int) -> Verdict:
+    if tool := uninstalls(cmd.name, cmd.args):
+        return BLOCK, f"{tool} removes the git hooks it installed, which skips every check they run. {FIX}"
+    if hits := declared(cmd.name, cmd.args) or (env_hits(cmd.env) if cmd.name == END else []):
+        return BLOCK, f"setting {hits[0]} switches the hook manager off for the commands that follow. {FIX}"
+    return judge_git(cmd, depth) if cmd.name == "git" else None
+
+
+def check(raw: str, depth: int = 0) -> Verdict:
+    """(exit code, reason) when a command switches hooks off or sets a person-only override, or None."""
+    if depth > DEPTH:
+        return ASK, "this command nests aliases or scripts too deeply to read; ask the person to run it."
     if named := overrides_set(raw):
-        return (
+        return BLOCK, (
             f"changing {named[0]} is refused: it is a person-only setting (it marks who is committing, answers an ask "
             "gate, or sets the diff limit). Do not set, blank or remove it in any form; ask the person to run the "
             "command themselves with it changed."
         )
-    for cmd in commands(raw):
-        if cmd.name != "git":
-            continue
-        sub, conf, rest = git_parts(cmd.args)
-        if sub == "config" and config_sets_hooks(rest):
-            return "git config core.hooksPath disables every hook, exactly as --no-verify does. Fix the failing hook instead."
-        if sub not in HOOK_SUBS:
-            continue
-        if HOOKS_KEY in hooks_path_keys(conf, cmd.env):
-            return f"git {sub} with core.hooksPath set disables every hook, exactly as --no-verify does. Fix the failing hook instead of routing around it."
-        if skips_verify(sub, rest):
-            return f"git {sub} --no-verify is not allowed. Fix the hook failure instead."
+    verdicts = [found for cmd in commands(f"{normalise(raw)}\n{END}") if (found := judge(cmd, depth))]
+    return min(verdicts, key=lambda found: found[0], default=None)
+
+
+def splits(raw: str) -> bool:
+    try:
+        shlex.split(raw)
+    except ValueError:
+        return False
+    return True
+
+
+def unparsed(raw: str) -> Verdict:
+    """Fail closed: a line shlex cannot split (the hook sets CHOCK_ARGV_FALLBACK) that names a hook bypass is refused."""
+    fallback = os.environ.get("CHOCK_ARGV_FALLBACK") == "1" or not splits(raw)
+    if fallback and (hit := FALLBACK.search(raw)):
+        return (
+            BLOCK,
+            f"this command does not parse (unbalanced quote or trailing backslash) and names `{hit.group()}`. {FIX}",
+        )
     return None
 
 
 def run(argv: list[str]) -> int:
-    """Exit 1 blocks, 2 reports a guard fault (never a verdict), 0 allows."""
+    """Exit 1 blocks, 3 asks (the first line is the prompt), 2 reports a guard fault (never a verdict), 0 allows."""
     try:
-        reason = check(os.environ.get("CHOCK_RAW_COMMAND") or shlex.join(argv))
+        raw = os.environ.get("CHOCK_RAW_COMMAND") or shlex.join(argv)
+        verdict = check(raw) or unparsed(raw)
     except Exception as exc:  # noqa: BLE001 -- a guard fault must not look like a block
         print(f"block-no-verify: internal error ({type(exc).__name__}); command not checked", file=sys.stderr)
         return 2
-    if reason:
-        print(f"BLOCKED: {reason}", file=sys.stderr)
-        return 1
-    return 0
+    if verdict is None:
+        return 0
+    print(f"BLOCKED: {verdict[1]}" if verdict[0] == BLOCK else verdict[1], file=sys.stderr)
+    return verdict[0]
 
 
 if __name__ == "__main__":
