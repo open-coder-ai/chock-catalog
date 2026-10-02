@@ -101,7 +101,7 @@ def test_a_lockfile_name_alone_asks(repo: Path) -> None:
     lock = '{"packages": {"": {}, "node_modules/evil-transitive": {}, "node_modules/requests": {}}}'
     code, document, err = run(repo, {"package-lock.json": lock})
     assert (code, keys(document)) == (3, ["npm|evil-transitive"])
-    assert "Unlisted package in a lockfile" in err
+    assert "Unlisted lockfile package" in err
     assert "pinned in the lockfile" in err
 
 
@@ -126,20 +126,14 @@ def test_a_doctype_is_a_finding_so_no_name_hides_behind_it(repo: Path) -> None:
     assert "boom" not in err
 
 
-def test_an_unreadable_manifest_adds_no_names_and_prints_a_note(repo: Path) -> None:
-    code, document, err = run(repo, {"package.json": "{not json", "pom.xml": "<project>", "requirements.txt": "evil\n"})
-    assert (code, keys(document)) == (1, ["py|evil"])
-    assert "package.json: could not be read as package.json (JSONDecodeError)" in err
-    assert "pom.xml: could not be read as pom.xml (ParseError)" in err
-    only_notes = run(repo, {"package.json": "{not json"})
-    assert only_notes[:2] == (0, {"findings": []})
-    assert "its dependencies were not checked" in only_notes[2]
-
-
-def test_the_baseline_run_prints_findings_but_no_notes(repo: Path) -> None:
-    code, document, err = run(repo, {"package.json": "{not json", "requirements.txt": "evil\n"}, baseline=True)
-    assert (code, keys(document)) == (1, ["py|evil"])
-    assert "could not be read" not in err
+def test_a_manifest_that_cannot_be_parsed_asks_and_is_never_a_silent_pass(repo: Path) -> None:
+    code, document, err = run(repo, {"package.json": "{not json"})
+    assert (code, [k.rsplit("|", 1)[0] for k in keys(document)]) == (3, ["unreadable|JSONDecodeError"])
+    assert "could not be parsed (JSONDecodeError)" in err
+    toml11 = '[dependencies]\nevil = {\n  version = "1",\n}\n'
+    assert run(repo, {"Cargo.toml": toml11})[0] == 3
+    mixed = run(repo, {"pom.xml": "<project>", "requirements.txt": "evil\n"})
+    assert (mixed[0], len(mixed[1]["findings"])) == (1, 2)
 
 
 def test_a_manifest_too_large_or_too_deep_to_read_is_a_finding_not_a_pass(repo: Path) -> None:

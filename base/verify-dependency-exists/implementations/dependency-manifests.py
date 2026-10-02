@@ -29,6 +29,7 @@ from depnames.pyreq import includes
 ALLOWLIST = ".chock/dependency-allowlist.txt"
 MAX_CHARS = 16_000_000
 ASK, BLOCK = 3, 1
+MAX_LINE_LOOKUPS = 500
 REFUSALS = {xmlsafe.RefusedError: "declares a DOCTYPE or ENTITY and is not parsed"}
 ADVICE = (
     "ask a person to add it, and confirm the package exists in its registry and is the intended one (no lookup is made)"
@@ -93,11 +94,10 @@ def targets(writes: dict[str, str]) -> dict[str, Family]:
     return found
 
 
-def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict], list[str]]:
-    """(manifest findings, lockfile findings, notes about files that could not be read)."""
+def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict]]:
+    """(block findings, ask findings): a lockfile name or a manifest that cannot be parsed asks."""
     manifest: list[dict] = []
     locks: list[dict] = []
-    notes: list[str] = []
     writes = {path.replace("\\", "/"): text for path, text in payload.get("writes", {}).items()}
     for path, fam in sorted(targets(writes).items()):
         text = writes[path]
@@ -111,12 +111,12 @@ def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict], list
                 {"key": f"refused|{type(exc).__name__}|{digest}", "path": path, "line": 1, "message": message}
             )
             continue
-        except Exception as exc:  # noqa: BLE001 -- untrusted manifest text; an unreadable file contributes no names
-            notes.append(
-                f"{path}: could not be read as {fam.kind} ({type(exc).__name__}); its dependencies were not checked"
-            )
+        except Exception as exc:  # noqa: BLE001 -- untrusted manifest text; a file the reader cannot parse is not a pass
+            digest = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
+            message = f"{fam.kind} could not be parsed ({type(exc).__name__}), so its dependencies were not checked"
+            locks.append({"key": f"unreadable|{type(exc).__name__}|{digest}", "path": path, "line": 1, "message": message})
             continue
-        lines = [] if fam.lock else text.lower().splitlines()
+        lines = text.lower().splitlines() if not fam.lock and len(names) <= MAX_LINE_LOOKUPS else []
         for name in names:
             if (fam.eco, name) in allowed:
                 continue
@@ -125,7 +125,7 @@ def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict], list
             (locks if fam.lock else manifest).append(
                 {"key": f"{fam.eco}|{name}", "path": path, "line": line_of(lines, name), "message": message}
             )
-    return manifest, locks, notes
+    return manifest, locks
 
 
 def seed(root: Path) -> int:
@@ -151,18 +151,15 @@ def main() -> int:
         return seed(Path.cwd())
     try:
         payload = json.load(sys.stdin)
-        manifest, locks, notes = judge(payload, Allowed(load_allowlist(Path(payload["repo_root"]))))
+        manifest, locks = judge(payload, Allowed(load_allowlist(Path(payload["repo_root"]))))
     except Exception as exc:  # noqa: BLE001 -- a fault must not read as a verdict
         print(f"dependency-manifests: internal error ({type(exc).__name__}); manifests not checked", file=sys.stderr)
         return 2
     print(json.dumps({"findings": manifest + locks}))
-    if not payload.get("baseline"):
-        for note in notes:
-            print(f"dependency-manifests: {note}", file=sys.stderr)
     found = manifest or locks
     if not found:
         return 0
-    kind = "Unlisted dependency refused" if manifest else "Unlisted package in a lockfile"
+    kind = "Unlisted dependency refused" if manifest else "Unlisted lockfile package, or a manifest that could not be parsed"
     print(f"dependency-manifests: {kind}:", file=sys.stderr)
     for item in found:
         print(f"  {item['path']}:{item['line']}: {item['message']}", file=sys.stderr)

@@ -18,7 +18,10 @@ def _location(url: str) -> str:
 
 
 def package_swift_names(text: str) -> list[str]:
-    """Remote package locations (and registry ids) a manifest depends on; `path:` packages are local."""
-    body = re.sub(r"/\*.*?\*/", "", text.removeprefix("\ufeff"), flags=re.DOTALL)
-    code = "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("//"))
+    """Remote package locations (and registry ids) a manifest depends on; `path:` packages are local.
+
+    Block comments are not stripped: a `/*` inside a string must not hide the code after it, so a commented-out
+    package is reported too, and the baseline absorbs one that was already there.
+    """
+    code = "\n".join(line for line in text.removeprefix("\ufeff").splitlines() if not line.lstrip().startswith("//"))
     return [_location(value) if kind == "url" else value for kind, value in _PACKAGE.findall(code)]

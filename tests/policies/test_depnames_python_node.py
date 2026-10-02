@@ -252,3 +252,11 @@ def test_review_round_forms() -> None:
         ruby.gemfile_names,
         "group :t do gem 'a' end\ngem 'b'; gem('c')\ns.add_runtime_dependency(%q<d>.freeze, ['1'])\n",
     ) == ["a", "b", "c", "d"]
+
+
+def test_requirement_option_forms() -> None:
+    assert names(pyreq.requirement_names, "-egit+https://x/a.git#egg=evil\n-e src\n-e src#egg=named\n") == [
+        "evil",
+        "named",
+    ]
+    assert pyreq.includes("-r a.txt -c b.txt\n") == ["a.txt"]
