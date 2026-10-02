@@ -6,7 +6,7 @@ name: CI
 # this file, every adoption PR was a workflow-modifying PR -- GitHub refused to run the
 # `pull_request` CI on it, the required `dco`/`policies` checks never reported, and the
 # protect-main ruleset (no bypass) deadlocked the merge. Bumping the pin is still an explicit,
-# reviewable adoption: run `python tools/adopt_framework.py <ref>` to rewrite `.framework-ref`
+# reviewable adoption: run `python tools/adopt_framework.py <sha>` to rewrite `.framework-ref`
 # AND regenerate every derived artifact in one step. The nightly transcript workflow
 # deliberately stays on main as an unpinned canary.
 
@@ -166,9 +166,10 @@ jobs:
             requirements/test.txt
 
       # The framework pin lives in the .framework-ref data file (see the header comment) so
-      # adoption PRs never touch this workflow. Read it into the job env for the checkout below.
+      # adoption PRs never touch this workflow. Read it into the job env for the checkout below;
+      # anything but one full 40-hex commit SHA fails here, before checkout resolves it as a name.
       - name: Read the framework pin
-        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+        run: python3 -I tools/framework_ref.py read
 
       # Check out the framework at the pinned ref this catalog is validated against.
       - name: Check out the framework
@@ -178,6 +179,10 @@ jobs:
           repository: open-coder-ai/chock
           ref: ${{ env.FRAMEWORK_REF }}
           path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock and the lint tooling
         run: |
@@ -287,7 +292,7 @@ jobs:
           cache-dependency-path: .framework-ref
 
       - name: Read the framework pin
-        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+        run: python3 -I tools/framework_ref.py read
 
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -296,6 +301,10 @@ jobs:
           repository: open-coder-ai/chock
           ref: ${{ env.FRAMEWORK_REF }}
           path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock
         run: pip install ./.framework
@@ -375,7 +384,7 @@ jobs:
             requirements/test.txt
 
       - name: Read the framework pin
-        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+        run: python3 -I tools/framework_ref.py read
 
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -384,6 +393,10 @@ jobs:
           repository: open-coder-ai/chock
           ref: ${{ env.FRAMEWORK_REF }}
           path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock and the test tooling
         run: |
@@ -428,7 +441,7 @@ jobs:
           cache-dependency-path: .framework-ref
 
       - name: Read the framework pin
-        run: echo "FRAMEWORK_REF=$(cat .framework-ref)" >> "$GITHUB_ENV"
+        run: python3 -I tools/framework_ref.py read
 
       - name: Check out the framework
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -437,6 +450,10 @@ jobs:
           repository: open-coder-ai/chock
           ref: ${{ env.FRAMEWORK_REF }}
           path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock
         run: pip install ./.framework
