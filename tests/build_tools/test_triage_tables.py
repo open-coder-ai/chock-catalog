@@ -248,3 +248,9 @@ def test_rank_tier(doc: dict, rank_tier: object, expected: str) -> None:
 def test_confidence_floor_cannot_be_raised_to_hide_findings(doc: dict, value: object) -> None:
     doc["report_min_confidence"] = value
     assert found(doc) == ["report_min_confidence must be an integer 1..8 (raising it hides findings)"]
+
+
+@pytest.mark.parametrize("kind", ["ioc", "top-n", "", None, 1])
+def test_the_kind_must_be_curated_so_a_data_edit_cannot_shorten_or_relabel_it(doc: dict, kind: object) -> None:
+    doc["kind"] = kind
+    assert found(doc) == ["kind must be curated (the D7 envelope; one year, as MAX_AGE_DAYS)"]

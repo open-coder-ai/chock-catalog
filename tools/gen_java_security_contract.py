@@ -22,6 +22,7 @@ REFERENCE = SKILL / "references" / "setup-contract.json"
 sys.path.insert(0, str(POLICY / "implementations"))
 from chock_security.pack import weaknesses  # noqa: E402
 from chock_security.rules import packs, registry  # noqa: E402
+from chock_security.selection import SILENT  # noqa: E402
 
 _EMBEDDED = re.compile(r'(<script type="application/json" id="contract">)(.*?)(</script>)', re.S)
 
@@ -29,7 +30,10 @@ _EMBEDDED = re.compile(r'(<script type="application/json" id="contract">)(.*?)(<
 def contract() -> dict:
     """The reference contract with its packs and rules replaced by the registry's own."""
     document = json.loads(REFERENCE.read_text(encoding="utf-8"))
-    document["packs"] = [{"id": p.id, "title": p.title, "covers": p.covers, "kind": p.kind} for p in packs().values()]
+    document["packs"] = [
+        {"id": p.id, "title": p.title, "covers": p.covers, "kind": p.kind, "default": SILENT[p.kind]}
+        for p in packs().values()
+    ]
     cwe = weaknesses()
     document["rules"] = [
         {

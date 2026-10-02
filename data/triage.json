@@ -1,5 +1,6 @@
 {
   "schema": 1,
+  "kind": "curated",
   "as_of": "2026-10-01",
   "source": {
     "r11": "open-coder-ai/org-plan:discovery/2026-10-01-security-research-11-mythos-and-security-review.md",

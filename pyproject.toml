@@ -34,10 +34,11 @@ source = [
     "base/limit-diff-size/implementations",
     "base/firecrawl-fallback-only/implementations",
     "base/token-efficiency/implementations",
+    "lib/chock_scan",
 ]
 # The build tools written to this bar, by module name (tools/ is on pytest's pythonpath). Older tools
 # join as they are next changed; tests/build_tools/ holds their tests.
-source_pkgs = ["check_installed", "gen_registry", "regen_all", "triage_tables"]
+source_pkgs = ["adopt_framework", "check_data_tables", "check_installed", "check_workflows", "framework_ref", "gen_lib_copies", "gen_registry", "lib_imports", "owasp_llm", "prose_counts", "regen_all", "triage_tables"]
 patch = ["subprocess"]
 
 [tool.coverage.report]

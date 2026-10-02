@@ -7,6 +7,7 @@ import re
 
 from chock_security.decision import DENY
 from chock_security.rules import packs, registry
+from chock_security.selection import default
 from gen_java_security_contract import rendered
 from java_security.conftest import SETUP
 
@@ -35,3 +36,11 @@ def test_the_page_defaults_to_deny_and_claims_no_agent() -> None:
     contract = _embedded()
     assert contract["default"] == DENY
     assert contract["agent"] is None
+
+
+def test_each_pack_shows_the_default_the_gate_applies_to_its_silent_rules() -> None:
+    contract = _embedded()
+    shown = {p["id"]: p["default"] for p in contract["packs"]}
+    rules = registry()
+    assert all(shown[rule.pack] == default(rule) for rule in rules.values())
+    assert {p["default"] for p in contract["packs"] if p["kind"] == "security"} == {DENY}

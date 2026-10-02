@@ -20,7 +20,7 @@ TABLE = ROOT / "data" / "triage.json"
 #: D7: a top-N-style table fails CI a year after it was last checked against its sources.
 MAX_AGE_DAYS = 365
 KEYS = frozenset(
-    {"schema", "as_of", "source", "use", "verdicts", "report_min_confidence", "rank_tier", "never_excluded"}
+    {"schema", "kind", "as_of", "source", "use", "verdicts", "report_min_confidence", "rank_tier", "never_excluded"}
     | {"path_exclusions", "finding_exclusions", "precedents", "not_adopted"}
 )
 VERDICTS = ("allow", "ask", "deny")
@@ -240,6 +240,7 @@ def problems(doc: object, today: dt.date) -> list[str]:
     if out := _keys("", doc, KEYS):
         return out
     out = [] if type(doc["schema"]) is int and doc["schema"] == 1 else ["schema must be 1"]
+    out += [] if doc["kind"] == "curated" else ["kind must be curated (the D7 envelope; one year, as MAX_AGE_DAYS)"]
     out += _as_of(doc["as_of"], today) + _source(doc)
     if not (isinstance(doc["use"], str) and WORDS.search(doc["use"])):
         out.append("use must be non-empty text")

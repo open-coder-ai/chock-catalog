@@ -1,0 +1,597 @@
+[
+ {
+  "name": "b1-nested-arrays-merge",
+  "src": "{\"resource\":{\"aws_security_group_rule\":{\"r\":[[{\"type\":\"ingress\",\"from_port\":22},{\"cidr_blocks\":[\"0.0.0.0/0\"]}]]}}}",
+  "attrs": [
+   "aws_security_group_rule",
+   "cidr_blocks",
+   "from_port",
+   "r",
+   "resource",
+   "type"
+  ],
+  "hcl": [
+   "/0:resource[\"aws_security_group_rule\",\"r\"]|B",
+   "/0:resource[\"aws_security_group_rule\",\"r\"]|A|cidr_blocks|[\"0.0.0.0/0\"]",
+   "/0:resource[\"aws_security_group_rule\",\"r\"]|A|from_port|22",
+   "/0:resource[\"aws_security_group_rule\",\"r\"]|A|type|\"ingress\""
+  ]
+ },
+ {
+  "name": "b2-null-sibling",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"statement\":[{\"actions\":[\"*\"],\"resources\":[\"*\"]},null]}}}}",
+  "nested": {
+   "statement": 0
+  },
+  "attrs": [
+   "actions",
+   "r",
+   "resource",
+   "resources",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|A|actions|[\"*\"]",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|A|resources|[\"*\"]",
+   "/0:resource[\"t\",\"r\"]/1:statement[]|B"
+  ]
+ },
+ {
+  "name": "b2-empty-list-sibling",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"statement\":[{\"actions\":[\"*\"]},[]]}}}}",
+  "nested": {
+   "statement": 0
+  },
+  "attrs": [
+   "actions",
+   "r",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|A|actions|[\"*\"]",
+   "/0:resource[\"t\",\"r\"]/1:statement[]|B"
+  ]
+ },
+ {
+  "name": "b3-template-keys",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"m\":{\"a\":\"*\",\"$${x}\":1,\"//\":\"0.0.0.0/0\"}}}}}",
+  "attrs": [
+   "$${x}",
+   "a",
+   "m",
+   "r",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]|A|m|{\"${x}\":1,\"//\":\"0.0.0.0/0\",\"a\":\"*\"}"
+  ]
+ },
+ {
+  "name": "b3-computed-key",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"m\":{\"${\\\"Action\\\"}\":\"*\"}}}}}",
+  "attrs": [
+   "${\"Action\"}",
+   "m",
+   "r",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]|A|m|{\"Action\":\"*\"}"
+  ]
+ },
+ {
+  "name": "b4-comment-label",
+  "src": "{\"resource\":{\"aws_s3_bucket_public_access_block\":{\"//\":{\"block_public_acls\":false}}}}",
+  "attrs": [
+   "aws_s3_bucket_public_access_block",
+   "block_public_acls",
+   "resource"
+  ],
+  "hcl": [
+   "/0:resource[\"aws_s3_bucket_public_access_block\",\"//\"]|B",
+   "/0:resource[\"aws_s3_bucket_public_access_block\",\"//\"]|A|block_public_acls|false"
+  ]
+ },
+ {
+  "name": "b6-codebuild-source",
+  "src": "{\"resource\":{\"aws_codebuild_project\":{\"p\":{\"source\":{\"type\":\"GITHUB\",\"insecure_ssl\":true}}}}}",
+  "nested": {
+   "source": 0
+  },
+  "attrs": [
+   "aws_codebuild_project",
+   "insecure_ssl",
+   "p",
+   "resource",
+   "type"
+  ],
+  "hcl": [
+   "/0:resource[\"aws_codebuild_project\",\"p\"]|B",
+   "/0:resource[\"aws_codebuild_project\",\"p\"]/0:source[]|B",
+   "/0:resource[\"aws_codebuild_project\",\"p\"]/0:source[]|A|insecure_ssl|true",
+   "/0:resource[\"aws_codebuild_project\",\"p\"]/0:source[]|A|type|\"GITHUB\""
+  ]
+ },
+ {
+  "name": "b6b-missing-label",
+  "src": "{\"resource\":{}}",
+  "attrs": [
+   "resource"
+  ],
+  "hcl": "ERR"
+ },
+ {
+  "name": "b6b-missing-name",
+  "src": "{\"resource\":{\"x\":{}}}",
+  "attrs": [
+   "resource",
+   "x"
+  ],
+  "hcl": "ERR"
+ },
+ {
+  "name": "body-comment-key",
+  "src": "{\"//\":\"c\",\"resource\":{\"t\":{\"n\":{\"//\":\"c\",\"a\":1}}}}",
+  "attrs": [
+   "a",
+   "n",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]|A|a|1"
+  ]
+ },
+ {
+  "name": "ingress-list",
+  "src": "{\"resource\":{\"aws_security_group\":{\"w\":{\"ingress\":[{\"cidr_blocks\":[\"0.0.0.0/0\"],\"from_port\":22},{\"cidr_blocks\":[\"10.0.0.0/8\"]}]}}}}",
+  "nested": {
+   "ingress": 0
+  },
+  "attrs": [
+   "aws_security_group",
+   "cidr_blocks",
+   "from_port",
+   "resource",
+   "w"
+  ],
+  "hcl": [
+   "/0:resource[\"aws_security_group\",\"w\"]|B",
+   "/0:resource[\"aws_security_group\",\"w\"]/0:ingress[]|B",
+   "/0:resource[\"aws_security_group\",\"w\"]/0:ingress[]|A|cidr_blocks|[\"0.0.0.0/0\"]",
+   "/0:resource[\"aws_security_group\",\"w\"]/0:ingress[]|A|from_port|22",
+   "/0:resource[\"aws_security_group\",\"w\"]/1:ingress[]|B",
+   "/0:resource[\"aws_security_group\",\"w\"]/1:ingress[]|A|cidr_blocks|[\"10.0.0.0/8\"]"
+  ]
+ },
+ {
+  "name": "ingress-object",
+  "src": "{\"resource\":{\"aws_security_group\":{\"w\":{\"ingress\":{\"cidr_blocks\":[\"0.0.0.0/0\"]}}}}}",
+  "nested": {
+   "ingress": 0
+  },
+  "attrs": [
+   "aws_security_group",
+   "cidr_blocks",
+   "resource",
+   "w"
+  ],
+  "hcl": [
+   "/0:resource[\"aws_security_group\",\"w\"]|B",
+   "/0:resource[\"aws_security_group\",\"w\"]/0:ingress[]|B",
+   "/0:resource[\"aws_security_group\",\"w\"]/0:ingress[]|A|cidr_blocks|[\"0.0.0.0/0\"]"
+  ]
+ },
+ {
+  "name": "dynamic",
+  "src": "{\"resource\":{\"t\":{\"n\":{\"dynamic\":{\"ingress\":{\"for_each\":\"${var.r}\",\"content\":{\"cidr_blocks\":[\"0.0.0.0/0\"]}}}}}}}",
+  "nested": {
+   "content": 0,
+   "dynamic": 1
+  },
+  "attrs": [
+   "cidr_blocks",
+   "for_each",
+   "ingress",
+   "n",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]|A|for_each|C",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]/0:content[]|B",
+   "/0:resource[\"t\",\"n\"]/0:dynamic[\"ingress\"]/0:content[]|A|cidr_blocks|[\"0.0.0.0/0\"]"
+  ]
+ },
+ {
+  "name": "provisioner",
+  "src": "{\"resource\":{\"t\":{\"n\":{\"provisioner\":{\"local-exec\":{\"command\":\"curl x | sh\"}}}}}}",
+  "nested": {
+   "provisioner": 1
+  },
+  "attrs": [
+   "command",
+   "local-exec",
+   "n",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:provisioner[\"local-exec\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:provisioner[\"local-exec\"]|A|command|\"curl x | sh\""
+  ]
+ },
+ {
+  "name": "provisioner-list",
+  "src": "{\"resource\":{\"t\":{\"n\":{\"provisioner\":[{\"local-exec\":{\"command\":\"a\"}},{\"remote-exec\":{\"inline\":[\"b\"]}}]}}}}",
+  "nested": {
+   "provisioner": 1
+  },
+  "attrs": [
+   "command",
+   "inline",
+   "local-exec",
+   "n",
+   "remote-exec",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:provisioner[\"local-exec\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:provisioner[\"local-exec\"]|A|command|\"a\"",
+   "/0:resource[\"t\",\"n\"]/1:provisioner[\"remote-exec\"]|B",
+   "/0:resource[\"t\",\"n\"]/1:provisioner[\"remote-exec\"]|A|inline|[\"b\"]"
+  ]
+ },
+ {
+  "name": "templates",
+  "src": "{\"resource\":{\"t\":{\"n\":{\"a\":\"${var.x}\",\"b\":\"$${x}\",\"c\":\"plain\",\"d\":\"%%{y}\"}}}}",
+  "attrs": [
+   "a",
+   "b",
+   "c",
+   "d",
+   "n",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]|A|a|C",
+   "/0:resource[\"t\",\"n\"]|A|b|\"${x}\"",
+   "/0:resource[\"t\",\"n\"]|A|c|\"plain\"",
+   "/0:resource[\"t\",\"n\"]|A|d|\"%{y}\""
+  ]
+ },
+ {
+  "name": "resource-array-of-names",
+  "src": "{\"resource\":{\"t\":[{\"a\":{\"x\":1}},{\"b\":{\"y\":2}}]}}",
+  "attrs": [
+   "a",
+   "b",
+   "resource",
+   "t",
+   "x",
+   "y"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"a\"]|B",
+   "/0:resource[\"t\",\"a\"]|A|x|1",
+   "/1:resource[\"t\",\"b\"]|B",
+   "/1:resource[\"t\",\"b\"]|A|y|2"
+  ]
+ },
+ {
+  "name": "resource-body-array",
+  "src": "{\"resource\":{\"t\":{\"a\":[{\"x\":1},{\"x\":2}]}}}",
+  "attrs": [
+   "a",
+   "resource",
+   "t",
+   "x"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"a\"]|B",
+   "/0:resource[\"t\",\"a\"]|A|x|1",
+   "/1:resource[\"t\",\"a\"]|B",
+   "/1:resource[\"t\",\"a\"]|A|x|2"
+  ]
+ },
+ {
+  "name": "null-body",
+  "src": "{\"resource\":{\"t\":{\"a\":null}}}",
+  "attrs": [
+   "a",
+   "resource",
+   "t"
+  ],
+  "hcl": []
+ },
+ {
+  "name": "null-root-block",
+  "src": "{\"locals\":null}",
+  "attrs": [
+   "locals"
+  ],
+  "hcl": []
+ },
+ {
+  "name": "locals",
+  "src": "{\"locals\":{\"a\":[1,{\"b\":null}],\"c\":\"${x}\"}}",
+  "attrs": [
+   "a",
+   "b",
+   "c",
+   "locals"
+  ],
+  "hcl": [
+   "/0:locals[]|B",
+   "/0:locals[]|A|a|[1,{\"b\":null}]",
+   "/0:locals[]|A|c|C"
+  ]
+ },
+ {
+  "name": "backend",
+  "src": "{\"terraform\":{\"backend\":{\"s3\":{\"encrypt\":false}}}}",
+  "nested": {
+   "backend": 1
+  },
+  "attrs": [
+   "encrypt",
+   "s3",
+   "terraform"
+  ],
+  "hcl": [
+   "/0:terraform[]|B",
+   "/0:terraform[]/0:backend[\"s3\"]|B",
+   "/0:terraform[]/0:backend[\"s3\"]|A|encrypt|false"
+  ]
+ },
+ {
+  "name": "check-data",
+  "src": "{\"check\":{\"c\":{\"data\":{\"http\":{\"h\":{\"url\":\"http://x\"}}}}}}",
+  "nested": {
+   "data": 2
+  },
+  "attrs": [
+   "c",
+   "check",
+   "h",
+   "http",
+   "url"
+  ],
+  "hcl": [
+   "/0:check[\"c\"]|B",
+   "/0:check[\"c\"]/0:data[\"http\",\"h\"]|B",
+   "/0:check[\"c\"]/0:data[\"http\",\"h\"]|A|url|\"http://x\""
+  ]
+ },
+ {
+  "name": "provider-array",
+  "src": "{\"provider\":{\"aws\":[{\"region\":\"a\"},{\"alias\":\"b\",\"region\":\"c\"}]}}",
+  "attrs": [
+   "alias",
+   "aws",
+   "provider",
+   "region"
+  ],
+  "hcl": [
+   "/0:provider[\"aws\"]|B",
+   "/0:provider[\"aws\"]|A|region|\"a\"",
+   "/1:provider[\"aws\"]|B",
+   "/1:provider[\"aws\"]|A|alias|\"b\"",
+   "/1:provider[\"aws\"]|A|region|\"c\""
+  ]
+ },
+ {
+  "name": "nfc-value",
+  "src": "{\"locals\":{\"a\":\"falsè\"}}",
+  "attrs": [
+   "a",
+   "locals"
+  ],
+  "hcl": [
+   "/0:locals[]|B",
+   "/0:locals[]|A|a|\"falsè\""
+  ]
+ },
+ {
+  "name": "unknown-top",
+  "src": "{\"bogus\":{}}",
+  "attrs": [
+   "bogus"
+  ],
+  "hcl": "ERR"
+ },
+ {
+  "name": "dup-body-key",
+  "src": "{\"locals\":{\"a\":1,\"a\":2}}",
+  "attrs": [
+   "a",
+   "locals"
+  ],
+  "hcl": "ERR"
+ },
+ {
+  "name": "dup-across-array",
+  "src": "{\"resource\":{\"t\":{\"n\":[{\"a\":1},{\"a\":2}]}}}",
+  "attrs": [
+   "a",
+   "n",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]|A|a|1",
+   "/1:resource[\"t\",\"n\"]|B",
+   "/1:resource[\"t\",\"n\"]|A|a|2"
+  ]
+ },
+ {
+  "name": "root-array",
+  "src": "[{\"locals\":{\"a\":1}},{\"locals\":{\"b\":2}}]",
+  "attrs": [
+   "a",
+   "b",
+   "locals"
+  ],
+  "hcl": [
+   "/0:locals[]|B",
+   "/0:locals[]|A|a|1",
+   "/1:locals[]|B",
+   "/1:locals[]|A|b|2"
+  ]
+ },
+ {
+  "name": "root-null",
+  "src": "null",
+  "hcl": "ERR"
+ },
+ {
+  "name": "root-string",
+  "src": "\"x\"",
+  "hcl": "ERR"
+ },
+ {
+  "name": "empty",
+  "src": "",
+  "hcl": "ERR"
+ },
+ {
+  "name": "empty-object",
+  "src": "{}",
+  "hcl": []
+ },
+ {
+  "name": "bad-template",
+  "src": "{\"locals\":{\"a\":\"${\"}}",
+  "attrs": [
+   "a",
+   "locals"
+  ],
+  "hcl": [
+   "/0:locals[]|B",
+   "/0:locals[]|A|a|C"
+  ]
+ },
+ {
+  "name": "r2-repeated-comment-in-merged-body",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"statement\":[[{\"//\":\"a\",\"actions\":[\"*\"]},{\"//\":\"b\"}]]}}}}",
+  "nested": {
+   "statement": 0
+  },
+  "attrs": [
+   "actions",
+   "r",
+   "resource",
+   "t"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|A|actions|[\"*\"]"
+  ]
+ },
+ {
+  "name": "r2-repeated-block-in-merged-body",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"statement\":[[{\"actions\":[\"*\"],\"condition\":{\"test\":\"a\"}},{\"condition\":{\"test\":\"b\"}}]]}}}}",
+  "nested": {
+   "condition": 0,
+   "statement": 0
+  },
+  "attrs": [
+   "actions",
+   "r",
+   "resource",
+   "t",
+   "test"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]|A|actions|[\"*\"]",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/0:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/0:condition[]|A|test|\"a\"",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/1:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/0:statement[]/1:condition[]|A|test|\"b\""
+  ]
+ },
+ {
+  "name": "r2-null-beside-merged",
+  "src": "{\"resource\":{\"t\":{\"r\":{\"condition\":[null,[{\"//\":\"a\",\"test\":\"x\"},{\"//\":\"b\"}]]}}}}",
+  "nested": {
+   "condition": 0
+  },
+  "attrs": [
+   "r",
+   "resource",
+   "t",
+   "test"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"r\"]|B",
+   "/0:resource[\"t\",\"r\"]/0:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/1:condition[]|B",
+   "/0:resource[\"t\",\"r\"]/1:condition[]|A|test|\"x\""
+  ]
+ },
+ {
+  "name": "r2-repeated-comment-resource-body",
+  "src": "{\"resource\":{\"t\":{\"n\":[[{\"//\":\"a\",\"x\":1},{\"//\":\"b\"}]]}}}",
+  "attrs": [
+   "n",
+   "resource",
+   "t",
+   "x"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]|A|x|1"
+  ]
+ },
+ {
+  "name": "r2-argument-set-twice",
+  "src": "{\"resource\":{\"t\":{\"n\":[[{\"x\":1},{\"x\":2}]]}}}",
+  "attrs": [
+   "n",
+   "resource",
+   "t",
+   "x"
+  ],
+  "hcl": "ERR"
+ },
+ {
+  "name": "r3-repeated-key-keeps-file-order",
+  "src": "{\"resource\":{\"t\":{\"n\":{\"ingress\":null,\"content\":{\"a\":1},\"ingress\":{\"b\":2}}}}}",
+  "nested": {
+   "content": 0,
+   "ingress": 0
+  },
+  "attrs": [
+   "a",
+   "b"
+  ],
+  "hcl": [
+   "/0:resource[\"t\",\"n\"]|B",
+   "/0:resource[\"t\",\"n\"]/0:content[]|B",
+   "/0:resource[\"t\",\"n\"]/0:content[]|A|a|1",
+   "/0:resource[\"t\",\"n\"]/1:ingress[]|B",
+   "/0:resource[\"t\",\"n\"]/1:ingress[]|A|b|2"
+  ]
+ }
+]

@@ -1,13 +1,14 @@
 id: block-unsafe-code-execution
 name: "Block Unsafe Code Execution"
-version: "0.0.4"
+version: "0.1.0"
 description: >
-  Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec,
-  shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load
-  without SafeLoader, execSync, new Function. Best-effort line scan; sandbox
-  design, egress, and inherited credentials stay with the advisory owasp-asi05
-  policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same
-  line, honoured at commit; at agent tool-use it counts only for a line already committed in HEAD.
+  Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver
+  and indirect eval/exec forms, the Function constructor, string
+  timers, exec-mode compile, import by computed name, shell-mode and
+  implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml
+  loaders, model loads) and shell eval of a variable. File-type-blind
+  line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on
+  the line; in the agent only if already committed in HEAD.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -23,14 +24,16 @@ hook:
     action: block
     message: >
       Dynamic execution primitive detected. Replace it with a parameterized API
-      (subprocess argument vector, safe_load, a real parser), or have a person add
-      'pragma: allowlist exec' on the same line for a reviewed, deliberate use (in the agent it counts
-      only when that exact line is already committed in HEAD).
+      (a subprocess argument vector without a shell, execFile/spawn without the
+      shell option, yaml.safe_load, torch load with weights_only, a real parser or
+      an explicit dispatch table), or have a person add 'pragma: allowlist exec' on
+      the same line for a reviewed, deliberate use (in the agent it counts only when
+      that exact line is already committed in HEAD).
     params:
       scan: added_lines
       allowlist_pragma: 'pragma:\s*allowlist\s+exec'
       content_pattern: |-
-        (?<![\w.])(eval|exec)\s*\(|shell\s*=\s*True|os\.(system|popen)\s*\(|subprocess\.getoutput\s*\(|pickle\.loads?\s*\(|marshal\.loads?\s*\(|yaml\.load\s*\((?![^)]*SafeLoader)|execSync\s*\(|new\s+Function\s*\(
+        (?<![\w.])(?:eval|exec)\s*(?:\?\.\s*)?\(|(?<![\w.$])(?:window|globalThis|global|__builtins__|builtins)\s*\??\.\s*(?:eval|exec)\s*(?:\?\.\s*)?\(|\[\s*["'`](?:eval|exec|execSync|Function)["'`]\s*\]\s*(?:\?\.\s*)?\(|,\s*eval\s*\)\s*\(|=\s*eval\s*;|getattr\s*\(\s*(?:__builtins__|builtins)\s*,\s*["'](?:eval|exec)["']|new\s+Function\s*\(|(?<![\w.$])(?<!class\s)(?<!def\s)(?<!function\s)Function\((?!\?|[\w$]+\??\s*:)(?!(?:\s*(?:"[^"\\]*"|'[^'\\]*')\s*,)*\s*(?:"[^"\\]*"|'[^'\\]*')\s*\))|(?:(?<![\w.$])|(?<=\bwindow\.)|(?<=\bglobalThis\.))(?:setTimeout|setInterval)\s*\(\s*["'`]|(?<![\w.])(?<!def\s)compile\s*\([^\n]{0,400}?["'](?:exec|eval|single)["']|(?<![\w$])vm\s*\??\.\s*(?:runIn(?:New|This)?Context|compileFunction)\s*\(|new\s+vm\s*\.\s*Script\s*\(|require\s*\(\s*["'`](?:node:)?vm["'`]\s*\)\s*\??\.\s*(?:runIn|compileFunction|Script)|(?<!\w)__import__\s*\((?!\s*(?:"[^"\\]*"|'[^'\\]*')\s*[,)])|(?:__import__|import_module)\s*\(\s*["'](?:os|subprocess|pty|builtins|commands|posix|nt|ctypes)["']|(?<![\w.])(?:importlib\s*\.\s*)?import_module\s*\((?!\s*(?:"[^"\\]*"|'[^'\\]*')\s*[,)])|shell\s*=\s*True|(?<![\w$-])shell\s*=\s*1\b|(?<![\w$-])["']?shell["']?\s*:\s*(?:true|True|1)\b|["'](?:/usr)?(?:/bin/)?(?:ba|z|da|k)?sh["']\s*,\s*\[?\s*["']-[a-z]*c["']|os\.(?:system|popen)\s*\(|os\s*\.\s*(?:system|popen)\s*\(|subprocess\.getoutput\s*\(|subprocess\s*\.\s*get(?:status)?output\s*\(|(?<![\w.])commands\s*\.\s*get(?:status)?output\s*\(|create_subprocess_shell\s*\(|execSync\s*\(|os\s*\.\s*(?:exec[lv]p?e?|spawn[lv]p?e?|posix_spawnp?)\s*\(|(?<![\w$.])(?:child_process|childProcess|cp)\s*\??\.\s*exec\s*(?:\?\.\s*)?\(|require\s*\(\s*["'`](?:node:)?child_process["'`]\s*\)\s*\??\.\s*exec\s*\(|getRuntime\s*\(\s*\)\s*\.\s*exec\s*\(|pickle\.loads?\s*\(|marshal\.loads?\s*\(|(?:pickle|marshal|cPickle|dill)\s*\.\s*loads?\s*\(|(?:pickle|cPickle|dill)\s*\.\s*Unpickler\s*\(|jsonpickle\s*\.\s*decode\s*\(|shelve\s*\.\s*open\s*\(|yaml\.load(?:_all)?\s*\((?![^)]*(?<![\w.])(?:yaml\.)?C?SafeLoader\b)|yaml\s*\.\s*(?:unsafe|full)_load(?:_all)?\s*\(|typ\s*=\s*["']unsafe["']|torch\s*\.\s*load\s*\((?![^)#\n]*weights_only\s*=\s*True)|allow_pickle\s*=\s*(?:True|1)\b|(?<![\w.$-])eval\s+(?:--\s+)?(?:"[^"]*)?\$\{?[\w@*#?!]
 
 compliance:
   mitre_atlas:
@@ -41,12 +44,25 @@ compliance:
   - control: ASI05
     coverage: partial
     note: "blocks the greppable primitives; sandbox containment and egress policy remain advisory (owasp-asi05-unexpected-code-execution)"
+  cwe:
+  - control: CWE-78
+    coverage: partial
+    note: "shell-mode, implicit-shell, os-exec-spawn, child-process-exec, runtime-exec, shell-eval-expansion; same-line forms only"
+  - control: CWE-95
+    coverage: partial
+    note: "eval-exec-call, eval-exec-receiver, eval-exec-indirect, function-constructor, string-timer, compile-builtin, vm-run, shell-eval-expansion"
+  - control: CWE-470
+    coverage: partial
+    note: "dynamic-import: import by a computed name, and the import of os/subprocess-class modules by literal name"
+  - control: CWE-502
+    coverage: partial
+    note: "deserialize, yaml-unsafe, model-load"
 
 provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-13T00:00:00Z"
-  updated_at: "2026-08-13T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -75,3 +91,8 @@ changelog:
   date: '2026-09-29'
   changes:
   - "Also run in the agent: gate.on is now [commit, tool_use], so a dynamic-execution primitive is refused as the agent writes it (an edit's own text at tool use; at the turn's end only lines changed against HEAD). No pattern change. False-positive check: the pattern needs a call paren after eval/exec (a `.exec(` method call is excluded by its lookbehind) and skips nothing by path, so prose that names a primitive with a call paren is refused in the agent as it already was at commit; a line already committed with the pragma is never re-flagged. Waiver wording follows chock 0.14.0: the pragma is honoured at commit; in the agent (tool use, the turn's end, a commit made with CHOCK_AGENT_COMMIT set) it counts only when that exact line is already committed in HEAD, and the turn's end judges only the lines changed against HEAD. The gate message and description said a waiver is never honoured in the agent. Pattern and gate behaviour unchanged."
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "v2, regex tier (roadmap HP13). New refusals: the child_process exec method on its usual receivers (optional chaining and a require of child_process included) and a Runtime exec; os exec*/spawn*/posix_spawn (process launch by the program the line names, refused as HP13 lists them although they take an argument vector); subprocess and commands getstatusoutput/getoutput and asyncio's shell subprocess; an argument vector that starts with a shell (bare name or /bin path) and a flag group ending in c; eval/exec through window, globalThis, global or builtins and their indirect forms (bracket access, the comma-operator call, assignment to a name, getattr with a literal name); the Function constructor without new unless every argument is a plain literal; string timers; compile with an exec, eval or single mode on the line; import by computed name, and import of os-class modules by literal name; the shell option as 1, and as true or 1 in JSON or object form; the cPickle/dill/jsonpickle/shelve/Unpickler deserializers; the yaml unsafe and full loader functions and ruamel's unsafe type; torch load without weights_only set to True inside the call; allow_pickle set to True or 1; the node vm run APIs; shell eval of a variable expansion. Spacing around a dot no longer evades os, pickle or marshal. The yaml SafeLoader exemption now needs the loader name itself. Each rule names its CWE under compliance.cwe."
+  - "Nothing loosens: the 0.0.4 pattern is kept as its own alternatives where a boundary was added, and a seeded fuzz test checks that no string the 0.0.4 pattern refused passes (also checked over about 3.3 million lines of installed Python and Node packages). Kept exemptions: dotted method calls on other receivers, ast.literal_eval, yaml.safe_load, the shell-init idiom that evals a command substitution, Function or import with plain-literal arguments. Not done here: the roadmap's markdown-fence, comment-line and test-path exemptions would loosen the gate, and a line scan cannot see a fence; they are left to NP10 (wave 4) and the owner. Multi-line calls, aliases and constructed names stay documented limits."
