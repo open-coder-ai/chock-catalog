@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Report each scanner suppression marker in a write; the engine keeps the ones a change adds."""
+
+from __future__ import annotations
+
+import json
+import re
+import sys
+from pathlib import Path
+
+# The rule tables ship beside this script. A missing copy raises here, and the runner treats an
+# exit it did not ask for as undecided, which takes the declared action: never an allow. No
+# bytecode cache is written: the gate is read_only in the repository it judges.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from suppression_config import config_findings, normalized  # noqa: E402 -- after the path and cache setup
+from suppression_markers import (  # noqa: E402
+    SECRET_RULES,
+    eslint_block_lines,
+    has_marker_word,
+    hot_lines,
+    lines_of,
+    marker_rule,
+)
+
+ALLOW, ASK, UNREADABLE = 0, 3, 2
+#: Past this many findings the document is one finding marked new: always asked, never compared, so
+#: a huge write cannot flood the engine's output or its time budget.
+MAX_FINDINGS = 10000
+SHOWN = 50
+
+#: Prose: only a secret scanner's marker silences anything there.
+PROSE = re.compile(r"\.(md|mdx|markdown|rst|txt|adoc)$", re.IGNORECASE)
+#: Changelogs by their conventional upper-case names; a script named `history` is code.
+CHANGELOG = re.compile(r"(^|/)(CHANGELOG|CHANGES|HISTORY)(\.(md|rst|txt|adoc))?$")
+#: chock's own managed files and eval suites: fixtures and installed copies, never judged.
+MANAGED = re.compile(r"^\.agents/policies/|^\.chock/|^(?:base|compliance|agentic-security)/[^/]+/evals/suite\.ya?ml$")
+
+ADVICE = (
+    "Fix what the scanner reports instead of silencing it. If the finding is a reviewed false "
+    "positive, a person keeps the marker by committing from their own shell with "
+    "CHOCK_ALLOW=scan-suppression-markers set for that one commit; an agent asks the person."
+)
+
+
+def _finding(rule: str, path: str, number: int, detail: str, line: str) -> dict:
+    return {
+        "key": f"{rule}|{detail}",
+        "path": path,
+        "line": number,
+        "rule": rule,
+        "message": f"suppression marker ({rule}): {normalized(line)[:120]}",
+    }
+
+
+def file_findings(path: str, text: str) -> list[dict]:
+    """Every suppression marker, ignore entry and soft-failed scan in one file, keyed without line numbers."""
+    if MANAGED.search(path):
+        return []
+    lines = lines_of(text)
+    if PROSE.search(path) or CHANGELOG.search(path):
+        # A secret scanner reads prose too, so its markers count there, quoted or not; nothing else does.
+        return [
+            _finding(rule, path, n, normalized(line), line)
+            for n, line in enumerate(lines, 1)
+            if (rule := marker_rule(line)) in SECRET_RULES
+        ]
+    found: dict[int, dict] = {}
+    for rule, number, detail in config_findings(path, text):
+        found.setdefault(number, _finding(rule, path, number, detail, lines[number - 1]))
+    if not has_marker_word(text):
+        return [found[number] for number in sorted(found)]
+    for number in hot_lines(text):
+        line = lines[number - 1]
+        rule = None if number in found else marker_rule(line)
+        if rule:
+            found[number] = _finding(rule, path, number, normalized(line), line)
+    for number in eslint_block_lines(lines):
+        found.setdefault(
+            number, _finding("eslint-disable-security", path, number, normalized(lines[number - 1]), lines[number - 1])
+        )
+    return [found[number] for number in sorted(found)]
+
+
+def findings(payload: dict) -> list[dict]:
+    """The findings of every written file. The engine runs this again on the baseline text and asks
+    only about the keys the change holds more of."""
+    writes = payload.get("writes")
+    if not isinstance(writes, dict):
+        raise TypeError("writes")
+    out: list[dict] = []
+    for path, text in sorted(writes.items()):
+        if isinstance(text, str):
+            out += file_findings(str(path).replace("\\", "/"), text)
+    return out
+
+
+def main() -> int:
+    try:
+        found = findings(json.load(sys.stdin))
+    except (ValueError, TypeError, AttributeError):
+        print("scan-suppression-markers: stdin is not the gate JSON; cannot judge", file=sys.stderr)
+        return UNREADABLE
+    if len(found) > MAX_FINDINGS:
+        message = f"{len(found)} suppression findings, more than {MAX_FINDINGS}: judged as new"
+        first = found[0]
+        found = [
+            {
+                "key": "too-many",
+                "path": first["path"],
+                "line": first["line"],
+                "rule": "too-many",
+                "message": message,
+                "new": True,
+            }
+        ]
+    print(json.dumps({"findings": found}))
+    if not found:
+        return ALLOW
+    print("scan-suppression-markers: this change adds a scanner suppression:", file=sys.stderr)
+    for item in found[:SHOWN]:
+        print(f"  {item['path']}:{item['line']}: {item['message']}", file=sys.stderr)
+    print(ADVICE, file=sys.stderr)
+    return ASK
+
+
+if __name__ == "__main__":
+    sys.exit(main())

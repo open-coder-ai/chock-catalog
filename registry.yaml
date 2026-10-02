@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: scan-suppression-markers
+  path: base/scan-suppression-markers
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 45
+  eval_executed: 44
+  description: 'Asks a person before a change adds a scanner suppression: inline ignore markers (bandit,
+    gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag,
+    zizmor, gitleaks, detect-secrets, CodeQL, Java/C#/Rust security allows), scanner ignore files and
+    skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent
+    write, turn''s end; CI annotates. Line-local, friction not a boundary.'
