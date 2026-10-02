@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import configparser
 import re
+import shlex
 
 from reg_core import CONFUSION, TLS, Ctx, add, falsy, line_of, norm, secret, url
 from reg_parse import refuse, toml, walk, yaml_scalars
@@ -11,11 +12,6 @@ from reg_parse import refuse, toml, walk, yaml_scalars
 #: The pip options a requirements file may carry that choose an index, and the shortest prefix of each that
 #: pip's option parser (optparse) still reads as that option and no other requirements-file option.
 LONG_OPTIONS = {"index-url": 1, "extra-index-url": 2, "find-links": 1, "trusted-host": 1}
-PIP_OPTION = re.compile(
-    r"(?:^|\s)(-i|-f|--(?:"
-    + "|".join(f"{name[:n]}[a-z-]*" for name, n in LONG_OPTIONS.items())
-    + r"))(?:\s*=\s*|\s+|(?<=-[if])(?=\S))(\S+)"
-)
 COMMENT = re.compile(r"(?:^|\s)#.*$")
 URL_KEYS = frozenset({"index-url", "extra-index-url", "find-links", "url", "publish-url", "check-url", "repository"})
 INSECURE_KEYS = frozenset({"trusted-host", "allow-insecure-host"})
@@ -24,9 +20,6 @@ INSECURE_KEYS = frozenset({"trusted-host", "allow-insecure-host"})
 def _option(ctx: Ctx, number: int, option: str, value: str) -> None:
     """One pip index option, however it was written (requirements line, config key, TOML key)."""
     name = {"-i": "index-url", "-f": "find-links"}.get(option, option.lstrip("-").replace("_", "-"))
-    if option.startswith("--"):
-        # optparse reads any unambiguous prefix as the option it starts (--index is --index-url).
-        name = next((full for full in LONG_OPTIONS if full.startswith(name)), name)
     if name in INSECURE_KEYS:
         add(ctx, TLS, number, (name, norm(value).lower()), f"{name} {norm(value)[:80]} turns TLS verification off")
         return
@@ -57,8 +50,28 @@ def requirements(ctx: Ctx) -> None:
     if pending:
         logical.append((start, pending))
     for number, line in logical:
-        for match in PIP_OPTION.finditer(line):
-            _option(ctx, number, match[1], match[2])
+        for option, value in pip_options(line):
+            _option(ctx, number, option, value)
+
+
+def pip_options(line: str) -> list[tuple[str, str]]:
+    """The index options in one requirements line, read as pip reads them: words split the shell way (quotes
+    join and drop), a long option by any prefix optparse accepts, its value after '=' or as the next word."""
+    try:
+        words = shlex.split(line)
+    except ValueError:
+        words = line.split()
+    out: list[tuple[str, str]] = []
+    rest = iter(words)
+    for word in rest:
+        if word.startswith("--"):
+            name, eq, value = word[2:].partition("=")
+            full = next((f for f, least in LONG_OPTIONS.items() if f.startswith(name) and len(name) >= least), None)
+            if full:
+                out.append(("--" + full, value if eq else next(rest, "")))
+        elif word[:2] in ("-i", "-f"):
+            out.append((word[:2], word[2:] or next(rest, "")))
+    return out
 
 
 def _config(ctx: Ctx) -> configparser.ConfigParser | None:
@@ -163,5 +176,5 @@ def condarc(ctx: Ctx) -> None:
         elif top == "ssl_verify" and falsy(value):
             add(ctx, TLS, number, (top, "false"), "ssl_verify: false turns TLS verification off")
         elif top == "dependencies":
-            for match in PIP_OPTION.finditer(value):
-                _option(ctx, number, match[1], match[2])
+            for option, found in pip_options(value):
+                _option(ctx, number, option, found)

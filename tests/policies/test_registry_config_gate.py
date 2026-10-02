@@ -72,8 +72,9 @@ def test_the_shipped_table_holds_the_default_registries() -> None:
 
 
 def test_too_many_findings_become_one_new_finding(monkeypatch, capsys) -> None:
-    text = "".join(f"@s{i}:registry=http://r{i}.example/\n" for i in range(mod.MAX_FINDINGS + 1))
-    code, out, _ = run_main(monkeypatch, capsys, payload({".npmrc": text}))
+    text = "".join(f"@s{i}:registry=http://r{i}.example/\n" for i in range(1500))
+    writes = {f"p{n}/.npmrc": text for n in range(4)}
+    code, out, _ = run_main(monkeypatch, capsys, payload(writes))
     found = json.loads(out)["findings"]
     assert code == 1
     assert [(f["key"], f["new"]) for f in found] == [("too-many", True)]

@@ -6,11 +6,15 @@ import re
 
 from reg_core import REDIRECT, TLS, Ctx, add, norm, url
 
-#: A GO* setting as Dockerfile ENV/ARG, shell or make assignment, YAML or `go env -w` writes one; never a ${GO...} read.
-GO_SETTING = re.compile(
-    r"(?<![\w$])(?<!\$\{)(GOINSECURE|GOSUMDB|GONOSUMDB|GONOSUMCHECK|GOPRIVATE|GOPROXY|GOFLAGS)"
-    r"[\"']?(?:\s*[:?+]?=\s*|\s*:\s+|\s+(?=[\"'\w*.,/-]))[\"']?([^\"'\s#;]*(?:\s+-[\w=.,-]+)*)"
-)
+NAMES = r"(GOINSECURE|GOSUMDB|GONOSUMDB|GONOSUMCHECK|GOPRIVATE|GOPROXY|GOFLAGS)"
+#: A value: double-quoted (escapes kept), single-quoted, or bare up to whitespace, with GOFLAGS-style flags after.
+VALUE = r"""(?:"((?:[^"\\\n]|\\.)*)"|'([^'\n]*)'|([^\s"'#;}\]]*(?:\s+--?[\w=.,-]+)*))"""
+#: A GO* setting as a shell, make or env assignment, a YAML key or `go env -w` writes one; never a ${GO...} read.
+#: A bare `NAME value` (no '=' or ':') is prose, except on a Dockerfile ENV or ARG line (GO_ENV_LINE).
+GO_SETTING = re.compile(rf"""(?<![\w$])(?<!\$\{{){NAMES}["']?(?:\s*[:?+]?=\s*|\s*:\s+){VALUE}""")
+GO_ENV_LINE = re.compile(rf"""^\s*(?:ENV|ARG)\s+{NAMES}\s+{VALUE}""", re.IGNORECASE)
+#: A shell default expansion, ${NAME:-value} or ${NAME:=value}: the value applies when the name is unset.
+DEFAULT = re.compile(r"^\$\{\w+:?[-=](.*)\}$")
 #: Hosts anyone can publish modules under: a pattern naming one of them with no path is every module there.
 PUBLIC_HOSTS = frozenset(
     {"github.com", "gitlab.com", "bitbucket.org", "golang.org", "gopkg.in", "go.googlesource.com", "google.golang.org"}
@@ -19,7 +23,7 @@ PUBLIC_HOSTS = frozenset(
 REPLACE_ONE = re.compile(r"^\s*replace\s+(\S+)(?:\s+\S+)?\s*=>\s*(\S+)(?:\s+(\S+))?")
 BLOCK_START = re.compile(r"^\s*replace\s*\(\s*$")
 REPLACE_ENTRY = re.compile(r"^\s*(\S+)(?:\s+v\S+)?\s*=>\s*(\S+)(?:\s+(\S+))?")
-GLOB = frozenset("*?[")
+GLOB = frozenset("*?[\\")
 #: The public checksum databases; any other GOSUMDB name is a database of someone's choosing.
 SUMDBS = frozenset({"sum.golang.org", "sum.golang.google.cn"})
 
@@ -39,14 +43,13 @@ def _broad(pattern: str) -> bool:
 def go_setting(ctx: Ctx, number: int, name: str, value: str) -> None:
     """Judge one GO* setting written with `value`."""
     value = norm(value)
+    default = DEFAULT.match(value)
+    value = norm(default[1]) if default else value
     items = [v for v in re.split(r"[,|]", value) if v]
     if name == "GOINSECURE" and value:
         add(ctx, TLS, number, (name, value), f"GOINSECURE={value[:60]} fetches those modules without TLS verification")
-    elif name == "GOSUMDB" and value.lower() == "off":
-        add(ctx, TLS, number, (name, "off"), "GOSUMDB=off turns checksum verification off for every module")
-    elif name == "GOSUMDB" and value and value.split("+")[0].lower() not in SUMDBS:
-        # A checksum database of someone's choosing is judged like a registry host.
-        url(ctx, number, name, "https://" + value.split("+")[0])
+    elif name == "GOSUMDB":
+        _gosumdb(ctx, number, value)
     elif name in ("GONOSUMDB", "GONOSUMCHECK", "GOPRIVATE") and any(_broad(i) for i in items):
         add(ctx, TLS, number, (name, value), f"{name}={value[:60]} skips checksum verification for public modules")
     elif name == "GOFLAGS":
@@ -55,10 +58,30 @@ def go_setting(ctx: Ctx, number: int, name: str, value: str) -> None:
         _goproxy(ctx, number, items)
 
 
+def _gosumdb(ctx: Ctx, number: int, value: str) -> None:
+    """GOSUMDB is `name`, `name+key` or `name+key url`: off, another database, its own key or URL all count.
+    A value read from the environment is not judged."""
+    fields = value.split()
+    if not fields or "$" in value:
+        return
+    named = fields[0].split("+")[0].lower()
+    if named == "off":
+        add(ctx, TLS, number, ("GOSUMDB", "off"), "GOSUMDB=off turns checksum verification off for every module")
+        return
+    if named not in SUMDBS:
+        # A checksum database of someone's choosing is judged like a registry host.
+        url(ctx, number, "GOSUMDB", "https://" + named)
+    if "+" in fields[0]:
+        message = "GOSUMDB names its own verification key: a wrong key accepts any checksum"
+        add(ctx, REDIRECT, number, ("GOSUMDB", fields[0]), message)
+    for extra in fields[1:2]:
+        url(ctx, number, "GOSUMDB", extra)
+
+
 def _goflags(ctx: Ctx, number: int, value: str) -> None:
-    if re.search(r"(?:^|\s)-insecure\b", value):
+    if re.search(r"(?:^|\s)--?insecure\b", value):
         add(ctx, TLS, number, ("GOFLAGS", "-insecure"), "GOFLAGS -insecure fetches modules without TLS verification")
-    elif re.search(r"(?:^|\s)-mod=mod\b", value):
+    elif re.search(r"(?:^|\s)--?mod=mod\b", value):
         add(
             ctx,
             REDIRECT,
@@ -78,12 +101,13 @@ def _goproxy(ctx: Ctx, number: int, items: list[str]) -> None:
 
 
 def go_env(ctx: Ctx) -> None:
-    """GO* settings on any non-comment line of a Dockerfile, Makefile, env or CI file."""
+    """GO* settings on any non-comment line of a Dockerfile, Makefile, script, env or CI file."""
     for number, raw in enumerate(ctx.lines, 1):
         if raw.lstrip().startswith(("#", "//")):
             continue
-        for match in GO_SETTING.finditer(raw):
-            go_setting(ctx, number, match[1], match[2])
+        for match in (*GO_ENV_LINE.finditer(raw), *GO_SETTING.finditer(raw)):
+            value = next((g for g in match.groups()[1:] if g is not None), "")
+            go_setting(ctx, number, match[1], value)
 
 
 def _replace(ctx: Ctx, number: int, old: str, new: str) -> None:

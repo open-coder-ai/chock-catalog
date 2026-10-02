@@ -81,23 +81,38 @@ def unquote(text: str) -> str:
     text = text.strip()
     if len(text) > 1 and text[0] == text[-1] == '"':
         try:
-            decoded = json.loads(text)
+            return json.loads(text)
         except ValueError:
             return text[1:-1]
-        return decoded if isinstance(decoded, str) else text[1:-1]
     if len(text) > 1 and text[0] == text[-1] == "'":
         return text[1:-1]
     return text
 
 
+def npm_unquote(text: str) -> str:
+    """A quoted .npmrc key or value as npm's ini reader takes it: single quotes stripped, then the text (or
+    the double-quoted original) JSON-decoded when it parses; a decoded true, false or number is its text."""
+    text = text.strip()
+    if not (text[1:] and text[0] == text[-1] and text[0] in "\"'"):
+        return text
+    inner = text[1:-1] if text[0] == "'" else text
+    try:
+        decoded = json.loads(inner)
+    except ValueError:
+        return text[1:-1]
+    if isinstance(decoded, bool):
+        return str(decoded).lower()
+    return decoded if isinstance(decoded, str) else text[1:-1] if isinstance(decoded, (dict, list)) else str(decoded)
+
+
 def ini_value(raw: str | None) -> str:
-    """An INI value as npm reads it: quoted text whole, otherwise cut at an unescaped comment mark.
-    A key with no '=' reads as true."""
+    """An INI value as npm reads it: quoted text decoded (see npm_unquote), otherwise cut at an unescaped
+    comment mark. A key with no '=' reads as true."""
     if raw is None:
         return "true"
     text = raw.strip()
     if len(text) > 1 and text[0] == text[-1] and text[0] in "\"'":
-        return unquote(text)
+        return npm_unquote(text)
     return INI_COMMENT.split(text, maxsplit=1)[0].strip()
 
 
@@ -113,7 +128,7 @@ def ini_pairs(ctx: Ctx) -> list[tuple[str, str, str, int]]:
             section = line[1:-1].strip().lower()
             continue
         match = INI_LINE.match(line)
-        key = unquote(match[1]).lower() if match else ""
+        key = npm_unquote(match[1]).lower() if match else ""
         if key:
             out.append((section, key, ini_value(match[2]), number))
     return out

@@ -65,7 +65,7 @@ BY_NAME: dict[str, Reader] = {
 BY_PATH: tuple[tuple[re.Pattern[str], Reader], ...] = (
     (re.compile(r"(?:^|/)\.cargo/config(?:\.toml)?$"), reg_cargo.cargo_config),
     # Yarn's committed release and plugins are code Yarn runs for every command.
-    (re.compile(r"(?:^|/)\.yarn/(?:releases|plugins)/"), reg_npm.pnpmfile),
+    (re.compile(r"(?:^|/)\.yarn/(?:releases|plugins)/.*\.c?js$"), reg_npm.pnpmfile),
     (re.compile(r"\.(?:cs|fs|vb)proj$"), reg_xml.props),
     (re.compile(r"(?:^|/)\.github/dependabot\.ya?ml$"), reg_bots.dependabot),
     (

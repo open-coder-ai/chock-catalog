@@ -68,7 +68,8 @@ def test_cargo(path: str, text: str, want: list[str]) -> None:
         ("nuget.config", "<configuration><packageSources/></configuration>\n", []),
         ("nuget.config", NUGET_HEAD + NUGET_TAIL + "<!-- open\n", [B_UNREAD]),
         ("nuget.config", "<!DOCTYPE x [<!ENTITY e 'http://h'>]>\n" + NUGET_HEAD + NUGET_TAIL, [B_UNREAD]),
-        ("nuget.config", NUGET_HEAD + NUGET_TAIL + "<![CDATA[x]]>\n", [B_UNREAD]),
+        ("nuget.config", NUGET_HEAD + NUGET_TAIL + "<![CDATA[x]]>\n", []),
+        ("nuget.config", NUGET_HEAD + NUGET_TAIL + "<![CDATA[x\n", [B_UNREAD]),
         (
             "nuget.config",
             f'<config><add key="http_proxy.password" value="{LIT}"/><add key="Username" value="u"/></config>\n',

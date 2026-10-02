@@ -48,7 +48,7 @@ AGE = "min-release-age=3\n"
         (".env", "GOPRIVATE=*.corp.example,github.com/acme/*\n", []),
         (".github/workflows/b.yml", "env: {GOSUMDB: 'off', GOFLAGS: -insecure}\n", [B_TLS]),
         ("Dockerfile", "ENV GOPROXY=https://evil.example\n", [B_HOST]),
-        ("Dockerfile", "ENV GOSUMDB=sum.evil.example+abc\n", [B_HOST]),
+        ("Dockerfile", "ENV GOSUMDB=sum.evil.example+abc\n", [B_HOST, A_REDIR]),
         ("Dockerfile", "ENV GOSUMDB=sum.golang.org\n", []),
         # A second source after ';' on one Gemfile line, and a gem's git source in clear text.
         ("Gemfile", 'source "https://rubygems.org"; source "http://evil.example"\n', [B_HTTP, "reg-confusion"]),

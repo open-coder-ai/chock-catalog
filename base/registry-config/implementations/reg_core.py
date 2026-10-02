@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import bisect
 import hashlib
 import ipaddress
 import re
 from dataclasses import dataclass, field
+from functools import cached_property
 
 from chock_scan.hostmatch import Entry, matches
 from chock_scan.hosts import DOMAIN, Host, UnparseableError
@@ -26,11 +28,11 @@ ALLOWLIST = "reg-allowlist-changed"
 BLOCK = frozenset({CREDENTIAL, HTTP, TLS, SCRIPTS, HOST, UNREADABLE})
 
 #: A value that names a secret held elsewhere: ${VAR}, ${env.X}, $VAR, %VAR%, ${{ secrets.X }}, {env:X}, env("X"),
-#: Ruby's #{ENV["X"]}.
+#: Ruby's #{ENV["X"]}, Renovate's {{ secrets.X }}.
 ENV_REF = re.compile(
     r"^\s*[\"']?(?:\$\{\{[^}]*\}\}|\$\{[A-Za-z_][A-Za-z0-9_.]*(?::?-[^}]*)?\}|\$[A-Za-z_][A-Za-z0-9_]*"
     r"|%[A-Za-z_][A-Za-z0-9_]*%|\{env:[A-Za-z_][A-Za-z0-9_]*\}|env\(\s*[\"'][A-Za-z_][A-Za-z0-9_]*[\"']\s*\)"
-    r"|#\{ENV(?:\[|\.fetch\(\s*)[\"'][A-Za-z_][A-Za-z0-9_]*[\"'][^}]*\})[\"']?\s*$"
+    r"|#\{ENV(?:\[|\.fetch\(\s*)[\"'][A-Za-z_][A-Za-z0-9_]*[\"'][^}]*\}|\{\{\s*secrets\.[\w.]+\s*\}\})[\"']?\s*$"
 )
 #: Scheme prefixes package managers put before a URL (cargo's sparse+ and registry+, pip's git+).
 PREFIX = re.compile(r"^(?:sparse|registry|git|hg|svn|bzr)\+", re.IGNORECASE)
@@ -40,8 +42,18 @@ CLEAR = frozenset({"http", "ws", "ftp", "git", "svn"})
 #: 'https:h' as https://h, so those are URLs that parse_url then refuses as ambiguous).
 SCHEME = re.compile(r"^(?:[A-Za-z][A-Za-z0-9+.-]*://|(?:https?|wss?|ftp|file):)", re.IGNORECASE)
 AUTHORITY_END = re.compile(r"[/?#]")
-URL_IN_TEXT = re.compile(r"""(?:[A-Za-z][A-Za-z0-9+.-]*:)?//[^\s"'<>`,;)\]}]+""")
 QUOTES = "\"'"
+
+
+#: Past this many findings in one file the gate stops reading it and reports one finding marked new.
+MAX_PER_FILE = 2000
+#: How far past the last match `line_of` looks for a setting's text: readers visit settings in document
+#: order, so a bounded search keeps a file of many settings linear. A miss reports the last line found.
+WINDOW = 8192
+
+
+class TooManyError(Exception):
+    """A file holds more findings than MAX_PER_FILE."""
 
 
 @dataclass
@@ -52,10 +64,23 @@ class Ctx:
     text: str
     allow: tuple[Entry, ...] = ()
     out: list[dict] = field(default_factory=list)
+    cursor: int = 0
 
-    @property
+    @cached_property
     def lines(self) -> list[str]:
         return self.text.splitlines() or [""]
+
+    @cached_property
+    def low(self) -> str:
+        return self.text.lower()
+
+    @cached_property
+    def breaks(self) -> list[int]:
+        return [m.start() for m in re.finditer("\n", self.text)]
+
+    def line_at(self, pos: int) -> int:
+        """The 1-based line holding offset `pos`."""
+        return bisect.bisect_left(self.breaks, pos) + 1
 
 
 def digest(text: str) -> str:
@@ -71,6 +96,8 @@ def norm(text: object) -> str:
 def add(ctx: Ctx, rule: str, line: int, key: tuple[str, str], message: str) -> None:
     """Record one finding keyed by rule, setting and detail; never by line, so a moved line stays the same finding."""
     setting, detail = key
+    if len(ctx.out) >= MAX_PER_FILE:
+        raise TooManyError
     ctx.out.append(
         {
             "key": f"{rule}|{setting}|{detail}",
@@ -82,14 +109,16 @@ def add(ctx: Ctx, rule: str, line: int, key: tuple[str, str], message: str) -> N
     )
 
 
-def line_of(ctx: Ctx, *needles: str, start: int = 1) -> int:
-    """The first line (1-based, from `start`) holding every needle, case-insensitively; `start` when none does."""
-    wanted = [n.lower() for n in needles if n]
-    for number, line in enumerate(ctx.lines[start - 1 :], start):
-        low = line.lower()
-        if all(n in low for n in wanted):
-            return number
-    return start
+def line_of(ctx: Ctx, needle: str) -> int:
+    """The line of the next occurrence of `needle` (case-insensitive) within WINDOW characters of the last one
+    found, else within the first WINDOW characters, else the last line found. Only for messages: no key holds it."""
+    wanted = needle.lower()
+    for start in (ctx.cursor, 0):
+        pos = ctx.low.find(wanted, start, start + WINDOW + len(wanted)) if wanted else -1
+        if pos >= 0:
+            ctx.cursor = pos
+            break
+    return ctx.line_at(ctx.cursor)
 
 
 def literal(value: object) -> bool:
@@ -150,12 +179,6 @@ def _userinfo(ctx: Ctx, line: int, setting: str, text: str) -> None:
     _, colon, pw = creds.partition(":")
     if colon and literal(pw):
         add(ctx, CREDENTIAL, line, (setting, digest(creds)), f"{setting} carries a password in its URL")
-
-
-def urls_in(ctx: Ctx, number: int, setting: str, text: str, *, registry: bool = True) -> None:
-    """Every URL written in one piece of text, each judged by `url`."""
-    for found in URL_IN_TEXT.finditer(text):
-        url(ctx, number, setting, found[0], registry=registry)
 
 
 def falsy(value: object) -> bool:

@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import re
-
-from chock_scan.jsonc import JsoncError, loads
-from reg_core import COOLDOWN, SCRIPTS, VCS, Ctx, add, line_of, norm, secret, truthy, url, urls_in
-from reg_parse import json_doc, walk, yaml_scalars
+from reg_core import COOLDOWN, SCRIPTS, VCS, Ctx, add, line_of, norm, secret, truthy, url
+from reg_json5 import Json5Error, to_jsonc
+from reg_parse import json_doc, refuse, walk, yaml_scalars
 
 BOT_SECRETS = frozenset({"token", "password", "key"})
-#: A JSON5 credential written out: token: '...', "password": "...".
-JSON5_SECRET = re.compile(r"""\b(token|password)["']?\s*:\s*["']([^"']*)["']""")
 
 
 def dependabot(ctx: Ctx) -> None:
@@ -65,18 +61,15 @@ def _update_setting(ctx: Ctx, number: int, path: tuple[str, ...], value: str) ->
 
 
 def renovate(ctx: Ctx) -> None:
-    """renovate.json(5) / .renovaterc: postUpgradeTasks, automerge, registryUrls, hostRules secrets.
-
-    JSON5 that the JSON-with-comments reader refuses (unquoted keys, single quotes) is read line by line."""
+    """renovate.json(5) / .renovaterc: postUpgradeTasks, automerge, registryUrls, written-out credentials.
+    JSON5 is turned into JSON with comments first; what still does not parse is refused."""
     if ctx.path.lower().endswith(".json5"):
         try:
-            doc = loads(ctx.text).value
-        except JsoncError:
-            _renovate_lines(ctx)
+            ctx = Ctx(ctx.path, to_jsonc(ctx.text), ctx.allow, ctx.out)
+        except Json5Error as exc:
+            refuse(ctx, "JSON5 file", exc)
             return
-    else:
-        doc = json_doc(ctx)
-    for path, value in walk(doc):
+    for path, value in walk(json_doc(ctx)):
         if "encrypted" in path:
             # Renovate's encrypted secrets are made to be committed: only the app's private key opens them.
             continue
@@ -84,34 +77,11 @@ def renovate(ctx: Ctx) -> None:
         leaf = named[-1] if named else ""
         number = line_of(ctx, leaf)
         if "postupgradetasks" in named and leaf == "commands":
-            add(
-                ctx,
-                SCRIPTS,
-                number,
-                ("postUpgradeTasks", norm(value)),
-                "postUpgradeTasks runs commands on every update",
-            )
+            message = "postUpgradeTasks runs commands on every update"
+            add(ctx, SCRIPTS, number, ("postUpgradeTasks", norm(value)), message)
         elif leaf == "automerge" and truthy(value):
             add(ctx, VCS, number, (".".join(named), "true"), "automerge merges updates without a person's review")
         elif "registryurls" in named:
             url(ctx, number, "registryUrls", value)
-        elif "hostrules" in named and leaf in BOT_SECRETS:
+        elif leaf == "npmtoken" or ("hostrules" in named and leaf in BOT_SECRETS):
             secret(ctx, number, ".".join(named), value)
-
-
-def _renovate_lines(ctx: Ctx) -> None:
-    """A line-wise read: a registryUrls list is judged from its key up to the line closing it."""
-    listing = False
-    for number, line in enumerate(ctx.lines, 1):
-        if line.lstrip().startswith("//"):
-            continue
-        if re.search(r"\bpostUpgradeTasks\b", line):
-            add(ctx, SCRIPTS, number, ("postUpgradeTasks", "json5"), "postUpgradeTasks runs commands on every update")
-        if re.search(r"""\bautomerge["']?\s*:\s*true\b""", line):
-            add(ctx, VCS, number, ("automerge", "true"), "automerge merges updates without a person's review")
-        for match in () if "encrypted" in line else JSON5_SECRET.finditer(line):
-            secret(ctx, number, f"hostRules.{match[1]}", match[2])
-        listing = listing or re.search(r"\bregistryUrls\b", line) is not None
-        if listing:
-            urls_in(ctx, number, "registryUrls", line)
-            listing = "]" not in line

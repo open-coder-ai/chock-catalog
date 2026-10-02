@@ -31,9 +31,15 @@ EXOTIC = re.compile(
 )
 NPM_COOLDOWN = ("min-release-age", "minimum-release-age")
 #: A Yarn classic line: `key value`, `"key" "value"` or `key: value` (its parser takes an optional colon).
-YARN_V1 = re.compile(r'^\s*("[^"]*"|[^\s:]+(?::[^\s:]+)*?):?\s+(.*?)\s*$')
+YARN_V1 = re.compile(r'^\s*("(?:[^"\\]|\\.)*"|[^\s:"]+(?::[^\s:"]+)*)(?:\s+|\s*:\s*)(.*?)\s*$')
 #: A release age of zero is no cooldown at all.
-NO_AGE = frozenset({"", "0", "0s", "0m", "0h", "0d", "false"})
+AGE = re.compile(r"^\s*([0-9]+(?:\.[0-9]*)?)\s*[a-z]*\s*$")
+
+
+def has_age(value: object) -> bool:
+    """A release age above zero (a number, optionally with a unit); anything else is no cooldown."""
+    match = AGE.match(norm(value).lower())
+    return bool(match) and float(match[1]) > 0
 
 
 def _scripts_on(ctx: Ctx, key: str, value: str, number: int) -> bool:
@@ -73,7 +79,7 @@ def npmrc(ctx: Ctx) -> None:
         elif "pnpmfile" in name:
             add(ctx, REDIRECT, number, (name, norm(value)), f"{name} runs a hook that can rewrite every package")
         elif name in NPM_COOLDOWN:
-            cooled = norm(value).lower() not in NO_AGE
+            cooled = has_age(value)
         else:
             _scripts_on(ctx, name, value, number)
     if not cooled:
@@ -112,7 +118,7 @@ def yarnrc_yml(ctx: Ctx) -> None:
         elif leaf in ("npmauthtoken", "npmauthident"):
             secret(ctx, number, ".".join(path), value)
         elif path == ("npmminimalagegate",):
-            cooled = norm(value).lower() not in NO_AGE
+            cooled = has_age(value)
         else:
             _berry_setting(ctx, number, path, value)
     if not cooled:
@@ -155,7 +161,7 @@ def pnpm_workspace(ctx: Ctx) -> None:
                 f"{'.'.join(path)[:80]} resolves to {norm(value)[:80]}",
             )
         elif top == "minimumreleaseage":
-            cooled = norm(value).lower() not in NO_AGE
+            cooled = has_age(value)
         elif not path[2:]:
             _scripts_on(ctx, top, value, number)
     if not cooled:
@@ -192,7 +198,7 @@ def bunfig(ctx: Ctx) -> None:
         ):
             url(ctx, number, setting, value)
     ages = {str(k).lower(): v for k, v in install.items()}
-    if norm(ages.get("minimumreleaseage", "")).lower() in NO_AGE:
+    if not has_age(ages.get("minimumreleaseage", "")):
         add(
             ctx,
             COOLDOWN,

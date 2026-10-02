@@ -14,7 +14,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from chock_scan.data_table import TableError  # noqa: E402 -- after the path and cache setup
-from reg_core import ALLOWLIST, BLOCK, UNREADABLE, Ctx, add, digest  # noqa: E402
+from reg_core import ALLOWLIST, BLOCK, MAX_PER_FILE, UNREADABLE, Ctx, TooManyError, add, digest  # noqa: E402
 from reg_files import reader_for  # noqa: E402
 from reg_hosts import REPO_LIST, committed, repo_entries, table  # noqa: E402
 from reg_npm import pnpmfile  # noqa: E402
@@ -68,7 +68,12 @@ def findings(payload: dict) -> list[dict]:
         if len(text) > MAX_TEXT and reader is not pnpmfile:
             add(ctx, UNREADABLE, 1, ("size", digest(text)), f"larger than {MAX_TEXT} characters; not read")
         else:
-            reader(ctx)
+            try:
+                reader(ctx)
+            except TooManyError:
+                first = ctx.out[0]
+                message = f"more than {MAX_PER_FILE} findings in this file: judged as new"
+                ctx.out = [{**first, "key": "too-many", "rule": UNREADABLE, "message": message, "new": True}]
         out += ctx.out
     return out
 
