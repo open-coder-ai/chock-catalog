@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write registry.yaml's rows and the README's counts from the policies on disk.
+"""Write registry.yaml's rows, the README's counts and the prose counts from the policies on disk.
 
 check_registry.py and check_readme.py verify these facts; this writes them, so a version bump or
 an eval case is never a hand edit to two files. A row is rebuilt from its manifest, keeping only
@@ -12,6 +12,7 @@ import re
 import sys
 from pathlib import Path
 
+import prose_counts
 import yaml
 from check_readme import classify_readme
 from check_registry import said, suite_counts
@@ -139,12 +140,17 @@ def update_readme(root: Path = ROOT, *, write: bool = True) -> str:
     return _settle(path, before, after, write=write, summary="README.md counts rewritten")
 
 
+def update_prose(root: Path = ROOT, *, write: bool = True) -> str:
+    """SECURITY.md and CONTRIBUTING.md counts, from the registry this module just wrote."""
+    return "\n".join(prose_counts.update(root, write=write))
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Write both files; with --check, write nothing and fail if either would change."""
+    """Write every file; with --check, write nothing and fail if any would change."""
     write = "--check" not in (sys.argv[1:] if argv is None else argv)
-    results = [update_registry(write=write), update_readme(write=write)]
+    results = [update_registry(write=write), update_readme(write=write), update_prose(write=write)]
     print("\n".join(results))
-    return int(any("is stale" in line for line in results))
+    return int(any("is stale" in result for result in results))
 
 
 if __name__ == "__main__":

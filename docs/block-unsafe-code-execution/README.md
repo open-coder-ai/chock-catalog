@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 13 total, 13 executable |
+| **Eval cases** | 54 total, 54 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI05: bare eval/exec, shell-mode subprocess calls, os.system, pickle/marshal loads, yaml.load without SafeLoader, execSync, new Function. Best-effort line scan; sandbox design, egress, and inherited credentials stay with the advisory owasp-asi05 policy. Escape hatch for vetted uses: 'pragma: allowlist exec' on the same line, honoured at commit; at agent tool-use it counts only for a line already committed in HEAD.
+Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Dynamic execution primitive detected. Replace it with a parameterized API (subprocess argument vector, safe_load, a real parser), or have a person add 'pragma: allowlist exec' on the same line for a reviewed, deliberate use (in the agent it counts only when that exact line is already committed in HEAD).
+> Dynamic execution primitive detected. Replace it with a parameterized API (a subprocess argument vector without a shell, execFile/spawn without the shell option, yaml.safe_load, torch load with weights_only, a real parser or an explicit dispatch table), or have a person add 'pragma: allowlist exec' on the same line for a reviewed, deliberate use (in the agent it counts only when that exact line is already committed in HEAD).
 
 ## Which primitive it becomes
 

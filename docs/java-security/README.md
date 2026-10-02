@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 172 total, 162 executable |
+| **Eval cases** | 177 total, 167 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android, ...), SQL/JPA/MyBatis, templates, application.properties or .yml, web.xml, pom.xml or Gradle; "customize java security" opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto, trust-all TLS, disabled Spring Security, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules in 16 packs, each allow|deny|ask in .chock/security.json; absent = deny.
+trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android), SQL/JPA/MyBatis, templates, application.properties/.yml, web.xml, pom.xml, Gradle; "customize java security" opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto, trust-all TLS, Spring Security off, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules, 16 packs, each allow|deny|ask in .chock/security.json; absent = deny (quality: allow).
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny. Only what the change adds is refused: a violation on lines the change leaves alone never blocks it. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page.
+> java-security: a construct one of its rules denies -- the refusal above names the rule, the pack it belongs to and the fix. Each rule's verdict is allow|deny|ask in .chock/security.json, per rule or per pack (java, crypto, spring, jakarta, persistence, templates, logging, build, android, bugs, concurrency, resources, exceptions, performance, style, testing); absent = deny for a security pack, allow for a quality pack (bugs through testing). Only what the change adds is refused: a violation on lines the change leaves alone never blocks it. Only a human reviewer waives a line, with // chock: allow <rule-id>, never the agent: in the agent a waiver counts once a human has committed it. Choose verdicts by asking to customize java security, which opens this skill's guided page.
 
 ## Which primitive it becomes
 

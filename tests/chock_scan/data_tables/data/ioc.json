@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "kind": "ioc",
+  "as_of": "2026-09-30",
+  "source": "https://github.com/advisories",
+  "entries": [
+    {"ecosystem": "npm", "name": "axios", "versions": ["1.14.1", "0.30.4"]},
+    {"ecosystem": "pypi", "name": "litellm", "versions": ["1.82.7", "1.82.8"]}
+  ]
+}

@@ -1,6 +1,6 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.7"
+version: "0.0.8"
 description: >
   Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an
   allow/alwaysAllow/tools array on the same line, or quoted defaultMode bypassPermissions. Any
@@ -51,12 +51,16 @@ compliance:
   owasp_asi:
   - control: ASI03
     coverage: partial
-    note: "blocks the everything-grant a diff can show (LLM03 Excessive Agency); least-agency tool design remains advisory (owasp-asi02-tool-misuse, owasp-asi03-identity-privilege-abuse)"
+    note: "blocks the everything-grant a diff can show; least-agency tool design remains advisory (owasp-asi02-tool-misuse, owasp-asi03-identity-privilege-abuse)"
+  owasp_llm_2025:
+  - control: LLM06
+    coverage: partial
+    note: "Excessive Agency: blocks the single-line everything-grant in an agent's permission config; multi-line grants and per-tool scoping are not judged"
 
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -70,6 +74,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.8
+  date: '2026-10-02'
+  changes:
+  - "Metadata, no behaviour change: the OWASP ASI03 note gave Excessive Agency the id LLM03; in the OWASP Top 10 for LLM Applications 2025 it is LLM06 (LLM03 is Supply Chain). The claim is now machine-readable, compliance.owasp_llm_2025: LLM06 (partial), and tools/check_registry.py holds every LLM id in a manifest to the 2025 list. The 0.0.1 entry below is corrected the same way."
 - version: 0.0.7
   date: '2026-09-30'
   changes:
@@ -94,7 +102,7 @@ changelog:
 - version: 0.0.1
   date: '2026-08-16'
   changes:
-  - "Initial release. Anchors: OWASP LLM03 (Excessive Agency), ASI03, OWASP Agentic T3; sibling of block-wildcard-iam."
+  - "Initial release. Anchors: OWASP LLM06 (Excessive Agency; this line said LLM03 until 0.0.8), ASI03, OWASP Agentic T3; sibling of block-wildcard-iam."
 - version: 0.0.2
   date: '2026-08-16'
   changes:

@@ -6,7 +6,7 @@
     python tools/regen_all.py --check-only   # write nothing; run the checks
     python tools/regen_all.py --base main    # the ref whose diff picks the transcripts to re-make
 
-Order is load-bearing: plugin packages -> sync (the lockfile hashes packaged files) -> registry
+Order is load-bearing: lib/ copies -> plugin packages -> sync (the lockfile hashes packaged files) -> registry
 and README counts -> docs, matrix, figures, brand card (read the registry) -> adoption
 transcripts (adopt the packaged folder). Checks run cheapest first, in parallel; transcripts
 are checked only once the plugin packages are known current.
@@ -57,6 +57,12 @@ FORMATTED = (
     "tools/regen_all.py",
     "tools/gen_registry.py",
     "tools/check_installed.py",
+    "tools/owasp_llm.py",
+    "tools/prose_counts.py",
+    "tools/check_data_tables.py",
+    "tools/gen_lib_copies.py",
+    "tools/lib_imports.py",
+    "lib/chock_scan",
 )
 
 
@@ -122,9 +128,10 @@ def sync() -> int:
 
 def regenerate(base: str) -> int:
     print("== regenerate (dependency order)")
-    rc = max([0] + [report(run(f"plugin build {tree}", plugin_build(tree))) for tree in TREES])
+    rc = report(run("lib copies (before packaging: plugins ship them)", [PY, "tools/gen_lib_copies.py"]))
+    rc = max([rc] + [report(run(f"plugin build {tree}", plugin_build(tree))) for tree in TREES])
     rc = max(rc, sync())
-    for update in (gen_registry.update_registry, gen_registry.update_readme):
+    for update in (gen_registry.update_registry, gen_registry.update_readme, gen_registry.update_prose):
         start = time.monotonic()
         print(f"  ok   {time.monotonic() - start:6.1f}s  {update()}")
     steps: list[tuple[str, Cmd]] = [
@@ -162,7 +169,8 @@ def fast_checks(scratch: Path) -> list[tuple[str, Cmd]]:
         (name, [PY, f"tools/{script}", *args])
         for name, script, *args in (
             ("registry", "check_registry.py"),
-            ("registry + README counts --check", "gen_registry.py", "--check"),
+            ("lib copies --check", "gen_lib_copies.py", "--check"),
+            ("registry, README and prose counts --check", "gen_registry.py", "--check"),
             ("installed policies vs their source", "check_installed.py"),
             ("readme", "check_readme.py"),
             ("policy docs --check", "gen_policy_docs.py", "--check"),

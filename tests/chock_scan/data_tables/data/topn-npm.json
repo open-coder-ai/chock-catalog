@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "kind": "top-n",
+  "as_of": "2026-06-01",
+  "source": "npm registry download counts, top packages by weekly downloads",
+  "names": ["lodash", "react", "chalk", "debug", "commander"]
+}

@@ -25,6 +25,10 @@
 # the pattern covers any policy that grows one later.
 /base/*/implementations/ @open-coder-ai
 
+# The canonical source of the helper packages tools/gen_lib_copies.py copies into those
+# implementations/ folders: a change here reaches every policy that lists the module.
+/lib/ @open-coder-ai
+
 # The gate scripts CI depends on. `gen_policy_docs.py` and `check_readme.py` are what stop a
 # policy page claiming a control the policy does not have, so a change here can disable the
 # check that catches an overclaim without touching the overclaiming file.

@@ -25,11 +25,11 @@ name: Adopt framework
 # one is the one that works today: `chock` is not on PyPI, which is why ci.yml and
 # nightly-transcripts.yml also check the private repo out and `pip install ./.framework`
 # instead of naming a version. Checkout also handles the token, rather than a pip URL where
-# it could surface in logs or the pip cache, and it accepts a tag, a branch or a bare SHA
-# without the input having to declare which it is -- `.framework-ref` has held both a raw
-# commit SHA and a release tag within one release cycle. Post-launch, replace the framework
-# checkout and `pip install ./.framework` with `pip install "chock==$FRAMEWORK_REF"`;
-# nothing about the input has to change.
+# it could surface in logs or the pip cache. The input is a full 40-hex commit SHA and
+# nothing else: checkout resolves a ref by name, so a branch or tag in the engine repo spelled
+# like the SHA could otherwise stand in for it. The ref is refused before checkout and the
+# checked-out HEAD is asserted equal to it after (tools/framework_ref.py; check_workflows.py
+# fails a framework checkout without both).
 #
 # CAVEAT -- the PR this opens arrives with no CI. GitHub does not start workflow runs for
 # events raised with the built-in `GITHUB_TOKEN`, so the `pull_request` triggers in ci.yml
@@ -49,7 +49,7 @@ on:
   workflow_dispatch:
     inputs:
       framework_ref:
-        description: Engine ref to adopt (git tag, branch or SHA pre-launch; version post-launch)
+        description: Engine commit to adopt (full 40-character lowercase SHA)
         type: string
         required: true
       dry_run:
@@ -97,23 +97,17 @@ jobs:
 
       # A dispatch input becomes a git branch name and a git ref. Validated as data before
       # anything consumes it, and rejected loudly rather than sanitized into something the
-      # operator did not ask for -- a silently rewritten ref adopts the wrong engine.
+      # operator did not ask for -- a silently rewritten ref adopts the wrong engine. Only a
+      # full lowercase commit SHA passes: a branch, tag, short or uppercase SHA is refused.
       - name: Validate the ref
         env:
           FRAMEWORK_REF: ${{ inputs.framework_ref }}
-        run: |
-          case "$FRAMEWORK_REF" in
-            "" | -* | /* | */ | *..* | *" "*)
-              echo "::error::not a usable ref: '$FRAMEWORK_REF'"
-              exit 1 ;;
-          esac
-          case "$FRAMEWORK_REF" in
-            *[!A-Za-z0-9._/-]*)
-              echo "::error::ref may contain only A-Z a-z 0-9 . _ / and -: '$FRAMEWORK_REF'"
-              exit 1 ;;
-          esac
-          # `/` is legal in a ref (rc/0.1.0-rc.2) but nests branches, so flatten it here.
-          echo "ADOPT_BRANCH=adopt/framework-$(printf '%s' "$FRAMEWORK_REF" | tr '/' '-')" >> "$GITHUB_ENV"
+        run: python3 -I tools/framework_ref.py check
+
+      - name: Name the adoption branch
+        env:
+          FRAMEWORK_REF: ${{ inputs.framework_ref }}
+        run: echo "ADOPT_BRANCH=adopt/framework-$FRAMEWORK_REF" >> "$GITHUB_ENV"
 
       # Check out the engine at the ref being adopted. Same pattern as ci.yml: the
       # framework is a private repo, and checkout handles the token.
@@ -124,6 +118,12 @@ jobs:
           repository: open-coder-ai/chock
           ref: ${{ inputs.framework_ref }}
           path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the commit being adopted
+        env:
+          FRAMEWORK_REF: ${{ inputs.framework_ref }}
+        run: python3 -I tools/framework_ref.py verify .framework
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:

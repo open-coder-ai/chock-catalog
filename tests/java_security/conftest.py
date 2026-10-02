@@ -18,7 +18,7 @@ GATE = POLICY / "implementations" / "java-security-gate.py"
 SETUP = POLICY / "skill"
 CORPUS = Path(__file__).resolve().parent / "corpus"
 
-#: Every rule enforcing: the selection a repository has before anyone speaks for a rule.
+#: Every rule enforcing, quality packs included: what a selection spelling deny for every rule reads as.
 ALL_DENY = dict.fromkeys(registry(), DENY)
 
 GateRun = Callable[..., tuple[int, str]]

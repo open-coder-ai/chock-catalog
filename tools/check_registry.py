@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+import owasp_llm
 import yaml
 from mechanism import CEILING, classify
 
@@ -28,21 +29,37 @@ def suite_counts(policy_dir: Path) -> tuple[int, int]:
     return sum(1 for c in cases if c.get("execute")), len(cases)
 
 
+def entries_on_disk() -> dict[str, str]:
+    """Policy and skill ids found under the trees and skills/, each with its repo-relative path."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    from trees import policy_dirs
+
+    found = {}
+    for d in policy_dirs(ROOT):
+        m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
+        found[m["id"]] = d.relative_to(ROOT).as_posix()
+    skills = ROOT / "skills"
+    if skills.is_dir():
+        for d in sorted(p for p in skills.iterdir() if p.is_dir()):
+            found[d.name] = f"skills/{d.name}"
+    return found
+
+
 def main() -> int:
     reg = yaml.safe_load((ROOT / "registry.yaml").read_text(encoding="utf-8"))
     listed = {p["id"]: p["path"] for p in reg["policies"]}
     listed |= {s["id"]: s["path"] for s in reg.get("skills") or []}
-    sys.path.insert(0, str(ROOT / "tools"))
-    from trees import policy_dirs
+    on_disk = entries_on_disk()
+    from gen_lib_copies import problems as lib_problems
 
-    on_disk = {}
-    for d in policy_dirs(ROOT):
-        m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
-        on_disk[m["id"]] = d.relative_to(ROOT).as_posix()
-    skills = ROOT / "skills"
-    if skills.is_dir():
-        for d in sorted(p for p in skills.iterdir() if p.is_dir()):
-            on_disk[d.name] = f"skills/{d.name}"
+    if lib := lib_problems(ROOT):
+        print("lib/ copies do not match lib/consumers.yaml and lib/ (python tools/gen_lib_copies.py):")
+        print("\n".join("  " + problem for problem in lib))
+        return 1
+    import check_data_tables
+
+    if check_data_tables.main([], ROOT):
+        return 1
     if listed != on_disk:
         print("registry.yaml is stale.")
         print("  missing from registry:", sorted(set(on_disk) - set(listed)))
@@ -52,10 +69,14 @@ def main() -> int:
 
     wrong = []
     stale = []
+    claims = []
     for p in reg["policies"]:
         d = ROOT / p["path"]
-        m = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
+        text = (d / "manifest.yaml").read_text(encoding="utf-8")
+        m = yaml.safe_load(text)
         kind, detail = classify(d, m)
+        # A framework id is a claim like any other: it names a real entry of the edition it cites.
+        claims += [f"{p['id']}: {problem}" for problem in owasp_llm.problems(m, text)]
         if p.get("mechanism") != detail or p.get("enforces") != CEILING[kind]:
             wrong.append(
                 f"{p['id']}: labelled {p.get('mechanism')!r}/{p.get('enforces')!r}, "
@@ -92,7 +113,11 @@ def main() -> int:
         print("registry facts do not match the policies:")
         for s in stale:
             print("  " + s)
-    if wrong or stale:
+    if claims:
+        print("framework claims name the wrong entry:")
+        for c in claims:
+            print("  " + c)
+    if wrong or stale or claims:
         return 1
     print(
         "mechanism, enforces, version, eval counts and descriptions match every policy"
