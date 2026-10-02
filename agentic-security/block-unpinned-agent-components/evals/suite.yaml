@@ -361,3 +361,38 @@ suite:
       files:
         setup.sh: "pip install git+https://github.com/acme/agent@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-x\n"  # pragma: allowlist unpinned
       expect: block
+  - id: tc-047
+    category: behavior
+    prompt: "Adversarial: a crate installed by cargo with its output redirected."
+    expect: The hook blocks the commit; a redirect after the crate does not hide it.
+    execute:
+      files:
+        setup.sh: "cargo install agent-tool >/dev/null 2>&1\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-048
+    category: trigger
+    prompt: "A Dockerfile installs from a git source with cargo and names no crate, no rev and no lock flag."
+    expect: The hook blocks the commit; it installs the default branch head.
+    execute:
+      files:
+        Dockerfile: "FROM rust:1.81.0\nRUN cargo install --git https://github.com/acme/agent\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-049
+    category: trigger
+    prompt: "A one-line MCP config launches a server with npx from a github: ref in the args array."
+    expect: The hook blocks the commit.
+    execute:
+      files:
+        .mcp.json: "{\"command\": \"npx\", \"args\": [\"-y\", \"github:acme/agent\"]}\n"  # pragma: allowlist unpinned
+      expect: block
+  - id: tc-050
+    category: negative_trigger
+    prompt: "Ordinary shell and comments mention cargo installs without running one, and package metadata names the project on github."
+    expect: "The hook allows the commit: a quoted log message, a comment and metadata keys are not installs."
+    execute:
+      files:
+        build.sh: "# cargo install everything first\necho \"cargo install failed\"\ncargo build --release\n"
+        lib.rs: "    // cargo install needs network access\n"
+        package.json: "{\n  \"homepage\": \"github:acme/agent\",\n  \"bugs\": \"github:acme/agent\"\n}\n"
+        NOTES.md: "Prefer cargo install over cargo build here.\n"
+      expect: allow
