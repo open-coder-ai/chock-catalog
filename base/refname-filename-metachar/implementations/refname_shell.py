@@ -18,14 +18,16 @@ REPLACEMENT = chr(0xFFFD)  # what a code point past Unicode decodes to
 _STARTS = frozenset("@*#?$!-_")
 _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f", "v": "\v", "e": "\x1b", "E": "\x1b"}
 _ANSI = re.compile(r"\\(x[0-9A-Fa-f]{1,2}|u[0-9A-Fa-f]{1,4}|U[0-9A-Fa-f]{1,8}|[0-7]{1,3}|c.|.)", re.DOTALL)
-_HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)[ \t]*((?:'[^'\n]*'|\"[^\"\n]*\"|\\.|[^\s'\"<>|;&()\\])+)")
+# A delimiter word keeps a carriage return, as bash does: under CRLF the delimiter is `EOF\r`.
+_HEREDOC = re.compile(r"(?<!<)<<(?!<)(-?)[ \t]*((?:'[^'\n]*'|\"[^\"\n]*\"|\\.|[^\s'\"<>|;&()\\]|\r)+)")
 _QUOTE_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)|([^'\"\\]+)")
 _WORD_BEFORE = frozenset(" \t\n;&|()<>")  # bash starts a comment after any metacharacter
 MAX_NESTING, MAX_HEREDOCS = 64, 256  # past either the line is refused by the caller, not read
 _COMMAND_WORD = re.compile(r"(?:^|[\s;&|(])(?:then|do|else|elif|if|while|until|!|\{|time(?:\s+-p)?|coproc)$")
-_AFTER_IN = re.compile(r"(?:^|\s)in$")
-_BODY_QUOTES = str.maketrans("'\"`", "   ")
+_CASE_IN = re.compile(r"(?:^|[\s;&|(])case \S+ in$")
+_BODY_QUOTES = str.maketrans("'\"`", "\x01\x01\x01")  # still a refused character in an update-ref --stdin name
 _BACKTICK_ESCAPE = re.compile(r"\\([$`\\])")
+_BACKTICK_ESCAPE_QUOTED = re.compile(r"\\([$`\\\"])")  # inside double quotes bash also drops it before `"`
 
 
 class UnreadableError(ValueError):
@@ -100,10 +102,19 @@ class _Marker:
         blank = at
         while blank > self.start and self.raw[blank - 1] in " \t":
             blank -= 1
-        before = self.raw[max(self.start, blank - 64) : blank]  # what precedes the blanks; a window keeps this linear
-        if after_in and _AFTER_IN.search(before):
+        # What precedes the blanks, with blank runs collapsed; a bounded window keeps this linear.
+        before = re.sub(r"\s+", " ", self.raw[max(self.start, blank - 256) : blank])
+        if after_in and _CASE_IN.search(before):
             return True  # `case x in esac` has no patterns at all
         return not before or before[-1] in ";&|\n(" or bool(_COMMAND_WORD.search(before))
+
+    def _word_break(self) -> bool:
+        """Whether a word may start here: at the start, or after a metacharacter this pass emitted as one.
+
+        A `#` right after a substitution's `)` continues that word; one after a subshell's `)` starts a comment.
+        """
+        last = next((piece[-1] for piece in reversed(self.out) if piece), "")
+        return not last or last in _WORD_BEFORE
 
     def _emit(self, text: str, end: int) -> None:
         self.out.append(text)
@@ -132,7 +143,7 @@ class _Marker:
     def _unquoted(self, char: str, nxt: str) -> bool:
         """A comment, a newline ending heredoc lines, a heredoc operator or a process substitution; True if one."""
         raw, at, shell = self.raw, self.i, not self.ps and self.closer != "}" and not self.arith
-        if char == "#" and self.closer != "}" and (at == 0 or raw[at - 1] in _WORD_BEFORE):
+        if char == "#" and self.closer != "}" and self._word_break():
             end = raw.find("\n", at)
             self._emit(raw[at:end] if end >= 0 else raw[at:], end if end >= 0 else len(raw))
         elif char == "\n":
@@ -182,16 +193,19 @@ class _Marker:
         """
         nested = _Marker(self.raw, powershell=self.ps, start=start, closer=closer, nesting=self.nesting + 1)
         nested.run()
-        script = closer == ")" and not nested.arith
+        # Arithmetic only when its `(` closes as `))`; `((cd x); ls)` is a subshell, `$((cd x); ls)` a substitution.
+        arith = nested.arith and self.raw[nested.i - 1 : nested.i] == ")"
+        script = closer == ")" and not arith
         self.inner += ([self.raw[start : nested.i]] if script else []) + nested.inner
-        self.docs += nested.docs
+        self.docs = nested.docs + self.docs  # bash reads a substitution's heredoc bodies before the enclosing ones
         self._emit(EXPANDED, nested.i + 1)
 
     def _backtick(self, start: int) -> None:
         end = start
         while end < len(self.raw) and self.raw[end] != "`":
             end += 2 if self.raw[end] == "\\" else 1
-        self.inner.append(_BACKTICK_ESCAPE.sub(r"\1", self.raw[start:end]))  # bash drops these backslashes first
+        escape = _BACKTICK_ESCAPE_QUOTED if self.quote == '"' else _BACKTICK_ESCAPE
+        self.inner.append(escape.sub(r"\1", self.raw[start:end]))  # bash drops these backslashes first
         self._emit(EXPANDED, end + 1)
 
     def _bodies(self) -> None:
