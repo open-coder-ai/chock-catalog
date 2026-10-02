@@ -129,9 +129,12 @@ block-wildcard-iam  [deterministic]
   PASS  tc-033                             authored  gate exit 0
   PASS  tc-034                             authored  gate exit 0
   PASS  tc-035                             authored  Broad privilege grant detected. Name the actions and resources the …
+  PASS  tc-036                             authored  Broad privilege grant detected. Name the actions and resources the …
+  PASS  tc-037                             authored  Broad privilege grant detected. Name the actions and resources the …
+  PASS  tc-038                             authored  Broad privilege grant detected. Name the actions and resources the …
   score 1.00
 
-5 policies: 35 pass, 41 skipped
+5 policies: 38 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

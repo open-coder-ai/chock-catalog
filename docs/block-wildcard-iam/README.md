@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 35 total, 35 executable |
+| **Eval cases** | 38 total, 38 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a wildcard action, resource or principal in string or list form and either quote style (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on s3, iam, sts, kms and ec2, Allow with an inverted action or resource key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public members, Kubernetes RBAC wildcards and cluster-admin bindings, Azure wildcard actions and Owner. A Deny written on one line passes. Friction, not a security boundary: grants split across lines, partial wildcards, YAML aliases or tags, unicode-escaped keys and runtime-built grants pass, and a Deny split across lines is still refused. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit; at agent tool-use it counts only when that exact line is already committed in HEAD.
+Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a wildcard action, resource or principal in string or list form, any quote style (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on s3, iam, sts, kms and ec2 actions, Allow with an inverted key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-object strict-JSON Deny is exempt. Friction, not a security boundary: grants split across lines, partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants pass; other Deny forms and admission-webhook wildcards are refused. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit; at agent tool-use only when that exact line is already committed in HEAD.
 
 ## What it solves
 
