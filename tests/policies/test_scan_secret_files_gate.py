@@ -147,7 +147,8 @@ def test_encrypted(label: str, body: str, expected: bool) -> None:
 
 def test_an_unterminated_block_is_read_to_the_next_begin() -> None:
     begin = "-----BEGIN OpenVPN Static key V1-----\n"
-    text = begin + HEX_LINE * 2 + begin + "abc\n" + OVPN
+    random_line = base64.b64encode(bytes((i * 37 + 11) % 256 for i in range(48))).decode() + "\n"
+    text = begin + random_line * 2 + begin + "abc\n" + OVPN
     lines = [f.line for f in sbf_keys.pem_blocks(text)]
     assert lines == [1, 6]
 

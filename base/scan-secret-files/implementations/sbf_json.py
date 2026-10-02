@@ -41,7 +41,8 @@ CONN_PW = re.compile(r"(?i)(?:^|;)\s*(?:password|pwd)\s*=\s*([^;]*)")
 #: A document that opens like JSON: blanks and comments, then an object or array.
 #: Blanks and comments, then an object opening on a quoted key (or empty), or an array of objects or
 #: strings: not TOML or INI sections, Markdown links or number arrays.
-JSONISH = re.compile(r"(?:\s|//[^\n]*+\n|/\*(?:[^*]|\*(?!/))*+\*/)*+(?:\{\s*+[\"}]|\[\s*+[{\"\]\[])")
+_TRIVIA = r"(?:\s|//[^\n]*+\n|/\*(?:[^*]|\*(?!/))*+\*/)*+"
+JSONISH = re.compile(_TRIVIA + r"(?:\{" + _TRIVIA + r"[\"}]|\[" + _TRIVIA + r"[{\"\]\[])")
 #: Keys a credential file of each shape carries (all of the first, one of the second); JSON this reader
 #: cannot parse that holds them is reported.
 MARKERS = (
@@ -95,10 +96,10 @@ def judge(text: str, name: str = "") -> list[Finding]:
 
 
 def lines(text: str) -> list[object] | None:
-    """JSON Lines: one document per non-blank line, or None when any line is not one."""
+    """JSON Lines: one document per non-blank line (plain JSON per line), or None when any line is not one."""
     try:
-        return [parse(line) for line in text.split("\n") if line.strip()]
-    except ValueError:
+        return [json.loads(line, object_pairs_hook=Obj) for line in text.split("\n") if line.strip()]
+    except (ValueError, RecursionError):
         return None
 
 

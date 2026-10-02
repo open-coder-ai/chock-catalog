@@ -62,19 +62,16 @@ def pem_blocks(text: str) -> list[Finding]:
     for index, match in enumerate(starts):
         closing = ends.get(match[1], [])
         at = bisect.bisect_left(closing, match.end())
-        stop = min(
-            closing[at] if at < len(closing) else len(text),
-            starts[index + 1].start() if index + 1 < len(starts) else len(text),
-            match.end() + MAX_BODY,
-        )
-        body = text[match.end() : stop]
-        if body_size(body) >= MIN_BODY:
-            level = ASK if encrypted(match[1], body) else BLOCK
+        end = closing[at] if at < len(closing) else len(text)
+        stop = min(end, starts[index + 1].start() if index + 1 < len(starts) else len(text), match.end() + MAX_BODY)
+        body, terminated = text[match.end() : stop], at < len(closing) and end == stop
+        if body_size(body, terminated=terminated) >= MIN_BODY:
+            level = ASK if encrypted(match[1], body, terminated=terminated) else BLOCK
             found.append(Finding(KEYS, line_of(text, match.start()), f"private key block ({match[1]})", body, level))
     return found
 
 
-def encrypted(label: str, body: str) -> bool:
+def encrypted(label: str, body: str, *, terminated: bool = True) -> bool:
     """Whether a key block is passphrase-protected, judged by its bytes: a label or header alone never says so.
 
     A plaintext key structure anywhere in the body (at any of the four base64 alignments) refuses,
@@ -82,7 +79,7 @@ def encrypted(label: str, body: str) -> bool:
     once (a plaintext private section repeats it); PKCS#8 names a password-based encryption algorithm;
     a legacy key has Proc-Type and DEK-Info headers.
     """
-    raws = alignments(body)
+    raws = alignments(body, terminated=terminated)
     if any(PLAIN_ANYWHERE.search(raw) for raw in raws):
         return False
     if label == "OPENSSH PRIVATE KEY":
@@ -92,9 +89,9 @@ def encrypted(label: str, body: str) -> bool:
     return "Proc-Type: 4,ENCRYPTED" in body and "DEK-Info:" in body
 
 
-def alignments(body: str) -> list[bytes]:
+def alignments(body: str, *, terminated: bool = True) -> list[bytes]:
     """The body decoded from each of its four base64 alignments, to its last byte (bounded: never raises)."""
-    chars = "".join(body_lines(body)).replace("=", "")[:MAX_DECODE]
+    chars = "".join(body_lines(body, terminated=terminated)).replace("=", "")[:MAX_DECODE]
     parts = (chars[shift:] for shift in range(4))
     return [base64.b64decode(part[: len(part) - (len(part) % 4 == 1)] + "==") for part in parts]
 

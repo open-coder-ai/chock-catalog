@@ -51,9 +51,13 @@ PLACEHOLDER = re.compile(
 REPEAT = re.compile(r"(.)\1*")
 NUMBER_OR_FLAG = re.compile(r"(?i)[-+]?\d+(?:\.\d+)?[a-z]{0,2}|true|false|yes|no|on|off|null|none|nil")
 ARMOR = re.compile(r"-----(?:BEGIN|END) [^-\r\n]{1,60}-----")
-#: A body token: base64 of at least 16 characters (prose words rarely reach it), once quotes, commas,
-#: concatenation operators, semicolons, quote marks and backslashes are stripped from its ends.
-BASE64_TOKEN = re.compile(r"[A-Za-z0-9+/=]{16,}")
+#: A body token: wholly base64 once quotes, commas, concatenation operators, semicolons, quote marks
+#: and backslashes are stripped from its ends.
+BASE64_TOKEN = re.compile(r"[A-Za-z0-9+/=]+")
+#: An unterminated block's body line: this long and this random (bits per character) -- a path or prose
+#: is neither; a key line (64 base64 characters) scores about 5.5.
+UNTERMINATED_LINE = 40
+RANDOM_BITS = 4.2
 EDGE_CHARS = "\"'`,+;\\>()"
 #: A key that names where a secret lives, and a value that is a path or a plain URL: not the secret --
 #: unless the value is high-entropy, or a webhook URL (whose path is the secret).
@@ -106,21 +110,31 @@ def key_material(value: object) -> bool:
     return body_size(value) >= MIN_BODY
 
 
-def body_lines(block: str) -> list[str]:
+def body_lines(block: str, *, terminated: bool = True) -> list[str]:
     """The base64 tokens of a key block's body, in order, whatever its layout.
 
-    Lines, one line with spaces, quoted and concatenated source strings, `> ` quoting and numbered
-    lines all read the same. Armor and `Name: value` headers are left out (a header word holds `:` or
-    `,`), and so is prose after an unterminated BEGIN (its words are short or not base64).
+    Terminated (BEGIN ... END): every token that is wholly base64 once quotes, commas, concatenation
+    operators, `> ` and backslashes are off its ends, of any length -- lines, one line with spaces,
+    concatenated source strings, short re-wrapped lines all read the same; armor and `Name: value`
+    headers are left out (their words hold `:` or `,`). Unterminated: only lines that are wholly
+    base64, UNTERMINATED_LINE characters or longer and random-looking, so prose and paths after a
+    stray BEGIN are not key bytes.
     """
-    text = ARMOR.sub(" ", block.replace("\\r", " ").replace("\\n", " "))
-    tokens = (token.strip(EDGE_CHARS) for token in text.split())
-    return [token for token in tokens if BASE64_TOKEN.fullmatch(token)]
+    text = ARMOR.sub(" ", block.replace("\\r", " ").replace("\\n", "\n"))
+    if terminated:
+        tokens = (token.strip(EDGE_CHARS) for token in text.split())
+        return [token for token in tokens if BASE64_TOKEN.fullmatch(token)]
+    lines = (line.strip().strip(EDGE_CHARS).strip() for line in text.split("\n"))
+    return [
+        line
+        for line in lines
+        if len(line) >= UNTERMINATED_LINE and BASE64_TOKEN.fullmatch(line) and entropy.shannon(line) >= RANDOM_BITS
+    ]
 
 
-def body_size(block: str) -> int:
+def body_size(block: str, *, terminated: bool = True) -> int:
     """Base64 characters of a key block's body (see body_lines)."""
-    return sum(len(token) for token in body_lines(block))
+    return sum(len(token) for token in body_lines(block, terminated=terminated))
 
 
 def line_of(text: str, pos: int) -> int:

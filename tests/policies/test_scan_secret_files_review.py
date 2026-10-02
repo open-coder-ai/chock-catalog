@@ -112,3 +112,32 @@ def test_a_truststore_asks_instead_of_refusing() -> None:
 )
 def test_review_false_positives_are_silent(path: str, text: str) -> None:
     assert sbf_judge.judge(path, text) == []
+
+
+@pytest.mark.parametrize("width", [4, 8, 15])
+def test_review_round_three_a_terminated_block_counts_short_lines(width: str) -> None:
+    body = "".join(HEX_LINE.split()) * 4
+    lines = [body[i : i + width] for i in range(0, len(body), width)]
+    text = "-----BEGIN OpenVPN Static key V1-----\n" + "\n".join(lines) + "\n-----END OpenVPN Static key V1-----\n"
+    assert {f.rule for f in sbf_judge.judge("vpn/k.txt", text)} == {"sbf-private-key-files"}
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "rule"),
+    [
+        ("s.json", '{ /* c */ "version":4,"terraform_version":"1.5","serial":1,"lineage":"a"}', "sbf-tfstate-tfvars"),
+        ("cfg.json", '{\n  // creds\n  "auths":{"ghcr.io":{"auth":"dXNlcjpwYXNz"}}}', "sbf-rc-credentials"),
+        ("l.json", '[ // list\n {"type": "authorized_user", "refresh_token": "refreshvalue"}]', "sbf-gcp-sa-json"),
+    ],
+)
+def test_review_round_three_comments_inside_the_opener(path: str, text: str, rule: str) -> None:
+    assert rule in {f.rule for f in sbf_judge.judge(path, text)}
+
+
+def test_review_round_three_paths_after_a_stray_begin_are_not_key_bytes() -> None:
+    text = (
+        'HEADER = "-----BEGIN OpenVPN Static key V1-----"\n'
+        'CONFIG_DIR = "/etc/myapplication/configuration/subdirectory/x"\n'
+        'LOG_DIR = "/var/log/myapplication/output/subdirectory/xy"\n'
+    )
+    assert sbf_judge.judge("src/detect.py", text) == []
