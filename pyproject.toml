@@ -21,6 +21,7 @@ source = [
     "base/no-a11y-regression/implementations",
     "base/block-destructive-commands/implementations",
     "base/block-no-verify/implementations",
+    "base/block-persistence-shapes/implementations",
     "base/block-unapproved-egress/implementations",
     "base/block-unguarded-agent-spawn/implementations",
     "base/protect-agent-config/implementations",

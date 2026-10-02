@@ -728,3 +728,18 @@ policies:
     -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
     wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
     unlisted agents.'
+- id: block-persistence-shapes
+  path: base/block-persistence-shapes
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 98
+  eval_executed: 98
+  description: 'Best-effort guard against shell commands that publish or keep access after the session:
+    npm/pnpm/yarn/twine/ poetry/uv/cargo/gem publish, docker/podman push and login, registry-auth edits,
+    repos made public; user services, launch agents, cron/at/schtasks, Run keys, authorized_keys, runner
+    registration, sudoers, setuid bits, detached downloads. Asks on gh release create, git remote add,
+    git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.'

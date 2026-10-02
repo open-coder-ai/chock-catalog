@@ -24,7 +24,12 @@ def policies_with_shellparse() -> list[str]:
 
 
 def _forget() -> dict[str, ModuleType]:
-    return {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] == SHELLPARSE}
+    """Drop the helper packages and modules a guard ships beside itself (chock_shellparse, chock_scan, shapes_*)."""
+    return {
+        name: sys.modules.pop(name)
+        for name in list(sys.modules)
+        if name.split(".")[0] in (SHELLPARSE, "chock_scan") or name.startswith("shapes_")
+    }
 
 
 def forget_shellparse() -> None:

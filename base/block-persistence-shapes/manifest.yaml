@@ -1,0 +1,50 @@
+id: block-persistence-shapes
+name: "Block Persistence Shapes"
+version: "0.0.1"
+description: >
+  Best-effort guard against shell commands that publish or keep access after the session: npm/pnpm/yarn/twine/
+  poetry/uv/cargo/gem publish, docker/podman push and login, registry-auth edits, repos made public; user
+  services, launch agents, cron/at/schtasks, Run keys, authorized_keys, runner registration, sudoers, setuid bits,
+  detached downloads. Asks on gh release create, git remote add, git push to a URL. Misses: scripts, aliases,
+  system units, shell rc files, ssh-run commands.
+artifact: rule
+enforcement: advise
+rule:
+  text: |
+    never(run): publish(npm|pnpm|yarn|twine|poetry|uv|cargo|gem|docker|podman), registry_login_or_token, repo_public, persist(user_service|launch_agent|cron|at|schtasks|run_key|authorized_keys|runner|sudoers|setuid|detached_download)
+    ask(person): release_create, remote_add, push_to_url; allow: dry_run, pack, build, status, list  # human decisions
+effects:
+- read_only
+approval:
+  required: false
+
+compliance:
+  owasp_asi:
+  - control: ASI03
+    coverage: partial
+    note: "refuses publishing with the person's registry credentials, minting or storing registry tokens, and writing ssh login keys or sudoers rules from the shell; secret-store reads and the credential files themselves stay with other policies"
+  - control: ASI10
+    coverage: partial
+    note: "refuses the shell shapes that keep an agent's access after the session ends (user services, launch agents, scheduled jobs, Run keys, runner registration, detached downloads); a script file, alias or program built at run time is out of reach"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by:
+    - "chock-core"
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial baseline: a Python guard (implementations/block-persistence-shapes.py, stdlib only, beside the shared chock_shellparse and chock_scan data_table copies and the verb, flag and path tables in implementations/data/shapes.json) reads the command actually run, after cd, bash -c, sudo/env wrappers, python -m and npx-style launchers. It refuses package, image and release publishing (dry-run and pack forms stay allowed), registry token and auth edits, making a repository public, and the persistence shapes listed in the description; it asks before gh release create, git remote add or set-url, and git push to an explicit URL (every URL is asked about; the egress allowlist file is not read). Probed misses, all allowed: a verb or path built in a variable (P=publish; npm $P), a script file run by name, system-level systemctl enable, shell rc files and XDG autostart, a command run over ssh, docker buildx build --push, a grouped { curl ...; } &, find -exec chmod u+s. Known false blocks: curl ... & wait, and the indicator name gh-token-monitor inside a commit message. Advisory (a PreToolUse guard on the shell only): maps to OWASP ASI03 and ASI10 as partial coverage."

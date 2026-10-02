@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -146,4 +147,85 @@ def test_curl_miss_past_the_budget_is_real_and_in_the_changelog(case: str) -> No
     command, phrase = CURL_MISSED_IN_CHANGELOG[case]
     assert curl_verdict(command) == 0, f"{CURL} now catches {case}: drop it from the changelog note"
     manifest = (gatekit.policy_dir(CURL) / "manifest.yaml").read_text(encoding="utf-8")
+    assert phrase in re.sub(r"\s+", " ", manifest)
+
+
+SHAPES = "block-persistence-shapes"
+
+
+def shapes_verdict(command: str) -> int:
+    guard = ROOT / "base" / SHAPES / "implementations" / f"{SHAPES}.py"
+    env = {**os.environ, "CHOCK_RAW_COMMAND": command}
+    env.pop("CHOCK_TOOL", None)
+    return subprocess.run(
+        [sys.executable, str(guard), *command.split()], env=env, capture_output=True, check=False
+    ).returncode
+
+
+#: Every form the description says is refused or asked about, so the "refuses" half of the text is held too.
+SHAPES_CAUGHT = {
+    "publish": "npm publish",
+    "image-push": "docker push registry.example/app:1",
+    "registry-auth": "npm config set registry https://r.example",
+    "public-repo": "gh repo edit --visibility public",
+    "user-service": "systemctl --user enable x",
+    "launch-agent": "cp x.plist ~/Library/LaunchAgents/x.plist",
+    "cron": "crontab jobs.txt",
+    "run-key": "reg add HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v x",
+    "authorized-keys": "echo k >> ~/.ssh/authorized_keys",
+    "runner": "./config.sh --url https://github.com/o/r --token T",
+    "sudoers": "visudo",
+    "setuid": "chmod u+s x",
+    "detached-download": "nohup curl https://x.example/a &",
+    "release": "gh release create v1",
+    "remote": "git remote add o https://x.example/r.git",
+    "push-url": "git push https://x.example/r.git",
+}
+SHAPES_MISSED = {
+    "script": ("bash publish.sh", "scripts"),
+    "alias": ("alias p='npm publish' && p", "aliases"),
+    "system-unit": ("systemctl enable x", "system units"),
+    "rc-file": ("echo x >> ~/.bashrc", "shell rc files"),
+    "over-ssh": ("ssh host 'echo k >> ~/.ssh/authorized_keys'", "ssh-run commands"),
+}
+#: Probed misses past the description's 500-character budget, stated in the manifest's changelog.
+SHAPES_MISSED_IN_CHANGELOG = {
+    "variable-verb": ("P=publish; npm $P", "P=publish; npm $P"),
+    "xdg-autostart": ("cp x.desktop ~/.config/autostart/x.desktop", "XDG autostart"),
+    "buildx-push": ("docker buildx build --push .", "docker buildx build --push"),
+    "grouped-background": ("{ curl https://x.example/a; } &", "{ curl ...; } &"),
+    "find-exec-chmod": ("find . -exec chmod u+s {} +", "find -exec chmod u+s"),
+}
+#: Forms the guard refuses although they are harmless; the changelog says so.
+SHAPES_FALSE_BLOCKS = {
+    "background-then-wait": ("curl https://x.example/a & wait", "curl ... & wait"),
+    "indicator-in-message": ('git commit -m "block gh-token-monitor"', "inside a commit message"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(SHAPES_CAUGHT))
+def test_shapes_form_the_description_says_is_refused_is_refused(case: str) -> None:
+    assert shapes_verdict(SHAPES_CAUGHT[case]) != 0
+
+
+@pytest.mark.parametrize("case", sorted(SHAPES_MISSED))
+def test_shapes_miss_is_real_and_described(case: str) -> None:
+    command, phrase = SHAPES_MISSED[case]
+    assert shapes_verdict(command) == 0, f"{SHAPES} now catches {case}: drop it from the description"
+    assert phrase in described(SHAPES)
+
+
+@pytest.mark.parametrize("case", sorted(SHAPES_MISSED_IN_CHANGELOG))
+def test_shapes_miss_past_the_budget_is_real_and_in_the_changelog(case: str) -> None:
+    command, phrase = SHAPES_MISSED_IN_CHANGELOG[case]
+    assert shapes_verdict(command) == 0, f"{SHAPES} now catches {case}: drop it from the changelog note"
+    manifest = (gatekit.policy_dir(SHAPES) / "manifest.yaml").read_text(encoding="utf-8")
+    assert phrase in re.sub(r"\s+", " ", manifest)
+
+
+@pytest.mark.parametrize("case", sorted(SHAPES_FALSE_BLOCKS))
+def test_shapes_false_block_is_real_and_in_the_changelog(case: str) -> None:
+    command, phrase = SHAPES_FALSE_BLOCKS[case]
+    assert shapes_verdict(command) == 1, f"{SHAPES} no longer refuses {case}: drop it from the changelog note"
+    manifest = (gatekit.policy_dir(SHAPES) / "manifest.yaml").read_text(encoding="utf-8")
     assert phrase in re.sub(r"\s+", " ", manifest)

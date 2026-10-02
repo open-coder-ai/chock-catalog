@@ -536,6 +536,17 @@ block-unguarded-agent-spawn:
     a program or a flag there and an eval case beside it. A sandbox you have proven safe is a reason to edit this policy in
     your own copy, not to run the flag past it.
 
+block-persistence-shapes:
+  solves: |
+    Publishing a package, making a repository public, or leaving something running after the session ends are
+    the steps a supply-chain worm takes next, and each is one shell line an agent can be talked into. This guard
+    reads the command and refuses publishes, registry-auth edits, user services, launch agents, scheduled jobs,
+    Run keys, ssh login keys, runner registration, sudoers edits, setuid bits and detached downloads. It asks
+    before a release or a new remote. It is friction on the command text, not a security boundary.
+  customise: |
+    The verbs, flags and paths are data in `implementations/data/shapes.json`; add a program or a path there and an
+    eval case beside it. Keep the `as_of` date current, since CI fails the table a year after it.
+
 agentic-code-security:
   solves: |
     The OWASP Top 10 for Agentic Applications lists what goes wrong when an agent is built carelessly, and most of
