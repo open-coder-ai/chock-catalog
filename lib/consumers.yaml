@@ -20,3 +20,5 @@ base/rtk-dangerous-actions-blocker:
   chock_shellparse: [args, parse, targets, writes]
 base/verify-mcp-allowlist:
   chock_shellparse: [args, parse, targets, writes]
+base/compromised-package-ioc:
+  chock_scan: [data_table, jsonc, safe_read]

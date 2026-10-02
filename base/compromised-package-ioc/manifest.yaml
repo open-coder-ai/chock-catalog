@@ -1,0 +1,54 @@
+id: compromised-package-ioc
+name: "Compromised Package IOC"
+version: "0.1.0"
+description: >
+  Blocks adding a known-malicious package version (npm, PyPI, crates, Go, RubyGems, Packagist manifests and
+  lockfiles), a re-pointed action ref, or an IOC file name, from a dated, sourced list (data/ioc.json, CI
+  fails 120 days after as_of). Runs: commit, agent write, turn's end; only additions judged. Exact versions
+  only: a range is not resolved. A snapshot, not a feed; friction, not a boundary. Adopt under rollout observe.
+artifact: hook
+enforcement: block
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: block
+    message: >
+      A known-malicious package version, compromised action ref or IOC file name was added. Use a release
+      outside the list (the cited advisory names the fixed one) or drop the dependency, pin the action to a
+      reviewed commit, or delete the file. The list changes only in a reviewed pull request to this policy's
+      data/ioc.json; there is no in-line waiver.
+    params:
+      script: compromised-package-ioc-gate.py
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "Initial release (roadmap NP08, package-registry-config bundle). A script gate reads package.json, package-lock.json, npm-shrinkwrap.json, yarn.lock, pnpm-lock.yaml, bun.lock, requirements and constraints files, pyproject.toml, Pipfile, Pipfile.lock, poetry.lock, uv.lock, pdm.lock, go.mod, go.sum, Cargo.toml, Cargo.lock, Gemfile, gems.rb, *.gemspec, Gemfile.lock, gems.locked, composer.json and composer.lock, plus `uses:` in workflows and action.yml, and every written path's name. It prints a findings document keyed by ecosystem, normalised name and version, so the engine refuses only what a change adds."
+  - "The list is implementations/data/ioc.json, an EP12 `ioc` table loaded through chock_scan.data_table: 65 package rows, 3 actions, 9 file names, each with its incident, date and a cited source. tools/check_data_tables.py fails CI 120 days after as_of (D7). It is refreshed by a person in a reviewed pull request from the weekly threat digest; nothing in a repository can waive a row. A table that does not load refuses every write (exit 2, undecided, so the declared block applies)."
+  - "Matching: a row lists exact versions, or `*` for a package that was malicious in every version (impostors and typosquats). Names are normalised per registry: PEP 503 for PyPI, `_` as `-` for crates, case folded everywhere (which only adds matches). Versions drop a leading `=` or `v`; PyPI releases compare numerically (1.82.7 equals 1.82.7.0); npm build metadata is dropped. npm aliases (`npm:real@x`), yarn and package-lock aliases, Cargo `package =` renames and composer `v` tags resolve to the package fetched."
+  - "Exact versions only, by design. A manifest range (`^1.14.0`) is not resolved, because every listed release is already unpublished and a range check would refuse most of npm; the lockfile carries the resolved version and is read instead. Cargo is the exception that names the floor: `arrayref = \"0.3.10\"` is a caret range whose floor is the listed release, and it is refused. A listed action is refused at its listed commit and, when `mutable_refs` is set (tags were re-pointed in the incident), at any tag or branch: pin it to a reviewed 40-hex commit."
+  - "Parse failure is a refusal: a manifest or lockfile the gate cannot read (invalid JSON or TOML) is reported as a finding, since installing from it would be the only way to learn what it names. A file that was already unreadable in the baseline is not new."
+  - "Known misses: bun.lockb (binary), requirements files reached only through `-r`/`-c`, `-e` and direct-URL requirements, setup.py and setup.cfg, Gradle/Maven/NuGet/Hex/CocoaPods, a tarball or git URL whose content is a listed release, a workflow `uses:` written in YAML flow style or built from an expression, the Shai-Hulud 2.0 set (over 1,000 packages; its loader file names are listed instead), and generic payload names (bundle.js, telemetry.js, setup.mjs at the repo root) left out to avoid false refusals. Rollout: adopt with `rollout: observe` in .chock/config.yaml first (D15)."
