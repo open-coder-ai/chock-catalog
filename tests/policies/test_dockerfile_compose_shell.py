@@ -10,7 +10,7 @@ from policies import dockerkit
 
 mod = dockerkit.load()
 
-from dkscan import cmdrules, shell  # noqa: E402
+from dkscan import cmdrules, resolve, shell  # noqa: E402
 
 HEAD = "FROM a@sha256:" + "0" * 64 + "\n"
 TAIL = "USER 1000\n"
@@ -171,9 +171,9 @@ def test_lexer_records_nesting_pipes_and_offsets() -> None:
 
 
 def test_resolve_and_names() -> None:
-    assert shell.resolve(("sudo", "-u", "x", "env", "--", "A=1", "chmod")) == (6, frozenset({"sudo", "env"}))
-    assert shell.resolve(("sudo",)) == (-1, frozenset({"sudo"}))
-    assert shell.resolve(("timeout", "10")) == (-1, frozenset({"timeout"}))
+    assert resolve.resolve(("sudo", "-u", "x", "env", "--", "A=1", "chmod")) == (6, frozenset({"sudo", "env"}))
+    assert resolve.resolve(("sudo",)) == (-1, frozenset({"sudo"}))
+    assert resolve.resolve(("timeout", "10")) == (-1, frozenset({"timeout"}))
     assert cmdrules.name("/usr/bin/python3.12") == "python"
     assert cmdrules.name("IEX") == "iex"
     assert cmdrules.program(shell.Cmd(1, ("nohup",), 0, -1, -1)) == ("", (), frozenset({"nohup"}))

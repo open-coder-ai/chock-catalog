@@ -9,18 +9,21 @@ import posixpath
 import re
 from collections.abc import Iterator
 
-from dkscan.shell import Cmd, resolve
+from dkscan.resolve import SHELLS, resolve
+from dkscan.shell import Cmd
 
 FETCHERS = frozenset(
     {"curl", "wget", "wget2", "aria2c", "lynx", "iwr", "irm", "invoke-webrequest", "invoke-restmethod"}
 )
-SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash", "csh", "tcsh", "mksh", "fish", "busybox"})
 SCRIPTERS = frozenset({"python", "perl", "ruby", "node", "php", "lua", "deno", "bun", "pwsh", "powershell"})
 EVALUATORS = frozenset({"eval", "source", ".", "iex", "invoke-expression"})
 #: Options that make an interpreter run inline code instead of reading its script from stdin.
 INLINE = frozenset({"-c", "-e", "-E", "-m", "-r", "-p", "-Command", "-command", "-EncodedCommand"})
 PACKAGERS = frozenset({"apt-get", "apt", "apk", "yum", "dnf", "microdnf", "tdnf", "zypper"})
 SSH_PACKAGES = frozenset({"sudo", "openssh", "openssh-server"})
+INSTALL_VERBS = frozenset({"install", "add", "reinstall", "upgrade", "in", "localinstall"})
+STDIN_PATHS = frozenset({"-", "-s", "--", "/dev/stdin", "/proc/self/fd/0", "/dev/fd/0"})
+FIND_DEPTH = 16
 RPM_NO_CHECK = frozenset({"--nodigest", "--nosignature", "--noverify", "--nofiledigest"})
 USER_TOOLS = frozenset({"useradd", "adduser", "usermod"})
 GIT_VALUE_OPTIONS = frozenset({"-c", "-C", "--git-dir", "--work-tree", "--namespace", "--super-prefix", "--config-env"})
@@ -89,7 +92,7 @@ def install_why(args: tuple[str, ...]) -> str:
 def reads_stdin(args: tuple[str, ...]) -> bool:
     """Whether an interpreter given these arguments runs what arrives on stdin."""
     for arg in args:
-        if arg in ("-", "-s", "--"):
+        if arg in STDIN_PATHS:
             return True
         if arg in INLINE:
             return False
@@ -118,7 +121,11 @@ def git_subcommand(args: tuple[str, ...]) -> tuple[str, tuple[str, ...]]:
     return (args[at], args[at + 1 :]) if at < len(args) else ("", ())
 
 
-def simple(prog: str, args: tuple[str, ...], wrappers: frozenset[str]) -> Iterator[tuple[str, str]]:
+def _verb(args: tuple[str, ...]) -> str:
+    return next((arg for arg in args if not arg.startswith("-")), "")
+
+
+def simple(prog: str, args: tuple[str, ...], wrappers: frozenset[str], depth: int = 0) -> Iterator[tuple[str, str]]:
     """Findings one command shows on its own: (rule id, why)."""
     if "sudo" in wrappers:
         yield "dk-sudo-sshd", "sudo in the image"
@@ -128,24 +135,26 @@ def simple(prog: str, args: tuple[str, ...], wrappers: frozenset[str]) -> Iterat
         yield "dk-tls-off", "insecure written to a .curlrc"
     if prog == "rpm" and RPM_NO_CHECK & set(args):
         yield "dk-signature-bypass", "rpm with signature checks off"
-    if prog in PACKAGERS and args[:1] != ("remove",) and SSH_PACKAGES & set(args):
+    if prog in PACKAGERS and _verb(args) in INSTALL_VERBS and SSH_PACKAGES & set(args):
         yield "dk-sudo-sshd", "sudo or an SSH server installed in the image"
     if prog == "chpasswd" or (prog == "passwd" and {"-d", "--delete", "--stdin"} & set(args)):
         yield "dk-chpasswd", "a password set or removed in the image"
     if prog in USER_TOOLS and any(a == "-p" or a.startswith("--password=") or a == "--password" for a in args):
         yield "dk-chpasswd", "a password set in the image"
-    yield from _modes(prog, args)
+    yield from _modes(prog, args, depth)
 
 
-def _modes(prog: str, args: tuple[str, ...]) -> Iterator[tuple[str, str]]:
+def _modes(prog: str, args: tuple[str, ...], depth: int) -> Iterator[tuple[str, str]]:
     """chmod, install -m, and the commands find -exec runs."""
     why = chmod_why(args) if prog == "chmod" else install_why(args) if prog == "install" else ""
     if why:
         yield "dk-chmod-setuid", f"mode {why}"
-    if prog == "find":
+    if prog == "find" and depth >= FIND_DEPTH:
+        yield "dk-unjudgeable", "too large to judge: find -exec nested deeper than the gate follows"
+    elif prog == "find":
         for sub in find_exec(args):
             if sub:
-                yield from simple(name(sub[0]), sub[1:], frozenset())
+                yield from simple(name(sub[0]), sub[1:], frozenset(), depth + 1)
 
 
 def fetch_exec(cmds: list[Cmd]) -> Iterator[tuple[Cmd, Cmd]]:

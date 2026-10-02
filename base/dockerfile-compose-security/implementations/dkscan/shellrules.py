@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterator
 
-from dkscan import cmdrules, shell
+from dkscan import cmdrules, resolve, shell
 from dkscan.dockerfile import Instr
 from dkscan.rules import Ctx, Hit
 
@@ -62,8 +62,8 @@ def script(instr: Instr) -> tuple[list[shell.Cmd], bool]:
         found: list[shell.Cmd] = []
         for cmd in queue:
             prog, args, _ = cmdrules.program(cmd)
-            if prog in cmdrules.SHELLS and "-c" in args[:-1]:
-                inner, inner_deep = shell.commands(args[args.index("-c") + 1])
+            for text in resolve.inline_scripts(prog, args, cmd.words):
+                inner, inner_deep = shell.commands(text)
                 deep = deep or inner_deep
                 offset = depth * ID_SPACE * ID_SPACE + cmd.id * ID_SPACE
                 found += [
@@ -129,7 +129,7 @@ def _one_line_hp03(instr: Instr, fetch: shell.Cmd, runner: shell.Cmd) -> bool:
 
 
 def _word_at(cmd: shell.Cmd) -> int:
-    at = shell.resolve(cmd.words)[0]
+    at = resolve.resolve(cmd.words)[0]
     return cmd.offsets[at] if 0 <= at < len(cmd.offsets) else cmd.start
 
 
