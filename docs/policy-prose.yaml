@@ -6,6 +6,18 @@
 # change. Keeping the two apart is what stops a doc from claiming a control that is not
 # there, which is the failure mode these docs would otherwise introduce.
 
+agent-devenv-autoexec:
+  solves: >
+    Files that make a developer tool run code with nobody pressing run: an agent hook or
+    credential helper, an endpoint override that sends the agent's key elsewhere, a task that
+    runs when the folder opens, a dev container command that runs on the host, a shell-entry
+    or git hook file, a git config key that runs a program. An agent prompt-injected into
+    writing one of these gets code execution on the next open, clone or checkout.
+  customise: >
+    It ships at action warn (observe): it reports and never refuses. Measure what it reports
+    with `chock check --history`, then move `hook.gate.action` to block. A reviewed line in a
+    file that has comments may carry `chock: allow <rule-id>`, added by a person.
+
 agent-discipline:
   solves: >
     Agents that edit a file they never read, declare work finished without running it, and

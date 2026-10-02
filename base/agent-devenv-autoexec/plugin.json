@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agent-devenv-autoexec",
+  "version": "0.0.1",
+  "description": "Warns only (observe): flags files that make a dev tool run code on open, clone or shell entry -- agent hooks, helpers, env/BASE_URL overrides, auto-approve; VS Code folderOpen tasks, trust off, repo executables; devcontainer initializeCommand; .envrc, mise, husky, lefthook, pre-commit; gitconfig exec keys, gitattributes drivers, unsafe .gitmodules. Commit, agent write, turn's end; additions only; unreadable configs refused. Friction: misses interpreted code and unlisted files.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi05"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

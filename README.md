@@ -103,6 +103,7 @@ per-hook trust review before its hooks run.
 | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 25/25 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
+| [`agent-devenv-autoexec`](docs/agent-devenv-autoexec/) | warns (never blocks; observe rollout) when a change adds what a dev tool runs on its own: agent hooks and env overrides, auto-approval, VS Code folder-open tasks, devcontainer initializeCommand, shell-entry and git hook files, git exec config | 50/50 |
 
 <details>
 <summary>21 advisory policies — expand</summary>
