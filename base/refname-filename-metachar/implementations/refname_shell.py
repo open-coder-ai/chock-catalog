@@ -24,7 +24,7 @@ _QUOTE_PIECE = re.compile(r"'([^']*)'|\"([^\"]*)\"|\\(.)|([^'\"\\]+)")
 _WORD_BEFORE = frozenset(" \t\n;&|()<>")  # bash starts a comment after any metacharacter
 MAX_NESTING, MAX_HEREDOCS = 64, 256  # past either the line is refused by the caller, not read
 _COMMAND_WORD = re.compile(r"(?:^|[\s;&|(])(?:then|do|else|elif|if|while|until|!|\{|time(?:\s+-p)?|coproc)$")
-_CASE_IN = re.compile(r"(?:^|[\s;&|(])case \S+ in$")
+_CASE_IN = re.compile(r"(?:^|[\s;&|(])case\s+(?:\"[^\"]*\"|'[^']*'|\S+)\s+in\s*$")
 _BODY_QUOTES = str.maketrans("'\"`", "\x01\x01\x01")  # still a refused character in an update-ref --stdin name
 _BACKTICK_ESCAPE = re.compile(r"\\([$`\\])")
 _BACKTICK_ESCAPE_QUOTED = re.compile(r"\\([$`\\\"])")  # inside double quotes bash also drops it before `"`
@@ -69,6 +69,7 @@ class _Marker:
         self.inner: list[str] = []
         self.docs: list[tuple[str, bool, bool]] = []
         self.quote, self.i, self.closer, self.depth, self.cases = "", start, closer, 0, 0
+        self.first_close = -1  # where the first parenthesis this pass opened closed again
 
     def run(self) -> tuple[str, list[str]]:
         while self.i < len(self.raw) and not self._closes():
@@ -88,10 +89,12 @@ class _Marker:
             self.cases -= 1
         if self.cases > 0:
             return False  # inside case ... esac, a pattern's parentheses are not the substitution's
-        if char == "(" and self.closer == ")" and self.raw[self.i + 1 : self.i + 2] != "(":
-            self.depth += 1  # a `((` is read whole by its own nested pass
+        if char == "(" and self.closer == ")" and (self.arith or self.raw[self.i + 1 : self.i + 2] != "("):
+            self.depth += 1  # outside arithmetic, a `((` is read whole by its own nested pass
         elif char == self.closer:
             self.depth -= 1
+            if self.depth == 0 and self.first_close < 0:
+                self.first_close = self.i
         return self.depth < 0
 
     def _word(self, word: str, *, after_in: bool = False) -> bool:
@@ -103,7 +106,7 @@ class _Marker:
         while blank > self.start and self.raw[blank - 1] in " \t":
             blank -= 1
         # What precedes the blanks, with blank runs collapsed; a bounded window keeps this linear.
-        before = re.sub(r"\s+", " ", self.raw[max(self.start, blank - 256) : blank])
+        before = re.sub(r"[ \t]+", " ", self.raw[max(self.start, blank - 256) : blank])
         if after_in and _CASE_IN.search(before):
             return True  # `case x in esac` has no patterns at all
         return not before or before[-1] in ";&|\n(" or bool(_COMMAND_WORD.search(before))
@@ -160,6 +163,7 @@ class _Marker:
             self._nested(at + 2, ")")
         elif shell and char == "(" and nxt == "(":
             self._nested(at + 1, ")")  # `(( ... ))`: arithmetic, where `<<` is a shift, not a heredoc
+            self.out.append(" ")  # a command ends there: a `#` after it starts a comment
         else:
             return False
         return True
@@ -194,7 +198,7 @@ class _Marker:
         nested = _Marker(self.raw, powershell=self.ps, start=start, closer=closer, nesting=self.nesting + 1)
         nested.run()
         # Arithmetic only when its `(` closes as `))`; `((cd x); ls)` is a subshell, `$((cd x); ls)` a substitution.
-        arith = nested.arith and self.raw[nested.i - 1 : nested.i] == ")"
+        arith = nested.arith and nested.first_close == nested.i - 1  # the opening `(` closes right into `))`
         script = closer == ")" and not arith
         self.inner += ([self.raw[start : nested.i]] if script else []) + nested.inner
         self.docs = nested.docs + self.docs  # bash reads a substitution's heredoc bodies before the enclosing ones

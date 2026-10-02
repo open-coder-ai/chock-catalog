@@ -69,6 +69,15 @@ CASES = [
     ('echo "`git branch \\"a;b\\"`"', BLOCK),
     ("cat <<EOF > notes.md\nVersion: $(git describe)\nDate: `date`\nEOF", OK),
     ("Set-Content 'C:/work/notes.txt' 'a;b'", OK),
+    # Verification of 1dfe060: case after a newline, quoted case words, arithmetic only when `(` closes into `))`.
+    ("\"$(\ncase y in a) git branch 'a;b' ;; esac)\"", BLOCK),
+    ("x=$(case y in\nesac); git branch ok", OK),
+    ('x=$(case "a b" in esac); git branch ok', OK),
+    ("x=$((true)&&(git branch 'a;b'))", BLOCK),
+    ("((true)&&(git branch 'a;b'))", BLOCK),
+    ("((x=1))# it's\ngit branch 'a;b'", BLOCK),
+    ("echo $(( (1)+((2)) )) $(( (a) )) > n.txt", OK),
+    ("echo $((x) ) > n.txt", OK),
 ]
 
 
