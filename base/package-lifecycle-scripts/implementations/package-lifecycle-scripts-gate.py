@@ -27,7 +27,7 @@ MAX_SCAN = 256 * 1024
 def _judge(path: str, text: str, writes: dict[str, str], root: str) -> list[Hit]:
     if len(text) <= MAX_SCAN:
         return read(path, text, writes, root)
-    hits = npm_script(path, text, writes, root, scan=False)
+    hits = npm_script(path, text, writes, root)
     if reader_kind(path):
         name = path.rsplit("/", 1)[-1]
         hits.append(Hit(1, "file-too-large", name, digest(text), BLOCK, f"over {MAX_SCAN} bytes, not scanned"))

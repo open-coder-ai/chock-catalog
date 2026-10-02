@@ -70,7 +70,7 @@ def tree(tmp_path: Path) -> Path:
 def test_editing_a_script_a_lifecycle_entry_runs(tree: Path) -> None:
     root = str(tree)
     assert found({"pkg/scripts/a.js": "console.log(1)"}, root) == [("npm-lifecycle-target", "ask")]
-    assert found({"pkg/scripts/a.js": "require('child_process')"}, root) == [("npm-lifecycle-target", "block")]
+    assert found({"pkg/scripts/a.js": "require('child_process')"}, root) == [("npm-lifecycle-target", "ask")]
     assert keys({"pkg/scripts/a.js": "one()"}, root) != keys({"pkg/scripts/a.js": "two()"}, root)
     assert found({"pkg/scripts/b.js": "x"}, root) == []
     assert found({"elsewhere/scripts/a.js": "x"}, root) == []

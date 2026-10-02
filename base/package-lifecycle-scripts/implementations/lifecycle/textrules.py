@@ -20,6 +20,7 @@ GO_RUN_REMOTE = re.compile(r"(?<![\w-])go\s+run\s+(?:-\S+\s+)*([^\s./-][^\s/]*\.
 GRADLE_REMOTE = re.compile(r"(?i)\bapply\s*\(?\s*from\s*[:=]\s*(?:uri\()?\s*[\"'](?:https?|ftp)://")
 GRADLE_EXEC = re.compile(
     r"\bexec\s*\{|\bexec\s*\(|\bproviders\.exec\b|\bcommandLine\b|\btype\s*:\s*Exec\b|<Exec>|\bExec::class"
+    r"|[(,]\s*Exec\s*[),]"
     r"|\bProcessBuilder\s*\(|\bRuntime\.getRuntime\(\)\.exec\b|[\"'\]]\s*\.execute\(\s*\)"
 )
 GEM_EXTENSIONS = re.compile(r"\.extensions\s*(?:=|<<|\+=|\.push\b|\.concat\b|\.unshift\b)|^\s*extensions\s*[:=]")
@@ -33,6 +34,8 @@ PODSPEC_PREPARE = re.compile(r"\.prepare_command\s*=")
 HEREDOC = re.compile(r"<<([~-]?)(['\"]?)(\w+)\2")
 QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'')
 HEREDOC_LINES, BRACKET_LINES = 200, 60
+#: A line whose code ends like this goes on: a trailing comma, backslash, operator or method dot.
+CONTINUES = re.compile(r"(?:,|\\|\+|-|\*|&&|\|\||\.|=|\bdo|\|[\w, ]*\|)\s*$")
 
 
 def build_rs(text: str) -> list[Hit]:
@@ -98,12 +101,13 @@ def _statement(lines: list[str], index: int, comment: str = "#") -> str:
                 break
     if openers:
         return "\n".join(body)
-    depth = _depth(lines[index], comment)
-    for line in lines[at : at + BRACKET_LINES]:
-        if depth <= 0:
+    depth, line = _depth(lines[index], comment), lines[index]
+    for following in lines[at : at + BRACKET_LINES]:
+        if depth <= 0 and not CONTINUES.search(_code(line, comment)):
             break
-        body.append(line)
-        depth += _depth(line, comment)
+        body.append(following)
+        depth += _depth(following, comment)
+        line = following
     return "\n".join(body)
 
 

@@ -9,7 +9,7 @@ import re
 from lifecycle import ASK, BLOCK, Hit, line_of, norm
 from lifecycle.gyp import native_sources
 from lifecycle.signals import danger
-from lifecycle.targets import LIFECYCLE_NAMES, RUNS_FILE
+from lifecycle.targets import LIFECYCLE_NAMES, executed
 
 #: Scripts npm, yarn, pnpm or bun run on install, on a git-dependency prepare, or on pack/publish.
 #: `dependencies` runs after node_modules changes (npm 8+); `pnpm:devPreinstall` before a pnpm install;
@@ -155,7 +155,7 @@ def _scripts(path: str, text: str, scripts: dict, writes: dict[str, str], base: 
         if name == "prepare" and HUSKY.fullmatch(value):
             continue
         why = danger(body)
-        ran = [m for m in RUNS_FILE.findall(body) if posixpath.normpath(posixpath.join(base, m)) in changed]
+        ran = [m for m in executed(body) if posixpath.normpath(posixpath.join(base, m)) in changed]
         if not why and ran:
             why = f"runs {ran[0]}, a file this same change writes"
         level = BLOCK if why else ASK

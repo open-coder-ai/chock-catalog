@@ -37,6 +37,7 @@ DYNAMIC = {
     "runpy.run_path",
     "runpy.run_module",
 }
+NAMESPACES = {"globals", "vars", "locals", "builtins.globals", "builtins.vars", "builtins.locals"}
 #: pytest calls these hooks of a conftest at start-up, before any test.
 PYTEST_HOOKS = (
     "pytest_configure",
@@ -111,6 +112,8 @@ def classify_call(call: ast.Call, names: dict[str, str], source: str) -> tuple[s
     """(level, why) for a call that reaches the network, decodes, builds code, starts a process or looks one up."""
     dotted = _resolve(call, names)
     verdict = _verdict(dotted)
+    if isinstance(call.func, ast.Subscript) and _dotted(getattr(call.func.value, "func", None), names) in NAMESPACES:
+        verdict = ASK, "calls a function looked up by name in a namespace"
     if dotted == "getattr" and call.args:
         target = _dotted(call.args[0], names)
         if target.split(".")[0] in {origin.split(".")[0] for origin in names.values()}:
@@ -121,11 +124,17 @@ def classify_call(call: ast.Call, names: dict[str, str], source: str) -> tuple[s
 
 
 def _local_functions(tree: ast.Module) -> dict[str, list[ast.AST]]:
-    """Every function the module defines, by name; all definitions of a name, since any of them may be the live one."""
+    """Every function the module defines, by name (all definitions, since any may be the live one), and each
+    local class as its constructor."""
     found: dict[str, list[ast.AST]] = {}
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             found.setdefault(node.name, []).append(node)
+        elif isinstance(node, ast.ClassDef):
+            # Calling a local class runs its constructor: the class name stands for __init__/__new__.
+            found.setdefault(node.name, []).extend(
+                fn for fn in node.body if isinstance(fn, ast.FunctionDef) and fn.name in ("__init__", "__new__")
+            )
     return found
 
 
