@@ -40,7 +40,8 @@ class Finding(NamedTuple):
 #: A value that names where the secret lives instead of holding it: an env lookup, a template, a vault.
 REFERENCE = re.compile(
     r"(?i)\s*(?:\$\{|\$\(|\$[a-z_]|%[a-z_]\w*%|\{\{|\{%|<%|enc\[|vault:|ref\+|op://|!(?:ref|sub|getatt)\b|#\{|\(\(|"
-    r"(?:os\.)?environ\b|(?:os\.|system\.)?getenv\s*\(|process\.env\b|env\[|env\()"
+    r"(?:os\.)?environ\b|(?:os\.|system\.)?getenv\s*\(|process\.env\b|env\[|env\(|%\(|%s$|\{\w*\}$|"
+    r"[a-z_][\w.]*\.get\s*\()"
 )
 #: Template words: a value holding one is documentation, not a credential (as chock_scan.entropy judges).
 PLACEHOLDER = re.compile(
@@ -50,7 +51,10 @@ PLACEHOLDER = re.compile(
 REPEAT = re.compile(r"(.)\1*")
 NUMBER_OR_FLAG = re.compile(r"(?i)[-+]?\d+(?:\.\d+)?[a-z]{0,2}|true|false|yes|no|on|off|null|none|nil")
 ARMOR = re.compile(r"-----(?:BEGIN|END) [^-\r\n]{1,60}-----")
-BASE64 = re.compile(r"[A-Za-z0-9+/=]")
+BASE64_LINE = re.compile(r"[A-Za-z0-9+/=]+")
+#: A key that names where a secret lives, and a value that is a path or a plain URL: not the secret.
+POINTER_KEY = re.compile(r"(?i)(?:^|[_.-])(?:file|path|dir|name|url|uri|location|ref)$")
+PATH_VALUE = re.compile(r"(?:\.{0,2}/|~/|[A-Za-z]:\\|[a-z][a-z0-9+.-]*://(?![^/@\s]*:[^/@\s]*@))")
 
 
 def unquote(value: str) -> str:
@@ -73,7 +77,12 @@ def secretish(key: str, value: str, minimum: int = 8) -> bool:
     """A secret-like key (chock_scan.keyword_values) holding a literal of `minimum`+ characters, not a number or flag."""
     text = unquote(value)
     return (
-        keyword_values.secret_key(key) and literal(text) and len(text) >= minimum and not NUMBER_OR_FLAG.fullmatch(text)
+        keyword_values.secret_key(key)
+        and not POINTER_KEY.search(key)
+        and literal(text)
+        and len(text) >= minimum
+        and not NUMBER_OR_FLAG.fullmatch(text)
+        and not PATH_VALUE.match(text)
     )
 
 
@@ -87,10 +96,19 @@ def key_material(value: object) -> bool:
     return body_size(value) >= MIN_BODY
 
 
+def body_lines(block: str) -> list[str]:
+    """The lines of a key block that are wholly base64 once indentation, quotes and commas are off.
+
+    Armor lines and `Name: value` headers are left out, and so is prose that follows an unterminated BEGIN.
+    """
+    lines = ARMOR.sub("\n", block.replace("\\r", "").replace("\\n", "\n")).splitlines()
+    stripped = (line.strip().strip("\"',").strip() for line in lines)
+    return [line for line in stripped if BASE64_LINE.fullmatch(line)]
+
+
 def body_size(block: str) -> int:
-    """Base64 characters of a key block, its armor lines and `Name: value` headers left out."""
-    lines = ARMOR.sub("\n", block.replace("\\n", "\n")).splitlines()
-    return sum(len(BASE64.findall(line)) for line in lines if ":" not in line)
+    """Base64 characters of a key block's body (see body_lines)."""
+    return sum(len(line) for line in body_lines(block))
 
 
 def line_of(text: str, pos: int) -> int:

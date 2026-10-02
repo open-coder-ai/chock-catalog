@@ -1,7 +1,9 @@
-"""Credential files in text formats, by shape whatever their name: rc files, AWS and PyPI INI, XML, PHP, kubeconfig.
+"""Credential files in text formats: rc files, AWS and PyPI INI, XML, PHP, kubeconfig.
 
-A name-led file (`.npmrc`, `.netrc`, ...) is read whatever it holds; any other file only when its
-whole shape is that format's, so a rename does not hide it and prose that mentions it is not judged.
+A name-led file (`.npmrc`, `.netrc`, ...) is read whatever it holds. Most formats are also read under
+any name when the whole file has that format's shape (INI sections, netrc tokens, credential URLs,
+kubeconfig, NuGet and Maven XML), so a rename does not hide them and prose that mentions them is not
+judged. `.pgpass` is read by name only.
 """
 
 from __future__ import annotations
@@ -29,7 +31,11 @@ WP_DEFINE = re.compile(
     r"""define\s*\(\s*(['"])(DB_PASSWORD|(?:SECURE_)?AUTH_(?:KEY|SALT)|LOGGED_IN_(?:KEY|SALT)|NONCE_(?:KEY|SALT))\1"""
     r"""\s*,\s*(['"])([^'"\r\n]*)\3"""
 )
-KIND_CONFIG = re.compile(r"""(?m)^kind[ \t]*:[ \t]*["']?Config["']?[ \t]*(?:#.*)?$""")
+#: A `kind` key valued Config however it is spelled (quoted, tagged, flow, escaped): enough to refuse an unreadable file.
+KIND_CONFIG = re.compile(r"""kind["']?[ \t]*:[ \t]*(?:!\S*[ \t]+)?["']?Config\b""")
+#: A double-quoted YAML key holding an escape, which can spell `kind` or `users` without the letters.
+ESCAPED_KEY = re.compile(r'"[^"\n]{0,64}\\[xuU][^"\n]{0,64}"[ \t]*:')
+INI_LINE = re.compile(r"[ \t]*(?:[#;].*|\[[^\]\n]+\][ \t]*|[\w.-]+[ \t]*[=:].*|[ \t]+\S.*)?")
 SCALARS = frozenset({"plain", "single", "double", "literal", "folded"})
 
 
@@ -51,7 +57,7 @@ def judge(path: str, name: str, text: str) -> list[Finding]:
 def aws(path: str, text: str) -> list[Finding]:
     """An AWS shared-credentials file: a section and a literal secret key or session token."""
     named = ("/" + path.lower()).endswith(AWS_NAMES)
-    if not (named or SECTION.search(text)):
+    if not (named or ini(text)):
         return []
     return [
         Finding(AWS, line_of(text, m.start()), m[1].lower(), m[2])
@@ -62,11 +68,16 @@ def aws(path: str, text: str) -> list[Finding]:
 
 def pypirc(name: str, text: str) -> list[Finding]:
     """A .pypirc (by name, or by its distutils/pypi section) holding a literal password."""
-    if name not in (".pypirc", "pypirc") and not PYPI_SECTION.search(text):
+    if name not in (".pypirc", "pypirc") and not (PYPI_SECTION.search(text) and ini(text)):
         return []
     return [
         Finding(RC, line_of(text, m.start()), "PyPI password", m[1]) for m in PYPI_PW.finditer(text) if literal(m[1])
     ]
+
+
+def ini(text: str) -> bool:
+    """The whole file is INI: sections, `key = value` lines, comments, continuations; at least one section."""
+    return bool(SECTION.search(text)) and all(INI_LINE.fullmatch(line) for line in text.split("\n"))
 
 
 def npmrc(name: str, text: str) -> list[Finding]:
@@ -146,13 +157,15 @@ def kubeconfig(text: str) -> list[Finding]:
     an alias or merge key, is reported rather than passed.
     """
     stated = KIND_CONFIG.search(text) is not None
-    if not stated and not ("kind" in text and "users" in text and "kubernetes" in sniff.sniff(_bytes(text)).kinds()):
+    if not (
+        stated or ESCAPED_KEY.search(text) or ("users" in text and "kubernetes" in sniff.sniff(_bytes(text)).kinds())
+    ):
         return []
     try:
         nodes = yamlpath.scan(text)
     except yamlpath.ParseError:
         return [Finding(KUBE, 1, "kubeconfig this reader cannot parse", text)] if stated else []
-    configs = {n.doc for n in nodes if n.path == ("kind",) and n.value == "Config"}
+    configs = {n.doc for n in nodes if n.path == ("kind",) and n.kind in SCALARS and n.value == "Config"}
     found = [
         Finding(KUBE, n.line, f"kubeconfig user {n.path[-1]}", n.value)
         for n in nodes

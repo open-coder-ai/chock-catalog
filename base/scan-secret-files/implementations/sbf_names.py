@@ -63,11 +63,11 @@ def containers(name: str, base: str, text: str) -> list[Finding]:
 
 
 def dotenv(name: str) -> bool:
-    """A dotenv file that is not a template: `.env`, `.env.<x>`, `<x>.env`, `.envrc`."""
+    """A dotenv file that is not a template: `.env`, `.env.<x>` (also `-<x>`, `_<x>`), `<x>.env`, `.envrc`."""
     if name in (".env", ".envrc"):
         return True
-    if name.startswith(".env."):
-        return name.rsplit(".", 1)[1] not in TEMPLATE
+    if name.startswith((".env.", ".env-", ".env_")):
+        return re.split(r"[._-]", name)[-1] not in TEMPLATE
     return name.endswith(".env") and name[: -len(".env")].rsplit(".", 1)[-1] not in TEMPLATE
 
 
@@ -96,6 +96,6 @@ def framework(path: str, name: str, text: str) -> list[Finding]:
     if name == "local_settings.py":
         for match in DJANGO.finditer(text):
             key, value = (match[1], match[3]) if match[1] else (match[5], match[7])
-            if literal(value):
+            if literal(value) and (key == "PASSWORD" or len(value) >= 8):  # noqa: PLR2004 -- Django's dev keys are short
                 found.append(Finding(FRAMEWORK, line_of(text, match.start()), f"Django {key}", value))
     return found

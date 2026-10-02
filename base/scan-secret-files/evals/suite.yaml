@@ -11,8 +11,8 @@ suite:
   # The gate ships in observe (action: warn, D15): every case it flags expects `warn`, which becomes
   # `block` (or `ask` for encrypted keys and notebook outputs) when a separate PR promotes it. Each case
   # stages files in a throwaway repo and runs the script gate at commit, or at tool_use on the agent's
-  # write. Fixture values are plainly fake; cases with a PEM private-key header need a person's commit
-  # (tests/policies/test_scan_secret_files_keys.py and the PR's owner step).
+  # write. Fixture values are plainly fake; cases with a PEM private-key header arrive in a person's
+  # commit (they need scan-secrets' pragma, which counts only there).
   cases:
   - id: tc-001
     category: trigger
@@ -138,4 +138,4 @@ suite:
     category: adversarial
     prompt: "Documented miss: a JKS key store renamed to .bin whose first entry count is 65536 or more."
     expect: "Allowed; a renamed Java key store is recognised only by the header shape the gate's lossy text keeps (stated on the policy page)."
-    execute: {files: {"build/store.bin": "����\0\0\0\x02\0\x01\0\0\0\0\0\x01"}, expect: allow}
+    execute: {files: {"build/store.bin": "\uFFFD\uFFFD\uFFFD\uFFFD\0\0\0\x02\0\x01\0\0\0\0\0\x01"}, expect: allow}

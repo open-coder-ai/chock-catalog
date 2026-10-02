@@ -105,6 +105,14 @@ def test_line_of_an_offset_not_found_is_one() -> None:
     assert sbf_core.line_of("a\nb", -1) == 1
 
 
+#: The first bytes of a plain PKCS#8 key (SEQUENCE, INTEGER 0, algorithm): no secret, just its shape.
+PLAIN_PKCS8 = b"\x30\x82\x04\xbe\x02\x01\x00\x30\x0d\x06\x09" + b"\x00" * 12
+
+
+def b64(raw: bytes) -> str:
+    return base64.b64encode(raw).decode()
+
+
 def openssh(cipher: bytes) -> str:
     raw = b"openssh-key-v1\0" + len(cipher).to_bytes(4, "big") + cipher + b"\0" * 40
     return base64.b64encode(raw).decode()
@@ -113,8 +121,13 @@ def openssh(cipher: bytes) -> str:
 @pytest.mark.parametrize(
     ("label", "body", "expected"),
     [
-        ("ENCRYPTED PRIVATE KEY", "", True),
-        ("RSA PRIVATE KEY", "Proc-Type: 4,ENCRYPTED\nDEK-Info: AES-128-CBC,00\n", True),
+        ("ENCRYPTED PRIVATE KEY", b64(b"\x30\x82\x05\x00\x30\x4e\x06\x09"), True),
+        ("ENCRYPTED PRIVATE KEY", b64(b"\x30\x4e\x30\x4c\x06\x09"), True),
+        ("ENCRYPTED PRIVATE KEY", b64(PLAIN_PKCS8), False),
+        ("ENCRYPTED PRIVATE KEY", "", False),
+        ("RSA PRIVATE KEY", "Proc-Type: 4,ENCRYPTED\nDEK-Info: AES-128-CBC,00\n" + b64(b"\x9f\x11\x42" * 8), True),
+        ("RSA PRIVATE KEY", "Proc-Type: 4,ENCRYPTED\nDEK-Info: AES-128-CBC,00\n" + b64(PLAIN_PKCS8), False),
+        ("RSA PRIVATE KEY", "Proc-Type: 4,ENCRYPTED\n" + b64(b"\x9f\x11\x42" * 8), False),
         ("RSA PRIVATE KEY", HEX_LINE, False),
         ("OPENSSH PRIVATE KEY", openssh(b"aes256-ctr"), True),
         ("OPENSSH PRIVATE KEY", openssh(b"none"), False),
@@ -191,3 +204,72 @@ def test_hostile_input_is_judged_in_linear_time(text: str) -> None:
     sbf_judge.judge(".netrc", text)
     sbf_judge.judge("deploy/kubeconfig", text)
     assert time.monotonic() - started < 10
+
+
+KUBE_USERS = "users:\n- name: a\n  user:\n    token: kubeletbootstrap\n"
+
+
+@pytest.mark.parametrize(
+    ("path", "text", "rule"),
+    [
+        (".env", "\ufeffAPI_KEY=livevaluehere\n", "sbf-tracked-env"),
+        ("ops/x.conf", "\ufeffkind: Config\n" + KUBE_USERS, "sbf-kubeconfig"),
+        ("ops/x.conf", "kind: Config\r\n" + KUBE_USERS.replace("\n", "\r\n"), "sbf-kubeconfig"),
+        ("ops/x.conf", "'kind': Config\n" + KUBE_USERS, "sbf-kubeconfig"),
+        ("ops/x.conf", "kind: !!str Config\n" + KUBE_USERS, "sbf-kubeconfig"),
+        ("ops/x.conf", "--- {kind: Config}\n" + KUBE_USERS, "sbf-kubeconfig"),
+        ("ops/x.conf", 'apiVersion: v1\nkind: "\\u0043onfig"\n' + KUBE_USERS, "sbf-kubeconfig"),
+        ("ops/x.conf", '"\\u006bind": Config\n' + KUBE_USERS, "sbf-kubeconfig"),
+        (
+            "s.json",
+            "\ufeff" + json.dumps({"terraform_version": "1", "lineage": "l", "serial": 1}),
+            "sbf-tfstate-tfvars",
+        ),
+        (
+            "s.json",
+            "// state\n/* copy */\n" + json.dumps({"terraform_version": "1", "lineage": "l", "serial": 1}),
+            "sbf-tfstate-tfvars",
+        ),
+        (
+            "d.json",
+            '{"auths": {"ghcr.io": {"auth": "dXNlcjpwYXNz"}}, "pad": ' + "[" * 300 + "]" * 300 + "}",
+            "sbf-rc-credentials",
+        ),
+        ("d.json", '{"type": "service_account", "private_key": "x"} trailing', "sbf-gcp-sa-json"),
+        ("ci/aws.ini", "[ci]\r\naws_session_token=awssessiontokenvaluelong\r\n", "sbf-aws-credentials"),
+        ("svc/.env-production", "API_KEY=livevaluehere\n", "sbf-tracked-env"),
+        ("svc/.env_prod", "API_KEY=livevaluehere\n", "sbf-tracked-env"),
+        ("build/t.jks", "\ufffd" * 4 + "\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x02", "sbf-private-key-files"),
+    ],
+)
+def test_review_round_one_bypasses_are_caught(path: str, text: str, rule: str) -> None:
+    assert rule in {f.rule for f in sbf_judge.judge(path, text)}
+
+
+def test_a_truststore_asks_instead_of_refusing() -> None:
+    store = "\ufffd" * 4 + "\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x02"
+    assert {(f.rule, f.level) for f in sbf_judge.judge("certs/trust.jks", store)} == {("sbf-private-key-files", "ask")}
+
+
+@pytest.mark.parametrize(
+    ("path", "text"),
+    [
+        ("pkg/upload.py", '"""Reads [pypi] from .pypirc."""\npassword = cfg.get("password")\n'),
+        ("pkg/upload.cfg", "[pypi]\npassword = %s\n"),
+        ("pkg/aws.py", '"""[default]"""\naws_secret_access_key = "awssecretaccesskeyvalue"\n'),
+        (
+            ".env",
+            "SECRET_KEY_FILE=/run/secrets/key\nGOOGLE_APPLICATION_CREDENTIALS=./sa.json\nPUBLIC_API_KEY_NAME=checkout\n",
+        ),
+        (".env", "AUTH_TOKEN_URL=https://auth.example.org/token\n"),
+        ("app/local_settings.py", "SECRET_KEY = 'dev'\n"),
+        (
+            "README.txt",
+            "If you see -----BEGIN OpenVPN Static key V1----- in a file, never commit it: it must be rotated.\n",
+        ),
+        ("notes.json", '{"note": "the auths key"'),
+        ("app.py", 'CONFIG = {"type": "service_account", "private_key": key}\n'),
+    ],
+)
+def test_review_round_one_false_positives_are_silent(path: str, text: str) -> None:
+    assert sbf_judge.judge(path, text) == []

@@ -38,6 +38,29 @@ COMPOSER_SECRET = frozenset({"password", "token", "consumer-secret", "access-tok
 CONN_PW = re.compile(r"(?i)(?:^|;)\s*(?:password|pwd)\s*=\s*([^;]*)")
 
 
+#: A document that opens like JSON: blanks and comments, then an object or array.
+JSONISH = re.compile(r"(?:\s|//[^\n]*+\n|/\*(?:[^*]|\*(?!/))*+\*/)*+[\[{]")
+#: Keys a credential file of each shape carries; JSON this reader cannot parse that holds them is reported.
+MARKERS = (
+    (GCP, ('"service_account"', '"private_key"')),
+    (GCP, ('"authorized_user"', '"refresh_token"')),
+    (GCP, ('"client_secret"',)),
+    (TF, ('"terraform_version"', '"lineage"')),
+    (RC, ('"auths"',)),
+    (KUBE, ('"Config"', '"users"')),
+    (BROWSER, ('"encryptedPassword"',)),
+)
+
+
+def unreadable(text: str) -> list[Finding]:
+    """Fail closed: JSON this reader cannot parse (too deep, too large, malformed) holding a credential file's keys."""
+    return [
+        Finding(rule, 1, "credential-shaped JSON this reader cannot parse", text)
+        for rule, keys in MARKERS
+        if all(key in text for key in keys)
+    ]
+
+
 class Obj(list):
     """A JSON object as its (key, value) pairs in source order, duplicates kept."""
 
@@ -52,12 +75,12 @@ def parse(text: str) -> object:
 
 def judge(text: str, name: str = "") -> list[Finding]:
     """Every credential the JSON shapes show; `name` is the lowercased file name, for the name-led rules."""
-    if text.lstrip()[:1] not in ("{", "["):
+    if not JSONISH.match(text):
         return []
     try:
         root = parse(text)
     except ValueError:
-        return []
+        return unreadable(text)
     found = [finding for obj in objects(root) for finding in shapes(obj, text)]
     if isinstance(root, Obj):
         found += notebook(root, text) + legacy_docker(root, text)

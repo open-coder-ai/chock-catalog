@@ -15,6 +15,8 @@ FIXTURE_SEGMENTS = frozenset({"evals"})
 
 def judge(path: str, text: str) -> list[Finding]:
     """Every finding in one file, in line order; a fixture, doc or lock path turns a refusal into an ask."""
+    # The engine decodes UTF-8 and keeps a BOM; a tool-use write keeps CRLF. Both would hide a line start.
+    text = text.removeprefix("\ufeff").replace("\r\n", "\n")
     norm = path.replace("\\", "/")
     base = norm.rsplit("/", 1)[-1]
     name = base.lower()

@@ -1,7 +1,7 @@
 """scan-secret-files: each rule refuses the file it names, stays silent on its look-alike, and sees through a rename.
 
 Fixture values are plainly fake (short or digitless) so no other gate mistakes them for a credential;
-the private-key-header cases a person commits live in test_scan_secret_files_keys.py.
+the cases that need a PEM private-key header arrive in a person's commit (the PR's owner step).
 """
 
 from __future__ import annotations
@@ -147,9 +147,9 @@ REFUSED = [
         "sbf-private-key-files",
     ),
     ("build/x.bin", "0\x82\n\x1b\x02\x01\x030\x82", "sbf-private-key-files"),
-    ("build/y.bin", "0�\x02\x01\x030�", "sbf-private-key-files"),
-    ("build/z.dat", "�" * 4 + "\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x01", "sbf-private-key-files"),
-    ("certs/server.key", "0�\x02\x01\x000\r", "sbf-private-key-files"),
+    ("build/y.bin", "0\ufffd\x02\x01\x030\ufffd", "sbf-private-key-files"),
+    ("build/z.dat", "\ufffd" * 4 + "\x00\x00\x00\x02\x00\x00\x00\x01\x00\x00\x00\x01", "sbf-private-key-files"),
+    ("certs/server.key", "0\ufffd\x02\x01\x000\r", "sbf-private-key-files"),
     ("certs/ec.der", "0w\x02\x01\x01\x04 ", "sbf-private-key-files"),
     # browser credential stores
     ("profile/Default/Cookies", "x", "sbf-browser-credential-stores"),
