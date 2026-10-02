@@ -12,6 +12,7 @@ import sys
 
 from chock_shellparse import commands, writes_files
 from pathguard import refuses
+from pathopaque import refuses as opaque
 from pathwrap import too_deep
 
 PROTECTED = (
@@ -62,6 +63,8 @@ REASON = "shell write touching agent config is refused -- an agent must not edit
 # A lone `\` ends the line: for a Windows command (copy, xcopy, move) it closes a folder name, it escapes nothing.
 _TRAILING = re.compile(r"(?<=[^\s\\])\\$")
 
+BLIND = "shell command runs script text the guard cannot read (eval or a shell fed from a variable, a pipe or a here-document, a variable as the command, trap, xargs sh, an interpreter one-liner) and names a protected path -- refused because it cannot be judged. Run the inner command directly, or ask the person."
+
 DEEP = "shell command nested too deep to check (a script inside a script, five or more levels) -- refused because it cannot be judged. Run the inner commands one at a time, or ask the person."
 
 
@@ -88,7 +91,7 @@ def check(raw: str) -> str | None:
         return DEEP
     if any(writes_files(cmd, hit) for cmd in commands(raw)) or refuses(raw, PROTECTED, hit, normalise):
         return REASON
-    return None
+    return BLIND if opaque(raw, hit) else None
 
 
 def run(argv: list[str]) -> int:

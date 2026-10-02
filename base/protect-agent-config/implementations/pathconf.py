@@ -40,25 +40,36 @@ _LONG = {
 }
 _SUBCOMMANDS = frozenset(("set", "unset", "get", "list", "edit", "rename-section", "remove-section"))
 _SHORT_VALUE = "ft"  # `-f FILE` and `-t TYPE` take the rest of the word, or the next word
-# Git commands an alias can name and still run no program of the agent's choosing. Left out: `config` (a later `git NAME` writes
-# any key unguarded), `clone`, `fetch`, `pull`, `push`, `ls-remote` (`--upload-pack`, `--receive-pack`, `-u`, `-c`), `rebase` (`-x`
-# in any spelling), `archive`, `init` (`--template`), `submodule` (foreach), `bisect` (run), `filter-branch`, `difftool`,
-# `mergetool`, `grep -O`, `help` and a name that is not here (it would run `git-NAME` from the PATH).
+# Git commands an alias can name and still run no program of the agent's choosing, as long as no option below is given. Left out:
+# `submodule` (foreach), `bisect` (run), `filter-branch`, `difftool`, `mergetool`, `grep -O`, `help` and a name that is not here
+# (it would run `git-NAME` from the PATH). `config` is judged as a `git config` of its own (`_benign`).
 _GIT_COMMANDS = frozenset(
     (
-        *("add", "am", "annotate", "apply", "blame", "branch", "bundle", "cat-file", "checkout", "cherry"),
-        *("cherry-pick", "clean", "commit", "count-objects", "describe", "diff"),
-        *("format-patch", "fsck", "gc", "hash-object", "log", "ls-files", "ls-tree"),
-        *("merge", "merge-base", "mv", "name-rev", "notes", "range-diff", "reflog"),
+        *("add", "am", "annotate", "apply", "archive", "blame", "branch", "bundle", "cat-file", "checkout", "cherry"),
+        *("cherry-pick", "clean", "clone", "commit", "config", "count-objects", "describe", "diff", "fetch"),
+        *("format-patch", "fsck", "gc", "hash-object", "init", "log", "ls-files", "ls-remote", "ls-tree"),
+        *("merge", "merge-base", "mv", "name-rev", "notes", "pull", "push", "range-diff", "rebase", "reflog"),
         *("remote", "repack", "replace", "reset", "restore", "rev-list", "rev-parse", "revert", "rm", "shortlog"),
         *("show", "show-branch", "sparse-checkout", "stash", "status", "switch", "symbolic-ref", "tag", "worktree"),
         *("update-index", "update-ref", "whatchanged", "diff-tree", "diff-files", "diff-index", "prune"),
     )
 )
-# Options that make a command named in an alias run a program: `-x` in any bundle (`rebase`), `--exec`, `--upload-pack`, `--receive-pack`,
-# `--template`, `--run`, `--ext-diff`, each by any spelling that starts the same; and for `merge` a strategy (`git-merge-NAME`).
-_RUNNING = re.compile(r"-(?:[A-Za-z]*x|-(?:ex|upl|rec|tem|run|ext)[a-z-]*)")
-_STRATEGY = re.compile(r"-(?:s|X)|--str")
+# Options that make a command in an alias run a program, by any spelling git accepts (a long option by any unambiguous prefix):
+# `--exec`, `--upload-pack`, `--receive-pack` (`--rece`: `--rec` is also `--recurse-submodules`), `--template`, `-x` of a rebase,
+# `-u` (upload-pack) and `-c`/`--config` (any key) of a clone, a merge strategy that is not one git ships (`git-merge-NAME`).
+_EXEC = re.compile(r"--(?:ex|upl|rece)")
+_RISKY = {
+    **dict.fromkeys(("archive", "ls-remote", "push"), _EXEC),
+    "fetch": re.compile(r"-[A-Za-z]*u|--(?:ex|upl|rece)"),
+    "pull": re.compile(r"-[A-Za-z]*[ux]|--(?:ex|upl|rece)"),
+    "rebase": re.compile(r"-[A-Za-z]*x|--e"),
+    "clone": re.compile(r"-[A-Za-z]*[uc]|--(?:ex|upl|con|tem)"),
+    "init": re.compile(r"--tem"),
+}
+_ANY_EXEC = re.compile(r"--exe")  # no git option but `--exec` starts so
+_STRATEGIES = frozenset(("ours", "recursive", "resolve", "octopus", "subtree", "ort"))
+_STRATEGY_COMMANDS = frozenset(("merge", "rebase", "pull", "cherry-pick", "revert"))
+_STRATEGY_OPTION = re.compile(r"(?:--str[a-z-]*=?|-s)(.*)")
 _KEY_ENV = re.compile(r"GIT_CONFIG_KEY_\d+")
 _LETTERS = re.compile(r"[A-Za-z]{1,3}")
 
@@ -119,17 +130,34 @@ def _bundle(arg: str, following: str, flags: set[str], files: list[str]) -> int:
     return 0
 
 
+def _strategy(words: list[str]) -> bool:
+    """Whether a word asks for a merge strategy other than the ones git ships (it would run `git-merge-NAME` from the PATH)."""
+    for at, word in enumerate(words):
+        found = _STRATEGY_OPTION.fullmatch(word)
+        if found and (found[1] or words[at + 1 : at + 2] or [""])[0] not in _STRATEGIES:
+            return True
+    return False
+
+
 def harmless_alias(key: str, value: str) -> bool:
     """Whether an alias value runs no program: it starts with a git command that takes no program (a name that is not one
     would run `git-NAME` from the PATH), and a `!` shell alias, a leading option (`-c`) or an option that runs one is none of that."""
     words = value.split()
+    risky = _RISKY.get(words[0]) if words else None
     return (
         key.lower().startswith("alias.")
         and not DYNAMIC.search(value)
         and words[:1] != []
         and words[0] in _GIT_COMMANDS
-        and not any(_RUNNING.match(w) or (words[0] == "merge" and _STRATEGY.match(w)) for w in words[1:])
+        and not any(_ANY_EXEC.match(w) or (risky and risky.match(w)) for w in words[1:])
+        and not (words[0] in _STRATEGY_COMMANDS and _strategy(words[1:]))
     )
+
+
+def _benign(w: Any, key: str, value: str, env: dict[str, str]) -> bool:
+    """An alias value that runs no program, names no protected path, and is no `git` command this guard refuses (the alias
+    runs later, where nothing judges it: `config core.hooksPath h`, `clean -fdx`, `checkout -- .claude`)."""
+    return harmless_alias(key, value) and not _names(w, value, env) and not w.git_refuses(value.split(), env)
 
 
 def _names(w: Any, value: str, env: dict[str, str]) -> bool:
@@ -155,4 +183,4 @@ def config(w: Any, args: list[str], env: dict[str, str]) -> bool:
     if sections:
         return any(name.split(".")[0].lower() in _SECTIONS or DYNAMIC.search(name) for name in words)
     key, value = (*words, "", "")[:2]
-    return code_key(key) and (unsetting or not harmless_alias(key, value) or _names(w, value, env))
+    return code_key(key) and (unsetting or not _benign(w, key, value, env))

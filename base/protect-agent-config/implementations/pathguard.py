@@ -5,6 +5,7 @@ from __future__ import annotations
 import itertools
 import os
 import posixpath
+import re
 from collections.abc import Callable
 
 from chock_shellparse import flags_of
@@ -36,6 +37,11 @@ from pathwriters import OUTPUT, awk, dest, find, output, sed
 
 Normalise = Callable[[str], str]
 _DEPTH = 3
+# A Windows path the shell reads as an escape: a `\` that closes a folder name before a space, or follows `%VAR%`.
+_CLOSING = re.compile(r"(?<=[^\s\\])\\(?=\s)|(?<=%)\\(?=\S)")
+_QUOTED_END = re.compile(r'\\(?=")')  # `"C:\build\"`: the `\` closes the folder, it does not escape the quote
+_CD_SWITCH = frozenset(("/d",))
+_DRIVE_IN = re.compile(r"[A-Za-z]:\\")
 
 
 class _Walk(Reach, Scripts):
@@ -100,10 +106,17 @@ class _Walk(Reach, Scripts):
     def text(self, value: str) -> None:
         self._text, self.bound = value, bindings(value)
 
+    def git_refuses(self, args: list[str], env: dict[str, str]) -> bool:
+        """Whether `git ARGS` is refused: an alias body is judged as the git command it will run."""
+        return git(self, args, env)
+
     def _chdir(self, cmd_name: str, args: list[str], env: dict[str, str]) -> None:
         if cmd_name in PUSH:
             self.stack.append(self.cwd)
-        target = expand(next((a for a in args if a == "-" or not a.startswith("-")), ""), env) or "~"
+        words = [
+            a for a in args if a.lower() not in _CD_SWITCH
+        ]  # `cd /d DIR`: /d switches the drive, it is not the target
+        target = expand(next((a for a in words if a == "-" or not a.startswith("-")), ""), env) or "~"
         self.cwd = None if target == "-" or DYNAMIC.search(target) else self._path(target, env)[0]
 
     def _unknown(self, args: list[str], env: dict[str, str]) -> bool:
@@ -198,9 +211,9 @@ class _Walk(Reach, Scripts):
         self.depth, scanned = depth, scan(text, self.resolve)
         self.docs.update(scanned.docs)
         for body in scanned.bodies:
-            printed, exact = self.shown(body)
-            self.outputs += printed
-            self.unseen |= not exact
+            result = self.shown(body)
+            self.outputs += result[0]
+            self.unseen = self.unseen or not result[1]
         start, stack = self.cwd, list(self.stack)
         if self.run(scanned.outer, ps=self.ps):
             return True
@@ -217,12 +230,22 @@ class _Walk(Reach, Scripts):
         return False
 
 
+def _closed(raw: str) -> str:
+    """The line with each Windows folder-closing `\\` read as a separator, as Windows reads it."""
+    closed = _CLOSING.sub("/", _QUOTED_END.sub("/", raw) if _DRIVE_IN.search(raw) else raw)
+    return _WINPATH.sub("/", closed)
+
+
 def refuses(raw: str, protected: tuple[str, ...], hit: Callable[[str], bool], normalise: Normalise) -> bool:
     """Whether a command line writes, deletes, moves or links a protected path or a directory holding one, or may."""
     start = os.environ.get("CHOCK_HOOK_CWD") or os.getcwd()
     start = start if DRIVE.match(start) else os.path.abspath(start)
     ps = is_powershell(raw)
-    views = [raw.replace("\\", "/").replace("`", "")] if ps else list(dict.fromkeys([raw, _WINPATH.sub("/", raw)]))
+    views = (
+        [raw.replace("\\", "/").replace("`", "")]
+        if ps
+        else list(dict.fromkeys([raw, _WINPATH.sub("/", raw), _closed(raw)]))
+    )
     for view in views:
         walk = _Walk(protected, hit, normalise, start, ps=ps)
         walk.text = view

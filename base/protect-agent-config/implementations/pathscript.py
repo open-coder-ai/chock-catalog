@@ -104,13 +104,13 @@ class Scripts:
         protected path anywhere: a decoy command before the real text must not hide it.
         """
         scripts = [self.docs[r] for r in cmd.reads if r in self.docs]
-        found, exact = self.produced(prev)
-        if found and _GROUP.search(self.text):
-            exact = False  # `{ echo real; echo decoy; } | sh`: the command before the pipe is not the whole producer
-        scripts += found
-        for text, sure in self.process_bodies():
-            scripts += text
-            exact &= sure
+        produced = self.produced(prev)
+        # `{ echo real; echo decoy; } | sh`: the command before the pipe is not the whole producer
+        exact = produced[1] and not (produced[0] and _GROUP.search(self.text))
+        scripts += produced[0]
+        for body in self.process_bodies():
+            scripts += body[0]
+            exact = exact and body[1]
         if scripts and exact:
             return any(self.sub(text) for text in scripts)
         self.blind = True
@@ -118,7 +118,8 @@ class Scripts:
 
     def process_bodies(self) -> list[tuple[list[str], bool]]:
         """What each `<(...)` of the line prints."""
-        found, at = [], self.text.find("<(")
+        found: list[tuple[list[str], bool]] = []
+        at = self.text.find("<(")
         while at >= 0:
             end = matching(self.text, at + 1)
             found.append(self.shown(self.text[at + 2 : end].removesuffix(")")))

@@ -14,8 +14,20 @@ escape = guardkit.load_guard(POLICY, "pathescape")
 subst = guardkit.load_guard(POLICY, "pathsubst")
 conf = guardkit.load_guard(POLICY, "pathconf")
 
-REFUSED = [c for name in dir(sixth) if name.endswith("_REFUSED") for c in getattr(sixth, name)]
-ALLOWED = [c for name in dir(sixth) if name.endswith("_ALLOWED") for c in getattr(sixth, name)]
+WINDOWS = r"C:\Users\me\repo"
+
+
+def _cases(suffix: str) -> list[str]:
+    """The commands of every list of the case module that ends in `suffix`; `_WIN_` lists are for a Windows root."""
+    return [
+        c
+        for name in dir(sixth)
+        if name.endswith(suffix) and ("_WIN_" in name) == ("WIN" in suffix)
+        for c in getattr(sixth, name)
+    ]
+
+
+REFUSED, ALLOWED = _cases("_REFUSED"), _cases("_ALLOWED")
 
 
 @pytest.fixture(autouse=True)
@@ -27,9 +39,21 @@ def _repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
+@pytest.mark.parametrize("raw", _cases("_WIN_REFUSED"))
+def test_a_windows_form_the_sixth_review_found_is_refused(raw: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CHOCK_HOOK_CWD", WINDOWS)
+    assert guard.check(raw) in (guard.REASON, guard.BLIND), raw
+
+
+@pytest.mark.parametrize("raw", _cases("_WIN_ALLOWED"))
+def test_its_windows_twin_is_allowed(raw: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CHOCK_HOOK_CWD", WINDOWS)
+    assert guard.check(raw) is None, raw
+
+
 @pytest.mark.parametrize("raw", REFUSED)
 def test_a_form_the_sixth_review_found_is_refused(raw: str) -> None:
-    assert guard.check(raw) == guard.REASON, raw
+    assert guard.check(raw) in (guard.REASON, guard.BLIND), raw
 
 
 @pytest.mark.parametrize("raw", ALLOWED)
@@ -107,17 +131,28 @@ def test_a_binder_given_a_name_by_expansion_binds_a_variable_the_line_does_not_n
     ("key", "value", "harmless"),
     [
         ("alias.x", "rebase -xsh", False),
-        ("alias.x", "rebase", False),
+        ("alias.x", "rebase", True),
+        ("alias.x", "rebase --e sh", False),
+        ("alias.x", "pull -s sh", False),
+        ("alias.x", "merge -s ours", True),
+        ("alias.x", "merge -s", False),
+        ("alias.x", "merge -Xours", True),
+        ("alias.x", "fetch -u sh", False),
+        ("alias.x", "push -u origin x", True),
+        ("alias.x", "clone -c core.pager=sh a", False),
+        ("alias.x", "clone --depth 1 a", True),
+        ("alias.x", "", False),
         ("alias.x", "merge -s sh", False),
         ("alias.x", "merge --strategy=sh", False),
         ("alias.x", "merge --no-ff", True),
         ("alias.x", "status -s", True),
         ("alias.x", "log --max-count=3 --oneline", True),
-        ("alias.x", "log --ext-diff", False),
-        ("alias.x", "config core.pager sh", False),
+        ("alias.x", "log --ext-diff", True),
+        ("alias.x", "config core.pager sh", True),
         ("alias.x", "clone --upload-pack=sh a b", False),
         ("alias.x", "init --template=t", False),
         ("alias.x", "archive --exec=sh", False),
+        ("alias.x", "archive --format=tar", True),
         ("alias.x", "commit --amend --no-edit", True),
     ],
 )
