@@ -68,15 +68,59 @@ def _short(arg: str, letter: str) -> bool:
     return arg[:1] == "-" and arg[1:2] != "-" and letter in arg[1:]
 
 
+#: An interpreter's own code that runs a file by name: exec(open(f).read()), runpy, subprocess, include, dofile.
+_RUNS_FILE = re.compile(
+    r"\b(?:exec|eval|execfile|runpy|compile|system|popen|subprocess|spawn|execSync|dofile|loadfile|include|include_once|require_once)\b"
+)
+_LAUNCHERS = frozenset(("start-process", "saps", "start", "invoke-item", "ii"))
+_LAUNCH_VALUES = ("-argumentlist", "-workingdirectory", "-windowstyle", "-verb", "-credential")
+
+
+def _launched(args: list[str]) -> str:
+    """The file Start-Process / Invoke-Item / start opens: -FilePath's value, else the first operand."""
+    skip = False
+    for i, arg in enumerate(args):
+        low = arg.lower()
+        if abbreviates(low, "-filepath", 3) and i + 1 < len(args):
+            return args[i + 1]
+        if skip or not arg.startswith("-"):
+            if not skip:
+                return arg
+            skip = False
+        elif any(abbreviates(low, full, 4) for full in _LAUNCH_VALUES):
+            skip = True
+    return ""
+
+
+def key(name: str) -> str:
+    """A file's identity for matching a download to a run: its basename without a Windows .exe."""
+    return re.sub(r"\.exe$", "", name)
+
+
 def run_target(cmd: Cmd) -> str:
     """The file this command runs: the program itself, an interpreter's script, or what source reads."""
     cmd = resolve(cmd)
+    if cmd.name in _LAUNCHERS:
+        return basename(_launched(cmd.args))
     if is_interpreter(cmd.name):
         kind, text = program(cmd)
         return basename(text) if kind == "script" else ""
     if cmd.name in ("source", "."):
         return basename(cmd.args[0]) if cmd.args else ""
     return cmd.name
+
+
+def _runs_downloaded(cmd: Cmd, got: dict[str, int]) -> str:
+    """The downloaded file an interpreter's -c/-e code or -m module runs (`python -c "exec(open('f.py').read())"`)."""
+    cmd = resolve(cmd)
+    if not is_interpreter(cmd.name):
+        return ""
+    kind, body = program(cmd)
+    if kind == "module":
+        return next((k for k in (key(body), key(body + ".py")) if k in got), "")
+    if kind != "code" or not _RUNS_FILE.search(body):
+        return ""
+    return next((k for k in got if re.search(rf"(?<![\w.-]){re.escape(k)}(?![\w-])", body)), "")
 
 
 def chain(cmds: list[Cmd]) -> tuple[int, str]:
@@ -86,10 +130,11 @@ def chain(cmds: list[Cmd]) -> tuple[int, str]:
         if verifies(cmd):
             got.clear()
             continue
-        target = run_target(cmd)
+        target = key(run_target(cmd))
+        target = target if target in got else _runs_downloaded(cmd, got)
         if target in got:
             return got[target], target
         strength = fetch_strength(cmd)
         if strength:
-            got.update(dict.fromkeys(outputs(cmd), strength))
+            got.update(dict.fromkeys(map(key, outputs(cmd)), strength))
     return NONE, ""

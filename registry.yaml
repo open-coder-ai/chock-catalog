@@ -24,19 +24,19 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.1.0
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 60
-  eval_executed: 60
+  eval_cases: 72
+  eval_executed: 72
   description: 'Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
     (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
     iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker
     exec bodies, or downloaded and run in one command with no checksum or signature step. nc/socat/one-liner
-    reads ask. Misses: aliases, functions, variables set outside the command, encoded text. Friction
+    reads ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction
     only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands

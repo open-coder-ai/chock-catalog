@@ -4,7 +4,7 @@ import re
 import shlex
 
 from chock_shellparse import Cmd, commands, operands
-from curlpipe_chain import chain
+from curlpipe_chain import basename, chain
 from curlpipe_lex import Stage, Sub, Word, lex
 from curlpipe_programs import SHELLS, STDIN_PATHS, is_interpreter, program
 from curlpipe_rules import (
@@ -13,6 +13,7 @@ from curlpipe_rules import (
     NONE,
     PH,
     PH_FETCHER,
+    PH_FILE,
     PH_OTHER,
     PH_STDIN,
     STRONG,
@@ -21,6 +22,7 @@ from curlpipe_rules import (
     executes,
     fetch_and_exec,
     fetch_strength,
+    inner_cmds,
     stdin_runs,
 )
 from curlpipe_verdict import FETCH_HINT, Verdict, crude, powershell, refuse, strongest, wired
@@ -34,6 +36,10 @@ XARGS_VALUES = frozenset(("-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s", "--arg
 _IFS = re.compile(r"\$\{IFS[^}]*\}|\$IFS\b")
 _VAR = re.compile(r"\$(?:\{(\w+)\}|(\w+))")
 _ASSIGN = re.compile(r"([A-Za-z_]\w*)=(.*)", re.DOTALL)
+_FILE_PH = re.compile(PH_FILE + r"([^\x1f]*)\x1f")
+_DYNAMIC = re.compile(r"[*?{]|\[[^\]]+\]|\$")
+_CRON_TIME = re.compile(r"^\s*(?:@\w+|(?:[-\d*/,\w]+\s+){5})", re.MULTILINE)
+FILE_READERS = frozenset(("cat", "tac", "head", "tail", "zcat", "gzcat"))
 
 
 class Judge:
@@ -66,26 +72,53 @@ class Judge:
         return max([NONE, *(fetch_strength(c) for stage in stages for c in self.cmds(stage))])
 
     def pipeline(self, stages: list[Stage], ran: list[Cmd]) -> Verdict:
-        fed, printed, found = NONE, [], []
+        fed, printed, found, earlier = NONE, [], [], []
         for stage in stages:
             cmds = self.cmds(stage)
-            ran += cmds
+            ran += [c for first in cmds for c in (first, *inner_cmds(first))]
+            ran += self.files_run(stage, cmds, earlier) + self.files_kept(cmds, fed)
             found.append(self.stage(stage, cmds, fed))
             if any(stdin_runs(c) for c in cmds):
-                found += [self.deeper(text) for text in printed]
+                found += [self.deeper(_cron_body(text, cmds)) for text in printed]
             fed = max([fed, *(fetch_strength(c) for c in cmds)])
             printed += self.prints(stage, cmds)
+            earlier += [basename(a) for c in cmds for a in operands(c.args)]
             self.assign(stage)
         return strongest(found)
+
+    def files_run(self, stage: Stage, cmds: list[Cmd], earlier: list[str]) -> list[Cmd]:
+        """Files this stage runs without naming them: `sh < f`, `cat f | sh`, `eval "$(cat f)"`, `. <(cat f)`."""
+        words = [self.fill(w) for w in [*stage.words, *(w for _, w in stage.redirs)]]
+        named = [name for text in words for name in _FILE_PH.findall(text)]
+        reads = [basename(r) for c in cmds for r in c.reads]
+        runs = any(stdin_runs(c) for c in cmds)
+        hit = (named if any(executes(c, PH_FILE) for c in cmds) else []) + (reads + earlier if runs else [])
+        return [Cmd(name, [], {}, [], [], "") for name in hit if name]
+
+    @staticmethod
+    def files_kept(cmds: list[Cmd], fed: int) -> list[Cmd]:
+        """A download written out by a later stage (`curl u | tee f`, `| cat > f`, `| dd of=f`) is a download to f."""
+        if not fed:
+            return []
+        files = [w for c in cmds for w in c.writes]
+        files += [a for c in cmds if c.name == "tee" for a in operands(c.args)]
+        files += [a[3:] for c in cmds if c.name == "dd" for a in c.args if a.startswith("of=")]
+        return [Cmd(PH[fed], [], {}, files, [], "")] if files else []
 
     def cmds(self, stage: Stage) -> list[Cmd]:
         if stage.group is not None:
             return [c for stages in stage.group for inner in stages for c in self.cmds(inner)]
-        parts = [shlex.quote(self.fill(word)) for word in stage.words]
+        lead = next((i for i, w in enumerate(stage.words) if not _ASSIGN.fullmatch(w.source)), -1)
+        parts = [self.quoted(word, lead=i == lead) for i, word in enumerate(stage.words)]
         for op, word in stage.redirs:
             if op in ("<", ">", ">>", ">|", "&>", "&>>"):
                 parts += [op, shlex.quote(self.fill(word))]
         return commands(" ".join(parts))
+
+    def quoted(self, word: Word, *, lead: bool) -> str:
+        """The word for re-parsing; an unquoted variable holding `sh -s` in command position splits into words."""
+        text = self.fill(word)
+        return text if lead and not word.quoted and "$" in word.source and text.split() != [text] else shlex.quote(text)
 
     def fill(self, word: Word) -> str:
         """The word as the shell would pass it, each substitution a placeholder and known variables expanded."""
@@ -102,6 +135,10 @@ class Judge:
             return printed if printed is not None else PH[strength]
         if cmds and cmds[0].name in LOCATORS and set(cmds[0].args) & FETCHERS:
             return PH_FETCHER
+        if len(cmds) == 1 and cmds[0].name in FILE_READERS:
+            files = [a for a in operands(cmds[0].args) if a not in STDIN_PATHS]
+            if files and "$(" not in sub.body:
+                return "".join(f"{PH_FILE}{basename(a)}\x1f" for a in files)
         reads = bool(cmds) and cmds[0].name in READERS and set(operands(cmds[0].args)) <= STDIN_PATHS
         return PH_STDIN if reads or any(set(c.reads) & STDIN_PATHS for c in cmds) else PH_OTHER
 
@@ -153,10 +190,18 @@ class Judge:
         if not fed:
             return None
         words = [self.fill(w) for w in stage.words]
+        lead = next((w for w in words if not _ASSIGN.fullmatch(w)), "")
+        if _DYNAMIC.search(lead):
+            return wired(fed, "a command whose name is built at run time")
         hit = next((c.name for c in cmds if stdin_runs(c) or executes(c, PH_STDIN)), None)
         if hit is None and (_xargs_runs(words) or _root_shell(words)):
             hit = words[0]
         return wired(fed, hit) if hit is not None else None
+
+
+def _cron_body(text: str, cmds: list[Cmd]) -> str:
+    """Text printed into `crontab -` is read as crontab lines: the five time fields come off."""
+    return _CRON_TIME.sub("", text) if any(c.name == "crontab" for c in cmds) else text
 
 
 def _printed(body: str, cmds: list[Cmd]) -> str | None:

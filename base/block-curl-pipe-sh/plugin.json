@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-curl-pipe-sh",
-  "version": "0.1.0",
-  "description": "Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval, iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker exec bodies, or downloaded and run in one command with no checksum or signature step. nc/socat/one-liner reads ask. Misses: aliases, functions, variables set outside the command, encoded text. Friction only.",
+  "version": "0.1.1",
+  "description": "Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval, iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker exec bodies, or downloaded and run in one command with no checksum or signature step. nc/socat/one-liner reads ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction only.",
   "author": {
     "name": "chock-core"
   },

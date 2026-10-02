@@ -5,8 +5,13 @@ from typing import NamedTuple
 
 from chock_shellparse import Cmd, abbreviates
 
-SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh", "ash", "mksh", "yash", "posh", "fish", "csh", "tcsh"))
-STDIN_PATHS = frozenset(("-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0"))
+SHELLS = frozenset(
+    (
+        *("sh", "bash", "zsh", "dash", "ksh", "ash", "mksh", "yash", "posh", "fish", "csh", "tcsh"),
+        *("rbash", "ksh93", "pdksh", "sash", "xonsh", "elvish", "osh", "ysh"),
+    )
+)
+STDIN_PATHS = frozenset(("-", "/dev/stdin", "/dev/fd/0", "/proc/self/fd/0", "php://stdin"))
 
 
 class Family(NamedTuple):
@@ -38,10 +43,15 @@ FAMILIES = {
     "r": _f("-e", "", "-f --file"),
     "julia": _f("-e --eval -E --print", "", "-L --load -p --procs -t --threads"),
     "tclsh": _f(""),
+    **dict.fromkeys(
+        ("groovy", "scala", "swift", "tsx", "ts-node", "elixir", "racket", "guile", "coffee", "expect"), _f("-e")
+    ),
     "wish": _f(""),
     "sh": _f("", "", "-o +o -O +O --rcfile --init-file", "c|oO"),
 }
-_FAMILY = re.compile(r"(python|pypy|perl|ruby|node|php|lua|osascript|rscript|r|julia|tclsh|wish)(?:js|jit)?[0-9.]*")
+_FAMILY = re.compile(
+    r"(python|pypy|perl|ruby|node|php|lua|osascript|rscript|r|julia|tclsh|wish|groovy|scala|swift|tsx|ts-node|elixir|racket|guile|coffee|expect)(?:js|jit)?[0-9.]*"
+)
 _PS_SWITCHES = ("-noprofile", "-nologo", "-noninteractive", "-noexit", "-sta", "-mta", "-login", "-interactive")
 
 
@@ -74,6 +84,7 @@ def program(cmd: Cmd) -> tuple[str, str]:
     while i < len(args):
         arg, value = args[i], args[i + 1] if i + 1 < len(args) else ""
         kind = _flag_kind(fam, arg)
+        kind = "none" if fam is FAMILIES["sh"] and _no_run(arg, fam) else kind
         if arg in STDIN_PATHS:
             return "stdin", arg
         if kind:
@@ -81,8 +92,18 @@ def program(cmd: Cmd) -> tuple[str, str]:
         if arg == "--" or not arg.startswith(("-", "+")):
             script = value if arg == "--" else arg
             return ("script", script) if script else ("stdin", "")
-        i += 2 if arg in fam.values else 1
+        i += 2 if arg in fam.values or _option_cluster(arg, fam) else 1
     return "stdin", ""
+
+
+def _no_run(arg: str, fam: Family) -> bool:
+    """A shell flag that parses without running (`-n`, `--version`, `--help`)."""
+    return arg in ("--version", "--help") or _in_cluster(arg, "n", fam.stops)
+
+
+def _option_cluster(arg: str, fam: Family) -> bool:
+    """A shell cluster such as `-euo` whose last option letter (o, O) takes the next argument as its value."""
+    return fam is FAMILIES["sh"] and arg[:1] == "-" and arg[1:2] != "-" and arg[-1:] in ("o", "O")
 
 
 def _runtime(args: list[str]) -> tuple[str, str]:
@@ -92,7 +113,8 @@ def _runtime(args: list[str]) -> tuple[str, str]:
     for i, arg in enumerate(args):
         if arg in ("eval", "-e", "--eval"):
             return "code", args[i + 1] if i + 1 < len(args) else ""
-    return "", ""
+    files = [a for a in args[1:] if not a.startswith("-")] if args[:1] == ["run"] else []
+    return ("script", files[0]) if files else ("", "")
 
 
 def _flag_kind(fam: Family, arg: str) -> str:

@@ -4,6 +4,8 @@ import shlex
 
 from chock_shellparse import Cmd
 
+#: A cluster is a dash and at least two letters.
+CLUSTER = 2
 _SSH_VALUES = frozenset(
     (
         "-b",
@@ -71,9 +73,18 @@ def runner_inner(cmd: Cmd) -> str | None:  # noqa: PLR0911 -- one return per run
     if name == "ssh":
         found = _after_values(args, _SSH_VALUES)
         return " ".join(found[1:]) if found else None
-    if name in ("su", "runuser", "script", "flock"):
-        body = [args[i + 1] for i, a in enumerate(args[:-1]) if a in ("-c", "--command")]
+    if name in ("su", "runuser", "script", "flock", "sg"):
+        body = [args[i + 1] for i, a in enumerate(args[:-1]) if a in ("-c", "--command") or _c_cluster(a)]
+        if name == "flock" and not body:
+            found = _after_values(args, frozenset(("-w", "--timeout", "-E", "--conflict-exit-code")))
+            return shlex.join(found[1:]) if len(found) > 1 else None
         return body[0] if body else ("" if name in ("su", "runuser") else None)
+    if name == "wsl":
+        found = _after_values(args, frozenset(("-d", "--distribution", "-u", "--user", "--cd")))
+        return shlex.join(found)
+    if name == "cmd":
+        low = [a.lower() for a in args]
+        return " ".join(args[low.index(f) + 1 :]) if (f := next((x for x in ("/c", "/k") if x in low), None)) else None
     if name in ("docker", "podman", "nerdctl") and args[:1] in (["exec"], ["run"]):
         found = _after_values(args[1:], frozenset(), switches=_CONTAINER_SWITCHES)
         return shlex.join(found[1:]) if found else None
@@ -87,6 +98,11 @@ def runner_inner(cmd: Cmd) -> str | None:  # noqa: PLR0911 -- one return per run
         skip = 0 if name == "taskset" and any(a in values for a in args) else skip
         return shlex.join(found[skip:])
     return None
+
+
+def _c_cluster(arg: str) -> bool:
+    """A short-option cluster ending in c (`-qc`, `-lc`): the next argument is the command."""
+    return arg[:1] == "-" and arg[1:2] != "-" and len(arg) > CLUSTER and arg.endswith("c")
 
 
 def _after_values(args: list[str], values: frozenset[str], switches: frozenset[str] | None = None) -> list[str]:

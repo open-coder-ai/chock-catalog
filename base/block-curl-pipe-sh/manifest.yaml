@@ -1,13 +1,13 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
   (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
   iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker
   exec bodies, or downloaded and run in one command with no checksum or signature step.
-  nc/socat/one-liner reads ask. Misses: aliases, functions, variables set outside the command,
-  encoded text. Friction only.
+  nc/socat/one-liner reads ask. Misses: aliases, functions, outside variables, encoded text,
+  renamed downloads. Friction only.
 artifact: rule
 enforcement: advise
 compliance:
@@ -39,6 +39,13 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Bypasses closed by the final verification pass, each with test rows and evals tc-061..tc-072: a downloaded file run without naming it (sh < f, cat f | sh, eval \"$(cat f)\", sh -c \"$(cat f)\", bash <(cat f), . <(cat f)); a download written out by a later pipeline stage (tee f, cat > f, dd of=f) then run; a fetch inside ssh, docker/kubectl exec or watch piped into a local shell; a file run through su -c, docker run, wsl, cmd /c, deno run, Start-Process, Invoke-Item or start, and a Windows program named without .exe; an interpreter's -c/-e code that execs or spawns the downloaded file by name (python -c \"exec(open('f.py').read())\") and python -m of it; wrappers the guard did not list (strace, ltrace, chronic, setarch, numactl, proot, toybox, flock, sg, script -qc, wsl) when a shell is among their arguments; bash -euo pipefail (a value-taking option cluster no longer reads pipefail as a script); rbash, ksh93, pdksh, sash, xonsh, elvish, osh, ysh, tsx, ts-node, groovy, scala, swift, elixir, racket, guile, coffee, expect; php -f php://stdin, awk -f - and make -f /dev/stdin, make -f <(curl ...); a variable holding `sh -s` in command position; a program name built with a glob, brace or $ inside the word; a crontab line printed into crontab - (the five time fields are stripped before it is read)."
+  - "False blocks removed: sh -n, bash -n and --version/--help parse without running, so curl ... | bash -n and curl -o f U && bash -n f are allowed."
+  - "Fixed for timing: the unlisted-wrapper reading is tried only at the top level and on the first eight arguments, so a very long argument list stays linear."
+  - "Documented limits added: a downloaded file renamed or copied before it runs (mv, cp, ln), run by a tool that is not a shell or interpreter (make -f f, psql -f f, sqlite3 < f, npx f, open), or named by a glob or a loop variable, or loaded by an interpreter option or import (node -r, perl -M, ruby load/require, python import) rather than run; PowerShell -enc/-EncodedCommand and .NET DownloadFile followed by Start-Process; a quoted pipe passed as a separate argument (ssh h curl U '|' sh); commands stored in configuration (git -c core.sshCommand=..., git alias), crontab <(...), newgrp heredocs; eval of a parameter expansion that embeds a download; interpreters not listed that run stdin (sqlite3, mysql, psql, ex, ed, vim -s, m4, gdb, jshell, kotlin, ghc, runhaskell); `eval --`, arrays and += belong to the shared chock_shellparse reader, which PR #152 changes separately, and are not fixed here; an unlisted wrapper around a data tool that has a shell name as an argument (setarch x86_64 grep sh) is refused, a false block the wrapper scan accepts."
 - version: 0.1.0
   date: '2026-10-02'
   changes:

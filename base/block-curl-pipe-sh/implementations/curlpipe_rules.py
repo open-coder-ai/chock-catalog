@@ -1,6 +1,8 @@
 """What fetches, what runs its input as code, and what counts as a verify step: judged per parsed command."""
 
 import re
+import shlex
+from itertools import pairwise
 
 from chock_shellparse import Cmd, commands, flags_of, operands
 from curlpipe_programs import SHELLS, STDIN_PATHS, is_interpreter, program, resolve
@@ -8,10 +10,14 @@ from curlpipe_runners import runner_inner
 
 NONE, WEAK, STRONG = 0, 1, 2
 DEPTH = 4
+#: How many leading arguments of an unlisted wrapper are tried as the start of the command it runs.
+WRAP_SCAN = 8
 #: Stand-ins for a substitution's output: a download, a raw socket or one-liner read, a read of the stage's stdin,
 #: a path to a downloader (`$(which curl)`), anything else.
 PH = {STRONG: "__chock_fetch__", WEAK: "__chock_netread__"}
 PH_STDIN, PH_FETCHER, PH_OTHER = "__chock_stdin__", "__chock_fetcher__", "__chock_subst__"
+#: `$(cat file)` / `<(cat file)`: the file named after the marker, ended by \x1f.
+PH_FILE = "__chock_file__"
 
 FETCHERS = frozenset(
     (
@@ -38,6 +44,16 @@ VERIFIERS = frozenset(
 )
 SIGNERS = frozenset(("gpgv", "minisign", "signify", "cosign", "slsa-verifier", "get-filehash"))
 AWKS = frozenset(("awk", "gawk", "mawk", "nawk"))
+#: Tools that take data, never a command, so a shell name among their arguments is a file or a pattern.
+DATA_TOOLS = frozenset(
+    (
+        *("grep", "egrep", "fgrep", "rg", "ag", "ack", "sed", "awk", "gawk", "jq", "yq", "xmllint", "tee", "cat"),
+        *("tac", "head", "tail", "wc", "sort", "uniq", "cut", "tr", "xxd", "base64", "gunzip", "zcat", "gzip"),
+        *("bzip2", "xz", "tar", "unzip", "file", "git", "gpg", "gpgv", "less", "more", "diff", "cmp", "patch"),
+        *("printf", "echo", "find", "ls", "stat", "mkdir", "touch", "cp", "mv", "rm", "ln", "chmod", "chown"),
+        *("install", "curl", "wget", "scp", "rsync", "xargs", "parallel", "docker", "podman", "kubectl"),
+    )
+)
 _NET = re.compile(
     r"https?://|urllib|urlopen|requests\.|http\.client|httpx|\bfetch\(|https?\.get\(|LWP|HTTP::Tiny|open-uri"
     r"|Net::HTTP|file_get_contents|Invoke-WebRequest|DownloadString|socket",
@@ -65,7 +81,22 @@ def stdin_runs(cmd: Cmd, depth: int = 0) -> bool:
     inner = runner_inner(cmd)
     if inner is not None:
         return inner == "" or _any_stdin(inner, depth)
-    return _stdin_tool(cmd)
+    return _stdin_tool(cmd) or _wrapped(cmd, depth)
+
+
+def _wrapped(cmd: Cmd, depth: int) -> bool:
+    """A wrapper not listed anywhere (strace, setarch, chronic ...): some later argument starts a stdin-reading shell."""
+    if cmd.name in DATA_TOOLS or depth:
+        return False
+    starts = [i for i, arg in enumerate(cmd.args[:WRAP_SCAN]) if not arg.startswith("-")]
+    return any(
+        stdin_runs(first, 1) for i in starts for first in commands(shlex.join(cmd.args[i : i + 2 * WRAP_SCAN]))[:1]
+    )
+
+
+def _program_file_is_stdin(args: list[str]) -> bool:
+    """`-f -` or `-f /dev/stdin`: make and awk reading their program from stdin."""
+    return any(a in ("-f", "--file") and b in STDIN_PATHS for a, b in pairwise(args))
 
 
 def _stdin_tool(cmd: Cmd) -> bool:
@@ -76,10 +107,10 @@ def _stdin_tool(cmd: Cmd) -> bool:
     if cmd.name == "crontab":
         return not args or "-" in args
     if cmd.name in ("make", "gmake"):
-        return any(a in ("--file=-", "--makefile=-", "-f-") for a in args) or ("-f" in args and "-" in args)
+        return _program_file_is_stdin(args) or any(a in ("--file=-", "--makefile=-", "-f-") for a in args)
     if cmd.name in AWKS:
         found = [a for a in operands(args) if not a.startswith("-")]
-        return bool(found) and _AWK_RUN.search(found[0]) is not None
+        return _program_file_is_stdin(args) or (bool(found) and _AWK_RUN.search(found[0]) is not None)
     if cmd.name in ("parallel", "cmd"):
         return not [a for a in args if not a.startswith(("-", "/"))] and "/c" not in [a.lower() for a in args]
     return False
@@ -92,8 +123,10 @@ def _any_stdin(text: str, depth: int) -> bool:
 def executes(cmd: Cmd, ph: str, depth: int = 0) -> bool:
     """True when this command runs the output a placeholder stands for as code."""
     cmd = resolve(cmd)
-    if cmd.name == ph or (ph in cmd.reads and stdin_runs(cmd, depth)):
+    if cmd.name.startswith(ph) or (ph in cmd.reads and stdin_runs(cmd, depth)):
         return True
+    if cmd.name in ("make", "gmake"):
+        return any(a in ("-f", "--file") and ph in b for a, b in pairwise(cmd.args))
     if cmd.name in ("source", "."):
         return any(ph in arg for arg in cmd.args[:1])
     if is_interpreter(cmd.name):
@@ -103,7 +136,13 @@ def executes(cmd: Cmd, ph: str, depth: int = 0) -> bool:
     return bool(inner) and depth < DEPTH and any(executes(c, ph, depth + 1) for c in commands(inner or ""))
 
 
-def fetch_strength(cmd: Cmd) -> int:
+def inner_cmds(cmd: Cmd, depth: int = 0) -> list[Cmd]:
+    """The commands another tool (ssh, su -c, docker exec, cmd /c ...) runs for this one, at every level."""
+    inner = runner_inner(resolve(cmd)) if depth < DEPTH else None
+    return [c for first in commands(inner or "") for c in (first, *inner_cmds(first, depth + 1))]
+
+
+def fetch_strength(cmd: Cmd, depth: int = 0) -> int:
     """STRONG for a downloader or a command carrying a download's output, WEAK for a raw socket or net one-liner."""
     cmd = resolve(cmd)
     words = [cmd.name, *cmd.args, *cmd.reads]
@@ -111,7 +150,10 @@ def fetch_strength(cmd: Cmd) -> int:
         return STRONG
     socket = any(r.startswith(("/dev/tcp/", "/dev/udp/")) for r in cmd.reads)
     weak = cmd.name in NETREADERS or socket or any(PH[WEAK] in word for word in words)
-    return WEAK if weak or net_one_liner(cmd) else NONE
+    if weak or net_one_liner(cmd):
+        return WEAK
+    inner = runner_inner(cmd) if depth < DEPTH else None
+    return max([NONE, *(fetch_strength(c, depth + 1) for c in commands(inner or ""))])
 
 
 def net_one_liner(cmd: Cmd) -> bool:

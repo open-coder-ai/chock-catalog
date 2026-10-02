@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import shlex
 
+from policies.guard_cases_fetch_more import CASES as MORE
+from policies.guard_cases_fetch_more import WINDOWS
 from policies.guard_cases_fetch_shapes import BROKEN, MISSES, SHAPES
 
 BLOCK, ASK, OK = 1, 3, 0
@@ -237,4 +239,8 @@ CASES = {
     + SHAPES
     + MISSES
     + BROKEN
+    + MORE
 }
+
+#: Rows replayed with CHOCK_TOOL=powershell.
+WINDOWS_CASES = WINDOWS

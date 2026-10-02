@@ -103,6 +103,11 @@ def test_powershell_is_read_when_the_engine_says_so(
     assert_case(policy, command, want, capsys, CHOCK_TOOL="powershell")
 
 
+@pytest.mark.parametrize(("command", "want"), fetch_cases.WINDOWS_CASES)
+def test_downloaded_windows_programs_are_judged(command: str, want: int, capsys: pytest.CaptureFixture[str]) -> None:
+    assert_case("block-curl-pipe-sh", command, want, capsys, CHOCK_TOOL="powershell")
+
+
 @pytest.mark.parametrize("policy", sorted(GUARDS))
 def test_a_shlex_failure_is_judged_on_the_raw_command(policy: str, capsys: pytest.CaptureFixture[str]) -> None:
     """Under CHOCK_ARGV_FALLBACK=1 argv is a whitespace split, so quotes are still in its words: the raw string rules."""
