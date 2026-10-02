@@ -28,3 +28,5 @@ base/agent-devenv-autoexec:
   chock_scan: [jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/package-lifecycle-scripts:
   chock_scan: [safe_read]
+base/lockfile-integrity:
+  chock_scan: [hostmatch, hosts, idn, jsonc, urls, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
