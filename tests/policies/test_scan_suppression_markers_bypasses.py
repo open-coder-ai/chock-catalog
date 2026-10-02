@@ -151,10 +151,6 @@ SECOND_ROUND_ALLOWS = {
     "an eslint-enable block": ("a.js", "/* eslint-" + "enable\n no-" + "eval */\n"),
     "a plain block comment": ("a.js", "/*\n  see the es" + "lint docs: no-" + "eval is banned\n*/\n"),
     "a nosec mention in a README": ("README.md", f"use # {NS}\n"),
-    "a quoted secret-pragma mention in a README": (
-        "README.md",
-        "Waiver: '# pragma: allow" + "list secret' same line\n",
-    ),
     "a secret pragma in an installed policy": (".agents/policies/x/SKILL.md", "k  # pragma: allow" + "list secret\n"),
 }
 
@@ -222,6 +218,21 @@ THIRD_ROUND = {
     "pragma after a quoted value in prose": ("x.rst", "password = 'hunter2'  # pragma: allow" + "list secret\n", 1),
     "eval suite outside the policy trees": ("src/evals/suite.yaml", "key: AKIA # git" + "leaks:allow\n", 1),
     "a .chock folder below the root": ("app/.chock/x.py", f"x  # {NS}\n", 1),
+    "a backticked secret pragma in prose": ("notes.md", "AWS_SECRET=wJalr `# pragma: allow" + "list secret`\n", 1),
+    "a quoted secret pragma in prose": ("notes.md", "password: hunter2 'pragma: allow" + "list secret'\n", 1),
+    "eslint config with a bare first line": ("a.js", "/* es" + "lint\n  security/detect-object-injection: 0 */\n", 1),
+    "eslint config after a bare opener": ("a.js", "/*\nes" + "lint\n  no-" + "eval: 0 */\n", 1),
+    "bash +e on a non-scan step beside a scan job": (
+        W,
+        "jobs:\n  style:\n    steps:\n      - name: style\n        shell: bash +e {0}\n        run: prettier .\n"
+        "  sec:\n    steps:\n      - run: semgrep ci\n",
+        0,
+    ),
+    "set -e after the scan does not restore its failure": (
+        W,
+        J + "      - run: |\n          set +e\n          semgrep ci --error\n          set -e\n",
+        1,
+    ),
     "a second block comment on the line": (
         "a.js",
         "/* a */ /* eslint-" + "disable\n  security/detect-eval-with-expression */\n",
@@ -245,6 +256,10 @@ def test_the_third_review_cases(case: str) -> None:
         (W, "- x || true\n" * 100000),
         (W, "jobs:\n" + "".join(" " * i + "- x || true\n" for i in range(1, 201)) + ("#" + "y" * 99 + "\n") * 20000),
         ("a.py", "x=1\n" * 500000),
+        (".gitleaks.toml", "[" + "a" * 20000 + "]\n" + "\n" * 1000000),
+        ("a.java", "@Sup" + "press(" * 300000),
+        ("a.js", "// es" + "lint-disable-line " * 100000),
+        (W, "".join(" " * i + "k" * 1000 + ":\n" for i in range(1500)) + "|| true\n"),
         (W, "\n" * 1000000),
     ],
 )

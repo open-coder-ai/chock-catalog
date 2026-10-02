@@ -238,7 +238,7 @@ def engine(repo: Path, writes: dict[str, str], event: str = gatekit.STOP) -> int
     if event in (gatekit.STOP, gatekit.COMMIT):
         scriptkit.write(repo, writes)
     if event == gatekit.COMMIT:
-        scriptkit.git(repo, "add", "-A")
+        scriptkit.git(repo, "add", "--", *writes)
     return gatekit.judge("scan-suppression-markers", repo, event, writes)[0]
 
 

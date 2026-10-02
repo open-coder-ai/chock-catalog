@@ -44,13 +44,12 @@ CI_FILE = re.compile(
     r"bitbucket-pipelines[^/]*|\.azure-pipelines/[^\n]+|\.circleci/[^/]+|action)\.ya?ml$"
 )
 #: A CI step or job that runs a security scanner, named by its action, its command or its title.
-SCANNER = re.compile(
+SCANNER = re.compile(  # run on lowercased text: a case-sensitive search is far faster
     r"codeql|semgrep|bandit|gitleaks|trufflehog|detect-secrets|trivy|grype|snyk|checkov|tfsec|kics|"
     r"zizmor|gosec|brakeman|npm audit|yarn audit|pnpm audit|pip-audit|safety check|osv-scanner|"
     r"dependency-review|scorecard|hadolint|sonar|govulncheck|cargo audit|cargo deny|bundler-audit|"
     r"secret.?scan|secret_detection|dependency_scanning|container_scanning|api_fuzzing|\bsast\b|\bdast\b|"
     r"security[-_ ]?(?:scan|audit|check|lint)|\bchock\s+check\b",
-    re.IGNORECASE,
 )
 #: A step or job told to pass when it fails: a flag, a scanner's own no-fail option, or a shell
 #: `|| true`-style fallback. `set +e` is a separate pattern (see `_RESTORED`).
@@ -68,12 +67,13 @@ _SET_PLUS_E = re.compile(r"\bset\s+\+e\b")
 #: A word every soft-fail shape above contains; a CI file without one has nothing to judge.
 _CI_PREFILTER = re.compile(
     r"\|\||continue|allow_failure|soft[-_]fail|set\s+\+e|bash\s+\+e|exit-code|exit-zero|ignore-on-exit|no-fail|"
-    r"no-exit-codes|_DISABLED|;\s*true",
-    re.IGNORECASE,
+    r"no-exit-codes|_disabled|;\s*true"
 )
 _SHELL_PLUS_E = re.compile(r"\bshell\s*:\s*bash\s+\+e\b")
-#: A later code line that turns errexit back on or passes the scan's own status on keeps its verdict.
-_RESTORED = re.compile(r"\bset\s+-e\b|\bexit\s+\"?\$")
+#: A later code line that captures the scan's status ($?) or exits with it keeps the scan's verdict;
+#: a bare set -e afterwards does not, as the failure was already swallowed.
+_RESTORED = re.compile(r"\bexit\s+\"?\$|\$\?")
+_DEFAULTS = re.compile(r"^[\"']?defaults[\"']?\s*:")
 #: GitLab's switches that turn a whole security template off.
 GITLAB_DISABLED = re.compile(
     r"\b(?:SAST|SECRET_DETECTION|DEPENDENCY_SCANNING|CONTAINER_SCANNING|DAST|API_FUZZING|COVERAGE_FUZZING|"
@@ -123,51 +123,43 @@ def keyed_entries(text: str, keys: set[str]) -> Iterator[tuple[int, str]]:
 
 def gitleaks_allowlist(text: str) -> Iterator[tuple[int, str]]:
     """Value lines inside a gitleaks `[allowlist]`, `[[allowlists]]` or `[rules.allowlist]` table."""
-    table = ""
+    table, inside = "", False
     for number, line in enumerate(lines_of(text), 1):
         stripped = line.strip()
         if stripped.startswith("["):
-            table = stripped
-            if "allowlist" in table.lower():
+            table, inside = stripped, "allowlist" in stripped.lower()
+            if inside:
                 yield number, normalized(line)
-        elif "allowlist" in table.lower() and not _COMMENT.match(line):
+        elif inside and not _COMMENT.match(line):
             yield number, f"{table}|{normalized(line)}"
 
 
-def _heads(lines: list[str]) -> list[int]:
-    """For each line, the step or job it belongs to: the line itself if it is a list item, else its
-    nearest list-item ancestor, else its outermost key below the root (the root key for a GitLab job).
-    One pass with a stack of open ancestors, so a long `run:` block stays linear."""
-    heads, stack = [], []  # stack: indices of open ancestors, strictly increasing indent
-    for index, line in enumerate(lines):
-        if _COMMENT.match(line):
-            heads.append(index)
+def _layout(lines: list[str]) -> tuple[list[int], list[int], list[int]]:
+    """Per line: the step or job it belongs to (itself if a list item, else its nearest list-item
+    ancestor, else its outermost key below the root, else its root key), its root key, and the index
+    just past the block it opens (the next code line indented no deeper). One pass with a stack of
+    open ancestors whose indents strictly increase, so long and deeply nested files stay linear."""
+    size = len(lines)
+    indents = [_indent(line) for line in lines]
+    item = [line.lstrip().startswith("- ") for line in lines]
+    heads, roots, ends = list(range(size)), list(range(size)), [size] * size
+    stack: list[int] = []
+    items: list[int] = []  # positions in `stack` that are list items
+    for index in range(size):
+        if _COMMENT.match(lines[index]):
             continue
-        while stack and _indent(lines[stack[-1]]) >= _indent(line):
-            stack.pop()
-        items = [i for i in stack if lines[i].lstrip().startswith("- ")]
-        if line.lstrip().startswith("- "):
-            heads.append(index)
-        elif items:
-            heads.append(items[-1])
-        else:
-            nested = [i for i in stack if _indent(lines[i]) > 0]
-            heads.append(nested[0] if nested else (stack[0] if stack else index))
-        stack.append(index)
-    return heads
-
-
-def _ends(lines: list[str]) -> list[int]:
-    """For each line, the index just past the block it opens: the next non-comment line indented no
-    deeper. One pass with a stack, so nested and long blocks stay linear."""
-    ends, stack = [len(lines)] * len(lines), []
-    for index, line in enumerate(lines):
-        if _COMMENT.match(line):
-            continue
-        while stack and _indent(lines[stack[-1]]) >= _indent(line):
+        while stack and indents[stack[-1]] >= indents[index]:
             ends[stack.pop()] = index
+        while items and items[-1] >= len(stack):
+            items.pop()
+        if stack:
+            roots[index] = stack[0]
+            nested = stack[0] if indents[stack[0]] > 0 else (stack[1] if len(stack) > 1 else stack[0])
+            heads[index] = index if item[index] else (stack[items[-1]] if items else nested)
+        if item[index]:
+            items.append(len(stack))
         stack.append(index)
-    return ends
+    return heads, roots, ends
 
 
 def _prefix(lines: list[str], pattern: re.Pattern[str], *, code_only: bool) -> list[int]:
@@ -189,27 +181,31 @@ def _soft_fails(line: str) -> bool:
 
 def soft_failed_scans(text: str) -> Iterator[tuple[int, str]]:
     """A soft-fail line inside a CI step or job that runs a security scanner, or a GitLab scan switched off."""
-    if not _CI_PREFILTER.search(text):
+    if not _CI_PREFILTER.search(text.lower()):
         return
     lines = lines_of(text)
-    heads, ends = _heads(lines), _ends(lines)
-    scans = _prefix(lines, SCANNER, code_only=False)
-    restores = _prefix(lines, _RESTORED, code_only=True)
-    for index, line in enumerate(lines):
-        if _COMMENT.match(line):
+    heads, roots, ends = _layout(lines)
+    # Regexes run on the text after the indentation, never over a long run of leading spaces.
+    code = [line.lstrip() for line in lines]
+    scans = _prefix([line.lower() for line in code], SCANNER, code_only=False)
+    restores = _prefix(code, _RESTORED, code_only=True)
+    for index, (line, stripped) in enumerate(zip(lines, code, strict=True)):
+        if _COMMENT.match(stripped):
             continue
-        if GITLAB_DISABLED.search(line):
+        if GITLAB_DISABLED.search(stripped):
             yield index + 1, f"disabled|{normalized(line)}"
             continue
-        if not _soft_fails(line):
+        if not _soft_fails(stripped):
             continue
         head = heads[index]
         end = ends[head]
         scanned = not _NOT_A_JOB.match(lines[head]) and scans[end] > scans[head]
-        if not scanned and _SHELL_PLUS_E.search(line):
+        if not scanned and _SHELL_PLUS_E.search(stripped) and _DEFAULTS.match(lines[roots[index]]):
             # A root `defaults: run: shell: bash +e` reaches every step, the scans among them.
             scanned = scans[-1] > 0
-        restored = _SET_PLUS_E.search(line) and not SOFT_FAIL.search(line) and restores[end] > restores[index + 1]
+        restored = (
+            _SET_PLUS_E.search(stripped) and not SOFT_FAIL.search(stripped) and restores[end] > restores[index + 1]
+        )
         if scanned and not restored:
             yield index + 1, f"{normalized(lines[head])}|{normalized(line)}"
 
