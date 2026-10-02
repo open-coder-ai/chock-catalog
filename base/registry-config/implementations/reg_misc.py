@@ -7,7 +7,7 @@ import re
 from reg_core import CONFUSION, TLS, Ctx, add, falsy, line_of, secret, truthy, url
 from reg_parse import json_doc, walk
 
-GEM_SOURCE = re.compile(r"""\bsource\b\s*\(?\s*:?\s*["']([^"']+)["']([^#;\n]*)""")
+GEM_SOURCE = re.compile(r"""\bsource\b\s*(?:\(\s*)?(?::\s*)?["']([^"']+)["']([^#;\n]*)""")
 #: A gem fetched from a git repository: `git: "url"` or `:git => "url"`.
 GEM_GIT = re.compile(r"""(?:\bgit:|:git\s*=>)\s*["']([^"']+)["']""")
 QUOTED_URL = re.compile(r"""["']([A-Za-z][A-Za-z0-9+.-]*://[^"']*)["']""")

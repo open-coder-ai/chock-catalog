@@ -789,3 +789,29 @@ suite:
               steps:
                 - run: go build ./...
       expect: block
+  - id: tc-055
+    category: trigger
+    prompt: 'Adversarial: a Dockerfile sets GOSUMDB through an unquoted shell default of off.'
+    expect: 'The commit is blocked: the default applies whenever the variable is unset.'
+    execute:
+      event: commit
+      files:
+        Dockerfile: |
+          FROM golang:1.23
+          ENV GOSUMDB=${GOSUMDB:-off}
+      expect: block
+  - id: tc-056
+    category: trigger
+    prompt: 'Adversarial: a quote inside an XML processing instruction tries to hide an http NuGet source.'
+    expect: 'The commit is blocked: the instruction ends at its own closing mark, so the source is read.'
+    execute:
+      event: commit
+      files:
+        nuget.config: |
+          <configuration><?x '?>
+            <packageSources>
+              <clear />
+              <add key="a" value="http://nuget.mirror.example/v3/index.json" />
+            </packageSources>
+          <!-- ' --></configuration>
+      expect: block

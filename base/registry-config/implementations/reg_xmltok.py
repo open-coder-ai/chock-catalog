@@ -11,7 +11,7 @@ import html
 import re
 from typing import NamedTuple
 
-ATTR = re.compile(r"""([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
+ATTR = re.compile(r"""(?<![\w:.-])([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')""")
 NAME = re.compile(r"\s*([\w:.-]+)")
 
 
@@ -30,7 +30,16 @@ class Token(NamedTuple):
 
 
 def _attrs(body: str) -> dict[str, str]:
-    return {m[1].lower(): html.unescape(m[2] if m[2] is not None else m[3]) for m in ATTR.finditer(body)}
+    """Attributes by lower-cased name. Two names that differ only in case are refused: an XML parser keeps
+    both, and which one a case-insensitive reader takes is not ours to guess."""
+    out: dict[str, str] = {}
+    for match in ATTR.finditer(body):
+        name = match[1].lower()
+        if name in out:
+            msg = f"attribute {match[1]!r} given twice (case ignored)"
+            raise XmlError(msg)
+        out[name] = html.unescape(match[2] if match[2] is not None else match[3])
+    return out
 
 
 def _tag_end(text: str, start: int) -> int:
@@ -73,11 +82,17 @@ def tokens(text: str) -> list[Token]:
         if text.startswith("<!", start):
             index = _special(text, start, out)
             continue
+        if text.startswith("<?", start):
+            # A processing instruction ends at the first '?>'; quotes inside it mean nothing.
+            end = text.find("?>", start + 2)
+            if end < 0:
+                msg = "an unclosed processing instruction"
+                raise XmlError(msg)
+            index = end + 2
+            continue
         end = _tag_end(text, start + 1)
         body = text[start + 1 : end]
         index = end + 1
-        if body.startswith("?"):
-            continue
         closing = body.startswith("/")
         match = NAME.match(body, 1 if closing else 0)
         name = match[1].lower() if match else ""

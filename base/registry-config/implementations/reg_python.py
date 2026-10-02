@@ -6,11 +6,13 @@ import configparser
 import re
 import shlex
 
-from reg_core import CONFUSION, TLS, Ctx, add, falsy, line_of, norm, secret, url
+from reg_core import CONFUSION, TLS, UNREADABLE, Ctx, add, digest, falsy, line_of, norm, secret, url
 from reg_parse import refuse, toml, walk, yaml_scalars
 
 #: The pip options a requirements file may carry that choose an index, and the shortest prefix of each that
 #: pip's option parser (optparse) still reads as that option and no other requirements-file option.
+#: shlex builds a long word in quadratic time; no real requirement line comes near this.
+MAX_LINE = 1 << 16
 LONG_OPTIONS = {"index-url": 1, "extra-index-url": 2, "find-links": 1, "trusted-host": 1}
 COMMENT = re.compile(r"(?:^|\s)#.*$")
 URL_KEYS = frozenset({"index-url", "extra-index-url", "find-links", "url", "publish-url", "check-url", "repository"})
@@ -50,8 +52,22 @@ def requirements(ctx: Ctx) -> None:
     if pending:
         logical.append((start, pending))
     for number, line in logical:
-        for option, value in pip_options(line):
-            _option(ctx, number, option, value)
+        _options(ctx, number, line)
+
+
+def _options(ctx: Ctx, number: int, line: str) -> None:
+    """Judge the index options in one logical line; one too long to split in time is refused."""
+    if len(line) > MAX_LINE:
+        add(
+            ctx,
+            UNREADABLE,
+            number,
+            ("long line", digest(line)),
+            f"a line longer than {MAX_LINE} characters is not read",
+        )
+        return
+    for option, value in pip_options(line):
+        _option(ctx, number, option, value)
 
 
 def pip_options(line: str) -> list[tuple[str, str]]:
@@ -176,5 +192,4 @@ def condarc(ctx: Ctx) -> None:
         elif top == "ssl_verify" and falsy(value):
             add(ctx, TLS, number, (top, "false"), "ssl_verify: false turns TLS verification off")
         elif top == "dependencies":
-            for option, found in pip_options(value):
-                _option(ctx, number, option, found)
+            _options(ctx, number, value)

@@ -8,12 +8,14 @@ from reg_core import REDIRECT, TLS, Ctx, add, norm, url
 
 NAMES = r"(GOINSECURE|GOSUMDB|GONOSUMDB|GONOSUMCHECK|GOPRIVATE|GOPROXY|GOFLAGS)"
 #: A value: double-quoted (escapes kept), single-quoted, or bare up to whitespace, with GOFLAGS-style flags after.
-VALUE = r"""(?:"((?:[^"\\\n]|\\.)*)"|'([^'\n]*)'|([^\s"'#;}\]]*(?:\s+--?[\w=.,-]+)*))"""
+VALUE = r"""(?:"((?:[^"\\\n]|\\.)*)"|'([^'\n]*)'|(\$\{\{[^}\n]*\}\}|\$\{[^}\n]*\}|[^\s"'#;}\]]*(?:\s+--?[\w=.,-]+)*))"""
 #: A GO* setting as a shell, make or env assignment, a YAML key or `go env -w` writes one; never a ${GO...} read.
 #: A bare `NAME value` (no '=' or ':') is prose, except on a Dockerfile ENV or ARG line (GO_ENV_LINE).
 GO_SETTING = re.compile(rf"""(?<![\w$])(?<!\$\{{){NAMES}["']?(?:\s*[:?+]?=\s*|\s*:\s+){VALUE}""")
 GO_ENV_LINE = re.compile(rf"""^\s*(?:ENV|ARG)\s+{NAMES}\s+{VALUE}""", re.IGNORECASE)
 #: A shell default expansion, ${NAME:-value} or ${NAME:=value}: the value applies when the name is unset.
+#: A value passed through unchanged from the environment or a CI variable: nothing to judge here.
+PURE_REF = re.compile(r"^(?:\$\w+|\$\{\w+\}|\$\{\{\s*[\w.]+\s*\}\})$")
 DEFAULT = re.compile(r"^\$\{\w+:?[-=](.*)\}$")
 #: Hosts anyone can publish modules under: a pattern naming one of them with no path is every module there.
 PUBLIC_HOSTS = frozenset(
@@ -45,7 +47,8 @@ def go_setting(ctx: Ctx, number: int, name: str, value: str) -> None:
     value = norm(value)
     default = DEFAULT.match(value)
     value = norm(default[1]) if default else value
-    items = [v for v in re.split(r"[,|]", value) if v]
+    # Go trims each list element, so a space after ',' or '|' hides nothing.
+    items = [v.strip() for v in re.split(r"[,|]", value) if v.strip()]
     if name == "GOINSECURE" and value:
         add(ctx, TLS, number, (name, value), f"GOINSECURE={value[:60]} fetches those modules without TLS verification")
     elif name == "GOSUMDB":
@@ -62,7 +65,11 @@ def _gosumdb(ctx: Ctx, number: int, value: str) -> None:
     """GOSUMDB is `name`, `name+key` or `name+key url`: off, another database, its own key or URL all count.
     A value read from the environment is not judged."""
     fields = value.split()
-    if not fields or "$" in value:
+    if not fields or PURE_REF.match(value):
+        return
+    if "$" in value:
+        message = "GOSUMDB is built from an expression; what it names is not judged here"
+        add(ctx, REDIRECT, number, ("GOSUMDB", value), message)
         return
     named = fields[0].split("+")[0].lower()
     if named == "off":

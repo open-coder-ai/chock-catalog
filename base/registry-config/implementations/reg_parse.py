@@ -13,7 +13,6 @@ from reg_core import UNREADABLE, Ctx, add, digest
 INDIRECT = "reg-indirect"
 SCALARS = frozenset({"plain", "single", "double", "literal", "folded"})
 #: An INI line's value ends at an unquoted ';' or '#', as npm's ini reader ends it.
-INI_LINE = re.compile(r"^\s*([^=]*?)\s*(?:=\s*(.*?))?\s*$")
 INI_COMMENT = re.compile(r"(?<!\\)[;#]")
 
 
@@ -127,10 +126,10 @@ def ini_pairs(ctx: Ctx) -> list[tuple[str, str, str, int]]:
         if line.startswith("[") and line.endswith("]"):
             section = line[1:-1].strip().lower()
             continue
-        match = INI_LINE.match(line)
-        key = npm_unquote(match[1]).lower() if match else ""
+        name, eq, raw_value = line.partition("=")
+        key = npm_unquote(name).lower()
         if key:
-            out.append((section, key, ini_value(match[2]), number))
+            out.append((section, key, ini_value(raw_value if eq else None), number))
     return out
 
 

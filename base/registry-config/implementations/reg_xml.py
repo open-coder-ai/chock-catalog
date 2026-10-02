@@ -47,15 +47,19 @@ def nuget(ctx: Ctx) -> None:
 
 def _package_sources(found: list[Token]) -> tuple[list[Token], bool, list[int]]:
     """The <add> sources inside every <packageSources>, whether one holds a <clear/>, and where each opens."""
-    depth, adds, cleared, sections = 0, [], False, []
+    depth, inner, adds, cleared, sections = 0, 0, [], False, []
     for token in found:
         if token.name == "packagesources" and token.kind != "text":
             depth = max(depth + {"start": 1, "end": -1}.get(token.kind, 0), 0)
             sections += [token.pos] if token.kind != "end" else []
-        elif depth and token.name == "add" and token.kind in ("start", "empty"):
-            adds.append(token)
-        elif depth and token.name == "clear":
-            cleared = True
+            inner = 0
+        elif depth and token.kind in ("start", "empty"):
+            # Every <add> is judged wherever it sits; only a <clear/> directly in packageSources clears.
+            adds += [token] if token.name == "add" else []
+            cleared = cleared or (token.name == "clear" and not inner)
+            inner += token.kind == "start"
+        elif depth and token.kind == "end":
+            inner = max(inner - 1, 0)
     return adds, cleared, sections
 
 

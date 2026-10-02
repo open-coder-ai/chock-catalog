@@ -13,6 +13,7 @@ IDENT = re.compile(r"(?:[A-Za-z_$]|\\u[0-9A-Fa-f]{4})(?:[\w$]|\\u[0-9A-Fa-f]{4})
 ESCAPE = re.compile(r"\\u([0-9A-Fa-f]{4})")
 SPACE = re.compile(r"\s*")
 LINE_BREAKS = "\r\n\u2028\u2029"
+LINE_END = re.compile("[\r\n\u2028\u2029]")
 
 
 class Json5Error(ValueError):
@@ -46,9 +47,19 @@ def _string(text: str, start: int, out: list[str]) -> int:
 
 def _comment(text: str, start: int, out: list[str]) -> int:
     """Copy the comment at `start` unchanged (the JSONC reader drops it); the offset after it."""
-    end = text.find("*/", start + 2) + 2 if text.startswith("/*", start) else text.find("\n", start)
-    end = len(text) if end in (-1, 1) else end
+    if text.startswith("/*", start):
+        end = text.find("*/", start + 2)
+        end = len(text) if end < 0 else end + 2
+        out.append(text[start:end])
+        return end
+    # A line comment ends at any JSON5 line terminator; the JSONC reader takes only LF or CRLF as the end of
+    # one, so a lone CR, LS or PS that ends it is written as LF.
+    found = LINE_END.search(text, start)
+    end = found.start() if found else len(text)
     out.append(text[start:end])
+    if found and not text.startswith(("\n", "\r\n"), end):
+        out.append("\n")
+        return end + 1
     return end
 
 

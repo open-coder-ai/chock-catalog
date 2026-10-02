@@ -25,13 +25,13 @@ from reg_parse import ini_pairs, toml, unquote, walk, yaml_scalars
 NPM_SECRETS = frozenset({"_authtoken", "_auth", "_password", "password", "token"})
 #: A version spec that is not a version: an alias, a link, a path, a git or tarball URL.
 EXOTIC = re.compile(
-    r"^(?:(?:npm|link|file|portal|patch|git|git\+[a-z]+|github|gitlab|bitbucket|https?|workspace):"
+    r"^(?:(?:npm|link|file|portal|patch|git|git\+[a-z]+|github|gitlab|bitbucket|https?):"
     r"|[\w.-]+/[\w.-]+(?:#.*)?$|[\w.-]+@[\w.-]+:)",
     re.IGNORECASE,
 )
 NPM_COOLDOWN = ("min-release-age", "minimum-release-age")
 #: A Yarn classic line: `key value`, `"key" "value"` or `key: value` (its parser takes an optional colon).
-YARN_V1 = re.compile(r'^\s*("(?:[^"\\]|\\.)*"|[^\s:"]+(?::[^\s:"]+)*)(?:\s+|\s*:\s*)(.*?)\s*$')
+YARN_V1 = re.compile(r'^\s*("(?:[^"\\]|\\.)*"|[^\s:"]+(?::[^\s:"]+)*)(?:\s+|\s*:\s*)(.*)')
 #: A release age of zero is no cooldown at all.
 AGE = re.compile(r"^\s*([0-9]+(?:\.[0-9]*)?)\s*[a-z]*\s*$")
 
@@ -92,7 +92,7 @@ def yarnrc(ctx: Ctx) -> None:
         match = YARN_V1.match(raw)
         if not match or raw.lstrip().startswith("#"):
             continue
-        key, value = unquote(match[1]).lower().lstrip("-"), unquote(match[2])
+        key, value = unquote(match[1]).lower().lstrip("-"), unquote(match[2].strip())
         if key == "registry" or key.endswith(":registry"):
             url(ctx, number, key, value)
         elif key == "strict-ssl" and falsy(value):
