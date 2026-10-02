@@ -12,7 +12,7 @@ MAX_NODES = 200_000
 BOM = "\ufeff"
 #: Outside YAML's printable set, plus NEL, LS and PS: YAML 1.1 loaders break lines there and 1.2 loaders
 #: do not, so a key behind one is a key to one reader and text to another. Refused, never guessed.
-FORBIDDEN = re.compile("[^\t\n\x20-\x7e\xa0-\ud7ff\ue000-\ufefe\uff00-\ufffd\U00010000-\U0010ffff]|[\u2028\u2029]")
+FORBIDDEN = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f\ud800-\udfff\ufeff\ufffe\uffff\u2028\u2029]")
 MARKER = re.compile(r"(?:---|\.\.\.)(?=[ \t]|$)")
 #: %YAML is read; %TAG would change what every tag means, and other directives are reserved: both refused.
 DIRECTIVE = re.compile(r"%YAML[ \t]++1\.[0-9]++(?:[ \t]++(?:#.*+)?)?")
