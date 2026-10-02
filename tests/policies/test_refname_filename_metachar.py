@@ -51,7 +51,8 @@ def test_the_manifest_declares_the_gate_and_the_pre_push_script() -> None:
         ("a>b", "operator"),
         ("aWQ= base64 -d", "decode"),
         ("x|base64 --decode", "decode"),
-        ("b64decode", "decode"),
+        ("x${IFS}base64${IFS}-d", "decode"),
+        ("cat x |base64", "decode"),
         ("-rf", "dash"),
         ("docs/--help.md", "dash"),
         ("notes ", "trailing"),
@@ -76,6 +77,9 @@ def test_each_rule_names_its_shape(name: str, want: str) -> None:
         "./a/./b",
         "base64-decoder.md",
         "base64_data.bin",
+        "lib/base64-decode.js",
+        "tests/test_b64decode.py",
+        "src/Utils/FromBase64String.cs",
     ],
 )
 def test_plain_names_pass(name: str) -> None:
@@ -186,6 +190,37 @@ def test_the_engine_judges_writes_at_tool_use_and_stop(repo: Path) -> None:
     assert gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, writes={"src/util.py": "x"})[0] == 0
 
 
+@pytest.mark.parametrize("name", ["evil ", "docs/notes.", "trail ."])
+def test_the_engine_refuses_a_trailing_space_it_trims_from_its_list(repo: Path, name: str) -> None:
+    """The engine strips each listed name, so the gate asks git for the NUL-separated names itself."""
+    stage(repo, {name: "x\n"})
+    code, err = gatekit.judge(POLICY, repo, gatekit.COMMIT)
+    assert code == 1, err
+    assert "ending in a space" in err
+
+
+def test_a_leading_space_alone_is_not_a_finding(repo: Path) -> None:
+    stage(repo, {" lead.txt": "x\n"})
+    assert gatekit.judge(POLICY, repo, gatekit.COMMIT)[0] == 0
+
+
+def test_padded_names_lists_what_git_stages(repo: Path) -> None:
+    stage(repo, {"evil ": "x", "plain.txt": "x"})
+    assert gate.padded_names({"event": "commit", "repo_root": str(repo)}) == ["evil "]
+
+
+def test_padded_names_are_read_only_at_a_commit_and_never_on_the_baseline_run(tmp_path: Path) -> None:
+    assert gate.padded_names({"event": "tool_use", "repo_root": str(tmp_path)}) == []
+    assert gate.padded_names({"event": "commit", "baseline": True, "repo_root": str(tmp_path)}) == []
+
+
+def test_a_git_failure_listing_names_is_a_fault(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    payload = json.dumps({"event": "agent-commit", "repo_root": str(tmp_path), "writes": {}})
+    monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+    assert gate.main() == 2
+    assert "internal error (CalledProcessError)" in capsys.readouterr().err
+
+
 # The pre-push hook.
 
 
@@ -194,7 +229,15 @@ def line(remote: str, local: str = SHA1, local_ref: str = "refs/heads/work") -> 
 
 
 @pytest.mark.parametrize(
-    "remote", [f"refs/heads/{SHA1}", f"refs/tags/{SHA256}", "refs/heads/feat/x;id", "refs/heads/-x", "refs/tags/v1."]
+    "remote",
+    [
+        f"refs/heads/{SHA1}",
+        "refs/heads/x${IFS}y",
+        f"refs/tags/{SHA256}",
+        "refs/heads/feat/x;id",
+        "refs/heads/-x",
+        "refs/tags/v1.",
+    ],
 )
 def test_a_push_of_a_refused_name_is_refused(remote: str, tmp_path: Path) -> None:
     code, err = scriptkit.run_script(POLICY, "refname-filename-metachar-pre-push.py", tmp_path, line(remote))
@@ -204,7 +247,13 @@ def test_a_push_of_a_refused_name_is_refused(remote: str, tmp_path: Path) -> Non
 
 
 def test_plain_pushes_and_deletions_pass(tmp_path: Path) -> None:
-    stdin = line("refs/heads/feature/np26") + line("refs/tags/v1.2.0") + line("refs/heads/x;id", local=ZERO) + "\n"
+    stdin = (
+        line("refs/heads/feature/np26")
+        + line("refs/tags/v1.2.0")
+        + line("refs/heads/fix/base64-decode-padding")
+        + line("refs/heads/x;id", local=ZERO)
+        + "\n"
+    )
     assert scriptkit.run_script(POLICY, "refname-filename-metachar-pre-push.py", tmp_path, stdin) == (0, "")
 
 

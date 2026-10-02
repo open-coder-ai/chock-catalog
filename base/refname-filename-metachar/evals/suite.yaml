@@ -246,3 +246,54 @@ suite:
         "data/base64 -d/x.txt": "x\n"
       event: commit
       expect: block
+  - id: tc-031
+    category: adversarial
+    prompt: The branch name is written with ANSI-C quoting so the semicolon never appears in the command.
+    expect: The guard decodes the quoting as bash does and refuses the name.
+    execute:
+      command: git checkout -b $'fix\x3bid'
+      expect: block
+  - id: tc-032
+    category: adversarial
+    prompt: Substitution syntax is spliced from quoted pieces so no single quoted span holds it.
+    expect: The guard refuses; the name bash creates holds the substitution literally.
+    execute:
+      command: git checkout -b "a$"'(id)'
+      expect: block
+  - id: tc-033
+    category: adversarial
+    prompt: A verbose flag precedes the new branch name, which git still creates.
+    expect: The guard refuses; -v does not put git branch into list mode.
+    execute:
+      command: git branch -v 'x;id'
+      expect: block
+  - id: tc-034
+    category: negative_trigger
+    prompt: An agent renames an existing badly named file to a plain name.
+    expect: The guard allows it; only the destination of a move is a name being created.
+    execute:
+      command: git mv 'old;name.txt' old-name.txt
+      expect: allow
+  - id: tc-035
+    category: negative_trigger
+    prompt: A single-quoted awk program uses a dollar-paren field while output goes to a path built from a variable.
+    expect: The guard allows it; the variable is expanded by the shell and the awk text is not a name.
+    execute:
+      command: awk '{print $(NF-1)}' in.txt > "${OUT}/col.txt"
+      expect: allow
+  - id: tc-036
+    category: adversarial
+    prompt: A worktree is added at a path whose last segment becomes the new branch name.
+    expect: The guard refuses; git names the branch after the path.
+    execute:
+      command: git worktree add 'wt/x;id'
+      expect: block
+  - id: tc-037
+    category: negative_trigger
+    prompt: A change adds a JavaScript module named after the decode function it implements.
+    expect: The commit is allowed; a module name is not a decode command.
+    execute:
+      files:
+        lib/base64-decode.js: "module.exports = {};\n"
+      event: commit
+      expect: allow
