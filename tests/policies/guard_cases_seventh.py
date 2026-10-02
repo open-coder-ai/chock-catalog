@@ -129,9 +129,9 @@ F6_REFUSED = [
     "git config alias.x 'clone --u=sh origin d'",
     "git config alias.x 'clone --up=sh origin d'",
     "git config alias.x 'clone --co=core.fsmonitor=sh origin d'",
-    "git config alias.x 'clone --te=/tmp/t origin d'",
-    "git config alias.x 'init --t=/tmp/t d'",
-    "git config alias.x 'init --te=/tmp/t d'",
+    "git config alias.x 'clone --te=tpl origin d'",
+    "git config alias.x 'init --t=tpl d'",
+    "git config alias.x 'init --te=tpl d'",
     "git config alias.x 'ls-remote \"--upload-pack=sh\" origin'",
 ]
 
