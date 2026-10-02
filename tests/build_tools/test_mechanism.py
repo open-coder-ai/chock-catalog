@@ -64,7 +64,10 @@ def _script_gate(tmp_path: Path, on: list[str], action: str = "warn") -> dict:
     impl = tmp_path / "implementations"
     impl.mkdir()
     (impl / "p-gate.py").write_text("", encoding="utf-8")
-    return {"id": "p", "hook": {"gate": {"kind": "script", "on": on, "action": action, "params": {"script": "p-gate.py"}}}}
+    return {
+        "id": "p",
+        "hook": {"gate": {"kind": "script", "on": on, "action": action, "params": {"script": "p-gate.py"}}},
+    }
 
 
 def test_a_warn_script_gate_over_writes_is_not_a_command_guard(tmp_path: Path) -> None:
