@@ -10,14 +10,14 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 32 total, 32 executable |
+| **Eval cases** | 55 total, 55 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks, key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore). Runs: commit, agent write, turn's end. Not yet caught: quoted-colon forms ("password": "...", api_key: "..."), access_token=, client_secret=. Waiver: '# pragma: allowlist secret' same line (path hit: anywhere in the file). Person's commit: honoured. Agent: only if in HEAD; MCP gateway: never. Agent asks a person.
+Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values. Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.
 
 ## What it solves
 

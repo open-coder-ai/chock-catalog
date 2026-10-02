@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "rtk-dangerous-actions-blocker",
-  "version": "0.1.1",
-  "description": "rtk#1007. Blocks: rm -rf on /, ~, ., .. or abs paths; PowerShell/cmd drive removal; git push --force/+refspec; credential-file reads (.env, keys, ~/.ssh); echo/inline *_API_KEY/_SECRET/_TOKEN; SQL DROP/TRUNCATE/unscoped DELETE/FLUSHALL; dropdb; kubectl delete, terraform destroy, aws s3 rm --recursive/rb --force, helm uninstall, gcloud delete, docker volume rm. Asks: relative rm -rf off safe list, git reset --hard/clean -f/checkout ./branch -D, docker prune. Skips rm/file/echo in container exec.",
+  "version": "0.2.0",
+  "description": "rtk#1007. Destructive verdicts come from the chock_destructive table shared with block- destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's safe list, bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.",
   "author": {
     "name": "chock-core"
   },
