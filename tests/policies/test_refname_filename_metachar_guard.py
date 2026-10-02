@@ -181,7 +181,7 @@ CASES = [
     ('git checkout -b "$(git rev-parse --abbrev-ref HEAD)-fix"', OK),
     ("diff <(sort a) <(sort b) > out.txt", OK),
     ("echo $((1<<2)) > n.txt", OK),
-    ("echo $(unterminated", OK),
+    ("echo $(unterminated", BLOCK),
     ("echo " + "$(" * 70 + "touch ok" + ")" * 70, BLOCK),
     ("echo " + "$(" * 40 + "touch ok" + ")" * 40, OK),
     ("echo " + "$(" * 30 + "x " * 50000 + ")" * 30, BLOCK),
@@ -207,7 +207,16 @@ CASES = [
     ("echo $(case $x in a) echo ok;; esac) > out.txt", OK),
     ("echo " + " ".join(f"$(date +%s{i})" for i in range(65)), OK),
     ('echo "' + "'x'" * 3000, BLOCK),
-    ("touch ${unterminated", OK),
+    ("touch ${unterminated", BLOCK),
+    # Review round 4: ${...} closes at the first brace and holds no comment or heredoc; case only as a command.
+    ("touch ${a:- #} 'x;y'", BLOCK),
+    ("touch ${a:-<<EOF} 'x;y'", BLOCK),
+    ("touch ${a:-{}'x;y'}", BLOCK),
+    ("touch $(echo case) 'x;y'", BLOCK),
+    ("touch <(echo esac) 'x;y'", BLOCK),
+    ("echo $(if true; then case $x in (a) echo ok;; esac; fi) > out.txt", OK),
+    ('echo "${a#*#}" "${y:-\'}\'}" > out.txt', OK),
+    ("cat" + "<<a" * 300 + "\n" + "a\n" * 300, BLOCK),
     ("Set-Content 'C:/work/notes.txt' 'a;b'", OK),
 ]
 
@@ -238,6 +247,9 @@ def test_powershell_text_is_read_as_powershell(capsys: pytest.CaptureFixture[str
         ("New-Item 'it''s ok.txt'", OK),
         ('New-Item "$($env:OUT)/x.txt"', OK),
         ("Write-Output `n > out.txt", OK),
+        ("${x'} = 1; New-Item -Path 'a;b'", BLOCK),
+        ("${a`}b #} = 1; New-Item -Path 'a;b'", BLOCK),
+        ('New-Item "${env:OUT}/x.txt"', OK),
     ],
 )
 def test_powershell_escapes_and_subexpressions(command: str, want: int, monkeypatch, capsys) -> None:
