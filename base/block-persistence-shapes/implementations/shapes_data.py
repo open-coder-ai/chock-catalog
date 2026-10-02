@@ -9,7 +9,8 @@ from chock_scan import data_table
 LISTS = ("stops", "launchers", "write_exempt", "downloaders", "detachers", "iocs")
 PATH_LISTS = ("file_paths", "dir_paths")
 REGEXES = ("setid_symbolic", "setid_numeric", "url_arg")
-KEYS = (*LISTS, *PATH_LISTS, *REGEXES, "value_flags", "rules")
+MAPS = ("value_flags", "runners")
+KEYS = (*LISTS, *PATH_LISTS, *REGEXES, *MAPS, "rules")
 LEVELS = ("block", "ask")
 PATH = Path(__file__).resolve().parent / "data" / "shapes.json"
 
@@ -49,9 +50,9 @@ def problems(doc: dict) -> list[str]:
     found = [f"{key} is not a list of strings" for key in LISTS if not strings(doc[key])]
     found += [f"{key} is not a list of expressions" for key in PATH_LISTS if not all(map(regex, doc[key]))]
     found += [f"{key} is not an expression" for key in REGEXES if not regex(doc[key])]
-    flags = doc["value_flags"]
-    if not isinstance(flags, dict) or not all(strings(value) for value in flags.values()):
-        found.append("value_flags is not a map of lists")
+    for key in MAPS:
+        if not isinstance(doc[key], dict) or not all(strings(value) for value in doc[key].values()):
+            found.append(f"{key} is not a map of lists")
     found += [f"rules[{i}] is malformed" for i, rule in enumerate(doc["rules"]) if not rule_ok(rule)]
     return found
 

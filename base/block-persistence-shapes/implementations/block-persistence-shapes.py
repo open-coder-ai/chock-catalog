@@ -15,13 +15,16 @@ import shapes_background
 import shapes_data
 import shapes_paths
 import shapes_rules
-from chock_shellparse import Cmd, commands, git_parts, positionals, writes_files
+from chock_shellparse import Cmd, commands, git_parts, operands, positionals, writes_files
 
 BLOCK, ASK = 1, 3
 LEVELS = {"block": BLOCK, "ask": ASK}
 Verdict = tuple[int, str]
 PUSH_VALUE = frozenset(("--repo", "-o", "--push-option", "--receive-pack", "--exec"))
-OUTPUT_FLAGS = {"curl": ("-o", "--output"), "wget": ("-O", "--output-document", "-P", "--directory-prefix")}
+OUTPUT_FLAGS = {
+    "curl": ("-o", "--output", "--output-dir"),
+    "wget": ("-O", "--output-document", "-P", "--directory-prefix"),
+}
 TAILS = {
     BLOCK: "Publishing, persistence and visibility changes are human decisions: ask the person to run it from their own shell.",
     ASK: "Ask the person to confirm before it runs.",
@@ -54,7 +57,7 @@ def git_verdict(cmd: Cmd, tab: dict) -> Verdict | None:
 def setid_verdict(cmd: Cmd, tab: dict) -> Verdict | None:
     """chmod or install -m with a setuid or setgid bit plants a privilege-escalation file."""
     if cmd.name == "chmod":
-        modes = cmd.args
+        modes = operands(cmd.args)[:1]
     elif cmd.name == "install":
         modes = [shapes_rules.value_of(cmd.args, "-m", "--mode")]
     else:

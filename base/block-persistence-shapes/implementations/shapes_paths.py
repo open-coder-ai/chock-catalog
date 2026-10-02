@@ -15,7 +15,7 @@ ANCHORED = ("/", "~", "$")
 
 def norm(path: str) -> str:
     """Lowercase, home written `~`, `.` and `..` folded: `$HOME/.ssh/../.ssh/Authorized_Keys` is one path."""
-    return posixpath.normpath(HOME.sub("~", path.replace("\\", "/")).lower())
+    return posixpath.normpath(HOME.sub("~", re.sub("^/{2,}", "/", path.replace("\\", "/"))).lower())
 
 
 @cache

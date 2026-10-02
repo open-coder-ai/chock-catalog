@@ -40,6 +40,7 @@ BAD_TABLES = {
     "regex-key-bad": {"url_arg": "("},
     "regex-key-not-a-string": {"setid_numeric": 5},
     "flags-not-a-map": {"value_flags": []},
+    "runners-not-a-map": {"runners": []},
     "flags-value-not-a-list": {"value_flags": {"npm": "x"}},
     "rule-not-a-map": {"rules": ["x"]},
     "rule-missing-key": {"rules": [{"prog": ["x"]}]},

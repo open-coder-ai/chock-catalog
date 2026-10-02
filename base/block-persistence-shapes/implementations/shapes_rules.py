@@ -2,7 +2,9 @@
 
 import re
 
-from chock_shellparse import Cmd, flags_of, operands, positionals
+from chock_shellparse import Cmd, flags_of, positionals
+
+PINNED = re.compile(r"(?<=.)@[^/@]*$")
 
 SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh"))
 HOPS = 3
@@ -21,22 +23,41 @@ def value_of(args: list[str], *flags: str) -> str:
     return ""
 
 
-def hop(name: str, args: list[str], launchers: list[str]) -> tuple[str, list[str]] | None:
-    """The program behind a python -m, shell script or npx-style launcher, or None when `name` is what runs."""
+def indexes(args: list[str], value_flags: frozenset[str]) -> list[int]:
+    """Where the operands are in `args`, leaving out options and the values of `value_flags`."""
+    found, skip = [], False
+    for i, arg in enumerate(args):
+        if skip:
+            skip = False
+        elif arg.startswith("-"):
+            skip = arg in value_flags
+        else:
+            found.append(i)
+    return found
+
+
+def program(word: str) -> str:
+    """A command word as a program name: last path part, lowercased, a pinned `@version` dropped."""
+    return PINNED.sub("", word.replace("\\", "/").rsplit("/", 1)[-1].lower())
+
+
+def hop(name: str, args: list[str], tab: dict) -> tuple[str, list[str]] | None:
+    """The program behind a python -m, shell script, npx-style launcher or `npm exec`, or None when `name` runs."""
     if name.startswith("python") and "-m" in args[:-1]:
         at = args.index("-m")
         return args[at + 1].lower(), args[at + 2 :]
-    if name in SHELLS or name in launchers:
-        rest = operands(args)
-        if rest:
-            return rest[0].replace("\\", "/").rsplit("/", 1)[-1].lower(), args[args.index(rest[0]) + 1 :]
-    return None
+    where = indexes(args, frozenset(tab["value_flags"].get(name, ())))
+    if name in tab["runners"] and where and args[where[0]] in tab["runners"][name]:
+        where = where[1:]
+    elif name not in SHELLS and name not in tab["launchers"]:
+        return None
+    return (program(args[where[0]]), args[where[0] + 1 :]) if where else None
 
 
-def resolve(cmd: Cmd, launchers: list[str]) -> tuple[str, list[str]]:
+def resolve(cmd: Cmd, tab: dict) -> tuple[str, list[str]]:
     name, args = cmd.name, cmd.args
     for _ in range(HOPS):
-        step = hop(name, args, launchers)
+        step = hop(name, args, tab)
         if step is None:
             break
         name, args = step
@@ -57,9 +78,15 @@ def holds(when: dict, args: list[str]) -> bool:
 
 
 def dry_run(args: list[str]) -> bool:
-    """npm-style dry run: the last --dry-run option wins and --dry-run=false turns it off."""
-    last = [arg for arg in args if arg.split("=", 1)[0] == "--dry-run"]
-    return bool(last) and last[-1].partition("=")[2].lower() in ("", "true", "1")
+    """npm-style dry run: the last of --dry-run[=value] and --no-dry-run wins; words after `--` are operands."""
+    state = False
+    for arg in args:
+        key, _, value = arg.partition("=")
+        if arg == "--":
+            break
+        if key in ("--dry-run", "--no-dry-run"):
+            state = key == "--dry-run" and value.lower() in ("", "true", "1")
+    return state
 
 
 def verb_at(rule: dict, pos: list[str], heads: set[str]) -> tuple[list[str], int] | None:
@@ -73,9 +100,11 @@ def verb_at(rule: dict, pos: list[str], heads: set[str]) -> tuple[list[str], int
 
 def judge(cmd: Cmd, tab: dict) -> tuple[str, str] | None:
     """(level, reason) of the first rule this command matches, or None."""
-    name, args = resolve(cmd, tab["launchers"])
+    name, args = resolve(cmd, tab)
     bare = name.removesuffix(".cmd").removesuffix(".bat")
     pos = [word.lower() for word in positionals(args, frozenset(tab["value_flags"].get(bare, ())))]
+    if "--help" in args or "-h" in args:
+        return None
     for rule in tab["rules"]:
         if name not in rule["prog"] and bare not in rule["prog"]:
             continue

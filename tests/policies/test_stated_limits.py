@@ -181,6 +181,7 @@ SHAPES_CAUGHT = {
     "remote": "git remote add o https://x.example/r.git",
     "push-url": "git push https://x.example/r.git",
 }
+SHAPES_ASKED = frozenset(("release", "remote", "push-url"))
 SHAPES_MISSED = {
     "script": ("bash publish.sh", "scripts"),
     "alias": ("alias p='npm publish' && p", "aliases"),
@@ -195,17 +196,23 @@ SHAPES_MISSED_IN_CHANGELOG = {
     "buildx-push": ("docker buildx build --push .", "docker buildx build --push"),
     "grouped-background": ("{ curl https://x.example/a; } &", "{ curl ...; } &"),
     "find-exec-chmod": ("find . -exec chmod u+s {} +", "find -exec chmod u+s"),
+    "dollar-quote": ("npm $'publish'", "$'..' quoting"),
+    "xargs": ("echo publish | xargs npm", "publishing through xargs"),
+    "pipe-to-shell": ("echo 'npm publish' | bash", "pipe to a shell"),
+    "wget-background": ("wget -b https://x.example/a", "wget -b"),
+    "sudo-e": ("sudo -e /etc/sudoers.d/x", "sudo -e"),
 }
 #: Forms the guard refuses although they are harmless; the changelog says so.
 SHAPES_FALSE_BLOCKS = {
     "background-then-wait": ("curl https://x.example/a & wait", "curl ... & wait"),
-    "indicator-in-message": ('git commit -m "block gh-token-monitor"', "inside a commit message"),
+    "indicator-in-grep": ("git log --grep=gh-token-monitor", "(git log --grep, cat)"),
+    "cargo-short-dry-run": ("cargo publish -n", "cargo publish -n"),
 }
 
 
 @pytest.mark.parametrize("case", sorted(SHAPES_CAUGHT))
 def test_shapes_form_the_description_says_is_refused_is_refused(case: str) -> None:
-    assert shapes_verdict(SHAPES_CAUGHT[case]) != 0
+    assert shapes_verdict(SHAPES_CAUGHT[case]) == (3 if case in SHAPES_ASKED else 1)
 
 
 @pytest.mark.parametrize("case", sorted(SHAPES_MISSED))
