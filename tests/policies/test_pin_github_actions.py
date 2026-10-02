@@ -17,6 +17,15 @@ SHA = "8f4b7f84864484a7bf31766abe9204da3cbe65b3"
 DIGEST = "sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412"
 
 REFUSED = [
+    "  - {?uses: actions/checkout@v4}",
+    "steps: [{name: x,?uses: a/b@v1}]",
+    "  - [?uses: a/b@v1]",
+    '  - {?"uses": a/b@v1}',
+    "  - {?'uses': a/b@v1}",
+    "runs: {using: docker,?image: docker://alpine}",
+    f"  - {{?uses: actions/checkout@{SHA}}}",
+    "  - {*k:a/b@v1}",
+    "  - *k.1 : a/b@v1",
     "  - ? # c",
     "  - ? !!str",
     "  - ? &a",
@@ -108,6 +117,8 @@ REFUSED = [
 ]
 
 SILENT = [
+    "          *.log",
+    "          *item*",
     '        "C:\\Users\\me"',
     '      - run: echo "\\x41"',
     "          *.txt",
@@ -210,6 +221,10 @@ def test_silent_on_this_repositorys_own_workflows() -> None:
 
 
 FAMILIES = [
+    ",&",
+    "[&",
+    "&,",
+    "{?",
     '"uses":a ',
     '{"uses":a,',
     "'uses':a ",
@@ -240,8 +255,8 @@ FAMILIES = [
 
 
 @pytest.mark.parametrize("line", [(f * 4096)[:4095] for f in FAMILIES] + [f * 13334 for f in FAMILIES[:6]])
-def test_a_long_hostile_line_is_judged_in_linear_time(line: str) -> None:
-    """A commit hook has no timeout: no line may make the pattern backtrack quadratically."""
+def test_a_long_hostile_line_is_judged_quickly(line: str) -> None:
+    """A commit hook has no timeout: no line under the 4096-character cap may stall the pattern."""
     start = time.perf_counter()
     PATTERN.search(line)
     assert time.perf_counter() - start < 0.3

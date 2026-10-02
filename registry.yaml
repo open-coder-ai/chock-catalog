@@ -489,8 +489,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 62
-  eval_executed: 62
+  eval_cases: 63
+  eval_executed: 63
   description: 'Blocks uses: of an action/reusable workflow at a movable ref (not a lowercase 40-hex
     SHA) and a docker:// image without @sha256, quoted, JSON or flow; an alias, escape or value off
     the uses line is refused. Local ./ passes. Scope: .github/workflows/, .github/actions/, action.y*ml.
