@@ -38,6 +38,7 @@ def test_the_manifest_declares_the_gate_and_the_pre_push_script() -> None:
         ("a\rb", "control"),
         ("a\x1b[2Jb", "control"),
         ("x" + chr(0x202E) + "txt.exe", "control"),
+        ("x" + chr(0x061C) + "y", "control"),
         ("$(id)", "subst"),
         ("x${IFS}y", "subst"),
         ("x$IFS$9y", "subst"),

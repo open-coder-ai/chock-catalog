@@ -11,6 +11,7 @@
 # a backtick command, a process substitution, a `bash -c` or `eval` script -- is marked and judged the same way.
 
 import os
+import re
 import shlex
 import sys
 
@@ -47,6 +48,18 @@ def _parse_marked(text: str, env: dict[str, str], *, ps: bool, depth: int) -> tu
 
 
 shellparse._parse = _parse_marked
+_FD_DUP = re.compile(r"[0-9]+-?|-")
+_SCAN_WORD = shellparse._Scan._word
+
+
+def _word_with_dup_target(self: shellparse._Scan, text: str) -> None:
+    """`>&name` and `>& name` write a file in bash unless the word is a descriptor (`>&2`, `>&-`); the parser skips both."""
+    if self.redir == ">&" and not _FD_DUP.fullmatch(text):
+        self.redir = ">"
+    _SCAN_WORD(self, text)
+
+
+shellparse._Scan._word = _word_with_dup_target
 # Which positional argument a cmdlet takes as the path it creates: the first, or the second (-NewName, -Destination).
 PS_POSITION = {
     **dict.fromkeys(("new-item", "ni", "set-content", "sc", "out-file", "add-content", "ac"), 0),

@@ -137,9 +137,10 @@ refname-filename-metachar  [deterministic]
   PASS  tc-038                             authored  BLOCKED: branch or tag name 'pwn${IFS}x' is refused: it has shell s…
   PASS  tc-039                             authored  BLOCKED: branch or tag name '$fix;id' is refused: it has a shell op…
   PASS  tc-040                             authored  guard exit 0
+  PASS  tc-041                             authored  BLOCKED: file name 'build;log' is refused: it has a shell operator …
   score 1.00
 
-5 policies: 40 pass, 41 skipped
+5 policies: 41 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

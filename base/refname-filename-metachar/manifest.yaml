@@ -1,6 +1,6 @@
 id: refname-filename-metachar
 name: "Refname Filename Metachar"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Refuses names a shell, CI step or git can misread. Paths a change adds or renames into (commit,
   agent writes), and branches and tags pushed (pre-push), with command substitution, an IFS
@@ -47,6 +47,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Verification pass: the guard now reads `>&name` and `>& name` (bash's both-streams redirect) as a file it creates, while `>&2`, `>&-` and `2>&1` stay silent (the shared parser skipped every `>&`); the Arabic letter mark U+061C is refused with the other bidirectional marks. Limits, probed and added: zero-width and other invisible format characters (U+200B-U+200D, U+2060, U+FEFF), Unicode look-alikes, and U+2028/U+2029 are not refused, since a legitimate name can hold them and none reaches a shell as syntax; file creators outside the listed ones (curl -o, wget -O, truncate, unzip -d, tar -C, git clone or init directory, git archive -o, find -exec, interpreters) are not read by the guard, and the commit gate judges the path they produce; the shared shell parser takes time quadratic in the number of leading wrapper words (measured with `! ! ! ...`: 8 s for 80 KB), so a command line of about 150 KB of them can outlast the engine's 30 s guard timeout, which the engine treats as unchecked and asks a person about, never as a pass."
 - version: 0.1.0
   date: '2026-10-02'
   changes:

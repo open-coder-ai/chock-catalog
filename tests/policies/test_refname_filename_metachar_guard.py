@@ -74,6 +74,13 @@ CASES = [
     # Files: redirect targets, creators' operands, dd of=, git mv, PowerShell path values.
     ("echo x > 'a|b'", BLOCK),
     ("printf x >> out.log 2>&1", OK),
+    ("echo x >& 'a;b'", BLOCK),
+    ("echo x >&'a;b'", BLOCK),
+    ("echo x 2>& 'a;b'", BLOCK),
+    ("echo x >&2", OK),
+    ("echo x >&-", OK),
+    ("cmd >&2 2>&1 | tee out.log", OK),
+    ("echo x >& out.log", OK),
     ("touch 'name.'", BLOCK),
     ("mkdir -p 'build/-x'", BLOCK),
     ("cp -r src 'dst;x'", BLOCK),

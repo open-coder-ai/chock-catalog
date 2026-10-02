@@ -318,3 +318,10 @@ suite:
     execute:
       command: "cat <<EOF > notes.md\ndon't panic\nEOF\nbash -c 'cp a.txt \"${DEST}/\"'"
       expect: allow
+  - id: tc-041
+    category: adversarial
+    prompt: A command redirects both streams to a file with the bash `>&` form, naming the file with a semicolon.
+    expect: The guard refuses; `>&name` writes a file unless the word is a descriptor.
+    execute:
+      command: "make >& 'build;log'"
+      expect: block
