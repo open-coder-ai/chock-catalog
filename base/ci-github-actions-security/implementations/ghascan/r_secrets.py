@@ -136,11 +136,20 @@ def container_credentials(ctx: Ctx) -> list[Hit]:
         holders += [("jobs", job, "services", s) for s in ctx.tree.keys(("jobs", job, "services"))]
         for base in holders:
             for node in ctx.tree.values((*base, "credentials", "password")):
-                if node.value.strip() and "${{" not in node.value:
+                if _literal(node.value):
                     where = ".".join(map(str, base[2:]))
                     message = f"{where} credentials hold a literal password; use ${{{{ secrets.NAME }}}}"
                     hits.append(Hit("gha-container-credentials", node.line, job, where, message))
     return hits
+
+
+def _literal(text: str) -> bool:
+    """Whether a password holds text of its own: anything outside `${{ }}`, or an expression naming no context."""
+    outside = text
+    for body in expr.expressions(text):
+        outside = outside.replace("${{" + body + "}}", "")
+    named = [p for body in expr.expressions(text) for p in expr.contexts(body)]
+    return bool(outside.strip()) or (bool(text.strip()) and not named)
 
 
 def _from_secret(text: str) -> bool:

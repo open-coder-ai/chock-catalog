@@ -9,6 +9,7 @@ from ghascan.model import Ctx, Hit, Step, falsy, is_action, steps, with_text, wi
 PUBLISH_RUN = re.compile(
     r"\b(?:npm|pnpm|yarn)\s+publish\b|\btwine\s+upload\b|\bcargo\s+publish\b|\bgem\s+push\b|\bdocker\s+push\b"
     r"|\bgoreleaser\b|\bgh\s+release\s+(?:create|upload)\b|\bpoetry\s+publish\b|\buv\s+publish\b"
+    r"|\bsemantic-release\b|\bchangeset\s+publish\b"
 )
 
 
@@ -66,7 +67,7 @@ def dependabot_weaken(ctx: Ctx) -> list[Hit]:
             rule = (*entry, "ignore", item)
             names = [n.value.strip() for n in tree.values((*rule, "dependency-name"))]
             narrowed = tree.has((*rule, "versions")) or tree.has((*rule, "update-types"))
-            if "*" in names and not narrowed:
+            if any(n and set(n) == {"*"} for n in names) and not narrowed:
                 message = (
                     f"ignore `*` with no versions or update-types stops every {ecosystem} update, security fixes too"
                 )

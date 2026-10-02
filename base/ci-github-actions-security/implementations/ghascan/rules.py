@@ -6,10 +6,11 @@ import re
 from typing import NamedTuple
 
 from ghascan import r_hygiene, r_injection, r_perms, r_secrets, r_supply, r_triggers
-from ghascan.model import ACTION, DEPENDABOT, WORKFLOW, Ctx, Hit, triggers
+from ghascan.model import ACTION, DEPENDABOT, WORKFLOW, Ctx, Hit, triggers, typed_inputs
 from ghascan.tree import UnreadableError, documents
 
 BLOCK, ASK = "block", "ask"
+UNREADABLE = "gha-unreadable"
 WORKFLOW_PATH = re.compile(r"(?:^|/)\.github/workflows/[^/]+\.ya?ml$", re.IGNORECASE)
 ACTION_PATH = re.compile(r"(?:^|/)action\.ya?ml$", re.IGNORECASE)
 DEPENDABOT_PATH = re.compile(r"(?:^|/)\.github/dependabot\.ya?ml$", re.IGNORECASE)
@@ -30,7 +31,7 @@ RULES = {
     "gha-insecure-commands": Rule("injection", BLOCK, "CWE-94", "CICD-SEC-7", "zizmor insecure-commands; actionlint deprecated-commands; CKV_GHA_1"),
     "gha-dangerous-trigger": Rule("triggers", ASK, "CWE-829", "CICD-SEC-4", "zizmor dangerous-triggers"),
     "gha-prt-head-checkout": Rule("triggers", BLOCK, "CWE-829", "CICD-SEC-4", "Scorecard Dangerous-Workflow"),
-    "gha-workflow-run-artifact": Rule("triggers", BLOCK, "CWE-829", "CICD-SEC-9", "GitHub Security Lab, pwn requests part 3"),
+    "gha-workflow-run-artifact": Rule("triggers", BLOCK, "CWE-829", "CICD-SEC-9", "GitHub Security Lab, preventing pwn requests (part 1)"),
     "gha-self-hosted-pr": Rule("triggers", BLOCK, "CWE-250", "CICD-SEC-7", "zizmor self-hosted-runner"),
     "gha-bot-conditions": Rule("triggers", BLOCK, "CWE-290", "CICD-SEC-1", "zizmor bot-conditions"),
     "gha-excessive-permissions": Rule("permissions", BLOCK, "CWE-250", "CICD-SEC-5", "zizmor excessive-permissions; Scorecard Token-Permissions; CKV2_GHA_1"),
@@ -39,7 +40,7 @@ RULES = {
     "gha-overprovisioned-secrets": Rule("secrets", BLOCK, "CWE-200", "CICD-SEC-6", "zizmor overprovisioned-secrets"),
     "gha-secret-echo": Rule("secrets", BLOCK, "CWE-532", "CICD-SEC-6", "GitHub secure-use guide, using secrets"),
     "gha-artipacked": Rule("secrets", ASK, "CWE-522", "CICD-SEC-6", "zizmor artipacked"),
-    "gha-checkout-token-pat": Rule("secrets", ASK, "CWE-522", "CICD-SEC-6", "GitHub secure-use guide; zizmor artipacked"),
+    "gha-checkout-token-pat": Rule("secrets", ASK, "CWE-522", "CICD-SEC-6", "GitHub secure-use guide (persist-credentials)"),
     "gha-container-credentials": Rule("secrets", BLOCK, "CWE-798", "CICD-SEC-6", "zizmor hardcoded-container-credentials; actionlint credentials"),
     "gha-trusted-publishing": Rule("secrets", ASK, "CWE-522", "CICD-SEC-6", "zizmor use-trusted-publishing"),
     "gha-static-cloud-keys": Rule("secrets", ASK, "CWE-522", "CICD-SEC-6", "GitHub secure-use guide, OIDC"),
@@ -80,10 +81,11 @@ def hits_for(kind: str, text: str, tables: dict) -> list[Hit]:
         docs = documents(text)
     except UnreadableError as exc:
         message = f"cannot be read with certainty ({exc}); a {kind} file this gate cannot read is refused, not guessed"
-        return [Hit("gha-unreadable", exc.line, "file", str(exc), message)]
+        return [Hit(UNREADABLE, exc.line, "file", str(exc), message)]
     hits: list[Hit] = []
     for tree in docs:
-        ctx = Ctx(tree, kind, lines, triggers(tree) if kind == WORKFLOW else set(), tables)
+        on = triggers(tree) if kind == WORKFLOW else set()
+        ctx = Ctx(tree, kind, lines, on, tables, typed_inputs(tree) if kind == WORKFLOW else frozenset())
         for check in FOR_KIND[kind]:
             hits += check(ctx)
     return hits

@@ -95,7 +95,8 @@ def test_runner_registration_in_a_script() -> None:
     [
         ("github.actor == 'dependabot[bot]'", True),
         ("${{ github.triggering_actor == 'renovate[bot]' }}", True),
-        ("github.event.pull_request.user.login == 'dependabot[bot]'", True),
+        ("github.event.pull_request.user.login == 'dependabot[bot]'", False),
+        ("github.event.sender.login == 'dependabot[bot]'", True),
         ("github.event.pull_request.user.id == 49699333", False),
         ("github.actor == 'octocat'", False),
     ],

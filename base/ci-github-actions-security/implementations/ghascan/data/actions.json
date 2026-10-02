@@ -37,7 +37,8 @@
     "softprops/action-gh-release",
     "goreleaser/goreleaser-action",
     "rubygems/release-gem",
-    "js-devtools/npm-publish"
+    "js-devtools/npm-publish",
+    "changesets/action"
   ],
   "automerge_actions": [
     "hmarr/auto-approve-action",

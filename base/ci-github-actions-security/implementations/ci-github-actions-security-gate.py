@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from chock_scan import data_table
-from ghascan.rules import BLOCK, RULES, hits_for, kind_of
+from ghascan.rules import BLOCK, RULES, UNREADABLE, hits_for, kind_of
 
 TABLE = Path(__file__).resolve().parent / "ghascan" / "data" / "actions.json"
 TABLE_KEYS = (
@@ -63,15 +63,18 @@ def findings(payload: dict, tables: dict) -> list[dict]:
             if waive and hit.rule in WAIVER.findall(line):
                 continue
             rule = RULES[hit.rule]
-            found.append(
-                {
-                    "key": f"{hit.rule}|{hit.scope}|{hit.detail}",
-                    "path": norm,
-                    "line": hit.line,
-                    "rule": hit.rule,
-                    "message": f"{hit.rule} ({rule.cwe}, {rule.cicd}): {hit.message}",
-                }
-            )
+            item = {
+                "key": f"{hit.rule}|{hit.scope}|{hit.detail}",
+                "path": norm,
+                "line": hit.line,
+                "rule": hit.rule,
+                "message": f"{hit.rule} ({rule.cwe}, {rule.cicd}): {hit.message}",
+            }
+            # An unreadable file hides whatever the change put in it, so a baseline that was already
+            # unreadable never absolves it: the finding is new on every write of that file.
+            if hit.rule == UNREADABLE and not payload.get("baseline"):
+                item["new"] = True
+            found.append(item)
     return found
 
 

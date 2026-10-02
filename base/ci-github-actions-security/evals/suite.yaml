@@ -33,7 +33,7 @@ suite:
   - id: tc-002
     category: trigger
     prompt: A composite action pastes an input into run:.
-    expect: Warned; a caller can pass event text as the input.
+    expect: Warned (gha-template-injection); a caller can pass event text as the input.
     execute:
       files:
         tools/notify/action.yml: |
@@ -48,7 +48,7 @@ suite:
   - id: tc-003
     category: adversarial
     prompt: The title is reached with index syntax and upper case, inside format().
-    expect: Warned; contexts are read case-insensitively and index syntax is the same path.
+    expect: Warned (gha-template-injection); contexts are read case-insensitively and index syntax is the same path.
     execute:
       files:
         .github/workflows/triage.yml: |
@@ -65,7 +65,7 @@ suite:
   - id: tc-004
     category: adversarial
     prompt: 'The title goes through an env var set from the event and then back into run: as env.T.'
-    expect: Warned; an env value set from an untrusted expression is followed into env.X.
+    expect: Warned (gha-template-injection); an env value set from an untrusted expression is followed into env.X.
     execute:
       files:
         .github/workflows/triage.yml: |
@@ -84,7 +84,7 @@ suite:
   - id: tc-005
     category: adversarial
     prompt: The injecting step is defined once under a YAML anchor and reused in a second job by alias.
-    expect: Warned in both jobs; aliases are expanded the way GitHub expands them.
+    expect: Warned in both jobs (gha-template-injection); aliases are expanded the way GitHub expands them.
     execute:
       files:
         .github/workflows/a.yml: |
@@ -103,7 +103,7 @@ suite:
   - id: tc-006
     category: adversarial
     prompt: The expression is hidden behind a double-quoted YAML escape (\x74 for t) in a flow mapping.
-    expect: Warned; values are judged after YAML unescapes them.
+    expect: Warned (gha-template-injection); values are judged after YAML unescapes them.
     execute:
       files:
         .github/workflows/a.yml: |
@@ -157,6 +157,11 @@ suite:
     prompt: A pull_request_target workflow writes to GITHUB_ENV.
     expect: Warned (gha-github-env-injection); an outsider-shaped value becomes an env var for every later step.
     execute:
+      head_files:
+        .github/workflows/label.yml: |
+          on: [pull_request_target]
+          permissions: {}
+          jobs: {}
       files:
         .github/workflows/label.yml: |
           on:
@@ -191,8 +196,13 @@ suite:
   - id: tc-011
     category: trigger
     prompt: pull_request_target checks out the pull request head and runs npm install.
-    expect: Warned (gha-prt-head-checkout, gha-dangerous-trigger); fork code runs with secrets and a write token.
+    expect: Warned (gha-prt-head-checkout); fork code runs with secrets and a write token.
     execute:
+      head_files:
+        .github/workflows/pr.yml: |
+          on: [pull_request_target]
+          permissions: {}
+          jobs: {}
       files:
         .github/workflows/pr.yml: |
           on:
@@ -211,8 +221,13 @@ suite:
   - id: tc-012
     category: adversarial
     prompt: issue_comment resolves the PR head in a script with gh pr checkout.
-    expect: Warned; a checkout through the CLI is the same head checkout.
+    expect: Warned (gha-prt-head-checkout); a checkout through the CLI is the same head checkout.
     execute:
+      head_files:
+        .github/workflows/bot.yml: |
+          on: [issue_comment]
+          permissions: {}
+          jobs: {}
       files:
         .github/workflows/bot.yml: |
           on:
@@ -250,6 +265,11 @@ suite:
     prompt: A workflow_run consumer downloads the triggering run's artifact into the workspace.
     expect: Warned (gha-workflow-run-artifact).
     execute:
+      head_files:
+        .github/workflows/report.yml: |
+          on: [workflow_run]
+          permissions: {}
+          jobs: {}
       files:
         .github/workflows/report.yml: |
           on:
@@ -288,6 +308,11 @@ suite:
     prompt: An auto-merge job trusts github.actor == 'dependabot[bot]'.
     expect: Warned (gha-bot-conditions, gha-auto-merge-bot).
     execute:
+      head_files:
+        .github/workflows/merge.yml: |
+          on: [pull_request_target]
+          permissions: {}
+          jobs: {}
       files:
         .github/workflows/merge.yml: |
           on:
@@ -322,7 +347,7 @@ suite:
   - id: tc-018
     category: trigger
     prompt: 'A workflow grants permissions: write-all.'
-    expect: Warned.
+    expect: Warned (gha-excessive-permissions).
     execute:
       files:
         .github/workflows/build.yml: |
@@ -357,6 +382,11 @@ suite:
     prompt: A coding-agent action runs on every issue comment with no author-association gate.
     expect: Warned (gha-agent-step-untrusted).
     execute:
+      head_files:
+        .github/workflows/agent.yml: |
+          on: [issue_comment]
+          permissions: {}
+          jobs: {}
       files:
         .github/workflows/agent.yml: |
           on:
@@ -375,8 +405,13 @@ suite:
   - id: tc-021
     category: negative_trigger
     prompt: The same agent job is gated on the commenter's author_association.
-    expect: Warned only for the dangerous trigger itself (ask tier), never for the agent step.
+    expect: Silent; HEAD already had the issue_comment trigger, and the gated agent step is not reported.
     execute:
+      head_files:
+        .github/workflows/agent.yml: |
+          on: [issue_comment]
+          permissions: {}
+          jobs: {}
       files:
         .github/workflows/agent.yml: |
           on:
@@ -390,7 +425,7 @@ suite:
               steps:
                 - uses: anthropics/claude-code-action@v1
       event: commit
-      expect: warn
+      expect: allow
   - id: tc-022
     category: trigger
     prompt: 'A job calls another repository''s reusable workflow with secrets: inherit.'
@@ -480,7 +515,8 @@ suite:
   - id: tc-027
     category: adversarial
     prompt: 'persist-credentials: false is supplied only through a YAML merge key.'
-    expect: Warned; a setting that only a merge key supplies is not trusted (loaders without merge keys ignore it).
+    expect: Warned (gha-artipacked); a setting that only a merge key supplies is not trusted (loaders without merge
+      keys ignore it).
     execute:
       files:
         .github/workflows/a.yml: |
@@ -723,7 +759,7 @@ suite:
   - id: tc-040
     category: behavior
     prompt: The same edit adds a second copy of the injection in a new step.
-    expect: Warned; a second copy of an old finding is new.
+    expect: Warned (gha-template-injection); a second copy of an old finding is new.
     execute:
       head_files:
         .github/workflows/t.yml: |
@@ -751,7 +787,7 @@ suite:
   - id: tc-041
     category: behavior
     prompt: An agent writes an injecting workflow (tool_use).
-    expect: Warned at the write itself.
+    expect: Warned at the write itself (gha-template-injection).
     execute:
       event: tool_use
       writes:
@@ -785,7 +821,7 @@ suite:
   - id: tc-043
     category: behavior
     prompt: An agent writes the same waiver comment itself.
-    expect: Warned; in the agent a waiver counts only for a line already in HEAD.
+    expect: Warned (gha-template-injection); in the agent a waiver counts only for a line already in HEAD.
     execute:
       event: tool_use
       writes:

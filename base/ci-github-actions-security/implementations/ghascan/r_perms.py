@@ -2,22 +2,29 @@
 
 from __future__ import annotations
 
+import re
+
 from ghascan import expr
 from ghascan.model import PR_EVENTS, RISKY, WORKFLOW, Ctx, Hit, conditions, is_action, jobs, steps
 
 AGENT_EVENTS = RISKY | {"pull_request_review", "pull_request_review_comment"}
 ID_TOKEN_EVENTS = PR_EVENTS | {"issue_comment"}
+NULLS = frozenset({"", "~", "null", "Null", "NULL"})
+TRUSTED_ROLES = re.compile(r"OWNER|MEMBER|COLLABORATOR")
 
 
 def _set(ctx: Ctx, path: tuple) -> bool:
     """Whether every loader sees permissions at `path`: a mapping, or a non-empty value (an empty one is null)."""
-    return any(n.kind == "map" or n.value.strip() for n in ctx.tree.at.get(path, []) if not n.merged)
+    nodes = [n for n in ctx.tree.at.get(path, []) if not n.merged]
+    return any(n.kind == "map" or n.value.strip() not in NULLS for n in nodes)
 
 
 def _gated(text: str) -> bool:
-    """Whether a condition reads an author_association (a bare `if:` is one expression)."""
+    """Whether a condition restricts the author_association to OWNER, MEMBER or COLLABORATOR: it reads
+    one, names one of those roles, and has no `||` or `!=` that could let anyone else through."""
     found = expr.expressions(text) or [text]
-    return any(p[-1] == "author_association" for e in found for p in expr.contexts(e))
+    reads = any(p[-1] == "author_association" for e in found for p in expr.contexts(e))
+    return reads and bool(TRUSTED_ROLES.search(text)) and "||" not in text and "!=" not in text
 
 
 def _scalar(ctx: Ctx, path: tuple) -> list[tuple[int, str]]:

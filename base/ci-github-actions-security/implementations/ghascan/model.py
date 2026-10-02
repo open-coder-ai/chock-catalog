@@ -36,6 +36,7 @@ class Ctx(NamedTuple):
     lines: list[str]
     on: set[str]
     tables: dict
+    typed: frozenset[str] = frozenset()
 
 
 class Step(NamedTuple):
@@ -68,6 +69,17 @@ def triggers(tree: Tree) -> set[str]:
     }
     found |= {str(key).lower() for key in tree.keys(("on",)) if isinstance(key, str)}
     return found - {""}
+
+
+def typed_inputs(tree: Tree) -> frozenset[str]:
+    """Workflow inputs declared `type: boolean` or `type: number` under every event that declares them:
+    GitHub validates those, so no text gets in. A name free-text under either event stays untrusted."""
+    kinds: dict[str, set[str]] = {}
+    for event in ("workflow_dispatch", "workflow_call"):
+        for name in tree.keys(("on", event, "inputs")):
+            kind = (tree.text(("on", event, "inputs", name, "type")) or "").strip().lower()
+            kinds.setdefault(str(name).lower(), set()).add(kind)
+    return frozenset(name for name, seen in kinds.items() if seen <= {"boolean", "number"})
 
 
 def jobs(tree: Tree) -> list[str]:
@@ -132,13 +144,24 @@ def conditions(tree: Tree, step: Step) -> str:
     return "\n".join(texts)
 
 
-def first_line(tree: Tree, lines: list[str], path: Path, needle: str) -> int:
-    """The line of `needle` inside the value at `path` (a block scalar spans lines), else where it starts."""
+def first_line(tree: Tree, lines: list[str], path: Path, needle: str, nth: int = 0) -> int:
+    """The nth line holding `needle` within the block that starts at `path`'s line (it ends at the next
+    line indented no deeper), else the line where the value starts."""
     start = tree.line(path)
-    for number in range(start, min(len(lines), start + 2000) + 1):
-        if needle and needle in lines[number - 1]:
+    indent = _indent(lines[start - 1])
+    seen = 0
+    for number in range(start, len(lines) + 1):
+        text = lines[number - 1]
+        if number > start and text.strip() and _indent(text) <= indent:
+            break
+        seen += text.count(needle) if needle else 0
+        if seen > nth:
             return number
     return start
+
+
+def _indent(text: str) -> int:
+    return len(text) - len(text.lstrip(" "))
 
 
 def normalize(text: str) -> str:

@@ -121,19 +121,24 @@ def event_untrusted(rest: tuple[str, ...]) -> bool:
     return not (leaf == "name" and parent in REPO_SEGMENTS)
 
 
-def untrusted(path: tuple[str, ...], tainted: frozenset[str] = frozenset()) -> bool:
+def untrusted(
+    path: tuple[str, ...], tainted: frozenset[str] = frozenset(), typed: frozenset[str] = frozenset()
+) -> bool:
     """Whether a context path can carry attacker-written text into a script.
 
     `tainted` names the env and matrix entries set from such text (`env.title`, `matrix.title`, or
-    `matrix.*` when the whole matrix is computed from it).
+    `matrix.*` when the whole matrix is computed from it). `typed` names workflow inputs declared
+    boolean or number, which GitHub validates.
     """
+    if path[:3] == ("github", "event", "inputs"):
+        path = ("inputs", *path[3:])
     root, rest = path[0], path[1:]
     if root == "github":
         if not rest or rest[0] in (DYNAMIC, "head_ref"):
             return True
         return rest[0] == "event" and event_untrusted(rest[1:])
     if root == "inputs":
-        return True
+        return len(rest) != 1 or rest[0] not in typed
     if root in ("env", "matrix"):
         if not rest or rest[0] == DYNAMIC:
             return root == "env" or any(t.startswith("matrix.") for t in tainted)
@@ -145,13 +150,19 @@ def boolean_only(expr: str) -> bool:
     """Whether the expression can only yield a boolean, so no text reaches the script.
 
     True for one call of a boolean function spanning the whole expression, and for a comparison
-    or negation with no `&&`/`||` (whose operands, not booleans, are what they return).
+    or leading negation outside every bracket with no `&&`/`||` there (`a && b` returns b, not a
+    boolean). A comparison inside a call's arguments (`format('{0}{1}', title, 1 == 1)`) does not count.
     """
     toks = tokens(expr)
-    ops = {text for kind, text in toks if kind == "op"}
-    if not toks or "&&" in ops or "||" in ops:
+    top: set[str] = set()
+    depth = 0
+    for kind, text in toks:
+        depth += (text in "([") - (text in ")]") if kind == "op" else 0
+        if depth == 0 and kind == "op":
+            top.add(text)
+    if not toks or "&&" in top or "||" in top:
         return False
-    if ops & COMPARE or toks[0][1] == "!":
+    if top & COMPARE or toks[0][1] == "!":
         return True
     first = toks[0]
     if first[0] != "id" or first[1].lower() not in BOOL_FUNCS or len(toks) < MIN_CALL or toks[1][1] != "(":
@@ -164,13 +175,13 @@ def boolean_only(expr: str) -> bool:
     return False
 
 
-def injected(text: str, tainted: frozenset[str] = frozenset()) -> list[str]:
+def injected(text: str, tainted: frozenset[str] = frozenset(), typed: frozenset[str] = frozenset()) -> list[str]:
     """Each expression in `text` that puts attacker-written text where it is expanded, whitespace-normalized."""
     out = []
     for expr in expressions(text):
         if boolean_only(expr):
             continue
-        if any(untrusted(path, tainted) for path in contexts(expr)):
+        if any(untrusted(path, tainted, typed) for path in contexts(expr)):
             out.append(" ".join(expr.split()))
     return out
 

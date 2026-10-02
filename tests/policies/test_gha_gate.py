@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -97,7 +98,9 @@ def test_tree_lookups() -> None:
 
 
 def test_first_line_falls_back_when_the_text_is_split() -> None:
-    text = workflow("  issues:", '      - run: "echo ${{ github.event.issue.\\x74itle }}"\n')
+    text = workflow(
+        "  issues:", '      - run: "echo ${{ github.event.issue.\\x74itle }}"\n      - run: github.event.issue.title\n'
+    )
     assert [h["line"] for h in found(text)] == [8]
 
 
@@ -161,16 +164,33 @@ def test_every_rule_in_the_table_is_produced_by_a_check() -> None:
 
 
 SUITE = yaml.safe_load((scriptkit.ROOT / "base" / POLICY / "evals" / "suite.yaml").read_text(encoding="utf-8"))
-NAMED = re.compile(r"\((gha-[a-z-]+)")
+NAMED = re.compile(r"\(([^)]*)\)")
+
+
+def _new(case: dict) -> list[dict]:
+    """The findings the engine would judge: the change's, less one per key the head files already had."""
+    run = case["execute"]
+    writes = run.get("files") or run.get("writes")
+    event = run.get("event", "commit")
+    change = gate.findings({"event": event, "writes": writes}, TABLES)
+    head = run.get("head_files") or {}
+    old = Counter(f["key"] for f in gate.findings({"event": event, "writes": head}, TABLES))
+    new = []
+    for item in change:
+        if old[item["key"]] and not item.get("new"):
+            old[item["key"]] -= 1
+            continue
+        new.append(item)
+    return new
 
 
 @pytest.mark.parametrize("case", SUITE["suite"]["cases"], ids=lambda c: c["id"])
-def test_each_eval_warns_for_the_rule_it_names(case: dict) -> None:
-    """A warn case must warn for its own reason, never because the fixture failed to parse."""
-    run = case["execute"]
-    writes = run.get("files") or run.get("writes")
-    rules_hit = {f["rule"] for f in gate.findings({"event": "tool_use", "writes": writes}, TABLES)}
-    named = set(NAMED.findall(case["expect"]))
-    assert named <= rules_hit, (named, rules_hit)
-    if "gha-unreadable" not in named:
-        assert "gha-unreadable" not in rules_hit
+def test_each_eval_is_decided_by_the_rule_it_names(case: dict) -> None:
+    """A warn case must warn for its own rule (never only for a parse failure or a bystander rule)."""
+    new = {f["rule"] for f in _new(case)}
+    named = {r for group in NAMED.findall(case["expect"]) for r in re.findall(r"gha-[a-z-]+", group)}
+    if case["execute"]["expect"] == "allow":
+        assert not new
+        return
+    assert named
+    assert new == named, (named, new)

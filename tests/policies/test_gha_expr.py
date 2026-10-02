@@ -130,6 +130,10 @@ def test_trusted_contexts(path: tuple[str, ...]) -> None:
         ("contains(a, (b)", False),
         ("", False),
         ("'x'", False),
+        ("format('{0}{1}', github.event.issue.title, 1 == 1)", False),
+        ("format('{0}', github.event.issue.body, 0 < 1)", False),
+        ("join(x[a == b], ',')", False),
+        ("!format('{0}', x)", True),
     ],
 )
 def test_boolean_only(body: str, boolean: bool) -> None:

@@ -63,8 +63,11 @@ def template_injection(ctx: Ctx) -> list[Hit]:
     for step in steps(ctx.tree, ctx.kind):
         taint = tainted(ctx, step)
         for path, text in _sinks(ctx, step):
-            for found in expr.injected(text, taint):
-                line = first_line(ctx.tree, ctx.lines, path, found.split()[0] if found else "")
+            seen: dict[str, int] = {}
+            for found in expr.injected(text, taint, ctx.typed):
+                needle = found.split()[0] if found else ""
+                line = first_line(ctx.tree, ctx.lines, path, needle, seen.get(needle, 0))
+                seen[needle] = seen.get(needle, 0) + 1
                 message = (
                     f"`${{{{ {found} }}}}` is expanded into the script before it runs, so whoever writes that "
                     "text writes code: pass it through `env:` and read it as a quoted shell variable"

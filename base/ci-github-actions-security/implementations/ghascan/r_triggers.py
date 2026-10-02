@@ -18,14 +18,15 @@ BASE_REFS = frozenset(
 )  # fmt: skip
 HEAD_RUN = re.compile(
     r"\bgh\s+pr\s+checkout\b|\brefs/pull/|\bpull/[^/\s]+/(?:head|merge)\b"
-    r"|\bgit\s+(?:checkout|switch|fetch|pull|reset|worktree)\b[^\n]*\$\{\{[^}\n]*(?:head|workflow_run)",
+    r"|\bgit(?:\s+-[cC]\s+\S+|\s+--[\w-]+(?:=\S+)?)*\s+(?:checkout|switch|fetch|pull|reset|worktree)\b"
+    r"[^\n]*\$\{\{[^}\n]*(?:head|workflow_run)",
     re.IGNORECASE,
 )
 SELF_HOSTED_EVENTS = PR_EVENTS | {"issue_comment"}
 REGISTER = re.compile(r"\bconfig\.(?:sh|cmd)\b[^\n]*--token\b", re.IGNORECASE)
-BOT_ACTORS = re.compile(
-    r"\bgithub\s*\.\s*(?:actor|triggering_actor)\b|\.\s*(?:user|sender)\s*\.\s*login\b", re.IGNORECASE
-)
+#: Who last acted, not who opened the pull request: a re-run or a push to the bot's branch changes them.
+#: `pull_request.user.login` (the author) is zizmor's recommended form and is not matched.
+BOT_ACTORS = re.compile(r"\bgithub\s*\.\s*(?:actor|triggering_actor)\b|\.\s*sender\s*\.\s*login\b", re.IGNORECASE)
 
 
 def dangerous_trigger(ctx: Ctx) -> list[Hit]:
@@ -108,8 +109,12 @@ def workflow_run_artifact(ctx: Ctx) -> list[Hit]:
 
 
 def _labels(ctx: Ctx, job: str) -> list[tuple[int, str]]:
-    base = ("jobs", job, "runs-on")
-    return [(n.line, n.value) for n in ctx.tree.under(base)]
+    """runs-on labels, and when runs-on reads the matrix, every matrix value (at the runs-on line)."""
+    found = [(n.line, n.value) for n in ctx.tree.under(("jobs", job, "runs-on"))]
+    if any("matrix" in value.lower() for _, value in found):
+        line = found[0][0]
+        found += [(line, n.value) for n in ctx.tree.under(("jobs", job, "strategy", "matrix"))]
+    return found
 
 
 def self_hosted_pr(ctx: Ctx) -> list[Hit]:
@@ -144,8 +149,8 @@ def bot_conditions(ctx: Ctx) -> list[Hit]:
             bots = [s for e in expr.expressions(node.value) or [node.value] for s in expr.string_literals(e)]
             if BOT_ACTORS.search(node.value) and any(s.lower().endswith("[bot]") for s in bots):
                 message = (
-                    "condition trusts an actor's name ending in [bot]; github.actor is whoever last acted (a re-run "
-                    "or a push to the bot's branch), so compare the pull request author's user id instead"
+                    "condition trusts the acting account's name ending in [bot]; github.actor is whoever last acted "
+                    "(a re-run or a push to the bot's branch), so compare github.event.pull_request.user.login instead"
                 )
                 hits.append(Hit("gha-bot-conditions", node.line, scope, normalize(node.value), message))
     return hits

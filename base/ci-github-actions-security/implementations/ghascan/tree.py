@@ -84,6 +84,7 @@ class Tree:
         self.nodes = nodes
         self.at: dict[tuple[str | int, ...], list[N]] = {}
         self.kids: dict[tuple[str | int, ...], list[str | int]] = {}
+        self._under: dict[tuple[str | int, ...], list[N]] = {}
         for node in nodes:
             self.at.setdefault(node.path, []).append(node)
             if node.path:
@@ -122,5 +123,7 @@ class Tree:
 
     def under(self, path: tuple[str | int, ...]) -> list[N]:
         """Every scalar at or below `path`."""
-        size = len(path)
-        return [n for n in self.nodes if n.path[:size] == path and n.kind in SCALARS]
+        if path not in self._under:
+            size = len(path)
+            self._under[path] = [n for n in self.nodes if n.path[:size] == path and n.kind in SCALARS]
+        return self._under[path]
