@@ -744,3 +744,6 @@ block-fetch-exec-in-files:
     (sha256sum -c, gpg --verify, Dockerfile ADD --checksum=sha256:...), then run. A reviewed
     exception is marked with `pragma: allowlist fetch-exec` on the same line; an agent asks a
     person to add it.
+scan-secrets-entropy:
+  solves: scan-secrets refuses vendor prefixes and a fixed set of assignment patterns, so a random credential under a key it does not spell, a Stripe test key, a Slack app token or an AWS bearer-token id slips past it. This gate judges every value assigned to a secret-like key by its entropy, skipping references, digests, UUIDs, placeholders and values written as code or paths, and checks vendor tokens by their built-in checksum or issued shape and card numbers by Luhn. Values are never printed; a finding's key is a hash. It warns while its false-positive rate is measured, then asks.
+  customise: 'The thresholds and allow reasons are chock_scan''s (`lib/chock_scan/entropy.py`, `keyword_values.py`, `checksums.py`; edit lib/, never the copy), the non-secret shapes are `implementations/entropyscan/shapes.py`. A person keeps a checked test value with `pragma: allowlist secret` on the line (a JSON file cannot carry it). In the agent a waiver counts only for a line already in HEAD.'
