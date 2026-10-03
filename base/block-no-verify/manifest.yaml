@@ -1,19 +1,18 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.3.2"
+version: "0.4.3"
 description: >
-  Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am and rebase,
-  -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c,
-  --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message
-  text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*,
-  CHOCK_AGENT_COMMIT, CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says
-  ask the person. Bypasses: aliases, scripts.
+  Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
+  commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
+  git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; hook manager uninstall; aliases
+  and rebase --exec defined in the command. Asks on plumbing, unset hooksPath, another GIT_DIR and
+  config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    never(commit|merge|am|rebase|push): --no-verify|-n(commit|am); never(set): core.hooksPath; never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT
-    if(hook_fails|override_needed): fix_issue|ask_person; never(skip_hook)
+    never(commit|push|merge|am|rebase|pull|cherry-pick|revert): --no-verify|-n(commit|am); never(set): core.hooksPath|HUSKY=0|SKIP=|LEFTHOOK=0|kin; never: pre-commit|lefthook|husky uninstall; ask: commit-tree|update-ref|GIT_DIR|config files
+    never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT; if(hook_fails|override_needed): fix_issue|ask_person
 effects:
 - read_only
 approval:
@@ -22,7 +21,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -36,6 +35,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.3
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.0.1
   date: '2026-07-12'
   changes:
@@ -91,3 +94,19 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Behaviour change: CHOCK_ROLLOUT and CHOCK_GATE_LOG are person-only variables, refused like CHOCK_ALLOW. CHOCK_ROLLOUT=observe or ask lowers the compiled gates to a warning or an ask for a person's own commit or push, and the engine ignores it when it sees an agent marker; refusing it here covers agents that set no marker. CHOCK_GATE_LOG=0 switches off the gate log."
+- version: 0.4.0
+  date: '2026-10-02'
+  changes:
+  - "Behaviour change (HP04, roadmap 5.1): the hook-skip long option is refused on pull, cherry-pick and revert too (git 2.43 rejects it on the last two; it is refused as an attempt). Options are read with each subcommand's own value-taking table, so `merge --squash`, `am -c` or `rebase -m` no longer hide the next word, and `commit -tn` (template n) is not a skip. Brace groups (`{--no-verify,}`) and bash ANSI-C and locale quoting ($'..', $\"..\") are expanded before reading."
+  - "Hook managers' own off switches are refused on a hook-running git command or when left set for later commands (export, declare -x, fish set -x, cmd set, setx, PowerShell $env: and Set-Item Env:): HUSKY and LEFTHOOK set to anything but 1/true, and any non-empty HUSKY_SKIP_HOOKS, SKIP, LEFTHOOK_EXCLUDE, LEFTHOOK_CONFIG or PRE_COMMIT_ALLOW_NO_CONFIG. `HUSKY=0 npm ci` stays allowed: it skips an install step, not a hook run; so does `make test SKIP=slow`. pre-commit, lefthook and husky uninstall are refused, also behind npx, pnpm exec, yarn, uvx, pipx run and python -m. Launchers (uv run, poetry run, npx), fish -c, busybox and PowerShell iex are looked through."
+  - "Aliases and scripts git runs are read where the command defines them: `git -c alias.X=...`, `git config [set] alias.X ...`, GIT_CONFIG_KEY_n/VALUE_n, GIT_CONFIG_PARAMETERS and --config-env aliases, both the definition and a call with its arguments; `git rebase -x/--exec` (also clustered as -ix and abbreviated as --ex, --exe) and `git submodule foreach`, each judged as the command it runs (three levels deep; deeper asks). core.hooksPath set by config on any git command is refused, and GIT_CONFIG_* left set for later commands (export, declare, set, $env:) is judged as git reads it (GIT_CONFIG_COUNT read like strtoul)."
+  - "New asks (exit 3, a person answers): commit-tree, update-ref (not -d), fast-import and send-pack, which write commits or refs or push without running a hook; unsetting core.hooksPath (or removing the core section), which uninstalls husky and other managers that install through it; GIT_DIR, GIT_COMMON_DIR or --git-dir naming another repository; GIT_CONFIG_GLOBAL/SYSTEM, HOME and XDG_CONFIG_HOME on a hook-running command, and include.path/includeIf or help.autocorrect config. A block anywhere on the line wins over an ask. When CHOCK_TOOL does not name the shell, the line is read as bash and as PowerShell and the stricter verdict is kept."
+  - "Fail closed on an unparsed line (correction C3): when shlex cannot split the command (the hook sets CHOCK_ARGV_FALLBACK=1; the guard also checks itself, for the eval runner), a line that names a bypass token is refused; a comment or ANSI-C quoting no longer counts as unparsed. Eval cases tc-080 to tc-108 and two pytest tables pin both directions; the new checks live in implementations/hook_bypass/ to keep every file under 300 lines. Found by a separate adversarial review and fixed before review: alias arguments, per-subcommand options, rebase --exec spellings, exported GIT_CONFIG_*, block-over-ask ordering, ANSI-C quoting, brace expansion, shell detection, cmd set case and three false refusals; a second round: a line that leaves a here-document open no longer crashes the guard (the exports before it are read; a body that hides the rest of the line asks), launcher option values (`uv run --python 3.12 git ...`, `pnpm --filter app exec`, `pre-commit==3.7`), `--remove-section core` (asks), `fish --command`, and .NET SetEnvironmentVariable for the watched variables; a third round: a here-document body (a commit message) no longer makes the line count as unparsed, and a shell behind a launcher (`uv run bash -c`) is read."
+- version: 0.4.1
+  date: '2026-10-02'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: it skips a `--` and the shell options between `-c` and the script (`bash -c -- '...'`, `sh -c -x '...'`, `eval -- '...'`), reads `name=(...)`, `name+=` and `name[i]=` assignments, looks through the `{` that opens a function body or group, and splits a line whose quotes do not balance in one pass (it was cubic: seconds at 4 KB, a minute at 8 KB). What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.6."
+- version: 0.4.2
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."

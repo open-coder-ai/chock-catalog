@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-destructive-commands",
-  "version": "0.1.1",
-  "description": "Best-effort, on parsed commands (echo ignored). Blocks rm -rf on absolute, ~, $HOME, . or .. paths; recursive Remove-Item/rd/del on drive paths; git push --force or +refspec, reset --hard, clean -f, checkout .; kubectl delete; terraform destroy; aws s3 rm --recursive/rb --force; dropdb; helm uninstall; docker volume rm/prune, system prune; find -delete/-exec rm; shred; truncate; wipefs -a/-o; gcloud with any `delete` operand. branch -D asks. Pre-push hook refuses non-fast-forward pushes.",
+  "version": "0.2.3",
+  "description": "Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths; mv/chmod/chown -R of system dirs; dd to devices, mkfs; account lockouts; force, delete and mirror pushes; history rewrites; IaC destroy; listed cloud and platform deletes; DB drops. Asks: rm -rf off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre-push: no non-ff.",
   "author": {
     "name": "chock-core"
   },

@@ -1,12 +1,12 @@
 id: verify-dependency-exists
 name: "Dependency Allowlist"
-version: "0.0.5"
+version: "0.1.1"
 description: >
-  Allowlist gate for new dependencies; no registry lookup is made. Watches requirements.txt,
-  pyproject.toml ([project] and poetry dependencies), package.json, go.mod; blocks an added name
-  missing from .chock/dependency-allowlist.txt. Not read: -r/-e lines, requirements-dev.txt,
-  poetry groups, [dependency-groups]. Opt-in: fill the allowlist, then `chock enable
-  verify-dependency-exists`. Runs: commit, agent write (vs disk), turn's end (vs HEAD).
+  Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node, Rust, Ruby, PHP, JVM,
+  .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from
+  .chock/dependency-allowlist.txt and asks on a lockfile-only addition. Not read: computed lists, sources, some pattern-read forms (see docs),
+  versions. Opt-in: seed the allowlist, run in rollout observe, then `chock enable verify-dependency-exists`.
+  Runs: commit, agent write, turn's end.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -17,33 +17,27 @@ approval:
 
 hook:
   gate:
-    kind: dependency_allowlist
+    kind: script
     "on": [commit, tool_use]
     action: block
     message: >
-      Unknown dependency blocked: it is not in .chock/dependency-allowlist.txt. This gate checks
-      the allowlist only and makes no registry lookup, so confirm the package exists in the
-      official registry first. If you are an agent, ask a person to add the name; do not edit
-      that file yourself (protect-agent-config). If you are a person, add the name to the file.
+      Unknown dependency blocked: it is not in .chock/dependency-allowlist.txt. This gate checks the
+      allowlist only and makes no registry lookup, so confirm the package exists in its official registry
+      and is the intended one first. If you are an agent, ask a person to add the name; do not edit that
+      file yourself (protect-agent-config). If you are a person, add the name to the file.
     params:
-      # Each format has a dedicated extractor that parses the whole staged file, so
-      # section context is available and only real dependencies are reported. Only names
-      # this commit ADDS are checked -- diffed against HEAD -- so touching a manifest
-      # that already contains an unlisted package does not block the commit (the gate also
-      # runs at agent write, against the file on disk, and at the turn's end, against HEAD).
-      # `chock check` rejects any format without an extractor.
-      manifests:
-      - requirements.txt
-      - pyproject.toml
-      - package.json
-      - go.mod
-      allowlist_file: .chock/dependency-allowlist.txt
+      # One script reads every manifest family and lockfile (implementations/depnames/), so a format the
+      # built-in dependency_allowlist gate cannot parse is covered. It prints each unlisted name as a
+      # finding and the engine keeps only the ones this change adds (against HEAD, the disk or the range
+      # base), so touching a manifest that already holds an unlisted package does not block. A lockfile
+      # name alone exits 3 (ask); any manifest name exits 1 (block); a file it cannot parse asks.
+      script: dependency-manifests.py
 
 compliance:
   mitre_atlas:
   - control: AML.T0010
     coverage: partial
-    note: "allowlist gate over new dependencies; only manifest-visible additions are checked"
+    note: "allowlist gate over new dependencies; only manifest-visible names are checked, a computed list is not read"
   nist_ai_rmf:
   - control: GOVERN-6.1
     coverage: partial
@@ -54,12 +48,12 @@ compliance:
   owasp_asi:
   - control: ASI04
     coverage: partial
-    note: "allowlist gate over newly-added dependencies in requirements.txt, pyproject.toml, package.json, go.mod at commit entry; it checks membership in a curated allowlist, NOT existence in the upstream registry"
+    note: "allowlist gate over newly-added dependencies in the manifests of eleven ecosystems at commit, agent write and turn's end; it checks membership in a curated allowlist, NOT existence in the upstream registry, and not a dependency's source or version"
 
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -98,3 +92,16 @@ changelog:
   changes:
   - "Rename (display name only, id unchanged): 'Verify Dependency Exists' becomes 'Dependency Allowlist', because the gate is an allowlist and never looks a package up in a registry."
   - "Disclosure, no behaviour change: the description says no registry lookup is made and lists what is not read -- -r/-e lines, requirements-dev.txt, poetry dependency groups and [dependency-groups]. The stale 'commit time' notes are replaced by where each check runs (commit, agent write against disk, turn's end against HEAD). The message is addressed to whoever reads it: an agent asks a person; a person adds the name to the file. source_repo points at chock-catalog; the description fits the 500-char budget."
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "Rebuilt on a script gate (implementations/dependency-manifests.py) in place of the built-in dependency_allowlist kind, which reads four formats and cannot be extended from a policy; a manifest holds one gate, so the script also reads those four. It reads requirements*.txt, requirements/*.txt, constraints*.txt (an -r include is judged when the change holds that file), Pipfile, setup.cfg, setup.py (literal lists via ast, never run), pyproject.toml (project, build-system, optional and group tables, Poetry, uv dev, override and constraint lists, PDM, Hatch environments), package.json (also overrides, pnpm.overrides, resolutions, catalogs and npm: aliases; workspace:, file: and link: specs are local), Cargo.toml (dev, build, target, workspace, patch, package renames), Gemfile and gemspec, composer.json, pom.xml, Gradle scripts (versioned coordinates, unversioned ones on a dependency configuration, map notation in any order on a line, versioned plugins) and *.versions.toml catalogs, csproj and packages.config, go.mod (require blocks and replace), mix.exs, pubspec.yaml and Package.swift. Names are normalised per ecosystem: PEP 503 for Python, - and _ alike for Cargo, lowercase elsewhere with an npm scope kept."
+  - "New behaviour: a name that appears only in a lockfile (package-lock.json, yarn.lock, pnpm-lock.yaml, poetry.lock, uv.lock, Cargo.lock, go.sum, Gemfile.lock, composer.lock) and is not listed asks instead of blocking. A pom.xml, csproj or other XML manifest that declares a DOCTYPE or ENTITY, and a manifest too large or too deeply nested to read, is refused unread as a finding keyed by a digest of its text (so any edit to it is new and its names cannot slip past it); a file the reader cannot parse (a syntax error, or newer TOML or Python syntax than the gate's interpreter reads) asks, and is never a silent pass. Allowlist lines may carry a trailing ' # note'. `--seed` prints the names the tracked manifests hold, for a first allowlist."
+  - "Behaviour change: the allowlist is matched after normalisation, so `Foo_Bar` is the listed `foo-bar`; before, only a case-insensitive exact match counted. The message now also says the package must be the intended one."
+  - "Reader fixes from a third review: a pubspec section built through a YAML alias, merge key or repeated key asks; Gradle reads any version form, platform wrappers, Api-suffixed configurations and a map split over lines; a Gemfile is also Gemfile.ci, *.gemfile and a gem( call; mix.exs reads a hex: rename; any folder named requirements, and .pip files, are requirements files; hatch extra-dependencies and build hooks, poetry requires-plugins and tox requires are read; a csproj item is matched without regard to case; quadratic whitespace backtracking is removed."
+  - "Judging detail: Go module paths, Maven coordinates, Hex and pub names are compared as written, not lowercased, because those registries tell `Foo` from `foo` -- an allowlist line for `github.com/BurntSushi/toml` no longer passes the different module `github.com/burntsushi/toml`. A lockfile is asked about only when no manifest of its ecosystem changed beside it (same folder or below): a listed manifest addition is no longer an ask for the transitive names its lock gains."
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Fixes from a fourth, independent review. A requirements.txt saved as UTF-16 or UTF-32 (what PowerShell's `pip freeze >` writes, and pip reads by its BOM) passed the commit gate as noise; a file holding a NUL byte is now a file the reader cannot parse, so it asks. A requirements line whose name pip builds from `${VAR}` was skipped; it is now judged as written, so it is not a listed name. A Gradle `id` followed by a long run of whitespace, and a mix.exs with a long run of blank lines, took quadratic time and hit the 30 s script budget (a refusal, never a pass); both readers are linear now."
+  - "Limits named, no behaviour change: a Poetry, Pipfile, Gemfile or pubspec path dependency is reported by its name (local paths are skipped only in npm, Cargo, pip, Go and mix); a folder named node_modules is never read; a quoted a:b:c string in a Gradle script reads as a coordinate; conda environment.yml, tox.ini and noxfile.py are not read; a lock edited by hand passes beside a changed manifest of its ecosystem."

@@ -30,9 +30,9 @@
       "id": "block-invisible-unicode",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "5eb98043cea85921bdee701c98d3be038efcb36d16e8ca60f9fa2f7b4045c718",
+      "sha256": "1201d4eb43b462d98045009a9142f111626921deb7bdc3fa3973a1128f173b90",
       "source": "local",
-      "artifacts_sha256": "402938537b64c7e62035544849e55e524612488c834963d35694db0c7f963e2d"
+      "artifacts_sha256": "e5ed5291b4a230f56da984bfafc8500a17257cde3e3177da81008a4610633081"
     },
     {
       "id": "block-no-verify",
@@ -110,18 +110,17 @@
       "id": "pin-github-actions",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "d8eca2e21ed5718a93a050966f49c34fe57e8542aec29abc681659cd268fcb97",
+      "sha256": "07a396492ea043e506b7df87cf4864c1075b2f24922c2331cd2ab823962b4baf",
       "source": "local",
-      "artifacts_sha256": "ab196803e753df7386389a95ccbafd9971320aa235e0da031872b37aef709fd8"
+      "artifacts_sha256": "79ddfab425510ecba79c97fc652688c1ac0e0e63cc4be38524c299f6678ef12b"
     },
     {
       "id": "protect-agent-config",
       "version": "0.0.1",
       "managed": false,
       "sha256": "e2616ab80403087fd4d50581cc9934509428c63180d7cdfcd90fc0eb93625584",
-      "source": ".",
-      "artifacts_sha256": "2dce4330f9a44f6ac4f47f6375114cd11aa9c35a9e7a926817624a25c5c8b54c",
-      "source_commit": null
+      "source": "local",
+      "artifacts_sha256": "2dce4330f9a44f6ac4f47f6375114cd11aa9c35a9e7a926817624a25c5c8b54c"
     },
     {
       "id": "protect-ci-workflows",
@@ -151,9 +150,9 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "0f1d55320ec25757398471e9a5f3a8037acbe09519da7e979d5d589b8541e0b9",
+      "sha256": "47ff46faf00e86089e79b868077ac2443e75bb879af7224190477d0c65e3360f",
       "source": "local",
-      "artifacts_sha256": "03d7151bae8c6343fb090375426b8d99e65b62728663db9a590bdc876b776fc4"
+      "artifacts_sha256": "6840e8558f7043ad1eb33759f13a38edc17d46f1ad2bccc41068aac49a96c059"
     },
     {
       "id": "token-efficiency",

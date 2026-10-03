@@ -1,0 +1,216 @@
+suite:
+  id: scan-secrets-entropy-tests-v1
+  policy_id: scan-secrets-entropy
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # The gate ships in observe (action: warn, D15): every case it flags expects `warn`; the script itself
+  # exits ask, which the promotion PR lets through by raising the action. Fixture text is written as YAML
+  # double-quoted scalars with one \x escape inside each key name and token prefix, so this file never
+  # matches its own gate or scan-secrets (roadmap 2.6 trap 7); values are seeded random draws, not credentials.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: "A JSON config gains a client secret no vendor pattern names, as a quoted-colon pair."
+    expect: "Flagged: a high-entropy value assigned to a secret-like key."
+    execute:
+      files:
+        config/app.json: "{\n  \"client_sec\x72et\": \"9ttYNbJpKmrwP7y75Ltg3GXFYdlejRNd\"\n}\n"
+      expect: warn
+  - id: tc-002
+    category: trigger
+    prompt: "A YAML file assigns a camelCase access key a random value."
+    expect: "Flagged."
+    execute:
+      files:
+        deploy/values.yaml: "service:\n  acce\x73sKey: BScWZyXmt3GwdCeWivIOdls4gca5sNyn\n"
+      expect: warn
+  - id: tc-003
+    category: trigger
+    prompt: "A dotenv file sets a database password in its short spelling."
+    expect: "Flagged."
+    execute:
+      files:
+        .env.production: "DB_HOST=db.internal\nDB_PAS\x53WD=9HDmazJGCboiDrAB2KxyDLxUUbLOosew\n"
+      expect: warn
+  - id: tc-004
+    category: trigger
+    prompt: "A Terraform variable default holds a master key."
+    expect: "Flagged."
+    execute:
+      files:
+        infra/main.tf: "variable \"kms\" {\n  default = { maste\x72_key = \"JtXKILQdI4WCL7FotUlTH7v58eBQ12eZ\" }\n}\n"
+      expect: warn
+  - id: tc-005
+    category: trigger
+    prompt: "A config file holds a Stripe test-mode secret key, which the regex tier does not refuse."
+    expect: "Flagged; roadmap HP01 asks rather than blocks for test-mode keys."
+    execute:
+      files:
+        payments/settings.ini: "stripe = sk_t\x65st_Z1TcKNepl0J8PQ1Wa6V974FM\n"
+      expect: warn
+  - id: tc-006
+    category: trigger
+    prompt: "A script embeds a Slack app-level token."
+    expect: "Flagged as a Slack token in its issued shape."
+    execute:
+      files:
+        bot/run.sh: "export SLACK_APP=xa\x70p-1-A0945807302-UBmBO6Y0jxNAliaSmaMU96Gp\n"
+      expect: warn
+  - id: tc-007
+    category: trigger
+    prompt: "A file pastes an AWS bearer-token key id (ABIA), a prefix the regex tier does not know."
+    expect: "Flagged as an AWS key id."
+    execute:
+      files:
+        ops/notes.txt: "rotated id AB\x49AF5QCAJ4XUBR5M088 yesterday\n"
+      expect: warn
+  - id: tc-008
+    category: trigger
+    prompt: "A seed-data file carries a card number that passes the Luhn check."
+    expect: "Flagged; card numbers in fixtures are asked about."
+    execute:
+      files:
+        seed/customers.json: "{\"name\": \"A. Person\", \"pan\": \"4938 5708\x203934 7359\"}\n"
+      expect: warn
+  - id: tc-009
+    category: adversarial
+    prompt: "A Kubernetes Secret stores the password base64-encoded, hiding its shape from a regex."
+    expect: "Flagged: the encoded value is still high-entropy beside a secret key."
+    execute:
+      files:
+        k8s/secret.yaml: "kind: Secret\ndata:\n  pass\x77ord: SlZ1MXpZeFF1M1pQZ1A0Y1B2bnJzTEZpSWVMdGhKdUY=\n"
+      expect: warn
+  - id: tc-010
+    category: adversarial
+    prompt: "Source code sends a bearer token in an Authorization header literal."
+    expect: "Flagged: the auth word is skipped and the value judged."
+    execute:
+      files:
+        src/client.js: "fetch(url, { headers: { Author\x69zation: \"Bearer fDBNKGruMjZ8ryM7giC2JGWXhSkcbWBc\" } })\n"
+      expect: warn
+  - id: tc-011
+    category: adversarial
+    prompt: "A webhook URL carries the token in its query string."
+    expect: "Flagged: the key inside the URL is found."
+    execute:
+      files:
+        ci/notify.sh: "curl -s \"https://hooks.example.invalid/cb?to\x6ben=8JQ5UGoKhoc5jdbcJSkc7c5XzWr6ykGT\"\n"
+      expect: warn
+  - id: tc-012
+    category: adversarial
+    prompt: "The file uses CRLF line endings."
+    expect: "Flagged; line endings do not change what is judged."
+    execute:
+      files:
+        conf/win.ini: "[auth]\r\nclient_sec\x72et = hetsz36ewvZjAWx5OfswhrRGaWUjUKzU\r\n"
+      expect: warn
+  - id: tc-013
+    category: adversarial
+    prompt: "An agent writes a secret and the waiver pragma on the same line."
+    expect: "Flagged: a waiver an agent adds is not honoured; only a line already in HEAD counts."
+    execute:
+      writes:
+        conf/agent.env: "client_sec\x72et=XoOQCfquJhEyI4yqwkL27QwW59sE0xVr  # pragma: allowlist sec\x72et\n"
+      event: tool_use
+      expect: warn
+  - id: tc-014
+    category: adversarial
+    prompt: "A dotenv file holds a dotted token whose segments are random."
+    expect: "Flagged: a dotted value is code only when every segment reads as code."
+    execute:
+      files:
+        svc/.env: "CLIENT_SEC\x52ET=VicN7y7lMTSz.QLCyKj0MF7L8.fbadpRazqI7JxYAlmtPF28nr\n"
+      expect: warn
+  - id: tc-015
+    category: adversarial
+    prompt: "C# source builds a connection string whose password sits inside the string literal."
+    expect: "Flagged: in source code a key inside an open string literal is judged."
+    execute:
+      files:
+        src/Db.cs: "var cs = \"Server=db;User Id=app;Pass\x77ord=fA6lGZfED39xxHxiB4yROVnlJ6R5VOtp;\";\n"
+      expect: warn
+  - id: tc-016
+    category: negative_trigger
+    prompt: "A config assigns a UUID to a service key."
+    expect: "Allowed: UUIDs are identifiers."
+    execute:
+      files:
+        conf/ids.yaml: "servi\x63e_key: 123e4567-e89b-12d3-a456-426614174000\n"
+      expect: allow
+  - id: tc-017
+    category: negative_trigger
+    prompt: "A config references the secret through an environment variable."
+    expect: "Allowed: a reference holds no secret."
+    execute:
+      files:
+        conf/ref.yaml: "client_sec\x72et: ${CLIENT_SECRET}\nsigni\x6eg_key: '{{ vault_signi\x6eg_key }}'\n"
+      expect: allow
+  - id: tc-018
+    category: negative_trigger
+    prompt: "An example file carries a placeholder."
+    expect: "Allowed: placeholder words are not secrets."
+    execute:
+      files:
+        conf/example.env: "CLIENT_SEC\x52ET=your-client-secret-here-replace-me\n"
+      expect: allow
+  - id: tc-019
+    category: negative_trigger
+    prompt: "A lockfile entry carries an integrity digest."
+    expect: "Allowed: digests of the algorithm's exact length are not secrets."
+    execute:
+      files:
+        package-lock.json: "{\"node_modules/x\": {\"integrity\": \"sha512-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==\"}}\n"
+      expect: allow
+  - id: tc-020
+    category: negative_trigger
+    prompt: "Code and config name a secret without holding one."
+    expect: "Allowed: dotted names, calls, variable names, paths and URLs are not secrets."
+    execute:
+      files:
+        conf/app.yaml: "client_sec\x72et: settings.oauth.client_sec\x72et_value\ntoken\x5ffile: /run/sec\x72ets/api-token\napi\x5fkey: PAYMENTS_API_KEY_NAME\ntoke\x6e_uri: https://oauth2.googleapis.com/token\n"
+      expect: allow
+  - id: tc-021
+    category: negative_trigger
+    prompt: "Payment tests use the processors' published test card."
+    expect: "Allowed: documented test card numbers are not personal data."
+    execute:
+      files:
+        tests/test_pay.py: "CARD = \"4242\x204242\x204242\x204242\"\n"
+      expect: allow
+  - id: tc-022
+    category: negative_trigger
+    prompt: "Frontend code carries a Stripe publishable key, which is public by design."
+    expect: "Allowed."
+    execute:
+      files:
+        web/stripe.js: "const stripe = Stripe(\"pk_t\x65st_QYdWYkvcpqDPaEcIqzebGtqQ\")\n"
+      expect: allow
+  - id: tc-023
+    category: negative_trigger
+    prompt: "Python assigns an identifier, not a string literal, to a secret-named variable."
+    expect: "Allowed: in source code only quoted values are string literals."
+    execute:
+      files:
+        app/auth.py: "client_sec\x72et = load_client_sec\x72et_from_vault\nsec\x72et = uRGBDjItVqMGanext1oCZfKttgmceKCH\n"
+      expect: allow
+  - id: tc-024
+    category: behavior
+    prompt: "A YAML block scalar puts the secret on the line after its key."
+    expect: "Not flagged: a key and value split across lines is a stated miss."
+    execute:
+      files:
+        conf/block.yaml: "client_sec\x72et: |\n  1FTPKh1uzmfrU1S4j8CjvYijrlpctoYj\n"
+      expect: allow
+  - id: tc-025
+    category: behavior
+    prompt: "A secret longer than 150 characters is assigned to a secret key."
+    expect: "Not flagged: values over 150 characters are a stated miss."
+    execute:
+      files:
+        conf/long.env: "CLIENT_SEC\x52ET=fA6lGZfED39xxHxiB4yROVnlJ6R5VOtp7CMXxjUnxTLHWrDteuYEPeTQlAjXHXV65T8AGFgmaMxOZcul5x86jRl3dr5hl5dfds59AuMqmn6mrA4M80gwVy3Dv20kmhJR2u8gRgwyssUgl27ONZ9whpY7RFsw4sFM\n"
+      expect: allow

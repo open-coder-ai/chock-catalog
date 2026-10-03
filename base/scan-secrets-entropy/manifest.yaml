@@ -1,0 +1,56 @@
+id: scan-secrets-entropy
+name: "Scan Secrets Entropy"
+version: "0.0.1"
+description: >
+  Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy values
+  (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test
+  keys, Slack/AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split
+  across lines, over 150 chars, cut by # or & when unquoted, under other key names, written like
+  code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parens or concatenation, in XML,
+  or padded with control characters.
+artifact: hook
+enforcement: advise
+mandatory: false
+effects:
+- read_only
+approval:
+  required: false
+
+hook:
+  gate:
+    kind: script
+    "on": [commit, tool_use]
+    action: warn
+    message: >
+      Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose
+      structure checks out, or a card number. Move it to an environment variable or a secret store
+      and reference it; rotate it if it was ever real. A person who has checked a test value keeps
+      it with 'pragma: allowlist secret' on the same line (a person's commit, push or CI honours it;
+      in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
+    params:
+      script: scan-secrets-entropy-gate.py
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-02T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-02'
+  changes:
+  - "Initial draft (roadmap 5.1 HP01 (3), the entropy tier; Wave 3 secret-bearing-files bundle). A script gate on chock_scan's entropy, keyword_values and checksums (EP10), judging every text file a commit or an agent's write touches; the engine keeps only findings the change adds. Ships as action: warn, the per-policy form of rollout observe (D15); the script itself exits ask, the verdict roadmap HP01 gives the entropy tier and Stripe test keys, so the promotion PR only raises the declared action."
+  - "Separate adversarial review, fixed on this branch: a key ending in header (AUTH_HEADER) is judged; a dotted value is code only when every segment reads as code, so dotted tokens (SendGrid, Doppler, Discord-bot styles) are reported; a call or index tail holds identifier punctuation only and a regex needs two signs, so symbol passwords are judged; in source code a value inside any open string literal is judged (connection strings, URL queries, JSON in a string), and string prefixes (f, b, r, @, $), type annotations (TS, Rust, Kotlin, Python, Go var) and #define are read; escaped quotes are unescaped (notebook cells); an auth scheme word (SSWS, OAuth) or a parameter name (token=) before the value is skipped; NUL characters are dropped instead of skipping the file (UTF-16 text is read); an entropy finding is absorbed only by a vendor token equal to its value. tools/mechanism.py no longer counts a warn-only write gate's own script as a command guard, so the policy is listed as advisory (warn-only gate). Stated, not fixed: an unquoted value is cut at # or & (keyword_values), so a dotenv value with those symbols is judged only if its first part is 16+ characters; at 16-23 characters entropy's floor misses some random values (about 5% of base62, more for hex or lowercase); a card number's key is a plain digest a BIN can brute-force."
+  - "Second review round, fixed: Go's var/const rewrite applies to .go files only (C# const string Name = was missed); the annotation rewrite needs a statement start or a declaring keyword and every quantifier is bounded and possessive (a padded 1 MiB line was quadratic); a scheme or name= prefix is stripped only when the whole value is not a digest or reference; an f-string interpolation of a code name ({self._id!r}) is a reference; binary content (NUL or replacement characters over 1 in 100, UTF-16 excepted) is not judged, a few stray NULs are dropped. tools/gen_policy_docs.py describes a warn-only gate as one (it runs and prints, never refuses) instead of as rule text. Stated: a value wrapped in a call, parentheses or concatenation (os.getenv default, || fallback) and XML element or attribute values are missed; a text file padded with NULs reads as binary."
+  - "Third review round, fixed: a file is binary by its NUL and C0 control characters, never by U+FFFD, so cp1252/ISO-8859-1 text (Java .properties) is judged and a replacement character hides nothing; UTF-16 is told by NULs on one parity, so zero-filled binaries are skipped and UTF-16 CJK text is read; interpolated names are removed from a value and the rest judged, instead of the whole value counting as a reference; type annotations with a lifetime (&'static str) or a union (str | None) are read. The generated docs table names a warn-only gate's surfaces and reach. Stated: a file padded with control characters over 1 in 100 is skipped as binary."
+  - "Fourth review round: no blocking finding. The binary test also runs after a UTF-16 read, so a binary whose NULs fall on one parity is not judged as text. Stated: a UTF-16 file of mostly CJK text can read as binary and is then skipped."

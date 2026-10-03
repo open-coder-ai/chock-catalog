@@ -28,6 +28,8 @@ PATHS = [
     ".chock/security.json",
     ".chock/agentic-security.json",
     ".git/hooks/pre-commit",
+    ".git/config",
+    ".git//config",
     ".agents/policies/scan-secrets/implementations/scan.py",
     "sub/dir/AGENTS.md",
     ".claude\\settings.json",

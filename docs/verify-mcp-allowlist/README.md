@@ -10,14 +10,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 65 total, 65 executable |
+| **Eval cases** | 108 total, 108 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass. Script gate (commit, tool use incl. turn's end) parses written MCP configs (.mcp.json, .cursor, .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs refused.
+Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host). Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs: a server off the list, or with other command, args or url host, refuses; unpinned or shell launchers, http, literal credentials, old versions only warn. Misses: aliases, scripts, gitignored files, other clients.
 
 ## What it solves
 
@@ -33,7 +33,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> An MCP server that is not on the allowlist is configured, or an MCP config cannot be parsed. Only servers listed, by name and exact command/args/url, in implementations/verify-mcp-allowlist.py may be added. Ask a person to review the server and add it to that list; do not edit the allowlist yourself. Make the config valid JSON (TOML for .codex) before writing it.
+> An MCP server is not on the allowlist, differs from its allowlisted entry, or its config cannot be parsed. Only servers listed in .chock/mcp-allowlist.json (name with launcher and exact arguments, or url host) may be configured. Pin it to an exact version or image digest, run no shell command line, use https and carry credentials only as references (these rules warn for now). Ask a person to review the server and edit the allowlist from their own shell; do not edit the allowlist yourself.
 
 ## Which primitive it becomes
 
@@ -55,7 +55,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The allowlist is the policy, and it ships inside the guard script itself rather than a separate file: guard-mode evals run against an empty sandbox repo, so an allowlist that lived anywhere else could never be exercised by this suite. Add your own approved servers as `name<TAB>source` lines; protect-agent-config's own protected-path coverage of every policy's `implementations/` already keeps a shell edit to this list honest, gated behind the same `chock: approved-config-change` marker. Covers Claude Code's `.mcp.json` only -- agentseam has no recorded MCP-config-path for the other agents it lists, and this policy does not guess at one.
+The allowlist is `.chock/mcp-allowlist.json`, empty by default: a `servers` list whose entries are a `name` with a `launcher` and the `spec` (its arguments, joined by single spaces), or a `name` with a `url_host`. An agent is judged by the copy HEAD holds and cannot grow it; a person edits it from their own shell and commits it. Beside it the gate warns, while the rules are observed, about unpinned or shell launchers, http urls, literal credentials, denied options and packages below their floor (the tables in `implementations/data/`). It reads thirteen client config paths, not only `.mcp.json`; a shell write is checked for the files that hold nothing but servers.
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 

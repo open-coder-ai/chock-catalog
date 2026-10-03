@@ -38,3 +38,8 @@ def after(items: list[str], word: str) -> str:
 def abbreviates(flag: str, full: str, floor: int) -> bool:
     """git and PowerShell accept any unambiguous prefix of a long option; `floor` is the shortest that is."""
     return len(flag) >= floor and full.startswith(flag)
+
+
+def taken(arg: str) -> int:
+    """How many words a short-option cluster takes: each `o` or `O` (`-co pipefail`, `-Oc extglob`, `+o errexit`) takes the next."""
+    return 0 if arg[1:2] == "-" else sum(ch in "oO" for ch in arg[1:])

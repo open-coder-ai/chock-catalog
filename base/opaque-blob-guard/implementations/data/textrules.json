@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "xz": "https://nvd.nist.gov/vuln/detail/CVE-2024-3094",
+    "roadmap": "open-coder-ai/org-plan chock/plan/security-coverage-roadmap.md, NP27 opaque-blob-guard"
+  },
+  "patterns": [
+    {
+      "id": "tr-swap-pipe",
+      "why": "byte-swapping tr (escaped sets) piped onward",
+      "anchor": "\\btr[ \\t]+[\"']",
+      "window": 500,
+      "after": "tr[ \\t]+(?:\"[^\"\\n]*\\\\[-t][^\"\\n]*\"|'[^'\\n]*\\\\[-t][^'\\n]*')[ \\t]+(?:\"[^\"\\n]*\\\\[-t][^\"\\n]*\"|'[^'\\n]*\\\\[-t][^'\\n]*')[ \\t]*\\|"
+    },
+    {
+      "id": "decode-eval",
+      "why": "a decompressor or decoder piped into a shell, interpreter, eval, source or dot",
+      "anchor": "\\|[ \\t]*(?:(?:\\S{0,40}/)?(?:env|sudo|exec|xargs)[ \\t]+)*(?:\\S{0,40}/)?(?:sh|bash|dash|zsh|ksh|python3?|perl|ruby|node)\\b|\\|[ \\t]*(?:eval|source|\\.)(?:[ \\t]|;|\\n|$)",
+      "window": 2000,
+      "before": "\\b(?:xz|lzma|gzip|bzip2|zstd|lz4|brotli)\\b[^|\\n]{0,80}?[ \\t]--?(?:\\w{0,8}d\\w{0,8}|decompress|uncompress)\\b|\\b(?:unxz|xzcat|unlzma|lzcat|gunzip|zcat|bunzip2|bzcat|unzstd|zstdcat|unlz4|lz4cat|uncompress|uudecode)\\b|\\bbase64[ \\t]+(?:-d|-D|--decode)|\\bopenssl[ \\t]+(?:enc|zlib)[ \\t]+-d|\\bxxd[ \\t]+-\\w*r|\\bunzip[ \\t]+-\\w*p|\\btar[ \\t]+-?\\w*x\\w*O"
+    },
+    {
+      "id": "slice-eval",
+      "why": "a byte slice (head -c, tail -c, dd) piped into a shell, interpreter, eval, source or dot",
+      "anchor": "\\|[ \\t]*(?:(?:\\S{0,40}/)?(?:env|sudo|exec|xargs)[ \\t]+)*(?:\\S{0,40}/)?(?:sh|bash|dash|zsh|ksh|python3?|perl|ruby|node)\\b|\\|[ \\t]*(?:eval|source|\\.)(?:[ \\t]|;|\\n|$)",
+      "window": 2000,
+      "before": "\\b(?:head|tail)[ \\t]+-\\w*c|\\bdd[ \\t]+\\w+="
+    },
+    {
+      "id": "subst-eval",
+      "why": "eval or a shell run over a command substitution that decodes data or reads a test file",
+      "anchor": "\\beval[ \\t]+[\"']?(?:\\$\\(|`)|(?<![\\w.-])(?:bash|sh|source|\\.)[ \\t]+<\\(|\\b(?:bash|sh)[ \\t]+-c[ \\t]+[\"']?\\$\\(",
+      "window": 1500,
+      "after": "[^\\n]{0,1500}?(?:\\b(?:xz|lzma|gzip|bzip2|zstd|lz4|brotli)\\b[^|\\n]{0,80}?[ \\t]--?(?:\\w{0,8}d\\w{0,8}|decompress|uncompress)\\b|\\b(?:unxz|xzcat|unlzma|lzcat|gunzip|zcat|bunzip2|bzcat|unzstd|zstdcat|unlz4|lz4cat|uncompress|uudecode)\\b|\\bbase64[ \\t]+(?:-d|-D|--decode)|\\bopenssl[ \\t]+(?:enc|zlib)[ \\t]+-d|\\bxxd[ \\t]+-\\w*r|\\bunzip[ \\t]+-\\w*p|\\btar[ \\t]+-?\\w*x\\w*O|(?:\\btests?|\\btestdata|\\bfixtures?)/)"
+    },
+    {
+      "id": "run-test-file",
+      "why": "a shell or source over a test or fixture file",
+      "anchor": "(?<![\\w./-])(?:source|sh|bash|\\.)[ \\t]+[\"']?",
+      "window": 200,
+      "after": "(?:source|sh|bash|\\.)[ \\t]+[\"']?[^\\s\"']{0,80}?(?:\\btests?|\\btestdata|\\bfixtures?)/"
+    }
+  ]
+}

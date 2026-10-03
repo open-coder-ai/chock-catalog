@@ -1,0 +1,191 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "r12": "open-coder-ai/org-plan:discovery/2026-10-01-security-research-12-model-review-techniques-to-deterministic-guards.md",
+    "roadmap": "open-coder-ai/org-plan:chock/plan/security-coverage-roadmap.md"
+  },
+  "guards": [
+    {
+      "id": "bound-compare",
+      "group": "check",
+      "label": "a length, size or count compared in a condition",
+      "pattern": "\\b(?:if|elif|while|unless|assert|guard|when)\\b.{0,120}\\b(?i:len|size|length|count|sizeof)\\w{0,12}\\b.{0,80}[<>]=?|\\b(?:if|elif|while|unless|assert|guard|when)\\b.{0,120}[<>]=?.{0,60}\\b(?i:len|size|length|count|sizeof)\\b"
+    },
+    {
+      "id": "null-compare",
+      "group": "check",
+      "label": "a null, nil, None or undefined comparison in a condition",
+      "pattern": "\\b(?:if|elif|while|unless|assert|guard|when)\\b.{0,100}(?:[!=]==?\\s*(?:null|nil|None|undefined|NULL|nullptr)\\b|\\bis\\s+(?:not\\s+)?None\\b|\\b(?:null|nil|None|undefined|NULL|nullptr)\\s*[!=]==?)"
+    },
+    {
+      "id": "failure-exit",
+      "group": "check",
+      "label": "a return, raise or throw on a failed check",
+      "pattern": "\\bif\\b.{0,120}:\\s*(?:return|raise|throw|abort|exit)\\b|\\bif\\b\\s*\\(.{0,120}\\)\\s*(?:return|goto|exit|abort)\\b|\\bif\\b.{0,120}\\{\\s*(?:return|throw|raise|exit|abort)\\b|^\\s*(?:raise|throw)\\b(?!\\s+(?:NotImplemented|new\\s+NotImplemented|new\\s+UnsupportedOperation))|\\bthrow\\s+new\\b(?!\\s+(?:NotImplemented|UnsupportedOperation))|\\breturn\\s+(?:nil,\\s*)?(?:err|fmt\\.Errorf|errors\\.(?:New|Wrap\\w*))\\b|\\b(?:abort|HTTPException|sendStatus|status)\\s*\\(\\s*40[0139]\\b"
+    },
+    {
+      "id": "assertion",
+      "group": "check",
+      "label": "an assert or precondition check",
+      "pattern": "^\\s*assert\\b|\\bassert\\w{0,10}!?\\s*\\(|\\bstatic_assert\\b|\\bdebug_assert!?|\\bDebug\\.Assert\\b|\\bPreconditions\\.check\\w+\\(|\\bObjects\\.requireNonNull\\b"
+    },
+    {
+      "id": "auth-annotation",
+      "group": "registration",
+      "label": "an authentication, authorization or CSRF decorator or annotation",
+      "pattern": "@(?:login_required|requires_auth|auth_required|csrf_protect|permission_required|user_passes_test|jwt_required|token_required|roles_required|requires_roles|permission_classes|authentication_classes|PreAuthorize|PostAuthorize|Secured|RolesAllowed|Authorize|Authenticated|RequiresPermissions|RequiresRoles)\\b|\\[(?:Authorize|ValidateAntiForgeryToken|RequireHttps)\\b"
+    },
+    {
+      "id": "middleware-registration",
+      "group": "registration",
+      "label": "a middleware or request-filter registration",
+      "pattern": "\\b(?:app|router|server|api|application|bp|blueprint|r|e|g|mux|engine|group)\\.[Uu]se\\s*\\(|->middleware\\s*\\(|\\bprotect_from_forgery\\b|@UseGuards\\b|\\bMIDDLEWARE(?:_CLASSES)?\\s*=|\\badd_middleware\\s*\\(|\\b\\w{0,40}Middleware\\b|^\\s*use\\s+[A-Z]\\w*|\\bbefore_(?:request|action|filter)\\b|\\.(?:UseAuthentication|UseAuthorization|UseHttpsRedirection|UseHsts|UseCors)\\s*\\(|\\b(?:helmet|csurf)\\s*\\("
+    },
+    {
+      "id": "sanitizer-call",
+      "group": "sanitize",
+      "label": "an escape or sanitizer call",
+      "pattern": "\\b(?:bleach\\.clean|DOMPurify\\.sanitize|html\\.escape|shlex\\.quote|markupsafe\\.escape|escapeHtml|escape_html|escapeshellarg|escapeshellcmd|htmlspecialchars|htmlentities|strip_tags)\\b|\\bsaniti[sz]\\w*|\\bescape\\w{0,20}\\s*\\("
+    },
+    {
+      "id": "path-check",
+      "group": "path",
+      "label": "a path normalisation or prefix check",
+      "pattern": "\\b(?:normpath|realpath|abspath|commonpath|is_relative_to|secure_filename|safe_join|getCanonicalPath|toRealPath|startsWith|startswith|HasPrefix|normalize)\\s*\\(|\\b(?:filepath\\.Clean|filepath\\.Rel|path\\.resolve)\\b"
+    },
+    {
+      "id": "tls-verify-true",
+      "group": "tls",
+      "label": "TLS verification set on",
+      "pattern": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|\\bcheck_hostname\\s*=\\s*True\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b|\\bverify\\s*=\\s*(?!False\\b|false\\b|None\\b|0\\b)[\\\"'\\w]"
+    }
+  ],
+  "mitigations": [
+    {
+      "id": "stack-protector",
+      "label": "stack protector flag",
+      "trigger": "removed",
+      "removed": "(?<![\\w-])-fstack-protector(?:-strong|-all|-explicit)?(?![\\w-])",
+      "kept": "^(?!.*(?:-fno-stack-protector)).*(?:(?<![\\w-])-fstack-protector(?:-strong|-all|-explicit)?(?![\\w-]))",
+      "fix": "restore -fstack-protector-strong"
+    },
+    {
+      "id": "fortify-source",
+      "label": "_FORTIFY_SOURCE level 2 or 3",
+      "trigger": "removed",
+      "removed": "_FORTIFY_SOURCE[=\\s]*[123]\\b",
+      "kept": "^(?!.*(?:-U_FORTIFY_SOURCE)).*(?:_FORTIFY_SOURCE[=\\s]*[23]\\b)",
+      "fix": "keep -D_FORTIFY_SOURCE=2 (with optimisation on)"
+    },
+    {
+      "id": "pie",
+      "label": "position-independent executable flag",
+      "trigger": "removed",
+      "removed": "(?<![\\w-])(?:-fPIE|-fpie|-pie)(?![\\w-])|-Wl,-pie\\b",
+      "kept": "^(?!.*(?:-no-pie|-fno-pie|-fno-PIE)).*(?:(?<![\\w-])(?:-fPIE|-fpie|-pie)(?![\\w-])|-Wl,-pie\\b)",
+      "fix": "restore -fPIE at compile time and -pie at link time"
+    },
+    {
+      "id": "relro",
+      "label": "RELRO linker flag",
+      "trigger": "removed",
+      "removed": "-z[,\\s]+relro\\b",
+      "fix": "restore -Wl,-z,relro"
+    },
+    {
+      "id": "bind-now",
+      "label": "BIND_NOW linker flag",
+      "trigger": "removed",
+      "removed": "-z[,\\s]+now\\b",
+      "fix": "restore -Wl,-z,now"
+    },
+    {
+      "id": "noexecstack",
+      "label": "non-executable stack linker flag",
+      "trigger": "removed",
+      "removed": "-z[,\\s]+noexecstack\\b",
+      "kept": "^(?!.*(?:-z[,\\s]+execstack)).*(?:-z[,\\s]+noexecstack\\b)",
+      "fix": "restore -Wl,-z,noexecstack"
+    },
+    {
+      "id": "hsts",
+      "label": "Strict-Transport-Security response header",
+      "trigger": "removed",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:strict[-_]transport[-_]security|secure_hsts_seconds)\\b",
+      "kept": "(?i)^(?!.*(?:max-age\\s*=\\s*[\\\"']?0+\\b|secure_hsts_seconds\\s*=\\s*[\\\"']?0+\\b)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:strict[-_]transport[-_]security|secure_hsts_seconds)\\b",
+      "fix": "keep the Strict-Transport-Security header set, or set it again in the same hunk"
+    },
+    {
+      "id": "csp",
+      "label": "Content-Security-Policy response header",
+      "trigger": "removed",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:content[-_]security[-_]policy)\\b",
+      "kept": "(?i)^(?!.*(?:(?:script-src|default-src)\\b[^;]*(?:'unsafe-(?:inline|eval)'|\\*)|Report-Only)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:content[-_]security[-_]policy)\\b",
+      "fix": "keep the Content-Security-Policy header set, or set it again in the same hunk"
+    },
+    {
+      "id": "x-frame-options",
+      "label": "X-Frame-Options response header",
+      "trigger": "removed",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]frame[-_]options)\\b",
+      "kept": "(?i)^(?!.*(?:ALLOWALL|ALLOW-FROM)|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]frame[-_]options)\\b",
+      "fix": "keep the X-Frame-Options header set, or set it again in the same hunk"
+    },
+    {
+      "id": "x-content-type-options",
+      "label": "X-Content-Type-Options response header",
+      "trigger": "removed",
+      "removed": "(?i)^(?!.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]content[-_]type[-_]options|secure_content_type_nosniff)\\b",
+      "kept": "(?i)^(?!.*(?:secure_content_type_nosniff\\s*=\\s*False|[\\\"']none[\\\"'])|.*\\b(?:remove|delete|del|unset|pop|clear|disable)(?:_?headers?)?\\b).*\\b(?:x[-_]content[-_]type[-_]options|secure_content_type_nosniff)\\b",
+      "fix": "keep the X-Content-Type-Options header set, or set it again in the same hunk"
+    },
+    {
+      "id": "cookie-secure",
+      "label": "cookie Secure attribute",
+      "trigger": "removed",
+      "removed": "(?i)\\bsecure[\\\"']?\\s*[:=]\\s*(?:true|1)\\b|\\b(?:session|csrf)_cookie_secure\\s*=\\s*true\\b|;\\s*secure\\b|\\.setSecure\\(\\s*true\\s*\\)",
+      "fix": "keep the Secure attribute on"
+    },
+    {
+      "id": "cookie-httponly",
+      "label": "cookie HttpOnly attribute",
+      "trigger": "removed",
+      "removed": "(?i)\\bhttp_?only[\\\"']?\\s*[:=]\\s*(?:true|1)\\b|\\bsession_cookie_httponly\\s*=\\s*true\\b|;\\s*httponly\\b|\\.setHttpOnly\\(\\s*true\\s*\\)",
+      "fix": "keep the HttpOnly attribute on"
+    },
+    {
+      "id": "cookie-samesite",
+      "label": "cookie SameSite attribute",
+      "trigger": "removed",
+      "removed": "(?i)\\bsame_?site[\\\"']?\\s*[:=]\\s*[\\\"']?(?:lax|strict|true)\\b|\\bsession_cookie_samesite\\s*=\\s*[\\\"']?(?:lax|strict)\\b|;\\s*samesite=(?:lax|strict)\\b",
+      "fix": "keep SameSite at Lax or Strict"
+    },
+    {
+      "id": "tls-verify",
+      "label": "TLS certificate verification",
+      "trigger": "replaced-by-weak",
+      "removed": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:True|true|1)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*true\\b|\\bInsecureSkipVerify\\s*:\\s*false\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:1|2|true)\\b|\\bcheck_hostname\\s*=\\s*True\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?1\\b|\\bssl\\.CERT_REQUIRED\\b",
+      "weak": "\\bverify(?:_ssl|_certs?|_hostname|_peer|_mode)?[\\\"']?\\s*[:=]\\s*(?:False|false|0)\\b|\\brejectUnauthorized[\\\"']?\\s*:\\s*false\\b|\\bInsecureSkipVerify\\s*:\\s*true\\b|CURLOPT_SSL_VERIFY(?:PEER|HOST)[\\\"']?\\s*,\\s*(?:0|false)\\b|NODE_TLS_REJECT_UNAUTHORIZED\\s*=\\s*[\\\"']?0\\b|\\bcheck_hostname\\s*=\\s*False\\b|\\bCERT_NONE\\b",
+      "fix": "keep verification on and trust the issuing CA with a bundle path instead"
+    },
+    {
+      "id": "row-level-security",
+      "label": "row-level security",
+      "trigger": "removed-or-added",
+      "removed": "(?i)^(?!.*\\b(?:NO\\s+FORCE|DISABLE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b).*(?:\\b(?:ENABLE|FORCE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bCREATE\\s+POLICY\\b)",
+      "kept": "(?i)^(?!.*(?:\\b(?:NO\\s+FORCE|DISABLE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bUSING\\s*\\(\\s*true\\s*\\))).*(?:\\b(?:ENABLE|FORCE)\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bCREATE\\s+POLICY\\b)",
+      "weak": "(?i)\\bDISABLE\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bNO\\s+FORCE\\s+ROW\\s+LEVEL\\s+SECURITY\\b|\\bDROP\\s+POLICY\\b",
+      "fix": "keep row-level security enabled and re-create the policy in the same change"
+    },
+    {
+      "id": "file-mode",
+      "label": "restrictive file mode",
+      "trigger": "replaced-by-weak",
+      "removed": "(?i)\\b(?:chmod\\w*|fchmod|FileMode|mkdir\\w*|MkdirAll|OpenFile|WriteFile|defaultMode)\\b.{0,60}\\b0?o?[0-7][0-7][0145]\\b|\\bmode\\b\\W{0,4}0o?[0-7][0-7][0145]\\b",
+      "weak": "(?i)\\b(?:chmod\\w*|fchmod|FileMode|mkdir\\w*|MkdirAll|OpenFile|WriteFile|defaultMode)\\b.{0,60}\\b0?o?(?:[0-7][0-7][2367])\\b|\\bmode\\b\\W{0,4}0o?[0-7][0-7][2367]\\b|\\b(?:chmod)\\b.{0,30}\\b(?:[ugoa]*\\+w|a=rwx|[ugoa]+\\+rwx)\\b",
+      "fix": "grant the narrowest mode that works (for example 750 or 640), never world-writable"
+    }
+  ]
+}

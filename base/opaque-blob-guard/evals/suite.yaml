@@ -1,0 +1,218 @@
+suite:
+  id: opaque-blob-guard-tests-v1
+  policy_id: opaque-blob-guard
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # The gate ships at action: warn (rollout observe, D15): a change the script would ask about expects
+  # `warn`, never `block`. Eval files are text, so the signatures here are the ASCII-only ones (zip,
+  # wasm, ELF); the compressed formats (xz, gzip, bzip2, zstd) are proven with real bytes in
+  # tests/policies/test_opaque_blob_magic.py. The sha256 in tc-010 is of the exact bytes the case writes.
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A commit adds an archive under testdata/ with a .txt name (roadmap xz-in-testdata, the signature is what counts).
+    expect: Warned; the first bytes are a zip archive, whatever the extension says.
+    provenance: authored
+    execute:
+      files:
+        testdata/corrupt_bad_data.txt: "PK\x03\x04\x14\x00\x00\x00\x08\x00 payload"
+      event: commit
+      expect: warn
+  - id: tc-002
+    category: trigger
+    prompt: A commit adds a WebAssembly module under fixtures/ (roadmap wasm-in-fixtures).
+    expect: Warned; a wasm module is code a reader cannot review.
+    provenance: authored
+    execute:
+      files:
+        fixtures/plugin.dat: "\x00asm\x01\x00\x00\x00\x01\x05\x01\x60\x00\x01\x7f"
+      event: commit
+      expect: warn
+  - id: tc-003
+    category: trigger
+    prompt: A commit adds an m4 macro that decompresses a test file and pipes it to the shell (roadmap m4-eval-extract).
+    expect: Warned; build text that decodes and evaluates data is the xz backdoor's carrier.
+    provenance: authored
+    execute:
+      files:
+        m4/build-to-host.m4: |
+          AC_DEFUN([gl_BUILD_TO_HOST], [
+            gl_path_map='tr "\t \-_" " \t_\-"'
+            tail -c +31233 tests/files/bad-3-corrupt_lzma2.xz | xz -F raw --lzma1 -dc | sh
+          ])
+      event: commit
+      expect: warn
+  - id: tc-004
+    category: trigger
+    prompt: A commit replaces gradle-wrapper.jar and leaves gradle-wrapper.properties alone (roadmap gradle-jar-changed-without-sum).
+    expect: Warned; a changed wrapper jar needs a new distributionSha256Sum in the same change.
+    provenance: authored
+    execute:
+      head_files:
+        gradle/wrapper/gradle-wrapper.properties: "distributionUrl=https://services.example.com/gradle-8.0-bin.zip\n"
+      files:
+        gradle/wrapper/gradle-wrapper.jar: "PK\x03\x04\x14\x00\x00\x00\x08\x00 wrapper"
+      event: commit
+      expect: warn
+  - id: tc-005
+    category: trigger
+    prompt: A commit adds an ELF executable under tests/ named like a JSON file.
+    expect: Warned; the signature decides, not the name.
+    provenance: authored
+    execute:
+      files:
+        tests/data/sample.json: "\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+      event: commit
+      expect: warn
+  - id: tc-006
+    category: trigger
+    prompt: A configure script evaluates the output of a command that reads a test file.
+    expect: Warned; configure is judged wherever it sits.
+    provenance: authored
+    execute:
+      files:
+        configure: |
+          #!/bin/sh
+          eval "$(cat tests/files/payload.txt)"
+      event: commit
+      expect: warn
+  - id: tc-007
+    category: adversarial
+    prompt: The allowlist names the right path with the wrong sha256.
+    expect: Warned; an entry matches only when both the path and the sha256 match the file.
+    provenance: authored
+    execute:
+      files:
+        tests/data/fixture.zip: "PK\x03\x04fixture\n"
+        .chock/blob-allowlist.txt: "0000000000000000000000000000000000000000000000000000000000000000  tests/data/fixture.zip\n"
+      event: commit
+      expect: warn
+  - id: tc-008
+    category: adversarial
+    prompt: The allowlist holds one good entry and one malformed line.
+    expect: Warned; one malformed line and the whole list is ignored, so the blob is asked about.
+    provenance: authored
+    execute:
+      files:
+        tests/data/fixture.zip: "PK\x03\x04fixture\n"
+        .chock/blob-allowlist.txt: |
+          4d6254238f9564d4ed95c7dafb8117534447338c62070424f38a8d4e9ab96cc9  tests/data/fixture.zip
+          this line is not an entry
+      event: commit
+      expect: warn
+  - id: tc-009
+    category: adversarial
+    prompt: The allowlist has the right sha256 under a different path.
+    expect: Warned; the same bytes at another path are not approved.
+    provenance: authored
+    execute:
+      files:
+        tests/data/fixture.zip: "PK\x03\x04fixture\n"
+        .chock/blob-allowlist.txt: "4d6254238f9564d4ed95c7dafb8117534447338c62070424f38a8d4e9ab96cc9  tests/data/other.zip\n"
+      event: commit
+      expect: warn
+  - id: tc-010
+    category: negative_trigger
+    prompt: A person commits a binary fixture together with an allowlist entry holding its path and sha256.
+    expect: Allowed; both the path and the sha256 match.
+    provenance: authored
+    execute:
+      files:
+        tests/data/fixture.zip: "PK\x03\x04fixture\n"
+        .chock/blob-allowlist.txt: |
+          # fixture for the archive reader test
+          4d6254238f9564d4ed95c7dafb8117534447338c62070424f38a8d4e9ab96cc9  tests/data/fixture.zip
+      event: commit
+      expect: allow
+  - id: tc-011
+    category: negative_trigger
+    prompt: A commit adds plain-text fixtures and tests.
+    expect: Allowed; readable files are not judged.
+    provenance: authored
+    execute:
+      files:
+        tests/test_parse.py: |
+          def test_parse():
+              assert parse("a=1") == {"a": "1"}
+        testdata/input.txt: |
+          a=1
+          b=2
+      event: commit
+      expect: allow
+  - id: tc-012
+    category: negative_trigger
+    prompt: A commit adds an archive outside the scoped folders.
+    expect: Allowed; the policy judges tests, fixtures, testdata, spec, m4, vendor and the gradle wrapper only (a stated limit).
+    provenance: authored
+    execute:
+      files:
+        assets/bundle.zip: "PK\x03\x04bundle"
+      event: commit
+      expect: allow
+  - id: tc-013
+    category: negative_trigger
+    prompt: A commit adds an m4 macro with ordinary case conversion and a decompress-to-file step.
+    expect: Allowed; nothing is piped into a shell or eval.
+    provenance: authored
+    execute:
+      files:
+        m4/case.m4: |
+          AC_DEFUN([X_UPPER], [
+            echo "$1" | tr '[a-z]' '[A-Z]' | sed 1d
+            xz -d < data.xz > data
+          ])
+      event: commit
+      expect: allow
+  - id: tc-014
+    category: behavior
+    prompt: A commit replaces the wrapper jar and adds a new distributionSha256Sum in the same change.
+    expect: Allowed; the change carries a new sum.
+    provenance: authored
+    execute:
+      head_files:
+        gradle/wrapper/gradle-wrapper.properties: "distributionUrl=https://services.example.com/gradle-8.0-bin.zip\n"
+      files:
+        gradle/wrapper/gradle-wrapper.jar: "PK\x03\x04\x14\x00\x00\x00\x08\x00 wrapper"
+        gradle/wrapper/gradle-wrapper.properties: |
+          distributionUrl=https://services.example.com/gradle-8.1-bin.zip
+          distributionSha256Sum=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      event: commit
+      expect: allow
+  - id: tc-015
+    category: behavior
+    prompt: An agent writes a file starting with an archive signature into fixtures/ with the Write tool.
+    expect: Warned at tool use; the pending write is judged as the bytes it will become.
+    provenance: authored
+    execute:
+      writes:
+        fixtures/blob.dat: "PK\x03\x04\x14\x00\x00\x00\x08\x00 payload"
+      event: tool_use
+      expect: warn
+  - id: tc-016
+    category: adversarial
+    prompt: At the end of a turn an agent has left a binary fixture and an allowlist entry for it, both new.
+    expect: Warned; an agent's change cannot approve its own blob, only entries already committed count.
+    provenance: authored
+    execute:
+      writes:
+        tests/data/fixture.zip: "PK\x03\x04fixture\n"
+        .chock/blob-allowlist.txt: "4d6254238f9564d4ed95c7dafb8117534447338c62070424f38a8d4e9ab96cc9  tests/data/fixture.zip\n"
+      event: stop
+      expect: warn
+  - id: tc-017
+    category: behavior
+    prompt: At the end of a turn an agent has left a binary fixture whose allowlist entry a person already committed.
+    expect: Allowed; the committed entry matches the path and the sha256.
+    provenance: authored
+    execute:
+      head_files:
+        .chock/blob-allowlist.txt: "4d6254238f9564d4ed95c7dafb8117534447338c62070424f38a8d4e9ab96cc9  tests/data/fixture.zip\n"
+      writes:
+        tests/data/fixture.zip: "PK\x03\x04fixture\n"
+      event: stop
+      expect: allow

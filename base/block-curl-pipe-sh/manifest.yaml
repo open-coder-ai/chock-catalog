@@ -1,13 +1,13 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.0.6"
+version: "0.1.2"
 description: >
-  Best-effort: refuses curl/wget/lynx/aria2c/iwr/irm piped into
-  sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node (by path, quoted, in a subshell, after
-  bare sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)", bash <(curl ...), `| iex`. Probed
-  misses: fetch right after a quote (bash -c "curl ...", ssh), eval "$(curl ...)", source
-  <(curl ...), wrapper options (sudo -u, env VAR=, /usr/bin/env), doas,
-  csh/tcsh/mksh/lua/php/pwsh/deno/busybox, su -c, $SHELL, download then run. Friction only.
+  Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
+  (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
+  iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker
+  exec bodies, or downloaded and run in one command with no checksum or signature step.
+  nc/socat/one-liner reads ask. Misses: aliases, functions, outside variables, encoded text,
+  renamed downloads. Friction only.
 artifact: rule
 enforcement: advise
 compliance:
@@ -15,8 +15,8 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(remote_exec): fetch(curl|wget|iwr|irm) piped/substituted into interpreter(sh|bash|python|perl|node|iex)
-    allow: download_to_file, fetch|non_interpreter(jq|tar); prefer: curl -o file; read; run
+    block(remote_exec): fetch(curl|wget|iwr|irm) piped|substituted|here-string|run-after-download into interpreter(sh|bash|python|php|pwsh|source|eval|iex), quoted bodies too; ask: nc|socat|net one-liner
+    allow: download_to_file, fetch|non_interpreter(jq|tar|gpg), download+verify(sha256sum -c|gpg --verify)+run; prefer: curl -o file; read; verify; run
 effects:
 - read_only
 approval:
@@ -39,6 +39,27 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: it skips a `--` and the shell options between `-c` and the script (`bash -c -- '...'`, `sh -c -x '...'`, `eval -- '...'`), reads `name=(...)`, `name+=` and `name[i]=` assignments, looks through the `{` that opens a function body or group, splits a line whose quotes do not balance in one pass, and in a short-option cluster every `o` or `O` takes the next word while a lone `-` or `+` ends the options. Closed here: it now refuses `eval -- $(curl ...)` in double quotes, a documented limit until now; arrays and += stay unread when the command is built from the array expansion. See protect-agent-config 0.2.7."
+- version: 0.1.1
+  date: '2026-10-02'
+  changes:
+  - "Bypasses closed by the final verification pass, each with test rows and evals tc-061..tc-072: a downloaded file run without naming it (sh < f, cat f | sh, eval \"$(cat f)\", sh -c \"$(cat f)\", bash <(cat f), . <(cat f)); a download written out by a later pipeline stage (tee f, cat > f, dd of=f) then run; a fetch inside ssh, docker/kubectl exec or watch piped into a local shell; a file run through su -c, docker run, wsl, cmd /c, deno run, Start-Process, Invoke-Item or start, and a Windows program named without .exe; an interpreter's -c/-e code that execs or spawns the downloaded file by name (python -c \"exec(open('f.py').read())\") and python -m of it; wrappers the guard did not list (strace, ltrace, chronic, setarch, numactl, proot, toybox, flock, sg, script -qc, wsl) when a shell is among their arguments; bash -euo pipefail (a value-taking option cluster no longer reads pipefail as a script); rbash, ksh93, pdksh, sash, xonsh, elvish, osh, ysh, tsx, ts-node, groovy, scala, swift, elixir, racket, guile, coffee, expect; php -f php://stdin, awk -f - and make -f /dev/stdin, make -f <(curl ...); a variable holding `sh -s` in command position; a program name built with a glob, brace or $ inside the word; a crontab line printed into crontab - (the five time fields are stripped before it is read)."
+  - "False blocks removed: sh -n, bash -n and --version/--help parse without running, so curl ... | bash -n and curl -o f U && bash -n f are allowed."
+  - "Fixed for timing: the unlisted-wrapper reading is tried only at the top level and on the first eight arguments, so a very long argument list stays linear."
+  - "Documented limits added: a downloaded file renamed or copied before it runs (mv, cp, ln), run by a tool that is not a shell or interpreter (make -f f, psql -f f, sqlite3 < f, npx f, open), or named by a glob or a loop variable, or loaded by an interpreter option or import (node -r, perl -M, ruby load/require, python import) rather than run; PowerShell -enc/-EncodedCommand and .NET DownloadFile followed by Start-Process; a quoted pipe passed as a separate argument (ssh h curl U '|' sh); commands stored in configuration (git -c core.sshCommand=..., git alias), crontab <(...), newgrp heredocs; eval of a parameter expansion that embeds a download; interpreters not listed that run stdin (sqlite3, mysql, psql, ex, ed, vim -s, m4, gdb, jshell, kotlin, ghc, runhaskell); `eval --`, arrays and += belong to the shared chock_shellparse reader, which PR #152 changes separately, and are not fixed here; an unlisted wrapper around a data tool that has a shell name as an argument (setarch x86_64 grep sh) is refused, a false block the wrapper scan accepts."
+- version: 0.1.0
+  date: '2026-10-02'
+  changes:
+  - "Ported from a bash regex to Python on the shared chock_shellparse reader (a byte-identical copy ships beside the guard, pinned by the copy test). A guard-local lexer (curlpipe_lex.py) keeps what chock_shellparse drops -- pipe edges, $(...)/backtick/<(...)/>(...) substitutions, here-strings and heredocs -- and each pipeline stage is resolved through chock_shellparse.commands, so sudo/env/timeout/xargs/nohup wrappers and bash -c bodies are read the way the other guards read them."
+  - "Bypasses closed (roadmap 4.5 #1), each with eval or test cases: the fetch inside a quoted body (bash -c \"curl ... | sh\", ssh host \"...\", docker/kubectl exec, watch, su -c, tmux), eval \"$(curl ...)\", source <(curl ...), . <(curl ...), here-strings (bash <<< \"$(curl ...)\"), sh < <(curl ...), tee >(sh), a substitution run as the command itself, and consumers v1 did not know: php, pwsh/powershell (-Command -, -File -), deno/bun run -, lua, tcsh, busybox sh, su, sudo -s, source /dev/stdin, $SHELL or any variable-named program, ssh host, docker exec -i, kubectl exec -i, chroot, xargs into sh -c/eval."
+  - "New: download-then-run in one command line (curl -o/-O, wget, aria2c, PowerShell -OutFile, or > file, later run as ./file, sh file, python file, source file) is refused unless a checksum or signature step (sha256sum -c, gpg --verify, cosign, minisign, openssl dgst -verify) comes between. A raw socket read (nc, socat, telnet, /dev/tcp) or an interpreter one-liner that reads the network, wired into a consumer, asks (exit 3) rather than blocks."
+  - "False blocks removed: a fetcher and an unrelated pipe into python in the same line (curl ... -o f; python3 x.py | sh), python -m json.tool / python -c / node -e / perl -ne reading the download as data, a commit or PR message that quotes the pattern, grep/rg patterns, heredoc text written to a file."
+  - "Also read as one pipeline: a line break after |, while/until/for/if/case compound commands; a variable assigned earlier in the same command line (x=$(curl ...); eval \"$x\", c=curl; $c ...), $(which curl), ${IFS} and $(echo ...) word building; a script printed by echo/printf, a heredoc or a here-string into a shell; and tools that run their stdin another way: at, batch, crontab -, make -f -, awk system(), parallel with no command, cmd, interpreters whose -c/-e code execs stdin, julia, R, and the wrappers taskset, chrt, unbuffer, nsenter, unshare, setpriv, firejail, prlimit, cgexec, systemd-run."
+  - "Documented limits: aliases, shell functions, variables set outside the command line, encoded or encrypted text (base64 -d | sh with no downloader in the line), downloaders not listed (a variable, a renamed binary, scp/rsync/aws s3 cp), a downloaded file renamed before it runs, a verify step anywhere before the run is taken at its word, remote-code runners that fetch on their own (deno run <url>, npx, go run pkg@version), sed's e command, and a heredoc's $(...) expanded into a non-shell."
+  - "Fail closed (correction C3): when the quoting never balances (unbalanced quote, trailing backslash, unclosed substitution or heredoc), or the engine sets CHOCK_ARGV_FALLBACK=1, a command that names any downloader and any shell or interpreter is refused; past four levels of nesting, or past Python's recursion limit, a fetcher anywhere is refused. An unexpected exception exits 2 (a guard fault), never 1. Without CHOCK_RAW_COMMAND (an older adapter) argv is joined with spaces, so the plain pipe form still trips."
 - version: 0.0.6
   date: '2026-10-02'
   changes:

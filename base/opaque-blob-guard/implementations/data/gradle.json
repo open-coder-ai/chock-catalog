@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "gradle": "https://gradle.org/release-checksums/"
+  },
+  "known_wrapper_sha256": []
+}

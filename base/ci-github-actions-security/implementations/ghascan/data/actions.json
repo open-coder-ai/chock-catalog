@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-10-02",
+  "source": {
+    "zizmor-audits": "https://docs.zizmor.sh/audits/",
+    "actionlint-checks": "https://github.com/rhysd/actionlint/blob/main/docs/checks.md",
+    "gh-secure-use": "https://docs.github.com/en/actions/reference/security/secure-use",
+    "roadmap": "open-coder-ai/org-plan:chock/plan/security-coverage-roadmap.md (6.4 ci-github-actions-security, 3I I04)"
+  },
+  "agent_actions": [
+    "anthropics/claude-code-action",
+    "anthropics/claude-code-base-action",
+    "google-github-actions/run-gemini-cli",
+    "openai/codex-action",
+    "actions/ai-inference"
+  ],
+  "cache_actions": [
+    "actions/cache",
+    "swatinem/rust-cache",
+    "mozilla-actions/sccache-action",
+    "hendrikmuhs/ccache-action",
+    "gradle/actions/setup-gradle",
+    "gradle/gradle-build-action"
+  ],
+  "cache_default_on": [
+    "actions/setup-go"
+  ],
+  "cache_input_actions": [
+    "actions/setup-node",
+    "actions/setup-python",
+    "actions/setup-java",
+    "actions/setup-dotnet"
+  ],
+  "publish_actions": [
+    "pypa/gh-action-pypi-publish",
+    "softprops/action-gh-release",
+    "goreleaser/goreleaser-action",
+    "rubygems/release-gem",
+    "js-devtools/npm-publish",
+    "changesets/action"
+  ],
+  "automerge_actions": [
+    "hmarr/auto-approve-action",
+    "peter-evans/enable-pull-request-automerge",
+    "pascalgn/automerge-action",
+    "fastify/github-action-merge-dependabot",
+    "ahmadnassri/action-dependabot-auto-merge"
+  ],
+  "cloud_key_inputs": {
+    "aws-actions/configure-aws-credentials": [
+      "aws-access-key-id",
+      "aws-secret-access-key"
+    ],
+    "google-github-actions/auth": [
+      "credentials_json"
+    ],
+    "azure/login": [
+      "creds"
+    ]
+  }
+}

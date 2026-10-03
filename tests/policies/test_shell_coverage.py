@@ -14,7 +14,6 @@ from chock.eval.execute import run_case
 from chock.eval.suites import Policy, load_cases
 from chock.manifest import load_manifest
 from policies.shellcov import statements, tracing, uncovered
-from policies.test_guard_direct import DIRECT, run_direct
 from trees import ROOT, policy_dirs
 
 
@@ -37,17 +36,12 @@ def trace(tmp_path_factory: pytest.TempPathFactory) -> Path:
             for case in load_cases(policy_dir, policy_dir.name):
                 if case.execute and "command" in case.execute:
                     run_case(case, policy_dir, ROOT, [guard])
-        # Branches an eval case cannot express (the CHOCK_RAW_COMMAND-unset fallback, a
-        # file-reading flag form) are exercised directly -- test_guard_direct.py asserts
-        # their verdicts; replaying the same table here is what makes them count as run.
-        direct_dir = tmp_path_factory.mktemp("shellcov-direct")
-        for case in DIRECT:
-            run_direct(case, direct_dir)
     return path
 
 
 def test_every_bash_guard_is_measured() -> None:
-    assert [p.name for p, _ in GUARDED] == ["block-curl-pipe-sh"]
+    """No shipped guard is bash today (block-curl-pipe-sh moved to Python); a new one is measured here."""
+    assert [p.name for p, _ in GUARDED] == []
 
 
 @pytest.mark.parametrize(("policy_dir", "guard"), GUARDED, ids=[p.name for p, _ in GUARDED])

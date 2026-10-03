@@ -1,0 +1,277 @@
+"""HTML (in HTML, SVG, XML and Markdown files) read for the URLs its tags load and the text its styling hides."""
+
+from __future__ import annotations
+
+import bisect
+import math
+import re
+import time
+from html.parser import HTMLParser
+from typing import Any
+
+from hiddenscan import css as hidden_css
+from hiddenscan.frames import Collected, Frame, Late, feed, words
+from hiddenscan.htmlspec import BUTTON_SCOPE, CLOSES_P, COMMENT_END, FOREIGN, SCOPE, SPECIAL, TABLE_PARTS, VOID
+
+#: Attributes whose URL the renderer fetches by itself: loading the page is the request.
+EMBED_ATTRS = {
+    "src",
+    "srcset",
+    "data",
+    "action",
+    "formaction",
+    "poster",
+    "background",
+    "lowsrc",
+    "dynsrc",
+    "imagesrcset",
+}
+#: Tags whose href (or xlink:href) is fetched too; an anchor's is not.
+EMBED_HREF_TAGS = {"link", "image", "use", "feimage", "base", "script"}
+URL_ATTRS = EMBED_ATTRS | {"href", "xlink:href", "cite", "longdesc", "ping"}
+ARIA = "aria-hidden wrapping long text"
+NOT_DRAWN = "SVG metadata, defs, symbol, clipPath or mask (not drawn as text)"
+#: desc and title are not here: screen readers present them, so they are not hidden from a person.
+NOT_DRAWN_TAGS = {"metadata", "defs", "symbol", "clippath", "mask"}
+#: These hide text from some readers only; they count once the text is this long.
+LONG_ONLY = {ARIA: 100}
+OFF_SVG = -999
+
+
+def _srcset(value: str) -> list[str]:
+    return [part.split()[0] for part in value.split(",") if part.split()]
+
+
+class Collector(HTMLParser):
+    """Collects attribute URLs, hidden elements with their text, and hidden rules in style elements."""
+
+    def __init__(self, *, xml: bool, rules: dict[str, str], sticky: bool = False) -> None:
+        super().__init__(convert_charrefs=True)
+        self.xml, self.rules = xml, rules
+        self.sticky = sticky  # a hiding element ends only at its own end tag, never implicitly
+        self.until, self.tags = math.inf, 0  # the deadline, checked every 512 tags
+        self.out = Collected()
+        self.stack: list[Frame] = []
+        # Bookkeeping that keeps each tag O(1): open positions per tag name, the open frames that hide,
+        # and how many SVG or MathML elements are open (there `/>` closes an element, as in XML).
+        self.where: dict[str, list[int]] = {}
+        self.hiding: list[Frame] = []
+        self.foreign = 0
+        # A <body> or <html> start tag that hides, wherever it stands: a browser gives the page its attributes.
+        self.page: tuple[int, str, str] | None = None
+        self.texts: list[str] = []
+
+    def parse_comment(self, i: int, *_: object) -> int:
+        """A comment read as a browser reads it, whatever html.parser's release: <!--> and <!---> are empty
+        comments, and any other ends at the first --> or --!>."""
+        for empty in ("<!-->", "<!--->"):
+            if self.rawdata.startswith(empty, i):
+                return i + len(empty)
+        end = COMMENT_END.search(self.rawdata, i + 4)
+        return -1 if end is None else end.end()
+
+    def parse_html_declaration(self, i: int) -> int:
+        """Outside XML, `<![CDATA[` read as a browser reads it in HTML content: a bogus comment ending at the
+        first '>', not at "]]>" (html.parser's reading varies by Python release). Inside SVG or MathML a
+        browser keeps it to "]]>", but HTML tags there can end that context, so this stricter reading is used
+        everywhere: it only lets more tags count."""
+        if self.xml or not self.rawdata.startswith("<![CDATA[", i):
+            return super().parse_html_declaration(i)
+        end = self.rawdata.find(">", i + 2)
+        return len(self.rawdata) if end < 0 else end + 1
+
+    def _attrs(self, attrs: list[tuple[str, str | None]]) -> dict[str, str]:
+        first: dict[str, str] = {}
+        for name, value in attrs:
+            first.setdefault(name.lower(), value if value is not None else "")
+        return first
+
+    def _urls(self, tag: str, attrs: dict[str, str], line: int) -> None:
+        for name, value in attrs.items():
+            if "data:" in value.lower() and "text/html" in value.lower().replace(" ", ""):
+                self.out.data_html.append(line)
+            if name not in URL_ATTRS:
+                continue
+            embed = name in EMBED_ATTRS or (name in ("href", "xlink:href") and tag in EMBED_HREF_TAGS)
+            values = _srcset(value) if name.endswith("srcset") else [value.strip()]
+            self.out.urls += [(line, url, embed) for url in values if url]
+        for _, url in hidden_css.urls(attrs.get("style", "")):
+            self.out.urls.append((line, url, True))
+
+    def _reason(self, tag: str, attrs: dict[str, str], under: str | None) -> tuple[str | None, str | None]:
+        """(why the element hides its text, the background behind its children)."""
+        if not attrs and tag not in NOT_DRAWN_TAGS:
+            return None, under
+        svg = self.xml or self.foreign > 0 or tag in FOREIGN
+        decls = hidden_css.declarations(attrs.get("style", ""))
+        named = ("display", "visibility", "opacity", "font-size") + (("fill", "fill-opacity") if svg else ())
+        for name in named:
+            if name in attrs and name not in decls:
+                decls[name] = attrs[name].strip().lower()
+        if "color" in attrs and tag == "font" and "color" not in decls:
+            decls["color"] = attrs["color"].strip().lower()
+        if "bgcolor" in attrs and "background-color" not in decls:
+            decls["background-color"] = attrs["bgcolor"].strip().lower()
+        behind = hidden_css.background(decls) or under
+        targets = [f"#{i.lower()}" for i in attrs.get("id", "").split()[:1]]
+        targets += [f".{c.lower()}" for c in attrs.get("class", "").split()]
+        far = svg and any((hidden_css.number(attrs.get(a, "")) or (0, ""))[0] <= OFF_SVG for a in ("x", "y"))
+        found = (
+            ("hidden attribute" if "hidden" in attrs else None)
+            or hidden_css.hidden(decls, under or self._page(), svg=svg)
+            or ("positioned off screen" if far else None)
+            or next(
+                (f"hidden by a style rule ({self.rules[t]})" for t in targets if t in self.rules),
+                None,
+            )
+            or (NOT_DRAWN if svg and tag in NOT_DRAWN_TAGS else None)
+            or (ARIA if attrs.get("aria-hidden", "").strip().lower() == "true" else None)
+        )
+        return found, behind
+
+    def _page(self) -> str | None:
+        """The page behind text no element gives a background: white in HTML and Markdown (inline SVG too);
+        unknown in a standalone SVG or XML file, which paints its background with shapes."""
+        return None if self.xml else hidden_css.DEFAULT_BACKGROUND
+
+    def set_cdata_mode(self, elem: str, *args: Any, **kwargs: Any) -> None:
+        if not (self.xml or self.foreign):  # in SVG, MathML and XML, script and style hold markup
+            super().set_cdata_mode(elem, *args, **kwargs)
+
+    def _open(self, tag: str, attrs: list[tuple[str, str | None]], *, push: bool) -> None:
+        self.tags += 1
+        if not self.tags % 512 and time.monotonic() > self.until:
+            raise Late
+        line = self.getpos()[0]
+        named = self._attrs(attrs)
+        self._urls(tag, named, line)
+        # The background behind the text, when an element declares one. Unset, an HTML page is white; an SVG
+        # paints its background with shapes this reader does not place, so there it stays unknown.
+        under = self.stack[-1].background if self.stack else None
+        if tag in TABLE_PARTS and not (
+            self.where.get("table") or self.where.get("template") or self.xml or self.foreign
+        ):
+            return  # a browser drops a table part outside a table
+        if (
+            tag in CLOSES_P
+            and not (self.xml or self.foreign or self.sticky)
+            and self._last({"p"}) > self._last(BUTTON_SCOPE)
+        ):
+            self.handle_endtag("p")  # a block start tag closes an open <p>, as a browser closes it
+        reason, behind = self._reason(tag, named, under)
+        if tag in ("body", "html") and reason and not self.xml:
+            self.page = self.page or (line, tag, reason)
+        latent = None
+        if any(f.reason not in LONG_ONLY or reason in LONG_ONLY for f in self.hiding):
+            latent, reason = reason, None  # already inside hidden text: the outer element is the finding
+        # Outside SVG and XML a browser ignores `/>` on an element that is not void.
+        # Void only in HTML: in SVG, MathML and XML a <col> or an <img> holds what follows it.
+        if (tag not in VOID or self.xml or self.foreign) and (push or not (self.xml or self.foreign or tag in FOREIGN)):
+            frame = Frame(tag, line, reason, behind, latent=latent)
+            self.where.setdefault(tag, []).append(len(self.stack))
+            self.stack.append(frame)
+            self.foreign += tag in FOREIGN
+            if reason:
+                self.hiding.append(frame)
+                self.out.hiding_seen = True
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._open(tag, attrs, push=True)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._open(tag, attrs, push=False)
+
+    def _last(self, names: set[str]) -> int:
+        """Where the innermost open element of these names stands on the stack, or -1."""
+        return max((self.where[t][-1] for t in names if self.where.get(t)), default=-1)
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self.where.get(tag):
+            return
+        cut = self.where[tag][-1]
+        barrier = max((self.where[t][-1] for t in SCOPE if self.where.get(t) and t != tag), default=-1)
+        if not self.xml and tag not in SCOPE and barrier > cut:
+            return  # an end tag outside the open table cell is ignored, as browsers ignore it
+        if tag == "form" and not self.xml and not self.where.get("template") and cut < len(self.stack) - 1:
+            return  # a browser takes only the form off the stack: what it holds stays open, and hidden
+        if not self.xml and tag not in SPECIAL and self._last(SPECIAL) > cut:
+            return  # nor does one close an element under a special one (a <pre>, a <div>) still open
+        held: list[Frame] = []
+        while len(self.stack) > cut:
+            frame = self.stack.pop()
+            self.where[frame.tag].pop()
+            self.foreign -= frame.tag in FOREIGN
+            if frame.reason:
+                self.hiding.pop()
+            if self.sticky and (frame.reason or frame.latent) and len(self.stack) > cut:
+                held.append(frame)  # closed implicitly: a browser may rebuild it (a formatting element)
+            else:
+                self._finish(frame)
+        for frame in reversed(held):  # only the outermost hiding element counts text, so each stays O(1)
+            frame.latent = frame.reason or frame.latent
+            frame.reason = None if self.hiding else frame.latent
+            self.where[frame.tag].append(len(self.stack))
+            self.stack.append(frame)
+            self.foreign += frame.tag in FOREIGN
+            if frame.reason:
+                self.hiding.append(frame)
+
+    def handle_data(self, data: str) -> None:
+        if self.stack and self.stack[-1].tag in ("style", "script"):
+            if self.stack[-1].tag == "style":
+                self._style(data)
+            return  # a style sheet or a script is not text a reader sees
+        self.texts.append(data)
+        normal = words(data) if self.hiding else ""
+        for frame in self.hiding:
+            feed(frame, data, normal)
+
+    def _style(self, sheet: str) -> None:
+        line = self.getpos()[0]
+        breaks = [m.start() for m in re.finditer("\n", sheet)]
+        for offset, selector, decls in hidden_css.rules(sheet):
+            if not hidden_css.no_text(selector) and (reason := hidden_css.hidden(decls, None)):
+                at = line + bisect.bisect_left(breaks, offset + len(selector))
+                self.out.hidden.append((at, "style", reason, selector, " ".join(selector.split())))
+        for offset, url in hidden_css.urls(sheet):
+            self.out.urls.append((line + bisect.bisect_left(breaks, offset), url, True))
+
+    def _finish(self, frame: Frame) -> None:
+        if not frame.reason or not frame.size or frame.size < LONG_ONLY.get(frame.reason, 1):
+            return
+        shown = " ".join("".join(frame.text).split())[:80]
+        self.out.hidden.append((frame.line, frame.tag, frame.reason, shown, frame.digest.hexdigest()[:16]))
+
+    def close(self) -> None:
+        super().close()
+        if self.page:
+            text = "".join(self.texts)
+            page = Frame(self.page[1], self.page[0], self.page[2], None)
+            feed(page, text, words(text))
+            self._finish(page)
+        for frame in reversed(self.stack):
+            self._finish(frame)
+        self.stack, self.where, self.hiding = [], {}, []
+
+
+def _parse(text: str, *, xml: bool, flat: bool, sticky: bool, until: float) -> Collected:
+    sheets = [sheet for _, sheet in hidden_css.style_blocks(text)]
+    parser = Collector(xml=xml, rules=hidden_css.hidden_selectors(sheets), sticky=sticky)
+    parser.until = until
+    if flat:
+        parser.CDATA_CONTENT_ELEMENTS = parser.RCDATA_CONTENT_ELEMENTS = ()  # type: ignore[misc]
+    parser.feed(text)
+    parser.close()
+    return parser.out
+
+
+def collect(text: str, *, xml: bool = False, flat: bool = False, until: float = math.inf) -> Collected:
+    """Flat: no element holds its content as raw text (htmlspec.RAW_TEXT_ELEMENTS), a reading in which nothing
+    swallows the markup after it. Where an element hides text, HTML is read again with each hiding element
+    open until its own end tag: how a browser rebuilds a formatting element after an implied end is not
+    modelled, and that reading only reports more."""
+    out = _parse(text, xml=xml, flat=flat, sticky=False, until=until)
+    if out.hiding_seen and not xml:
+        known = set(out.hidden)
+        out.hidden += [h for h in _parse(text, xml=xml, flat=flat, sticky=True, until=until).hidden if h not in known]
+    return out

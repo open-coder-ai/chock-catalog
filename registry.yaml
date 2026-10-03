@@ -24,81 +24,82 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.0.6
+  version: 0.1.2
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 34
-  eval_executed: 34
-  description: 'Best-effort: refuses curl/wget/lynx/aria2c/iwr/irm piped into sh/bash/zsh/dash/ksh/fish/python/perl/ruby/node
-    (by path, quoted, in a subshell, after bare sudo/env/xargs/nohup/timeout), bash -c "$(curl ...)",
-    bash <(curl ...), `| iex`. Probed misses: fetch right after a quote (bash -c "curl ...", ssh), eval
-    "$(curl ...)", source <(curl ...), wrapper options (sudo -u, env VAR=, /usr/bin/env), doas, csh/tcsh/mksh/lua/php/pwsh/deno/busybox,
-    su -c, $SHELL, download then run. Friction only.'
+  eval_cases: 72
+  eval_executed: 72
+  description: 'Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
+    (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
+    iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker
+    exec bodies, or downloaded and run in one command with no checksum or signature step. nc/socat/one-liner
+    reads ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction
+    only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.1.1
+  version: 0.2.3
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: commit-time guard script
   enforces: enforced-at-commit
-  eval_cases: 81
-  eval_executed: 81
-  description: Best-effort, on parsed commands (echo ignored). Blocks rm -rf on absolute, ~, $HOME,
-    . or .. paths; recursive Remove-Item/rd/del on drive paths; git push --force or +refspec, reset
-    --hard, clean -f, checkout .; kubectl delete; terraform destroy; aws s3 rm --recursive/rb --force;
-    dropdb; helm uninstall; docker volume rm/prune, system prune; find -delete/-exec rm; shred; truncate;
-    wipefs -a/-o; gcloud with any `delete` operand. branch -D asks. Pre-push hook refuses non-fast-forward
-    pushes.
+  eval_cases: 170
+  eval_executed: 170
+  description: 'Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive
+    table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths;
+    mv/chmod/chown -R of system dirs; dd to devices, mkfs; account lockouts; force, delete and mirror
+    pushes; history rewrites; IaC destroy; listed cloud and platform deletes; DB drops. Asks: rm -rf
+    off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre-push: no
+    non-ff.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
-  version: 0.0.6
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 14
-  eval_executed: 14
-  description: 'Blocks bidi override/embed/isolate controls (U+202A-202E, U+2066-2069; Trojan Source,
-    CVE-2021-42574) and Unicode tag characters (U+E0001-E007F), which smuggle instructions. NOT matched:
-    ZWSP U+200B, U+2060, U+FEFF, U+061C, variation selectors, ZWJ/ZWNJ, LRM/RLM. Runs: commit, agent
-    write, turn''s end. Waiver: ''pragma: allowlist invisible-unicode'' same line. Person''s commit:
-    honoured. Agent: only if that line is already in HEAD; MCP gateway: never. Agent asks a person.'
+  eval_cases: 72
+  eval_executed: 72
+  description: 'Blocks hidden Unicode in added lines: bidi, tag and plane-14 chars, word joiner, chained
+    invisibles, zero-width/joiners/fillers by ASCII, mid-line BOM, LRM/RLM outside RTL text, selectors
+    after ASCII, private-use runs of 16+. Allows emoji, RTL/Indic/Thai/CJK text, line-start BOM. Not
+    caught: homoglyphs, a joiner between non-ASCII, binary files and text after U+2028 at commit. Runs:
+    commit, agent write, turn''s end. Waiver: ''pragma: allowlist invisible-unicode'' same line; agent:
+    HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.3.2
+  version: 0.4.3
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 78
-  eval_executed: 78
-  description: 'Best-effort guard against skipping git hooks: --no-verify on commit, push, merge, am
-    and rebase, -n on commit and am (on push -n is --dry-run, allowed), and core.hooksPath set by -c,
-    --config-env, `git config` or GIT_CONFIG_*. Read as parsed commands: wrappers are seen, message
-    text is not. Also refuses an agent setting a person-only variable (CHOCK_ALLOW*, CHOCK_AGENT_COMMIT,
-    CHOCK_DIFF_LIMIT) or hiding CLAUDECODE/AI_AGENT/CHOCK_AGENT_COMMIT; it says ask the person. Bypasses:
-    aliases, scripts.'
+  eval_cases: 107
+  eval_executed: 107
+  description: 'Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify
+    on commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
+    git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; hook manager uninstall; aliases
+    and rebase --exec defined in the command. Asks on plumbing, unset hooksPath, another GIT_DIR and
+    config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.1.1
+  version: 0.2.1
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 49
-  eval_executed: 49
-  description: 'Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod)
-    that UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
-    -Body/-InFile/-Form) to a host outside the allowlist (registries, code hosts, localhost; exact or
-    .suffix match). Fetch-only passes; curl -K/--config is refused. No pragma bypass: ask a person.
-    A floor, not a sandbox: ~/.curlrc, obfuscation, other clients, runtimes.'
+  eval_cases: 145
+  eval_executed: 145
+  description: 'Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist
+    (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet,
+    scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL
+    or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:.
+    Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
   version: 0.1.0
@@ -132,7 +133,7 @@ policies:
     in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.1.0
+  version: 0.1.1
   artifact: hook
   enforcement: block
   mandatory: false
@@ -146,10 +147,10 @@ policies:
     key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public
     members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-line
     strict-JSON AWS Deny statement is exempt. Friction, not a security boundary: grants split across
-    lines, partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants
-    pass; other Deny forms and admission-webhook wildcards are refused. Escape: ''pragma: allowlist
-    broad-privilege'' on the same line, honoured at commit; at agent tool-use only when that exact line
-    is already committed in HEAD.'
+    lines (iam-policy-scan reads those), partial wildcards, unlisted services and roles, YAML aliases
+    or tags and runtime-built grants pass; other Deny forms and admission-webhook wildcards are refused.
+    Escape: ''pragma: allowlist broad-privilege'' on the same line, honoured at commit; at agent tool-use
+    only when that exact line is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
   version: 0.0.4
@@ -473,7 +474,7 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.8
+  version: 0.0.9
   artifact: hook
   enforcement: block
   mandatory: false
@@ -482,43 +483,44 @@ policies:
   eval_cases: 17
   eval_executed: 17
   description: 'Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an allow/alwaysAllow/tools
-    array on the same line, or quoted defaultMode bypassPermissions. Any file is judged. Not caught:
-    a multi-line array (`"*"` alone on a line, YAML `- "*"` list), unquoted defaultMode: bypassPermissions.
+    array on the same line, or quoted defaultMode bypassPermissions. Any file is judged. Not caught
+    here: a multi-line array or YAML `- "*"` list, an unquoted defaultMode (agent-permissions-scan warns).
     Runs: commit, agent write, turn''s end. Waiver: ''pragma: allowlist broad-agency'' same line. Person''s
     commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.5
+  version: 0.0.6
   artifact: hook
   enforcement: block
   mandatory: false
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 17
-  eval_executed: 17
-  description: 'Blocks a workflow that references a GitHub Action by a movable ref (tag or branch) instead
-    of a full 40-char commit SHA. Every owner/repo@non-SHA is blocked, actions/* and reusable workflows
-    included; a SHA pin and a local action (no ref) pass. Bounded to .github/workflows/ and .github/actions/.
-    Runs: commit, agent write, turn''s end. Waiver: ''pragma: allowlist unpinned-action'' same line.
-    Person''s commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
+  eval_cases: 63
+  eval_executed: 63
+  description: 'Blocks uses: of an action/reusable workflow at a movable ref (not a lowercase 40-hex
+    SHA) and a docker:// image without @sha256, quoted, JSON or flow; an alias, escape or value off
+    the uses line is refused. Local ./ passes. Scope: .github/workflows/, .github/actions/, action.y*ml.
+    Line regex, no YAML parse: container image tags, impostor SHAs, a tag named as 40 hex pass. Waiver:
+    ''pragma: allowlist unpinned-action'' same line. Person''s commit: honoured. Agent: only if in HEAD;
+    MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.2.4
+  version: 0.2.8
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 181
-  eval_executed: 181
+  eval_cases: 1289
+  eval_executed: 1289
   description: 'Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes
-    to AGENTS.md and wrappers, .claude/settings, MCP and hook client configs (.mcp.json, .cursor/mcp.json,
-    .gemini/settings.json, .codex/hooks.json, more), .git/hooks, policy implementations/ and .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}:
-    redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Reads and `chock sync` pass. Edit/Write:
-    tool_use gate.'
+    to AGENTS.md, .claude/settings, MCP/hook client configs (.mcp.json, ...), .git/{hooks,config}, policy
+    implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect, rm/mv/tee/sed
+    -i, cp into, git checkout/restore. Coarse: also eval or sh -c of computed text, shells fed by pipe/variable,
+    interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write: tool gate.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.2.0
+  version: 0.2.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -534,7 +536,7 @@ policies:
     ship no gate.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.2.1
+  version: 0.2.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -562,36 +564,34 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.1.1
+  version: 0.2.3
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 92
-  eval_executed: 92
-  description: 'rtk#1007. Blocks: rm -rf on /, ~, ., .. or abs paths; PowerShell/cmd drive removal;
-    git push --force/+refspec; credential-file reads (.env, keys, ~/.ssh); echo/inline *_API_KEY/_SECRET/_TOKEN;
-    SQL DROP/TRUNCATE/unscoped DELETE/FLUSHALL; dropdb; kubectl delete, terraform destroy, aws s3 rm
-    --recursive/rb --force, helm uninstall, gcloud delete, docker volume rm. Asks: relative rm -rf off
-    safe list, git reset --hard/clean -f/checkout ./branch -D, docker prune. Skips rm/file/echo in container
-    exec.'
+  eval_cases: 105
+  eval_executed: 105
+  description: 'rtk#1007. Destructive verdicts come from the chock_destructive table shared with block-
+    destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard,
+    clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk''s safe list,
+    bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys,
+    ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.0.9
+  version: 0.1.0
   artifact: hook
   enforcement: block
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 32
-  eval_executed: 32
-  description: 'Blocks credentials: vendor key prefixes (AWS, GitHub, ...), JWTs, private-key blocks,
-    key/token/password assignments; and whole files by path (.env*, *.pem|key|p12|pfx|jks|keystore).
-    Runs: commit, agent write, turn''s end. Not yet caught: quoted-colon forms ("password": "...", api_key:
-    "..."), access_token=, client_secret=. Waiver: ''# pragma: allowlist secret'' same line (path hit:
-    anywhere in the file). Person''s commit: honoured. Agent: only if in HEAD; MCP gateway: never. Agent
-    asks a person.'
+  eval_cases: 55
+  eval_executed: 55
+  description: 'Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs,
+    private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code),
+    URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split
+    or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values.
+    Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.'
 - id: token-efficiency
   path: base/token-efficiency
   version: 0.1.1
@@ -606,35 +606,36 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.0.5
+  version: 0.1.1
   artifact: hook
   enforcement: block
   mandatory: false
-  mechanism: dependency_allowlist
+  mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 9
-  eval_executed: 9
-  description: 'Allowlist gate for new dependencies; no registry lookup is made. Watches requirements.txt,
-    pyproject.toml ([project] and poetry dependencies), package.json, go.mod; blocks an added name missing
-    from .chock/dependency-allowlist.txt. Not read: -r/-e lines, requirements-dev.txt, poetry groups,
-    [dependency-groups]. Opt-in: fill the allowlist, then `chock enable verify-dependency-exists`. Runs:
-    commit, agent write (vs disk), turn''s end (vs HEAD).'
+  eval_cases: 55
+  eval_executed: 55
+  description: 'Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node,
+    Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added
+    name missing from .chock/dependency-allowlist.txt and asks on a lockfile-only addition. Not read:
+    computed lists, sources, some pattern-read forms (see docs), versions. Opt-in: seed the allowlist,
+    run in rollout observe, then `chock enable verify-dependency-exists`. Runs: commit, agent write,
+    turn''s end.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.4.1
+  version: 0.5.1
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 65
-  eval_executed: 65
-  description: 'Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json
-    or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write
-    with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass.
-    Script gate (commit, tool use incl. turn''s end) parses written MCP configs (.mcp.json, .cursor,
-    .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs
-    refused.'
+  eval_cases: 108
+  eval_executed: 108
+  description: 'Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher
+    with exact args, or url host). Shell guard refuses `<agent> mcp add` and shell writes of MCP configs
+    or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs:
+    a server off the list, or with other command, args or url host, refuses; unpinned or shell launchers,
+    http, literal credentials, old versions only warn. Misses: aliases, scripts, gitignored files, other
+    clients.'
 - id: block-test-skips
   path: base/block-test-skips
   version: 0.1.0
@@ -652,7 +653,7 @@ policies:
     computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.5
+  version: 0.0.6
   artifact: hook
   enforcement: block
   mandatory: false
@@ -714,20 +715,359 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.0.2
+  version: 0.1.1
   artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
+    bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never,
+    danger-full-access; gemini --yolo or --approval-mode yolo; cursor-agent --force; aider --yes-always;
+    copilot --allow-all-tools; amp, cline, goose, opencode auto-approve. Looks through cd, bash -c,
+    sudo, env, npx, uvx. Misses: config, aliases, scripts, ssh.'
+- id: scan-suppression-markers
+  path: base/scan-suppression-markers
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 45
+  eval_executed: 44
+  description: 'Asks a person before a change adds a scanner suppression: inline ignore markers (bandit,
+    gosec, ruff S codes, Sonar, Semgrep, ESLint security, Checkov, tfsec, Trivy, KICS, hadolint, cfn_nag,
+    zizmor, gitleaks, detect-secrets, CodeQL, Java/C#/Rust security allows), scanner ignore files and
+    skip keys, a CI scan set to pass on failure. Only added lines; prose skipped. Runs: commit, agent
+    write, turn''s end; CI annotates. Line-local, friction not a boundary.'
+- id: review-like-a-red-team
+  path: base/review-like-a-red-team
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: rule text only
+  enforces: advisory
+  eval_cases: 16
+  eval_executed: 0
+  description: 'trigger: finishing or committing a diff that touches code, build or CI config, dependencies
+    or agent config; a plan adding a handler, parser, auth path, crypto or sink; an ask-tier gate finding.
+    Self-review of the diff in twelve red-team techniques, triaged by references/triage.json, reported
+    as findings with exploit scenarios. Advisory: refuses nothing, writes no waiver, lowers no gate.'
+- id: block-hook-bypass-in-files
+  path: base/block-hook-bypass-in-files
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 28
+  eval_executed: 28
+  description: 'Friction, not a security boundary: flags lines added to hook launchers and scripts that
+    switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
+    set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit,
+    lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile,
+    justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.'
+- id: agent-devenv-autoexec
+  path: base/agent-devenv-autoexec
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 50
+  eval_executed: 50
+  description: 'Warns only (observe): flags files that make a dev tool run code on open, clone or shell
+    entry -- agent hooks, helpers, env/BASE_URL overrides, auto-approve; VS Code folderOpen tasks, trust
+    off, repo executables; devcontainer initializeCommand; .envrc, mise, husky, lefthook, pre-commit;
+    gitconfig exec keys, gitattributes drivers, unsafe .gitmodules. Commit, agent write, turn''s end;
+    additions only; unreadable configs refused. Friction: misses interpreted code and unlisted files.'
+- id: ci-github-actions-security
+  path: base/ci-github-actions-security
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Friction, not a security boundary: warns (observe) on GitHub Actions weaknesses a change
+    adds to workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout
+    under pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets
+    inherit or inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning,
+    agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.'
+- id: dockerfile-compose-security
+  path: base/dockerfile-compose-security
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 34
+  eval_executed: 34
+  description: 'Warns (observe rollout, never refuses) when a change to a Dockerfile, Containerfile
+    or compose file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware:
+    FROM or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature
+    checks off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote ADD without
+    checksum; fetch piped to a shell; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd;
+    unpinned git clone; ONBUILD RUN; compose privileged, broad cap_add, unconfined profiles, devices,
+    host namespaces, runtime socket or host-root mounts, database ports on every interface, untagged
+    images. A one-line form is left to block-fetch-exec-in-files, block-unpinned-agent-components or
+    agentic-code-security only where that gate is installed and reads the file; scan-secrets lines always.
+    Misses: build args overriding defaults, commands in variables, aliases or $'''' quoting, bake and
+    k8s files. Friction, not a boundary.'
+- id: lockfile-integrity
+  path: base/lockfile-integrity
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 65
+  eval_executed: 65
+  description: 'Script gate (commit, agent write, CI) over npm, yarn, pnpm, bun, poetry, uv, Pipfile,
+    Cargo, go.sum, Gemfile, composer and NuGet locks. Blocks: source off the registry list or not https,
+    missing hash, hash changed for a locked version, unpinned git source, unreadable lock. Asks: SHA-1-only
+    hash, transitive install script, lock or manifest moved alone, go.sum lines removed, lock ignored
+    or deleted. Judges what a change adds. Friction, not a security boundary.'
+- id: package-lifecycle-scripts
+  path: base/package-lifecycle-scripts
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 28
+  eval_executed: 28
+  description: 'Warns (observe rollout) when a change adds or edits code that runs at install or build
+    time: npm install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned
+    git/URL deps; setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks;
+    build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven,
+    Gradle exec. Never refuses yet; judges file text, not what a hook runs. Friction, not a security
+    boundary.'
+- id: compromised-package-ioc
+  path: base/compromised-package-ioc
+  version: 0.1.0
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Blocks adding a known-malicious package version (npm, PyPI, crates, Go, RubyGems, Packagist
+    manifests and lockfiles), a re-pointed action ref, or an IOC file name, from a dated, sourced list
+    (data/ioc.json, CI fails 120 days after as_of). Runs: commit, agent write, turn''s end; only additions
+    judged. Exact versions only: a range is not resolved. A snapshot, not a feed; friction, not a boundary.
+    Adopt under rollout observe.'
+- id: scan-secret-files
+  path: base/scan-secret-files
+  version: 0.0.1
+  artifact: hook
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 25
   eval_executed: 25
-  description: 'Best-effort guard against an agent launching a coding agent with safety checks off:
-    claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
-    --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo,
-    -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
-    wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
-    unlisted agents.'
+  description: 'Friction, not a security boundary: flags files that are secrets by name or content --
+    private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI,
+    netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env,
+    framework secret files, browser stores. Warns only (observe). Misses: renamed binary stores other
+    than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.'
+- id: agent-permissions-scan
+  path: base/agent-permissions-scan
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Warns only (observe): parses agent permission configs (.claude/settings*, .codex, .gemini,
+    .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows
+    (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto
+    modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP
+    configs, scripts, Read.'
+- id: block-persistence-shapes
+  path: base/block-persistence-shapes
+  version: 0.0.3
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 109
+  eval_executed: 109
+  description: 'Best-effort guard against shell commands that publish or keep access after the session:
+    npm/pnpm/yarn/twine/ poetry/uv/cargo/gem publish, docker/podman push and login, npm token and registry
+    edits, repos made public; user services, launch agents, cron/at/schtasks, Run keys, authorized_keys,
+    runner registration, sudoers, setuid bits, detached downloads. Asks on gh release create, git remote
+    add, git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.'
+- id: block-secret-store-reads
+  path: base/block-secret-store-reads
+  version: 0.0.2
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 89
+  eval_executed: 89
+  description: 'Best-effort guard against an agent reading credentials from the shell: cat, grep, sed,
+    cp, tar, base64, source or < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, ~/.netrc, ~/.kube, ~/.gnupg,
+    agent CLI dirs, browser login DBs, wallets, .env (not .env.example), *.tfstate; interpreter one-liners
+    naming them; gh auth token, aws sts get-session-token, git credential fill. Asks on env/printenv
+    dumps. Misses: scripts, unresolved variables, xargs lists, $(...) results.'
+- id: guard-deletion
+  path: base/guard-deletion
+  version: 0.0.2
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 23
+  eval_executed: 22
+  description: 'trigger: a change that removes a check, auth decorator, middleware registration, sanitizer
+    call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security
+    header, cookie attribute, TLS check or row-level security, or swaps one of those or a narrow file
+    mode for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised
+    in place, added insecure settings, a deletion-only commit.'
+- id: hardening-flags
+  path: base/hardening-flags
+  version: 0.1.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 36
+  eval_executed: 36
+  description: 'Blocks added settings that weaken compiler, linker, Rust or kernel hardening, in CMake,
+    Make, meson, configure.ac, Cargo, build.rs, Go release scripts, Dockerfiles and kernel config: no
+    stack protector, FORTIFY_SOURCE off, non-PIE, execstack, norelro, CET off, kernel KASLR/RWX off.
+    Asks on Rust release overflow-checks off, /dev/mem. Not MSVC, sysctl or container settings; misses
+    environment flags, generated files. Runs: commit, agent write, turn''s end, CI. Waiver: ''pragma:
+    allowlist hardening-flag''.'
+- id: opaque-blob-guard
+  path: base/opaque-blob-guard
+  version: 0.0.2
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 17
+  eval_executed: 17
+  description: 'Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, fixtures/,
+    testdata/, spec/, m4/, vendor/, gradle/wrapper/: a file whose first bytes are an archive, executable,
+    wasm or database signature (any extension), a random-looking non-media file over 100 KB, or a symlink
+    out of the repo; m4/configure/Makefile text that decodes and evaluates; a gradle wrapper jar changed
+    with no new distributionSha256Sum. Misses text-encoded or prefixed payloads, other folders.'
+- id: refname-filename-metachar
+  path: base/refname-filename-metachar
+  version: 0.1.2
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 41
+  eval_executed: 41
+  description: Refuses names a shell, CI step or git can misread. Paths a change adds or renames into
+    (commit, agent writes), and branches and tags pushed (pre-push), with command substitution, an IFS
+    expansion, a backtick, ; & | < >, a control or bidi character, a base64-decode shape, a leading
+    dash or trailing space or dot in a segment, or a '..' segment; a ref also with a full commit id's
+    shape. A guard refuses git and file commands creating such names. No waiver. Friction, not a boundary.
+- id: scan-hidden-content
+  path: base/scan-hidden-content
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 45
+  eval_executed: 44
+  description: 'Warns (observe) when a change adds text a reader cannot see, or a URL that carries data
+    out, to Markdown, HTML, SVG, XML, Word, agent instruction files, docs and templates: instruction-like
+    or long comments, CSS-hidden, white or 1pt text, hidden Word runs, URLs with secret words, long
+    queries, placeholders or encoded parts, remote embeds, camo runs, HTML data URIs. Runs: commit,
+    agent write, turn''s end. Waiver: a person''s marker comment line above. Friction, not a boundary.'
+- id: scan-instruction-files
+  path: base/scan-instruction-files
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 32
+  eval_executed: 31
+  description: 'Asks a person before a change adds injection text to an agent instruction file (AGENTS.md,
+    CLAUDE.md, GEMINI.md, Cursor/Windsurf/Cline/Roo/Kiro rules, Copilot instructions and prompts, SKILL.md,
+    agent commands): rule overrides, secrecy, auto-approve, hook or review bypass, fetch-and-run, remote
+    instructions, role swaps, fake system tags, removed guardrails. Refuses secret exfiltration and
+    encoded payloads. Added text only; English phrases; friction, not a boundary.'
+- id: iam-policy-scan
+  path: agentic-security/iam-policy-scan
+  version: 0.1.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 48
+  eval_executed: 48
+  description: 'Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep,
+    Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin,
+    subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added
+    grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous,
+    unlisted extensions. Waiver: pragma or sidecar.'
+- id: block-fetch-exec-in-files
+  path: base/block-fetch-exec-in-files
+  version: 0.0.2
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow
+    or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a
+    shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string
+    of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time:
+    continuation lines, variables, unicode-escaped JSON, split or quoted command names, a download saved
+    to a file and run on a later step, and interpreters or fetchers outside the lists are missed. Never
+    refuses. Friction only.'
+- id: scan-secrets-entropy
+  path: base/scan-secrets-entropy
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy
+    values (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test keys,
+    Slack/AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split across lines,
+    over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS,
+    words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control
+    characters.'
 - id: registry-config
   path: base/registry-config
   version: 0.0.1

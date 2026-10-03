@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "guard-deletion",
+  "version": "0.0.2",
+  "description": "trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute, TLS check or row-level security, or swaps one of those or a narrow file mode for a weakened form (block). Hunk-local: misses a guard moved across hunks or files, one neutralised in place, added insecure settings, a deletion-only commit.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "hook",
+    "block"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "hook",
+      "enforcement": "block",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

@@ -10,6 +10,8 @@ from types import ModuleType
 from trees import ROOT
 
 SHELLPARSE = "chock_shellparse"
+DESTRUCTIVE = "chock_destructive"
+SHIPPED_LIBS = (SHELLPARSE, DESTRUCTIVE, "chock_scan", "mcpcheck")
 
 
 def impl_dir(policy: str) -> Path:
@@ -24,16 +26,21 @@ def policies_with_shellparse() -> list[str]:
 
 
 def _forget() -> dict[str, ModuleType]:
-    return {name: sys.modules.pop(name) for name in list(sys.modules) if name.split(".")[0] == SHELLPARSE}
+    """Drop the helper packages and modules a guard ships beside itself (chock_shellparse, chock_destructive, chock_scan, mcpcheck, shapes_*)."""
+    return {
+        name: sys.modules.pop(name)
+        for name in list(sys.modules)
+        if name.split(".")[0] in SHIPPED_LIBS or name.startswith("shapes_")
+    }
 
 
 def forget_shellparse() -> None:
-    """Drop any chock_shellparse a script imported, so the next guard load starts clean."""
+    """Drop any chock_shellparse, chock_destructive or chock_scan a script imported, so the next guard load starts clean."""
     _forget()
 
 
 def load_guard(policy: str, name: str | None = None) -> ModuleType:
-    """Import `base/<policy>/implementations/<name or policy>.py`, resolving chock_shellparse beside it."""
+    """Import `base/<policy>/implementations/<name or policy>.py`, resolving the shared packages beside it."""
     directory = impl_dir(policy)
     path = directory / f"{name or policy}.py"
     saved = _forget()
