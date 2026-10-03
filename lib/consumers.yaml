@@ -6,6 +6,12 @@ base/block-destructive-commands:
   chock_shellparse: [args, parse, targets, writes]
 base/block-no-verify:
   chock_shellparse: [args, parse, targets, writes]
+base/block-secret-store-reads:
+  chock_scan: [data_table, safe_read]
+  chock_shellparse: [args, parse, targets, writes]
+base/block-persistence-shapes:
+  chock_shellparse: [args, parse, targets, writes]
+  chock_scan: [data_table, safe_read]
 base/block-unapproved-egress:
   chock_shellparse: [args, parse, targets, writes]
   chock_scan: [hostmatch, hosts, idn, safe_read, urls]
@@ -15,6 +21,8 @@ base/block-unguarded-agent-spawn:
   chock_shellparse: [args, parse, targets, writes]
 base/dockerfile-compose-security:
   chock_scan: [yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+base/hardening-flags:
+  chock_scan: [data_table, safe_read]
 base/protect-agent-config:
   chock_shellparse: [args, parse, targets, writes]
 base/protect-ci-workflows:
@@ -35,3 +43,19 @@ base/compromised-package-ioc:
   chock_scan: [data_table, jsonc, safe_read]
 base/scan-secret-files:
   chock_scan: [entropy, jsonc, keyword_values, sniff, sniff_keys, sniff_shebang, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+base/refname-filename-metachar:
+  chock_shellparse: [args, parse, targets, writes]
+base/block-curl-pipe-sh:
+  chock_shellparse: [args, parse, targets, writes]
+base/scan-instruction-files:
+  chock_scan: [data_table, entropy, safe_read]
+base/scan-hidden-content:
+  chock_scan: [data_table, hostmatch, hosts, idn, safe_read, urls]
+base/agent-permissions-scan:
+  chock_scan: [jsonc, safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+agentic-security/iam-policy-scan:
+  chock_scan: [hcl, hcl_json, hcl_lex, jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+base/opaque-blob-guard:
+  chock_scan: [data_table, entropy, safe_read]
+base/guard-deletion:
+  chock_scan: [data_table, safe_read]

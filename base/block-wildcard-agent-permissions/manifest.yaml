@@ -1,11 +1,11 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.8"
+version: "0.0.9"
 description: >
   Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an
   allow/alwaysAllow/tools array on the same line, or quoted defaultMode bypassPermissions. Any
-  file is judged. Not caught: a multi-line array (`"*"` alone on a line, YAML `- "*"` list),
-  unquoted defaultMode: bypassPermissions. Runs: commit, agent write, turn's end. Waiver: 'pragma:
+  file is judged. Not caught here: a multi-line array or YAML `- "*"` list, an unquoted
+  defaultMode (agent-permissions-scan warns). Runs: commit, agent write, turn's end. Waiver: 'pragma:
   allowlist broad-agency' same line. Person's commit: honoured. Agent: only if already in HEAD;
   MCP gateway: never. Agent asks a person.
 artifact: hook
@@ -74,6 +74,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.9
+  date: '2026-10-02'
+  changes:
+  - "Disclosure, no behaviour change: the description now says the multi-line and unquoted forms it cannot see are read by the new sibling agent-permissions-scan (a structure-aware script gate that warns only, observe rollout). The single-line pattern, its waiver and its tier are unchanged."
 - version: 0.0.8
   date: '2026-10-02'
   changes:

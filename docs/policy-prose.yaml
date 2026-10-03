@@ -28,6 +28,19 @@ agent-discipline:
     `lint_clean` rather than leaving a rule that cannot be satisfied -- a rule an agent
     routinely cannot meet teaches it that rules are advisory in general.
 
+agent-permissions-scan:
+  solves: >
+    Permission grants an agent's config can hold that a line-based pattern cannot judge: a bare
+    `Bash` or `WebFetch`, a `curl:*` or `git push:*` prefix wildcard, a star alone on its own line,
+    an unquoted bypass default mode in YAML, a regex-all terminal auto-approve rule, and a deny
+    entry that quietly disappears. An agent prompt-injected into widening its own grants gets
+    unasked tool authority on the next session.
+  customise: >
+    It ships at action warn (observe): it reports and never refuses. Measure what it reports with
+    `chock check --history`, then move `hook.gate.action` to block. A reviewed exception is a
+    `{file, path, value}` entry under `waive` in `.chock/devenv.json`, added by a person in their
+    own commit; the file is a closed schema and an unknown key voids every waiver in it.
+
 block-curl-pipe-sh:
   solves: >
     The install instruction that runs code nobody read: `curl https://get.example.com | sh`.
@@ -202,6 +215,21 @@ block-wildcard-iam:
     limitation: strict JSON carries no comments, so the pragma escape only exists in
     Terraform/YAML -- for raw JSON documents the options are narrowing the grant or moving
     the document.
+
+iam-policy-scan:
+  solves: >
+    The wildcard grant that survives a line-by-line check because it was written over several
+    lines: `"Action": [` then `"*"` on its own line, an Allow with `NotAction`, a statement
+    pretty-printed by a formatter, a `jsonencode` object in Terraform, a YAML alias. The
+    same one-line gate that catches `"Action": "*"` cannot see any of those; this one reads
+    the whole document and judges the statement.
+  customise: >
+    New packs run in the `observe` rollout first (`rollout: observe` in `.chock/config.yaml`)
+    until the false-positive rate on your own repository is known. A reviewed exception is
+    a `# pragma: allowlist broad-privilege` comment beside the grant, or, for JSON, which
+    cannot carry a comment, an entry in `.chock/iam-policy-scan.json` naming the path, the
+    rule and the statement id the refusal prints. Computed grants (a reference, a function
+    result) and templated YAML that will not parse are not judged.
 
 code-safety:
   solves: >
@@ -534,6 +562,9 @@ block-test-skips:
 compromised-package-ioc:
   solves: A dependency bump can pull a release that was published by a stolen token and is known to be malicious -- chalk and debug in September 2025, nx, axios 1.14.1, litellm 1.82.8, the keyv worm. A registry unpublishes it within hours, but a lockfile written in that window keeps it, and an agent copying a version from an issue or a stale lockfile writes it back. This gate refuses the listed package versions, re-pointed action refs and IOC file names as they are added.
   customise: 'The list is `implementations/data/ioc.json`: each row names its ecosystem, package, exact versions (or `*`), incident, date and a cited source. A person refreshes it in a reviewed pull request from the weekly threat digest; CI fails 120 days after `as_of`. There is no in-line waiver. Adopt it under `rollout: observe` first.'
+hardening-flags:
+  solves: A change that adds -fno-stack-protector, -D_FORTIFY_SOURCE=0, -no-pie, -z execstack, or a kernel config that turns KASLR or the stack protector off silently removes a mitigation a compiler or kernel gives by default, and no test notices. This gate refuses those added settings in CMake, Make, meson, configure.ac, Cargo, build.rs, Go release scripts, Dockerfiles and kernel config, and asks about Rust release overflow-checks off and /dev/mem. It judges only what a change adds and is advisory about everything it cannot see (environment-set flags, generated build files, toolchain defaults).
+  customise: 'The settings are rows in `implementations/data/flags.json` (id, tier block or ask, languages, regex, what it weakens); add a row and a case, bump `as_of`. A reviewed exception is waived by a person with `pragma: allowlist hardening-flag` in a comment on the same line (`#`, or `//` in build.rs), honoured at commit and CI, and in the agent only for a line already in HEAD. Ship it with rollout `observe` first.'
 limit-diff-size:
   solves: A commit of thousands of hand-written lines cannot be reviewed, and an agent will produce one unless something stops it. git-safety only advised asking. This script counts the staged added plus removed lines, leaves out lockfiles, vendored and generated paths and binaries, and refuses above the limit with the largest files named.
   customise: Set `CHOCK_DIFF_LIMIT` to change the 500-line default. The exclusion lists are constants in `implementations/limit-diff-size-pre-commit.py`. A person may set `CHOCK_ALLOW_LARGE_DIFF=1` for one commit; it is ignored when `CHOCK_AGENT_COMMIT` is set, and an agent asks rather than setting it.
@@ -543,6 +574,34 @@ guard-memory-writes:
 review-like-a-red-team:
   solves: A gate can refuse the certain slice of a vulnerability shape and mark the uncertain slice as ask; nobody then reasons about the uncertain slice before the change lands. This skill hands the agent its own diff and its ask-tier findings with a twelve-step reviewer's method, triaged by a dated table of exclusions and precedents, and asks for a confirmed finding with an exploit scenario and a failing test, or a refutation left for a person. It is advisory and refuses nothing.
   customise: The triage table is `skill/references/triage.json`, a copy of the catalog's `data/triage.json` that the catalog's tests hold byte-identical and validate. Its floors (paths never excluded, verdict and rank floors, the confidence ceiling) are checked by the catalog's `tools/triage_tables.py`, not in an adopter's repository, so a change belongs in a catalog pull request; a locally edited copy is unchecked.
+guard-deletion:
+  solves: >
+    A review catches the deleted check that nothing replaced -- the bound compare, the auth decorator,
+    the escape call, the hardening flag -- because it reads the diff. A file-level scanner cannot: the
+    line that mattered is gone, so there is nothing left to match. This gate reads the removed lines
+    against the lines added beside them in the same hunk. A removed check with none of its kind beside
+    it asks a person; a removed or weakened mitigation (hardening flag, security header, cookie
+    attribute, TLS verification, row-level security, file mode) is refused. Several of those weakenings,
+    written as added lines on their own, are other policies' business (agentic-code-security refuses TLS
+    verification off in agent code, java-security the Java cookie and header forms); this one fires on
+    the removal, so it adds the view they cannot have.
+  customise: >
+    The check shapes and the mitigation families are regexes in `implementations/data/shapes.json`, and
+    the judged paths in `implementations/data/scope.json` (EP12 tables, dated and schema-checked); add a
+    family there with a bad and a good eval. A person waives a reviewed hunk with `pragma: allowlist
+    guard-removal` or `pragma: allowlist mitigation-removal` on a line in it; an agent's pragma counts
+    only on a removed line HEAD already holds, and one an agent adds to a guard or mitigation line is a
+    finding. Known limits, each a miss rather than a refusal: it is hunk-local, so a guard moved across
+    hunks or files is not followed; a guard neutralised in place (`assert True`, a swapped middleware) is
+    not seen; an insecure setting added with nothing removed is left to other policies; a commit whose only
+    change is deleted files never reaches a script gate; a strong-to-plain stack protector downgrade is not
+    seen; authorization wired by dependency injection or a config chain (FastAPI `Depends`, Spring
+    `authorizeRequests`) is not read; files over 4000 lines are compared by line counts, not hunks; CI without a base ref or a push event
+    file reads only the tip commit; a replacement line that only names a guard or header in a string (a log
+    message) counts as keeping it; a file mode is judged on a swap to a weaker one, so a bare removed `chmod`
+    and `umask` are not seen; CR-only line endings read as one line; a binary file with an unlisted suffix is
+    read as text and asks; the path scope skips root `test`, `fixtures`, `evals`, `docs` and any `tests`,
+    `vendor`, `node_modules` directory, and an agent's move of a file into a judged path from outside it asks.
 
 block-unguarded-agent-spawn:
   solves: |
@@ -554,6 +613,29 @@ block-unguarded-agent-spawn:
     Each agent's unsafe flags are one small function in `implementations/block-unguarded-agent-spawn.py`; add
     a program or a flag there and an eval case beside it. A sandbox you have proven safe is a reason to edit this policy in
     your own copy, not to run the flag past it.
+
+block-secret-store-reads:
+  solves: |
+    A prompt-injected or careless agent can read a developer's credentials with one ordinary command: `cat ~/.npmrc`,
+    `base64 ~/.aws/credentials`, `tar czf x.tgz ~/.ssh`, `gh auth token`. Once the value is in the transcript it
+    can be sent anywhere, and the supply-chain worms of 2025 (s1ngularity, Shai-Hulud) did exactly this with the
+    victim's own agent CLI. This guard refuses the read before it runs and tells the agent to ask the person for
+    the one value it needs. Template files, listings and public keys stay readable.
+  customise: |
+    The stores, readers and token printers are one data file, `implementations/data/secret_stores.json`
+    (365-day freshness, checked in CI); add a path or a reader there and an eval case beside it. A store that is a
+    directory needs no per-file rows. `relative` says whether a bare relative name may match (`always`, `code` for
+    interpreter text only, `never`). Nothing waives a refusal in-band: the person runs the command themselves.
+block-persistence-shapes:
+  solves: |
+    Publishing a package, making a repository public, or leaving something running after the session ends are
+    the steps a supply-chain worm takes next, and each is one shell line an agent can be talked into. This guard
+    reads the command and refuses publishes, registry-auth edits, user services, launch agents, scheduled jobs,
+    Run keys, ssh login keys, runner registration, sudoers edits, setuid bits and detached downloads. It asks
+    before a release or a new remote. It is friction on the command text, not a security boundary.
+  customise: |
+    The verbs, flags and paths are data in `implementations/data/shapes.json`; add a program or a path there and an
+    eval case beside it. Keep the `as_of` date current, since CI fails the table a year after it.
 
 agentic-code-security:
   solves: |
@@ -615,3 +697,37 @@ lockfile-integrity:
 scan-secret-files:
   solves: 'scan-secrets reads one line at a time, so it cannot tell that a whole file is a credential. A kubeconfig with an inline token, a service-account JSON, Terraform state, an `.npmrc` or `.git-credentials`, a PKCS#12 store or a browser cookie database leaks the moment it is committed, and renaming it does not change what it is. This script judges every file a change writes, by name and by shape (kubeconfig, JSON and INI shapes, PEM and PuTTY key blocks, DER and keystore headers), and flags the ones that are secrets. Templates (`.env.example`) stay allowed. It warns while its false-positive rate is measured, then blocks.'
   customise: 'The name tables and shapes are constants in `implementations/sbf_*.py`. Test, fixture, example, doc, lock and eval paths ask instead of refusing. There is no inline waiver (binary and JSON files cannot carry one); a person who has reviewed a fixture commits it from their own shell with `CHOCK_ALLOW=scan-secret-files`. Not caught: a renamed binary key store other than PKCS#12, JKS/JCEKS and DER keys (BKS, KeePass, GnuPG keyrings are not judged at all), and an encrypted DER PKCS#8 key; YAML over the scanner''s 1 MiB limit (a file with a `kind: Config` key it cannot read is still flagged); JSON this reader cannot parse is flagged only when it holds a credential file''s keys; keys and values split across lines or encoded (UTF-16, base64), tfvars heredocs and Maven CDATA passwords; `.env` and tfvars keys that are not secret-like names, and low-entropy values that are paths or plain URLs (or sit under a `_FILE`, `_PATH`, `_NAME` or `_URL` key); a value holding a template word (example, changeme); `.pgpass` under another name, a renamed netrc that opens with a comment, a renamed git credential store holding any other line; `env.production` (no leading dot); `.yarnrc.yml`, `.gem/credentials`, `.s3cfg`, `.my.cnf`, `.htpasswd`, IDE data sources; notebook widget state and metadata. A key block missing its END line and re-wrapped under 40 characters per line, or a key interleaved with padding lines, is missed (neither loads as a key); random-looking text between key armor lines (a 32-character ID, an alphabet placeholder) is read as key bytes. A Java store with no key-protector OID asks (a truststore, often committed on purpose); PGP private keys always refuse. When one run holds both a refusal and an ask, the script exits with the refusal even if only the ask is new. Credentials in URIs, inline CLI passwords and high-entropy values are scan-secrets'' and the entropy tier''s.'
+
+refname-filename-metachar:
+  solves: >
+    Names a shell, CI step or git can misread. Paths a change adds or renames into, and branches
+    and tags pushed, can carry command substitution, an IFS expansion, a backtick, a shell
+    operator, a control or bidi character, a base64-decode shape, a leading dash or a trailing
+    space or dot in a segment, or a '..' segment; a ref can also have a full commit id's shape.
+  customise: >
+    No waiver: if a name is truly required, a person creates it from their own shell. This is
+    friction, not a boundary.
+scan-instruction-files:
+  solves: 'An instruction file (AGENTS.md, CLAUDE.md, a rules folder, a skill, a prompt) is obeyed by every
+    agent that opens the repository, so one poisoned line in it hijacks them all: overriding the rules, hiding
+    work from a person, approving tools, skipping hooks, fetching and running code, or sending secrets away.
+    This gate asks a person before a change adds such text, and refuses outright secret exfiltration and
+    encoded payloads. Only what the change adds is judged, plus guardrail statements it deletes or weakens.'
+  customise: 'Ship it under `rollout: observe` in .chock/config.yaml first and read the gate log before
+    enforcing. A person answers an ask by committing from their own shell with CHOCK_ALLOW=scan-instruction-files
+    for that one commit, and waives a refusal with ''chock: allow instruction-scan'' on the line. To stop judging
+    the policy, list it under policies.disabled.'
+scan-hidden-content:
+  solves: 'A page can show a reviewer one thing and an agent another. A comment the renderer never shows, a span styled
+    out of sight, white or zero-size text, or a Word run marked hidden can carry instructions an agent reads and a person
+    never sees; an image URL whose query holds a token or a data-shaped part sends data out the moment the page is
+    rendered. This gate reads what a change adds to Markdown, HTML, SVG, XML and Word files, agent instruction files,
+    docs and issue or pull-request templates, and flags each such comment, hidden element and URL. It warns while its
+    false-positive rate is measured; a later release asks, and blocks a URL whose query names a secret.'
+  customise: 'A reviewed line is kept by a person with `chock: allow scan-hidden-content` on it, or on a comment line
+    just above, committed from their own shell; in the agent a waiver counts only for a line already in HEAD. A Word
+    document cannot carry the waiver. The host allowlist and the vocabulary live in the policy''s data table; widening
+    them is a change to the policy.'
+opaque-blob-guard:
+  solves: A payload hidden in a test file is how the xz backdoor reached the build (a corrupt-looking xz test file, extracted by an m4 macro at configure time). Reviewers read source, not binaries, and tests/, fixtures/, testdata/ and vendor/ are where unreadable files are expected. This gate reads each changed file in those paths by its first bytes, whatever its name, and also flags a random-looking file over 100 KB, a symlink that leaves the repository, build text (m4, configure, Makefile.am) that decodes and evaluates, and a changed gradle wrapper jar with no new distributionSha256Sum. It warns while its false-positive rate is measured.
+  customise: 'The signatures, scoped folders, entropy limits, build-text patterns and the known gradle wrapper hashes (empty by default, a list of lowercase sha256) live in `implementations/data/*.json`. A file that must stay is listed as `<sha256>  <path>` in `.chock/blob-allowlist.txt`: both must match, one malformed line ignores the whole list, and at tool use and in an agent''s commit only entries already in HEAD count, but a person''s commit and CI read the staged list, so keep that file under code-owner review. Known limits: shell sinks written as a variable (`$SHELL`), a newline after the pipe, assign-then-eval and redirect-then-run are not recognised; a repo_root whose own name is a scoped folder loses that scope; offset-0 signatures only (a prefixed archive, text-encoded data of any size, and known media headers followed by random bytes are missed); only the first 4 MiB is entropy-sampled; folders outside the scoped list are not judged, and folder names match by exact case and spelling (`Vendor`, `VENDOR`, `Spec`, `third-party`, `test-data` are not scoped); a payload split across many small files, a Python bytecode file and a Git LFS pointer are not recognised; a commit of several thousand in-scope files can exceed the runner''s 30 s script budget and is then left undecided; a Makefile that runs a script under tests/ (`sh tests/run.sh`) or a `| sh` within 2000 characters of an unrelated decompressor line is asked about; the runner quotes odd file names (a double quote or backslash) so such files may never reach the gate.'
