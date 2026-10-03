@@ -7,7 +7,6 @@ import string
 import time
 
 import pytest
-from chock_scan.libmods import rng
 from policies import entropykit as kit
 
 gate = kit.load()
@@ -34,7 +33,7 @@ def test_a_header_key_holds_the_credential_itself(key: str) -> None:
 def test_dotted_tokens_of_random_segments_are_not_taken_for_code(parts: tuple[int, ...]) -> None:
     missed = 0
     for seed in range(200):
-        draws = rng(seed)
+        draws = kit.rng(seed)
         token = ".".join("".join(draws.choice(URLSAFE) for _ in range(n)) for n in parts)
         missed += rules(f"CLIENT_SECRET={token}\n") != ["entropy"]
     assert missed <= 4
@@ -43,7 +42,7 @@ def test_dotted_tokens_of_random_segments_are_not_taken_for_code(parts: tuple[in
 def test_symbol_passwords_are_not_taken_for_code_regex_or_references() -> None:
     missed = 0
     for seed in range(400):
-        draws = rng(seed)
+        draws = kit.rng(seed)
         value = "".join(draws.choice(PRINTABLE) for _ in range(draws.randint(20, 40))).replace('"', "")
         value = value.replace("\\", "").replace("#", "").replace(" ", "")
         if shapes.explain(value, "client_secret") is not None:

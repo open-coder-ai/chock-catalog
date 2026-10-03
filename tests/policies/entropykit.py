@@ -13,8 +13,6 @@ import string
 import sys
 from types import ModuleType
 
-from chock_scan import tokens
-from chock_scan.libmods import rng
 from trees import ROOT
 
 POLICY = "scan-secrets-entropy"
@@ -22,6 +20,20 @@ NAME = f"{POLICY}-gate.py"
 IMPL = ROOT / "base" / POLICY / "implementations"
 BASE62 = string.digits + string.ascii_letters
 _SHARED = ("chock_scan", "entropyscan")
+
+
+def _helper(name: str) -> ModuleType:
+    """tests/chock_scan/<name>.py by path: guardkit drops `chock_scan` from sys.modules, so a plain import can find a gate's copy."""
+    spec = importlib.util.spec_from_file_location(f"entropy_test_{name}", ROOT / "tests" / "chock_scan" / f"{name}.py")
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+tokens = _helper("tokens")
+rng = _helper("libmods").rng
 
 
 def _shared(name: str) -> bool:

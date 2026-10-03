@@ -6,7 +6,6 @@ import base64
 import string
 
 import pytest
-from chock_scan.libmods import rng
 from policies import entropykit as kit
 
 gate = kit.load()
@@ -106,7 +105,7 @@ def test_values_that_only_look_structured_are_not_explained(value: str) -> None:
     ],
 )
 def test_random_credentials_are_almost_never_explained(alphabet: str, most: int) -> None:
-    draws = rng(7)
+    draws = kit.rng(7)
     drawn = ["".join(draws.choice(alphabet) for _ in range(draws.randint(16, 64))) for _ in range(4000)]
     assert sum(shapes.explain(v, "client_secret") is not None for v in drawn) <= most
 
