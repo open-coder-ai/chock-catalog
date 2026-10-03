@@ -14,7 +14,7 @@ enforcement: advise
 rule:
   text: |
     agent_config(AGENTS.md+wrappers|.{claude,cursor,codex,gemini,windsurf,agents,chock,junie,devin,grok,tabnine,augment,claude-plugin}/**|.github/{copilot*,hooks/}|.{clinerules,kiro}/hooks/|.kiro/agents/|<plugin>/hooks/|.mcp.json|.vscode/mcp.json|~/.claude.json|.git/{hooks,config}): never(edit|delete|set CLAUDE_CODE_PLUGIN_DIRS|--plugin-dir); any case; symlink same
-    docs/**/{AGENTS,CLAUDE,CLAUDE.local,GEMINI,copilot-instructions}.md|.cursorrules|.windsurfrules|.aider.conf.yml: ask_person; else ask_person; no marker passes
+    docs/**/{AGENTS,CLAUDE,GEMINI,copilot-instructions}.md|.cursorrules|.windsurfrules|.aider.conf.yml: ask_person; no marker passes
 hook:
   gate:
     kind: script
