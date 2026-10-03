@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
+from .args import taken
 from .quoting import split_words
 
 
@@ -204,12 +205,13 @@ def _strip(name: str, words: list[str]) -> list[str]:
     return words[i + skip :]
 
 
-def script_at(rest: list[str], *, options: bool = True) -> int:
-    """Where the script is among the words after `-c`: past the options a shell still reads there (`-x`, `+e`, `-o pipefail`) and a `--`."""
-    at = 0
+def script_at(rest: list[str], *, options: bool = True, skip: int = 0) -> int:
+    """Where the script is among the words after `-c`: past `skip` words the `-c` cluster took, the options a shell still reads
+    there (`-x`, `+e`, `-o pipefail`), and a `--` or lone `-` that ends them."""
+    at = skip
     while options and at < len(rest) and len(rest[at]) > 1 and rest[at][0] in "-+" and rest[at] != "--":
-        at += 1 + (rest[at][-1] in "oO" and rest[at][1] != "-")
-    return at + (rest[at : at + 1] == ["--"])
+        at += 1 + taken(rest[at])
+    return at + (rest[at : at + 1] == ["--"] or (options and rest[at : at + 1] == ["-"]))
 
 
 def _inner(name: str, args: list[str]) -> str | None:
@@ -221,7 +223,7 @@ def _inner(name: str, args: list[str]) -> str | None:
         shell = name in _SHELLS and arg[:1] == "-" and arg[1:2] != "-" and "c" in arg
         if shell or (name in _PS_SHELLS and low in ("-command", "-c")) or (name == "cmd" and low in ("/c", "/k")):
             rest = args[i + 1 :]
-            return " ".join(rest[script_at(rest, options=shell) :])
+            return " ".join(rest[script_at(rest, options=shell, skip=taken(arg) if shell else 0) :])
     return None
 
 

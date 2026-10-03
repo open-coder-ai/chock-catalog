@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
+from chock_shellparse.args import taken
 from chock_shellparse.parse import _ASSIGN, _WRAPPERS, _base, _crude, _Scan, script_at
 from pathescape import decode
 from pathtext import scan
@@ -16,6 +17,7 @@ _DYNAMIC = re.compile(
 )  # a variable, a substitution (the guard's `$__subst__` stands for one) or a process substitution
 _NAMED = re.compile(r"\$\{|\$[^/]*$|`")  # a word that is a variable or a substitution, not a path below one
 _BARE = str.maketrans("", "", "'\"\\`$(){}")  # the characters that can split a name without changing it
+_DQ_ESCAPE = re.compile(r"\\([$\\\"`])")  # what a double-quoted word shows the shell it runs: `\$` is `$`, `\\` is `\`
 _STDIN = re.compile(r"/dev/(?:stdin|fd/\d+)|/proc/self/fd/\d+")
 _LEAD = frozenset(("do", "then", "else", "elif", "if", "while", "until", "!", "{", "time"))
 
@@ -57,7 +59,7 @@ def _command_flag(args: list[str]) -> int | None:
 
 def _script_at(args: list[str], flag: int) -> int:
     """Where the script of `-c` is: after it, past the options and the `--` that end the options."""
-    return flag + 1 + script_at(args[flag + 1 :])
+    return flag + 1 + script_at(args[flag + 1 :], skip=taken(args[flag]))
 
 
 def _shell(args: list[str]) -> bool:
@@ -148,6 +150,16 @@ def refuses(raw: str, hit: Callable[[str], bool]) -> bool:
 
     The line is tested as written, with its backslash escapes decoded as bash decodes them, and as each part of it reads."""
     spelled = [raw, *(decode(raw, mode).text for mode in ("b", "echo", "fmt", "ansi"))]
+    fresh = spelled
+    for _ in range(
+        _DEPTH
+    ):  # a script inside a double-quoted script is spelled with escapes that come off one level at a time
+        fresh = [
+            new
+            for new in dict.fromkeys(decode(_DQ_ESCAPE.sub(r"\1", text), "ansi").text for text in fresh)
+            if new not in spelled
+        ]
+        spelled = [*spelled, *fresh]
     decoded = [
         *spelled,
         *(text.translate(_BARE) for text in spelled),
