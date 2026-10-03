@@ -46,7 +46,7 @@ _POWERSHELL = re.compile(
     r"|\$env:|-(?:recurse|literalpath)\b",
     re.IGNORECASE,
 )
-_SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash"})
+_SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash", "mksh", "yash"})
 _PS_SHELLS = frozenset({"pwsh", "powershell"})
 _DEPTH = 4
 _WRAPPERS = {
@@ -207,11 +207,13 @@ def _strip(name: str, words: list[str]) -> list[str]:
 
 def script_at(rest: list[str], *, options: bool = True, skip: int = 0) -> int:
     """Where the script is among the words after `-c`: past `skip` words the `-c` cluster took, the options a shell still reads
-    there (`-x`, `+e`, `-o pipefail`), and a `--` or a lone `-` with a word after it, which ends them."""
+    there (`-x`, `+e`, `-o pipefail`), and a `--` or a lone `-` or `+` with a word after it, which ends them."""
     at = skip
     while options and at < len(rest) and len(rest[at]) > 1 and rest[at][0] in "-+" and rest[at] != "--":
         at += 1 + taken(rest[at])
-    return at + (rest[at : at + 1] == ["--"] or (options and rest[at : at + 1] == ["-"] and at + 1 < len(rest)))
+    return at + (
+        rest[at : at + 1] == ["--"] or (options and rest[at : at + 1] in (["-"], ["+"]) and at + 1 < len(rest))
+    )
 
 
 def _inner(name: str, args: list[str]) -> str | None:

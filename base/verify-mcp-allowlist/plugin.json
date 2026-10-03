@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "verify-mcp-allowlist",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass. Script gate (commit, tool use incl. turn's end) parses written MCP configs (.mcp.json, .cursor, .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs refused.",
   "author": {
     "name": "chock-core"

@@ -1,6 +1,6 @@
 id: block-unguarded-agent-spawn
 name: "Block Unguarded Agent Spawn"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   Best-effort guard against an agent launching a coding agent with safety checks off: claude
   --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
@@ -42,6 +42,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.0.1
   date: '2026-09-29'
   changes:

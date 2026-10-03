@@ -1,6 +1,6 @@
 id: rtk-dangerous-actions-blocker
 name: "rtk Dangerous Actions Blocker"
-version: "0.2.2"
+version: "0.2.3"
 description: >
   rtk#1007. Destructive verdicts come from the chock_destructive table shared with block-
   destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset
@@ -48,6 +48,10 @@ tags:
 - requested-by:rtk-ai/rtk#1007
 
 changelog:
+- version: 0.2.3
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.2.2
   date: '2026-10-03'
   changes:

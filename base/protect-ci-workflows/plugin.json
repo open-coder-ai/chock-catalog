@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "protect-ci-workflows",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Stops an agent weakening the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs ship no gate.",
   "author": {
     "name": "chock-core"

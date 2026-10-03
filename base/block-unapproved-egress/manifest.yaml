@@ -1,6 +1,6 @@
 id: block-unapproved-egress
 name: "Block Unapproved Egress"
-version: "0.1.3"
+version: "0.1.4"
 description: >
   Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod) that
   UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.4
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.1.3
   date: '2026-10-03'
   changes:

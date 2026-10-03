@@ -14,6 +14,16 @@ CLUSTERS = [
     "sh -c -",
     "dash -c -",
     "env bash -co pipefail",
+    "bash -c +",
+    "sh -c +",
+    "dash -c +",
+    "bash -c -x +",
+    "bash -co pipefail +",
+    "bash -c +o pipefail +",
+    "env bash -c +",
+    "timeout 5 bash -c +",
+    "mksh -c",
+    "yash -c",
 ]
 
 B1_REFUSED = [f"{pre} '{script}'" for pre in CLUSTERS for script in ("rm AGENTS.md", "echo x > .mcp.json")]
@@ -27,6 +37,8 @@ B1_ALLOWED = [
     "bash -c -oe pipefail 'echo hi'",
     "bash -co pipefail 'cat AGENTS.md'",
     "bash -o pipefail -c 'ls src'",
+    "bash -c + 'echo hi'",
+    "dash -c + 'ls src'",
 ]
 
 B2_REFUSED = [
@@ -111,5 +123,5 @@ S3_ALLOWED = [
 
 # block-destructive-commands and block-no-verify read the same clusters through the shared reader.
 DESTRUCTIVE_REFUSED = [f"{pre} 'rm -rf /'" for pre in CLUSTERS]
-DESTRUCTIVE_ALLOWED = ["bash -co pipefail 'ls src'", "sh -c - 'echo hi'"]
+DESTRUCTIVE_ALLOWED = ["bash -co pipefail 'ls src'", "sh -c - 'echo hi'", "bash -c + 'echo hi'"]
 NO_VERIFY_REFUSED = [f"{pre} 'git commit --no-verify -m x'" for pre in CLUSTERS]

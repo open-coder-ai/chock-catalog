@@ -1,6 +1,6 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.2.2"
+version: "0.2.3"
 description: >
   Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table
   shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths;
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.3
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.2.2
   date: '2026-10-03'
   changes:

@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.2.7"
+version: "0.2.8"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
   AGENTS.md, .claude/settings, MCP/hook client configs (.mcp.json, ...), .git/{hooks,config},
@@ -63,6 +63,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.8
+  date: '2026-10-03'
+  changes:
+  - "A lone + ends shell options like - (`bash -c + 'rm AGENTS.md'`, `sh`, `dash`, `-c -x +`, `-co pipefail +`, `-c +o pipefail +`, behind env, nohup, timeout, command, exec, sudo, nice), so the script behind it is read and judged (the shared reader chock_shellparse; block-destructive-commands and the other guards had the same gap). The reader also knows `mksh` and `yash` as shells. Eval cases tc-1288 and tc-1289; tests in test_protect_agent_config_eighth.py."
 - version: 0.2.7
   date: '2026-10-03'
   changes:

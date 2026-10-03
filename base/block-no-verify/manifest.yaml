@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.4.2"
+version: "0.4.3"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
@@ -35,6 +35,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.3
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.0.1
   date: '2026-07-12'
   changes:

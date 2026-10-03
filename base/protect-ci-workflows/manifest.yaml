@@ -1,6 +1,6 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.2.2"
+version: "0.2.3"
 description: >
   Stops an agent weakening the checks that review its work. Shell guard refuses writes to
   .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
@@ -57,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.3
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.2.2
   date: '2026-10-03'
   changes:
