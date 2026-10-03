@@ -35,6 +35,16 @@ USER = [
     "~/.codex/hooks.json",
     "~/.gemini/settings.json",
     "~/.cursor/hooks.json",
+    "/home/dev/.codeium/windsurf/hooks.json",
+    "/home/dev/.codeium/hooks.json",
+    "C:/Users/dev/.codeium/windsurf/hooks.json",
+    "~/.codeium/windsurf/hooks.json",
+    "~/.codeium/hooks.json",
+    "/home/dev/.claude.json",
+    "/Users/dev/.claude.json",
+    "C:\\Users\\dev\\.claude.json",
+    "~/.claude.json",
+    ".claude.json",
 ]
 MACHINE = [
     "/etc/windsurf/hooks.json",
@@ -44,6 +54,10 @@ MACHINE = [
     "C:\\ProgramData\\Augment\\settings.json",
     "\\\\?\\C:\\ProgramData\\Windsurf\\hooks.json",
     "D:/ProgramData/Augment/settings.json",
+    "/etc/devin/hooks.json",
+    "/Library/Application Support/Devin/hooks.json",
+    "C:\\ProgramData\\Devin\\hooks.json",
+    "/Library/Application Support/Augment/settings.json",
 ]
 # The same files with the letters of a case-insensitive filesystem.
 CASED = [
@@ -55,6 +69,10 @@ CASED = [
     "/home/dev/DOCUMENTS/CLINE/HOOKS/PreToolUse",
     "/ETC/WINDSURF/HOOKS.JSON",
     "c:\\PROGRAMDATA\\augment\\SETTINGS.JSON",
+    "/ETC/DEVIN/HOOKS.JSON",
+    "/library/application support/DEVIN/Hooks.json",
+    "/home/dev/.CODEIUM/Windsurf/Hooks.json",
+    "/home/dev/.Claude.JSON",
 ]
 # What stays open: the neighbours of a protected folder, look-alike names, and a machine path that is only below a folder of that name.
 OPEN = [
@@ -79,4 +97,15 @@ OPEN = [
     "/home/dev/ProgramData/Windsurf/hooks.json",
     "/Library/Application Support/Windsurf/settings.json",
     "src/hooks/useThing.ts",
+    "src/etc/devin/hooks.json",
+    "/etc/devin/other.json",
+    "/home/dev/ProgramData/Devin/hooks.json",
+    "/Library/Application Support/Augment/other.json",
+    "/home/dev/.codeium/other.json",
+    "/home/dev/.codeium/windsurf/memories/m.md",
+    "/home/dev/.claude.json5",
+    "/home/dev/.claude.jsonl",
+    "/home/dev/x.claude.json",
+    "src/claude.json",
+    "docs/claude-json.md",
 ]

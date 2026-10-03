@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import posixpath
+import re
 import sys
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from pathlink import follow
+from pathmatch import DEVICE, DRIVE
 from pathset import ASK, BLOCK, normalise, verdict
 
 # What the engine itself writes during a turn: its session log would fail the turn's-end walk. The shell guard still protects them.
@@ -31,10 +33,43 @@ ASKED = (
 )
 
 
+_UNC_DEVICE = re.compile(r"^[\\/]{2}[?.][\\/]UNC[\\/]", re.IGNORECASE)  # the device spelling of a network share
+
+
+def _fold(path: str) -> str:
+    """The path with Windows separators read as slashes, a device prefix dropped, and `..` folded."""
+    return posixpath.normpath(DEVICE.sub("", _UNC_DEVICE.sub("//", path).replace("\\", "/")))
+
+
+def _windows(path: str) -> bool:
+    """Whether a folded path is a drive-letter or UNC path."""
+    return bool(DRIVE.match(path)) or path.startswith("//")
+
+
+def _below(base: str, path: str) -> str | None:
+    """What follows the folder `base` in `path` (`.` for the folder itself), compared in any case as Windows does, or None."""
+    top = base.rstrip("/")
+    if path.lower() == top.lower():
+        return "."
+    return path[len(top) + 1 :] if path.lower().startswith(top.lower() + "/") else None
+
+
 def relative(root: Path, path: str) -> str:
-    """The path from the repository folder, `..` folded and Windows separators read as slashes."""
-    folded = posixpath.normpath(path.replace("\\", "/"))
-    if folded.startswith("/") and (here := os.path.relpath(folded, root)) and not here.startswith(".."):
+    """The path from the repository folder, `..` folded and Windows separators read as slashes.
+
+    A POSIX absolute path is read from the folder. So is a Windows one (drive letter, device or UNC), whatever its case;
+    a rooted path with no drive is on the repository's drive, as the shell guard reads it.
+    """
+    folded, base = _fold(path), _fold(str(root))
+    drive = base[:2] if DRIVE.match(base) and folded.startswith("/") and not folded.startswith("//") else ""
+    if _windows(base) and _windows(drive + folded) and (here := _below(base, drive + folded)) is not None:
+        return here
+    if (
+        not _windows(base)
+        and folded.startswith("/")
+        and (here := os.path.relpath(folded, root))
+        and not here.startswith("..")
+    ):
         return here
     return folded
 

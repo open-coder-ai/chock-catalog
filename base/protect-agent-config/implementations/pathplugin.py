@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 
 MANIFEST = ".claude-plugin"  # the folder that makes a directory a plugin root
+
+
+_DRIVE_ROOT = re.compile(r"[a-z]:/")  # a normalised path is lowercase
 
 
 def repo_root() -> str:
@@ -38,10 +42,11 @@ def plugin_hooks(normal: str, base: str | None = None) -> bool:
 
     `hooks` anywhere else (`src/hooks/useThing.ts`) is an ordinary folder. The folders on the way are looked up on disk, from `base`.
     """
-    parts = normal.split("/")
+    drive = _DRIVE_ROOT.match(normal)  # a Windows path is walked from its drive
+    parts = normal[drive.end() :].split("/") if drive else normal.split("/")
     if "hooks" not in parts:
         return False
-    folder = "/" if normal.startswith("/") else base or repo_root()
+    folder = drive[0] if drive else "/" if normal.startswith("/") else base or repo_root()
     for part in (p for p in parts if p not in ("", ".")):
         if part == "hooks" and _plugin_root(folder):
             return True

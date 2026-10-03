@@ -11,6 +11,7 @@ from pathplugin import plugin_hooks
 INSTRUCTIONS = (
     "AGENTS.md",
     "CLAUDE.md",
+    "CLAUDE.local.md",
     "GEMINI.md",
     "copilot-instructions.md",
     ".cursorrules",
@@ -40,6 +41,8 @@ PROTECTED = (
     ".cursor/hooks.json",
     ".codex/hooks.json",
     ".windsurf/hooks.json",
+    ".codeium/windsurf/hooks.json",  # Windsurf, user level
+    ".codeium/hooks.json",
     ".github/hooks/",  # VS Code Copilot: chock.json, agentseam.json
     ".grok/hooks/",
     ".devin/hooks.v1.json",
@@ -73,12 +76,15 @@ PROTECTED = (
     ".kiro/hooks/",  # Kiro hooks
     ".kiro/agents/",  # Kiro agent config, which declares hooks
 )
-# Hook files outside the repository, which no entry above names: a user's Cline folder (`~/Documents/Cline/Hooks`, as a segment
-# whatever precedes it) and the machine-wide Windsurf and Augment files (from the start of the path, so `src/etc/` is not one).
+# Files outside the repository, which no entry above names. A user's Cline folder (`~/Documents/Cline/Hooks`, as a segment whatever
+# precedes it) and `~/.claude.json` (user-scope MCP servers and trust flags: the exact name, as a segment, so `.claude.json5` is not
+# one) match anywhere; the machine-wide hook and settings files match from the start of the path, so `src/etc/` is not one.
 _OUTSIDE = re.compile(
     r"(?:^|/)documents/cline/hooks(?:/|$)"
-    r"|^(?:/etc/(?:windsurf/hooks|augment/settings)\.json|/library/application support/windsurf/hooks\.json"
-    r"|[a-z]:/programdata/(?:windsurf/hooks|augment/settings)\.json)"
+    r"|(?:^|/)\.claude\.json(?:[/:]|$)"
+    r"|^(?:/etc/(?:(?:windsurf|devin)/hooks|augment/settings)\.json"
+    r"|/library/application support/(?:(?:windsurf|devin)/hooks|augment/settings)\.json"
+    r"|[a-z]:/programdata/(?:(?:windsurf|devin)/hooks|augment/settings)\.json)"
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
 GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
