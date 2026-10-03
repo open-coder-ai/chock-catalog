@@ -175,3 +175,9 @@ def test_many_operands_and_many_written_files() -> None:
     writes = {"package.json": json.dumps({"scripts": {"postinstall": body}}), **{f"w{i}.txt": "x" for i in range(200)}}
     writes["f0.js"] = "x"
     assert ("npm-lifecycle", "block") in found(writes)
+
+
+@pytest.mark.parametrize("runner", ["npx", "bun", "node"])
+def test_flag_runs_cannot_backtrack_exponentially(runner: str) -> None:
+    body = runner + " -" + " -- -" * 3000 + " x"
+    assert found({"package.json": json.dumps({"scripts": {"postinstall": body}})}) == [("npm-lifecycle", "ask")]
