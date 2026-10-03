@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 25 total, 0 executable |
+| **Mechanism** | warn-only `content_regex` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 25 total, 25 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,18 +25,22 @@ The install line that outlives the conversation. A command guard sees an agent r
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `content_regex` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+
+On a finding it prints:
+
+> A line added to a build, CI or install file wires a network download straight into a shell or interpreter (or ADDs a URL without --checksum), so whoever controls that URL controls what runs. Download to a file, verify it (sha256sum -c against a pinned checksum, gpg --verify, or ADD --checksum=sha256:...), then run it as a separate step. This policy only warns while it is measured. Waiver: 'pragma: allowlist fetch-exec' on the same line. A person's commit honours it; in the agent only a line already in HEAD counts. An agent asks a person; it never writes the pragma.
+
+The rule text ships alongside, in the agent's ambient context:
 
 ```text
 flag(fetch_exec_in_file): added line wires a downloader (curl, wget, iwr, irm) into a shell or interpreter by pipe, $(..), <(..) or here-string; Dockerfile ADD <url> without --checksum
 prefer: download to a file, verify (sha256sum -c, gpg --verify, ADD --checksum=sha256:...), then run; waiver: same-line pragma, person only
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/block-fetch-exec-in-files/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/block-fetch-exec-in-files/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

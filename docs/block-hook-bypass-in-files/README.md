@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 28 total, 0 executable |
+| **Mechanism** | warn-only `content_regex` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 28 total, 28 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,17 +25,15 @@ block-no-verify refuses an agent's command that skips git hooks, but not the sam
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `content_regex` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
 
-```text
+On a finding it prints:
 
-```
-
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+> This line switches git hooks off for everyone who runs this file (a hook-skip option on a git command, a new hooks path (core.hooksPath), a hook manager's off-switch variable such as HUSKY set to zero, or an uninstall). Fix the failing hook instead. A person who has reviewed it may keep it with 'pragma: allowlist hook-bypass' on the same line (a person's commit honours it; in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
 
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/block-hook-bypass-in-files/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/block-hook-bypass-in-files/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 
