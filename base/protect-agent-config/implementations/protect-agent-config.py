@@ -3,7 +3,7 @@
 "exec" "$(command -v python3 || command -v python)" "$0" "$@"
 # fmt: on
 # Refuse shell commands that write to agent-config or vendored enforcement paths; reads and `chock sync` pass.
-# Best effort and coarse: a write must target a protected path (redirect, writer verb, in-place edit, git checkout/restore, PowerShell cmdlet).
+# Best effort: a write must target a protected path or a directory holding one, as the command resolves it (cd, `..`, variables, globs; see pathguard.py).
 
 import os
 import re
@@ -11,6 +11,10 @@ import shlex
 import sys
 
 from chock_shellparse import commands, writes_files
+from pathguard import refuses
+from pathmatch import DEVICE
+from pathopaque import refuses as opaque
+from pathwrap import too_deep
 
 PROTECTED = (
     "AGENTS.md",
@@ -51,20 +55,28 @@ PROTECTED = (
     ".chock/agentic-security.json",
     ".chock/state",  # shell only: the engine's own session log there would fail the Edit/Write gate's turn's-end walk
     ".git/hooks",
+    ".git/config",  # core.hooksPath, core.fsmonitor and aliases there run code the way a hook does
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
 GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
+# A lone `\` ends the line: for a Windows command (copy, xcopy, move) it closes a folder name, it escapes nothing.
+_TRAILING = re.compile(r"(?<=[^\s\\])\\$")
+
+BLIND = "shell command runs script text the guard cannot read (eval or a shell fed from a variable, a pipe or a here-document, a variable as the command, trap, xargs sh, an interpreter one-liner) and names a protected path -- refused because it cannot be judged. Run the inner command directly, or ask the person."
+
+DEEP = "shell command nested too deep to check (a script inside a script, five or more levels) -- refused because it cannot be judged. Run the inner commands one at a time, or ask the person."
+
 
 def normalise(path: str) -> str:
-    """The path as matched: backslashes as slashes, `//` and `/./` collapsed, lowercase (macOS and Windows ignore case)."""
-    normal = path.replace("\\", "/")
+    """The path as matched: backslashes as slashes, no device prefix, `//` and `/./` collapsed, names without trailing dots or spaces (Windows drops them), lowercase."""
+    normal = DEVICE.sub("", path.replace("\\", "/"))
     previous = None
     while previous != normal:
         previous = normal
         normal = normal.replace("//", "/").replace("/./", "/")
-    return normal.lower()
+    return "/".join(part.rstrip(". ") or part for part in normal.split("/")).lower()
 
 
 def hit(path: str) -> bool:
@@ -75,9 +87,12 @@ def hit(path: str) -> bool:
 
 def check(raw: str) -> str | None:
     """The reason a command edits protected files, or None."""
-    if any(writes_files(cmd, hit) for cmd in commands(raw)):
+    raw = _TRAILING.sub("/", raw.rstrip())
+    if too_deep(raw):
+        return DEEP
+    if any(writes_files(cmd, hit) for cmd in commands(raw)) or refuses(raw, PROTECTED, hit, normalise):
         return REASON
-    return None
+    return BLIND if opaque(raw, hit) else None
 
 
 def run(argv: list[str]) -> int:

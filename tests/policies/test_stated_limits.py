@@ -239,7 +239,6 @@ SHAPES_MISSED_IN_CHANGELOG = {
     "account-change": ("usermod -aG sudo x", "usermod, useradd, passwd"),
     "setcap": ("setcap cap_setuid+ep a", "setcap"),
     "scp-bare-host": ("git push host:path", "scp-style host:path"),
-    "eval-dashdash": ("eval -- npm publish", "-- after eval or -c"),
     "array-append": ('arr=(npm); arr+=(publish); "${arr[@]}"', "array and += assignments"),
 }
 #: Forms the guard refuses although they are harmless; the changelog says so.

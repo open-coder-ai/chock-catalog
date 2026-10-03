@@ -1,6 +1,6 @@
 id: refname-filename-metachar
 name: "Refname Filename Metachar"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Refuses names a shell, CI step or git can misread. Paths a change adds or renames into (commit,
   agent writes), and branches and tags pushed (pre-push), with command substitution, an IFS
@@ -47,6 +47,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: it skips a `--` and the shell options between `-c` and the script (`bash -c -- '...'`, `sh -c -x '...'`, `eval -- '...'`), reads `name=(...)`, `name+=` and `name[i]=` assignments, looks through the `{` that opens a function body or group, splits a line whose quotes do not balance in one pass, and in a short-option cluster every `o` or `O` takes the next word while a lone `-` or `+` ends the options. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."
 - version: 0.1.1
   date: '2026-10-02'
   changes:

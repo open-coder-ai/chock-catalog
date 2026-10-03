@@ -66,27 +66,32 @@ def event_scripts(policy_dir: Path, policy_id: str) -> list[Path]:
     )
 
 
-def command_guards(policy_dir: Path, policy_id: str, gate_script: str = "") -> list[Path]:
-    """Guards invoked with a command's argv: the in-agent kind, never the event scripts or the gate's own script."""
+def command_guards(policy_dir: Path, policy_id: str) -> list[Path]:
+    """Guards invoked with a command's argv: the in-agent kind, never the event scripts."""
     impl = Path(policy_dir) / "implementations"
     if not impl.is_dir():
         return []
-    return sorted(
-        p
-        for suffix in SCRIPT_SUFFIXES
-        for p in impl.glob(f"*{suffix}")
-        if not is_event_script(p, policy_id) and p.name != gate_script
-    )
+    return sorted(p for suffix in SCRIPT_SUFFIXES for p in impl.glob(f"*{suffix}") if not is_event_script(p, policy_id))
+
+
+def write_gate_script(manifest: dict[str, Any]) -> str | None:
+    """The script a script gate hands a change's files to (commit, tool_use), else None.
+
+    Such a script judges written files, never a command: it is the gate's program, not a command
+    guard, so it never lifts a warn-only gate to in-agent enforcement. A tool_call gate's script
+    is consulted before the tool runs and stays a guard.
+    """
+    gate = (manifest.get("hook") or {}).get("gate") or {}
+    if gate.get("kind") != "script" or "tool_call" in (gate.get("on") or []):
+        return None
+    return str((gate.get("params") or {}).get("script") or "") or None
 
 
 def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     """Return (kind, the mechanism label), strongest mechanism first."""
     policy_id = str(manifest.get("id") or Path(policy_dir).name)
+    own_script = write_gate_script(manifest)
     gate = (manifest.get("hook") or {}).get("gate") or {}
-    # A script gate that judges writes runs its own script on file text, not on a command's argv, so a
-    # warn-only one must not read as a guard. (A tool_call script gate keeps its old label.)
-    writes_gate = gate.get("kind") == "script" and "tool_call" not in (gate.get("on") or [])
-    gate_script = str((gate.get("params") or {}).get("script") or "") if writes_gate else ""
     # A gate that only warns enforces nothing (the engine withholds its enforcing surfaces): it
     # never lifts a policy above the rule text, though a script or guard it ships still counts.
     warns = gate.get("action") == "warn"
@@ -96,7 +101,7 @@ def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
         return GATE, str(gate["kind"])
     if event_scripts(policy_dir, policy_id):
         return EVENT_SCRIPT, script_mechanism(manifest)
-    if command_guards(policy_dir, policy_id, gate_script):
+    if any(p.name != own_script for p in command_guards(policy_dir, policy_id)):
         return GUARD, "guard script"
     if gate.get("kind"):
         return GUARD, str(gate["kind"])

@@ -501,9 +501,36 @@ verify-dependency-exists:
     suggest packages that do not exist; an attacker who registers that name gets code
     execution in every repo that installs it.
   customise: >
-    The allowlist is the policy. `params.manifests` sets which files are watched, and
-    `params.allowlist_file` where the approved names live. This one ships disabled because
-    an empty allowlist blocks every dependency -- populate it first, then enable.
+    The allowlist is the policy: `.chock/dependency-allowlist.txt`, one name per line, `#` for notes, matched
+    after the ecosystem's own normalisation (`Foo_Bar` is `foo-bar`; a Cargo `-` is a `_`). It ships disabled
+    because an empty allowlist blocks every dependency. Seed it from what the repository already depends on --
+    `python .agents/policies/verify-dependency-exists/implementations/dependency-manifests.py --seed >
+    .chock/dependency-allowlist.txt` -- review it, then set `rollout: observe` in `.chock/config.yaml`, enable
+    the policy and read what it would have refused before promoting it. A new name in a manifest blocks; a name
+    that only a lockfile adds (a transitive dependency) asks. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET,
+    Go, Elixir, Dart and Swift manifests by parsing them (Ruby, Elixir, Gradle and Swift by pattern), never
+    running them. Limits: the allowlist is one flat list, so a name listed for one ecosystem also passes in
+    another, and Go module paths and Maven coordinates are compared as written, so their allowlist line must match
+    the case; tomllib reads TOML 1.0, so a Cargo or pyproject file using TOML 1.1 syntax cannot be parsed and asks;
+    forms not read include Gradle coordinates built from variables, Pipfile custom categories, pyproject tool
+    tables beyond the ones named above (pixi, pdm overrides), NuGet Sdk attributes and dotnet tool manifests, and
+    Maven annotation-processor paths; local path and workspace dependencies are skipped in npm, Cargo, pip, Go and mix, while a Poetry, Pipfile, Gemfile or pubspec path dependency is reported by its name; anything under a folder named node_modules is never read; a lockfile is asked
+    about only when no manifest of its ecosystem changed beside it, in its folder or below (with one, the manifest
+    names are the judgement and the lock's transitive names are what installing them brings, so a lock edited by hand to pin an extra package passes beside a changed manifest), and when one run
+    holds both an unlisted manifest name and a lockfile-only addition elsewhere the whole run blocks; a Maven
+    `${...}` placeholder, or a pip name built from `${VAR}`, is judged as the literal text; no comment is stripped in Gradle, Swift or mix.exs (a
+    `**/*.class` glob would open a fake block comment), so a commented-out dependency is reported, and any quoted `a:b:c` string in a Gradle script (`"docker:run:tag"`) reads as a coordinate; mix.exs is read
+    as text, so a tuple whose version is a variable or module attribute is missed; also not read: Gradle
+    `"implementation"(...)` and `id(...).version(...)` forms, an npm `jsr:` alias target, pyproject cibuildwheel
+    and flit tables, .mvn/extensions.xml, differently named POMs (pom-ci.xml) and project types such as .nuproj
+    and .sqlproj, and pnpm-workspace.yaml catalogs, conda environment.yml, tox.ini and noxfile.py. Also: it checks that a name is
+    listed, never that it exists in a registry, and never a dependency's version or source (a listed name
+    pointed at another git URL passes); a list built by code is not read (a setup.py
+    list built from a variable, `+` or `**kw`; a multi-line `gem(` call; a Swift raw-string or variable URL; Gradle
+    map notation split anywhere but after a comma, `add("implementation", ...)` and settings-catalog `library(...)` calls); an npm name
+    pointing at a git or URL spec, and a lockfile entry whose real name differs from its key, report only the key;
+    an `-r` include is judged only when the same change holds the included file; a file that cannot be parsed asks, a UTF-16 or UTF-32 file (which pip reads by its BOM) included; an XML manifest that declares a DOCTYPE or ENTITY, and one too large or too deeply nested to read,
+    is refused as a finding keyed by a digest of its text.
 
 verify-mcp-allowlist:
   solves: >
@@ -513,14 +540,12 @@ verify-mcp-allowlist:
     this. A name match alone would not be enough; an attacker who reuses an approved server's
     name while pointing its command or args elsewhere needs the source checked too.
   customise: >
-    The allowlist is the policy, and it ships inside the guard script itself rather than a
-    separate file: guard-mode evals run against an empty sandbox repo, so an allowlist that
-    lived anywhere else could never be exercised by this suite. Add your own approved servers
-    as `name<TAB>source` lines; protect-agent-config's own protected-path coverage of every
-    policy's `implementations/` already keeps a shell edit to this list honest, gated behind
-    the same `chock: approved-config-change` marker. Covers Claude Code's `.mcp.json` only --
-    agentseam has no recorded MCP-config-path for the other agents it lists, and this policy
-    does not guess at one.
+    The allowlist is `.chock/mcp-allowlist.json`, empty by default: a `servers` list whose entries are a `name` with
+    a `launcher` and the `spec` (its arguments, joined by single spaces), or a `name` with a `url_host`. An agent is
+    judged by the copy HEAD holds and cannot grow it; a person edits it from their own shell and commits it. Beside it
+    the gate warns, while the rules are observed, about unpinned or shell launchers, http urls, literal credentials,
+    denied options and packages below their floor (the tables in `implementations/data/`). It reads thirteen client
+    config paths, not only `.mcp.json`; a shell write is checked for the files that hold nothing but servers.
 no-a11y-regression:
   solves: >
     An agent remediating accessibility can make it worse while the report says it improved.
@@ -731,3 +756,19 @@ scan-hidden-content:
 opaque-blob-guard:
   solves: A payload hidden in a test file is how the xz backdoor reached the build (a corrupt-looking xz test file, extracted by an m4 macro at configure time). Reviewers read source, not binaries, and tests/, fixtures/, testdata/ and vendor/ are where unreadable files are expected. This gate reads each changed file in those paths by its first bytes, whatever its name, and also flags a random-looking file over 100 KB, a symlink that leaves the repository, build text (m4, configure, Makefile.am) that decodes and evaluates, and a changed gradle wrapper jar with no new distributionSha256Sum. It warns while its false-positive rate is measured.
   customise: 'The signatures, scoped folders, entropy limits, build-text patterns and the known gradle wrapper hashes (empty by default, a list of lowercase sha256) live in `implementations/data/*.json`. A file that must stay is listed as `<sha256>  <path>` in `.chock/blob-allowlist.txt`: both must match, one malformed line ignores the whole list, and at tool use and in an agent''s commit only entries already in HEAD count, but a person''s commit and CI read the staged list, so keep that file under code-owner review. Known limits: shell sinks written as a variable (`$SHELL`), a newline after the pipe, assign-then-eval and redirect-then-run are not recognised; a repo_root whose own name is a scoped folder loses that scope; offset-0 signatures only (a prefixed archive, text-encoded data of any size, and known media headers followed by random bytes are missed); only the first 4 MiB is entropy-sampled; folders outside the scoped list are not judged, and folder names match by exact case and spelling (`Vendor`, `VENDOR`, `Spec`, `third-party`, `test-data` are not scoped); a payload split across many small files, a Python bytecode file and a Git LFS pointer are not recognised; a commit of several thousand in-scope files can exceed the runner''s 30 s script budget and is then left undecided; a Makefile that runs a script under tests/ (`sh tests/run.sh`) or a `| sh` within 2000 characters of an unrelated decompressor line is asked about; the runner quotes odd file names (a double quote or backslash) so such files may never reach the gate.'
+block-fetch-exec-in-files:
+  solves: >
+    The install line that outlives the conversation. A command guard sees an agent run a download
+    straight into a shell once; written into a Dockerfile, Makefile, CI step or npm postinstall, the
+    same wiring runs on every build, with that environment's credentials, and whoever controls the
+    URL decides what it does each time.
+  customise: >
+    It only warns while its false-positive rate is measured (rollout observe); a later version is
+    meant to block. It reads one added line at a time inside applies_to.paths, so a pipe split
+    across a continuation line or a URL held in a variable is not seen. Prefer download, verify
+    (sha256sum -c, gpg --verify, Dockerfile ADD --checksum=sha256:...), then run. A reviewed
+    exception is marked with `pragma: allowlist fetch-exec` on the same line; an agent asks a
+    person to add it.
+scan-secrets-entropy:
+  solves: scan-secrets refuses vendor prefixes and a fixed set of assignment patterns, so a random credential under a key it does not spell, a Stripe test key, a Slack app token or an AWS bearer-token id slips past it. This gate judges every value assigned to a secret-like key by its entropy, skipping references, digests, UUIDs, placeholders and values written as code or paths, and checks vendor tokens by their built-in checksum or issued shape and card numbers by Luhn. Values are never printed; a finding's key is a hash. It warns while its false-positive rate is measured, then asks.
+  customise: 'The thresholds and allow reasons are chock_scan''s (`lib/chock_scan/entropy.py`, `keyword_values.py`, `checksums.py`; edit lib/, never the copy), the non-secret shapes are `implementations/entropyscan/shapes.py`. A person keeps a checked test value with `pragma: allowlist secret` on the line (a JSON file cannot carry it). In the agent a waiver counts only for a line already in HEAD.'

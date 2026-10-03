@@ -35,6 +35,14 @@ MARK_END = "<!-- generated:end -->"
 _KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard"}
 
 
+WARN_ONLY_PRIMITIVE = (
+    "A **warn-only gate**. `recompile` writes it under `.chock/compiled/{id}/` for each surface its `on` "
+    "names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but "
+    "its exit never refuses a commit or a write."
+)
+WARN_ONLY_REACH = "`advisory` — the gate runs and prints its findings; it never refuses"
+
+
 def kind_of(policy_dir: Path, manifest: dict) -> str:
     return _KIND.get(classify(policy_dir, manifest)[0], "text")
 
@@ -44,7 +52,20 @@ def _mechanism(kind: str, gate: dict, scripts: list[str], manifest: dict) -> str
         return f"{gate['kind']} gate"
     if kind == "script":
         return script_mechanism(manifest).replace("guard script", f"guard script `{scripts[0]}`", 1)
-    return f"guard script `{scripts[0]}`" if scripts else "rule text"
+    if scripts:
+        return f"guard script `{scripts[0]}`"
+    return f"warn-only `{gate['kind']}` gate" if _warn_only(gate) else "rule text"
+
+
+def _warn_surfaces(gate: dict) -> list[str]:
+    """Where a warn-only gate is compiled: the gate surfaces, the agent's write path for tool_use."""
+    tool_use = ["`pre-tool-use`"] if "tool_use" in (gate.get("on") or []) else []
+    return [*SURFACES["gate"][:-1], *tool_use, SURFACES["gate"][-1]]
+
+
+def _warn_only(gate: dict) -> bool:
+    """True for a gate that runs but whose declared action is only to warn."""
+    return bool(gate.get("kind")) and gate.get("action") == "warn"
 
 
 def load_cases(policy_dir: Path) -> list[dict]:
@@ -61,7 +82,8 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
     tree = policy_dir.parent.name
     gate = (manifest.get("hook") or {}).get("gate") or {}
     cases = load_cases(policy_dir)
-    executed = sum(1 for c in cases if c.get("execute")) if kind != "text" else 0
+    warn_only = kind == "text" and _warn_only(gate)
+    executed = sum(1 for c in cases if c.get("execute")) if kind != "text" or warn_only else 0
     scripts = [p.name for p in command_guards(policy_dir, policy_id)] if kind == "guard" else []
     if kind == "script":
         scripts = [p.name for p in event_scripts(policy_dir, policy_id)]
@@ -79,8 +101,8 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
         "| :--- | :--- |",
         f"| **Type** | `{manifest.get('artifact')}` (`enforcement: {manifest.get('enforcement')}`) |",
         f"| **Mechanism** | {_mechanism(kind, gate, scripts, manifest)} |",
-        f"| **Reaches** | {CEILING[kind]}{TOOL_USE_REACH if tool_use else ''} |",
-        f"| **Compiles to** | {', '.join(SURFACES[kind])} |",
+        f"| **Reaches** | {WARN_ONLY_REACH if warn_only else CEILING[kind]}{TOOL_USE_REACH if tool_use else ''} |",
+        f"| **Compiles to** | {', '.join(_warn_surfaces(gate) if warn_only else SURFACES[kind])} |",
         f"| **Eval cases** | {len(cases)} total, {executed} executable |",
         f"| **Enabled by default** | {'no — opt in' if disabled else 'yes'} |",
         "",
@@ -146,6 +168,26 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
             "```",
             "",
         ]
+    elif _warn_only(gate):
+        events = " and ".join("`" + e + "`" for e in gate.get("on", []))
+        lines += [
+            f"A `{gate['kind']}` gate runs on {events} and only warns: its action is `warn`, so it prints "
+            "its findings and never refuses. It does not enforce anything, so the policy counts as advisory.",
+            "",
+            "On a finding it prints:",
+            "",
+            "> " + " ".join((gate.get("message") or "").split()),
+            "",
+        ]
+        if rule_text := ((manifest.get("rule") or {}).get("text") or "").strip():
+            lines += [
+                "The rule text ships alongside, in the agent's ambient context:",
+                "",
+                "```text",
+                rule_text,
+                "```",
+                "",
+            ]
     else:
         lines += [
             "There is no mechanism. The rule text is compiled into the agent's ambient context:",
@@ -161,7 +203,9 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
     lines += [
         "## Which primitive it becomes",
         "",
-        PRIMITIVE[kind].format(id=policy_id, script=scripts[0] if scripts else ""),
+        WARN_ONLY_PRIMITIVE.format(id=policy_id)
+        if warn_only
+        else PRIMITIVE[kind].format(id=policy_id, script=scripts[0] if scripts else ""),
         "",
         "## Installing it",
         "",

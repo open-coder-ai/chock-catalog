@@ -11,7 +11,7 @@ from trees import ROOT
 
 SHELLPARSE = "chock_shellparse"
 DESTRUCTIVE = "chock_destructive"
-SHIPPED_LIBS = (SHELLPARSE, DESTRUCTIVE, "chock_scan")
+SHIPPED_LIBS = (SHELLPARSE, DESTRUCTIVE, "chock_scan", "mcpcheck")
 
 
 def impl_dir(policy: str) -> Path:
@@ -26,7 +26,7 @@ def policies_with_shellparse() -> list[str]:
 
 
 def _forget() -> dict[str, ModuleType]:
-    """Drop the helper packages and modules a guard ships beside itself (chock_shellparse, chock_destructive, chock_scan, shapes_*)."""
+    """Drop the helper packages and modules a guard ships beside itself (chock_shellparse, chock_destructive, chock_scan, mcpcheck, shapes_*)."""
     return {
         name: sys.modules.pop(name)
         for name in list(sys.modules)

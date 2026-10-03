@@ -3,36 +3,37 @@
 # ones and the policy's own scripts import (static imports are checked). Edit lib/, never a copy.
 # <tree>/<policy id>: {<package>: [<module>, ...]}
 base/block-destructive-commands:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-no-verify:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-secret-store-reads:
   chock_scan: [data_table, safe_read]
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-persistence-shapes:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
   chock_scan: [data_table, safe_read]
 base/block-unapproved-egress:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
   chock_scan: [hostmatch, hosts, idn, safe_read, urls]
 base/ci-github-actions-security:
   chock_scan: [data_table, safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/block-unguarded-agent-spawn:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/dockerfile-compose-security:
   chock_scan: [yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/hardening-flags:
   chock_scan: [data_table, safe_read]
 base/protect-agent-config:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/protect-ci-workflows:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/protect-commit-privacy:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/rtk-dangerous-actions-blocker:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/verify-mcp-allowlist:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_scan: [data_table, hostmatch, hosts, idn, jsonc, safe_read, urls]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/agent-devenv-autoexec:
   chock_scan: [jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/package-lifecycle-scripts:
@@ -44,9 +45,9 @@ base/compromised-package-ioc:
 base/scan-secret-files:
   chock_scan: [entropy, jsonc, keyword_values, sniff, sniff_keys, sniff_shebang, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
 base/refname-filename-metachar:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-curl-pipe-sh:
-  chock_shellparse: [args, parse, targets, writes]
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/scan-instruction-files:
   chock_scan: [data_table, entropy, safe_read]
 base/scan-hidden-content:
@@ -59,3 +60,7 @@ base/opaque-blob-guard:
   chock_scan: [data_table, entropy, safe_read]
 base/guard-deletion:
   chock_scan: [data_table, safe_read]
+base/scan-secrets-entropy:
+  chock_scan: [checksums, entropy, keyword_values]
+base/verify-dependency-exists:
+  chock_scan: [safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]

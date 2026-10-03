@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 17 total, 0 executable |
+| **Mechanism** | warn-only `script` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 17 total, 17 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,18 +25,22 @@ A payload hidden in a test file is how the xz backdoor reached the build (a corr
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+
+On a finding it prints:
+
+> A change adds or edits a file a reviewer cannot read in a test, fixture, vendor or gradle wrapper path: an archive, executable or wasm module (by its first bytes, whatever its name), a random-looking file over 100 KB, a symlink out of the repository, build text that decodes and evaluates data, or a gradle wrapper jar changed with no new distributionSha256Sum. A hidden payload in a test file is how the xz backdoor reached build scripts. Generate the data in the test setup or fetch it from a pinned, checksummed source; if the file must be committed, state why and have a person list '<sha256> <path>' in .chock/blob-allowlist.txt. An agent asks a person: an entry written in the same agent change does not count at tool use or in an agent's commit (keep the allowlist under code-owner review). This policy only warns while it is measured (rollout observe).
+
+The rule text ships alongside, in the agent's ambient context:
 
 ```text
 binary_or_archive_in(tests|fixtures|testdata|spec|m4|vendor|gradle/wrapper): avoid; if_required: state(purpose), list(sha256+path in .chock/blob-allowlist.txt), person_commits
 prefer: generate_in_test_setup | pinned_checksummed_download; never decode_and_eval(test_file)
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/opaque-blob-guard/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/opaque-blob-guard/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

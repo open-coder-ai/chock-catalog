@@ -147,14 +147,13 @@ def test_a_line_the_parser_cannot_read_in_time_is_refused(
     assert "too long or too tangled" in capsys.readouterr().err
 
 
-def test_an_escaped_quote_flood_is_refused_not_run_past_the_timeout(
+def test_an_escaped_quote_flood_is_read_in_time_and_judged(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """An unclosed quote followed by many escaped quotes makes the shared parser slow (cubic in the quote count)."""
+    """An unclosed quote followed by many escaped quotes was cubic in the shared parser; it is linear now, so the publish behind it is judged."""
     flood = 'echo "' + '\\"' * 900 + "; npm publish"
-    monkeypatch.setattr(GUARD, "BUDGET", 0.05)
     assert verdict(flood, monkeypatch) == BLOCK
-    assert "too long or too tangled" in capsys.readouterr().err
+    assert "publishes a package to a registry" in capsys.readouterr().err
 
 
 def test_a_quick_line_is_read_whole_within_the_budget(monkeypatch: pytest.MonkeyPatch) -> None:

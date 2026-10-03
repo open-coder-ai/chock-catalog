@@ -7,9 +7,9 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="68 policies" src="https://img.shields.io/badge/policies-68-blue">
+<img alt="70 policies" src="https://img.shields.io/badge/policies-70-blue">
 <img alt="39 enforced" src="https://img.shields.io/badge/enforced-39-brightgreen">
-<img alt="29 advisory" src="https://img.shields.io/badge/advisory-29-orange">
+<img alt="31 advisory" src="https://img.shields.io/badge/advisory-31-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -47,7 +47,7 @@ are advisory, and that is the number most catalogs would round up:
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 27 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
-| `advisory` | text an agent reads and may or may not follow | 29 |
+| `advisory` | text an agent reads and may or may not follow | 31 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -68,7 +68,7 @@ throwaway repo on every push.
 | :--- | :--- | ---: |
 | [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
 | [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes | 55/55 |
-| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 9/9 |
+| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 55/55 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 72/72 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 17/17 |
 | [`pin-github-actions`](docs/pin-github-actions/) | a workflow that references a third-party GitHub Action by a movable tag or branch instead of a full commit SHA -- so a re-tagged or compromised release can't change what CI runs; SHA pins and local actions pass | 63/63 |
@@ -87,7 +87,7 @@ throwaway repo on every push.
 | [`guard-deletion`](docs/guard-deletion/) | Reads the diff, not the file: **asks** when a change removes a check (bound or null compare, return or raise on failure, assert, auth decorator, middleware registration, sanitizer call, path check) with none like it in the same hunk, and **refuses** a removed or weakened hardening flag, security header, cookie `Secure`/`HttpOnly`/`SameSite`, TLS verification, row-level security or file mode -- at commit, in CI and at agent tool-use; hunk-local, so a guard moved to another hunk or file is not seen and a pure-deletion commit is not read; tests, docs and vendored code are not judged | 22/23 |
 | [`agentic-code-security`](agentic-security/agentic-code-security) | trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. |  |
 | [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `docker volume rm`, `aws s3 rm --recursive`, `gcloud … delete` | 170/170 |
-| [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | a shell write to `.mcp.json` adding an MCP server not on the allowlist, or changing an allowed server's command/args/url to point elsewhere (including one renamed to an allowed name) — the allowlist ships inside the guard script itself, protected the same way as any other policy's guard source; a matching entry passes without a human approval each time | 65/65 |
+| [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | an MCP server not on the allowlist file (`.chock/mcp-allowlist.json`, empty by default) added by `<agent> mcp add`, a shell write or any of thirteen client configs, or an allowed server whose command, args or url is changed (including one renamed to an allowed name); an agent cannot grow the allowlist, and unpinned or shell launchers, http urls and literal credentials are warned about | 108/108 |
 | [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and `gh pr create`/`edit` bodies that narrate the development conversation (or leak a session link) instead of describing the change — a leak class that only exists once an agent authors the commit | 35/35 |
 | [`scan-suppression-markers`](docs/scan-suppression-markers/) | **Asks** a person before a change adds a scanner suppression -- inline ignore markers, scanner ignore files and skip keys, a CI scan set to pass on failure; only added lines, line-local, friction not a boundary | 44/45 |
 | [`lockfile-integrity`](docs/lockfile-integrity/) | lockfile changes that move a package off its registry or off https, drop or replace its hash, or leave a git source unpinned; asks when a lock or its manifest moves alone (npm, yarn, pnpm, bun, poetry, uv, Pipfile, Cargo, go.sum, Gemfile, composer, NuGet) | 65/65 |
@@ -102,12 +102,12 @@ per-hook trust review before its hooks run.
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
 | [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, which bypasses every gate above, and an agent setting or clearing the overrides meant for a person (`CHOCK_ALLOW`, `CHOCK_AGENT_COMMIT`, `CLAUDECODE`, `AI_AGENT`) in its own command | 107/107 |
-| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 181/181 |
+| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 1289/1289 |
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 72/72 |
 | [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 55/55 |
 | [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 145/145 |
 | [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | **carved out for [rtk-ai/rtk#1007](https://github.com/rtk-ai/rtk/issues/1007)**: rtk's own decision table — refuses `rm -rf /`, force push, credential-file reads (`.env`, `*.pem`, `~/.ssh`), `DROP`/`TRUNCATE` through psql and mysql; **asks** (exit 3) before `rm -rf` on an unlisted relative path, `git reset --hard`, `git clean -f`, `docker system prune`; skips file checks inside `docker exec`, and reads through rtk's own `rtk` prefix. The worked example of carving a policy out for one agent | 105/105 |
-| [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 25/25 |
+| [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 43/43 |
 | [`block-secret-store-reads`](docs/block-secret-store-reads/) | Refuses a shell read of a credential store (`cat ~/.npmrc`, `tar ~/.ssh`, `cp .env`, `*.tfstate`) and token printers (`gh auth token`, `git credential fill`); asks before an `env` dump; OWASP ASI03. | 89/89 |
 | [`block-persistence-shapes`](docs/block-persistence-shapes/) | Refuses shell commands that publish or keep access after the session — `npm`/`twine`/`cargo`/`docker push` and registry-auth edits, repos made public, user services, launch agents, cron, Run keys, `authorized_keys`, runner registration, sudoers, setuid bits, detached downloads; **asks** before `gh release create`, `git remote add` and `git push` to a URL. Best effort on the command text; OWASP ASI03, ASI10 | 109/109 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
@@ -132,7 +132,9 @@ per-hook trust review before its hooks run.
 [`package-lifecycle-scripts`](docs/package-lifecycle-scripts/) ·
 [`scan-hidden-content`](docs/scan-hidden-content/) ·
 [`agent-permissions-scan`](docs/agent-permissions-scan/) ·
-[`opaque-blob-guard`](docs/opaque-blob-guard/)
+[`opaque-blob-guard`](docs/opaque-blob-guard/) ·
+[`block-fetch-exec-in-files`](docs/block-fetch-exec-in-files/) ·
+[`scan-secrets-entropy`](docs/scan-secrets-entropy/)
 
 </details>
 

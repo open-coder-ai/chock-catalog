@@ -24,7 +24,7 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.1.1
+  version: 0.1.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -40,7 +40,7 @@ policies:
     only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.2.0
+  version: 0.2.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -72,7 +72,7 @@ policies:
     HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.4.0
+  version: 0.4.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -87,7 +87,7 @@ policies:
     config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.2.0
+  version: 0.2.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -505,22 +505,22 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.2.4
+  version: 0.2.8
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 181
-  eval_executed: 181
+  eval_cases: 1289
+  eval_executed: 1289
   description: 'Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes
-    to AGENTS.md and wrappers, .claude/settings, MCP and hook client configs (.mcp.json, .cursor/mcp.json,
-    .gemini/settings.json, .codex/hooks.json, more), .git/hooks, policy implementations/ and .chock/{config.yaml,security.json,agentic-security.json,dependency-allowlist.txt,bin,compiled,state}:
-    redirect, rm/mv/tee/sed -i, cp into, git checkout/restore. Reads and `chock sync` pass. Edit/Write:
-    tool_use gate.'
+    to AGENTS.md, .claude/settings, MCP/hook client configs (.mcp.json, ...), .git/{hooks,config}, policy
+    implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect, rm/mv/tee/sed
+    -i, cp into, git checkout/restore. Coarse: also eval or sh -c of computed text, shells fed by pipe/variable,
+    interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write: tool gate.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.2.0
+  version: 0.2.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -536,7 +536,7 @@ policies:
     ship no gate.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.2.1
+  version: 0.2.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -564,7 +564,7 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.2.0
+  version: 0.2.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -606,35 +606,36 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.0.5
+  version: 0.1.1
   artifact: hook
   enforcement: block
   mandatory: false
-  mechanism: dependency_allowlist
+  mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 9
-  eval_executed: 9
-  description: 'Allowlist gate for new dependencies; no registry lookup is made. Watches requirements.txt,
-    pyproject.toml ([project] and poetry dependencies), package.json, go.mod; blocks an added name missing
-    from .chock/dependency-allowlist.txt. Not read: -r/-e lines, requirements-dev.txt, poetry groups,
-    [dependency-groups]. Opt-in: fill the allowlist, then `chock enable verify-dependency-exists`. Runs:
-    commit, agent write (vs disk), turn''s end (vs HEAD).'
+  eval_cases: 55
+  eval_executed: 55
+  description: 'Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node,
+    Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added
+    name missing from .chock/dependency-allowlist.txt and asks on a lockfile-only addition. Not read:
+    computed lists, sources, some pattern-read forms (see docs), versions. Opt-in: seed the allowlist,
+    run in rollout observe, then `chock enable verify-dependency-exists`. Runs: commit, agent write,
+    turn''s end.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.4.1
+  version: 0.5.1
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 65
-  eval_executed: 65
-  description: 'Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json
-    or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write
-    with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass.
-    Script gate (commit, tool use incl. turn''s end) parses written MCP configs (.mcp.json, .cursor,
-    .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs
-    refused.'
+  eval_cases: 108
+  eval_executed: 108
+  description: 'Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher
+    with exact args, or url host). Shell guard refuses `<agent> mcp add` and shell writes of MCP configs
+    or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs:
+    a server off the list, or with other command, args or url host, refuses; unpinned or shell launchers,
+    http, literal credentials, old versions only warn. Misses: aliases, scripts, gitignored files, other
+    clients.'
 - id: block-test-skips
   path: base/block-test-skips
   version: 0.1.0
@@ -714,20 +715,19 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.0.2
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 25
-  eval_executed: 25
-  description: 'Best-effort guard against an agent launching a coding agent with safety checks off:
-    claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
-    --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo,
-    -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
-    wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
-    unlisted agents.'
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
+    bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never,
+    danger-full-access; gemini --yolo or --approval-mode yolo; cursor-agent --force; aider --yes-always;
+    copilot --allow-all-tools; amp, cline, goose, opencode auto-approve. Looks through cd, bash -c,
+    sudo, env, npx, uvx. Misses: config, aliases, scripts, ssh.'
 - id: scan-suppression-markers
   path: base/scan-suppression-markers
   version: 0.0.1
@@ -901,7 +901,7 @@ policies:
     configs, scripts, Read.'
 - id: block-persistence-shapes
   path: base/block-persistence-shapes
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -916,7 +916,7 @@ policies:
     add, git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.'
 - id: block-secret-store-reads
   path: base/block-secret-store-reads
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -977,7 +977,7 @@ policies:
     with no new distributionSha256Sum. Misses text-encoded or prefixed payloads, other folders.'
 - id: refname-filename-metachar
   path: base/refname-filename-metachar
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   mandatory: false
@@ -1035,3 +1035,36 @@ policies:
     subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added
     grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous,
     unlisted extensions. Waiver: pragma or sidecar.'
+- id: block-fetch-exec-in-files
+  path: base/block-fetch-exec-in-files
+  version: 0.0.2
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow
+    or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a
+    shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string
+    of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time:
+    continuation lines, variables, unicode-escaped JSON, split or quoted command names, a download saved
+    to a file and run on a later step, and interpreters or fetchers outside the lists are missed. Never
+    refuses. Friction only.'
+- id: scan-secrets-entropy
+  path: base/scan-secrets-entropy
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy
+    values (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test keys,
+    Slack/AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split across lines,
+    over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS,
+    words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control
+    characters.'

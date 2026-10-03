@@ -1,6 +1,6 @@
 ---
 name: verify-mcp-allowlist
-description: "Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass. Script gate (commit, tool use incl. turn's end) parses written MCP configs (.mcp.json, .cursor, .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs refused."
+description: "Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host). Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs: a server off the list, or with other command, args or url host, refuses; unpinned or shell launchers, http, literal credentials, old versions only warn. Misses: aliases, scripts, gitignored files, other clients."
 metadata:
   chock.artifact: rule
   chock.enforcement: advise
@@ -9,11 +9,11 @@ metadata:
 
 # Verify MCP Allowlist
 
-Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json or `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a write with no entry. Allowlist lives in the guard source; shell edits to it are refused, no marker bypass. Script gate (commit, tool use incl. turn's end) parses written MCP configs (.mcp.json, .cursor, .vscode, claude_desktop, .gemini, .codex): added/altered unlisted servers and unparseable configs refused.
+Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host). Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs: a server off the list, or with other command, args or url host, refuses; unpinned or shell launchers, http, literal credentials, old versions only warn. Misses: aliases, scripts, gitignored files, other clients.
 
 ```
-mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; no agent-typed marker passes, a person edits it; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex added-only at commit+tool_use
+mcp_server(any client config): must(name+launcher+exact_args|url_host in .chock/mcp-allowlist.json); block(unlisted|command_args_url_differ); warn(unpinned|shell_launcher|http|literal_credential|below_floor|enable_all)
+allowlist: file, empty by default; an agent is judged by HEAD's copy and cannot grow it, a person edits it; guard: `<agent> mcp add`, shell writes; gate: commit|tool_use|stop
 ```
 
 This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` can refuse an agent's shell command before it runs; blocks at commit, on an agent's file writes and at turn end. See https://github.com/open-coder-ai/chock

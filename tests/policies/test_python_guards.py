@@ -19,6 +19,7 @@ from policies import guard_cases_agent_env as env_cases
 from policies import guard_cases_fetch as fetch_cases
 from policies import guard_cases_files as file_cases
 from policies import guard_cases_git as git_cases
+from policies import guard_cases_mcp_spawn as mcp_cases
 from policies import guard_cases_persistence as persistence_cases
 from policies import guard_cases_persistence_limits as persistence_limits
 from policies import guard_cases_persistence_review as persistence_review
@@ -79,7 +80,13 @@ def assert_case(policy: str, command: str, want: int, capsys: pytest.CaptureFixt
         assert err == ""
 
 
-CASES = {**git_cases.CASES, **file_cases.CASES, **fetch_cases.CASES, **persistence_cases.CASES}
+CASES = {
+    **git_cases.CASES,
+    **file_cases.CASES,
+    **fetch_cases.CASES,
+    **persistence_cases.CASES,
+    **mcp_cases.CASES,
+}
 CASES["block-secret-store-reads"] = [
     *secret_reads.CASES["block-secret-store-reads"],
     *secret_more.CASES["block-secret-store-reads"],
@@ -225,7 +232,12 @@ def test_every_block_in_every_eval_suite_prints_a_reason() -> None:
             execute = case.get("execute") or {}
             if execute.get("expect") not in ("block", "ask") or "command" not in execute:
                 continue
-            env = {**os.environ, "CHOCK_RAW_COMMAND": execute["command"], **execute.get("env", {})}
+            env = {
+                **os.environ,
+                "CHOCK_RAW_COMMAND": execute["command"],
+                "CHOCK_HOOK_CWD": str(ROOT),
+                **execute.get("env", {}),
+            }
             env.pop("CHOCK_TOOL", None)
             done = subprocess.run(
                 [sys.executable, str(guardkit.impl_dir(policy) / f"{policy}.py"), *split(execute["command"])],
@@ -249,46 +261,3 @@ def test_a_guard_loaded_twice_does_not_share_a_parser() -> None:
     assert first.commands.__code__.co_filename != second.commands.__code__.co_filename
     assert "block-no-verify" in first.commands.__code__.co_filename
     assert "chock_shellparse" not in sys.modules
-
-
-@pytest.mark.parametrize(
-    ("flag", "text", "want"),
-    [
-        ("--file=msg.txt", "Per the conversation, do it\n", BLOCK),
-        ("--body-file=msg.txt", "Session summary: x\n", BLOCK),
-        ("-Fmsg.txt", "the user asked for it\n", BLOCK),
-        ("--file=msg.txt", "Retry on 503\n", OK),
-        ("-Fmsg.txt", "Retry on 503\n", OK),
-    ],
-)
-def test_a_message_file_is_read_when_it_exists(
-    flag: str, text: str, want: int, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.chdir(tmp_path)
-    (tmp_path / "msg.txt").write_text(text, encoding="utf-8")
-    command = f"gh pr create --title x {flag}"
-    assert_case("protect-commit-privacy", command, want, capsys)
-    if flag.startswith("-F"):
-        assert_case("protect-commit-privacy", f"git commit {flag}", want, capsys)
-    monkeypatch.undo()
-
-
-@pytest.mark.parametrize(
-    ("command", "name"),
-    [
-        ("CHOCK_ALLOW=x git push", "CHOCK_ALLOW"),
-        ("export CHOCK_AGENT_COMMIT=0", "CHOCK_AGENT_COMMIT"),
-        ("$env:CHOCK_ALLOW='x'", "CHOCK_ALLOW"),
-        ("unset CLAUDECODE", "CLAUDECODE"),
-        ("env -u AI_AGENT git commit", "AI_AGENT"),
-        ("env -i git commit", "CLAUDECODE/AI_AGENT"),
-    ],
-)
-def test_an_override_refusal_tells_the_agent_to_ask_the_person(
-    command: str, name: str, capsys: pytest.CaptureFixture[str]
-) -> None:
-    code, err = verdict("block-no-verify", command, capsys)
-    assert code == BLOCK
-    assert "ask the person to run the command themselves" in err
-    assert name in err
