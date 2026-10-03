@@ -10,11 +10,11 @@ import re
 import shlex
 import sys
 
-import pathset
 from chock_shellparse import commands, writes_files
 from pathguard import refuses
 from pathopaque import refuses as opaque
-from pathset import PROTECTED, hit, normalise
+from pathset import ASK as ASKED
+from pathset import BLOCK, PROTECTED, hit, normalise, verdict
 from pathwrap import too_deep
 
 # `hit` and `normalise` are the guard's path test, which the tests and the gate's parity check call as `guard.hit`.
@@ -40,10 +40,10 @@ def check(raw: str) -> str | None:
     asked: list[str] = []
 
     def firm(path: str) -> bool:
-        kind = pathset.verdict(path)
-        if kind == pathset.ASK:
+        kind = verdict(path)
+        if kind == ASKED:
             asked.append(path)
-        return kind == pathset.BLOCK
+        return kind == BLOCK
 
     if any(writes_files(cmd, firm) for cmd in commands(raw)) or refuses(raw, PROTECTED, firm, normalise):
         return REASON
