@@ -8,7 +8,7 @@ overstated policy is worse here than a missing one.
 All are mechanical, and all are checked by CI rather than by a reviewer's memory.
 
 **1. A policy claims only what it can do.** If it does not exit non-zero, it is advisory,
-and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->31<!-- /gen --> of the <!-- gen:policies -->70<!-- /gen -->
+and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->31<!-- /gen --> of the <!-- gen:policies -->71<!-- /gen -->
 policies here are advisory, and the README says so in its third paragraph rather than its
 appendix. Do not raise a claim your mechanism cannot support.
 

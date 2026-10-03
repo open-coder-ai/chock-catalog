@@ -1,0 +1,828 @@
+suite:
+  id: registry-config-tests-v1
+  policy_id: registry-config
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A commit adds an npm auth token written out in .npmrc (roadmap B npmrc-authtoken-literal).
+    expect: The commit is blocked; the message names the setting, never the token.
+    execute:
+      event: commit
+      files:
+        .npmrc: |
+          //registry.npmjs.org/:_authToken=lit3d9f.x
+      expect: block
+  - id: tc-002
+    category: trigger
+    prompt: A commit adds trusted-host to pip.conf (roadmap B pip-trusted-host).
+    expect: 'The commit is blocked: trusted-host turns TLS verification off for that host.'
+    execute:
+      event: commit
+      files:
+        pip.conf: |
+          [global]
+          trusted-host = pypi.internal.example
+      expect: block
+  - id: tc-003
+    category: trigger
+    prompt: A commit sets GOINSECURE in a Dockerfile (roadmap B goinsecure-in-dockerfile).
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        Dockerfile: |
+          FROM golang:1.23
+          ENV GOINSECURE=example.com
+          RUN go build ./...
+      expect: block
+  - id: tc-004
+    category: trigger
+    prompt: A commit replaces crates.io with a source served over http (roadmap B cargo-source-replace-http).
+    expect: The commit is blocked for the clear-text registry.
+    execute:
+      event: commit
+      files:
+        .cargo/config.toml: |
+          [source.crates-io]
+          replace-with = "mirror"
+
+          [source.mirror]
+          registry = "sparse+http://crates.mirror.example/index/"
+      expect: block
+  - id: tc-005
+    category: trigger
+    prompt: A commit writes a NuGet clear-text password into nuget.config (roadmap B nuget-cleartext-password).
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        nuget.config: |
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+          </configuration>
+      files:
+        nuget.config: |
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+            <packageSourceCredentials>
+              <nuget.org>
+                <add key="Username" value="ci" />
+                <add key="ClearTextPassword" value="hunter2x" />
+              </nuget.org>
+            </packageSourceCredentials>
+          </configuration>
+      expect: block
+  - id: tc-006
+    category: trigger
+    prompt: A commit lets every dependency run its build scripts under pnpm (roadmap B pnpm-dangerously-allow-all-builds).
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        pnpm-workspace.yaml: |
+          packages:
+            - "packages/*"
+      files:
+        pnpm-workspace.yaml: |
+          packages:
+            - "packages/*"
+          dangerouslyAllowAllBuilds: true
+      expect: block
+  - id: tc-007
+    category: trigger
+    prompt: A commit lets Dependabot execute external code while updating (roadmap B dependabot-exec-allow).
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        .github/dependabot.yml: |
+          version: 2
+          updates:
+            - package-ecosystem: bundler
+              directory: "/"
+              schedule:
+                interval: weekly
+              cooldown:
+                default-days: 7
+      files:
+        .github/dependabot.yml: |
+          version: 2
+          updates:
+            - package-ecosystem: bundler
+              directory: "/"
+              insecure-external-code-execution: allow
+              schedule:
+                interval: weekly
+              cooldown:
+                default-days: 7
+      expect: block
+  - id: tc-008
+    category: trigger
+    prompt: A commit points the npm registry at a clear-text http URL.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          registry=http://registry.npmjs.org/
+      expect: block
+  - id: tc-009
+    category: trigger
+    prompt: A commit turns strict-ssl off in .npmrc, spelled in upper case with spaces around the equals sign.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          STRICT-SSL = "false"
+      expect: block
+  - id: tc-010
+    category: trigger
+    prompt: A commit points a scoped npm registry at a host that is not an allowed registry.
+    expect: 'The commit is blocked: the @acme scope now installs from an unknown host.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          @acme:registry=https://npm.attacker.example/
+      expect: block
+  - id: tc-011
+    category: trigger
+    prompt: 'Adversarial: the registry URL puts the allowed host name in the userinfo, before an @ and the real host.'
+    expect: 'The commit is blocked: the URL is parsed, so the host is the one after the @.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          registry=https://registry.npmjs.org@npm.attacker.example/
+      expect: block
+  - id: tc-012
+    category: trigger
+    prompt: 'Adversarial: the registry host extends the allowed name with another domain.'
+    expect: The commit is blocked; nothing matches by prefix.
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          registry=https://registry.npmjs.org.attacker.example/
+      expect: block
+  - id: tc-013
+    category: trigger
+    prompt: 'Adversarial: the registry host spells registry.npmjs.org with a Cyrillic letter.'
+    expect: 'The commit is blocked: the name normalises to its punycode form, which is not on the allowlist.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: "save-exact=true\nregistry=https://registry.npmjѕ.org/\n"
+      expect: block
+  - id: tc-014
+    category: trigger
+    prompt: A commit adds a clear-text index URL as an option line in requirements.txt.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        requirements.txt: |
+          requests==2.32.3
+      files:
+        requirements.txt: |
+          --index-url http://pypi.mirror.example/simple
+          requests==2.32.3
+      expect: block
+  - id: tc-015
+    category: trigger
+    prompt: A commit turns dependency install scripts on in .yarnrc.yml.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        .yarnrc.yml: |
+          nodeLinker: node-modules
+          npmMinimalAgeGate: 3d
+      files:
+        .yarnrc.yml: |
+          nodeLinker: node-modules
+          npmMinimalAgeGate: 3d
+          enableScripts: true
+      expect: block
+  - id: tc-016
+    category: trigger
+    prompt: A commit sets GOFLAGS with -insecure in a workflow's env block.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        .github/workflows/build.yml: |
+          on: push
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              env:
+                GOFLAGS: "-mod=readonly -insecure"
+              steps:
+                - run: go build ./...
+      expect: block
+  - id: tc-017
+    category: trigger
+    prompt: A commit turns Composer's secure-http off.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        composer.json: |
+          {"require": {"monolog/monolog": "3.7.0"}}
+      files:
+        composer.json: |
+          {"require": {"monolog/monolog": "3.7.0"}, "config": {"secure-http": false}}
+      expect: block
+  - id: tc-018
+    category: trigger
+    prompt: A commit writes an upload password into .pypirc.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        .pypirc: |
+          [distutils]
+          index-servers = pypi
+
+          [pypi]
+          username = __token__
+          password = pypi-lit3
+      expect: block
+  - id: tc-019
+    category: trigger
+    prompt: The agent writes .npmrc turning strict-ssl off.
+    expect: The write is refused before it happens.
+    execute:
+      event: tool_use
+      writes:
+        .npmrc: |
+          strict-ssl=false
+      expect: block
+  - id: tc-020
+    category: trigger
+    prompt: A commit writes a literal registry token into bunfig.toml.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        bunfig.toml: |
+          [install]
+          minimumReleaseAge = 259200
+
+          [install.scopes]
+          acme = { token = "lit3d9f", url = "https://registry.npmjs.org/" }
+      expect: block
+  - id: tc-021
+    category: trigger
+    prompt: A commit turns conda's ssl_verify off.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        .condarc: |
+          channels:
+            - conda-forge
+          ssl_verify: false
+      expect: block
+  - id: tc-022
+    category: trigger
+    prompt: A commit writes a bunfig.toml that is not valid TOML.
+    expect: 'The commit is blocked: a registry config that cannot be read cannot be judged.'
+    execute:
+      event: commit
+      files:
+        bunfig.toml: |
+          [install
+          registry = "https://registry.npmjs.org/"
+      expect: block
+  - id: tc-023
+    category: trigger
+    prompt: A commit exports GOSUMDB=off from a Makefile.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        Makefile: |
+          export GOSUMDB=off
+          build:
+          	go build ./...
+      expect: block
+  - id: tc-024
+    category: trigger
+    prompt: A commit adds a clear-text gem source to a Gemfile.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        Gemfile: |
+          source "https://rubygems.org"
+          gem "rails", "7.2.1"
+      files:
+        Gemfile: |
+          source "http://rubygems.org"
+          gem "rails", "7.2.1"
+      expect: block
+  - id: tc-025
+    category: trigger
+    prompt: A commit lets uv fetch from a host without TLS verification.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        uv.toml: |
+          allow-insecure-host = ["pypi.internal.example"]
+      expect: block
+  - id: tc-026
+    category: trigger
+    prompt: A commit adds an http registry to an .npmrc in a nested package folder.
+    expect: The commit is blocked; the file is judged by its name in any folder.
+    execute:
+      event: commit
+      head_files:
+        packages/web/.npmrc: |
+          save-exact=true
+      files:
+        packages/web/.npmrc: |
+          save-exact=true
+          registry="http://npm.mirror.example/"
+      expect: block
+  - id: tc-027
+    category: trigger
+    prompt: A commit adds a [[tool.uv.index]] served over http to pyproject.toml.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      head_files:
+        pyproject.toml: |
+          [project]
+          name = "app"
+          version = "1.0.0"
+      files:
+        pyproject.toml: |
+          [project]
+          name = "app"
+          version = "1.0.0"
+
+          [[tool.uv.index]]
+          name = "mirror"
+          url = "http://pypi.mirror.example/simple"
+      expect: block
+  - id: tc-028
+    category: trigger
+    prompt: A commit adds a Maven mirror served over http to settings.xml.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        .mvn/settings.xml: |
+          <settings>
+            <mirrors>
+              <mirror>
+                <id>m</id>
+                <mirrorOf>*</mirrorOf>
+                <url>http://maven.mirror.example/repo</url>
+              </mirror>
+            </mirrors>
+          </settings>
+      expect: block
+  - id: tc-029
+    category: trigger
+    prompt: A commit adds --extra-index-url to requirements.txt (roadmap K extra-index-url).
+    expect: 'The commit asks a person: a second index lets a public package shadow an internal name.'
+    execute:
+      event: commit
+      head_files:
+        requirements.txt: |
+          requests==2.32.3
+      files:
+        requirements.txt: |
+          --extra-index-url https://pypi.org/simple
+          requests==2.32.3
+      expect: ask
+  - id: tc-030
+    category: trigger
+    prompt: A commit creates pnpm-workspace.yaml with no minimumReleaseAge (roadmap K cooldown-absent).
+    expect: The commit asks a person.
+    execute:
+      event: commit
+      files:
+        pnpm-workspace.yaml: |
+          packages:
+            - "packages/*"
+      expect: ask
+  - id: tc-031
+    category: trigger
+    prompt: A commit adds a second NuGet source with no clear element and no package source mapping.
+    expect: The commit asks a person.
+    execute:
+      event: commit
+      files:
+        nuget.config: |
+          <configuration>
+            <packageSources>
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+              <add key="github" value="https://nuget.pkg.github.com/acme/index.json" />
+            </packageSources>
+          </configuration>
+      expect: ask
+  - id: tc-032
+    category: trigger
+    prompt: A commit adds a go.mod replace that swaps a module for a fork.
+    expect: The commit asks a person.
+    execute:
+      event: commit
+      head_files:
+        go.mod: |
+          module example.com/app
+
+          go 1.23
+
+          require golang.org/x/crypto v0.28.0
+      files:
+        go.mod: |
+          module example.com/app
+
+          go 1.23
+
+          require golang.org/x/crypto v0.28.0
+
+          replace golang.org/x/crypto => github.com/someone/crypto v0.0.0-20240101000000-abcdef123456
+      expect: ask
+  - id: tc-033
+    category: trigger
+    prompt: A commit changes yarnPath in .yarnrc.yml to another script.
+    expect: The commit asks a person.
+    execute:
+      event: commit
+      head_files:
+        .yarnrc.yml: |
+          npmMinimalAgeGate: 3d
+          yarnPath: .yarn/releases/yarn-4.5.0.cjs
+      files:
+        .yarnrc.yml: |
+          npmMinimalAgeGate: 3d
+          yarnPath: scripts/yarn.cjs
+      expect: ask
+  - id: tc-034
+    category: trigger
+    prompt: A commit turns on automerge in renovate.json.
+    expect: The commit asks a person.
+    execute:
+      event: commit
+      head_files:
+        renovate.json: |
+          {"extends": ["config:recommended"], "minimumReleaseAge": "3 days"}
+      files:
+        renovate.json: |
+          {"extends": ["config:recommended"], "minimumReleaseAge": "3 days", "automerge": true}
+      expect: ask
+  - id: tc-035
+    category: trigger
+    prompt: 'Adversarial: one commit adds an unknown host to the registry allowlist file and points .npmrc at it.'
+    expect: 'The commit asks a person: a change to the allowlist itself is a person''s decision.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+        .chock/registry-hosts.txt: |
+          npm.corp.example
+      files:
+        .chock/registry-hosts.txt: |
+          npm.corp.example
+          npm.attacker.example
+        .npmrc: |
+          save-exact=true
+          registry=https://npm.attacker.example/
+      expect: ask
+  - id: tc-036
+    category: negative_trigger
+    prompt: A commit points .npmrc at an internal https mirror the committed allowlist file names (roadmap A https-internal-mirror).
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+        .chock/registry-hosts.txt: |
+          # internal mirrors, reviewed
+          npm.corp.example
+      files:
+        .npmrc: |
+          save-exact=true
+          registry=https://npm.corp.example/
+      expect: allow
+  - id: tc-037
+    category: negative_trigger
+    prompt: A commit adds an npm auth token read from the environment (roadmap A env-reference token).
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          //registry.npmjs.org/:_authToken=${NPM_TOKEN}
+      expect: allow
+  - id: tc-038
+    category: negative_trigger
+    prompt: A commit points .npmrc at a local registry on localhost over http.
+    expect: 'The commit is allowed: a loopback registry never leaves the machine.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          registry=http://localhost:4873/
+      expect: allow
+  - id: tc-039
+    category: negative_trigger
+    prompt: A commit adds a README line quoting strict-ssl=false as a warning.
+    expect: 'The commit is allowed: only registry config files are judged.'
+    execute:
+      event: commit
+      files:
+        docs/npm.md: |
+          Never set strict-ssl=false in .npmrc.
+      expect: allow
+  - id: tc-040
+    category: behavior
+    prompt: HEAD's .npmrc already turns strict-ssl off; the commit adds an unrelated setting.
+    expect: 'The commit is allowed: only what the change adds is judged.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          strict-ssl=false
+      files:
+        .npmrc: |
+          strict-ssl=false
+          save-exact=true
+      expect: allow
+  - id: tc-041
+    category: negative_trigger
+    prompt: A commit adds --require-hashes and pinned packages to requirements.txt.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        requirements/test.txt: |
+          --require-hashes
+          pytest==8.3.3 \
+              --hash=sha256:0000000000000000000000000000000000000000000000000000000000000000
+      expect: allow
+  - id: tc-042
+    category: negative_trigger
+    prompt: A commit sets pip's index-url to PyPI over https.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        pip.conf: |
+          [global]
+          index-url = https://pypi.org/simple
+          timeout = 60
+      expect: allow
+  - id: tc-043
+    category: negative_trigger
+    prompt: A commit sets GOPROXY to the default proxy with direct fallback, and GOPRIVATE to one organisation.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        Dockerfile: |
+          FROM golang:1.23
+          ENV GOPROXY=https://proxy.golang.org,direct
+          ENV GOPRIVATE=github.com/acme
+          RUN go build ./...
+      expect: allow
+  - id: tc-044
+    category: negative_trigger
+    prompt: A commit creates a Dependabot config whose updates carry a cooldown.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        .github/dependabot.yml: |
+          version: 2
+          updates:
+            - package-ecosystem: npm
+              directory: "/"
+              schedule:
+                interval: weekly
+              cooldown:
+                default-days: 5
+      expect: allow
+  - id: tc-045
+    category: negative_trigger
+    prompt: A commit creates a nuget.config that clears inherited sources and maps packages to its two https sources.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        NuGet.Config: |
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+              <add key="github" value="https://nuget.pkg.github.com/acme/index.json" />
+            </packageSources>
+            <packageSourceMapping>
+              <packageSource key="nuget.org"><package pattern="*" /></packageSource>
+              <packageSource key="github"><package pattern="Acme.*" /></packageSource>
+            </packageSourceMapping>
+          </configuration>
+      expect: allow
+  - id: tc-046
+    category: negative_trigger
+    prompt: A commit adds an http proxy setting to .npmrc.
+    expect: 'The commit is allowed: a proxy tunnels https; it is not a registry.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          proxy=http://proxy.corp.example:3128/
+      expect: allow
+  - id: tc-047
+    category: negative_trigger
+    prompt: The agent edits an .npmrc that is already committed, adding save-exact.
+    expect: The write is allowed.
+    execute:
+      event: tool_use
+      head_files:
+        .npmrc: |
+          registry=https://registry.npmjs.org/
+      writes:
+        .npmrc: |
+          registry=https://registry.npmjs.org/
+          save-exact=true
+      expect: allow
+  - id: tc-048
+    category: trigger
+    prompt: 'Adversarial: the agent writes a password into an extra index URL in pip.conf.'
+    expect: The write is refused; the password is never echoed.
+    execute:
+      event: tool_use
+      writes:
+        pip.ini: |
+          [global]
+          extra-index-url = https://ci:hunter2x@pypi.org/simple
+      expect: block
+  - id: tc-049
+    category: trigger
+    prompt: A commit sets GONOSUMDB to every module.
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        .env: |
+          GONOSUMDB=*
+      expect: block
+  - id: tc-050
+    category: trigger
+    prompt: A commit adds a [patch] redirect in .cargo/config.toml.
+    expect: The commit asks a person.
+    execute:
+      event: commit
+      files:
+        .cargo/config.toml: |
+          [patch.crates-io]
+          serde = { git = "https://github.com/someone/serde" }
+      expect: ask
+  - id: tc-051
+    category: trigger
+    prompt: 'Adversarial: .yarnrc sets the registry in the `key: value` form Yarn classic also reads.'
+    expect: The commit is blocked.
+    execute:
+      event: commit
+      files:
+        .yarnrc: |
+          registry: "http://npm.mirror.example/"
+      expect: block
+  - id: tc-052
+    category: trigger
+    prompt: 'Adversarial: a double-quoted .npmrc value spells http with a JSON escape.'
+    expect: 'The commit is blocked: npm JSON-decodes a double-quoted value.'
+    execute:
+      event: commit
+      head_files:
+        .npmrc: |
+          save-exact=true
+      files:
+        .npmrc: |
+          save-exact=true
+          registry="http://npm.mirror.example/"
+      expect: block
+  - id: tc-053
+    category: trigger
+    prompt: 'Adversarial: requirements.txt abbreviates --index-url to --index with a clear-text URL.'
+    expect: 'The commit is blocked: pip reads any unambiguous prefix of an option.'
+    execute:
+      event: commit
+      files:
+        requirements.txt: |
+          --index http://pypi.mirror.example/simple
+          requests==2.32.3
+      expect: block
+  - id: tc-054
+    category: trigger
+    prompt: 'Adversarial: a workflow sets GONOSUMDB to github.com/* in a flow mapping.'
+    expect: 'The commit is blocked: the pattern covers every module on GitHub.'
+    execute:
+      event: commit
+      files:
+        .github/workflows/go.yml: |
+          on: push
+          jobs:
+            b:
+              runs-on: ubuntu-latest
+              env: {GONOSUMDB: "github.com/*"}
+              steps:
+                - run: go build ./...
+      expect: block
+  - id: tc-055
+    category: trigger
+    prompt: 'Adversarial: a Dockerfile sets GOSUMDB through an unquoted shell default of off.'
+    expect: 'The commit is blocked: the default applies whenever the variable is unset.'
+    execute:
+      event: commit
+      files:
+        Dockerfile: |
+          FROM golang:1.23
+          ENV GOSUMDB=${GOSUMDB:-off}
+      expect: block
+  - id: tc-056
+    category: trigger
+    prompt: 'Adversarial: a quote inside an XML processing instruction tries to hide an http NuGet source.'
+    expect: 'The commit is blocked: the instruction ends at its own closing mark, so the source is read.'
+    execute:
+      event: commit
+      files:
+        nuget.config: |
+          <configuration><?x '?>
+            <packageSources>
+              <clear />
+              <add key="a" value="http://nuget.mirror.example/v3/index.json" />
+            </packageSources>
+          <!-- ' --></configuration>
+      expect: block
+  - id: tc-057
+    category: trigger
+    prompt: 'Adversarial: a Dockerfile sets GOSUMDB to an empty variable followed by off.'
+    expect: 'The commit asks a person: part expansion, part literal, so what Go reads is not knowable from the file.'
+    execute:
+      event: commit
+      files:
+        Dockerfile: |
+          FROM golang:1.23
+          ENV GOSUMDB=${UNSET}off
+      expect: ask

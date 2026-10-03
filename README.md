@@ -7,8 +7,8 @@
 <p><strong>Policies that stop your coding agent from doing the thing you would have caught in review.</strong></p>
 
 <p>
-<img alt="70 policies" src="https://img.shields.io/badge/policies-70-blue">
-<img alt="39 enforced" src="https://img.shields.io/badge/enforced-39-brightgreen">
+<img alt="71 policies" src="https://img.shields.io/badge/policies-71-blue">
+<img alt="40 enforced" src="https://img.shields.io/badge/enforced-40-brightgreen">
 <img alt="31 advisory" src="https://img.shields.io/badge/advisory-31-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -45,7 +45,7 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 27 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 28 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
 | `advisory` | text an agent reads and may or may not follow | 31 |
 
@@ -93,6 +93,7 @@ throwaway repo on every push.
 | [`lockfile-integrity`](docs/lockfile-integrity/) | lockfile changes that move a package off its registry or off https, drop or replace its hash, or leave a git source unpinned; asks when a lock or its manifest moves alone (npm, yarn, pnpm, bun, poetry, uv, Pipfile, Cargo, go.sum, Gemfile, composer, NuGet) | 65/65 |
 | [`refname-filename-metachar`](docs/refname-filename-metachar/) | names a shell, CI step or git can misread -- a path a change adds or renames into, and a branch or tag pushed, holding command substitution, an IFS expansion, a backtick, a shell operator, a control or bidi character, a leading dash or a `..` segment; a guard refuses git and file commands creating such names. No waiver | 41/41 |
 | [`scan-instruction-files`](docs/scan-instruction-files/) | **Asks** a person before a change adds injection text to an agent instruction file (AGENTS.md, CLAUDE.md, rules, prompts, skills) -- rule overrides, secrecy, auto-approve, hook or review bypass, fetch-and-run, removed guardrails; refuses secret exfiltration and encoded payloads; only added text, English phrases, friction not a boundary | 31/32 |
+| [`registry-config`](docs/registry-config/) | package-manager config that redirects installs or weakens them: literal registry tokens, http or unlisted registry hosts, TLS or checksum verification off, dependency install scripts on; extra indexes, replaces and a missing release cooldown ask; only what the change adds | 57/57 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,

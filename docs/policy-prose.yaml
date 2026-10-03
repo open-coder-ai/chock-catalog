@@ -772,3 +772,21 @@ block-fetch-exec-in-files:
 scan-secrets-entropy:
   solves: scan-secrets refuses vendor prefixes and a fixed set of assignment patterns, so a random credential under a key it does not spell, a Stripe test key, a Slack app token or an AWS bearer-token id slips past it. This gate judges every value assigned to a secret-like key by its entropy, skipping references, digests, UUIDs, placeholders and values written as code or paths, and checks vendor tokens by their built-in checksum or issued shape and card numbers by Luhn. Values are never printed; a finding's key is a hash. It warns while its false-positive rate is measured, then asks.
   customise: 'The thresholds and allow reasons are chock_scan''s (`lib/chock_scan/entropy.py`, `keyword_values.py`, `checksums.py`; edit lib/, never the copy), the non-secret shapes are `implementations/entropyscan/shapes.py`. A person keeps a checked test value with `pragma: allowlist secret` on the line (a JSON file cannot carry it). In the agent a waiver counts only for a line already in HEAD.'
+registry-config:
+  solves: |
+    One line in a package manager's config decides where every dependency comes from and how it is checked: a
+    registry or index URL, a source replacement, a TLS or checksum switch, a setting that lets dependencies run
+    install scripts, a token written into the file. An agent fixing an install error can change any of them, and
+    the change looks like configuration, not code. This gate reads those files for npm, Yarn, pnpm, Bun, pip, uv,
+    Poetry, PDM, pipenv, conda, Go, Cargo, NuGet, Maven, Bundler, Composer, Hex, CocoaPods, SwiftPM, Dependabot and
+    Renovate, and refuses what the change adds: clear-text or unlisted registry hosts (URLs are parsed and hosts
+    normalised, so a lookalike or userinfo spelling does not pass for an allowed host), verification turned off,
+    install scripts turned on and literal credentials. Extra indexes, replaces and redirects, and a missing release
+    cooldown ask a person instead. Settings already committed stay quiet.
+  customise: |
+    Ship it under `rollout: observe` in .chock/config.yaml first, read the gate log, and move to enforce once the
+    findings it records are the ones you want refused. An internal mirror is allowed by a person adding its host
+    (or `*.` and a domain) to `.chock/registry-hosts.txt` in a reviewed commit; the gate reads that file from HEAD
+    only, and a change to it asks. A finding that asks (an extra index, a replace, a missing cooldown) is kept by a
+    person committing from their own shell with CHOCK_ALLOW=registry-config for that one commit. To stop judging
+    the policy, list it under policies.disabled.
