@@ -34,6 +34,10 @@ WALKERS = re.compile(r"policy_dirs\(")
 ALWAYS = {"tests/test_repo_standards.py"}
 #: Tests of the code every policy shares (tools/, lib/): changing that is FULL, so they run then.
 SHARED_CODE_TESTS = ("tests/build_tools/", "tests/chock_scan/", "tests/policies/test_shell")
+#: Files tools/regen_all.py writes from the policies, so a policy change brings them along. The `generated`
+#: job checks them on every PR; these are the tests that read the real ones.
+DERIVED = {"registry.yaml", "README.md", "SECURITY.md", "CONTRIBUTING.md", "docs/policy-prose.yaml"}
+DERIVED_READERS = ("tests/build_tools/test_gen_registry.py",)
 #: Folders whose tests are not one suite, so one that names no policy does not borrow from a neighbour.
 MIXED_FOLDERS = ("tests/build_tools/", "tests/chock_scan/", "tests/policies/")
 
@@ -163,8 +167,8 @@ def unowned(root: Path) -> list[str]:
 
 
 def proving_tests(root: Path, policies: set[str]) -> set[str]:
-    """Every test file that proves one of `policies`, and the ones that guard the whole repo."""
-    return {rel for rel, hit in owners(root).items() if hit & policies or rel in ALWAYS} if policies else set()
+    """Every test file that proves one of `policies`."""
+    return {rel for rel, hit in owners(root).items() if hit & policies}
 
 
 def policy_of(rel: str, ids: set[str]) -> str | None:
@@ -172,6 +176,24 @@ def policy_of(rel: str, ids: set[str]) -> str | None:
     top, _, rest = rel.partition("/")
     pid, _, tail = rest.partition("/")
     return pid if tail and pid in ids and (top in TREES or top == "docs") else None
+
+
+def attribute(
+    root: Path, rel: str, ids: set[str], graph: dict[str, set[str]], back: dict[str, set[str]]
+) -> tuple[set[str], set[str]] | None:
+    """What one changed file touches: (policies, test files it must run), or None when it is not attributable."""
+    pid = policy_of(rel, ids)
+    if not PLAIN_PATH.fullmatch(rel):
+        return None
+    if pid and (root / rel).is_file():
+        return {pid}, set()
+    if rel in DERIVED and all((root / reader).is_file() for reader in DERIVED_READERS):
+        return set(), set(DERIVED_READERS)
+    if is_test(rel) and rel in graph:
+        return set(), {rel}
+    if rel in graph and Path(rel).name not in PACKAGE_WIDE and 0 < len(back[rel]) < SHARED_IMPORTERS:
+        return set(), {t for t in back[rel] if is_test(t)}
+    return None
 
 
 def select(root: Path, files: list[str]) -> tuple[bool, set[str], set[str]]:
@@ -182,21 +204,15 @@ def select(root: Path, files: list[str]) -> tuple[bool, set[str], set[str]]:
     touched: set[str] = set()
     tests: set[str] = set()
     for rel in files:
-        pid = policy_of(rel, ids)
-        if not PLAIN_PATH.fullmatch(rel):
+        found = attribute(root, rel, ids, graph, back)
+        if found is None:
             return True, set(), set()
-        if pid and (root / rel).is_file():
-            touched.add(pid)
-        elif is_test(rel) and rel in graph:
-            tests.add(rel)
-        elif rel in graph and Path(rel).name not in PACKAGE_WIDE and 0 < len(back[rel]) < SHARED_IMPORTERS:
-            tests |= {t for t in back[rel] if is_test(t)}
-        else:
-            return True, set(), set()
-    if not touched and not tests:
+        touched |= found[0]
+        tests |= found[1]
+    if not files:
         return True, set(), set()
     covered = dependents(root, touched)
-    return False, covered, tests | proving_tests(root, covered)
+    return False, covered, tests | proving_tests(root, covered) | {t for t in ALWAYS if (root / t).is_file()}
 
 
 def main(argv: list[str] | None = None) -> int:

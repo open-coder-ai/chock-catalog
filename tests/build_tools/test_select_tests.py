@@ -12,6 +12,7 @@ import select_tests
 from select_tests import FULL, SHARED_CODE_TESTS, owners, policy_of, proving_tests, select, unowned
 
 GIT = shutil.which("git") or "git"
+STANDARDS = "tests/test_repo_standards.py"
 SHARED = [f"tests/policies/test_use_shared_{n}.py" for n in range(select_tests.SHARED_IMPORTERS)]
 
 
@@ -50,6 +51,9 @@ def tree(tmp_path: Path) -> Path:
     write(tmp_path, "tests/suite/test_names_nothing.py")
     write(tmp_path, "tests/suite/tokens.py")
     write(tmp_path, "tests/build_tools/test_names_nothing.py")
+    write(tmp_path, "tests/build_tools/test_gen_registry.py")
+    for derived in ("registry.yaml", "README.md", "docs/policy-prose.yaml"):
+        write(tmp_path, derived)
     write(tmp_path, "tests/orphans/test_names_nothing.py")
     write(tmp_path, "tests/policies/test_names_nothing.py")
     return tmp_path
@@ -97,6 +101,7 @@ def test_a_script_and_a_package_name_their_policy_but_lib_copies_and_data_do_not
 
 def test_unowned_lists_what_proves_no_policy(tree: Path) -> None:
     assert unowned(tree) == [
+        "tests/build_tools/test_gen_registry.py",
         "tests/build_tools/test_names_nothing.py",
         "tests/orphans/test_names_nothing.py",
         "tests/policies/test_names_nothing.py",
@@ -104,12 +109,8 @@ def test_unowned_lists_what_proves_no_policy(tree: Path) -> None:
     ]
 
 
-def test_proving_tests_adds_the_repo_wide_checks_and_nothing_for_no_policy(tree: Path) -> None:
-    assert proving_tests(tree, {"beta"}) == {
-        "tests/test_repo_standards.py",
-        "tests/policies/test_names_beta.py",
-        "tests/policies/test_walks.py",
-    }
+def test_proving_tests_are_those_that_name_the_policy(tree: Path) -> None:
+    assert proving_tests(tree, {"beta"}) == {"tests/policies/test_names_beta.py", "tests/policies/test_walks.py"}
     assert proving_tests(tree, {"gamma"}) >= {"tests/policies/test_via_kit.py", "tests/policies/test_walks.py"}
     assert proving_tests(tree, set()) == set()
 
@@ -119,7 +120,7 @@ def test_a_policy_change_runs_its_tests_and_those_of_the_policies_built_on_it(tr
     write(tree, "docs/alpha/adoption.md")
     full, policies, tests = select(tree, ["base/alpha/evals/suite.yaml", "docs/alpha/adoption.md"])
     assert (full, policies) == (False, {"alpha", "beta"})
-    assert tests == proving_tests(tree, {"alpha", "beta"})
+    assert tests == proving_tests(tree, {"alpha", "beta"}) | {"tests/test_repo_standards.py"}
     assert "tests/policies/test_names_beta.py" in tests
 
 
@@ -129,12 +130,27 @@ def test_a_policy_nothing_builds_on_runs_alone(tree: Path) -> None:
 
 
 def test_a_changed_test_runs_itself_and_nothing_else(tree: Path) -> None:
-    assert select(tree, ["tests/suite/test_names_alpha.py"]) == (False, set(), {"tests/suite/test_names_alpha.py"})
+    assert select(tree, ["tests/suite/test_names_alpha.py"]) == (
+        False,
+        set(),
+        {STANDARDS, "tests/suite/test_names_alpha.py"},
+    )
 
 
 def test_a_private_kit_runs_the_tests_that_import_it(tree: Path) -> None:
-    assert select(tree, ["tests/policies/gammakit.py"]) == (False, set(), {"tests/policies/test_via_kit.py"})
-    assert select(tree, ["tests/suite/tokens.py"]) == (False, set(), {"tests/policies/test_via_kit.py"})
+    assert select(tree, ["tests/policies/gammakit.py"]) == (False, set(), {STANDARDS, "tests/policies/test_via_kit.py"})
+    assert select(tree, ["tests/suite/tokens.py"]) == (False, set(), {STANDARDS, "tests/policies/test_via_kit.py"})
+
+
+@pytest.mark.parametrize("derived", ["registry.yaml", "README.md", "docs/policy-prose.yaml"])
+def test_a_generated_file_runs_only_the_tests_that_read_it(tree: Path, derived: str) -> None:
+    assert select(tree, [derived]) == (False, set(), {STANDARDS, "tests/build_tools/test_gen_registry.py"})
+    assert select(tree, ["base/beta/manifest.yaml", derived])[1] == {"beta"}
+
+
+def test_a_generated_file_is_full_when_its_reader_is_gone(tree: Path) -> None:
+    (tree / "tests/build_tools/test_gen_registry.py").unlink()
+    assert select(tree, ["registry.yaml"]) == (True, set(), set())
 
 
 @pytest.mark.parametrize(
@@ -166,6 +182,13 @@ def test_anything_not_attributable_to_policies_is_full(tree: Path, changed: list
 def test_the_catalog_has_no_test_that_proves_no_policy_outside_shared_code() -> None:
     """A new test that names no policy would run only on main; this fails until it does."""
     assert [rel for rel in unowned(select_tests.ROOT) if not rel.startswith(SHARED_CODE_TESTS)] == []
+
+
+def test_the_catalog_has_a_reader_for_each_generated_file() -> None:
+    """The readers are named, not found: this fails if one is renamed or stops reading what it is named for."""
+    for reader in select_tests.DERIVED_READERS:
+        text = (select_tests.ROOT / reader).read_text(encoding="utf-8")
+        assert all(Path(name).name in text for name in ("registry.yaml", "README.md")), reader
 
 
 def test_the_catalog_narrows_a_policy_change_and_widens_shared_code() -> None:
