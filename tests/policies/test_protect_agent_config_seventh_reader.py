@@ -4,15 +4,18 @@ and a line of unbalanced quotes read in linear time."""
 from __future__ import annotations
 
 import itertools
+import json
+import os
 import random
 import re
 import shlex
+import subprocess
 import sys
-import time
 from pathlib import Path
 
 import pytest
 from policies import guardkit
+from trees import ROOT
 
 POLICY = "protect-agent-config"
 guard = guardkit.load_guard(POLICY)
@@ -146,17 +149,38 @@ def _unbalanced(shape: str, size: int) -> str:
     }[shape]()
 
 
+_TIMER = """
+import json, sys, time
+from policies import guardkit
+from policies.test_protect_agent_config_seventh_reader import _unbalanced
+policy, shape = sys.argv[1:3]
+sp, guard = guardkit.load_shellparse(policy), guardkit.load_guard("protect-agent-config")
+def seconds(call, size):
+    raw = _unbalanced(shape, size)
+    start = time.process_time()
+    call(raw)
+    return time.process_time() - start
+print(json.dumps([[seconds(call, 4096), seconds(call, 65536)] for call in (sp.commands, guard.check)]))
+"""
+
+
+@pytest.mark.parametrize("policy", POLICIES)
 @pytest.mark.parametrize("shape", ["escaped", "opened", "alternating", "backslash", "clauses", "declares"])
-def test_a_line_of_unbalanced_quotes_is_read_in_linear_time(shape: str, sp) -> None:
-    """CPU time, not wall time: a guard that outruns the engine's 30 s is escalated by the engine, but a client that stops the hook first may allow."""
+def test_a_line_of_unbalanced_quotes_is_read_in_linear_time(shape: str, policy: str) -> None:
+    """CPU time, not wall time: a guard that outruns the engine's 30 s is escalated by the engine, but a client that stops the hook first may allow.
 
-    def seconds(call, size: int) -> float:
-        raw = _unbalanced(shape, size)
-        start = time.process_time()
-        call(raw)
-        return time.process_time() - start
-
-    for call in (sp.commands, guard.check):
-        small, large = seconds(call, 4096), seconds(call, 65536)
+    Timed in a child process, as a hook runs, outside the coverage tracer, which slows a python loop several times over.
+    """
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("COV", "COVERAGE"))}
+    env["PYTHONPATH"] = os.pathsep.join(str(ROOT / d) for d in ("tests", "tools"))
+    done = subprocess.run(
+        [sys.executable, "-c", _TIMER, policy, shape],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=120,
+    )
+    for small, large in json.loads(done.stdout):
         assert large < 3, (shape, large)
         assert large < 60 * max(small, 0.005), (shape, small, large)  # 16 times the text is about 16 times the time
