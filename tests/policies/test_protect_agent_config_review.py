@@ -47,7 +47,8 @@ def test_the_directory_the_hook_runs_in_is_the_start(_repo_root: Path, monkeypat
     (_repo_root / ".cursor").mkdir()
     monkeypatch.chdir(_repo_root / ".cursor")
     assert guard.check("echo x > mcp.json") == guard.REASON
-    assert guard.check("echo x > ../.cursor/rules.txt") is None
+    assert guard.check("echo x > ../.cursor/rules.txt") == guard.REASON
+    assert guard.check("echo x > ../src/rules.txt") is None
     monkeypatch.chdir(_repo_root / "src")
     assert guard.check("echo x > mcp.json") is None
 

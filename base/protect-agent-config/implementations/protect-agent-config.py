@@ -12,99 +12,61 @@ import sys
 
 from chock_shellparse import commands, writes_files
 from pathguard import refuses
-from pathmatch import DEVICE
+from pathload import loads_plugin
 from pathopaque import refuses as opaque
+from pathset import ASK as ASKED
+from pathset import BLOCK, PROTECTED, hit, normalise, verdict
 from pathwrap import too_deep
 
-PROTECTED = (
-    "AGENTS.md",
-    "CLAUDE.md",
-    "GEMINI.md",
-    "copilot-instructions.md",
-    ".cursorrules",
-    ".windsurfrules",
-    ".aider.conf.yml",
-    ".claude/settings",
-    ".mcp.json",
-    # Project-level MCP (and hook) config a supported client reads: a server an agent registers there runs with its authority.
-    ".cursor/mcp.json",  # Cursor, and Grok
-    ".vscode/mcp.json",  # VS Code Copilot
-    ".gemini/settings.json",  # Gemini CLI
-    ".codex/config.toml",  # Codex CLI
-    ".junie/mcp/mcp.json",  # Junie
-    ".devin/mcp_config.json",  # Devin
-    ".devin/mcp_config.local.json",
-    ".devin/config.json",  # Devin before v3000.3 keeps mcpServers here; it also holds permissions and hooks
-    ".devin/config.local.json",
-    ".grok/config.toml",  # Grok
-    ".agents/mcp_config.json",  # Antigravity
-    ".tabnine/agent/settings.json",  # Tabnine
-    # The hook files `chock sync` writes for each client: an agent that deleted its entries would disarm the gates.
-    ".cursor/hooks.json",
-    ".codex/hooks.json",
-    ".windsurf/hooks.json",
-    ".github/hooks/",  # VS Code Copilot: chock.json, agentseam.json
-    ".grok/hooks/",
-    ".devin/hooks.v1.json",
-    ".agents/hooks.json",  # Antigravity
-    ".chock/bin",
-    ".chock/compiled",
-    ".chock/dependency-allowlist.txt",
-    ".chock/config.yaml",
-    ".chock/security.json",
-    ".chock/agentic-security.json",
-    ".chock/state",  # shell only: the engine's own session log there would fail the Edit/Write gate's turn's-end walk
-    ".git/hooks",
-    ".git/config",  # core.hooksPath, core.fsmonitor and aliases there run code the way a hook does
-)
-# The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
-GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
+# `hit` and `normalise` are the guard's path test, which the tests and the gate's parity check call as `guard.hit`.
+__all__ = ["ASK", "BLIND", "DEEP", "LOADS", "PROTECTED", "REASON", "check", "hit", "normalise", "run"]
+
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
 # A lone `\` ends the line: for a Windows command (copy, xcopy, move) it closes a folder name, it escapes nothing.
 _TRAILING = re.compile(r"(?<=[^\s\\])\\$")
 
+LOADS = "shell command makes Claude Code load a plugin from a folder (CLAUDE_CODE_PLUGIN_DIRS, `claude --plugin-dir`) -- refused: a plugin's hooks run above the project's own gates. Ask the person, who sets it from their own shell."
+
 BLIND = "shell command runs script text the guard cannot read (eval or a shell fed from a variable, a pipe or a here-document, a variable as the command, trap, xargs sh, an interpreter one-liner) and names a protected path -- refused because it cannot be judged. Run the inner command directly, or ask the person."
+
+ASK = "shell write to an instruction file under docs/ needs a person's decision -- it is documentation about a guardrail file, but the same name is read as instructions where it sits. Ask the person, or make the change from their own shell."
 
 DEEP = "shell command nested too deep to check (a script inside a script, five or more levels) -- refused because it cannot be judged. Run the inner commands one at a time, or ask the person."
 
 
-def normalise(path: str) -> str:
-    """The path as matched: backslashes as slashes, no device prefix, `//` and `/./` collapsed, names without trailing dots or spaces (Windows drops them), lowercase."""
-    normal = DEVICE.sub("", path.replace("\\", "/"))
-    previous = None
-    while previous != normal:
-        previous = normal
-        normal = normal.replace("//", "/").replace("/./", "/")
-    return "/".join(part.rstrip(". ") or part for part in normal.split("/")).lower()
-
-
-def hit(path: str) -> bool:
-    """Whether a path names something this guard protects."""
-    normal = normalise(path)
-    return any(part.lower() in normal for part in PROTECTED) or GUARD_SOURCES.search(normal) is not None
-
-
 def check(raw: str) -> str | None:
-    """The reason a command edits protected files, or None."""
+    """The reason a command edits protected files (REASON, LOADS, BLIND, DEEP), ASK when it only writes docs instruction files, or None."""
     raw = _TRAILING.sub("/", raw.rstrip())
     if too_deep(raw):
         return DEEP
-    if any(writes_files(cmd, hit) for cmd in commands(raw)) or refuses(raw, PROTECTED, hit, normalise):
+    asked: list[str] = []
+
+    def firm(path: str) -> bool:
+        kind = verdict(path)
+        if kind == ASKED:
+            asked.append(path)
+        return kind == BLOCK
+
+    if any(writes_files(cmd, firm) for cmd in commands(raw)) or refuses(raw, PROTECTED, firm, normalise):
         return REASON
-    return BLIND if opaque(raw, hit) else None
+    if loads_plugin(raw):
+        return LOADS
+    if opaque(raw, firm):
+        return BLIND
+    return ASK if asked else None
 
 
 def run(argv: list[str]) -> int:
-    """Exit 1 blocks, 2 reports a guard fault (never a verdict), 0 allows."""
+    """Exit 1 blocks, 3 asks, 2 reports a guard fault (never a verdict), 0 allows."""
     try:
         reason = check(os.environ.get("CHOCK_RAW_COMMAND") or shlex.join(argv))
     except Exception as exc:  # noqa: BLE001 -- a guard fault must not look like a block
         print(f"protect-agent-config: internal error ({type(exc).__name__}); command not checked", file=sys.stderr)
         return 2
     if reason:
-        print(f"BLOCKED: {reason}", file=sys.stderr)
-        return 1
+        print(f"{'ASK' if reason == ASK else 'BLOCKED'}: {reason}", file=sys.stderr)
+        return 3 if reason == ASK else 1
     return 0
 
 

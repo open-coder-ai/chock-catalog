@@ -1,33 +1,34 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.2.8"
+version: "0.3.2"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
-  AGENTS.md, .claude/settings, MCP/hook client configs (.mcp.json, ...), .git/{hooks,config},
-  policy implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect,
-  rm/mv/tee/sed -i, cp into, git checkout/restore. Coarse: also eval or sh -c of computed text, shells fed by
-  pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write: tool gate.
+  AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .windsurf/, .agents/, .chock/, ...),
+  MCP/hook client configs (.mcp.json, ...), hook files of Cline, Kiro, Augment, Windsurf and Devin (user and machine level too), ~/.claude.json, Claude Code plugin roots (.claude-plugin/, their hooks/), .git/{hooks,config}, policy implementations/: redirect,
+  rm/mv/tee/sed -i, cp into, git checkout/restore, a write through a symlink to one; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir (best effort). Folder names match
+  without regard to case. An instruction file under docs/ asks a person instead. Coarse: also eval or sh -c of
+  computed text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync`
+  pass. Edit/Write: tool gate, the same set and verdicts.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    agent_config(AGENTS.md+wrappers|.claude/settings|.mcp.json|.chock/{config.yaml,*security.json,*allowlist.txt,bin,compiled,state}|.git/{hooks,config}|.agents/policies/*/implementations|.{cursor,codex,windsurf}/hooks.json|.{cursor,vscode}/mcp.json|.{codex,grok}/config.toml|.gemini/settings.json|.junie/mcp/mcp.json|.devin/{mcp_config,config,hooks.v1}.json|.grok/hooks/|.agents/{mcp_config,hooks}.json|.tabnine/agent/settings.json|.github/hooks/): never(edit|delete)
-    else ask_person; no marker passes
+    agent_config(AGENTS.md+wrappers|.{claude,cursor,codex,gemini,windsurf,agents,chock,junie,devin,grok,tabnine,augment,claude-plugin}/**|.github/{copilot*,hooks/}|.{clinerules,kiro}/hooks/|.kiro/agents/|<plugin>/hooks/|.mcp.json|.vscode/mcp.json|~/.claude.json|.git/{hooks,config}): never(edit|delete|set CLAUDE_CODE_PLUGIN_DIRS|--plugin-dir); any case; symlink same
+    docs/**/{AGENTS,CLAUDE,GEMINI,copilot-instructions}.md|.cursorrules|.windsurfrules|.aider.conf.yml: ask_person; no marker passes
 hook:
   gate:
-    kind: content_regex
+    kind: script
     "on": [tool_use]
     action: block
     message: >
       This path is agent configuration or enforcement (instruction files, permission files, the
-      dependency allowlist, vendored gates, policy implementations). An agent must not edit its
-      own guardrails through the Edit or Write tools. Propose the change to a human -- say which
-      file and what should change and why -- and wait for approval; regenerate managed files with
-      `chock sync`. A person edits these files from their own shell.
+      dependency allowlist, vendored gates, policy implementations, whole agent folders). An agent
+      must not edit its own guardrails through the Edit or Write tools. Propose the change to a
+      human -- say which file and what should change and why -- and wait for approval; regenerate
+      managed files with `chock sync`. A person edits these files from their own shell. An
+      instruction file under docs/ asks a person instead of blocking.
     params:
-      scan: added_lines
-      forbidden_path_regex: '(?i)(AGENTS\.md|CLAUDE\.md|GEMINI\.md|copilot-instructions\.md|\.cursorrules|\.windsurfrules|\.aider\.conf\.yml|\.claude[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*settings|\.mcp\.json|\.cursor[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp\.json|\.vscode[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp\.json|\.gemini[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*settings\.json|\.codex[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*config\.toml|\.junie[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp\.json|\.devin[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*(?:mcp_)?config(?:\.local)?\.json|\.grok[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*config\.toml|\.agents[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp_config\.json|\.tabnine[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*agent[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*settings\.json|\.(?:cursor|codex|windsurf)[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks\.json|\.devin[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks\.v1\.json|\.agents[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks\.json|\.(?:github|grok)[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*|\.chock[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*(bin|compiled|dependency-allowlist\.txt|config\.yaml|security\.json|agentic-security\.json)|\.git[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*(?:hooks|config)|\.agents[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*policies[/\\].*implementations)'
-      content_pattern: '(?!)'
+      script: protect-agent-config-gate.py
 effects:
 - read_only
 approval:
@@ -49,7 +50,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-10-01T00:00:00Z"
+  updated_at: "2026-10-03T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -63,6 +64,25 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.2
+  date: '2026-10-03'
+  changes:
+  - "Fixes to the 0.3.1 plugin and hook-file work (eval cases tc-1392 to tc-1432; tests in test_protect_agent_config_followup.py, _winpaths.py and guard_cases_hookfiles.py). Here-documents, commit messages and `echo` text that only quote `set CLAUDE_CODE_PLUGIN_DIRS=x`, `setx CLAUDE_CODE_PLUGIN_DIRS x` or `$env:CLAUDE_CODE_PLUGIN_DIRS = \"x\"` are no longer refused: the PowerShell and cmd forms are now judged at the start of a parsed command, as the POSIX `export` form already was (inside `bash -c`, `cmd /c`, `pwsh -Command` and behind sudo too, so `cmd /c \"set CLAUDE_CODE_PLUGIN_DIRS=x\"` and `sudo setx ...` are now refused). Every command that was refused before still is."
+  - "Edit/Write on Windows absolute paths no longer fails open. The gate reads a drive-letter path (`C:\\r\\plug\\hooks\\h.json`, `C:/r/...`), a device path (`\\\\?\\C:\\...`, `\\\\?\\UNC\\...`) and a UNC path from the repository folder in any case, and a rooted path with no drive (`\\r\\a`) on the repository's drive, as the shell guard does; a plugin root on another drive is looked up from that drive. A repository folder that sits below a `docs` folder (`C:/work/docs/proj`) no longer turns its own `AGENTS.md` into a question. Not covered: a plugin root on a network share outside the repository folder."
+  - "`mkdir`, `mkdir -p` and `md` of a `.claude-plugin` folder (any case, brace lists, variables) are refused as a write, so a plugin root cannot be made in the same command that writes the hooks below it (`install -d` and `New-Item -ItemType Directory` already were). Making any other protected folder (`mkdir .kiro`, `mkdir -p .clinerules/hooks`) stays open: its files are what is protected."
+  - "More files protected, as a shell write and as an Edit/Write: `~/.codeium/windsurf/hooks.json` and `~/.codeium/hooks.json` (Windsurf, user level); the Devin Desktop system files `/etc/devin/hooks.json`, `/Library/Application Support/Devin/hooks.json` and `C:\\ProgramData\\Devin\\hooks.json`; `/Library/Application Support/Augment/settings.json`; `~/.claude.json` (user-scope MCP servers and trust flags), matched as the exact file name at the start of a path or after a `/`, so `.claude.json5` and `.claude.jsonl` stay open; `CLAUDE.local.md`, at the level of `CLAUDE.md` (blocked, and a question below `docs/`). The machine-wide files are matched from the start of the path, as the Windsurf and Augment ones are."
+  - "The `CLAUDE_CODE_PLUGIN_DIRS` and `--plugin-dir` check is best effort. New: `$'--plugin-dir'` (ANSI-C quoting) is decoded, and a variable the same line set to plain text is read (`A=--plugin-dir; claude $A x`). Known unhandled: a sourced or executed file that sets the variable or runs claude (`source env.sh`), a name or flag computed at run time (`C=claude; $C --plugin-dir x`, `--plugin$IFS-dir`), a wrapper or function not named `claude` (`f() { claude \"$@\"; }; f --plugin-dir x`, an `npx` alias, `mytool` that starts claude), an interpreter that spawns claude (`python -c`, `node -e`), and an rc file that exports the variable for a later shell. `claude plugin install` is Claude Code's own."
+- version: 0.3.1
+  date: '2026-10-03'
+  changes:
+  - "Behaviour change, hook and plugin files of more agents (eval cases tc-1315 to tc-1391; tests in test_protect_agent_config_hookfiles.py and _plugins.py). Block, as a shell write and as an Edit/Write: any `.claude-plugin/` folder (plugin and marketplace manifests); the `hooks/` folder directly in a plugin root, a folder that holds `.claude-plugin/` (hooks.json and the module it names, such as register.ts; a `hooks/` folder anywhere else, like `src/hooks/useThing.ts`, stays open, and the root is looked up on disk, from the repository folder, through links and in any case); `.clinerules/hooks/` and `~/Documents/Cline/Hooks/` (Cline); `.kiro/hooks/` and `.kiro/agents/` (Kiro); the whole `.augment/` folder, which holds `settings.json`, hooks and rules, and `~/.augment/settings.json`; the machine-wide `/etc/windsurf/hooks.json`, `/Library/Application Support/Windsurf/hooks.json`, `C:\\ProgramData\\Windsurf\\hooks.json`, `/etc/augment/settings.json` and `C:\\ProgramData\\Augment\\settings.json`, matched from the start of the path (any drive letter), so `src/etc/windsurf/hooks.json` stays open. A loaded mod's tool.call hook runs above project settings hooks, so an agent that can write one can answer a call itself and chock's PreToolUse never runs."
+  - "Shell commands that make Claude Code load a plugin from a folder are refused with their own message (exit 1): setting `CLAUDE_CODE_PLUGIN_DIRS` (a prefix assignment, `export`, `declare -x`, `env`, a bare assignment, inside `bash -c`, PowerShell `$env:`, `setx`, `set`, `Set-Item Env:`, `SetEnvironmentVariable`) and `claude --plugin-dir` (also `--plugin-dir=`, behind sudo, nohup, timeout, command or a shell, and through npx and the other package launchers). Reading the variable, `unset`, `env -u`, `claude` without the flag, and text that only names either (a commit message, `echo`, `grep`) pass."
+  - "Already covered before this version, now with eval cases of their own: `.claude/plugins/**` and `~/.claude/dev-mods/**` (both sit in the whole `.claude/` folder), and the home copies `~/.grok/user-settings.json`, `~/.codex/hooks.json` and `config.toml`, `~/.gemini/settings.json` and `~/.cursor/hooks.json`, since the guard and the gate match a protected folder as a path segment wherever it sits, so an absolute or `~` path is read the same way. The same cases refuse the paths in capitals, and a path through a link to a plugin's hooks folder is refused (tests)."
+  - "Not covered, by design: a glob or an unknown variable that could stand for a machine-wide file or a Cline user folder (`/etc/wind*/hooks.json`; those two are matched as text, not as entries of the protected set, so a repository folder named `etc` or `documents` is not read as holding them); Kiro's other folders (`.kiro/specs`, `.kiro/steering`, `.kiro/settings`), `.clinerules/` files that are not hooks, and `.augment-guidelines`; `~/Library/Application Support/Windsurf` below a user's home; a shell rc file that exports the variable for a later shell (`echo 'export CLAUDE_CODE_PLUGIN_DIRS=x' >> ~/.bashrc` is a write to a file this policy does not protect); `claude plugin install`, which Claude Code itself runs; and an `hooks/` folder whose plugin root is only made after the check."
+- version: 0.3.0
+  date: '2026-10-03'
+  changes:
+  - "Behaviour change, protect-agent-config v2 (eval cases tc-1290 to tc-1314; tests in test_protect_agent_config_dirs.py, _docs.py, _links.py and _gate_v2.py). Whole agent folders are protected, not a list of their files: `.claude/`, `.cursor/`, `.codex/`, `.gemini/`, `.windsurf/`, `.agents/`, `.chock/`, `.junie/`, `.devin/`, `.grok/`, `.tabnine/` and every `.github/copilot*`, matched as whole path segments in any case (`.CLAUDE/Commands/x.md`), with `..`, `//`, Windows separators and absolute paths folded first. Twenty-five eval cases that pinned an ordinary write into one of those folders as allowed (tc-136 to tc-151, tc-178 to tc-181, tc-240, tc-241, tc-243, tc-273, tc-794) now expect a refusal, and the same flip is made in the tests that pinned them. Symlinks: a path is followed through the links in it, as the filesystem does, and a write whose real target is protected is refused (a tracked link to AGENTS.md, a link to .claude, a dangling link into it, a chain of links, a glob that matches a link, a `..` after a link read as written); `cp -l` and `cp -s` from a protected file are refused as `ln` was. A chain longer than 40 links, a glob over more than 50000 folder entries, or a link that cannot be read is refused. An instruction file (AGENTS.md, CLAUDE.md, GEMINI.md, copilot-instructions.md, .cursorrules, .windsurfrules, .aider.conf.yml) below a `docs` folder asks a person: the shell guard exits 3, the Edit/Write gate asks (a reminder at the turn's end, where nobody can be asked); anything else protected in the same command or turn still blocks, and so does a path that resolves out of docs/ or into a protected folder. The Edit/Write gate changes kind, from `content_regex` to `script` (implementations/protect-agent-config-gate.py), because a regex gate has one verdict and no view of the filesystem; it shares its path matching with the shell guard (new module pathset.py), so the two cannot drift. The engine's own `.chock/state` and `.chock/log` are the only paths the gate leaves to the engine. Not caught, still: a hard link that already exists (a write through a second name of a protected file), an unknown variable in front of a name inside a protected folder (`$D/a.md`), and paths a script computes."
 - version: 0.2.8
   date: '2026-10-03'
   changes:

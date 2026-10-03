@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import pytest
@@ -10,6 +9,7 @@ from policies import gatekit, guardkit, scriptkit
 
 POLICY = "protect-agent-config"
 guard = guardkit.load_guard(POLICY)
+gate_script = guardkit.load_guard(POLICY, "protect-agent-config-gate")
 PATHS = [
     "AGENTS.md",
     "CLAUDE.md",
@@ -79,32 +79,16 @@ PATHS = [
     ".agents//hooks.json",
 ]
 # Guarded from the shell only: the engine writes its own session log there, which the turn's-end walk would refuse.
-SHELL_ONLY = (".chock/state",)
+SHELL_ONLY = (".chock/state", ".chock/log")
 UNRELATED = [
     "README.md",
     "src/app.py",
-    ".claude/commands/x.md",
-    ".chock/notes.md",
-    ".agents/skills/a/SKILL.md",
     ".vscode/launch.json",
     ".vscode/settings.json",
-    ".cursor/rules/chock.mdc",
-    ".gemini/commands/review.toml",
-    ".codex/prompts/review.md",
-    ".junie/guidelines.md",
-    ".devin/notes.md",
-    ".grok/GROK.md",
-    ".tabnine/agent/notes.md",
     ".github/workflows/ci.yml",
     ".github/ISSUE_TEMPLATE/x.md",
     ".github/hooks.md",
     ".github/dependabot.yml",
-    ".cursor/rules/a.mdc",
-    ".windsurf/rules/chock.md",
-    ".codex/hooks.md",
-    ".grok/notes.md",
-    ".devin/hooks.md",
-    ".agents/hooks.md",
     "docs/mcp.json",
     "mcp_config.json",
 ]
@@ -119,7 +103,7 @@ def test_the_gate_is_tool_use_only_and_the_artifact_stays_a_rule() -> None:
     manifest = scriptkit.manifest(POLICY)
     assert manifest["artifact"] == "rule"
     gate = manifest["hook"]["gate"]
-    assert gate["kind"] == "content_regex"
+    assert gate["kind"] == "script"
     assert gate["on"] == ["tool_use"]
     assert "propose" in gate["message"].lower()
     assert "allowlist_pragma" not in gate["params"]
@@ -175,22 +159,21 @@ def test_a_waiver_line_committed_in_head_does_not_unlock_the_file(tmp_path: Path
     assert gatekit.judge(POLICY, waived, gatekit.PRE_TOOL_USE, {"AGENTS.md": "x\n"})[0] == 1
 
 
-def test_the_gate_covers_exactly_what_the_guard_protects() -> None:
-    pattern = re.compile(gatekit.gate_spec(POLICY)["params"]["forbidden_path_regex"])
-    gated = [p for p in guard.PROTECTED if p not in SHELL_ONLY]
-    samples = PATHS + UNRELATED + [f"deep/{p}" for p in gated] + [f"{p}/x" for p in gated] + [p.upper() for p in gated]
-    for path in samples:
-        assert bool(pattern.search(path)) == guard.hit(path), path
-    for part in gated:
-        assert pattern.search(part), f"the gate misses {part}"
+def test_the_gate_covers_exactly_what_the_guard_protects(tmp_path: Path) -> None:
+    samples = [*PATHS, *UNRELATED, *(f"deep/{p}" for p in guard.PROTECTED), *(f"{p}/x" for p in guard.PROTECTED)]
+    for path in [*samples, *(p.upper() for p in samples)]:
+        expected = guard.hit(path) and not gate_script.engine_own(path)
+        assert bool(gate_script.judge(tmp_path, path)) == expected, path
+    for part in guard.PROTECTED:
+        assert guard.hit(part), f"the guard misses {part}"
+        assert gate_script.judge(tmp_path, part.rstrip("/") + "/x") or gate_script.engine_own(part), part
 
 
 @pytest.mark.parametrize("part", SHELL_ONLY)
 def test_a_shell_only_path_is_guarded_but_not_gated(repo: Path, part: str) -> None:
-    assert part in guard.PROTECTED
     assert guard.hit(f"{part}/s.stop.jsonl")
-    pattern = re.compile(gatekit.gate_spec(POLICY)["params"]["forbidden_path_regex"])
-    assert not pattern.search(f"{part}/s.stop.jsonl")
+    assert gate_script.judge(repo, f"{part}/s.stop.jsonl") == ""
+    assert gate_script.judge(repo, f"deep/{part}/s.stop.jsonl") == "block"
     scriptkit.write(repo, {f"{part}/s.jsonl": "{}\n"})
     assert gatekit.judge(POLICY, repo, gatekit.STOP, {f"{part}/s.jsonl": "{}\n"}) == (0, "")
 

@@ -13,10 +13,11 @@ from chock_shellparse.parse import _SHELLS, _WINPATH, Cmd, _parse, _Scan, is_pow
 from pathconf import route
 from pathgit import git
 from pathmatch import DRIVE, DYNAMIC, FRESH, expand, values
+from pathplugin import MANIFEST
 from pathreach import Reach
 from pathscript import Scripts
 from pathsubst import PWD, bindings, resolver
-from pathtext import SUBST, scan
+from pathtext import SUBST, braces, scan
 from pathwin import mklink, windows
 from pathwords import (
     CD,
@@ -97,6 +98,7 @@ class _Walk(Reach, Scripts):
             **dict.fromkeys(("sed", "yq"), lambda c: sed(self, c.args, c.env)),
             "git": lambda c: git(self, c.args, c.env),
             "find": lambda c: find(self, c.args, c.env),
+            **dict.fromkeys(("mkdir", "md"), self._mkdir),
             "dd": self._dd,
             "uniq": self._uniq,
         }
@@ -135,6 +137,10 @@ class _Walk(Reach, Scripts):
         recursive = bool(flags & {"-r", "-R"}) or any(a.lower().startswith("-rec") for a in cmd.args)
         whole = cmd.name in DELETERS or recursive
         return any(self.reaches(t, cmd.env, parents=True, whole=whole) for t in values(cmd.args))
+
+    def _mkdir(self, cmd: Cmd) -> bool:
+        """`mkdir` of a plugin's `.claude-plugin` folder makes a plugin root; any other protected folder may still be made."""
+        return any(MANIFEST in self._path(b, cmd.env)[0].split("/") for t in values(cmd.args) for b in braces(t))
 
     def _dd(self, cmd: Cmd) -> bool:
         return any(a.startswith("of=") and self.reaches(a[3:], cmd.env) for a in cmd.args)
