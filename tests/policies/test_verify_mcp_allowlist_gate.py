@@ -239,7 +239,7 @@ def test_keys_are_secret_free_and_change_with_the_entry(repo: Path) -> None:
     secret = {
         "command": "npx",
         "args": ["-y", "evil@latest", "--token", "SECRET-VALUE-123"],
-        "env": {"API_KEY": "SECRET-ENV-9"},
+        "env": {"API_KEY": "SECRET-ENV-9"},  # pragma: allowlist secret
     }
     items = found(repo, {".mcp.json": mcpkit.mcp({"evil": secret})})
     assert "SECRET" not in json.dumps(items)

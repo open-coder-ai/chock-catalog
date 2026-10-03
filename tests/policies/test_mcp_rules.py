@@ -252,7 +252,7 @@ def test_the_findings_never_quote_the_launch_line() -> None:
     config = {
         "command": "npx",
         "args": ["-y", "evil@latest", "--token", "SECRET-VALUE-123"],
-        "env": {"API_KEY": "SECRET-ENV-456"},
+        "env": {"API_KEY": "SECRET-ENV-456"},  # pragma: allowlist secret
     }
     text = " ".join(message for _, message in rules.judge(server(config), ()))
     assert "SECRET" not in text
