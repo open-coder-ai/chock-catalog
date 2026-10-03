@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "verify-dependency-exists",
-  "version": "0.0.5",
-  "description": "Allowlist gate for new dependencies; no registry lookup is made. Watches requirements.txt, pyproject.toml ([project] and poetry dependencies), package.json, go.mod; blocks an added name missing from .chock/dependency-allowlist.txt. Not read: -r/-e lines, requirements-dev.txt, poetry groups, [dependency-groups]. Opt-in: fill the allowlist, then `chock enable verify-dependency-exists`. Runs: commit, agent write (vs disk), turn's end (vs HEAD).",
+  "version": "0.1.1",
+  "description": "Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from .chock/dependency-allowlist.txt and asks on a lockfile-only addition. Not read: computed lists, sources, some pattern-read forms (see docs), versions. Opt-in: seed the allowlist, run in rollout observe, then `chock enable verify-dependency-exists`. Runs: commit, agent write, turn's end.",
   "author": {
     "name": "chock-core"
   },
