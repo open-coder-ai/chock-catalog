@@ -1,0 +1,82 @@
+"""protect-agent-config: the hook and settings files of Cline, Kiro, Augment and Windsurf, project, user and machine level."""
+
+from __future__ import annotations
+
+# Each path is a file a client reads hooks from; it is refused as a shell write and as an Edit/Write.
+PROJECT = [
+    ".clinerules/hooks/PreToolUse",
+    ".clinerules/hooks/nested/PostToolUse",
+    ".kiro/hooks/lint.kiro.hook",
+    ".kiro/agents/dev.json",
+    ".augment/settings.json",
+    ".augment/hooks/pre-tool.sh",
+    ".augment/rules/style.md",
+    ".claude-plugin/plugin.json",
+    "tools/p/.claude-plugin/marketplace.json",
+    ".claude/plugins/cache/p/hooks/hooks.json",
+    ".claude/plugins/p/hooks/register.ts",
+]
+# Outside the repository, as an absolute path (what the Write tool names) and as the shell spells it.
+USER = [
+    "/home/dev/.claude/dev-mods/audit.ts",
+    "/home/dev/Documents/Cline/Hooks/PreToolUse",
+    "/Users/dev/Documents/Cline/Hooks/PostToolUse",
+    "C:/Users/dev/Documents/Cline/Hooks/PreToolUse",
+    "/home/dev/.augment/settings.json",
+    "/home/dev/.grok/user-settings.json",
+    "/home/dev/.codex/hooks.json",
+    "/home/dev/.codex/config.toml",
+    "/home/dev/.gemini/settings.json",
+    "/home/dev/.cursor/hooks.json",
+    "~/.claude/dev-mods/audit.ts",
+    "~/Documents/Cline/Hooks/PreToolUse",
+    "~/.augment/settings.json",
+    "~/.grok/user-settings.json",
+    "~/.codex/hooks.json",
+    "~/.gemini/settings.json",
+    "~/.cursor/hooks.json",
+]
+MACHINE = [
+    "/etc/windsurf/hooks.json",
+    "/Library/Application Support/Windsurf/hooks.json",
+    "C:\\ProgramData\\Windsurf\\hooks.json",
+    "/etc/augment/settings.json",
+    "C:\\ProgramData\\Augment\\settings.json",
+    "\\\\?\\C:\\ProgramData\\Windsurf\\hooks.json",
+    "D:/ProgramData/Augment/settings.json",
+]
+# The same files with the letters of a case-insensitive filesystem.
+CASED = [
+    ".KIRO/Hooks/lint.kiro.hook",
+    ".Kiro/AGENTS/dev.json",
+    ".CLINERULES/HOOKS/PreToolUse",
+    ".Augment/Settings.json",
+    ".CLAUDE-PLUGIN/plugin.json",
+    "/home/dev/DOCUMENTS/CLINE/HOOKS/PreToolUse",
+    "/ETC/WINDSURF/HOOKS.JSON",
+    "c:\\PROGRAMDATA\\augment\\SETTINGS.JSON",
+]
+# What stays open: the neighbours of a protected folder, look-alike names, and a machine path that is only below a folder of that name.
+OPEN = [
+    ".clinerules/style.md",
+    ".clinerules",
+    ".kiro/specs/feature/design.md",
+    ".kiro/steering/product.md",
+    ".augmented/settings.json",
+    ".augment-guidelines.md",
+    "my.augment/settings.json",
+    "kiro/hooks/a.md",
+    "docs/plugins.md",
+    "docs/claude-plugin.md",
+    "src/claude-plugin/a.ts",
+    ".claude-plugins/a.json",
+    "src/etc/windsurf/hooks.json",
+    "etc/windsurf/hooks.json",
+    "src/documents/cline/notes.md",
+    "documents/cline/hooks.md",
+    "/etc/windsurf/other.json",
+    "/etc/hosts",
+    "/home/dev/ProgramData/Windsurf/hooks.json",
+    "/Library/Application Support/Windsurf/settings.json",
+    "src/hooks/useThing.ts",
+]

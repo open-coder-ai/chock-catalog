@@ -42,7 +42,6 @@ SCRIPT_ALLOWED = [
     'eval "$(ssh-agent -s)"',
     "source <(kubectl completion bash)",
     'eval "$(curl -s https://example.com/s.sh)"',
-    "git restore --staged .cursor",
     "git restore --staged src",
     "git restore --worktree src/a.py",
     "git clean -fd",

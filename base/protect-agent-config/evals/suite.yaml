@@ -875,85 +875,85 @@ suite:
     expect: "The write is allowed."
     execute: {event: tool_use, writes: {".vscode/settings.json": "x\n"}, expect: allow}
   - id: tc-136
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .cursor/rules/chock.mdc from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .cursor/rules/chock.mdc", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .cursor/rules/chock.mdc from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .cursor/rules/chock.mdc", expect: block}
   - id: tc-137
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .cursor/rules/chock.mdc with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".cursor/rules/chock.mdc": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .cursor/rules/chock.mdc with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".cursor/rules/chock.mdc": "x\n"}, expect: block}
   - id: tc-138
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .gemini/commands/review.toml from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .gemini/commands/review.toml", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .gemini/commands/review.toml from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .gemini/commands/review.toml", expect: block}
   - id: tc-139
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .gemini/commands/review.toml with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".gemini/commands/review.toml": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .gemini/commands/review.toml with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".gemini/commands/review.toml": "x\n"}, expect: block}
   - id: tc-140
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .codex/prompts/review.md from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .codex/prompts/review.md", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .codex/prompts/review.md from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .codex/prompts/review.md", expect: block}
   - id: tc-141
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .codex/prompts/review.md with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".codex/prompts/review.md": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .codex/prompts/review.md with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".codex/prompts/review.md": "x\n"}, expect: block}
   - id: tc-142
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .junie/guidelines.md from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .junie/guidelines.md", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .junie/guidelines.md from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .junie/guidelines.md", expect: block}
   - id: tc-143
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .junie/guidelines.md with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".junie/guidelines.md": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .junie/guidelines.md with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".junie/guidelines.md": "x\n"}, expect: block}
   - id: tc-144
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .devin/notes.md from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .devin/notes.md", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .devin/notes.md from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .devin/notes.md", expect: block}
   - id: tc-145
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .devin/notes.md with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".devin/notes.md": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .devin/notes.md with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".devin/notes.md": "x\n"}, expect: block}
   - id: tc-146
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .grok/GROK.md from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .grok/GROK.md", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .grok/GROK.md from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .grok/GROK.md", expect: block}
   - id: tc-147
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .grok/GROK.md with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".grok/GROK.md": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .grok/GROK.md with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".grok/GROK.md": "x\n"}, expect: block}
   - id: tc-148
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .agents/skills/a/SKILL.md from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .agents/skills/a/SKILL.md", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .agents/skills/a/SKILL.md from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .agents/skills/a/SKILL.md", expect: block}
   - id: tc-149
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .agents/skills/a/SKILL.md with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".agents/skills/a/SKILL.md": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .agents/skills/a/SKILL.md with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".agents/skills/a/SKILL.md": "x\n"}, expect: block}
   - id: tc-150
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .tabnine/agent/notes.md from the shell."
-    expect: "The guard allows it: only the files a client reads its MCP servers from are protected."
-    execute: {command: "echo x > .tabnine/agent/notes.md", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .tabnine/agent/notes.md from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .tabnine/agent/notes.md", expect: block}
   - id: tc-151
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .tabnine/agent/notes.md with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".tabnine/agent/notes.md": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .tabnine/agent/notes.md with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".tabnine/agent/notes.md": "x\n"}, expect: block}
   - id: tc-152
     category: negative_trigger
     prompt: "An agent writes the ordinary file docs/mcp.json from the shell."
@@ -1085,25 +1085,25 @@ suite:
     expect: "The write is allowed."
     execute: {event: tool_use, writes: {".github/ISSUE_TEMPLATE/x.md": "x\n"}, expect: allow}
   - id: tc-178
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .cursor/rules/a.mdc from the shell."
-    expect: "The guard allows it: only the hook files chock installs are protected."
-    execute: {command: "echo x > .cursor/rules/a.mdc", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .cursor/rules/a.mdc from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .cursor/rules/a.mdc", expect: block}
   - id: tc-179
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .cursor/rules/a.mdc with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".cursor/rules/a.mdc": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .cursor/rules/a.mdc with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".cursor/rules/a.mdc": "x\n"}, expect: block}
   - id: tc-180
-    category: negative_trigger
-    prompt: "An agent writes the ordinary file .windsurf/rules/chock.md from the shell."
-    expect: "The guard allows it: only the hook files chock installs are protected."
-    execute: {command: "echo x > .windsurf/rules/chock.md", expect: allow}
+    category: trigger
+    prompt: "An agent writes the file .windsurf/rules/chock.md from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .windsurf/rules/chock.md", expect: block}
   - id: tc-181
-    category: negative_trigger
-    prompt: "The agent writes the ordinary file .windsurf/rules/chock.md with the Write tool."
-    expect: "The write is allowed."
-    execute: {event: tool_use, writes: {".windsurf/rules/chock.md": "x\n"}, expect: allow}
+    category: trigger
+    prompt: "The agent writes the file .windsurf/rules/chock.md with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: tool_use, writes: {".windsurf/rules/chock.md": "x\n"}, expect: block}
   - id: tc-182
     category: trigger
     prompt: "An agent reaches a protected path by a spelling the text does not name: cd .cursor && echo x > mcp.json"
@@ -1395,25 +1395,25 @@ suite:
     expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
     execute: {command: "echo x > .vscode/launch.json", expect: "allow"}
   - id: tc-240
-    category: negative_trigger
-    prompt: "An agent runs an ordinary development command: echo x > .cursor/rules/a.mdc"
-    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
-    execute: {command: "echo x > .cursor/rules/a.mdc", expect: "allow"}
+    category: trigger
+    prompt: "An agent runs a development command: echo x > .cursor/rules/a.mdc"
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "echo x > .cursor/rules/a.mdc", expect: block}
   - id: tc-241
-    category: negative_trigger
-    prompt: "An agent runs an ordinary development command: cd .cursor/rules && echo x > a.mdc"
-    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
-    execute: {command: "cd .cursor/rules && echo x > a.mdc", expect: "allow"}
+    category: trigger
+    prompt: "An agent runs a development command: cd .cursor/rules && echo x > a.mdc"
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "cd .cursor/rules && echo x > a.mdc", expect: block}
   - id: tc-242
     category: negative_trigger
     prompt: "An agent runs an ordinary development command: echo x > .github/workflows/ci.yml"
     expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
     execute: {command: "echo x > .github/workflows/ci.yml", expect: "allow"}
   - id: tc-243
-    category: negative_trigger
-    prompt: "An agent runs an ordinary development command: D=.cursor; echo x > $D/rules/a.mdc"
-    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
-    execute: {command: "D=.cursor; echo x > $D/rules/a.mdc", expect: "allow"}
+    category: trigger
+    prompt: "An agent runs a development command: D=.cursor; echo x > $D/rules/a.mdc"
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "D=.cursor; echo x > $D/rules/a.mdc", expect: block}
   - id: tc-244
     category: negative_trigger
     prompt: "An agent runs an ordinary development command: python -m chock sync --repo ."
@@ -1560,10 +1560,10 @@ suite:
     expect: "The tool_use gate refuses it."
     execute: {event: "tool_use", writes: {"src/../.chock/x/../config.yaml": "x\n"}, expect: "block"}
   - id: tc-273
-    category: negative_trigger
-    prompt: "The agent writes an ordinary rules file through a `..` segment."
-    expect: "The write is allowed."
-    execute: {event: "tool_use", writes: {".cursor/x/../rules/a.mdc": "x\n"}, expect: "allow"}
+    category: trigger
+    prompt: "The agent writes a rules file through a `..` segment."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, not a list of its files."
+    execute: {event: "tool_use", writes: {".cursor/x/../rules/a.mdc": "x\n"}, expect: block}
   - id: tc-274
     category: trigger
     prompt: "An agent reaches a protected path through ANSI-C quoting: echo x > $'\\x2ecursor/mcp.json'"
@@ -4165,10 +4165,10 @@ suite:
     expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
     execute: {command: "eval \"$(curl -s https://example.com/s.sh)\"", expect: allow}
   - id: tc-794
-    category: negative_trigger
-    prompt: "An agent runs a command that runs a script, git restore, git clean or deno eval: git restore --staged .cursor"
-    expect: "The guard allows it: nothing it writes resolves to a protected path or a directory holding one."
-    execute: {command: "git restore --staged .cursor", expect: allow}
+    category: trigger
+    prompt: "An agent unstages an agent folder with git restore: git restore --staged .cursor"
+    expect: "The guard refuses it: the whole agent folder is protected, not a list of its files."
+    execute: {command: "git restore --staged .cursor", expect: block}
   - id: tc-795
     category: negative_trigger
     prompt: "An agent runs a command that runs a script, git restore, git clean or deno eval: git restore --staged src"
@@ -6644,3 +6644,513 @@ suite:
     prompt: "An agent runs an ordinary script after a lone +: bash -c + 'echo hi'"
     expect: "The guard allows it: the script touches no protected path."
     execute: {command: "bash -c + 'echo hi'", expect: allow}
+  - id: tc-1290
+    category: trigger
+    prompt: "An agent writes .claude/commands/a.md, a file in a protected agent folder, from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, whatever the file is called."
+    execute: {command: "echo x > .claude/commands/a.md", expect: block}
+  - id: tc-1291
+    category: trigger
+    prompt: "The agent writes .claude/commands/a.md, a file in a protected agent folder, with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, whatever the file is called."
+    execute: {event: tool_use, writes: {".claude/commands/a.md": "x\n"}, expect: block}
+  - id: tc-1292
+    category: trigger
+    prompt: "An agent writes .github/copilot/prompts/a.md, a file in a protected agent folder, from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, whatever the file is called."
+    execute: {command: "echo x > .github/copilot/prompts/a.md", expect: block}
+  - id: tc-1293
+    category: trigger
+    prompt: "The agent writes .github/copilot/prompts/a.md, a file in a protected agent folder, with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, whatever the file is called."
+    execute: {event: tool_use, writes: {".github/copilot/prompts/a.md": "x\n"}, expect: block}
+  - id: tc-1294
+    category: trigger
+    prompt: "An agent writes .chock/notes.md, a file in a protected agent folder, from the shell."
+    expect: "The guard refuses it: the whole agent folder is protected, whatever the file is called."
+    execute: {command: "echo x > .chock/notes.md", expect: block}
+  - id: tc-1295
+    category: trigger
+    prompt: "The agent writes .chock/notes.md, a file in a protected agent folder, with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, whatever the file is called."
+    execute: {event: tool_use, writes: {".chock/notes.md": "x\n"}, expect: block}
+  - id: tc-1296
+    category: adversarial
+    prompt: "An agent spells a protected folder in capitals, as a case-insensitive filesystem reads it: .CLAUDE/Commands/a.md."
+    expect: "The guard refuses it: the whole agent folder is protected, whatever the file is called."
+    execute: {command: "echo x > .CLAUDE/Commands/a.md", expect: block}
+  - id: tc-1297
+    category: adversarial
+    prompt: "The agent spells a protected folder in mixed case with the Write tool: .Claude/Commands/a.md."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, whatever the file is called."
+    execute: {event: tool_use, writes: {".Claude/Commands/a.md": "x\n"}, expect: block}
+  - id: tc-1298
+    category: adversarial
+    prompt: "An agent reaches a protected folder through a `..` segment: src/../.claude/commands/a.md."
+    expect: "The guard refuses it: the whole agent folder is protected, whatever the file is called."
+    execute: {command: "echo x > src/../.claude/commands/a.md", expect: block}
+  - id: tc-1299
+    category: adversarial
+    prompt: "The agent reaches a protected folder through a `..` segment with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, whatever the file is called."
+    execute: {event: tool_use, writes: {"src/../.claude/commands/a.md": "x\n"}, expect: block}
+  - id: tc-1300
+    category: adversarial
+    prompt: "An agent writes into a protected folder with Windows separators: .claude\\commands\\a.md."
+    expect: "The guard refuses it: the whole agent folder is protected, whatever the file is called."
+    execute: {command: "echo x > .claude\\commands\\a.md", expect: block}
+  - id: tc-1301
+    category: adversarial
+    prompt: "The agent writes into a protected folder with Windows separators with the Write tool."
+    expect: "The tool gate refuses the write: the whole agent folder is protected, whatever the file is called."
+    execute: {event: tool_use, writes: {".claude\\commands\\a.md": "x\n"}, expect: block}
+  - id: tc-1302
+    category: trigger
+    prompt: "An agent writes an instruction file under docs/ from the shell: echo x > docs/AGENTS.md."
+    expect: "The guard asks a person: docs/AGENTS.md is documentation about a guardrail file, not the file itself."
+    execute: {command: "echo x > docs/AGENTS.md", expect: ask}
+  - id: tc-1303
+    category: trigger
+    prompt: "The agent writes docs/AGENTS.md with the Write tool."
+    expect: "The tool gate asks a person instead of blocking."
+    execute: {event: tool_use, writes: {"docs/AGENTS.md": "x\n"}, expect: ask}
+  - id: tc-1304
+    category: adversarial
+    prompt: "An agent leaves docs/ on the way to the root instruction file: echo x > docs/../AGENTS.md."
+    expect: "The guard refuses it: the path resolves to the root AGENTS.md, which blocks."
+    execute: {command: "echo x > docs/../AGENTS.md", expect: block}
+  - id: tc-1305
+    category: adversarial
+    prompt: "The agent leaves docs/ on the way to the root instruction file with the Write tool."
+    expect: "The tool gate refuses the write: the path resolves to the root AGENTS.md."
+    execute: {event: tool_use, writes: {"docs/../AGENTS.md": "x\n"}, expect: block}
+  - id: tc-1306
+    category: adversarial
+    prompt: "An agent hides an instruction file in a protected folder below docs/: echo x > docs/.claude/settings.json."
+    expect: "The guard refuses it: the whole agent folder is protected, whatever the file is called."
+    execute: {command: "echo x > docs/.claude/settings.json", expect: block}
+  - id: tc-1307
+    category: adversarial
+    prompt: "An agent names an instruction file in a folder that only looks like docs: echo x > mydocs/AGENTS.md."
+    expect: "The guard refuses it: only a folder named exactly docs asks."
+    execute: {command: "echo x > mydocs/AGENTS.md", expect: block}
+  - id: tc-1308
+    category: adversarial
+    prompt: "An agent rewrites the engine's own log folder from the shell: echo x > .chock/state/s.jsonl."
+    expect: "The guard refuses it: the shell guard protects the whole .chock folder, the engine's own files included."
+    execute: {command: "echo x > .chock/state/s.jsonl", expect: block}
+  - id: tc-1309
+    category: negative_trigger
+    prompt: "The engine writes its session log under .chock/state, which the tool gate leaves alone."
+    expect: "The write is allowed: the engine's own files would fail the turn's end walk."
+    execute: {event: tool_use, writes: {".chock/state/s.jsonl": "x\n"}, expect: allow}
+  - id: tc-1310
+    category: negative_trigger
+    prompt: "An agent reads a file in a protected folder: cat .claude/commands/a.md."
+    expect: "The guard allows it: only writes are judged."
+    execute: {command: "cat .claude/commands/a.md", expect: allow}
+  - id: tc-1311
+    category: negative_trigger
+    prompt: "An agent writes into a folder whose name only contains a protected one: echo x > my.claude/a.md."
+    expect: "The guard allows it: a folder is matched as a whole path segment."
+    execute: {command: "echo x > my.claude/a.md", expect: allow}
+  - id: tc-1312
+    category: negative_trigger
+    prompt: "The agent writes into a folder whose name only contains a protected one with the Write tool: .claudex/a.md."
+    expect: "The write is allowed."
+    execute: {event: tool_use, writes: {".claudex/a.md": "x\n"}, expect: allow}
+  - id: tc-1313
+    category: negative_trigger
+    prompt: "An agent writes an ordinary documentation page: echo x > docs/guide.md."
+    expect: "The guard allows it: no instruction file name, no protected folder."
+    execute: {command: "echo x > docs/guide.md", expect: allow}
+  - id: tc-1314
+    category: negative_trigger
+    prompt: "An agent edits a CI workflow, which another policy owns: echo x > .github/workflows/ci.yml."
+    expect: "The guard allows it: only .github/copilot* and .github/hooks are protected here."
+    execute: {command: "echo x > .github/workflows/ci.yml", expect: allow}
+  - id: tc-1315
+    category: trigger
+    prompt: "An agent writes a Claude Code plugin manifest from the shell: echo '{}' > .claude-plugin/plugin.json"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "echo '{}' > .claude-plugin/plugin.json", expect: block}
+  - id: tc-1316
+    category: trigger
+    prompt: "The agent writes a Claude Code plugin manifest with the Write tool: .claude-plugin/plugin.json"
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, writes: {".claude-plugin/plugin.json": "x\n"}, expect: block}
+  - id: tc-1317
+    category: trigger
+    prompt: "An agent writes a marketplace manifest in a plugin folder from the shell: echo '{}' > tools/p/.claude-plugin/marketplace.json"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "echo '{}' > tools/p/.claude-plugin/marketplace.json", expect: block}
+  - id: tc-1318
+    category: trigger
+    prompt: "The agent writes a marketplace manifest in a plugin folder with the Write tool: tools/p/.claude-plugin/marketplace.json"
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, writes: {"tools/p/.claude-plugin/marketplace.json": "x\n"}, expect: block}
+  - id: tc-1319
+    category: trigger
+    prompt: "An agent writes a plugin's hooks file below .claude/plugins from the shell: echo '{}' > .claude/plugins/cache/p/hooks/hooks.json"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "echo '{}' > .claude/plugins/cache/p/hooks/hooks.json", expect: block}
+  - id: tc-1320
+    category: trigger
+    prompt: "The agent writes a plugin's hooks file below .claude/plugins with the Write tool: .claude/plugins/cache/p/hooks/hooks.json"
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, writes: {".claude/plugins/cache/p/hooks/hooks.json": "x\n"}, expect: block}
+  - id: tc-1321
+    category: trigger
+    prompt: "An agent writes a mod module below .claude/plugins from the shell: echo x > .claude/plugins/p/hooks/register.ts"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "echo x > .claude/plugins/p/hooks/register.ts", expect: block}
+  - id: tc-1322
+    category: trigger
+    prompt: "The agent writes a mod module below .claude/plugins with the Write tool: .claude/plugins/p/hooks/register.ts"
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, writes: {".claude/plugins/p/hooks/register.ts": "x\n"}, expect: block}
+  - id: tc-1323
+    category: trigger
+    prompt: "An agent writes a per-session mod in the user's dev-mods folder from the shell: echo x > ~/.claude/dev-mods/audit.ts"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "echo x > ~/.claude/dev-mods/audit.ts", expect: block}
+  - id: tc-1324
+    category: trigger
+    prompt: "The agent writes a per-session mod in the user's dev-mods folder with the Write tool: /home/dev/.claude/dev-mods/audit.ts"
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, writes: {"/home/dev/.claude/dev-mods/audit.ts": "x\n"}, expect: block}
+  - id: tc-1325
+    category: trigger
+    prompt: "The agent writes the hooks module of a plugin folder (it holds .claude-plugin/) with the Write tool: mods/p/hooks/register.ts"
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, repo_files: {"mods/p/.claude-plugin/plugin.json": "{}\n"}, writes: {"mods/p/hooks/register.ts": "x\n"}, expect: block}
+  - id: tc-1326
+    category: trigger
+    prompt: "The agent writes hooks/hooks.json in a repository whose root is a plugin (it holds .claude-plugin/) with the Write tool: hooks/hooks.json"
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, repo_files: {".claude-plugin/plugin.json": "{}\n"}, writes: {"hooks/hooks.json": "x\n"}, expect: block}
+  - id: tc-1327
+    category: adversarial
+    prompt: "The agent spells the plugin folder and its hooks folder in capitals: MODS/P/HOOKS/Register.ts."
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, repo_files: {"mods/p/.claude-plugin/plugin.json": "{}\n"}, writes: {"MODS/P/HOOKS/Register.ts": "x\n"}, expect: block}
+  - id: tc-1328
+    category: adversarial
+    prompt: "An agent spells the plugin manifest folder in capitals, as a case-insensitive filesystem reads it: .CLAUDE-PLUGIN/plugin.json."
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "echo '{}' > .CLAUDE-PLUGIN/plugin.json", expect: block}
+  - id: tc-1329
+    category: adversarial
+    prompt: "The agent spells the plugin manifest folder in mixed case with the Write tool: .Claude-Plugin/plugin.json."
+    expect: "The tool gate refuses the write: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {event: tool_use, writes: {".Claude-Plugin/plugin.json": "x\n"}, expect: block}
+  - id: tc-1330
+    category: trigger
+    prompt: "An agent exports the folder Claude Code loads plugins from: export CLAUDE_CODE_PLUGIN_DIRS=./mods"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "export CLAUDE_CODE_PLUGIN_DIRS=./mods", expect: block}
+  - id: tc-1331
+    category: trigger
+    prompt: "An agent sets the plugin folder for one Claude Code run: CLAUDE_CODE_PLUGIN_DIRS=./mods claude -p hi"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "CLAUDE_CODE_PLUGIN_DIRS=./mods claude -p hi", expect: block}
+  - id: tc-1332
+    category: trigger
+    prompt: "An agent starts Claude Code with a plugin folder: claude --plugin-dir ./mods -p hi"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "claude --plugin-dir ./mods -p hi", expect: block}
+  - id: tc-1333
+    category: trigger
+    prompt: "An agent sets the plugin folder through env: env CLAUDE_CODE_PLUGIN_DIRS=./mods claude"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "env CLAUDE_CODE_PLUGIN_DIRS=./mods claude", expect: block}
+  - id: tc-1334
+    category: trigger
+    prompt: "An agent starts Claude Code with a plugin folder inside a shell script: bash -c 'claude --plugin-dir ./mods'"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "bash -c 'claude --plugin-dir ./mods'", expect: block}
+  - id: tc-1335
+    category: trigger
+    prompt: "An agent sets the plugin folder in PowerShell: $env:CLAUDE_CODE_PLUGIN_DIRS = 'mods'"
+    expect: "The guard refuses it: a loaded Claude Code mod's tool.call hook runs above the project's settings hooks, so chock's PreToolUse would never run."
+    execute: {command: "$env:CLAUDE_CODE_PLUGIN_DIRS = 'mods'", expect: block}
+  - id: tc-1336
+    category: negative_trigger
+    prompt: "An agent runs echo $CLAUDE_CODE_PLUGIN_DIRS."
+    expect: "The guard allows it: reading the variable sets nothing."
+    execute: {command: "echo $CLAUDE_CODE_PLUGIN_DIRS", expect: allow}
+  - id: tc-1337
+    category: negative_trigger
+    prompt: "An agent runs claude -p hi."
+    expect: "The guard allows it: Claude Code without a plugin folder loads nothing new."
+    execute: {command: "claude -p hi", expect: allow}
+  - id: tc-1338
+    category: negative_trigger
+    prompt: "An agent runs git commit -m 'document claude --plugin-dir'."
+    expect: "The guard allows it: a commit message that mentions the flag runs nothing."
+    execute: {command: "git commit -m 'document claude --plugin-dir'", expect: allow}
+  - id: tc-1339
+    category: trigger
+    prompt: "An agent writes a Cline project hook from the shell: echo x > .clinerules/hooks/PreToolUse"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > .clinerules/hooks/PreToolUse", expect: block}
+  - id: tc-1340
+    category: trigger
+    prompt: "The agent writes a Cline project hook with the Write tool: .clinerules/hooks/PreToolUse"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {".clinerules/hooks/PreToolUse": "x\n"}, expect: block}
+  - id: tc-1341
+    category: trigger
+    prompt: "An agent writes a Cline global hook from the shell: echo x > ~/Documents/Cline/Hooks/PreToolUse"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > ~/Documents/Cline/Hooks/PreToolUse", expect: block}
+  - id: tc-1342
+    category: trigger
+    prompt: "The agent writes a Cline global hook with the Write tool: /home/dev/Documents/Cline/Hooks/PreToolUse"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/Documents/Cline/Hooks/PreToolUse": "x\n"}, expect: block}
+  - id: tc-1343
+    category: trigger
+    prompt: "An agent writes a Kiro hook from the shell: echo x > .kiro/hooks/lint.kiro.hook"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > .kiro/hooks/lint.kiro.hook", expect: block}
+  - id: tc-1344
+    category: trigger
+    prompt: "The agent writes a Kiro hook with the Write tool: .kiro/hooks/lint.kiro.hook"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {".kiro/hooks/lint.kiro.hook": "x\n"}, expect: block}
+  - id: tc-1345
+    category: trigger
+    prompt: "An agent writes a Kiro agent config that declares hooks from the shell: echo x > .kiro/agents/dev.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > .kiro/agents/dev.json", expect: block}
+  - id: tc-1346
+    category: trigger
+    prompt: "The agent writes a Kiro agent config that declares hooks with the Write tool: .kiro/agents/dev.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {".kiro/agents/dev.json": "x\n"}, expect: block}
+  - id: tc-1347
+    category: trigger
+    prompt: "An agent writes the Augment project settings from the shell: echo x > .augment/settings.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > .augment/settings.json", expect: block}
+  - id: tc-1348
+    category: trigger
+    prompt: "The agent writes the Augment project settings with the Write tool: .augment/settings.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {".augment/settings.json": "x\n"}, expect: block}
+  - id: tc-1349
+    category: trigger
+    prompt: "An agent writes an Augment project hook from the shell: echo x > .augment/hooks/pre-tool.sh"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > .augment/hooks/pre-tool.sh", expect: block}
+  - id: tc-1350
+    category: trigger
+    prompt: "The agent writes an Augment project hook with the Write tool: .augment/hooks/pre-tool.sh"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {".augment/hooks/pre-tool.sh": "x\n"}, expect: block}
+  - id: tc-1351
+    category: trigger
+    prompt: "An agent writes the Augment user settings from the shell: echo x > ~/.augment/settings.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > ~/.augment/settings.json", expect: block}
+  - id: tc-1352
+    category: trigger
+    prompt: "The agent writes the Augment user settings with the Write tool: /home/dev/.augment/settings.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/.augment/settings.json": "x\n"}, expect: block}
+  - id: tc-1353
+    category: trigger
+    prompt: "An agent writes the machine-wide Windsurf hooks file from the shell: echo x > /etc/windsurf/hooks.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > /etc/windsurf/hooks.json", expect: block}
+  - id: tc-1354
+    category: trigger
+    prompt: "The agent writes the machine-wide Windsurf hooks file with the Write tool: /etc/windsurf/hooks.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/etc/windsurf/hooks.json": "x\n"}, expect: block}
+  - id: tc-1355
+    category: trigger
+    prompt: "An agent writes the macOS machine-wide Windsurf hooks file from the shell: echo x > '/Library/Application Support/Windsurf/hooks.json'"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > '/Library/Application Support/Windsurf/hooks.json'", expect: block}
+  - id: tc-1356
+    category: trigger
+    prompt: "The agent writes the macOS machine-wide Windsurf hooks file with the Write tool: /Library/Application Support/Windsurf/hooks.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/Library/Application Support/Windsurf/hooks.json": "x\n"}, expect: block}
+  - id: tc-1357
+    category: trigger
+    prompt: "An agent writes the Windows machine-wide Windsurf hooks file from the shell: echo x > 'C:\\ProgramData\\Windsurf\\hooks.json'"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > 'C:\\ProgramData\\Windsurf\\hooks.json'", expect: block}
+  - id: tc-1358
+    category: trigger
+    prompt: "The agent writes the Windows machine-wide Windsurf hooks file with the Write tool: C:\\ProgramData\\Windsurf\\hooks.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"C:\\ProgramData\\Windsurf\\hooks.json": "x\n"}, expect: block}
+  - id: tc-1359
+    category: trigger
+    prompt: "An agent writes the machine-wide Augment settings from the shell: echo x > /etc/augment/settings.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > /etc/augment/settings.json", expect: block}
+  - id: tc-1360
+    category: trigger
+    prompt: "The agent writes the machine-wide Augment settings with the Write tool: /etc/augment/settings.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/etc/augment/settings.json": "x\n"}, expect: block}
+  - id: tc-1361
+    category: trigger
+    prompt: "An agent writes the Windows machine-wide Augment settings from the shell: echo x > 'C:\\ProgramData\\Augment\\settings.json'"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > 'C:\\ProgramData\\Augment\\settings.json'", expect: block}
+  - id: tc-1362
+    category: trigger
+    prompt: "The agent writes the Windows machine-wide Augment settings with the Write tool: C:\\ProgramData\\Augment\\settings.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"C:\\ProgramData\\Augment\\settings.json": "x\n"}, expect: block}
+  - id: tc-1363
+    category: trigger
+    prompt: "An agent writes the user's Grok settings from the shell: echo x > ~/.grok/user-settings.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > ~/.grok/user-settings.json", expect: block}
+  - id: tc-1364
+    category: trigger
+    prompt: "The agent writes the user's Grok settings with the Write tool: /home/dev/.grok/user-settings.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/.grok/user-settings.json": "x\n"}, expect: block}
+  - id: tc-1365
+    category: trigger
+    prompt: "An agent writes the user's Codex hooks file from the shell: echo x > ~/.codex/hooks.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > ~/.codex/hooks.json", expect: block}
+  - id: tc-1366
+    category: trigger
+    prompt: "The agent writes the user's Codex hooks file with the Write tool: /home/dev/.codex/hooks.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/.codex/hooks.json": "x\n"}, expect: block}
+  - id: tc-1367
+    category: trigger
+    prompt: "An agent writes the user's Codex config from the shell: echo x > ~/.codex/config.toml"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > ~/.codex/config.toml", expect: block}
+  - id: tc-1368
+    category: trigger
+    prompt: "The agent writes the user's Codex config with the Write tool: /home/dev/.codex/config.toml"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/.codex/config.toml": "x\n"}, expect: block}
+  - id: tc-1369
+    category: trigger
+    prompt: "An agent writes the user's Gemini settings from the shell: echo x > ~/.gemini/settings.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > ~/.gemini/settings.json", expect: block}
+  - id: tc-1370
+    category: trigger
+    prompt: "The agent writes the user's Gemini settings with the Write tool: /home/dev/.gemini/settings.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/.gemini/settings.json": "x\n"}, expect: block}
+  - id: tc-1371
+    category: trigger
+    prompt: "An agent writes the user's Cursor hooks file from the shell: echo x > ~/.cursor/hooks.json"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > ~/.cursor/hooks.json", expect: block}
+  - id: tc-1372
+    category: trigger
+    prompt: "The agent writes the user's Cursor hooks file with the Write tool: /home/dev/.cursor/hooks.json"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/.cursor/hooks.json": "x\n"}, expect: block}
+  - id: tc-1373
+    category: adversarial
+    prompt: "An agent writes a Kiro hook with the folder in capitals from the shell: echo x > .KIRO/Hooks/lint.kiro.hook"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > .KIRO/Hooks/lint.kiro.hook", expect: block}
+  - id: tc-1374
+    category: adversarial
+    prompt: "The agent writes a Kiro hook with the folder in capitals with the Write tool: .KIRO/Hooks/lint.kiro.hook"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {".KIRO/Hooks/lint.kiro.hook": "x\n"}, expect: block}
+  - id: tc-1375
+    category: adversarial
+    prompt: "An agent writes a Cline global hook with the folders in capitals from the shell: echo x > $HOME/DOCUMENTS/CLINE/HOOKS/PreToolUse"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > $HOME/DOCUMENTS/CLINE/HOOKS/PreToolUse", expect: block}
+  - id: tc-1376
+    category: adversarial
+    prompt: "The agent writes a Cline global hook with the folders in capitals with the Write tool: /home/dev/DOCUMENTS/CLINE/HOOKS/PreToolUse"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/home/dev/DOCUMENTS/CLINE/HOOKS/PreToolUse": "x\n"}, expect: block}
+  - id: tc-1377
+    category: adversarial
+    prompt: "An agent writes the machine-wide Windsurf hooks file in capitals from the shell: echo x > /ETC/WINDSURF/HOOKS.JSON"
+    expect: "The guard refuses it: the hook files of the agent are guardrails an agent must not edit."
+    execute: {command: "echo x > /ETC/WINDSURF/HOOKS.JSON", expect: block}
+  - id: tc-1378
+    category: adversarial
+    prompt: "The agent writes the machine-wide Windsurf hooks file in capitals with the Write tool: /ETC/WINDSURF/HOOKS.JSON"
+    expect: "The tool gate refuses the write: the hook files of the agent are guardrails an agent must not edit."
+    execute: {event: tool_use, writes: {"/ETC/WINDSURF/HOOKS.JSON": "x\n"}, expect: block}
+  - id: tc-1379
+    category: negative_trigger
+    prompt: "An agent writes a documentation page named plugins.md: echo x > docs/plugins.md."
+    expect: "The guard allows it: no plugin folder, no protected name."
+    execute: {command: "echo x > docs/plugins.md", expect: allow}
+  - id: tc-1380
+    category: negative_trigger
+    prompt: "The agent writes a documentation page named plugins.md with the Write tool: docs/plugins.md."
+    expect: "The write is allowed: no plugin folder, no protected name."
+    execute: {event: tool_use, writes: {"docs/plugins.md": "x\n"}, expect: allow}
+  - id: tc-1381
+    category: negative_trigger
+    prompt: "An agent writes an ordinary application hook in a React app: echo x > src/hooks/useThing.ts."
+    expect: "The guard allows it: a hooks folder is a plugin's only below a folder holding .claude-plugin/ or in .claude/plugins."
+    execute: {command: "echo x > src/hooks/useThing.ts", expect: allow}
+  - id: tc-1382
+    category: negative_trigger
+    prompt: "The agent writes an ordinary application hook in a React app with the Write tool: src/hooks/useThing.ts."
+    expect: "The write is allowed: a hooks folder is a plugin's only below a folder holding .claude-plugin/ or in .claude/plugins."
+    execute: {event: tool_use, writes: {"src/hooks/useThing.ts": "x\n"}, expect: allow}
+  - id: tc-1383
+    category: negative_trigger
+    prompt: "An agent writes a Cline rule file beside the protected hooks folder: echo x > .clinerules/style.md."
+    expect: "The guard allows it: only .clinerules/hooks is protected here."
+    execute: {command: "echo x > .clinerules/style.md", expect: allow}
+  - id: tc-1384
+    category: negative_trigger
+    prompt: "The agent writes a Cline rule file beside the protected hooks folder with the Write tool: .clinerules/style.md."
+    expect: "The write is allowed: only .clinerules/hooks is protected here."
+    execute: {event: tool_use, writes: {".clinerules/style.md": "x\n"}, expect: allow}
+  - id: tc-1385
+    category: negative_trigger
+    prompt: "An agent writes a Kiro spec beside the protected hooks and agents folders: echo x > .kiro/specs/feature/design.md."
+    expect: "The guard allows it: only .kiro/hooks and .kiro/agents are protected here."
+    execute: {command: "echo x > .kiro/specs/feature/design.md", expect: allow}
+  - id: tc-1386
+    category: negative_trigger
+    prompt: "The agent writes a Kiro spec beside the protected hooks and agents folders with the Write tool: .kiro/specs/feature/design.md."
+    expect: "The write is allowed: only .kiro/hooks and .kiro/agents are protected here."
+    execute: {event: tool_use, writes: {".kiro/specs/feature/design.md": "x\n"}, expect: allow}
+  - id: tc-1387
+    category: negative_trigger
+    prompt: "An agent writes a file in a folder named etc below the repository: echo x > src/etc/windsurf/hooks.json."
+    expect: "The guard allows it: the machine-wide files are matched from the root of the path."
+    execute: {command: "echo x > src/etc/windsurf/hooks.json", expect: allow}
+  - id: tc-1388
+    category: negative_trigger
+    prompt: "The agent writes a file in a folder named etc below the repository with the Write tool: src/etc/windsurf/hooks.json."
+    expect: "The write is allowed: the machine-wide files are matched from the root of the path."
+    execute: {event: tool_use, writes: {"src/etc/windsurf/hooks.json": "x\n"}, expect: allow}
+  - id: tc-1389
+    category: negative_trigger
+    prompt: "An agent writes a folder whose name only contains a protected one: echo x > .augmented/settings.json."
+    expect: "The guard allows it: a folder is matched as a whole path segment."
+    execute: {command: "echo x > .augmented/settings.json", expect: allow}
+  - id: tc-1390
+    category: negative_trigger
+    prompt: "The agent writes a folder whose name only contains a protected one with the Write tool: .augmented/settings.json."
+    expect: "The write is allowed: a folder is matched as a whole path segment."
+    execute: {event: tool_use, writes: {".augmented/settings.json": "x\n"}, expect: allow}
+  - id: tc-1391
+    category: negative_trigger
+    prompt: "An agent reads the Kiro hooks folder: cat .kiro/hooks/lint.kiro.hook."
+    expect: "The guard allows it: only writes are judged."
+    execute: {command: "cat .kiro/hooks/lint.kiro.hook", expect: allow}

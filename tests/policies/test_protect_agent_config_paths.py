@@ -128,7 +128,8 @@ def test_an_absolute_path_inside_the_repository_is_resolved(_repo_root: Path) ->
     assert guard.check(f"cd {_repo_root}/.cursor && echo x > mcp.json") == guard.REASON
     assert guard.check(f"rm -r {_repo_root}/.cursor") == guard.REASON
     assert guard.check(f"cd {_repo_root} && echo x > out.txt") is None
-    assert guard.check("echo x > /srv/.cursor/rules/a.mdc") is None
+    assert guard.check("echo x > /srv/.cursor/rules/a.mdc") == guard.REASON
+    assert guard.check("echo x > /srv/rules/a.mdc") is None
 
 
 def test_the_start_is_the_working_directory_below_the_repository_root(_repo_root: Path, monkeypatch) -> None:
@@ -136,7 +137,8 @@ def test_the_start_is_the_working_directory_below_the_repository_root(_repo_root
     monkeypatch.chdir(_repo_root / ".cursor")
     assert guard.check("echo x > mcp.json") == guard.REASON
     assert guard.check("echo x > ../.mcp.json") == guard.REASON
-    assert guard.check("echo x > rules.txt") is None
+    assert guard.check("echo x > rules.txt") == guard.REASON
+    assert guard.check("echo x > ../src/rules.txt") is None
 
 
 def test_a_directory_without_a_repository_is_its_own_root(tmp_path: Path, monkeypatch) -> None:

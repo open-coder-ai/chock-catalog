@@ -194,13 +194,14 @@ def test_a_fresh_mktemp_path_and_what_lies_below_it_are_allowed(raw: str) -> Non
 
 
 def test_a_destination_that_is_an_existing_directory_receives_the_basename(_repo_root: Path) -> None:
-    assert guard.check("cp /srv/e/CLAUDE.md docs") == guard.REASON
+    assert guard.check("cp /srv/e/CLAUDE.md docs") == guard.ASK
+    assert guard.check("cp /srv/e/CLAUDE.md src") == guard.REASON
     assert guard.check("mv /srv/e/AGENTS.md src") == guard.REASON
     assert guard.check("cp /srv/e/README.md docs") is None
     assert guard.check("cp /srv/e/CLAUDE.md newname.txt") is None
     assert guard.check("cp CLAUDE.md /srv/backup/") is None
     (_repo_root / "Docs").mkdir()
-    assert guard.check("cp /srv/e/CLAUDE.md DOCS") == guard.REASON
+    assert guard.check("cp /srv/e/CLAUDE.md DOCS") == guard.ASK
 
 
 def test_git_clean_judges_its_pathspecs_and_ignored_files() -> None:
