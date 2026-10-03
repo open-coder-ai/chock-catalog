@@ -9,6 +9,17 @@ name: CI
 # reviewable adoption: run `python tools/adopt_framework.py <sha>` to rewrite `.framework-ref`
 # AND regenerate every derived artifact in one step. The nightly transcript workflow
 # deliberately stays on main as an unpinned canary.
+#
+# FULL versus TARGETED. Everything runs in full -- every test, 100% line and branch coverage, every
+# guard's declared effects -- on a push to main, a schedule, a manual dispatch, and any release
+# or publish trigger added later: the rule is "not a pull request", so a new trigger is full until
+# someone argues otherwise. A pull request is targeted: the tests and the effects check for the
+# policies it touches and the policies built on them (tools/select_tests.py). It escalates to full
+# when it touches anything that is not one policy's own files -- lib/, tools/, a shared test kit or
+# conftest, pyproject.toml, requirements/, .github/, .framework-ref -- and whenever the selector
+# cannot tell. A targeted run is a partial run, so the coverage gate cannot apply to it and is
+# skipped there only; main enforces it on everything the PR merged. The other jobs below run on
+# every PR as before.
 
 
 # Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
@@ -143,6 +154,41 @@ jobs:
       - name: Fail on drift
         run: git diff --exit-code -- docs/figures
 
+  # Decides, once, whether this run is full or targeted so the test jobs below agree. Only a pull
+  # request can be targeted; the base ref reaches the shell through the environment, as it does in
+  # the DCO check above. A selector that fails fails this job, which fails the `tests` gate:
+  # unsure is never "run less".
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+      tests: ${{ steps.scope.outputs.tests }}
+    steps:
+      # Full history: the selector diffs against the merge base with the PR's base.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Select the tests this run needs
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          full=true
+          tests=
+          if [ "$EVENT_NAME" = pull_request ]; then
+            picked=$(python3 tools/select_tests.py "origin/$BASE_REF")
+            if [ -n "$picked" ] && [ "$picked" != FULL ]; then
+              full=false
+              tests=$(printf '%s' "$picked" | tr '\n' ' ')
+            fi
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "tests=$tests" >> "$GITHUB_OUTPUT"
+          echo "full=$full tests=${tests:-all}"
+
   # What `policies` used to run as one serial job is four jobs that start together: the
   # generated-file checks answer in about a minute, and the three slow ones -- this repo as an
   # adopter, the test suite, the staged adopter -- overlap instead of queueing. `policies`
@@ -271,7 +317,7 @@ jobs:
         run: >-
           ruff format --check base/java-security agentic-security/agentic-code-security tests
           tools/gen_java_security_contract.py tools/regen_all.py tools/gen_registry.py tools/check_installed.py
-          tools/owasp_llm.py tools/prose_counts.py
+          tools/owasp_llm.py tools/prose_counts.py tools/select_tests.py tools/shard_tests.py
           tools/check_data_tables.py tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
 
   # This repo is itself an adopter: `.agents/policies/` holds the subset it is governed by,
@@ -320,8 +366,22 @@ jobs:
       # declaring `read_only` and a guard that writes is a wrong claim running on someone
       # else's machine, and nothing checked it. Behavioural, not a lint: the guard is run in a
       # throwaway workspace seeded with canaries and the filesystem is hashed either side.
+      #
+      # Every guard is run, one throwaway workspace each, and that was the slowest step here. They
+      # now run concurrently, and a PR checks only the policies it touches (and those built on
+      # them); anything that is not one policy's own files -- tools/, lib/, a workflow, a pin --
+      # checks every one, as does every run that is not a PR. tools/select_tests.py decides, and
+      # falls back to everything whenever it cannot tell.
       - name: Declared effects match what the guards actually do
-        run: python tools/check_effects.py
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            python tools/check_effects.py --base "origin/$BASE_REF"
+          else
+            python tools/check_effects.py
+          fi
 
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before
@@ -370,7 +430,97 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
-  tests:
+  # The test suite is CI's longest step, so a full run is four shards that start together and a
+  # gate that joins them. Each shard runs the quarter of the collected tests whose node-id hash
+  # falls in its slice (tests/conftest.py, tools/shard_tests.py): a hash, not a directory, because
+  # a few files hold most of the cases, and a stable one (crc32, not Python's per-process hash())
+  # because every xdist worker must keep the same tests. The slices partition the suite -- none
+  # twice, none dropped -- and the job count the slice is cut by is the matrix's own, so editing
+  # the matrix cannot leave a slice unrun. Every test is independent (each already runs on any
+  # xdist worker), which is what makes this safe. Never on a PR that is targeted.
+  tests-shard:
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            .framework-ref
+            requirements/test.txt
+
+      - name: Read the framework pin
+        run: python3 -I tools/framework_ref.py read
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
+
+      - name: Install Chock and the test tooling
+        run: |
+          pip install ./.framework
+          pip install --require-hashes -r requirements/test.txt
+
+      # What the one `tests` step below used to say still holds, shard by shard: tests/ proves
+      # every java-security rule case by case -- each refusing and silent case is a named test, and
+      # a rule without a case in each direction fails `test_rule_is_proven_both_ways` -- and drives
+      # the shipped gate, the eval suite, the selection file, the flow model and a corpus of
+      # correct enterprise code no rule may fire on. `chock check` does not replay a script gate on
+      # this engine, so this is where those cases run. Every policy in every tree is validated and
+      # has each executable eval case replayed as a named test (tests/policies); every statement of
+      # every shipped bash guard must be run by one of those cases (bash's own trace,
+      # tests/policies/shellcov.py); and every line and branch of the shipped Python -- the
+      # java-security engine and gate, the a11y guard, the build tools -- must run under a test.
+      #
+      # The a11y guard's two checkers (every rule entry, and the decision table and parser,
+      # tools/check_a11y_rules.py and check_a11y_table.py) and the Java security setup contract
+      # (gen_java_security_contract.py --check) run here, check by check, as
+      # tests/a11y/test_a11y_guard.py and tests/java_security/test_setup_contract.py -- they
+      # were also separate steps, running the same checks a second time. Nothing under tests/ is
+      # published: the distribution repos build from base/ alone.
+      #
+      # A shard sees a quarter of the tests, so its own coverage is a quarter too and cannot be
+      # gated: --cov-fail-under=0 leaves the 100% to the `tests` job, which gates the union.
+      # COVERAGE_FILE names the data file without a leading dot because upload-artifact skips
+      # hidden files.
+      - name: Tests, one shard (every policy, every rule)
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ strategy.job-total }}
+          COVERAGE_FILE: cov-shard-${{ matrix.shard }}
+        run: python -m pytest --cov --cov-fail-under=0 --cov-report= -n auto --shard "$SHARD/$SHARDS"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: coverage-shard-${{ matrix.shard }}
+          path: cov-shard-${{ matrix.shard }}
+          if-no-files-found: error
+          retention-days: 1
+
+  # A pull request that touches only some policies runs only their tests: no --cov, because a
+  # partial run cannot reach 100% and a gate it must fail would be a gate nobody could pass. The
+  # coverage gate still holds on main, where every run is full, for exactly this reason.
+  tests-targeted:
+    needs: scope
+    if: needs.scope.outputs.full == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -405,25 +555,71 @@ jobs:
           pip install ./.framework
           pip install --require-hashes -r requirements/test.txt
 
-      # tests/ proves every java-security rule case by case -- each refusing and silent case is a
-      # named test, and a rule without a case in each direction fails `test_rule_is_proven_both_ways`
-      # -- and drives the shipped gate, the eval suite, the selection file, the flow model and a
-      # corpus of correct enterprise code no rule may fire on. `chock check` does not replay a
-      # script gate on this engine, so this is where those cases run. Every policy in every tree is
-      # validated and has each executable eval case replayed as a named test (tests/policies);
-      # every statement of every shipped bash guard must be run by one of those cases (bash's own
-      # trace, tests/policies/shellcov.py); and every line and branch of the shipped Python -- the
-      # java-security engine and gate, the a11y guard, the build tools -- must run under a test:
-      # coverage below 100 fails the step (pyproject.toml [tool.coverage]).
-      #
-      # The a11y guard's two checkers (every rule entry, and the decision table and parser,
-      # tools/check_a11y_rules.py and check_a11y_table.py) and the Java security setup contract
-      # (gen_java_security_contract.py --check) run here, check by check, as
-      # tests/a11y/test_a11y_guard.py and tests/java_security/test_setup_contract.py -- they
-      # were also separate steps, running the same checks a second time. Nothing under tests/ is
-      # published: the distribution repos build from base/ alone.
-      - name: Tests (every policy, every rule, 100% line and branch coverage)
-        run: python -m pytest --cov -n auto
+      - name: Tests for the policies this PR touches (targeted, no coverage gate)
+        env:
+          TESTS: ${{ needs.scope.outputs.tests }}
+        run: |
+          read -ra files <<< "$TESTS"
+          python -m pytest -n auto "${files[@]}"
+
+  # The required check, as `policies` is. A skipped job reports as passing and a failed one it
+  # needs would skip this, so it always runs and fails unless exactly the jobs this run needed
+  # succeeded: `scope`, then the four shards (full) or the targeted run. On a full run it then
+  # does what the single job did last -- combine what the shards measured and fail below 100,
+  # with the same [tool.coverage] settings, so what counts as covered has not moved.
+  tests:
+    if: always()
+    needs: [scope, tests-shard, tests-targeted]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every test job this run needed passed
+        env:
+          SCOPE: ${{ needs.scope.result }}
+          FULL: ${{ needs.scope.outputs.full }}
+          SHARDS: ${{ needs.tests-shard.result }}
+          TARGETED: ${{ needs.tests-targeted.result }}
+        run: |
+          echo "scope=$SCOPE full=$FULL shards=$SHARDS targeted=$TARGETED"
+          [ "$SCOPE" = success ] || exit 1
+          if [ "$FULL" = true ]; then
+            [ "$SHARDS" = success ] && [ "$TARGETED" = skipped ] || exit 1
+          else
+            [ "$FULL" = false ] && [ "$TARGETED" = success ] && [ "$SHARDS" = skipped ] || exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        if: needs.scope.outputs.full == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        if: needs.scope.outputs.full == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/test.txt
+
+      - name: Install the coverage tooling
+        if: needs.scope.outputs.full == 'true'
+        run: pip install --require-hashes -r requirements/test.txt
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        if: needs.scope.outputs.full == 'true'
+        with:
+          pattern: coverage-shard-*
+          path: coverage-shards
+          merge-multiple: true
+
+      # `coverage report` finds a `source_pkgs` module the way pytest does only with tools/ on the
+      # path (pyproject.toml pythonpath); without it a tool no test imported would drop out of
+      # the report instead of showing as 0%.
+      - name: Combine the shards, 100% line and branch coverage
+        if: needs.scope.outputs.full == 'true'
+        env:
+          PYTHONPATH: tools
+        run: |
+          python -m coverage combine coverage-shards/cov-shard-*
+          python -m coverage report
 
   # Everything PUBLISHED is checked separately, in a throwaway repo. Staging into
   # `.agents/policies/` would overwrite the pinned copies above with `base/`, conflating
