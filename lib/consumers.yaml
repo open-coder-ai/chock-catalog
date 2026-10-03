@@ -32,6 +32,7 @@ base/protect-commit-privacy:
 base/rtk-dangerous-actions-blocker:
   chock_shellparse: [args, parse, quoting, targets, writes]
 base/verify-mcp-allowlist:
+  chock_scan: [data_table, hostmatch, hosts, idn, jsonc, safe_read, urls]
   chock_shellparse: [args, parse, quoting, targets, writes]
 base/agent-devenv-autoexec:
   chock_scan: [jsonc, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
@@ -59,3 +60,7 @@ base/opaque-blob-guard:
   chock_scan: [data_table, entropy, safe_read]
 base/guard-deletion:
   chock_scan: [data_table, safe_read]
+base/scan-secrets-entropy:
+  chock_scan: [checksums, entropy, keyword_values]
+base/verify-dependency-exists:
+  chock_scan: [safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
