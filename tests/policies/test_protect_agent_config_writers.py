@@ -55,11 +55,15 @@ def test_copies_and_moves_onto_a_protected_directory_are_refused(raw: str) -> No
         "cp a.mdc .cursor",
         "cp --target-directory=.cursor/rules a.mdc",
         "mv a.mdc .cursor/",
-        "cp",
         "cp -r rules .cursor/rules/",
     ],
 )
-def test_a_file_copied_into_a_protected_directory_under_another_name_is_allowed(raw: str) -> None:
+def test_a_file_copied_into_an_agent_directory_is_refused_whatever_it_is_called(raw: str) -> None:
+    assert guard.check(raw) == guard.REASON
+
+
+@pytest.mark.parametrize("raw", ["cp", "cp a.md .vscode/", "cp -r rules .vscode/rules/", "mv a.md src/"])
+def test_a_copy_that_lands_outside_every_protected_directory_is_allowed(raw: str) -> None:
     assert guard.check(raw) is None
 
 
@@ -72,7 +76,7 @@ def test_a_file_copied_into_a_protected_directory_under_another_name_is_allowed(
         ("git checkout $BRANCH", False),
         ("git checkout main", False),
         ("git restore .cursor", True),
-        ("git restore --staged .cursor", False),
+        ("git restore --staged .cursor", True),
         ("git rm -r $D", True),
         ("git mv a .cursor", True),
         ("git commit -m x", False),

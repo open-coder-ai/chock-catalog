@@ -9,7 +9,7 @@ from fnmatch import fnmatchcase
 from itertools import pairwise, takewhile
 from typing import Any
 
-from chock_shellparse import flags_of
+from chock_shellparse import abbreviates, flags_of
 from chock_shellparse.parse import _SHELLS, _WRAPPERS
 from pathmatch import DYNAMIC, literals
 from pathwords import is_interpreter
@@ -17,6 +17,10 @@ from pathwrap import WRAP
 
 _SHORT = 2
 _RECURSIVE = frozenset(("-r", "-R", "-a", "--recursive", "--archive"))
+_LINKING = (
+    "--link",
+    "--symbolic-link",
+)  # `cp -l` makes a hard link and `cp -s` a symlink, as `ln` does (GNU takes any unambiguous prefix)
 _CODE = re.compile(r"-[A-Za-z]*[ceEpir]|--(?:eval|print|in-place)|eval")
 _EXEC = frozenset(("-exec", "-execdir", "-ok", "-okdir"))
 _FPRINT = frozenset(("-fprint", "-fprint0", "-fprintf", "-fls"))
@@ -71,12 +75,12 @@ def _lands_in(w: Any, target: str, sources: list[str], env: dict[str, str]) -> b
     return any(n not in ("", ".", "..") and w.reaches(posixpath.join(target, n), env) for n in names)
 
 
-def _into_dir(w: Any, name: str, args: tuple[str, str, list[str]], env: dict[str, str]) -> bool:
-    """Whether the sources are removed (mv), linked from (ln) or land in a directory under a protected name."""
+def _into_dir(w: Any, name: str, args: tuple[str, str, list[str]], env: dict[str, str], *, linking: bool) -> bool:
+    """Whether the sources are removed (mv), linked from (ln, `cp -l`, `cp -s`) or land in a directory under a protected name."""
     target, into, sources = args
     if name == "mv" and any(w.reaches(s, env, parents=True, whole=True) for s in sources):
         return True
-    if name == "ln" and any(w.reaches(s, env, parents=True) for s in sources):
+    if linking and any(w.reaches(s, env, parents=True) for s in sources):
         return True
     dirlike = into or target.endswith("/") or w.is_dir(target, env)
     return (
@@ -94,11 +98,14 @@ def dest(w: Any, name: str, args: list[str], env: dict[str, str]) -> bool:
     operands = [a for a in rest if not a.startswith("-")]
     sources = operands if into else operands[:-1]
     target = into or (operands[-1] if operands else "")
-    if _into_dir(w, name, (target, into, sources), env):
+    flags = flags_of(rest)
+    links = name == "ln" or (
+        name == "cp" and any(f in ("-l", "-s") or abbreviates(f, full, 3) for f in flags for full in _LINKING)
+    )
+    if _into_dir(w, name, (target, into, sources), env, linking=links):
         return True
     if not target or not w.reaches(target, env, parents=True, root=True):
         return False
-    flags = flags_of(rest)
     if w.reaches(target, env) or (name == "rsync" and any(f.startswith("--delete") for f in flags)):
         return True
     whole = name in ("mv", "ln") or bool(flags & _RECURSIVE)

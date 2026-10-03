@@ -7,7 +7,9 @@ import posixpath
 import re
 from collections.abc import Callable
 
+from pathlink import follow
 from pathmatch import DEVICE, DRIVE, DYNAMIC, FRESH, PIECE, expand, pattern
+from pathset import INSTRUCTION_TEXT
 from pathtext import braces
 from pathwords import GUARD_DIRS
 
@@ -21,6 +23,7 @@ class Reach:
 
     hit: Callable[[str], bool]
     normal: Callable[[str], str]
+    base: str
     root: str
     cwd: str | None
     entries: list[str]
@@ -37,11 +40,17 @@ class Reach:
             return "."
         return path[len(self.root) + 1 :] if path.startswith(self.root + "/") else path
 
-    def _path(self, token: str, env: dict[str, str]) -> tuple[str, bool]:
-        """The token as a repo-relative, normalised path, and whether the directory it is relative to is unknown."""
+    @staticmethod
+    def _word(token: str, env: dict[str, str]) -> str:
+        """The token with variables, `%CD%`, a device prefix, backslashes and a leading `~` read."""
         word = DEVICE.sub("", _CURRENT.sub(".", expand(token, env)).replace("\\", "/"))
         if word == "~" or word.startswith("~/"):
             word = os.path.expanduser(word).replace("\\", "/")
+        return word
+
+    def _path(self, token: str, env: dict[str, str]) -> tuple[str, bool]:
+        """The token as a repo-relative, normalised path, and whether the directory it is relative to is unknown."""
+        word = self._word(token, env)
         if word.startswith(
             FRESH
         ):  # a fresh path from mktemp: below it is safe, but `..` leaves it for somewhere unknown
@@ -62,9 +71,10 @@ class Reach:
         """Whether a path is a directory that holds a protected path."""
         parts = path.split("/")
         tails = ("/".join(parts[-k:]) for k in range(1, len(parts) + 1))
-        return any(e == t or e.startswith(f"{t}/") for t in tails for e in self.entries) or bool(
-            GUARD_DIRS.search(path)
-        )
+        # an instruction file is judged by `hit` alone: the same name below a `docs` folder asks, it does not block
+        return any(
+            (e == t and e not in INSTRUCTION_TEXT) or e.startswith(f"{t}/") for t in tails for e in self.entries
+        ) or bool(GUARD_DIRS.search(path))
 
     def _holds(self, path: str, *, exact: bool = False) -> bool:
         """Whether a path is the repository folder (or, unless `exact`, one of its ancestors): they hold every protected path."""
@@ -109,6 +119,7 @@ class Reach:
                 self.hit(path)
                 or (parents and self._parent(path))
                 or (above is not None and self._holds(path, exact=exact))
+                or self._linked(token, env, parents=parents)
             )
         rx = pattern(path, loose=loose)
         if above is not None and any(map(rx.fullmatch, above)):
@@ -120,7 +131,27 @@ class Reach:
             # ... which may be a folder on the way, so a name that can sit in a protected folder counts too.
             return self._below(path[lone.end() :], (*files, *self.kids), (*everything, *self.kids), ("",), loose=True)
         lead = ("", "/") if self.cwd in (None, ".") else ("", "/", f"{self.cwd}/")
-        return self._below(path, files, everything, lead, loose=loose)
+        return self._below(path, files, everything, lead, loose=loose) or (
+            not loose and self._linked(token, env, parents=parents)
+        )
+
+    def _linked(self, token: str, env: dict[str, str], *, parents: bool) -> bool:
+        """Whether a path, followed through the symlinks in it, ends at a protected path (or a folder holding one).
+
+        A `..` after a link leaves the folder the link points into, not the one it sits in, so the path is read as written.
+        """
+        word = self._word(token, env)
+        if word.startswith(("$", FRESH)) or DRIVE.match(word):
+            return False  # an unknown start is read as the repository folder by the caller
+        real = os.path.realpath(self.base)
+        found = follow(real, word if word.startswith("/") else posixpath.join(self.cwd or "", word))
+        if found is None:
+            return True  # too wide, or too long a chain, to read: refused
+        for there in found:
+            inside = os.path.relpath(there, real) if there == real or there.startswith(real + "/") else there
+            if self.hit(inside) or (parents and self._parent(self.normal(inside))):
+                return True
+        return False
 
     @staticmethod
     def _below(

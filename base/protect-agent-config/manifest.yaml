@@ -1,33 +1,34 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.2.8"
+version: "0.3.0"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
-  AGENTS.md, .claude/settings, MCP/hook client configs (.mcp.json, ...), .git/{hooks,config},
-  policy implementations/, .chock/{config.yaml,*security.json,allowlist,bin,compiled,state}: redirect,
-  rm/mv/tee/sed -i, cp into, git checkout/restore. Coarse: also eval or sh -c of computed text, shells fed by
-  pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write: tool gate.
+  AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .windsurf/, .agents/, .chock/, ...),
+  MCP/hook client configs (.mcp.json, ...), .git/{hooks,config}, policy implementations/: redirect,
+  rm/mv/tee/sed -i, cp into, git checkout/restore, a write through a symlink to one. Folder names match
+  without regard to case. An instruction file under docs/ asks a person instead. Coarse: also eval or sh -c of
+  computed text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync`
+  pass. Edit/Write: tool gate, the same set and verdicts.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    agent_config(AGENTS.md+wrappers|.claude/settings|.mcp.json|.chock/{config.yaml,*security.json,*allowlist.txt,bin,compiled,state}|.git/{hooks,config}|.agents/policies/*/implementations|.{cursor,codex,windsurf}/hooks.json|.{cursor,vscode}/mcp.json|.{codex,grok}/config.toml|.gemini/settings.json|.junie/mcp/mcp.json|.devin/{mcp_config,config,hooks.v1}.json|.grok/hooks/|.agents/{mcp_config,hooks}.json|.tabnine/agent/settings.json|.github/hooks/): never(edit|delete)
-    else ask_person; no marker passes
+    agent_config(AGENTS.md+wrappers|.{claude,cursor,codex,gemini,windsurf,agents,chock,junie,devin,grok,tabnine}/**|.github/{copilot*,hooks/}|.mcp.json|.vscode/mcp.json|.git/{hooks,config}): never(edit|delete); folder names match as whole path segments, any case; a write through a symlink to one is the same write
+    docs/**/{AGENTS,CLAUDE,GEMINI,copilot-instructions}.md|.cursorrules|.windsurfrules|.aider.conf.yml: ask_person; else ask_person; no marker passes
 hook:
   gate:
-    kind: content_regex
+    kind: script
     "on": [tool_use]
     action: block
     message: >
       This path is agent configuration or enforcement (instruction files, permission files, the
-      dependency allowlist, vendored gates, policy implementations). An agent must not edit its
-      own guardrails through the Edit or Write tools. Propose the change to a human -- say which
-      file and what should change and why -- and wait for approval; regenerate managed files with
-      `chock sync`. A person edits these files from their own shell.
+      dependency allowlist, vendored gates, policy implementations, whole agent folders). An agent
+      must not edit its own guardrails through the Edit or Write tools. Propose the change to a
+      human -- say which file and what should change and why -- and wait for approval; regenerate
+      managed files with `chock sync`. A person edits these files from their own shell. An
+      instruction file under docs/ asks a person instead of blocking.
     params:
-      scan: added_lines
-      forbidden_path_regex: '(?i)(AGENTS\.md|CLAUDE\.md|GEMINI\.md|copilot-instructions\.md|\.cursorrules|\.windsurfrules|\.aider\.conf\.yml|\.claude[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*settings|\.mcp\.json|\.cursor[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp\.json|\.vscode[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp\.json|\.gemini[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*settings\.json|\.codex[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*config\.toml|\.junie[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp\.json|\.devin[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*(?:mcp_)?config(?:\.local)?\.json|\.grok[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*config\.toml|\.agents[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*mcp_config\.json|\.tabnine[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*agent[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*settings\.json|\.(?:cursor|codex|windsurf)[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks\.json|\.devin[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks\.v1\.json|\.agents[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks\.json|\.(?:github|grok)[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*hooks[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*|\.chock[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*(bin|compiled|dependency-allowlist\.txt|config\.yaml|security\.json|agentic-security\.json)|\.git[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*(?:hooks|config)|\.agents[/\\](?:\.?[/\\]|[^/\\]+[/\\]\.\.[/\\])*policies[/\\].*implementations)'
-      content_pattern: '(?!)'
+      script: protect-agent-config-gate.py
 effects:
 - read_only
 approval:
@@ -49,7 +50,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-10-01T00:00:00Z"
+  updated_at: "2026-10-03T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -63,6 +64,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.0
+  date: '2026-10-03'
+  changes:
+  - "Behaviour change, protect-agent-config v2 (eval cases tc-1290 to tc-1314; tests in test_protect_agent_config_dirs.py, _docs.py, _links.py and _gate_v2.py). Whole agent folders are protected, not a list of their files: `.claude/`, `.cursor/`, `.codex/`, `.gemini/`, `.windsurf/`, `.agents/`, `.chock/`, `.junie/`, `.devin/`, `.grok/`, `.tabnine/` and every `.github/copilot*`, matched as whole path segments in any case (`.CLAUDE/Commands/x.md`), with `..`, `//`, Windows separators and absolute paths folded first. Twenty-five eval cases that pinned an ordinary write into one of those folders as allowed (tc-136 to tc-151, tc-178 to tc-181, tc-240, tc-241, tc-243, tc-273, tc-794) now expect a refusal, and the same flip is made in the tests that pinned them. Symlinks: a path is followed through the links in it, as the filesystem does, and a write whose real target is protected is refused (a tracked link to AGENTS.md, a link to .claude, a dangling link into it, a chain of links, a glob that matches a link, a `..` after a link read as written); `cp -l` and `cp -s` from a protected file are refused as `ln` was. A chain longer than 40 links, a glob over more than 50000 folder entries, or a link that cannot be read is refused. An instruction file (AGENTS.md, CLAUDE.md, GEMINI.md, copilot-instructions.md, .cursorrules, .windsurfrules, .aider.conf.yml) below a `docs` folder asks a person: the shell guard exits 3, the Edit/Write gate asks (a reminder at the turn's end, where nobody can be asked); anything else protected in the same command or turn still blocks, and so does a path that resolves out of docs/ or into a protected folder. The Edit/Write gate changes kind, from `content_regex` to `script` (implementations/protect-agent-config-gate.py), because a regex gate has one verdict and no view of the filesystem; it shares its path matching with the shell guard (new module pathset.py), so the two cannot drift. The engine's own `.chock/state` and `.chock/log` are the only paths the gate leaves to the engine. Not caught, still: a hard link that already exists (a write through a second name of a protected file), an unknown variable in front of a name inside a protected folder (`$D/a.md`), and paths a script computes."
 - version: 0.2.8
   date: '2026-10-03'
   changes:
