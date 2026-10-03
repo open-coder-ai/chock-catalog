@@ -1,6 +1,6 @@
 id: block-unguarded-agent-spawn
 name: "Block Unguarded Agent Spawn"
-version: "0.0.2"
+version: "0.0.5"
 description: >
   Best-effort guard against an agent launching a coding agent with safety checks off: claude
   --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
@@ -42,6 +42,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
 - version: 0.0.1
   date: '2026-09-29'
   changes:
@@ -50,3 +54,11 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Wording only, verdicts unchanged: the description lists what the guard already catches but did not name -- cursor-agent -f, codex -s danger-full-access, and bunx and pnpx as well as npx -- and fits the 500-char budget. The refusal now gives a route forward: run the agent with default approvals, or ask the person to start an unattended run from their own shell. The rule text lists the same flags and says to ask the person."
+- version: 0.0.3
+  date: '2026-10-02'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: it skips a `--` and the shell options between `-c` and the script (`bash -c -- '...'`, `sh -c -x '...'`, `eval -- '...'`), reads `name=(...)`, `name+=` and `name[i]=` assignments, looks through the `{` that opens a function body or group, and splits a line whose quotes do not balance in one pass (it was cubic: seconds at 4 KB, a minute at 8 KB). What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.6."
+- version: 0.0.4
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."

@@ -225,7 +225,12 @@ def test_every_block_in_every_eval_suite_prints_a_reason() -> None:
             execute = case.get("execute") or {}
             if execute.get("expect") not in ("block", "ask") or "command" not in execute:
                 continue
-            env = {**os.environ, "CHOCK_RAW_COMMAND": execute["command"], **execute.get("env", {})}
+            env = {
+                **os.environ,
+                "CHOCK_RAW_COMMAND": execute["command"],
+                "CHOCK_HOOK_CWD": str(ROOT),
+                **execute.get("env", {}),
+            }
             env.pop("CHOCK_TOOL", None)
             done = subprocess.run(
                 [sys.executable, str(guardkit.impl_dir(policy) / f"{policy}.py"), *split(execute["command"])],

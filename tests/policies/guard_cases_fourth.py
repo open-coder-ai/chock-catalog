@@ -1,0 +1,113 @@
+"""protect-agent-config: commands of the fourth review round (children of protected folders, mktemp, find -exec), each refused or allowed."""
+
+from __future__ import annotations
+
+CHILD_REFUSED = [
+    "H=$(git rev-parse --git-path hooks); echo x > $H/pre-commit",
+    "echo x > $(git rev-parse --git-path hooks)/pre-commit",
+    "H=${PWD}/.git/hooks; echo x > $H/pre-commit",
+    "H=$PWD/.git/hooks; echo x > $H/pre-commit",
+    "H=$(pwd)/.git/hooks; echo x > $H/pre-commit",
+    "H=$(echo .git/hooks); mv x $H/pre-commit",
+    "H=$(echo .git/hooks); cp x $H/pre-commit",
+    "H=$(echo .git/hooks); ln -sf x $H/pre-commit",
+    "H=$(echo .git/hooks); install x $H/pre-commit",
+    "H=$(echo .git/hooks); tee x $H/pre-commit",
+    "H=$(echo '.git/hooks'); echo x > $H/pre-commit",
+    'H=$(echo ".git/hooks"); echo x > $H/pre-commit',
+    "cd $(git rev-parse --git-dir) && cd hooks && echo x > pre-commit",
+    "cd $(git rev-parse --absolute-git-dir)/hooks && echo x > pre-commit",
+    "cd $(git rev-parse --git-common-dir); echo x > config",
+    "cd $(git rev-parse --show-toplevel)/.git/hooks && echo x > post-merge",
+    "ln -s ~/x $(git rev-parse --git-path hooks)/pre-commit",
+    "G=$(git rev-parse --git-dir); echo x >> $G/config",
+    "C=$(echo .chock/compiled); echo x > $C/policy.sh",
+    "B=$(echo .chock/bin); cp x $B/chock",
+    "G=$(echo .github/hooks); echo x > $G/agentseam.json",
+    "H=$PWD/.git/hooks; cd src; echo x > $H/pre-commit",
+    "H=$PWD/.git/hooks; cd .git; cd ..; echo x > $H/pre-commit",
+    "cd $UNKNOWN; echo x > $PWD/.mcp.json",
+    "H=$A/hooks; echo x > $H/pre-commit",
+    "echo x > $U/pre-commit",
+    "echo x > ${U}/commit-msg",
+    "echo x > $U/config",
+    "echo x > $(some-tool)/pre-push",
+    "D=$(some-tool); cp a $D/pre-receive",
+    "D=$(some-tool); cp a $D/post-index-change",
+    "D=$(some-tool); cp a $D/p4-pre-submit",
+    "D=$(some-tool); cp a $D/sendemail-validate",
+    "read D; echo x > $D/pre-commit",
+]
+
+CHILD_ALLOWED = [
+    "echo x > $TMPDIR/x",
+    "echo x > $BUILD_DIR/out.txt",
+    "echo x > $OUT/report.json",
+    "D=$(some-tool); echo x > $D/report.json",
+    "H=$(git rev-parse --git-path info); echo x > $H/exclude-list",
+    "H=$(echo build); echo x > $H/pre-commit",
+    "echo x > $(git rev-parse --git-dir)-backup",
+    "cd $(git rev-parse --show-toplevel)/src && echo x > a.txt",
+    "H=$PWD/build; cd src; echo x > $H/out.txt",
+    "echo x > $(pwd)/out.txt",
+    "echo $(git rev-parse --short HEAD)",
+    "git rev-parse --git-dir",
+    "cat $(git rev-parse --git-path hooks)/pre-commit",
+]
+
+MKTEMP_REBOUND_REFUSED = [
+    "x=$(mktemp); read x <<< .mcp.json; echo y > $x",
+    "x=$(mktemp); read -r x <<< .mcp.json; echo y > $x",
+    "x=$(mktemp); echo .mcp.json | read x; echo y > $x",
+    "x=$(mktemp); for x in .mcp.json; do echo y > $x; done",
+    "x=$(mktemp); printf -v x .mcp.json; echo y > $x",
+    "x=$(mktemp); printf -vx .mcp.json; echo y > $x",
+    "x=$(mktemp); mapfile x < f; echo y > $x",
+    "x=$(mktemp); readarray x < f; echo y > $x",
+    "x=$(mktemp); x+=/../.mcp.json; echo y > $x",
+    "x=$(mktemp); x=.mcp.json echo; echo y > $x",
+    "x=$(mktemp); declare x=.mcp.json; echo y > $x",
+    "x=$(mktemp); typeset x=.mcp.json; echo y > $x",
+    "x=$(mktemp); local x=.mcp.json; echo y > $x",
+    "x=$(mktemp); export x=.mcp.json; echo y > $x",
+    "x=$(mktemp); let x=1; echo y > $x",
+    "x=$(mktemp); getopts ab x; echo y > $x",
+    "x=$(mktemp); select x in .mcp.json; do echo y > $x; done",
+    "x=$(mktemp); x=$(mktemp); x=.mcp.json; echo y > $x",
+    "x=$(mktemp); echo ${x:=.mcp.json}; echo y > $x",
+    "x=$(mktemp); declare -n r=x; r=.mcp.json; echo y > $x",
+    "x=$(mktemp); x=.mcp.json; echo y > $x",
+    "x=$(mktemp -d); read x <<< .claude; echo y > $x/settings.json",
+]
+
+MKTEMP_REBOUND_ALLOWED = [
+    "x=$(mktemp); echo y > $x",
+    "x=$(mktemp); echo y > $x/out; cat $x",
+    "f=$(mktemp); echo y > $f; rm -f $f",
+    "t=$(mktemp -d); cp a $t/; rm -rf ${t}",
+    't=$(mktemp) && trap \'rm -f "$t"\' EXIT; echo y > "$t"; mv "$t" out.txt',
+    "a=$(mktemp); b=$(mktemp); cp $a $b",
+]
+
+FIND_REFUSED = [
+    "find . -name x -exec cp {} .mcp.json \\;",
+    "find /srv -name x -exec cp {} .git/config \\;",
+    "find src -name x -exec cp {} .git/hooks/pre-commit \\;",
+    "find . -name x -exec ln -sf {} .mcp.json \\;",
+    "find . -name x -exec install {} .mcp.json \\;",
+    "find . -name x -exec rsync {} .mcp.json \\;",
+    "find . -name x -exec dd if={} of=.mcp.json \\;",
+    "find . -name x -exec bash -c 'cat {} > .mcp.json' \\;",
+    "find . -name x -exec sh -c 'tee {} > .mcp.json' \\;",
+    "find . -name nothing-here -execdir cp {} .cursor/mcp.json \\;",
+    "find . -name nothing-here -ok mv {} .mcp.json \\;",
+    "find /srv -path '*nothing' -exec tee .claude/settings.json < {} \\;",
+]
+
+FIND_ALLOWED = [
+    "find . -type f -exec grep -l x {} +",
+    "find . -name x -exec cp {} build/ \\;",
+    "find src -name '*.pyc' -exec rm {} +",
+    "find . -name x -exec mv {} /srv/old/ \\;",
+    "find . -name x -exec bash -c 'cat {} > out.txt' \\;",
+]
