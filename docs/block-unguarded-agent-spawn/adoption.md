@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~364 tokens (chars/4, max 2000)
+INDEX.md: ~378 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unguarded-agent-spawn:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~364 tokens (chars/4, max 2000)
+INDEX.md: ~378 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -121,9 +121,27 @@ block-unguarded-agent-spawn  [deterministic]
   PASS  tc-023                             authored  guard exit 0
   PASS  tc-024                             authored  guard exit 0
   PASS  tc-025                             authored  guard exit 0
+  PASS  tc-026                             authored  BLOCKED: codex --ask-for-approval never starts a coding agent with …
+  PASS  tc-027                             authored  BLOCKED: codex --ask-for-approval never starts a coding agent with …
+  PASS  tc-028                             authored  BLOCKED: aider --yes-always starts a coding agent with its safety c…
+  PASS  tc-029                             authored  BLOCKED: copilot --allow-all-tools starts a coding agent with its s…
+  PASS  tc-030                             authored  BLOCKED: amp --dangerously-allow-all starts a coding agent with its…
+  PASS  tc-031                             authored  BLOCKED: cline --yolo starts a coding agent with its safety checks …
+  PASS  tc-032                             authored  BLOCKED: goose GOOSE_MODE=auto starts a coding agent with its safet…
+  PASS  tc-033                             authored  BLOCKED: opencode --dangerously-skip-permissions starts a coding ag…
+  PASS  tc-034                             authored  BLOCKED: claude --allowedTools with a wildcard starts a coding agen…
+  PASS  tc-035                             authored  BLOCKED: claude --allowedTools with a wildcard starts a coding agen…
+  PASS  tc-036                             authored  BLOCKED: aider --yes-always starts a coding agent with its safety c…
+  PASS  tc-037                             authored  guard exit 0
+  PASS  tc-038                             authored  guard exit 0
+  PASS  tc-039                             authored  guard exit 0
+  PASS  tc-040                             authored  guard exit 0
+  PASS  tc-041                             authored  BLOCKED: codex --ask-for-approval never starts a coding agent with …
+  PASS  tc-042                             authored  BLOCKED: claude --dangerously-skip-permissions starts a coding agen…
+  PASS  tc-043                             authored  guard exit 0
   score 1.00
 
-5 policies: 25 pass, 41 skipped
+5 policies: 43 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -148,6 +166,6 @@ block-unguarded-agent-spawn  [deterministic]
 
 ```text
 - **block-unguarded-agent-spawn**:
-  never(spawn_agent): claude(--dangerously-skip-permissions|--permission-mode_bypassPermissions), codex(--full-auto|--yolo|--dangerously-bypass-approvals-and-sandbox|--sandbox|-s_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f)
+  never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
   if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
 ```

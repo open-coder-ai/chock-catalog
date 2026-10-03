@@ -1,290 +1,257 @@
-"""verify-mcp-allowlist: the script gate that judges every written MCP client config against the guard's allowlist."""
+"""verify-mcp-allowlist: the script gate reading every MCP client config and judging its servers."""
 
 from __future__ import annotations
 
-import io
 import json
 from pathlib import Path
 
 import pytest
-from policies import gatekit, guardkit, scriptkit
+from policies import mcpkit, scriptkit
 
-POLICY = "verify-mcp-allowlist"
-NAME = "verify-mcp-allowlist_gate.py"
-mod = scriptkit.load(POLICY, NAME)
-guard = mod.load_guard()
-guardkit.forget_shellparse()
-CRASH = ("traceback (most recent call last)", "syntax error", "syntaxerror", "unexpected eof")
-OK_SOURCE = guard.ALLOWED_MCP_SERVERS["filesystem"].split()
-EVIL = {"command": "npx", "args": ["-y", "evil-mcp"]}
-FILESYSTEM = {"command": OK_SOURCE[0], "args": OK_SOURCE[1:]}
+mod = mcpkit.gate()
+FS, EVIL = mcpkit.FS, mcpkit.EVIL
+HEAD = {".chock/mcp-allowlist.json": mcpkit.allowlist_text(mcpkit.FS_ALLOWED, mcpkit.REMOTE_ALLOWED)}
+JSON_PATHS = [
+    ".mcp.json",
+    ".cursor/mcp.json",
+    ".vscode/mcp.json",
+    ".windsurf/mcp_config.json",
+    ".roo/mcp.json",
+    ".kiro/settings/mcp.json",
+    "claude_desktop_config.json",
+    ".gemini/settings.json",
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    ".claude/settings.team.json",
+]
 
 
-def mcp(servers: dict, key: str = "mcpServers") -> str:
-    return json.dumps({key: servers})
-
-
-def toml(name: str, command: str = "npx", args: str = '"-y", "evil-mcp"') -> str:
-    return f'[mcp_servers.{name}]\ncommand = "{command}"\nargs = [{args}]\n'
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    return mcpkit.repo_with(tmp_path, head=HEAD)
 
 
 def payload(repo: Path, writes: dict[str, str], event: str = "commit") -> dict:
     return {"event": event, "repo_root": str(repo), "writes": writes}
 
 
-@pytest.fixture
-def repo(tmp_path: Path) -> Path:
-    return scriptkit.init_repo(tmp_path / "r", {"README.md": "x\n"})
+def found(repo: Path, writes: dict[str, str], event: str = "commit") -> list[dict]:
+    return mod.findings(payload(repo, writes, event))
 
 
-def test_the_manifest_declares_the_script_gate_beside_the_guard() -> None:
-    manifest = scriptkit.manifest(POLICY)
-    gate = manifest["hook"]["gate"]
-    assert (gate["kind"], gate["on"], gate["params"]) == ("script", ["commit", "tool_use"], {"script": NAME})
-    assert manifest["artifact"] == "rule"
-    assert scriptkit.script_path(POLICY, f"{POLICY}.py").is_file()
+def rules_of(items: list[dict]) -> list[str]:
+    return [item["key"].split("|")[0] for item in items]
+
+
+@pytest.mark.parametrize("path", JSON_PATHS)
+def test_json_configs_are_recognised_in_any_case_and_slash(path: str) -> None:
+    for spelled in (path, path.upper(), "pkg/" + path, "a\\b\\" + path.replace("/", "\\"), "./" + path.title()):
+        config = mod.configs.config_for(spelled)
+        assert config is not None
+        assert config.kind == "json"
+    assert mod.configs.config_for(path).claude is path.startswith(".claude/")
+
+
+@pytest.mark.parametrize(
+    ("path", "kind", "containers"),
+    [
+        (".zed/settings.json", "json", ("context_servers",)),
+        ("opencode.json", "json", ("mcp",)),
+        ("sub/OpenCode.jsonc", "json", ("mcp",)),
+        (".codex/config.toml", "toml", ("mcp_servers",)),
+        (".CODEX\\config.TOML", "toml", ("mcp_servers",)),
+    ],
+)
+def test_client_specific_configs_name_their_own_server_table(path: str, kind: str, containers: tuple) -> None:
+    config = mod.configs.config_for(path)
+    assert (config.kind, config.containers) == (kind, containers)
 
 
 @pytest.mark.parametrize(
     "path",
     [
-        ".mcp.json",
-        "pkg/.mcp.json",
-        ".cursor/mcp.json",
-        ".vscode/mcp.json",
-        "claude_desktop_config.json",
-        ".gemini/settings.json",
-        "a\\.mcp.json",
-    ],
-)
-def test_json_configs_are_recognised(path: str) -> None:
-    assert mod.config_kind(path) == "json"
-
-
-def test_toml_and_other_files_are_told_apart() -> None:
-    assert mod.config_kind(".codex/config.toml") == "toml"
-    for other in (
         "package.json",
         "mcp.json",
         "x.mcp.json",
         ".codex/config.json",
         "config.toml",
         ".cursor/settings.json",
-    ):
-        assert mod.config_kind(other) is None
+        ".claude/hooks.json",
+        "settings.json",
+        ".claude/settings.yaml",
+    ],
+)
+def test_other_files_are_not_mcp_configs(path: str) -> None:
+    assert mod.configs.config_for(path) is None
 
 
-def test_the_allowlisted_server_passes_in_every_config(repo: Path) -> None:
-    writes = {
-        ".mcp.json": mcp({"filesystem": FILESYSTEM}),
-        ".cursor/mcp.json": mcp({"filesystem": FILESYSTEM}),
-        ".vscode/mcp.json": mcp({"filesystem": FILESYSTEM}, "servers"),
-        "claude_desktop_config.json": mcp({"filesystem": FILESYSTEM}),
-        ".gemini/settings.json": mcp({"filesystem": FILESYSTEM}),
-        ".codex/config.toml": toml("filesystem", OK_SOURCE[0], ", ".join(f'"{a}"' for a in OK_SOURCE[1:])),
+@pytest.mark.parametrize("tail", [".", " ", "..", ". ."])
+def test_trailing_dots_and_spaces_are_dropped_as_windows_drops_them(tail: str) -> None:
+    assert mod.configs.config_for(".mcp.json" + tail) is not None
+    assert mod.configs.config_for(".codex\\config.toml" + tail) is not None
+    assert mod.configs.is_dedicated(".cursor/mcp.json" + tail)
+    assert mod.is_allowlist(".chock/mcp-allowlist.json" + tail)
+    assert mod.configs.config_for(".mcp.json.bak") is None
+
+
+def test_only_files_that_hold_nothing_but_servers_are_dedicated() -> None:
+    dedicated = mod.configs.is_dedicated
+    assert all(
+        dedicated(p)
+        for p in (
+            ".mcp.json",
+            ".CURSOR/MCP.json",
+            "a\\.vscode\\mcp.json",
+            "claude_desktop_config.json",
+            ".kiro/settings/mcp.json",
+        )
+    )
+    assert not any(
+        dedicated(p)
+        for p in (
+            ".claude/settings.json",
+            ".zed/settings.json",
+            "opencode.json",
+            ".codex/config.toml",
+            ".gemini/settings.json",
+            "x.mcp.json",
+        )
+    )
+
+
+@pytest.mark.parametrize("path", [p for p in JSON_PATHS if not p.startswith(".claude/")])
+def test_the_allowlisted_pinned_server_passes_in_every_config(repo: Path, path: str) -> None:
+    for event in ("commit", "tool_use", "agent-commit", "stop"):
+        assert found(repo, {path: mcpkit.mcp({"filesystem": FS})}, event) == []
+        assert found(repo, {path: mcpkit.mcp({"filesystem": FS}, "servers")}, event) == []
+
+
+@pytest.mark.parametrize("path", JSON_PATHS)
+def test_an_unlisted_server_is_refused_in_every_config(repo: Path, path: str) -> None:
+    pinned = {"command": "npx", "args": ["-y", "evil-mcp@1.0.0"]}
+    items = found(repo, {path: mcpkit.mcp({"evil": pinned})})
+    assert rules_of(items) == ["allowlist"]
+    assert items[0]["path"] == path
+    assert "'evil'" in items[0]["message"]
+
+
+def test_each_client_s_own_shape_is_read(repo: Path) -> None:
+    zed = {"context_servers": {"filesystem": {"command": {"path": "npx", "args": mcpkit.FS_ARGS, "env": {}}}}}
+    zed_bad = {"context_servers": {"x": {"command": {"path": "npx", "args": ["-y", "evil"], "env": {"A_KEY": "lit"}}}}}
+    opencode = {"mcp": {"filesystem": {"type": "local", "command": ["npx", *mcpkit.FS_ARGS]}}}
+    opencode_bad = {
+        "mcp": {"x": {"type": "remote", "url": "http://a.example.invalid/", "headers": {"Authorization": "Bearer lit"}}}
     }
-    for event in ("commit", "tool_use"):
-        assert mod.findings(payload(repo, writes, event), guard) == []
+    gemini_bad = {"mcpServers": {"x": {"httpUrl": "http://a.example.invalid/"}}}
+    assert found(repo, {".zed/settings.json": json.dumps(zed)}) == []
+    assert found(repo, {"opencode.json": json.dumps(opencode)}) == []
+    assert sorted(rules_of(found(repo, {".zed/settings.json": json.dumps(zed_bad)}))) == [
+        "allowlist",
+        "secret",
+        "unpinned",
+    ]
+    assert sorted(rules_of(found(repo, {"opencode.json": json.dumps(opencode_bad)}))) == ["allowlist", "secret", "url"]
+    assert sorted(rules_of(found(repo, {".gemini/settings.json": json.dumps(gemini_bad)}))) == ["allowlist", "url"]
+    assert found(repo, {"opencode.json": json.dumps({"mcpServers": {"x": EVIL}})}) == []
+
+
+def toml(name: str, body: str) -> str:
+    return f"[mcp_servers.{name}]\n{body}\n"
+
+
+def test_codex_toml_tables_are_judged(repo: Path) -> None:
+    ok = toml(
+        "filesystem", 'command = "npx"\nargs = ["-y", "@modelcontextprotocol/server-filesystem@2025.8.21", "/work"]'
+    )
+    assert found(repo, {".codex/config.toml": ok}) == []
+    remote = toml(
+        "docs",
+        'url = "https://mcp.example.invalid/mcp"\nbearer_token_env_var = "DOCS_TOKEN"\n[mcp_servers.docs.env_http_headers]\nX-Key = "DOCS_KEY"',
+    )
+    assert found(repo, {".codex/config.toml": remote}) == []
+    bad = toml(
+        "x",
+        'command = "npx"\nargs = ["-y", "p"]\n[mcp_servers.x.env]\nAPI_KEY = "lit"\n[mcp_servers.x.http_headers]\nAuthorization = "lit"',
+    )
+    assert sorted(rules_of(found(repo, {".codex/config.toml": bad}))) == ["allowlist", "secret", "secret", "unpinned"]
+    assert found(repo, {".codex/config.toml": 'model = "x"\nmcp_servers = 3\n'}) == []
 
 
 @pytest.mark.parametrize(
     ("path", "text"),
     [
-        (".mcp.json", mcp({"evil": EVIL})),
-        (".cursor/mcp.json", mcp({"evil": EVIL})),
-        (".vscode/mcp.json", mcp({"evil": EVIL}, "servers")),
-        ("claude_desktop_config.json", mcp({"evil": {"url": "https://mcp.example.invalid/sse"}})),
-        (".gemini/settings.json", mcp({"evil": EVIL})),
-        (".codex/config.toml", toml("evil")),
-        (".mcp.json", mcp({"filesystem": EVIL})),
-        (".mcp.json", mcp({"evil": "not-an-object"})),
+        (".mcp.json", '{"mcpServers": {'),
+        (".mcp.json", "{}}"),
+        (".mcp.json", '{"a": NaN}'),
+        (".mcp.json", '{"__proto__": 1}'),
+        (".codex/config.toml", "[mcp_servers.x\ncommand = "),
+        (".codex/config.toml", "[a]\nb = 1\n[a]\nc = 2\n"),
     ],
 )
-@pytest.mark.parametrize("event", ["commit", "tool_use", "agent-commit"])
-def test_an_unlisted_server_is_refused(repo: Path, path: str, text: str, event: str) -> None:
-    found = mod.findings(payload(repo, {path: text}, event), guard)
-    assert len(found) == 1
-    assert found[0]["path"] == path
-
-
-def engine(repo: Path, writes: dict[str, str], event: str = "stop") -> int:
-    """The engine's verdict; `stop` lands the writes on disk first, as a turn's end finds them."""
-    if event == gatekit.STOP:
-        scriptkit.write(repo, writes)
-    elif event == gatekit.COMMIT:
-        scriptkit.write(repo, writes)
-        scriptkit.git(repo, "add", "-A")
-    return gatekit.judge(POLICY, repo, event, writes)[0]
-
-
-def held_repo(tmp_path: Path, servers: dict) -> Path:
-    return scriptkit.init_repo(tmp_path / "h", {".mcp.json": mcp(servers)})
-
-
-WORSE = {"command": "npx", "args": ["-y", "worse-mcp"]}
-FLAGGED = {"command": "npx", "args": ["-y", "evil-mcp", "--flag"]}
-
-
-def test_the_document_keys_a_server_by_name_and_normalized_source(repo: Path) -> None:
-    spaced = {"command": "npx", "args": ["-y", "evil-mcp"]}
-    (found,) = mod.findings(payload(repo, {".mcp.json": mcp({"evil": spaced})}), guard)
-    assert (found["key"], found["path"]) == ("evil|npx -y evil-mcp", ".mcp.json")
-    assert found["line"] == 1
-    assert "evil" in found["message"]
-
-
-def test_the_key_of_a_remote_server_is_its_url(repo: Path) -> None:
-    remote = {"url": "https://mcp.example.invalid/sse"}
-    (found,) = mod.findings(payload(repo, {".mcp.json": mcp({"remote": remote})}), guard)
-    assert found["key"] == "remote|https://mcp.example.invalid/sse"
-
-
-def test_the_line_names_where_the_server_is_declared(repo: Path) -> None:
-    text = json.dumps({"mcpServers": {"evil": EVIL}}, indent=2)
-    (found,) = mod.findings(payload(repo, {".mcp.json": text}), guard)
-    assert found["line"] == 3
-
-
-def test_the_same_server_under_both_keys_is_two_findings(repo: Path) -> None:
-    text = json.dumps({"mcpServers": {"evil": EVIL}, "servers": {"evil": EVIL}})
-    assert len(mod.findings(payload(repo, {".mcp.json": text}), guard)) == 2
-
-
-@pytest.mark.parametrize("event", ["commit", "stop"])
-def test_a_server_already_committed_never_blocks_an_unrelated_edit(tmp_path: Path, event: str) -> None:
-    held = held_repo(tmp_path, {"evil": EVIL})
-    both = mcp({"evil": EVIL, "filesystem": FILESYSTEM})
-    assert engine(held, {".mcp.json": both}, event) == 0
-    assert engine(held, {".mcp.json": mcp({"evil": EVIL})}, event) == 0
-
-
-def test_an_old_server_survives_a_reformat_and_a_reorder(tmp_path: Path) -> None:
-    held = held_repo(tmp_path, {"evil": EVIL, "filesystem": FILESYSTEM})
-    reordered = json.dumps({"mcpServers": {"filesystem": FILESYSTEM, "evil": EVIL}}, indent=4)
-    assert engine(held, {".mcp.json": reordered}) == 0
-
-
-def test_a_new_unlisted_server_is_refused_beside_an_old_one(tmp_path: Path) -> None:
-    held = held_repo(tmp_path, {"evil": EVIL})
-    written = {".mcp.json": mcp({"evil": EVIL, "worse": WORSE})}
-    code, err = gatekit.judge(POLICY, held, gatekit.PRE_TOOL_USE, written)
-    assert code == 1
-    assert "'worse'" in err
-    assert "'evil'" not in err
-    assert engine(held, written) == 1
-    assert engine(held, written, gatekit.COMMIT) == 1
-
-
-def test_a_changed_server_is_refused(tmp_path: Path) -> None:
-    held = held_repo(tmp_path, {"evil": EVIL})
-    changed = {".mcp.json": mcp({"evil": FLAGGED})}
-    assert gatekit.judge(POLICY, held, gatekit.PRE_TOOL_USE, changed)[0] == 1
-    assert engine(held, changed, gatekit.COMMIT) == 1
-
-
-def test_the_same_unlisted_server_declared_twice_is_refused(tmp_path: Path) -> None:
-    held = held_repo(tmp_path, {"evil": EVIL})
-    twice = json.dumps({"mcpServers": {"evil": EVIL}, "servers": {"evil": EVIL}})
-    assert engine(held, {".mcp.json": twice}) == 1
-
-
-def test_the_baseline_at_pretooluse_is_the_file_on_disk_not_head(tmp_path: Path) -> None:
-    held = held_repo(tmp_path, {"filesystem": FILESYSTEM})
-    scriptkit.write(held, {".mcp.json": mcp({"evil": EVIL})})
-    both = {".mcp.json": mcp({"evil": EVIL, "filesystem": FILESYSTEM})}
-    assert gatekit.judge(POLICY, held, gatekit.PRE_TOOL_USE, both)[0] == 0
-    assert engine(held, both, gatekit.COMMIT) == 1
-
-
-def test_a_renamed_unchanged_server_is_judged_by_its_new_name(tmp_path: Path) -> None:
-    held = held_repo(tmp_path, {"evil": EVIL})
-    renamed = {".mcp.json": mcp({"evil2": EVIL})}
-    assert engine(held, renamed, gatekit.COMMIT) == 1
-    assert engine(held, renamed) == 1
-
-
-def test_a_new_config_file_is_judged_whole(repo: Path) -> None:
-    assert gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {".mcp.json": mcp({"evil": EVIL})})[0] == 1
-
-
-def test_an_edit_to_a_config_with_only_listed_servers_passes(tmp_path: Path) -> None:
-    held = held_repo(tmp_path, {"filesystem": FILESYSTEM})
-    edited = {".mcp.json": json.dumps({"mcpServers": {"filesystem": FILESYSTEM}, "note": "x"})}
-    for event in ("commit", "stop"):
-        assert engine(held, edited, event) == 0
-
-
-def test_a_head_that_cannot_be_read_grandfathers_nothing(tmp_path: Path) -> None:
-    broken = scriptkit.init_repo(tmp_path / "b", {".mcp.json": "{"})
-    assert engine(broken, {".mcp.json": mcp({"evil": EVIL})}) == 1
-
-
-def test_any_edit_to_an_unreadable_config_is_new(tmp_path: Path) -> None:
-    broken = scriptkit.init_repo(tmp_path / "b", {".mcp.json": "{"})
-    assert engine(broken, {".mcp.json": "{"}) == 0
-    assert engine(broken, {".mcp.json": "{ "}) == 1
-
-
-@pytest.mark.parametrize(
-    ("path", "text"),
-    [(".mcp.json", '{"mcpServers": {'), (".codex/config.toml", "[mcp_servers.x\ncommand = ")],
-)
 def test_a_config_that_cannot_be_parsed_is_refused_as_unverifiable(repo: Path, path: str, text: str) -> None:
-    found = mod.findings(payload(repo, {path: text}), guard)
-    assert len(found) == 1
-    assert "cannot be verified" in found[0]["message"]
+    items = found(repo, {path: text})
+    assert len(items) == 1
+    assert "cannot be verified" in items[0]["message"]
+    assert items[0]["key"].startswith("unreadable|")
+
+
+def test_a_server_entry_that_is_not_an_object_is_refused(repo: Path) -> None:
+    items = found(repo, {".mcp.json": mcp_text({"evil": "not-an-object", "other": ["x"], "bad": {"command": 3}})})
+    assert rules_of(items) == ["unreadable-entry"] * 3
+    assert all("cannot be verified" in i["message"] for i in items)
+
+
+def mcp_text(servers: dict) -> str:
+    return mcpkit.mcp(servers)
 
 
 def test_files_that_are_not_mcp_configs_and_configs_without_servers_pass(repo: Path) -> None:
     writes = {
-        "package.json": mcp({"evil": EVIL}),
+        "package.json": mcpkit.mcp({"evil": EVIL}),
         "src/app.py": "x = 1\n",
         ".mcp.json": "[]",
         ".cursor/mcp.json": '{"mcpServers": 3}',
-        ".codex/config.toml": 'model = "x"\n',
         "claude_desktop_config.json": "{}",
     }
-    assert mod.findings(payload(repo, writes), guard) == []
+    assert found(repo, writes) == []
 
 
-def test_a_toml_mcp_servers_value_that_is_not_a_table_holds_no_servers(repo: Path) -> None:
-    assert mod.findings(payload(repo, {".codex/config.toml": "mcp_servers = 3\n"}), guard) == []
+def test_the_line_names_where_the_server_is_declared(repo: Path) -> None:
+    text = json.dumps({"mcpServers": {"evil": EVIL}}, indent=2)
+    (item,) = (i for i in found(repo, {".mcp.json": text}) if i["key"].startswith("allowlist"))
+    assert item["line"] == 3
+    (item,) = found(repo, {".mcp.json": "{"})
+    assert item["line"] == 1
 
 
-def test_the_launch_line_is_never_printed(repo: Path) -> None:
-    secret = {"command": "npx", "args": ["-y", "evil-mcp", "--token", "SECRET-VALUE-123"]}
-    code, err = scriptkit.run_script(
-        POLICY, NAME, repo, json.dumps(payload(repo, {".mcp.json": mcp({"evil": secret})}, "tool_use"))
-    )
-    assert code == 1
-    assert "SECRET-VALUE-123" not in err
-    assert "evil" in err
+def test_the_same_server_in_two_files_is_two_findings(repo: Path) -> None:
+    writes = {".mcp.json": mcpkit.mcp({"evil": EVIL}), ".cursor/mcp.json": mcpkit.mcp({"evil": EVIL})}
+    assert [i["path"] for i in found(repo, writes)].count(".mcp.json") == 2
+    assert len(found(repo, writes)) == 4
 
 
-def test_the_script_run_as_a_process_refuses_and_allows(repo: Path) -> None:
-    code, err = scriptkit.run_script(POLICY, NAME, repo, json.dumps(payload(repo, {".mcp.json": mcp({"evil": EVIL})})))
-    assert code == 1
-    assert err.startswith("verify-mcp-allowlist: MCP server config refused")
-    assert "allowlist" in err
-    assert not any(marker in err.lower() for marker in CRASH)
-    assert scriptkit.run_script(POLICY, NAME, repo, json.dumps(payload(repo, {"a.txt": "x"}))) == (0, "")
+def test_a_backslash_path_is_reported_with_forward_slashes(repo: Path) -> None:
+    (item,) = (i for i in found(repo, {".cursor\\mcp.json": mcpkit.mcp({"evil": FS})}) if "allowlist" in i["key"])
+    assert item["path"] == ".cursor/mcp.json"
 
 
-def test_a_fault_exits_two_and_says_so(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:
-    monkeypatch.setattr("sys.stdin", io.StringIO("not json"))
-    assert mod.main() == 2
-    err = capsys.readouterr().err
-    assert "internal error" in err
-    assert not any(marker in err.lower() for marker in CRASH)
+def test_keys_are_secret_free_and_change_with_the_entry(repo: Path) -> None:
+    secret = {
+        "command": "npx",
+        "args": ["-y", "evil@latest", "--token", "SECRET-VALUE-123"],
+        "env": {"API_KEY": "SECRET-ENV-9"},  # pragma: allowlist secret
+    }
+    items = found(repo, {".mcp.json": mcpkit.mcp({"evil": secret})})
+    assert "SECRET" not in json.dumps(items)
+    other = found(repo, {".mcp.json": mcpkit.mcp({"evil": {**secret, "env": {"API_KEY": "x"}}})})
+    assert {i["key"] for i in items}.isdisjoint(i["key"] for i in other)
 
 
-def test_the_gate_through_chock_s_runner_at_tool_use_and_commit(repo: Path) -> None:
-    evil = {".mcp.json": mcp({"evil": EVIL})}
-    code, err = gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, evil)
-    assert code == 1
-    assert "evil" in err
-    assert gatekit.judge(POLICY, repo, gatekit.STOP, evil)[0] == 1
-    assert gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {".mcp.json": mcp({"filesystem": FILESYSTEM})}) == (0, "")
-    scriptkit.write(repo, {".mcp.json": mcp({"evil": EVIL})})
-    scriptkit.git(repo, "add", "-A")
-    assert gatekit.judge(POLICY, repo, gatekit.COMMIT)[0] == 1
+def test_the_manifest_declares_the_script_gate_beside_the_guard() -> None:
+    manifest = scriptkit.manifest(mcpkit.POLICY)
+    gate = manifest["hook"]["gate"]
+    assert gate["kind"] == "script"
+    assert {"commit", "tool_use"} <= set(gate["on"])
+    assert gate["params"] == {"script": "verify-mcp-allowlist_gate.py"}
+    assert manifest["artifact"] == "rule"
+    assert scriptkit.script_path(mcpkit.POLICY, f"{mcpkit.POLICY}.py").is_file()
