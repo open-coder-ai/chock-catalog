@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 43 total, 0 executable |
+| **Mechanism** | warn-only `script` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 43 total, 43 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,18 +25,22 @@ Permission grants an agent's config can hold that a line-based pattern cannot ju
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+
+On a finding it prints:
+
+> An agent permission config grants more than named, scoped actions (a bare or wildcard allow, a bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox), a deny entry is gone, or the config cannot be read. Scope the grant (Bash(npm test:*), a named tool list), keep the deny entry, use a mode that asks. A reviewed exception is a {file, path, value} entry under waive in .chock/devenv.json, added by a person in their own commit; in the agent only one already in HEAD counts, so an agent asks the person and never writes it.
+
+The rule text ships alongside, in the agent's ambient context:
 
 ```text
 agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vscode/settings.json|.cursor/cli.json|opencode.json|.aider.conf.yml|.continue/**): grant named, scoped actions only
 never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve; never(remove): deny entry; observe: warns at commit+tool_use, enforce later
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/agent-permissions-scan/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/agent-permissions-scan/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

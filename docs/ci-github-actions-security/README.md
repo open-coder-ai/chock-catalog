@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 43 total, 0 executable |
+| **Mechanism** | warn-only `script` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 43 total, 43 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,17 +25,15 @@ An agent that writes CI writes the workflow most likely to be attacked. Text fro
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
 
-```text
+On a finding it prints:
 
-```
-
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+> A GitHub Actions workflow, composite action or Dependabot file gained a weakness (each finding names its rule, CWE and fix). Fix it as the finding says. A person who has reviewed one may keep it with '# chock: allow <rule id>' on that line and commit from their own shell; in the agent only a line already committed in HEAD counts, so an agent asks the person rather than writing the comment.
 
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/ci-github-actions-security/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/ci-github-actions-security/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

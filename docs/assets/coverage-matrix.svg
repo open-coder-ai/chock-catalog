@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1560" width="1600" height="1560" role="img" aria-label="68 policies: 27 enforced-at-commit, 12 in-agent, 29 advisory">
-<rect width="1600" height="1560" fill="#0f1420"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1620" width="1600" height="1620" role="img" aria-label="70 policies: 27 enforced-at-commit, 12 in-agent, 31 advisory">
+<rect width="1600" height="1620" fill="#0f1420"/>
 <line x1="0" y1="0" x2="1600" y2="0" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="96" x2="1600" y2="96" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="192" x2="1600" y2="192" stroke="#1a2130" stroke-width="1"/>
@@ -18,7 +18,7 @@
 <line x1="0" y1="1440" x2="1600" y2="1440" stroke="#1a2130" stroke-width="1"/>
 <line x1="0" y1="1536" x2="1600" y2="1536" stroke="#1a2130" stroke-width="1"/>
 <text x="80" y="78" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="4" fill="#e0b34c">CHOCK CATALOG &#183; ENFORCEMENT YOU CAN VERIFY</text>
-<text x="80" y="140" font-family="Georgia, 'Times New Roman', serif" font-size="46" font-weight="bold" fill="#f2ead8">68 policies. Only what&#8217;s actually true.</text>
+<text x="80" y="140" font-family="Georgia, 'Times New Roman', serif" font-size="46" font-weight="bold" fill="#f2ead8">70 policies. Only what&#8217;s actually true.</text>
 <line x1="80" y1="180" x2="1520" y2="180" stroke="#5c6577" stroke-width="1"/>
 <text x="80" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">27</text>
 <text x="138" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">ENFORCED-AT-COMMIT</text>
@@ -79,7 +79,7 @@
 <text x="98" y="1150" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">verify-dependency-exists</text>
 <rect x="80" y="1169" width="6" height="6" fill="#3fd0b6"/>
 <text x="98" y="1180" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">verify-mcp-allowlist</text>
-<line x1="548" y1="220" x2="548" y2="1270" stroke="#5c6577" stroke-width="1"/>
+<line x1="548" y1="220" x2="548" y2="1330" stroke="#5c6577" stroke-width="1"/>
 <text x="576" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#3fd0b6">12</text>
 <text x="634" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">IN-AGENT</text>
 <text x="576" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">the tool call is refused before it runs, if</text>
@@ -109,8 +109,8 @@
 <text x="594" y="700" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">scan-secret-files</text>
 <rect x="576" y="719" width="6" height="6" fill="#3fd0b6"/>
 <text x="594" y="730" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">token-efficiency</text>
-<line x1="1044" y1="220" x2="1044" y2="1270" stroke="#5c6577" stroke-width="1"/>
-<text x="1072" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#e0b34c">29</text>
+<line x1="1044" y1="220" x2="1044" y2="1330" stroke="#5c6577" stroke-width="1"/>
+<text x="1072" y="278" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="bold" fill="#e0b34c">31</text>
 <text x="1130" y="258" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" letter-spacing="3" fill="#f2ead8">ADVISORY</text>
 <text x="1072" y="330" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#8a93a6">text an agent reads and may or may not follow</text>
 <line x1="1072" y1="378" x2="1488" y2="378" stroke="#5c6577" stroke-width="1"/>
@@ -121,59 +121,63 @@
 <rect x="1072" y="449" width="6" height="6" fill="#e0b34c"/>
 <text x="1090" y="460" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">agent-permissions-scan</text>
 <rect x="1072" y="479" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="490" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-hook-bypass-in-files</text>
+<text x="1090" y="490" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-fetch-exec-in-files</text>
 <rect x="1072" y="509" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="520" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">chock-mise</text>
+<text x="1090" y="520" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">block-hook-bypass-in-files</text>
 <rect x="1072" y="539" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="550" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">ci-github-actions-security</text>
+<text x="1090" y="550" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">chock-mise</text>
 <rect x="1072" y="569" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="580" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">code-safety</text>
+<text x="1090" y="580" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">ci-github-actions-security</text>
 <rect x="1072" y="599" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="610" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">context-hygiene</text>
+<text x="1090" y="610" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">code-safety</text>
 <rect x="1072" y="629" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="640" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">dockerfile-compose-security</text>
+<text x="1090" y="640" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">context-hygiene</text>
 <rect x="1072" y="659" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="670" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">eu-ai-act-high-risk-triage</text>
+<text x="1090" y="670" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">dockerfile-compose-security</text>
 <rect x="1072" y="689" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="700" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">eu-ai-act-prohibited-practices</text>
+<text x="1090" y="700" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">eu-ai-act-high-risk-triage</text>
 <rect x="1072" y="719" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="730" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">eu-ai-act-transparency</text>
+<text x="1090" y="730" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">eu-ai-act-prohibited-practices</text>
 <rect x="1072" y="749" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="760" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">git-safety</text>
+<text x="1090" y="760" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">eu-ai-act-transparency</text>
 <rect x="1072" y="779" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="790" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">injection-defense</text>
+<text x="1090" y="790" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">git-safety</text>
 <rect x="1072" y="809" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="820" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">memory-discipline</text>
+<text x="1090" y="820" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">injection-defense</text>
 <rect x="1072" y="839" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="850" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">opaque-blob-guard</text>
+<text x="1090" y="850" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">memory-discipline</text>
 <rect x="1072" y="869" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="880" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi01-agent-goal-hijack</text>
+<text x="1090" y="880" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">opaque-blob-guard</text>
 <rect x="1072" y="899" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="910" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi02-tool-misuse</text>
+<text x="1090" y="910" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi01-agent-goal-hijack</text>
 <rect x="1072" y="929" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="940" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi03-identity-privilege-abuse</text>
+<text x="1090" y="940" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi02-tool-misuse</text>
 <rect x="1072" y="959" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="970" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi04-agentic-supply-chain</text>
+<text x="1090" y="970" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi03-identity-privilege-abuse</text>
 <rect x="1072" y="989" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1000" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi05-unexpected-code-execution</text>
+<text x="1090" y="1000" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi04-agentic-supply-chain</text>
 <rect x="1072" y="1019" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1030" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi06-memory-context-poisoning</text>
+<text x="1090" y="1030" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi05-unexpected-code-execution</text>
 <rect x="1072" y="1049" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1060" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi07-insecure-inter-agent-communication</text>
+<text x="1090" y="1060" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi06-memory-context-poisoning</text>
 <rect x="1072" y="1079" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1090" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi08-cascading-failures</text>
+<text x="1090" y="1090" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi07-insecure-inter-agent-communication</text>
 <rect x="1072" y="1109" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1120" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi09-human-agent-trust</text>
+<text x="1090" y="1120" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi08-cascading-failures</text>
 <rect x="1072" y="1139" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1150" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi10-rogue-agents</text>
+<text x="1090" y="1150" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi09-human-agent-trust</text>
 <rect x="1072" y="1169" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1180" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">package-lifecycle-scripts</text>
+<text x="1090" y="1180" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">owasp-asi10-rogue-agents</text>
 <rect x="1072" y="1199" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1210" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">review-like-a-red-team</text>
+<text x="1090" y="1210" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">package-lifecycle-scripts</text>
 <rect x="1072" y="1229" width="6" height="6" fill="#e0b34c"/>
-<text x="1090" y="1240" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">scan-hidden-content</text>
-<text x="80" y="1360" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">&#8220;A rule an agent reads is advice.</text>
-<text x="80" y="1404" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">A hook that exits non-zero is a control.&#8221;</text>
-<text x="80" y="1506" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="2" fill="#5c6577">APACHE-2.0</text>
-<text x="1520" y="1506" text-anchor="end" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="1" fill="#5c6577">github.com/open-coder-ai/chock-catalog</text>
+<text x="1090" y="1240" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">review-like-a-red-team</text>
+<rect x="1072" y="1259" width="6" height="6" fill="#e0b34c"/>
+<text x="1090" y="1270" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">scan-hidden-content</text>
+<rect x="1072" y="1289" width="6" height="6" fill="#e0b34c"/>
+<text x="1090" y="1300" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="17" fill="#f2ead8">scan-secrets-entropy</text>
+<text x="80" y="1420" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">&#8220;A rule an agent reads is advice.</text>
+<text x="80" y="1464" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#f2ead8">A hook that exits non-zero is a control.&#8221;</text>
+<text x="80" y="1566" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="2" fill="#5c6577">APACHE-2.0</text>
+<text x="1520" y="1566" text-anchor="end" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="15" letter-spacing="1" fill="#5c6577">github.com/open-coder-ai/chock-catalog</text>
 </svg>

@@ -622,7 +622,7 @@ policies:
     turn''s end.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.4.4
+  version: 0.5.1
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -715,20 +715,19 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.0.5
+  version: 0.1.1
   artifact: rule
   enforcement: advise
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 25
-  eval_executed: 25
-  description: 'Best-effort guard against an agent launching a coding agent with safety checks off:
-    claude --dangerously-skip-permissions or --permission-mode bypassPermissions; codex --full-auto,
-    --yolo, --dangerously-bypass-approvals-and-sandbox, --sandbox/-s danger-full-access; gemini --yolo,
-    -y, --approval-mode yolo; cursor-agent --force/-f. Parsed: cd, bash -c, sudo/env, npx/bunx/pnpx
-    wrappers are caught; echo/grep/commit text is not. Bypasses: aliases, scripts, config-set modes,
-    unlisted agents.'
+  eval_cases: 43
+  eval_executed: 43
+  description: 'Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
+    bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never,
+    danger-full-access; gemini --yolo or --approval-mode yolo; cursor-agent --force; aider --yes-always;
+    copilot --allow-all-tools; amp, cline, goose, opencode auto-approve. Looks through cd, bash -c,
+    sudo, env, npx, uvx. Misses: config, aliases, scripts, ssh.'
 - id: scan-suppression-markers
   path: base/scan-suppression-markers
   version: 0.0.1
@@ -1036,3 +1035,36 @@ policies:
     subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added
     grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous,
     unlisted extensions. Waiver: pragma or sidecar.'
+- id: block-fetch-exec-in-files
+  path: base/block-fetch-exec-in-files
+  version: 0.0.2
+  artifact: rule
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow
+    or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a
+    shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string
+    of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time:
+    continuation lines, variables, unicode-escaped JSON, split or quoted command names, a download saved
+    to a file and run on a later step, and interpreters or fetchers outside the lists are missed. Never
+    refuses. Friction only.'
+- id: scan-secrets-entropy
+  path: base/scan-secrets-entropy
+  version: 0.0.1
+  artifact: hook
+  enforcement: advise
+  mandatory: false
+  mechanism: warn-only gate
+  enforces: advisory
+  eval_cases: 25
+  eval_executed: 25
+  description: 'Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy
+    values (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test keys,
+    Slack/AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split across lines,
+    over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS,
+    words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control
+    characters.'

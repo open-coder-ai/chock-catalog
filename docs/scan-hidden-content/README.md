@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 45 total, 0 executable |
+| **Mechanism** | warn-only `script` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 45 total, 44 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,17 +25,15 @@ A page can show a reviewer one thing and an agent another. A comment the rendere
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
 
-```text
+On a finding it prints:
 
-```
-
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
+> This change adds text a reader cannot see (a comment or hidden element that reads as an instruction, white or zero-size text) or a URL that can carry data out (a secret word or data-shaped part in its query or path, a remote embed, a dictionary of image URLs). Remove the hidden text or make it visible, and link only to fixed URLs that carry nothing from the repository or the session. A person may keep a reviewed line with a comment line just above it that holds only 'chock: allow scan-hidden-content', committed from their own shell; in the agent only a waiver already committed in HEAD counts, so an agent asks the person instead.
 
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/scan-hidden-content/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/scan-hidden-content/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

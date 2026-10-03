@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 28 total, 0 executable |
+| **Mechanism** | warn-only `script` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 28 total, 28 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,18 +25,22 @@ Install-time and build-time hooks are how recent supply-chain worms spread (Shai
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+
+On a finding it prints:
+
+> A change adds or edits code that runs when a package is installed or built (an npm lifecycle script, setup.py command override, build.rs, MSBuild Exec, gemspec extension and the like), or a git or URL dependency with no commit pin. Whoever controls that code or URL runs it on every machine that installs the package. Keep install and build steps offline and explicit: download to a file, verify a pinned checksum, run it as a separate reviewed step, and pin git dependencies to a 40-hex commit. This policy only warns while it is measured (rollout observe); it has no waiver yet.
+
+The rule text ships alongside, in the agent's ambient context:
 
 ```text
 avoid(install_time_and_build_time_scripts); if_required: explain(why), keep_offline: true, pin(git_and_url_deps: commit)
 prefer: download to a file, verify checksum, run as a reviewed step; never add hooks that fetch, decode or eval
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/package-lifecycle-scripts/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/package-lifecycle-scripts/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 

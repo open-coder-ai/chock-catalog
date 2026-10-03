@@ -7,10 +7,10 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | rule text |
-| **Reaches** | `advisory` — an agent reads it and may or may not follow it |
-| **Compiles to** | `ambient-rule` |
-| **Eval cases** | 34 total, 0 executable |
+| **Mechanism** | warn-only `script` gate |
+| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
+| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Eval cases** | 34 total, 34 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -25,18 +25,22 @@ An agent asked to make a container work reaches for the shortcuts that make it w
 
 ## How it works
 
-There is no mechanism. The rule text is compiled into the agent's ambient context:
+A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+
+On a finding it prints:
+
+> A Dockerfile or compose change weakens the container's isolation or supply chain (each finding names its rule, weakness and fix). Pin images by tag and digest, end the final stage with a non-root USER, keep TLS and signature checks on, pass secrets with RUN --mount=type=secret or compose secrets, and drop privileged, broad cap_add, host namespaces and host-root or Docker socket mounts. This policy only warns while it is measured. A person may keep a reviewed finding with '# chock: allow <rule-id>' on the line or the comment line above it; in the agent only a line already committed in HEAD counts, so an agent asks a person.
+
+The rule text ships alongside, in the agent's ambient context:
 
 ```text
 flag(container_change): Dockerfile|Containerfile|compose adds floating/undigested image, root final stage, TLS|signature off, literal secret, key-file COPY, privileged|cap_add|host ns|docker.sock|host-root mount, db port on 0.0.0.0
 prefer: pinned tag@sha256, USER <uid>, RUN --mount=type=secret, cap_add narrow, named volumes; waiver: '# chock: allow <rule-id>', person only
 ```
 
-It is read, not executed. Treat it as guidance you have made legible to the agent, not as a control -- if you need the behaviour guaranteed, you need a gate or a guard.
-
 ## Which primitive it becomes
 
-An **ambient rule**. `recompile` writes `.chock/compiled/dockerfile-compose-security/ambient-rule/ambient.md`, and `refresh` folds it into the agent-readable rule surface. Nothing executes: the text reaches the agent's context and that is the entire mechanism.
+A **warn-only gate**. `recompile` writes it under `.chock/compiled/dockerfile-compose-security/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
 
 ## Installing it
 
