@@ -68,7 +68,7 @@ throwaway repo on every push.
 | :--- | :--- | ---: |
 | [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
 | [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes | 55/55 |
-| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 9/9 |
+| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 55/55 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 72/72 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 17/17 |
 | [`pin-github-actions`](docs/pin-github-actions/) | a workflow that references a third-party GitHub Action by a movable tag or branch instead of a full commit SHA -- so a re-tagged or compromised release can't change what CI runs; SHA pins and local actions pass | 63/63 |
@@ -87,7 +87,7 @@ throwaway repo on every push.
 | [`guard-deletion`](docs/guard-deletion/) | Reads the diff, not the file: **asks** when a change removes a check (bound or null compare, return or raise on failure, assert, auth decorator, middleware registration, sanitizer call, path check) with none like it in the same hunk, and **refuses** a removed or weakened hardening flag, security header, cookie `Secure`/`HttpOnly`/`SameSite`, TLS verification, row-level security or file mode -- at commit, in CI and at agent tool-use; hunk-local, so a guard moved to another hunk or file is not seen and a pure-deletion commit is not read; tests, docs and vendored code are not judged | 22/23 |
 | [`agentic-code-security`](agentic-security/agentic-code-security) | trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI, LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client (.mcp.json, .cursor/mcp.json, .vscode/mcp.json, claude_desktop_config.json, .codex/config.toml, .gemini/settings.json), docker-compose files for agents. |  |
 | [`block-destructive-commands`](docs/block-destructive-commands/) | `rm -rf /`, force push, hard reset, `terraform destroy`, `dropdb`, `helm uninstall`, `docker volume rm`, `aws s3 rm --recursive`, `gcloud … delete` | 170/170 |
-| [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | a shell write to `.mcp.json` adding an MCP server not on the allowlist, or changing an allowed server's command/args/url to point elsewhere (including one renamed to an allowed name) — the allowlist ships inside the guard script itself, protected the same way as any other policy's guard source; a matching entry passes without a human approval each time | 65/65 |
+| [`verify-mcp-allowlist`](docs/verify-mcp-allowlist/) | an MCP server not on the allowlist file (`.chock/mcp-allowlist.json`, empty by default) added by `<agent> mcp add`, a shell write or any of thirteen client configs, or an allowed server whose command, args or url is changed (including one renamed to an allowed name); an agent cannot grow the allowlist, and unpinned or shell launchers, http urls and literal credentials are warned about | 108/108 |
 | [`protect-commit-privacy`](docs/protect-commit-privacy/) | commit messages and `gh pr create`/`edit` bodies that narrate the development conversation (or leak a session link) instead of describing the change — a leak class that only exists once an agent authors the commit | 35/35 |
 | [`scan-suppression-markers`](docs/scan-suppression-markers/) | **Asks** a person before a change adds a scanner suppression -- inline ignore markers, scanner ignore files and skip keys, a CI scan set to pass on failure; only added lines, line-local, friction not a boundary | 44/45 |
 | [`lockfile-integrity`](docs/lockfile-integrity/) | lockfile changes that move a package off its registry or off https, drop or replace its hash, or leave a git source unpinned; asks when a lock or its manifest moves alone (npm, yarn, pnpm, bun, poetry, uv, Pipfile, Cargo, go.sum, Gemfile, composer, NuGet) | 65/65 |
@@ -132,7 +132,9 @@ per-hook trust review before its hooks run.
 [`package-lifecycle-scripts`](docs/package-lifecycle-scripts/) ·
 [`scan-hidden-content`](docs/scan-hidden-content/) ·
 [`agent-permissions-scan`](docs/agent-permissions-scan/) ·
-[`opaque-blob-guard`](docs/opaque-blob-guard/)
+[`opaque-blob-guard`](docs/opaque-blob-guard/) ·
+[`block-fetch-exec-in-files`](docs/block-fetch-exec-in-files/) ·
+[`scan-secrets-entropy`](docs/scan-secrets-entropy/)
 
 </details>
 
