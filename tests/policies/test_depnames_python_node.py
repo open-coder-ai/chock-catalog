@@ -54,7 +54,7 @@ def test_normalisation_follows_each_ecosystem(eco: str, raw: str, expected: str)
             ["bee", "sea"],
         ),
         ("-e .\n-e ./pkg\n-e /abs/pkg\n-e file:///x\n", []),
-        ("git+https://user:tok@github.com/a/b.git\n", ["git+https://github.com/a/b.git"]),
+        ("git+https://user:tok@github.com/a/b.git\n", ["git+https://github.com/a/b.git"]),  # pragma: allowlist secret
         ("https://example.com/pkg.tar.gz#egg=named\n", ["named"]),
         ("./local.whl\n../dist/x.zip\nfile:///x.whl\nfoo-1.0.tar.gz\n", []),
         ("two words\nfile: x\n", []),
