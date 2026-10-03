@@ -5,12 +5,11 @@ from __future__ import annotations
 
 import json
 import re
-import time
 from pathlib import Path
 
 import pytest
 from policies import scriptkit
-from policies.instrkit import NAME, POLICY, fired, gate, hits, run
+from policies.instrkit import NAME, POLICY, assert_linear, fired, gate, hits, run
 
 AGENTS = """# AGENTS.md
 
@@ -170,10 +169,11 @@ SHAPES = {
 
 @pytest.mark.parametrize("shape", SHAPES)
 def test_the_largest_files_judge_in_time(shape: str, tmp_path: Path) -> None:
-    text = SHAPES[shape][: gate.MAX_TEXT]
-    repo = scriptkit.init_repo(tmp_path / "r", {"AGENTS.md": text[::-1]})
-    started = time.monotonic()
-    run({"AGENTS.md": text}, repo)
-    run({"AGENTS.md": text[::-1]}, repo, baseline=True)
-    assert time.monotonic() - started < 10, shape
+    def judge(n: int) -> None:
+        text = SHAPES[shape][:n]
+        repo = scriptkit.init_repo(tmp_path / f"r{n}", {"AGENTS.md": text[::-1]})
+        run({"AGENTS.md": text}, repo)
+        run({"AGENTS.md": text[::-1]}, repo, baseline=True)
+
+    assert_linear(judge, gate.MAX_TEXT, shape)
     assert re.fullmatch(r"[\w-]+\.py", NAME)

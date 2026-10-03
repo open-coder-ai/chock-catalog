@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import sys
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 from policies import gatekit, scriptkit
@@ -69,3 +71,23 @@ def engine(repo: Path, writes: dict[str, str], event: str = gatekit.PRE_TOOL_USE
     if event == gatekit.STOP:
         scriptkit.write(repo, writes)
     return gatekit.judge(POLICY, repo, event, writes, writes)[0]
+
+
+GROWTH = 8.0
+MAX_SECONDS = 20.0
+
+
+def assert_linear(judge: Callable[[int], object], size: int, label: str) -> None:
+    """`judge(n)` at a quarter of `size` and at `size`: four times the input may take at most eight times as
+    long (linear is four, quadratic sixteen), as in scan-hidden-content's timing test. The absolute bound
+    stays under the engine's 30 s guard budget."""
+
+    def timed(n: int) -> float:
+        started = time.monotonic()
+        judge(n)
+        return time.monotonic() - started
+
+    small = timed(size // 4)
+    large = timed(size)
+    assert large < MAX_SECONDS, f"{label}: {large:.1f}s"
+    assert large < max(small, 0.05) * GROWTH, f"{label}: {small:.2f}s then {large:.2f}s"

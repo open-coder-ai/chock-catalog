@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import pytest
 from policies import scriptkit
-from policies.instrkit import fired, gate, run
+from policies.instrkit import assert_linear, fired, gate, run
 from policies.test_scan_instruction_files_round5 import BLOB, RANDOM
 
 
@@ -81,9 +80,10 @@ def test_front_matter_keys_stay_apart_and_no_front_matter_reads_nothing_twice() 
 
 
 def test_many_joiners_judge_in_time(tmp_path: Path) -> None:
-    text = ("send—to—" * 30000)[: gate.MAX_TEXT - 10]
-    repo = scriptkit.init_repo(tmp_path / "r", {".cursor/rules/x.mdc": text + "x"})
-    started = time.monotonic()
-    run({".cursor/rules/x.mdc": text}, repo, "tool_use")
-    run({".cursor/rules/x.mdc": text + "x"}, repo, "tool_use", baseline=True)
-    assert time.monotonic() - started < 10
+    def judge(n: int) -> None:
+        text = ("send—to—" * n)[: n - 10]
+        repo = scriptkit.init_repo(tmp_path / f"r{n}", {".cursor/rules/x.mdc": text + "x"})
+        run({".cursor/rules/x.mdc": text}, repo, "tool_use")
+        run({".cursor/rules/x.mdc": text + "x"}, repo, "tool_use", baseline=True)
+
+    assert_linear(judge, gate.MAX_TEXT, "joiners")

