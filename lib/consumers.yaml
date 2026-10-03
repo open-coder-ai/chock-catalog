@@ -64,3 +64,5 @@ base/scan-secrets-entropy:
   chock_scan: [checksums, entropy, keyword_values]
 base/verify-dependency-exists:
   chock_scan: [safe_read, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]
+base/registry-config:
+  chock_scan: [data_table, hostmatch, hosts, idn, jsonc, safe_read, urls, yamlpath, yamlpath_block, yamlpath_blockscalar, yamlpath_cursor, yamlpath_flow, yamlpath_scalar]

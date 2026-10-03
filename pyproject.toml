@@ -55,6 +55,7 @@ source = [
     "base/agent-permissions-scan/implementations",
     "base/opaque-blob-guard/implementations",
     "base/hardening-flags/implementations",
+    "base/registry-config/implementations",
     "lib/chock_scan",
     "base/scan-suppression-markers/implementations",
 ]

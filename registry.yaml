@@ -1072,3 +1072,18 @@ policies:
     over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS,
     words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control
     characters.'
+- id: registry-config
+  path: base/registry-config
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  mandatory: false
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 57
+  eval_executed: 57
+  description: 'Refuses package-manager config that redirects installs or weakens them: literal tokens,
+    http or unlisted registry hosts (parsed, so lookalike and userinfo spellings fail), TLS or checksum
+    checks off, install scripts on (npm, Yarn, pnpm, Bun, pip, uv, Poetry, conda, Go, Cargo, NuGet,
+    Maven, Bundler, Composer, Hex, Dependabot); asks on extra indexes, replaces, no cooldown. Added
+    only. Ship observe first. Friction, not a boundary.'
