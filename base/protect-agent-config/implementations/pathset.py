@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from pathmatch import DEVICE
+from pathplugin import plugin_hooks
 
 # Instruction files an agent reads: below a `docs` folder they are documentation about the file, so a write asks a person instead.
 INSTRUCTIONS = (
@@ -65,6 +66,19 @@ PROTECTED = (
     ".grok/",
     ".tabnine/",
     ".github/copilot",  # copilot-instructions.md, copilot-setup-steps.yml, copilot/: every `.github/copilot*`
+    ".augment/",  # Augment: settings.json, hooks, rules
+    ".claude-plugin/",  # Claude Code plugin manifests: a loaded plugin's hooks run above the project's own
+    # Hook files of the other agents; a plugin's own `hooks/` folder is found on disk (pathplugin.py).
+    ".clinerules/hooks/",  # Cline
+    ".kiro/hooks/",  # Kiro hooks
+    ".kiro/agents/",  # Kiro agent config, which declares hooks
+)
+# Hook files outside the repository, which no entry above names: a user's Cline folder (`~/Documents/Cline/Hooks`, as a segment
+# whatever precedes it) and the machine-wide Windsurf and Augment files (from the start of the path, so `src/etc/` is not one).
+_OUTSIDE = re.compile(
+    r"(?:^|/)documents/cline/hooks(?:/|$)"
+    r"|^(?:/etc/(?:windsurf/hooks|augment/settings)\.json|/library/application support/windsurf/hooks\.json"
+    r"|[a-z]:/programdata/(?:windsurf/hooks|augment/settings)\.json)"
 )
 # The policy guards themselves: an agent must not rewrite the very guard the compiled hook executes.
 GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
@@ -84,10 +98,19 @@ def normalise(path: str) -> str:
     return "/".join(part.rstrip(". ") or part for part in normal.split("/")).lower()
 
 
-def verdict(path: str) -> str:
-    """`block` for a protected path, `ask` for an instruction file below a `docs` folder and nothing else protected, else empty."""
+def verdict(path: str, base: str | None = None) -> str:
+    """`block` for a protected path, `ask` for an instruction file below a `docs` folder and nothing else protected, else empty.
+
+    `base` is the repository folder a relative path is read from, when a plugin's hooks folder is looked up on disk.
+    """
     normal = normalise(path)
-    if any(part in normal for part in _FIRM) or _FOLDERS.search(normal) or GUARD_SOURCES.search(normal):
+    if (
+        any(part in normal for part in _FIRM)
+        or _FOLDERS.search(normal)
+        or GUARD_SOURCES.search(normal)
+        or _OUTSIDE.search(normal)
+        or plugin_hooks(normal, base)
+    ):
         return BLOCK
     parts = normal.split("/")
     first = next((k for k, part in enumerate(parts) if any(name in part for name in INSTRUCTION_TEXT)), None)

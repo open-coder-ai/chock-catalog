@@ -12,18 +12,21 @@ import sys
 
 from chock_shellparse import commands, writes_files
 from pathguard import refuses
+from pathload import loads_plugin
 from pathopaque import refuses as opaque
 from pathset import ASK as ASKED
 from pathset import BLOCK, PROTECTED, hit, normalise, verdict
 from pathwrap import too_deep
 
 # `hit` and `normalise` are the guard's path test, which the tests and the gate's parity check call as `guard.hit`.
-__all__ = ["ASK", "BLIND", "DEEP", "PROTECTED", "REASON", "check", "hit", "normalise", "run"]
+__all__ = ["ASK", "BLIND", "DEEP", "LOADS", "PROTECTED", "REASON", "check", "hit", "normalise", "run"]
 
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
 # A lone `\` ends the line: for a Windows command (copy, xcopy, move) it closes a folder name, it escapes nothing.
 _TRAILING = re.compile(r"(?<=[^\s\\])\\$")
+
+LOADS = "shell command makes Claude Code load a plugin from a folder (CLAUDE_CODE_PLUGIN_DIRS, `claude --plugin-dir`) -- refused: a plugin's hooks run above the project's own gates. Ask the person, who sets it from their own shell."
 
 BLIND = "shell command runs script text the guard cannot read (eval or a shell fed from a variable, a pipe or a here-document, a variable as the command, trap, xargs sh, an interpreter one-liner) and names a protected path -- refused because it cannot be judged. Run the inner command directly, or ask the person."
 
@@ -33,7 +36,7 @@ DEEP = "shell command nested too deep to check (a script inside a script, five o
 
 
 def check(raw: str) -> str | None:
-    """The reason a command edits protected files (REASON, BLIND, DEEP), ASK when it only writes docs instruction files, or None."""
+    """The reason a command edits protected files (REASON, LOADS, BLIND, DEEP), ASK when it only writes docs instruction files, or None."""
     raw = _TRAILING.sub("/", raw.rstrip())
     if too_deep(raw):
         return DEEP
@@ -47,6 +50,8 @@ def check(raw: str) -> str | None:
 
     if any(writes_files(cmd, firm) for cmd in commands(raw)) or refuses(raw, PROTECTED, firm, normalise):
         return REASON
+    if loads_plugin(raw):
+        return LOADS
     if opaque(raw, firm):
         return BLIND
     return ASK if asked else None

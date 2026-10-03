@@ -1,11 +1,11 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.3.0"
+version: "0.3.1"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
   AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .windsurf/, .agents/, .chock/, ...),
-  MCP/hook client configs (.mcp.json, ...), .git/{hooks,config}, policy implementations/: redirect,
-  rm/mv/tee/sed -i, cp into, git checkout/restore, a write through a symlink to one. Folder names match
+  MCP/hook client configs (.mcp.json, ...), hook files of Cline, Kiro, Augment and Windsurf (user and machine level too), Claude Code plugin roots (.claude-plugin/, their hooks/), .git/{hooks,config}, policy implementations/: redirect,
+  rm/mv/tee/sed -i, cp into, git checkout/restore, a write through a symlink to one; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir. Folder names match
   without regard to case. An instruction file under docs/ asks a person instead. Coarse: also eval or sh -c of
   computed text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync`
   pass. Edit/Write: tool gate, the same set and verdicts.
@@ -13,7 +13,7 @@ artifact: rule
 enforcement: advise
 rule:
   text: |
-    agent_config(AGENTS.md+wrappers|.{claude,cursor,codex,gemini,windsurf,agents,chock,junie,devin,grok,tabnine}/**|.github/{copilot*,hooks/}|.mcp.json|.vscode/mcp.json|.git/{hooks,config}): never(edit|delete); folder names match as whole path segments, any case; a write through a symlink to one is the same write
+    agent_config(AGENTS.md+wrappers|.{claude,cursor,codex,gemini,windsurf,agents,chock,junie,devin,grok,tabnine,augment,claude-plugin}/**|.github/{copilot*,hooks/}|.{clinerules,kiro}/hooks/|.kiro/agents/|<plugin>/hooks/|.mcp.json|.vscode/mcp.json|.git/{hooks,config}): never(edit|delete|set CLAUDE_CODE_PLUGIN_DIRS|--plugin-dir); any case; symlink same
     docs/**/{AGENTS,CLAUDE,GEMINI,copilot-instructions}.md|.cursorrules|.windsurfrules|.aider.conf.yml: ask_person; else ask_person; no marker passes
 hook:
   gate:
@@ -64,6 +64,13 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.1
+  date: '2026-10-03'
+  changes:
+  - "Behaviour change, hook and plugin files of more agents (eval cases tc-1315 to tc-1391; tests in test_protect_agent_config_hookfiles.py and _plugins.py). Block, as a shell write and as an Edit/Write: any `.claude-plugin/` folder (plugin and marketplace manifests); the `hooks/` folder directly in a plugin root, a folder that holds `.claude-plugin/` (hooks.json and the module it names, such as register.ts; a `hooks/` folder anywhere else, like `src/hooks/useThing.ts`, stays open, and the root is looked up on disk, from the repository folder, through links and in any case); `.clinerules/hooks/` and `~/Documents/Cline/Hooks/` (Cline); `.kiro/hooks/` and `.kiro/agents/` (Kiro); the whole `.augment/` folder, which holds `settings.json`, hooks and rules, and `~/.augment/settings.json`; the machine-wide `/etc/windsurf/hooks.json`, `/Library/Application Support/Windsurf/hooks.json`, `C:\\ProgramData\\Windsurf\\hooks.json`, `/etc/augment/settings.json` and `C:\\ProgramData\\Augment\\settings.json`, matched from the start of the path (any drive letter), so `src/etc/windsurf/hooks.json` stays open. A loaded mod's tool.call hook runs above project settings hooks, so an agent that can write one can answer a call itself and chock's PreToolUse never runs."
+  - "Shell commands that make Claude Code load a plugin from a folder are refused with their own message (exit 1): setting `CLAUDE_CODE_PLUGIN_DIRS` (a prefix assignment, `export`, `declare -x`, `env`, a bare assignment, inside `bash -c`, PowerShell `$env:`, `setx`, `set`, `Set-Item Env:`, `SetEnvironmentVariable`) and `claude --plugin-dir` (also `--plugin-dir=`, behind sudo, nohup, timeout, command or a shell, and through npx and the other package launchers). Reading the variable, `unset`, `env -u`, `claude` without the flag, and text that only names either (a commit message, `echo`, `grep`) pass."
+  - "Already covered before this version, now with eval cases of their own: `.claude/plugins/**` and `~/.claude/dev-mods/**` (both sit in the whole `.claude/` folder), and the home copies `~/.grok/user-settings.json`, `~/.codex/hooks.json` and `config.toml`, `~/.gemini/settings.json` and `~/.cursor/hooks.json`, since the guard and the gate match a protected folder as a path segment wherever it sits, so an absolute or `~` path is read the same way. The same cases refuse the paths in capitals, and a path through a link to a plugin's hooks folder is refused (tests)."
+  - "Not covered, by design: a glob or an unknown variable that could stand for a machine-wide file or a Cline user folder (`/etc/wind*/hooks.json`; those two are matched as text, not as entries of the protected set, so a repository folder named `etc` or `documents` is not read as holding them); Kiro's other folders (`.kiro/specs`, `.kiro/steering`, `.kiro/settings`), `.clinerules/` files that are not hooks, and `.augment-guidelines`; `~/Library/Application Support/Windsurf` below a user's home; a shell rc file that exports the variable for a later shell (`echo 'export CLAUDE_CODE_PLUGIN_DIRS=x' >> ~/.bashrc` is a write to a file this policy does not protect); `claude plugin install`, which Claude Code itself runs; a `.claude-plugin/` folder made in the same command that writes the hooks below it (the manifest write is the refused one); and an `hooks/` folder whose plugin root is only made after the check."
 - version: 0.3.0
   date: '2026-10-03'
   changes:

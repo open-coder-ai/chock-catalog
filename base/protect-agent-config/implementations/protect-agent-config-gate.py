@@ -55,7 +55,7 @@ def judge(root: Path, path: str) -> str:
     if followed is None:
         return BLOCK
     named = [path, rel, *(os.path.relpath(f, real) if f.startswith(real + "/") else f for f in followed)]
-    kinds = {verdict(name) for name in named}
+    kinds = {verdict(name, real) for name in named}
     return BLOCK if BLOCK in kinds else ASK if ASK in kinds else ""
 
 
