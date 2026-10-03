@@ -17,9 +17,10 @@ MAX_STATEMENT = 4000
 OVERLAP = 500
 #: A line that starts its own block: list item, heading, quote, table row, HTML tag, thematic break or rule.
 BLOCK_START = re.compile(
-    r"^(?:[ \t]{0,3}#{1,6}(?:[ \t]|$)|[ \t]*(?:[-*+](?:[ \t]|$)|[0-9]{1,9}[.)](?:[ \t]|$)|---+[ \t]*$|===+[ \t]*$|(?:\*[ \t]*+){3,}+$|(?:_[ \t]*+){3,}+$|<(?:!--|/?(?i:address|article|aside|blockquote"
+    r"^(?:[ \t]{0,3}#{1,6}(?:[ \t]|$)|[ \t]*(?:[-*+](?:[ \t]|$)|[0-9]{1,9}[.)](?:[ \t]|$)|---+[ \t]*$|===+[ \t]*$|(?:\*[ \t]*+){3,}+$|(?:_[ \t]*+){3,}+$|<(?:!--|/?(?:address|article|aside|blockquote"
     r"|details|dialog|div|dl|fieldset|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table"
-    r"|tbody|td|tfoot|th|thead|tr|ul)\b)))"
+    r"|tbody|td|tfoot|th|thead|tr|ul)\b)))",
+    re.IGNORECASE,
 )
 #: A front-matter line that starts a new key: a plain YAML key at the margin, then a colon and a space or the end.
 FRONT_KEY = re.compile(r"^[A-Za-z0-9_][\w.-]*+:(?:[ \t]|$)")
