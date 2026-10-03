@@ -1,6 +1,6 @@
 id: block-unapproved-egress
 name: "Block Unapproved Egress"
-version: "0.1.2"
+version: "0.1.3"
 description: >
   Best-effort guard on the tool channel: curl, wget or iwr/irm (Invoke-WebRequest/RestMethod) that
   UPLOADS (POST/PUT/PATCH, -d/--data*/--json, -F/--form, -T/--upload-file, wget --post-*/--body-*,
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.3
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."
 - version: 0.1.2
   date: '2026-10-02'
   changes:

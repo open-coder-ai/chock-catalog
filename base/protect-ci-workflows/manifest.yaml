@@ -1,6 +1,6 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.2.1"
+version: "0.2.2"
 description: >
   Stops an agent weakening the checks that review its work. Shell guard refuses writes to
   .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
@@ -57,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.2
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."
 - version: 0.2.1
   date: '2026-10-02'
   changes:

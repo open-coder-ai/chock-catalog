@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.4.1"
+version: "0.4.2"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
@@ -102,3 +102,7 @@ changelog:
   date: '2026-10-02'
   changes:
   - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: it skips a `--` and the shell options between `-c` and the script (`bash -c -- '...'`, `sh -c -x '...'`, `eval -- '...'`), reads `name=(...)`, `name+=` and `name[i]=` assignments, looks through the `{` that opens a function body or group, and splits a line whose quotes do not balance in one pass (it was cubic: seconds at 4 KB, a minute at 8 KB). What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.6."
+- version: 0.4.2
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."

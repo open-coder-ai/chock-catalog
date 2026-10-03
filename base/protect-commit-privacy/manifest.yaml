@@ -1,6 +1,6 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.2.2"
+version: "0.2.3"
 description: >
   Keeps the development conversation out of git history. Guard refuses `git commit` and `gh pr
   create|edit` whose message or body (inline -m/-b, -F/--file/--body-file, heredoc on -F -) holds
@@ -39,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.3
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."
 - version: 0.2.2
   date: '2026-10-02'
   changes:

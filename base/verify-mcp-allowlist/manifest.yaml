@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.4.2"
+version: "0.4.3"
 description: >
   Gates MCP servers by name+source vs an allowlist. Shell guard refuses a write to .mcp.json or
   `claude mcp add|add-json` unless every server is listed, plus add-from-claude-desktop and a
@@ -59,6 +59,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.3
+  date: '2026-10-03'
+  changes:
+  - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."
 - version: 0.4.2
   date: '2026-10-02'
   changes:
