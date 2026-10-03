@@ -6,7 +6,7 @@ import shlex
 from typing import Any
 
 from chock_shellparse import abbreviates, flags_of, git_parts
-from pathconf import code_key, config
+from pathconf import _LONG_RISKY, code_key, config
 from pathmatch import DYNAMIC, expand, values
 
 # Every git command (porcelain and plumbing, as `git help -a` lists them); any other word is a user alias, or `git-NAME` from the PATH.
@@ -56,6 +56,12 @@ _PROGRAM_ENV = frozenset(
 _FILTERS = ("--env-filter", "--tree-filter", "--index-filter", "--parent-filter", "--msg-filter", "--commit-filter")
 _DIFFERS = frozenset(("log", "diff", "show", "whatchanged", "diff-tree", "diff-index", "diff-files"))
 _FLOOR = 3  # `--` and one letter
+_DIRECT = {  # the program options a command takes on its own line, as an alias value is judged (a template is a folder, a config value is handled apart)
+    sub: tuple(o for o in longs if o not in ("--template", "--config"))
+    for sub, longs in _LONG_RISKY.items()
+    if sub not in ("rebase", "init")
+}
+_EXT = "ext::"  # a remote URL whose text is a command git runs when protocol.ext.allow lets it
 
 
 def git(w: Any, args: list[str], env: dict[str, str]) -> bool:
@@ -104,7 +110,7 @@ def _values(args: list[str], short: str, longs: tuple[str, ...]) -> list[str]:
 
 def _programs(sub: str, args: list[str], env: dict[str, str]) -> list[str]:
     """The shell text git runs for this command: an editor or pager variable, `rebase -x`, `bisect run`, a `filter-branch` filter,
-    `submodule foreach`, `difftool -x` (text with a variable in it is left alone)."""
+    `submodule foreach`, `difftool -x`, `--upload-pack` and kin, `clone -u/-c`, `grep -O`, an `ext::` URL (text with a variable in it is left alone)."""
     found = [v for k, v in env.items() if k in _PROGRAM_ENV]
     if sub == "rebase":
         found += _values(args, "x", ("--exec",))
@@ -114,14 +120,24 @@ def _programs(sub: str, args: list[str], env: dict[str, str]) -> list[str]:
         found += _values(args, "", _FILTERS)
     elif sub == "bisect" and args[:1] == ["run"]:
         found.append(shlex.join(args[1:]))
+    elif sub in _DIRECT:
+        found += _values(args, "u" if sub == "clone" else "", _DIRECT[sub])
+        found += (
+            [v.partition("=")[2] for v in _values(args, "c", ("--config",))] if sub == "clone" else []
+        )  # `-c key=COMMAND`
+    elif sub == "grep":
+        found += _values(args, "O", ("--open-files-in-pager",))
     elif sub == "submodule" and "foreach" in args:
         found.append(" ".join(a for a in args[args.index("foreach") + 1 :] if not a.startswith("-")))
+    found += [a[len(_EXT) :] for a in args if a.startswith(_EXT)]
     return [text for text in found if "$" not in text]
 
 
 def _writes_output(w: Any, sub: str, args: list[str], env: dict[str, str]) -> bool:
-    """`log --output=FILE` and its kin write FILE; `format-patch -o DIR` writes patch files into DIR."""
+    """`log --output=FILE` and its kin write FILE, as `archive -o FILE` and `bundle create FILE` do; `format-patch -o DIR` writes into DIR."""
     files = _values(args, "", ("--output",)) if sub in _DIFFERS else []
+    files += _values(args, "o", ("--output",)) if sub == "archive" else []
+    files += args[1:2] if sub == "bundle" and args[:1] == ["create"] else []
     folders = _values(args, "o", ("--output-directory",)) if sub == "format-patch" else []
     return any(w.reaches(t, env) for t in files) or any(w.reaches(t, env, parents=True) for t in folders)
 

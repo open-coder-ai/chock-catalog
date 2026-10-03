@@ -148,7 +148,7 @@ def _unbalanced(shape: str, size: int) -> str:
 
 @pytest.mark.parametrize("shape", ["escaped", "opened", "alternating", "backslash", "clauses", "declares"])
 def test_a_line_of_unbalanced_quotes_is_read_in_linear_time(shape: str, sp) -> None:
-    """CPU time, not wall time: a hook that outruns the engine's timeout is read as an allow."""
+    """CPU time, not wall time: a guard that outruns the engine's 30 s is escalated by the engine, but a client that stops the hook first may allow."""
 
     def seconds(call, size: int) -> float:
         raw = _unbalanced(shape, size)
