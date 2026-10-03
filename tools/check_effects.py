@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
-"""Fail if a policy declaring `read_only` ships a guard script that writes."""
+"""Fail if a policy declaring `read_only` ships a guard script that writes.
+
+    python tools/check_effects.py                      # every policy: what CI runs on main
+    python tools/check_effects.py --base origin/main   # what a PR touches (tools/select_tests.py scope)
+    python tools/check_effects.py --policies a,b       # exactly these policy ids
+    python tools/check_effects.py --jobs 1             # serial, e.g. to compare timings
+
+Policies are checked concurrently; the report is in policy order whatever order they finish.
+"""
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -11,10 +20,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from itertools import repeat
 from pathlib import Path
 
 import yaml
 from mechanism import SCRIPT_SUFFIXES, is_event_script
+from select_tests import changed_files, policy_ids, select
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / "base"
@@ -182,14 +194,44 @@ def check_policy(policy_dir: Path, bash: str) -> list[str]:
     return failures
 
 
-def main() -> int:
+def scoped_ids(args: argparse.Namespace) -> set[str] | None:
+    """The policy ids to check, or None for all. A scope this tool cannot resolve is all, never none."""
+    if args.policies is not None:
+        wanted = {i for i in args.policies.split(",") if i}
+        if not wanted:
+            raise SystemExit("--policies needs at least one policy id")
+        if unknown := sorted(wanted - set(policy_ids(ROOT))):
+            raise SystemExit(f"unknown policy id(s): {', '.join(unknown)}")
+        return wanted
+    if args.base is None:
+        return None
+    try:
+        full, covered, _ = select(ROOT, changed_files(args.base, ROOT))
+    except (SystemExit, SyntaxError, OSError) as exc:
+        print(f"{exc}; checking every policy.", file=sys.stderr)
+        return None
+    return None if full else covered
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--policies", help="comma-separated policy ids to check instead of all")
+    scope.add_argument("--base", help="check only the policies the diff against this ref touches, or all if shared")
+    parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1, help="policies checked at once")
+    args = parser.parse_args(argv)
+
     bash = shutil.which("bash")
     if not bash:
         print("No bash on PATH; cannot observe guard behaviour.", file=sys.stderr)
         return 2
 
-    policy_dirs = sorted(p for p in BASE.iterdir() if p.is_dir())
-    failures = [f for d in policy_dirs for f in check_policy(d, bash)]
+    wanted = scoped_ids(args)
+    policy_dirs = sorted(p for p in BASE.iterdir() if p.is_dir() and (wanted is None or p.name in wanted))
+    # Each guard runs in its own temp workspace, home and scratch dir with HOME, TMPDIR and the git
+    # config pointed at it, and nothing here is shared or written, so policies cannot see each other.
+    with ThreadPoolExecutor(max_workers=max(args.jobs, 1)) as pool:
+        failures = [f for found in pool.map(check_policy, policy_dirs, repeat(bash)) for f in found]
     checked = [d.name for d in policy_dirs if guard_scripts(d)]
 
     if failures:
