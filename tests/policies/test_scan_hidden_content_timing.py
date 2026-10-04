@@ -48,10 +48,16 @@ SHAPES = {
 }
 
 
+def text_of(shape: str, size: int) -> str:
+    """`size` bytes of `shape`, whole units then the partial unit the largest input ends on, so every size gets the same readings."""
+    unit = SHAPES[shape]
+    tail = unit[: (SIZE // 2) % len(unit)]
+    return unit * ((size - len(tail)) // len(unit)) + tail
+
+
 def run(shape: str, size: int, path: str) -> float:
     """CPU seconds the gate takes to judge `size` bytes of `shape`."""
-    unit = SHAPES[shape]
-    text = (unit * (size // len(unit) + 1))[:size]
+    text = text_of(shape, size)
     started = time.process_time()
     gate.findings({"event": "commit", "writes": {path: text}})
     return time.process_time() - started

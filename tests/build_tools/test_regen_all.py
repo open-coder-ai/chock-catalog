@@ -114,6 +114,35 @@ def test_fast_checks_cover_every_generated_file(tmp_path: Path, monkeypatch, cai
     assert ("brand card --check" in labels) is cairosvg
 
 
+@pytest.mark.parametrize("cairosvg", [True, False])
+def test_the_lagging_checks_are_the_derived_docs_and_images(tmp_path: Path, monkeypatch, cairosvg: bool) -> None:
+    monkeypatch.setattr(regen_all, "find_spec", lambda _name: object() if cairosvg else None)
+    checks = regen_all.lagging_checks(tmp_path)
+    assert [name for name, _cmd, _files in checks][:2] == ["registry, README and prose counts --check", "readme"]
+    assert all(files for _name, _cmd, files in checks)
+    assert ("brand card --check" in [name for name, _cmd, _files in checks]) is cairosvg
+    assert {name for name, _cmd in regen_all.fast_checks(tmp_path)} >= {name for name, _cmd, _files in checks}
+
+
+def test_drift_names_the_stale_files_and_passes_when_none_is(fake: FakeRun, capsys) -> None:
+    assert regen_all.drift() == 0
+    assert capsys.readouterr().out.splitlines()[-1] == "== no derived file is stale"
+    fake.failing = ("console", "readme")
+    assert regen_all.drift() == 1
+    assert capsys.readouterr().out.splitlines()[-1] == "== STALE: README.md"
+    fake.failing = ("policy docs", "figures")
+    assert regen_all.drift() == 1
+    assert capsys.readouterr().out.splitlines()[-1] == "== STALE: docs/<id>/README.md, docs/figures/"
+
+
+def test_drift_mode_runs_only_the_lagging_checks(fake: FakeRun, monkeypatch) -> None:
+    monkeypatch.setattr(regen_all.shutil, "which", lambda name: name)
+    assert regen_all.main(["--drift"]) == 0
+    assert "readme" in fake.labels
+    assert "ruff check" not in fake.labels
+    assert "plugin build base" not in fake.labels
+
+
 def test_the_staged_adopter_checks_evals_once_and_the_owasp_claim(tmp_path: Path) -> None:
     script = regen_all.stage_adopter(tmp_path)
     assert script.count("chock check") == 1
@@ -164,5 +193,5 @@ def test_the_script_documents_its_modes() -> None:
         check=False,
     )
     assert proc.returncode == 0
-    for mode in ("--check-only", "--fast", "--base"):
+    for mode in ("--check-only", "--drift", "--fast", "--base"):
         assert mode in proc.stdout

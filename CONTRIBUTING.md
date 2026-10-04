@@ -241,6 +241,15 @@ Two things, kept apart on purpose:
 
 Runs fewer than it ships: a catalog should publish more than it is bound by.
 
+**Pull requests change sources; docs and images lag until the release.** A PR changes
+`base/<id>/**`, tests, tools and lib, and regenerates only what adopters read straight from
+main: the touched policy's `plugin.json`, `SKILL.md`, manifest and `registry.yaml` row. CI
+checks those. The README counts and rows, the `docs/` pages, figures, brand card, coverage
+matrix and adoption transcripts are not checked on a PR and may be stale on main. The owner's
+release regenerates them in one PR. The nightly workflow runs their checks against main
+(`python tools/regen_all.py --drift`), lists the stale files in the job summary, and fails
+while any is stale. `python tools/regen_all.py` still refreshes everything locally.
+
 ## Sign your commits (DCO)
 
 This project uses the [Developer Certificate of Origin](https://developercertificate.org/)
@@ -258,7 +267,7 @@ CI checks every PR commit for the `Signed-off-by:` trailer. Forgot one?
 ## Figures
 
 Every figure under `docs/figures/` is generated from this repository's own data by a script here,
-shipped as a light and a dark SVG, and regenerated in CI so a stale figure fails the build. If you
+shipped as a light and a dark SVG, and regenerated at release; the nightly drift report names a stale one. If you
 are changing one, read the standard first — it explains the palette, why absence is never drawn as
 a weak grade, and why colour is never the only carrier of meaning:
 
