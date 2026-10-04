@@ -54,7 +54,8 @@ def record(seconds: float, longest: float | None = None, test: str = "t") -> dic
     ],
 )
 def test_a_file_that_is_not_the_per_file_record_is_no_times(tmp_path: Path, data: object) -> None:
-    assert plan_shards.load(write(tmp_path / "t.json", data)) == {}
+    path = write(tmp_path / "t.json", data)
+    assert plan_shards.load(path) == {}
 
 
 def test_a_cache_saved_before_per_test_times_is_no_times_and_plans_the_hash_split(tmp_path: Path) -> None:
@@ -64,7 +65,8 @@ def test_a_cache_saved_before_per_test_times_is_no_times_and_plans_the_hash_spli
     assert proc.returncode == 0
     assert json.loads(proc.stdout) == {"shards": 4, "assignment": {}, "split": [], "source": "none"}
     assert "four-way hash split" in proc.stderr
-    assert run("check", old).returncode == 0
+    checked = run("check", old)
+    assert checked.returncode == 0
 
 
 def test_a_missing_or_garbled_file_is_no_times(tmp_path: Path) -> None:
@@ -257,7 +259,8 @@ def test_a_file_of_many_short_tests_over_the_cap_in_total_passes(tmp_path: Path)
 
 
 def test_one_test_of_301_seconds_fails_and_300_does_not(tmp_path: Path) -> None:
-    assert run("check", write(tmp_path / "a.json", {"f.py": record(301, 301, "test_x")})).returncode == 1
+    over_cap = run("check", write(tmp_path / "a.json", {"f.py": record(301, 301, "test_x")}))
+    assert over_cap.returncode == 1
     at_cap = run("check", write(tmp_path / "b.json", {"f.py": record(300, 300, "test_x")}))
     assert at_cap.returncode == 0
     assert "::warning::f.py::test_x takes 300s" in at_cap.stdout
