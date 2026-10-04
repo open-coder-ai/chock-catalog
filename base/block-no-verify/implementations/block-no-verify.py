@@ -3,7 +3,7 @@
 "exec" "$(command -v python3 || command -v python)" "$0" "$@"
 # fmt: on
 # Refuse git --no-verify, the other ways of switching git hooks off, and an agent setting a person-only override.
-# Measurement-only change: timing a one-policy PR.
+# Measurement-only change: timing a one-policy PR (run 2).
 
 import os
 import re
