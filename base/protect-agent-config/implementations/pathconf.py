@@ -1,4 +1,5 @@
 """`git config` as a writer: keys that run code, `--file` at a protected file, the environment routes (stdlib only)."""
+# Measurement-only change: timing a one-policy PR.
 
 from __future__ import annotations
 

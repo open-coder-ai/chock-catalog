@@ -505,7 +505,7 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.3.2
+  version: 0.3.3
   artifact: rule
   enforcement: advise
   mandatory: false

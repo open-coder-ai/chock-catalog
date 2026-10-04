@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.3.2"
+version: "0.3.3"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
   AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .windsurf/, .agents/, .chock/, ...),
@@ -64,6 +64,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.3
+  date: '2026-10-04'
+  changes:
+  - "comment-only line in pathconf.py, to time a one-policy PR; behaviour unchanged"
 - version: 0.3.2
   date: '2026-10-03'
   changes:
