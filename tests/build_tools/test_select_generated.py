@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import select_tests
+import untraced
 from trees import policy_dirs
 
 ROOT = select_tests.ROOT
@@ -43,7 +44,11 @@ def test_every_generator_in_the_catalog_is_run_here() -> None:
 
 
 def written_by_the_generators(tmp_path: Path) -> list[str]:
-    """Run each generator in a copy of the repo whose files all start at time 0; what moved was written."""
+    """Run each generator in a copy of the repo whose files all start at time 0; what moved was written.
+
+    Outside the coverage tracer: a copy's tools are not the ones under test, and the paths they would
+    leave in the coverage data are gone by the time `coverage report` reads it.
+    """
     copy = tmp_path / "repo"
     skip = shutil.ignore_patterns("__pycache__", "*.pyc")
     for name in KEEP:
@@ -57,7 +62,7 @@ def written_by_the_generators(tmp_path: Path) -> list[str]:
     for path in copy.rglob("*"):
         if path.is_file():
             os.utime(path, (0, 0))
-    env = {**os.environ, "PYTHONPATH": str(stub), "PYTHONUTF8": "1"}
+    env = {**untraced.clean_env(), "PYTHONPATH": str(stub), "PYTHONUTF8": "1"}
     for cmd, cwd in GENERATORS:
         script = (copy / cwd / cmd[0]).as_posix()
         proc = subprocess.run(
