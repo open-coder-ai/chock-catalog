@@ -13,7 +13,6 @@ import pytest
 from policies import gatekit, sbfkit, scriptkit
 
 POLICY, NAME = "scan-secret-files", sbfkit.GATE
-WARN = 4  # the runner's warn: reported, never a refusal
 gate, sbf_core, sbf_judge, sbf_keys = (sbfkit.load(n) for n in (NAME, "sbf_core", "sbf_judge", "sbf_keys"))
 KUBE = "kind: Config\nusers:\n- name: a\n  user:\n    token: kubeletbootstrap\n"
 PUTTY_ENCRYPTED = "PuTTY-User-Key-File-3: ssh-rsa\nEncryption: aes256-cbc\nPrivate-Lines: 1\nAAAA\n"
@@ -76,12 +75,12 @@ def test_main_reads_stdin_in_process(monkeypatch: pytest.MonkeyPatch, capsys: py
     assert json.loads(capsys.readouterr().out)["findings"][0]["rule"] == "sbf-tracked-env"
 
 
-def test_the_engine_warns_in_observe_and_keeps_only_what_the_change_adds(tmp_path: Path) -> None:
+def test_the_engine_blocks_and_keeps_only_what_the_change_adds(tmp_path: Path) -> None:
     repo = scriptkit.init_repo(tmp_path / "r", {"ops/kubeconfig": KUBE, "README.md": "x\n"})
     scriptkit.write(repo, {"ops/kubeconfig": "# a comment\n" + KUBE, "deploy/.env": "API_KEY=livevaluehere\n"})
     scriptkit.git(repo, "add", "-A")
     code, err = gatekit.judge(POLICY, repo, gatekit.COMMIT)
-    assert code == 0  # a warn at commit lets the commit through
+    assert code == 1  # a refusal at commit stops the commit
     assert "deploy/.env:1: sbf-tracked-env" in err
     assert "ops/kubeconfig" not in err
 
@@ -90,7 +89,7 @@ def test_the_engine_judges_an_agent_write(tmp_path: Path) -> None:
     repo = scriptkit.init_repo(tmp_path / "r", {"README.md": "x\n"})
     code, err = gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {"vpn/client.ovpn": OVPN})
     assert "sbf-private-key-files" in err
-    assert code == WARN  # observe until promoted
+    assert code == 1  # a refusal on the agent's write
 
 
 # --- helper edges ---------------------------------------------------------------------------------

@@ -1,14 +1,15 @@
 id: scan-secret-files
 name: "Scan Secret Files"
-version: "0.0.1"
+version: "0.1.0"
 description: >
   Friction, not a security boundary: flags files that are secrets by name or content -- private
   keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc,
   git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env,
-  framework secret files, browser stores. Warns only (observe). Misses: renamed binary stores
+  framework secret files, browser stores. Blocks; encrypted keys, notebook outputs and test, fixture,
+  example, doc, lock and eval paths ask. Misses: renamed binary stores
   other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.
 artifact: hook
-enforcement: advise
+enforcement: block
 mandatory: false
 effects:
 - read_only
@@ -19,7 +20,7 @@ hook:
   gate:
     kind: script
     "on": [commit, tool_use]
-    action: warn
+    action: block
     message: >
       This file is a secret, or holds one: a private key or key store, a cloud, registry or tool
       credential file, Terraform state, a dotenv file with live values, or a browser credential store.
@@ -46,6 +47,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-04'
+  changes:
+  - "Promoted from observe to block (D15, roadmap HP01 files tier): action warn becomes block and enforcement advise becomes block. Measured fire rate over the catalog's first-parent history, 154 commits at main fa26774: 1.3%, at or under D15's 5% bar (chock-catalog#223). No detection change: the gate script, its rules, paths and thresholds are untouched. Findings the script already marks as asks (encrypted private keys, notebook outputs, test, fixture, example, doc, lock and eval paths) stay asks; every other finding now refuses at commit and on the agent's write. Eval expectations moved from warn to block or ask accordingly. D15's observe in one adopter is unmeasured: only this catalog was measured."
 - version: 0.0.1
   date: '2026-10-02'
   changes:
