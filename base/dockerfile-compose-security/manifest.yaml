@@ -1,8 +1,8 @@
 id: dockerfile-compose-security
 name: "Dockerfile and Compose Security"
-version: "0.0.1"
+version: "0.1.0"
 description: >
-  Warns (observe rollout, never refuses) when a change to a Dockerfile, Containerfile or compose
+  Blocks (some rules ask) when a change to a Dockerfile, Containerfile or compose
   file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware: FROM
   or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature
   checks off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote ADD
@@ -14,7 +14,7 @@ description: >
   reads the file; scan-secrets lines always. Misses: build args overriding defaults, commands in
   variables, aliases or $'' quoting, bake and k8s files. Friction, not a boundary.
 artifact: rule
-enforcement: advise
+enforcement: block
 mandatory: false
 effects:
 - read_only
@@ -30,13 +30,13 @@ hook:
   gate:
     kind: script
     "on": [commit, tool_use]
-    action: warn
+    action: block
     message: >
       A Dockerfile or compose change weakens the container's isolation or supply chain (each finding
       names its rule, weakness and fix). Pin images by tag and digest, end the final stage with a
       non-root USER, keep TLS and signature checks on, pass secrets with RUN --mount=type=secret or
       compose secrets, and drop privileged, broad cap_add, host namespaces and host-root or Docker
-      socket mounts. This policy only warns while it is measured. A person may keep a reviewed
+      socket mounts. Deny-tier findings block; ask-tier findings ask a person. A person may keep a reviewed
       finding with '# chock: allow <rule-id>' on the line or the comment line above it; in the agent
       only a line already committed in HEAD counts, so an agent asks a person.
     params:
@@ -46,15 +46,15 @@ compliance:
   owasp_asi:
   - control: ASI04
     coverage: partial
-    note: "flags floating base images and unpinned remote sources in container builds; warns only (observe)"
+    note: "flags floating base images and unpinned remote sources in container builds; blocks deny-tier findings, asks on the rest"
   - control: ASI05
     coverage: partial
-    note: "flags privileged containers, host namespaces and Docker socket mounts an agent writes into compose files; warns only (observe)"
+    note: "flags privileged containers, host namespaces and Docker socket mounts an agent writes into compose files; blocks deny-tier findings, asks on the rest"
 
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-04T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-04'
+  changes:
+  - "Promoted from observe to enforce (rollout decision D15): action: block, enforcement: block. The pack's fire rate over the catalog's 154 first-parent commits was 0.6%, under D15's 5% bar (chock-catalog#223). Each rule keeps the verdict the gate script already returns, the roadmap 6.4 default: deny-tier rules block (exit 1), ask-tier rules ask (exit 3). No detection, scope, path or threshold change; 27 eval cases now expect block or ask where they expected warn."
 - version: 0.0.1
   date: '2026-10-02'
   changes:
