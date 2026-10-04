@@ -8,10 +8,9 @@ suite:
     pass_rate:
       direction: higher_is_better
       threshold: 1.0
-  # The gate ships in observe (action: warn, D15): every case it flags expects `warn`; the script itself
-  # exits ask, which the promotion PR lets through by raising the action. Fixture text is written as YAML
-  # double-quoted scalars with one \x escape inside each key name and token prefix, so this file never
-  # matches its own gate or scan-secrets (roadmap 2.6 trap 7); values are seeded random draws, not credentials.
+  # Every case it flags expects `ask`, the script's own verdict (roadmap HP01 entropy tier; promoted from observe by D15).
+  # Fixture text is written as YAML double-quoted scalars with one \x escape inside each key name and token prefix,
+  # so this file never matches its own gate or scan-secrets (roadmap 2.6 trap 7); values are seeded random draws, not credentials.
   cases:
   - id: tc-001
     category: trigger
@@ -20,7 +19,7 @@ suite:
     execute:
       files:
         config/app.json: "{\n  \"client_sec\x72et\": \"9ttYNbJpKmrwP7y75Ltg3GXFYdlejRNd\"\n}\n"
-      expect: warn
+      expect: ask
   - id: tc-002
     category: trigger
     prompt: "A YAML file assigns a camelCase access key a random value."
@@ -28,7 +27,7 @@ suite:
     execute:
       files:
         deploy/values.yaml: "service:\n  acce\x73sKey: BScWZyXmt3GwdCeWivIOdls4gca5sNyn\n"
-      expect: warn
+      expect: ask
   - id: tc-003
     category: trigger
     prompt: "A dotenv file sets a database password in its short spelling."
@@ -36,7 +35,7 @@ suite:
     execute:
       files:
         .env.production: "DB_HOST=db.internal\nDB_PAS\x53WD=9HDmazJGCboiDrAB2KxyDLxUUbLOosew\n"
-      expect: warn
+      expect: ask
   - id: tc-004
     category: trigger
     prompt: "A Terraform variable default holds a master key."
@@ -44,7 +43,7 @@ suite:
     execute:
       files:
         infra/main.tf: "variable \"kms\" {\n  default = { maste\x72_key = \"JtXKILQdI4WCL7FotUlTH7v58eBQ12eZ\" }\n}\n"
-      expect: warn
+      expect: ask
   - id: tc-005
     category: trigger
     prompt: "A config file holds a Stripe test-mode secret key, which the regex tier does not refuse."
@@ -52,7 +51,7 @@ suite:
     execute:
       files:
         payments/settings.ini: "stripe = sk_t\x65st_Z1TcKNepl0J8PQ1Wa6V974FM\n"
-      expect: warn
+      expect: ask
   - id: tc-006
     category: trigger
     prompt: "A script embeds a Slack app-level token."
@@ -60,7 +59,7 @@ suite:
     execute:
       files:
         bot/run.sh: "export SLACK_APP=xa\x70p-1-A0945807302-UBmBO6Y0jxNAliaSmaMU96Gp\n"
-      expect: warn
+      expect: ask
   - id: tc-007
     category: trigger
     prompt: "A file pastes an AWS bearer-token key id (ABIA), a prefix the regex tier does not know."
@@ -68,7 +67,7 @@ suite:
     execute:
       files:
         ops/notes.txt: "rotated id AB\x49AF5QCAJ4XUBR5M088 yesterday\n"
-      expect: warn
+      expect: ask
   - id: tc-008
     category: trigger
     prompt: "A seed-data file carries a card number that passes the Luhn check."
@@ -76,7 +75,7 @@ suite:
     execute:
       files:
         seed/customers.json: "{\"name\": \"A. Person\", \"pan\": \"4938 5708\x203934 7359\"}\n"
-      expect: warn
+      expect: ask
   - id: tc-009
     category: adversarial
     prompt: "A Kubernetes Secret stores the password base64-encoded, hiding its shape from a regex."
@@ -84,7 +83,7 @@ suite:
     execute:
       files:
         k8s/secret.yaml: "kind: Secret\ndata:\n  pass\x77ord: SlZ1MXpZeFF1M1pQZ1A0Y1B2bnJzTEZpSWVMdGhKdUY=\n"
-      expect: warn
+      expect: ask
   - id: tc-010
     category: adversarial
     prompt: "Source code sends a bearer token in an Authorization header literal."
@@ -92,7 +91,7 @@ suite:
     execute:
       files:
         src/client.js: "fetch(url, { headers: { Author\x69zation: \"Bearer fDBNKGruMjZ8ryM7giC2JGWXhSkcbWBc\" } })\n"
-      expect: warn
+      expect: ask
   - id: tc-011
     category: adversarial
     prompt: "A webhook URL carries the token in its query string."
@@ -100,7 +99,7 @@ suite:
     execute:
       files:
         ci/notify.sh: "curl -s \"https://hooks.example.invalid/cb?to\x6ben=8JQ5UGoKhoc5jdbcJSkc7c5XzWr6ykGT\"\n"
-      expect: warn
+      expect: ask
   - id: tc-012
     category: adversarial
     prompt: "The file uses CRLF line endings."
@@ -108,7 +107,7 @@ suite:
     execute:
       files:
         conf/win.ini: "[auth]\r\nclient_sec\x72et = hetsz36ewvZjAWx5OfswhrRGaWUjUKzU\r\n"
-      expect: warn
+      expect: ask
   - id: tc-013
     category: adversarial
     prompt: "An agent writes a secret and the waiver pragma on the same line."
@@ -117,7 +116,7 @@ suite:
       writes:
         conf/agent.env: "client_sec\x72et=XoOQCfquJhEyI4yqwkL27QwW59sE0xVr  # pragma: allowlist sec\x72et\n"
       event: tool_use
-      expect: warn
+      expect: ask
   - id: tc-014
     category: adversarial
     prompt: "A dotenv file holds a dotted token whose segments are random."
@@ -125,7 +124,7 @@ suite:
     execute:
       files:
         svc/.env: "CLIENT_SEC\x52ET=VicN7y7lMTSz.QLCyKj0MF7L8.fbadpRazqI7JxYAlmtPF28nr\n"
-      expect: warn
+      expect: ask
   - id: tc-015
     category: adversarial
     prompt: "C# source builds a connection string whose password sits inside the string literal."
@@ -133,7 +132,7 @@ suite:
     execute:
       files:
         src/Db.cs: "var cs = \"Server=db;User Id=app;Pass\x77ord=fA6lGZfED39xxHxiB4yROVnlJ6R5VOtp;\";\n"
-      expect: warn
+      expect: ask
   - id: tc-016
     category: negative_trigger
     prompt: "A config assigns a UUID to a service key."

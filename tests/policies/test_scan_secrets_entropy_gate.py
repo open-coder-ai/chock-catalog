@@ -161,8 +161,8 @@ def engine(repo: Path, writes: dict[str, str], event: str) -> int:
     return gatekit.judge(kit.POLICY, repo, event, writes)[0]
 
 
-@pytest.mark.parametrize(("event", "code"), [(gatekit.COMMIT, 0), (gatekit.PRE_TOOL_USE, 4), (gatekit.STOP, 4)])
-def test_the_engine_warns_on_a_new_secret_while_the_policy_observes(repo: Path, event: str, code: int) -> None:
+@pytest.mark.parametrize(("event", "code"), [(gatekit.COMMIT, 1), (gatekit.PRE_TOOL_USE, 3), (gatekit.STOP, 4)])
+def test_the_engine_asks_on_a_new_secret(repo: Path, event: str, code: int) -> None:
     writes = {"new.env": f"client_secret={kit.secret(25)}\n"}
     if event != gatekit.PRE_TOOL_USE:
         scriptkit.write(repo, writes)
@@ -183,7 +183,7 @@ def test_a_second_copy_of_a_held_secret_is_new(repo: Path) -> None:
 
 def test_an_agent_cannot_waive_a_new_secret_with_the_pragma(repo: Path) -> None:
     text = f"client_secret={kit.secret(26)}  {PRAGMA}\n"
-    assert engine(repo, {"new.env": text}, gatekit.PRE_TOOL_USE) == 4
+    assert engine(repo, {"new.env": text}, gatekit.PRE_TOOL_USE) == 3
 
 
 def test_a_pragma_line_a_person_committed_stays_waived_for_the_agent(repo: Path) -> None:
@@ -191,8 +191,8 @@ def test_a_pragma_line_a_person_committed_stays_waived_for_the_agent(repo: Path)
     assert engine(repo, {"waived.env": text}, gatekit.PRE_TOOL_USE) == 0
 
 
-def test_the_policy_ships_in_observe_with_the_script_asking() -> None:
+def test_the_policy_asks_and_the_script_asks() -> None:
     spec = gatekit.gate_spec(kit.POLICY)
-    assert (spec["kind"], spec["action"], spec["on"]) == ("script", "warn", ["commit", "tool_use"])
+    assert (spec["kind"], spec["action"], spec["on"]) == ("script", "ask", ["commit", "tool_use"])
     assert gate.EXIT_ASK == 3
-    assert scriptkit.manifest(kit.POLICY)["enforcement"] == "advise"
+    assert scriptkit.manifest(kit.POLICY)["enforcement"] == "block"
