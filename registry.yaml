@@ -845,19 +845,19 @@ policies:
     or deleted. Judges what a change adds. Friction, not a security boundary.'
 - id: package-lifecycle-scripts
   path: base/package-lifecycle-scripts
-  version: 0.0.1
+  version: 0.1.0
   artifact: rule
-  enforcement: advise
+  enforcement: block
   mandatory: false
-  mechanism: warn-only gate
-  enforces: advisory
+  mechanism: script
+  enforces: enforced-at-commit
   eval_cases: 28
   eval_executed: 28
-  description: 'Warns (observe rollout) when a change adds or edits code that runs at install or build
-    time: npm install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned
-    git/URL deps; setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks;
-    build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven,
-    Gradle exec. Never refuses yet; judges file text, not what a hook runs. Friction, not a security
+  description: 'Blocks fetch-exec class hooks and asks about other new ones when a change adds or edits
+    code that runs at install or build time: npm install/prepare/pack scripts, gypfile without native
+    sources, bin shadowing, unpinned git/URL deps; setup.py cmdclass and import-time calls, .pth imports,
+    conftest, pyproject build hooks; build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf,
+    Podfile, Composer, Maven, Gradle exec. Judges file text, not what a hook runs. Friction, not a security
     boundary.'
 - id: compromised-package-ioc
   path: base/compromised-package-ioc
