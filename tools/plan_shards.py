@@ -1,50 +1,70 @@
 #!/usr/bin/env python3
 """Plan a full run's shards from the per-file times the last run on main recorded.
 
-    python tools/plan_shards.py junit OUT.json JUNIT.xml...   # seconds per test file, from pytest --junitxml files
+    python tools/plan_shards.py junit OUT.json JUNIT.xml...   # per file: summed seconds, longest test, from junit files
     python tools/plan_shards.py plan TIMES.json               # JSON: shard count, each file's shard, files to split
-    python tools/plan_shards.py check TIMES.json [--warn]     # a file over the cap fails; near it is a warning
+    python tools/plan_shards.py check TIMES.json [--warn]     # a single test over the cap fails; near it is a warning
 
-A file's seconds are its tests' summed times; a shard runs them on WORKERS cores, so wall time is that over WORKERS.
-Whole files are packed longest first into the lightest shard. A file longer than a shard is not packed: its tests
-go to the shard their node id hashes to (shard_tests.slice_of), so the slices still partition the suite. With no
-times the plan is the plain four-way hash split. A missing or unreadable TIMES file is no times. `check` skips the one file in EXEMPT, and says so every run.
+A file's seconds are its tests' summed times; a shard runs them on WORKERS cores, so its wall time is that over
+WORKERS, but never less than its longest test, which one core runs alone. Whole files are packed longest first into
+the lightest shard. A file longer than a shard is not packed: its tests go to the shard their node id hashes to
+(shard_tests.slice_of), so the slices still partition the suite. With no times the plan is the plain four-way hash
+split. A missing, unreadable or old-format (file to seconds) TIMES file is no times. The cap is on one test, the one
+unit that cannot be split: a file of many short tests is balanced across shards and never fails it.
 """
 
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import math
 import re
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 #: Cores on a hosted runner, which pytest -n auto spreads a shard's tests across.
 WORKERS = 4
 #: Wall seconds of tests one shard should take; with setup, a shard then runs about six minutes.
 TARGET = 270.0
 MIN_SHARDS, MAX_SHARDS = 4, 16
-#: No file may take longer than this on a full run: it fails the durations job on main.
+#: No single test may take longer than this on a full run: it fails the durations job on main.
 CAP = 300.0
-#: A file this close to the cap draws a warning on a pull request.
+#: A test this close to the cap draws a warning on a pull request.
 WARN_AT = 0.8
-#: The one file allowed past the cap, with why. Temporary: parametrizing it per policy removes the entry.
-EXEMPT = {
-    "tests/policies/test_every_policy.py": "walks every policy in one file, with a 372 s serial case; to be parametrized per policy",
-}
 TESTCASE = re.compile(r"<testcase\b([^>]*)>")
 ATTRIBUTE = re.compile(r'(\w+)="([^"]*)"')
 
 
-def load(path: str | Path) -> dict[str, float]:
-    """File -> seconds, or {} when the file is missing, unreadable or not that shape."""
+class Times(NamedTuple):
+    """One test file's recorded time: summed seconds over its tests, and its longest single test."""
+
+    seconds: float
+    longest: float
+    test: str
+
+
+def number(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def load(path: str | Path) -> dict[str, Times]:
+    """File -> Times, or {} when the file is missing, unreadable, or not that shape (an old file -> seconds is not)."""
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
-    ok = isinstance(data, dict) and all(isinstance(k, str) and isinstance(v, int | float) for k, v in data.items())
-    return {k: float(v) for k, v in data.items()} if ok else {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, Times] = {}
+    for name, found in data.items():
+        if not (isinstance(found, dict) and number(found.get("seconds")) and number(found.get("longest"))):
+            return {}
+        if not isinstance(found.get("test"), str):
+            return {}
+        out[name] = Times(float(found["seconds"]), float(found["longest"]), found["test"])
+    return out
 
 
 def test_file(classname: str, root: Path) -> str | None:
@@ -57,27 +77,32 @@ def test_file(classname: str, root: Path) -> str | None:
     return None
 
 
-def times_from_junit(paths: list[str], root: Path) -> dict[str, float]:
-    """Seconds per test file, summed over every junit file given."""
-    out: dict[str, float] = {}
+def times_from_junit(paths: list[str], root: Path) -> dict[str, Times]:
+    """Per test file, summed over every junit file given: its seconds, and its longest test with that test's name."""
+    out: dict[str, Times] = {}
     for path in paths:
         for match in TESTCASE.finditer(Path(path).read_text(encoding="utf-8")):
             attrs = dict(ATTRIBUTE.findall(match.group(1)))
             name = test_file(attrs.get("classname", ""), root)
             if name:
-                out[name] = out.get(name, 0.0) + float(attrs.get("time", 0))
+                seconds = float(attrs.get("time", 0))
+                before = out.get(name, Times(0.0, 0.0, ""))
+                test = html.unescape(attrs.get("name", ""))
+                longest = (seconds, test) if seconds > before.longest else (before.longest, before.test)
+                out[name] = Times(before.seconds + seconds, *longest)
     return dict(sorted(out.items()))
 
 
-def wall(seconds: float, workers: int = WORKERS) -> float:
-    return seconds / workers
+def wall(times: Times, workers: int = WORKERS) -> float:
+    """Wall seconds of a file on a shard: its tests spread over the workers, but one test runs on one core."""
+    return max(times.seconds / workers, times.longest)
 
 
-def plan(times: dict[str, float], target: float = TARGET, workers: int = WORKERS) -> dict:
+def plan(times: dict[str, Times], target: float = TARGET, workers: int = WORKERS) -> dict:
     """{"shards", "assignment": file -> shard 1..shards, "split": [files], "source"}; the hash split with no times."""
     if not times:
         return {"shards": MIN_SHARDS, "assignment": {}, "split": [], "source": "none"}
-    cost = {name: wall(seconds, workers) for name, seconds in times.items()}
+    cost = {name: wall(found, workers) for name, found in times.items()}
     shards = min(MAX_SHARDS, max(MIN_SHARDS, math.ceil(sum(cost.values()) / target)))
     split = sorted(name for name, seconds in cost.items() if seconds > target)
     loads = [sum(cost[name] for name in split) / shards] * shards
@@ -105,10 +130,10 @@ def load_plan(path: str | Path) -> dict:
     return found
 
 
-def over(times: dict[str, float], limit: float, workers: int = WORKERS) -> dict[str, float]:
-    """The files whose wall seconds exceed `limit`, slowest first."""
-    slow = {name: wall(seconds, workers) for name, seconds in times.items() if wall(seconds, workers) > limit}
-    return dict(sorted(slow.items(), key=lambda kv: -kv[1]))
+def over(times: dict[str, Times], limit: float) -> dict[str, tuple[str, float]]:
+    """File -> (its longest test, that test's seconds) for the files whose longest test exceeds `limit`, slowest first."""
+    slow = {name: (found.test, found.longest) for name, found in times.items() if found.longest > limit}
+    return dict(sorted(slow.items(), key=lambda kv: -kv[1][1]))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -124,7 +149,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "junit":
         found = times_from_junit(args.inputs, Path.cwd())
-        Path(args.out).write_text(json.dumps(found, indent=1) + "\n", encoding="utf-8")
+        text = json.dumps({name: v._asdict() for name, v in found.items()}, indent=1)
+        Path(args.out).write_text(text + "\n", encoding="utf-8")
         return 0
     times = load(args.times)
     if args.command == "plan":
@@ -133,17 +159,12 @@ def main(argv: list[str] | None = None) -> int:
             print("no recorded times: the four-way hash split", file=sys.stderr)
         print(json.dumps(chosen))
         return 0
-    counted = {name: seconds for name, seconds in times.items() if name not in EXEMPT}
-    for name, reason in EXEMPT.items():
-        print(f"::warning::{name} is exempt from the {CAP:.0f}s cap, temporarily: {reason}")
-    for name, seconds in over(counted, CAP).items():
-        print(f"::error::{name} takes about {seconds:.0f}s of wall time, over the {CAP:.0f}s cap; split it by activity")
-    for name, seconds in over(counted, CAP * WARN_AT).items():
+    for name, (test, seconds) in over(times, CAP).items():
+        print(f"::error::{name}::{test} takes {seconds:.0f}s, over the {CAP:.0f}s cap; split the test by activity")
+    for name, (test, seconds) in over(times, CAP * WARN_AT).items():
         if seconds <= CAP:
-            print(
-                f"::warning::{name} takes about {seconds:.0f}s of wall time, over {WARN_AT:.0%} of the {CAP:.0f}s cap"
-            )
-    return 1 if over(counted, CAP) and not args.warn else 0
+            print(f"::warning::{name}::{test} takes {seconds:.0f}s, over {WARN_AT:.0%} of the {CAP:.0f}s cap")
+    return 1 if over(times, CAP) and not args.warn else 0
 
 
 if __name__ == "__main__":

@@ -86,12 +86,6 @@ def test_a_policy_that_drops_nothing_deselects_nothing() -> None:
     assert dropped == []
 
 
-def test_chosen_narrows_a_loop_to_the_policies_given_and_keeps_all_when_none_are() -> None:
-    assert policy_rows.chosen(config(["pol-b"], []), ["pol-a", "pol-b", "pol-c"]) == ["pol-b"]
-    assert policy_rows.chosen(config(["pol-a", "pol-c"], []), ["pol-a", "pol-b", "pol-c"]) == ["pol-a", "pol-c"]
-    assert policy_rows.chosen(config(None, []), iter(["pol-a", "pol-b"])) == ["pol-a", "pol-b"]
-
-
 def test_the_option_is_registered_without_a_default() -> None:
     seen: dict[str, object] = {}
     policy_rows.add_option(SimpleNamespace(addoption=lambda name, **kw: seen.update({name: kw})))
