@@ -21,7 +21,8 @@ def write(path: Path, data: object) -> str:
 
 @pytest.mark.parametrize("data", [[1], {"a": "slow"}, {"a": [1]}, "text"])
 def test_a_file_that_is_not_name_to_seconds_is_no_data(tmp_path: Path, data: object) -> None:
-    assert durations.load(write(tmp_path / "d.json", data)) == {}
+    path = write(tmp_path / "d.json", data)
+    assert durations.load(path) == {}
 
 
 def test_a_missing_or_garbled_file_is_no_data(tmp_path: Path) -> None:
@@ -31,7 +32,8 @@ def test_a_missing_or_garbled_file_is_no_data(tmp_path: Path) -> None:
 
 
 def test_load_reads_seconds_as_floats(tmp_path: Path) -> None:
-    assert durations.load(write(tmp_path / "d.json", {"a.py": 3, "b.py": 1.5})) == {"a.py": 3.0, "b.py": 1.5}
+    path = write(tmp_path / "d.json", {"a.py": 3, "b.py": 1.5})
+    assert durations.load(path) == {"a.py": 3.0, "b.py": 1.5}
 
 
 def test_merge_adds_what_the_shards_report_and_sorts_by_name() -> None:

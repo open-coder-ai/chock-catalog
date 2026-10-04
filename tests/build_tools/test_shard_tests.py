@@ -102,7 +102,7 @@ def test_with_times_a_file_stays_whole_in_one_slice_and_the_slices_partition_the
 @pytest.mark.parametrize("bad", ["absent.json", "empty.json"])
 def test_unreadable_or_empty_times_fall_back_to_the_hash(tmp_path: Path, bad: str) -> None:
     (tmp_path / "empty.json").write_text("{}", encoding="utf-8")
-    hashed = [[n for n in slice_ if True] for slice_ in slices_by_time(None)]
+    hashed = slices_by_time(None)
     assert slices_by_time(str(tmp_path / bad)) == hashed
 
 
