@@ -8,10 +8,10 @@ import json
 from pathlib import Path
 
 import pytest
-from policies import gatekit, scriptkit
+from policies import gatekit, memorykit, scriptkit
 
 NAME = "guard-memory-writes-gate.py"
-mod = scriptkit.load("guard-memory-writes", NAME)
+mod = memorykit.load()
 
 # Built by concatenation so this file never carries a credential-shaped literal.
 AWS = "AKIA" + "IOSFODNN7EXAMPLE"
