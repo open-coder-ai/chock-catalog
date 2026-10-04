@@ -118,7 +118,7 @@ def statements(text: str) -> list[tuple[int, str]]:
         elif run and not BLOCK_START.match(line) and not run[0].startswith("#"):
             run.append(line.strip())
         else:
-            run = _close(out, first, run)
+            _close(out, first, run)
             first, run = number, [BULLET.sub("", line).strip()]
     _close(out, first, run)
     return out
