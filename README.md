@@ -8,8 +8,8 @@
 
 <p>
 <img alt="71 policies" src="https://img.shields.io/badge/policies-71-blue">
-<img alt="41 enforced" src="https://img.shields.io/badge/enforced-41-brightgreen">
-<img alt="30 advisory" src="https://img.shields.io/badge/advisory-30-orange">
+<img alt="40 enforced" src="https://img.shields.io/badge/enforced-40-brightgreen">
+<img alt="31 advisory" src="https://img.shields.io/badge/advisory-31-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
 <img alt="license" src="https://img.shields.io/badge/license-Apache--2.0-lightgrey">
@@ -45,9 +45,9 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 29 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 28 |
 | `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
-| `advisory` | text an agent reads and may or may not follow | 30 |
+| `advisory` | text an agent reads and may or may not follow | 31 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
 
@@ -94,7 +94,6 @@ throwaway repo on every push.
 | [`refname-filename-metachar`](docs/refname-filename-metachar/) | names a shell, CI step or git can misread -- a path a change adds or renames into, and a branch or tag pushed, holding command substitution, an IFS expansion, a backtick, a shell operator, a control or bidi character, a leading dash or a `..` segment; a guard refuses git and file commands creating such names. No waiver | 41/41 |
 | [`scan-instruction-files`](docs/scan-instruction-files/) | **Asks** a person before a change adds injection text to an agent instruction file (AGENTS.md, CLAUDE.md, rules, prompts, skills) -- rule overrides, secrecy, auto-approve, hook or review bypass, fetch-and-run, removed guardrails; refuses secret exfiltration and encoded payloads; only added text, English phrases, friction not a boundary | 31/32 |
 | [`registry-config`](docs/registry-config/) | package-manager config that redirects installs or weakens them: literal registry tokens, http or unlisted registry hosts, TLS or checksum verification off, dependency install scripts on; extra indexes, replaces and a missing release cooldown ask; only what the change adds | 57/57 |
-| [`block-hook-bypass-in-files`](docs/block-hook-bypass-in-files/) | lines added to hook launchers and scripts that switch git hooks off — a hook-skip option on a git command, `core.hooksPath` set by `git config` or `GIT_CONFIG_*`, the husky, lefthook and pre-commit off-switch variables, a hook uninstall — in `.husky/`, `.githooks/`, lefthook config, `package.json`, Makefiles, justfiles, `.envrc` and shell scripts; friction, not a boundary | 28/28 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,
@@ -127,6 +126,7 @@ per-hook trust review before its hooks run.
 [`injection-defense`](docs/injection-defense/) ·
 [`memory-discipline`](docs/memory-discipline/) ·
 [`review-like-a-red-team`](docs/review-like-a-red-team/) ·
+[`block-hook-bypass-in-files`](docs/block-hook-bypass-in-files/) ·
 [`dockerfile-compose-security`](docs/dockerfile-compose-security/) ·
 [`ci-github-actions-security`](docs/ci-github-actions-security/) ·
 [`agent-devenv-autoexec`](docs/agent-devenv-autoexec/) ·
