@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+from functools import partial
 from pathlib import Path
 
 import check_readme
@@ -146,10 +147,40 @@ def test_main(monkeypatch, capsys) -> None:
     assert capsys.readouterr().out.startswith("registry.yaml done\nREADME.md is stale")
 
 
-def test_the_committed_files_are_what_the_generator_writes() -> None:
+@pytest.fixture
+def scoped(catalog: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """gen_registry.main pointed at the fixture catalog, with a README whose counts are stale."""
+    real = (ROOT / "README.md").read_text(encoding="utf-8")
+    (catalog / "README.md").write_text(re.sub(r"badge/policies-\d+-", "badge/policies-1-", real), encoding="utf-8")
+    for name in ("update_registry", "update_readme"):
+        monkeypatch.setattr(gen_registry, name, partial(getattr(gen_registry, name), catalog))
+    monkeypatch.setattr(gen_registry, "update_prose", lambda **_kw: "SECURITY.md counts already current")
+    return catalog
+
+
+def test_registry_only_passes_when_just_the_readme_counts_are_stale(scoped: Path, capsys) -> None:
+    assert scoped.is_dir()
+    gen_registry.update_registry()
+    assert gen_registry.main(["--check"]) == 1
+    assert "README.md is stale" in capsys.readouterr().out
+    assert gen_registry.main(["--check", "--registry-only"]) == 0
+    assert capsys.readouterr().out == "registry.yaml already current\n"
+
+
+def test_registry_only_fails_on_a_stale_row_and_writes_nothing_else(scoped: Path, capsys) -> None:
+    readme = (scoped / "README.md").read_text(encoding="utf-8")
+    assert gen_registry.main(["--check", "--registry-only"]) == 1
+    assert "registry.yaml is stale" in capsys.readouterr().out
+    assert gen_registry.main(["--registry-only"]) == 0
+    assert gen_registry.main(["--check", "--registry-only"]) == 0
+    assert (scoped / "README.md").read_text(encoding="utf-8") == readme
+
+
+@pytest.mark.parametrize("flags", [[], ["--registry-only"]])
+def test_the_committed_files_are_what_the_generator_writes(flags: list[str]) -> None:
     """Run as a script, the way CI and regen_all.py run it."""
     proc = subprocess.run(
-        [sys.executable, str(ROOT / "tools" / "gen_registry.py"), "--check"],
+        [sys.executable, str(ROOT / "tools" / "gen_registry.py"), "--check", *flags],
         capture_output=True,
         text=True,
         check=False,

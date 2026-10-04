@@ -4,6 +4,7 @@
     python tools/regen_all.py                # regenerate, then check everything CI checks
     python tools/regen_all.py --fast         # the same, without pytest --cov and the staged adopter
     python tools/regen_all.py --check-only   # write nothing; run the checks
+    python tools/regen_all.py --drift        # write nothing; check only the files that lag until the release
     python tools/regen_all.py --base main    # the ref whose diff picks the transcripts to re-make
 
 Order is load-bearing: lib/ copies -> plugin packages -> sync (the lockfile hashes packaged files) -> registry
@@ -168,20 +169,42 @@ def figures_check(scratch: Path) -> Cmd:
     )
 
 
+def lagging_checks(scratch: Path) -> list[tuple[str, Cmd, tuple[str, ...]]]:
+    """(name, command, derived files it guards) for what lags until the release.
+
+    Pull-request and main CI skip these; the nightly runs them through --drift.
+    """
+    checks: list[tuple[str, Cmd, tuple[str, ...]]] = [
+        (
+            "registry, README and prose counts --check",
+            [PY, "tools/gen_registry.py", "--check"],
+            ("registry.yaml", "README.md", "SECURITY.md", "CONTRIBUTING.md"),
+        ),
+        ("readme", [PY, "tools/check_readme.py"], ("README.md",)),
+        ("policy docs --check", [PY, "tools/gen_policy_docs.py", "--check"], ("docs/<id>/README.md",)),
+        (
+            "coverage matrix --check",
+            [PY, "tools/gen_coverage_matrix.py", "--check"],
+            ("docs/assets/coverage-matrix.svg",),
+        ),
+        ("console", [PY, "tools/check_console.py"], ("README.md",)),
+        ("figures", figures_check(scratch), ("docs/figures/",)),
+    ]
+    if find_spec("cairosvg"):
+        card = f'cd docs/assets && "{PY}" gen_brand_assets.py --check'
+        checks.append(("brand card --check", card, ("docs/assets/social-preview.svg",)))
+    return checks
+
+
 def fast_checks(scratch: Path) -> list[tuple[str, Cmd]]:
     checks: list[tuple[str, Cmd]] = [
         (name, [PY, f"tools/{script}", *args])
         for name, script, *args in (
             ("registry", "check_registry.py"),
             ("lib copies --check", "gen_lib_copies.py", "--check"),
-            ("registry, README and prose counts --check", "gen_registry.py", "--check"),
             ("installed policies vs their source", "check_installed.py"),
-            ("readme", "check_readme.py"),
-            ("policy docs --check", "gen_policy_docs.py", "--check"),
-            ("coverage matrix --check", "gen_coverage_matrix.py", "--check"),
             ("java contract --check", "gen_java_security_contract.py", "--check"),
             ("quickstart.sh --check", "gen_quickstart_sh.py", "--check"),
-            ("console", "check_console.py"),
             ("workflows", "check_workflows.py"),
             ("effects", "check_effects.py"),
             ("a11y rules", "check_a11y_rules.py"),
@@ -192,12 +215,9 @@ def fast_checks(scratch: Path) -> list[tuple[str, Cmd]]:
         ("ruff check", ["ruff", "check", "."]),
         ("ruff format", ["ruff", "format", "--check", *FORMATTED]),
         ("sync --check", ["chock", "sync", "--repo", ".", "--check"]),
-        ("figures", figures_check(scratch)),
         *((f"plugin --check {tree}", plugin_build(tree, check=True)) for tree in TREES),
     ]
-    if find_spec("cairosvg"):
-        checks.append(("brand card --check", f'cd docs/assets && "{PY}" gen_brand_assets.py --check'))
-    return checks
+    return checks + [(name, cmd) for name, cmd, _files in lagging_checks(scratch)]
 
 
 def stage_adopter(dest: Path) -> Cmd:
@@ -244,15 +264,30 @@ def check(base: str, *, fast: bool) -> int:
         return max([rc] + [report(r) for r in run_all(slow_checks(base, scratch, fast=fast, packaged=packaged))])
 
 
+def drift() -> int:
+    """Run only the checks of files that lag until the release; name every stale file."""
+    with tempfile.TemporaryDirectory(prefix="catalog-drift-") as tmp:
+        checks = lagging_checks(Path(tmp))
+        print("== derived files that lag until the release (parallel)")
+        results = run_all([(name, cmd) for name, cmd, _files in checks])
+        rc = max(report(r) for r in results)
+    stale = sorted({f for (_n, _c, files), r in zip(checks, results, strict=True) if r.rc for f in files})
+    print("== " + (f"STALE: {', '.join(stale)}" if stale else "no derived file is stale"))
+    return rc
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     parser.add_argument("--check-only", action="store_true", help="write nothing; run the checks")
+    parser.add_argument("--drift", action="store_true", help="write nothing; check only what lags until the release")
     parser.add_argument("--fast", action="store_true", help="skip pytest --cov and the staged adopter")
     parser.add_argument("--base", default="origin/main", help="ref policies are diffed against")
     args = parser.parse_args(argv)
     if shutil.which("chock") is None:
         print("chock is not on PATH: pip install the framework at the ref in .framework-ref", file=sys.stderr)
         return 1
+    if args.drift:
+        return drift()
     start = time.monotonic()
     rc = 0 if args.check_only else regenerate(args.base)
     rc = max(rc, check(args.base, fast=args.fast))

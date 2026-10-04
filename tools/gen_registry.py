@@ -146,9 +146,15 @@ def update_prose(root: Path = ROOT, *, write: bool = True) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Write every file; with --check, write nothing and fail if any would change."""
-    write = "--check" not in (sys.argv[1:] if argv is None else argv)
-    results = [update_registry(write=write), update_readme(write=write), update_prose(write=write)]
+    """Write every file; with --check, write nothing and fail if any would change.
+
+    --registry-only touches registry.yaml alone: the rows adopters read from main stay current on
+    every PR, while the README and prose counts lag until the release.
+    """
+    args = sys.argv[1:] if argv is None else argv
+    write = "--check" not in args
+    updates = (update_registry,) if "--registry-only" in args else (update_registry, update_readme, update_prose)
+    results = [update(write=write) for update in updates]
     print("\n".join(results))
     return int(any("is stale" in result for result in results))
 

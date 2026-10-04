@@ -1,10 +1,8 @@
 name: Nightly transcript sweep
 
-# The PR gate for adoption transcripts is diff-scoped: it re-derives only the policies (or
-# transcripts) a PR touches, which keeps contributor feedback at seconds. The price of that
-# scoping is a gap: when the FRAMEWORK changes what a command prints, every transcript goes
-# stale at once and no PR touches them -- silent drift in the artifact whose whole value is
-# that it cannot drift. This sweep re-adopts every policy from an empty repository once a
+# Adoption transcripts are no longer checked on pull requests: they lag until the owner's release.
+# When the FRAMEWORK changes what a command prints, or a policy changes, transcripts go stale and
+# no PR touches them -- silent drift in the artifact whose whole value is that it cannot drift. This sweep re-adopts every policy from an empty repository once a
 # day, so framework-output drift is caught within 24 hours instead of at each policy's next
 # edit. Cost at 28 policies: ~45 seconds of ubuntu time, off the PR path entirely.
 #
@@ -51,3 +49,51 @@ jobs:
       # `python tools/gen_adoption_transcript.py` and commit the result via PR.
       - name: Every adoption transcript reproduces
         run: python tools/gen_adoption_transcript.py --check
+
+  # Pull requests no longer keep the derived docs and images current: README counts and rows, the
+  # policy pages, the coverage matrix, the quoted console output, the figures and the brand card lag
+  # until the owner's release. This job is how that lag stays visible. It runs those checks against
+  # main, lists the stale files in the job summary, and fails when any is stale. It opens no issue
+  # (that would need `issues: write`); the failed run is the report. The adoption transcripts are
+  # the sweep job's, above.
+  drift:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: main
+          path: .framework
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      # cairosvg is the brand card's renderer; regen_all skips that check without it.
+      - name: Install Chock and the generators' tooling
+        run: |
+          pip install ./.framework
+          pip install --require-hashes -r requirements/test.txt
+          pip install "cairosvg==2.9.0"
+
+      - name: Derived files that lag until the release are current
+        run: |
+          status=0
+          python tools/regen_all.py --drift > drift.txt 2>&1 || status=$?
+          cat drift.txt
+          {
+            echo "### Derived files that lag until the release"
+            echo '```'
+            cat drift.txt
+            echo '```'
+            echo "Release PR regenerates them: \`python tools/regen_all.py\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

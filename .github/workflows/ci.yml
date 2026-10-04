@@ -19,8 +19,9 @@ name: CI
 # full when it touches anything that is not one policy's own files -- lib/, tools/, a shared test kit or
 # conftest, pyproject.toml, requirements/, .github/, .framework-ref -- when more than a handful of policies
 # are involved, and whenever the selector cannot tell. The jobs below that are not tests run on every PR; the
-# effects check and the adoption transcripts are scoped to the policies a PR touches, and the staged adopter
-# to the matrix policies. A full run's tests are shards cut from the per-file times main last recorded
+# effects check is scoped to the policies a PR touches, and the staged adopter to the matrix policies.
+# Derived docs and images (README counts, policy pages, figures, brand card, coverage matrix, adoption
+# transcripts) are not checked here: they lag until the owner's release, and the nightly reports their drift. A full run's tests are shards cut from the per-file times main last recorded
 # (tools/plan_shards.py), so wall time holds as the catalog grows. A file is as slow as its longest test, which
 # is why a test that loops over every policy is parametrized per policy.
 
@@ -114,48 +115,6 @@ jobs:
           done < <(git rev-list --no-merges "$BASE_SHA..HEAD")
           exit "$found"
 
-  brand-assets:
-    # docs/assets/social-preview.svg is derived from registry.yaml -- so adding or re-grading a policy silently
-    # invalidates the committed card. Nothing on it is hand-typed (every count is len() of
-    # a list read at render time), but a stale image is wrong all the same, and the image
-    # is what a link preview shows to someone who has not read the repo yet.
-    #
-    # The check compares the SVG, not the PNG: the SVG is text derived only from
-    # repository data and is identical on any machine, while a PNG depends on the font
-    # installed on the renderer. Facts reach the SVG first.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: pip install "cairosvg==2.9.0" pyyaml
-      - name: Check the social preview matches the repository
-        run: cd docs/assets && python gen_brand_assets.py --check
-
-  figures:
-    # docs/figures/ carries the open-coder-ai family's shared, theme-aware figure set
-    # (see docs/figures/palette.py): the enforcement-coverage bar, the cross-repo family
-    # diagram, and the social card, each generated from real repository data rather than
-    # typed in. Generators here are stdlib-only plus `palette` on purpose -- this job
-    # installs nothing beyond Python itself -- so a generator that grew a PyPI dependency
-    # would fail here before it failed anywhere else.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
-        with:
-          python-version: "3.12"
-      - name: Regenerate figures
-        run: cd docs/figures && for g in make_*.py; do python "$g"; done
-      - name: Fail on drift
-        run: git diff --exit-code -- docs/figures
-
   # Decides, once, whether this run is full or targeted, so the test jobs below agree, and how a full run is cut
   # into shards. Only a pull request can be targeted; the base ref reaches the shell through the environment, as
   # it does in the DCO check above. A selector that fails fails this job, which fails the `tests` gate: unsure
@@ -239,11 +198,9 @@ jobs:
   generated:
     runs-on: ubuntu-latest
     steps:
-      # Full history: the transcript check diffs against the merge base with the PR's base.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           persist-credentials: false
-          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
         with:
@@ -278,12 +235,13 @@ jobs:
           pip install --require-hashes -r requirements/test.txt
 
       # First, not last: it is the cheapest check here and the one most often tripped -- every
-      # version bump and every eval case changes a row. `gen_registry.py --check` fails where
-      # the rows or the README's counts are not what the generator writes.
+      # version bump and every eval case changes a row. `--registry-only` fails where a row is not
+      # what the generator writes: `chock add` reads registry.yaml from main, so it stays current
+      # per PR. The README and prose counts the generator also writes lag until the release.
       - name: Registry matches the policies on disk
         run: |
           python tools/check_registry.py
-          python tools/gen_registry.py --check
+          python tools/gen_registry.py --check --registry-only
 
       # `.agents/policies/` is what governs this repo; `base/` is what adopters receive. A fix
       # made only in the installed copy ships to nobody (pin-github-actions 0.0.3 did exactly
@@ -292,23 +250,9 @@ jobs:
       - name: Installed policies trail, never lead, what this catalog publishes
         run: python tools/check_installed.py
 
-      # Docs state what each policy enforces, so a stale one is an overclaim published where
-      # adopters read first. The factual half of every page is derived from base/<id>/.
-      - name: Policy docs match their policies
-        run: |
-          python tools/gen_policy_docs.py --check
-          python tools/check_readme.py
-          # The matrix image used to be a PNG with no generator: it drifted the day the
-          # thirteenth policy landed and nothing noticed. Derived from registry.yaml now.
-          python tools/gen_coverage_matrix.py --check
-
-      # The numbers were guarded; the quoted terminal output was not, and that is the half
-      # that broke twice -- a block message reading "(main/master)" against a gate blocking
-      # `main|master`, and a transcript labelled "captured by running these commands" that
-      # had gone stale. Quoted output is the most persuasive thing in a README exactly
-      # because a reader cannot check it.
-      - name: Console transcripts match what the tools print
-        run: python tools/check_console.py
+      # Not here, on purpose: the policy docs, the README, the coverage matrix, the quoted console
+      # transcripts, the figures, the brand card and the adoption transcripts. They lag until the
+      # owner's release, and the nightly drift report (nightly-transcripts.yml) says which are stale.
 
       # This repo distributes executable content, so a compromised workflow does not merely
       # leak a token -- it can publish a malicious guard script to everyone who runs
@@ -325,8 +269,7 @@ jobs:
       # `skills/<id>/SKILL.md` are generated from manifest.yaml. They are committed so the
       # repo is browsable as a plugin marketplace without a build step -- which means a
       # manifest edit that skips `plugin build` publishes a package describing the old
-      # policy, to clients we do not control and cannot correct. Before the transcripts,
-      # which adopt the packaged folder.
+      # policy, to clients we do not control and cannot correct.
       - name: Published policies are current Agent Plugins packages
         run: |
           # Every tree in tools/trees.py, not an enumerated list: this check once passed
@@ -335,20 +278,6 @@ jobs:
           for tree in $(python tools/trees.py); do
             chock plugin build --repo . --policies-dir "$tree" --check
           done
-
-      # A contributor's "the policy works" claim is committed as docs/<id>/adoption.md --
-      # the output of adopting that one policy into an empty repository -- and this step
-      # re-derives it. Pasted output can be edited and goes stale; a transcript that fails
-      # to reproduce fails the build. Scoped to policies -- or transcripts -- the PR
-      # touches, the same trade the
-      # reviewer-evidence step makes: an untouched policy's transcript can drift when
-      # framework output changes, and is caught at its next edit rather than on every push.
-      # A NEW policy with no committed transcript fails here with the command to run.
-      - name: Adoption transcripts reproduce from an empty repo
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: python tools/gen_adoption_transcript.py --check --base "origin/$BASE_REF"
 
       # The framework's merge bar, applied to this repository's own code: the same ruff rule set
       # and limits (pyproject.toml), and formatting. The format paths are regen_all.FORMATTED.
