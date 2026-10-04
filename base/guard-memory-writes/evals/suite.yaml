@@ -475,15 +475,15 @@ suite:
       event: commit
       expect: warn
   - id: tc-027
-    category: trigger
-    prompt: A memory file gains a plain fact that links a host the repository has not allowlisted.
-    expect: The gate warns about the URL host.
+    category: negative_trigger
+    prompt: A memory file gains a plain fact that links a commit, and the repository keeps no allowlist.
+    expect: 'The commit is allowed: a URL alone is a finding only when the repository keeps an allowlist.'
     execute:
       files:
         MEMORY.md: |
-          - the design doc is at https://wiki.corp.io/design
+          - the retry bug was fixed in https://github.com/org/repo/commit/abc1234
       event: commit
-      expect: warn
+      expect: allow
   - id: tc-028
     category: negative_trigger
     prompt: A memory file gains a plain fact entry.
@@ -677,3 +677,15 @@ suite:
           - the team prefers small pull requests
       event: commit
       expect: allow
+  - id: tc-045
+    category: trigger
+    prompt: A memory file gains the same commit link, and the repository's allowlist lacks the host.
+    expect: The gate warns about the URL host.
+    execute:
+      files:
+        .chock/egress-allowlist.txt: |
+          wiki.corp.io
+        MEMORY.md: |
+          - the retry bug was fixed in https://github.com/org/repo/commit/abc1234
+      event: commit
+      expect: warn

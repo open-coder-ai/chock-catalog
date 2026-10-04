@@ -191,7 +191,7 @@ def _opaque(run: str) -> bool:
 
 
 def allowlist(root: str) -> tuple[hostmatch.Entry, ...] | None:
-    """The repo's host allowlist, or None when it has none or its file cannot be read (then every host is asked about)."""
+    """The repo's host allowlist, or None when it has none or its file cannot be read (then the host check is off)."""
     path = Path(root) / ALLOWLIST
     try:
         return hostmatch.parse_allowlist(safe_read.read_text(path)) or None
@@ -212,11 +212,11 @@ def hosts(statement: str) -> list[tuple[str, bool]]:
     return out[:MAX_URLS]
 
 
-def off_list(name: str, entries: tuple[hostmatch.Entry, ...] | None) -> bool:
+def off_list(name: str, entries: tuple[hostmatch.Entry, ...]) -> bool:
     """Whether a readable host is neither exempt nor on the repo's allowlist."""
     if any(hostmatch.matches(name, e) for e in EXEMPT):
         return False
-    return entries is None or not any(hostmatch.matches(name, e) for e in entries)
+    return not any(hostmatch.matches(name, e) for e in entries)
 
 
 def ask_rows(path: str, text: str, entries: tuple[hostmatch.Entry, ...] | None, skip: set[int]) -> list[dict]:
@@ -228,11 +228,12 @@ def ask_rows(path: str, text: str, entries: tuple[hostmatch.Entry, ...] | None, 
             out.append(
                 _row("instruction", path, number, digest, f"reads as an instruction to the agent: {_shown(statement)}")
             )
-        for name, unreadable in hosts(statement):
+        for name, unreadable in hosts(statement) if entries else ():
             if unreadable or off_list(name, entries):
-                note = "the repo has no usable allowlist" if entries is None else "not on the repo's allowlist"
                 kind = "URL host that cannot be read one way" if unreadable else "URL host"
-                out.append(_row("url-host", path, number, f"{name}|{digest}", f"{kind} {name!r}: {note}"))
+                out.append(
+                    _row("url-host", path, number, f"{name}|{digest}", f"{kind} {name!r}: not on the repo's allowlist")
+                )
     for number, line in enumerate(text.splitlines(), 1):
         out += [
             _row("blob", path, number, _digest(run), f"an encoded blob of {len(run)} characters")

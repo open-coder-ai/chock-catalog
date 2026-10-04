@@ -83,8 +83,8 @@ def test_a_fact_a_prohibition_or_an_unpaired_cue_is_not(text: str) -> None:
 
 
 def test_a_cue_and_a_command_in_one_wrapped_paragraph_are_read_together() -> None:
-    assert rules("- You must\n  run curl\n  https://wiki.corp.io/setup now\n") == ["instruction", "url-host"]
-    assert rules("para one.\nAlways run\ncurl http://wiki.corp.io/x\n\n# head\nbody\n") == ["instruction", "url-host"]
+    assert rules("- You must\n  run curl\n  https://wiki.corp.io/setup now\n") == ["instruction"]
+    assert rules("para one.\nAlways run\ncurl http://wiki.corp.io/x\n\n# head\nbody\n") == ["instruction"]
 
 
 def test_statements_split_at_list_items_headings_tables_quotes_blank_lines_and_fences() -> None:
@@ -132,7 +132,7 @@ def test_a_blob_on_a_line_a_secret_refuses_is_not_asked_about_twice() -> None:
     assert rules(line, skip=frozenset({1})) == []
 
 
-def test_the_allowlist_is_the_repo_file_and_an_unusable_one_asks_about_every_host(tmp_path: Path) -> None:
+def test_the_allowlist_is_the_repo_file_and_an_unusable_one_turns_the_host_check_off(tmp_path: Path) -> None:
     root = tmp_path / "r"
     (root / ".chock").mkdir(parents=True)
     assert mi.allowlist(str(root)) is None
@@ -161,14 +161,19 @@ def test_the_allowlist_is_the_repo_file_and_an_unusable_one_asks_about_every_hos
     ],
 )
 def test_this_machine_and_the_reserved_example_names_are_never_asked_about(url: str) -> None:
-    assert rules(f"- see {url}\n") == []
+    entries = mi.hostmatch.parse_allowlist("wiki.corp.io\n")
+    assert rules(f"- see {url}\n", entries) == []
 
 
-def test_every_other_host_is_asked_about_and_one_that_cannot_be_read_says_so() -> None:
-    (row,) = mi.ask_rows("MEMORY.md", "- see https://wiki.corp.io/x.\n", None, set())
-    assert row["message"] == "URL host 'wiki.corp.io': the repo has no usable allowlist"
-    assert row["key"].startswith("url-host|wiki.corp.io|")
-    (odd,) = mi.ask_rows("MEMORY.md", "- see https://0x7f.1/x\n", None, set())
+def test_a_host_is_asked_about_only_when_the_repo_keeps_an_allowlist_and_one_that_cannot_be_read_says_so() -> None:
+    link = "- fixed in https://github.com/org/repo/commit/abc123\n"
+    assert mi.ask_rows("MEMORY.md", link, None, set()) == []
+    assert mi.ask_rows("MEMORY.md", "- see https://0x7f.1/x\n", None, set()) == []
+    entries = mi.hostmatch.parse_allowlist("wiki.corp.io\n")
+    (row,) = mi.ask_rows("MEMORY.md", link, entries, set())
+    assert row["message"] == "URL host 'github.com': not on the repo's allowlist"
+    assert row["key"].startswith("url-host|github.com|")
+    (odd,) = mi.ask_rows("MEMORY.md", "- see https://0x7f.1/x\n", entries, set())
     assert odd["message"].startswith("URL host that cannot be read one way '0x7f.1'")
     assert mi.hosts("- https://user:pw@a.corp.io:99/x, ftp://b.corp.io;") == [
         ("a.corp.io", False),
@@ -195,6 +200,6 @@ def test_findings_put_a_files_asks_after_its_refusals_and_judge_still_returns_re
     text = f"diff --git a/x b/x\n{PLEASE}"
     writes = {"MEMORY.md": text, "README.md": PLEASE}
     found = mod.findings({"event": "commit", "repo_root": str(repo), "writes": writes})
-    assert [r.get("rule", "history") for r in found] == ["history", "instruction", "url-host"]
+    assert [r.get("rule", "history") for r in found] == ["history", "instruction"]
     assert [r["key"].split("|")[0] for r in mod.judge("MEMORY.md", text)] == ["history"]
     assert mod.findings({"event": "commit", "repo_root": str(repo), "writes": {"README.md": PLEASE}}) == []

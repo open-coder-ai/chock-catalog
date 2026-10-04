@@ -1,6 +1,6 @@
 ---
 name: guard-memory-writes
-description: "Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate line or a secret. Warns (observe rollout, ASI06) on an added line that tells the agent to run a command or fetch a URL, a URL host off the repo's allowlist, or an encoded blob. Judges memory files only (MEMORY.md, CLAUDE.local.md, .claude/memory/**, memory/**/*.md; at tool-use also the agent's own memory stores) and what a change adds. No waiver. A write after an untrusted fetch is not seen."
+description: "Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate line or a secret. Warns (observe, ASI06) on an added line that tells the agent to run a command or fetch a URL, an encoded blob, and, only where the repo keeps .chock/egress-allowlist.txt, a URL host off it. Judges memory files only (MEMORY.md, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, the agent's own stores) and what a change adds. No waiver. A write after an untrusted fetch is not seen."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Guard Memory Writes
 
-Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate line or a secret. Warns (observe rollout, ASI06) on an added line that tells the agent to run a command or fetch a URL, a URL host off the repo's allowlist, or an encoded blob. Judges memory files only (MEMORY.md, CLAUDE.local.md, .claude/memory/**, memory/**/*.md; at tool-use also the agent's own memory stores) and what a change adds. No waiver. A write after an untrusted fetch is not seen.
+Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate line or a secret. Warns (observe, ASI06) on an added line that tells the agent to run a command or fetch a URL, an encoded blob, and, only where the repo keeps .chock/egress-allowlist.txt, a URL host off it. Judges memory files only (MEMORY.md, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, the agent's own stores) and what a change adds. No waiver. A write after an untrusted fetch is not seen.
 
 ```
 on(commit|tool_use): block(script) script=guard-memory-writes-gate.py

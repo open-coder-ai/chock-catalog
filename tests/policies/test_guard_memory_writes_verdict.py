@@ -39,7 +39,7 @@ def test_main_exits_warn_for_asks_block_for_a_new_refusal_and_allow_for_nothing(
     assert (code, doc, err) == (mod.ALLOW_EXIT, {"findings": []}, "")
     code, doc, err = run_main(monkeypatch, capsys, payload("- old fact\n- old fact\n" + PLEASE))
     assert code == mod.WARN_EXIT == mod.INSTRUCTION_EXIT
-    assert len(doc["findings"]) == 3
+    assert len(doc["findings"]) == 2
     assert "MEMORY.md:3: reads as an instruction to the agent" in err
     assert err.rstrip().endswith(mi.ADVICE)
     code, _, _ = run_main(monkeypatch, capsys, payload("- old fact\n- old fact\n- old fact\n" + PLEASE))
