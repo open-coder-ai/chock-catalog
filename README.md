@@ -45,8 +45,8 @@ are advisory, and that is the number most catalogs would round up:
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 28 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 29 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 11 |
 | `advisory` | text an agent reads and may or may not follow | 31 |
 
 <img alt="42 policies: 11 enforced-at-commit, 9 in-agent, 22 advisory" src="https://raw.githubusercontent.com/open-coder-ai/chock-catalog/main/docs/assets/coverage-matrix.svg">
@@ -94,6 +94,7 @@ throwaway repo on every push.
 | [`refname-filename-metachar`](docs/refname-filename-metachar/) | names a shell, CI step or git can misread -- a path a change adds or renames into, and a branch or tag pushed, holding command substitution, an IFS expansion, a backtick, a shell operator, a control or bidi character, a leading dash or a `..` segment; a guard refuses git and file commands creating such names. No waiver | 41/41 |
 | [`scan-instruction-files`](docs/scan-instruction-files/) | **Asks** a person before a change adds injection text to an agent instruction file (AGENTS.md, CLAUDE.md, rules, prompts, skills) -- rule overrides, secrecy, auto-approve, hook or review bypass, fetch-and-run, removed guardrails; refuses secret exfiltration and encoded payloads; only added text, English phrases, friction not a boundary | 31/32 |
 | [`registry-config`](docs/registry-config/) | package-manager config that redirects installs or weakens them: literal registry tokens, http or unlisted registry hosts, TLS or checksum verification off, dependency install scripts on; extra indexes, replaces and a missing release cooldown ask; only what the change adds | 57/57 |
+| [`scan-secret-files`](docs/scan-secret-files/) | blocks files that are secrets by name or content: private keys and key stores, service-account and OAuth JSON, kubeconfig users, AWS and registry credential files, Terraform state, non-template `.env`, browser credential stores | 25/25 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a
 command. `chock sync` wires these natively on the 11 agents with an in-agent surface,
@@ -113,7 +114,6 @@ per-hook trust review before its hooks run.
 | [`block-persistence-shapes`](docs/block-persistence-shapes/) | Refuses shell commands that publish or keep access after the session — `npm`/`twine`/`cargo`/`docker push` and registry-auth edits, repos made public, user services, launch agents, cron, Run keys, `authorized_keys`, runner registration, sudoers, setuid bits, detached downloads; **asks** before `gh release create`, `git remote add` and `git push` to a URL. Best effort on the command text; OWASP ASI03, ASI10 | 109/109 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
-| [`scan-secret-files`](docs/scan-secret-files/) | warns (never blocks, observe) on files that are secrets by name or content: private keys and key stores, service-account and OAuth JSON, kubeconfig users, AWS and registry credential files, Terraform state, non-template `.env`, browser credential stores | 25/25 |
 
 <details>
 <summary>21 advisory policies — expand</summary>
