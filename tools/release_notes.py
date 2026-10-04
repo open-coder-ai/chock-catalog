@@ -86,7 +86,8 @@ def main(argv: list[str] | None = None) -> int:
         notes = render(ROOT, args.version, args.since)
     except ValueError as err:
         parser.error(str(err))
-    print(notes, end="")
+    else:
+        print(notes, end="")
     return 0
 
 
