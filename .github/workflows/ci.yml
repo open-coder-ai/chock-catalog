@@ -21,7 +21,8 @@ name: CI
 # are involved, and whenever the selector cannot tell. The jobs below that are not tests run on every PR; the
 # effects check and the adoption transcripts are scoped to the policies a PR touches, and the staged adopter
 # to the matrix policies. A full run's tests are shards cut from the per-file times main last recorded
-# (tools/plan_shards.py), so wall time holds as the catalog grows.
+# (tools/plan_shards.py), so wall time holds as the catalog grows. A file is as slow as its longest test, which
+# is why a test that loops over every policy is parametrized per policy.
 
 # Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
 # framework needs (bash resolution, line endings, path handling) buys nothing here -- and
@@ -573,11 +574,12 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # Main records how long each test file took, for the plan of every later run. The times are saved before the
-  # cap is checked, so a file over the cap fails this job and still leaves the times behind. Cap: no single
-  # file may take more than five minutes of wall time on a full run; one that does cannot be balanced, and the
-  # message says to split it by activity. A timing cannot be a unit test, so this is where it is enforced.
-  # One file is exempt, named with its reason in tools/plan_shards.py (EXEMPT), and every run warns of it.
+  # Main records how long each test file took, and its longest single test, for the plan of every later run. The
+  # times are saved before the cap is checked, so a test over the cap fails this job and still leaves them
+  # behind. Cap: no single test may take more than five minutes of wall time on a full run. A file of many
+  # tests is balanced across shards, so its sum is never capped; one test cannot be split, so it is, and the
+  # message names it and says to split it by activity. A timing cannot be a unit test, so this is where it is
+  # enforced. Nothing is exempt.
   durations:
     needs: [scope, tests-shard]
     if: github.event_name == 'push' && needs.scope.outputs.full == 'true'
@@ -593,7 +595,7 @@ jobs:
           path: junit
           merge-multiple: true
 
-      - name: Sum the junit times by test file
+      - name: Sum the junit times by test file and keep each file's longest test
         run: python3 tools/plan_shards.py junit test-durations.json junit/junit-*.xml
 
       - name: Save the file times for the next run
@@ -602,7 +604,7 @@ jobs:
           path: test-durations.json
           key: test-durations-${{ github.sha }}
 
-      - name: No test file takes longer than the cap
+      - name: No single test takes longer than the cap
         run: python3 tools/plan_shards.py check test-durations.json
 
   # A targeted pull request runs one of these per policy it touches and per policy built on one. Each runs the
