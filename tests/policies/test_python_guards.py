@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 from policies import guard_cases_agent_env as env_cases
 from policies import guard_cases_fetch as fetch_cases
 from policies import guard_cases_files as file_cases
@@ -223,43 +224,42 @@ def test_the_source_never_prints_a_crash_marker(policy: str) -> None:
 
 def refused_cases(policy: str) -> list[dict]:
     """The authored `expect: block` or `ask` cases of a guard's eval suite that carry a command to replay."""
-    import yaml  # noqa: PLC0415
-
     suite = yaml.safe_load((ROOT / "base" / policy / "evals" / "suite.yaml").read_text(encoding="utf-8"))
     cases = (case for case in suite["suite"]["cases"] if case.get("execute"))
     return [c for c in cases if c["execute"].get("expect") in ("block", "ask") and "command" in c["execute"]]
 
 
+REFUSED = [(policy, case) for policy in sorted(GUARDS) for case in refused_cases(policy)]
+
+
+@pytest.mark.parametrize(("policy", "case"), REFUSED, ids=[f"{policy}::{case['id']}" for policy, case in REFUSED])
+def test_every_block_in_every_eval_suite_prints_a_reason(policy: str, case: dict) -> None:
+    """Replay one authored `expect: block` command of a Python guard; the reason must be plain."""
+    execute = case["execute"]
+    env = {**os.environ, "CHOCK_RAW_COMMAND": execute["command"], "CHOCK_HOOK_CWD": str(ROOT), **execute.get("env", {})}
+    env.pop("CHOCK_TOOL", None)
+    done = subprocess.run(
+        [sys.executable, str(guardkit.impl_dir(policy) / f"{policy}.py"), *split(execute["command"])],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path(__file__).parent,
+    )
+    assert done.returncode in (BLOCK, ASK), (policy, case["id"], done.returncode)
+    assert done.stderr.strip(), (policy, case["id"])
+    assert not any(m in done.stderr.lower() for m in CRASH_MARKERS), (policy, case["id"], done.stderr)
+
+
 @pytest.mark.parametrize("policy", sorted(GUARDS))
-def test_every_block_in_every_eval_suite_prints_a_reason(policy: str) -> None:
-    """Replay each authored `expect: block` command of one Python guard; the reason must be plain."""
-    cases = refused_cases(policy)
-    assert cases
-    for case in cases:
-        execute = case["execute"]
-        env = {
-            **os.environ,
-            "CHOCK_RAW_COMMAND": execute["command"],
-            "CHOCK_HOOK_CWD": str(ROOT),
-            **execute.get("env", {}),
-        }
-        env.pop("CHOCK_TOOL", None)
-        done = subprocess.run(
-            [sys.executable, str(guardkit.impl_dir(policy) / f"{policy}.py"), *split(execute["command"])],
-            env=env,
-            capture_output=True,
-            text=True,
-            check=False,
-            cwd=Path(__file__).parent,
-        )
-        assert done.returncode in (BLOCK, ASK), (policy, case["id"], done.returncode)
-        assert done.stderr.strip(), (policy, case["id"])
-        assert not any(m in done.stderr.lower() for m in CRASH_MARKERS), (policy, case["id"], done.stderr)
+def test_every_python_guard_authors_a_blocking_case(policy: str) -> None:
+    """The per-guard floor of the walker above, read from the suite YAML without running a guard."""
+    assert refused_cases(policy)
 
 
 def test_the_eval_suites_author_at_least_a_hundred_blocking_cases_for_the_python_guards() -> None:
-    """The floor of the walker above, read from the suite YAML without running a guard."""
-    assert sum(len(refused_cases(policy)) for policy in GUARDS) >= 100
+    """The total floor of the walker above."""
+    assert len(REFUSED) >= 100
 
 
 def test_a_guard_loaded_twice_does_not_share_a_parser() -> None:
