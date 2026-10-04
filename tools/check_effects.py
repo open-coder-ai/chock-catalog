@@ -83,9 +83,15 @@ def guard_scripts(policy_dir: Path) -> list[Path]:
 
 
 def init_repo(workspace: Path) -> None:
-    """A git-event guard reads the staged change, so it needs a repo with a commit to read."""
+    """A git-event guard reads the staged change, so it needs a repo with a commit to read.
+
+    Background maintenance is off before the commit: git's detached `maintenance run --auto` would
+    otherwise hold and delete `.git/objects/maintenance.lock` mid-run and look like a guard's write.
+    """
     for args in (
         ["init", "--quiet", "."],
+        ["config", "maintenance.auto", "false"],
+        ["config", "gc.auto", "0"],
         ["config", "user.email", "effects@chock.invalid"],
         ["config", "user.name", "effects"],
         ["add", "-A"],
