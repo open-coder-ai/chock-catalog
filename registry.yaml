@@ -891,19 +891,18 @@ policies:
     than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.'
 - id: agent-permissions-scan
   path: base/agent-permissions-scan
-  version: 0.0.1
+  version: 0.1.0
   artifact: rule
-  enforcement: advise
+  enforcement: block
   mandatory: false
-  mechanism: warn-only gate
-  enforces: advisory
+  mechanism: script
+  enforces: enforced-at-commit
   eval_cases: 43
   eval_executed: 43
-  description: 'Warns only (observe): parses agent permission configs (.claude/settings*, .codex, .gemini,
-    .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows
-    (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto
-    modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP
-    configs, scripts, Read.'
+  description: 'Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode,
+    .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git
+    push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger,
+    yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.'
 - id: block-persistence-shapes
   path: base/block-persistence-shapes
   version: 0.0.3

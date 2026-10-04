@@ -9,14 +9,14 @@ suite:
       direction: higher_is_better
       threshold: 1.0
   # Every executable case runs through the policy's script gate, staged in a throwaway repository. The gate
-  # ships at action warn (observe rollout, plan D15), so a finding reads `warn`; tests/policies/
+  # declares action block (promoted from observe, plan D15), so a finding reads `block`; tests/policies/
   # test_agent_permissions_scan.py pins exit 1 underneath. Fixtures that spell a grant the line-based sibling
   # (block-wildcard-agent-permissions) would also match carry the same-line pragma it honours.
   cases:
   - id: tc-001
     category: trigger
     prompt: "A settings file allows every tool with the star alone on its own line, the pretty-printed form the line-based sibling cannot see."
-    expect: "The gate warns about the allow-everything entry."
+    expect: "The gate blocks about the allow-everything entry."
     execute:
       files:
         ".claude/settings.json": |
@@ -29,22 +29,22 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-002
     category: trigger
     prompt: "An unquoted default mode of bypassPermissions in a YAML agent config."
-    expect: "The gate warns that the default mode approves everything."
+    expect: "The gate blocks that the default mode approves everything."
     execute:
       files:
         ".continue/config.yaml": |
           name: local
           defaultMode: bypassPermissions
       event: commit
-      expect: warn
+      expect: block
   - id: tc-003
     category: trigger
     prompt: "Codex is set to never ask and to run without a sandbox."
-    expect: "The gate warns about the pair."
+    expect: "The gate blocks about the pair."
     execute:
       files:
         ".codex/config.toml": |
@@ -52,11 +52,11 @@ suite:
           approval_policy = "never"
           sandbox_mode = "danger-full-access"
       event: commit
-      expect: warn
+      expect: block
   - id: tc-004
     category: trigger
     prompt: "VS Code workspace settings auto-approve every terminal command with a match-all rule."
-    expect: "The gate warns about the regex-all rule."
+    expect: "The gate blocks about the regex-all rule."
     execute:
       files:
         ".vscode/settings.json": |
@@ -66,11 +66,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-005
     category: trigger
     prompt: "A change removes a deny entry the committed settings held."
-    expect: "The gate warns that the deny entry is gone."
+    expect: "The gate blocks that the deny entry is gone."
     execute:
       head_files:
         ".claude/settings.json": |
@@ -88,11 +88,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-006
     category: trigger
     prompt: "A bare Bash entry in the allow list."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".claude/settings.json": |
@@ -102,11 +102,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-007
     category: trigger
     prompt: "A Bash prefix wildcard over curl."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".claude/settings.json": |
@@ -116,11 +116,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-008
     category: trigger
     prompt: "Prefix wildcards over rm, sudo and git push."
-    expect: "The gate warns for each."
+    expect: "The gate blocks for each."
     execute:
       files:
         ".claude/settings.local.json": |
@@ -130,11 +130,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-009
     category: trigger
     prompt: "An unscoped WebFetch grant."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".claude/settings.json": |
@@ -144,11 +144,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-010
     category: trigger
     prompt: "Write and Edit grants whose globs cover everything, the home directory or the file system."
-    expect: "The gate warns for each."
+    expect: "The gate blocks for each."
     execute:
       files:
         ".claude/settings.json": |
@@ -158,11 +158,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-011
     category: trigger
     prompt: "MCP wildcards: every tool of every server, and every tool of one server."
-    expect: "The gate warns for each."
+    expect: "The gate blocks for each."
     execute:
       files:
         ".claude/settings.json": |
@@ -172,11 +172,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-012
     category: trigger
     prompt: "Gemini CLI settings turn on yolo approval and auto-accept."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".gemini/settings.json": |
@@ -185,22 +185,22 @@ suite:
             "tools": {"autoAccept": true}
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-013
     category: trigger
     prompt: "aider is told to answer yes to every prompt."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".aider.conf.yml": |
           model: sonnet
           yes-always: true
       event: commit
-      expect: warn
+      expect: block
   - id: tc-014
     category: trigger
     prompt: "A multi-line autoApprove array holding the star."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".cursor/cli.json": |
@@ -213,11 +213,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-015
     category: trigger
     prompt: "A permission-skipping flag committed in a settings hook command."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".claude/settings.json": |
@@ -225,11 +225,11 @@ suite:
             "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "claude -p review --dangerously-skip-permissions"}]}]}
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-016
     category: trigger
     prompt: "VS Code turns on chat tool auto-approve and the Claude Code extension's bypass mode."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".vscode/settings.json": |
@@ -238,11 +238,11 @@ suite:
             "claudeCode.initialPermissionMode": "bypassPermissions"
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-017
     category: trigger
     prompt: "opencode allows bash without asking."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         "opencode.json": |
@@ -250,22 +250,22 @@ suite:
             "permission": {"bash": "allow"}
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-018
     category: trigger
     prompt: "A config the gate cannot read is not passed as clean."
-    expect: "The gate warns that the config cannot be judged."
+    expect: "The gate blocks that the config cannot be judged."
     execute:
       files:
         ".claude/settings.json": |
           {
             "permissions": {"allow": ["Read"
       event: commit
-      expect: warn
+      expect: block
   - id: tc-019
     category: trigger
     prompt: "The agent writes a bypass permission mode at tool use."
-    expect: "The gate warns at the write."
+    expect: "The gate blocks at the write."
     execute:
       writes:
         ".claude/settings.json": |
@@ -275,11 +275,11 @@ suite:
             }
           }
       event: tool_use
-      expect: warn
+      expect: block
   - id: tc-020
     category: trigger
     prompt: "At the turn's end a deny entry that HEAD held is gone from the file on disk."
-    expect: "The gate warns at the turn's end."
+    expect: "The gate blocks at the turn's end."
     execute:
       head_files:
         ".claude/settings.json": |
@@ -296,7 +296,7 @@ suite:
             }
           }
       event: stop
-      expect: warn
+      expect: block
   - id: tc-021
     category: negative_trigger
     prompt: "A scoped Bash prefix allow."
@@ -419,7 +419,7 @@ suite:
   - id: tc-029
     category: adversarial
     prompt: "Comments and trailing commas around a bare Bash grant."
-    expect: "The gate warns; JSONC is read, not skipped."
+    expect: "The gate blocks; JSONC is read, not skipped."
     execute:
       files:
         ".claude/settings.json": |
@@ -433,11 +433,11 @@ suite:
             },
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-030
     category: adversarial
     prompt: "A unicode-escaped spelling of defaultMode."
-    expect: "The gate warns; the JSON decoder normalizes the key."
+    expect: "The gate blocks; the JSON decoder normalizes the key."
     execute:
       files:
         ".claude/settings.json": |
@@ -447,11 +447,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-031
     category: adversarial
     prompt: "Duplicate defaultMode keys with the auto-approve mode last."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".claude/settings.json": |
@@ -462,11 +462,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-032
     category: adversarial
     prompt: "Duplicate defaultMode keys with the auto-approve mode first: parsers disagree, so every value is judged."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".claude/settings.json": |
@@ -477,11 +477,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-033
     category: adversarial
     prompt: "The mode spelled in other cases and with separators."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".gemini/settings.json": |
@@ -489,7 +489,7 @@ suite:
             "general": {"default_approval_mode": "YOLO"}
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-034
     category: behavior
     prompt: "A sidecar waiver for the exact finding, already in HEAD."
@@ -510,7 +510,7 @@ suite:
   - id: tc-035
     category: adversarial
     prompt: "A sidecar in HEAD with an unknown key: the schema is closed, so no waiver in it counts."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       head_files:
         ".chock/devenv.json": |
@@ -523,11 +523,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-036
     category: adversarial
     prompt: "The agent writes the sidecar and the grant together: only a waiver already in HEAD counts for an agent."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       writes:
         ".claude/settings.json": |
@@ -539,22 +539,22 @@ suite:
         ".chock/devenv.json": |
           {"waive": [{"file": ".claude/settings.json", "path": "permissions.allow", "value": "Bash(curl:*)"}]}
       event: tool_use
-      expect: warn
+      expect: block
   - id: tc-037
     category: adversarial
     prompt: "A YAML config the gate would have to guess at (an alias hides a value) is refused, not passed."
-    expect: "The gate warns."
+    expect: "The gate blocks."
     execute:
       files:
         ".aider.conf.yml": |
           base: &b true
           yes-always: *b
       event: commit
-      expect: warn
+      expect: block
   - id: tc-038
     category: adversarial
     prompt: "A waiver for one grant does not clear a second grant in the same list."
-    expect: "The gate warns about the second."
+    expect: "The gate blocks about the second."
     execute:
       head_files:
         ".chock/devenv.json": |
@@ -567,11 +567,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-039
     category: adversarial
     prompt: "A terminal auto-approve rule that matches every command without being the usual /.*/ spelling."
-    expect: "The gate warns; the rule is compiled and probed, not looked up in a list."
+    expect: "The gate blocks; the rule is compiled and probed, not looked up in a list."
     execute:
       files:
         ".vscode/settings.json": |
@@ -581,11 +581,11 @@ suite:
             }
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-040
     category: trigger
     prompt: "An opencode deny verdict is loosened to ask."
-    expect: "The gate warns that the deny is gone."
+    expect: "The gate blocks that the deny is gone."
     execute:
       head_files:
         "opencode.json": |
@@ -598,7 +598,7 @@ suite:
             "permission": {"bash": {"ls": "allow"}}
           }
       event: commit
-      expect: warn
+      expect: block
   - id: tc-041
     category: negative_trigger
     prompt: "Risky commands with a real argument are scoped grants."
@@ -630,10 +630,10 @@ suite:
   - id: tc-043
     category: adversarial
     prompt: "The agent writes a waiver into the sidecar: only a person's commit may add one."
-    expect: "The gate warns about the added waiver."
+    expect: "The gate blocks about the added waiver."
     execute:
       writes:
         ".chock/devenv.json": |
           {"waive": [{"file": ".claude/settings.json", "path": "permissions.allow", "value": "Bash(curl:*)"}]}
       event: tool_use
-      expect: warn
+      expect: block
