@@ -35,7 +35,8 @@ def root(tmp_path: Path) -> Path:
 
 @pytest.mark.parametrize("data", [[1], {"a": "slow"}, {"a": [1]}, "text"])
 def test_a_file_that_is_not_name_to_seconds_is_no_times(tmp_path: Path, data: object) -> None:
-    assert plan_shards.load(write(tmp_path / "t.json", data)) == {}
+    path = write(tmp_path / "t.json", data)
+    assert plan_shards.load(path) == {}
 
 
 def test_a_missing_or_garbled_file_is_no_times(tmp_path: Path) -> None:
@@ -45,7 +46,8 @@ def test_a_missing_or_garbled_file_is_no_times(tmp_path: Path) -> None:
 
 
 def test_load_reads_seconds_as_floats(tmp_path: Path) -> None:
-    assert plan_shards.load(write(tmp_path / "t.json", {"a.py": 3, "b.py": 1.5})) == {"a.py": 3.0, "b.py": 1.5}
+    path = write(tmp_path / "t.json", {"a.py": 3, "b.py": 1.5})
+    assert plan_shards.load(path) == {"a.py": 3.0, "b.py": 1.5}
 
 
 @pytest.mark.parametrize(
@@ -123,7 +125,8 @@ def test_workers_turn_summed_seconds_into_wall_seconds() -> None:
 
 def test_load_plan_returns_a_well_formed_plan(tmp_path: Path) -> None:
     chosen = {"shards": 2, "assignment": {"a.py": 1, "b.py": 2}, "split": [], "source": "durations"}
-    assert plan_shards.load_plan(write(tmp_path / "p.json", chosen)) == chosen
+    path = write(tmp_path / "p.json", chosen)
+    assert plan_shards.load_plan(path) == chosen
 
 
 @pytest.mark.parametrize(
@@ -165,7 +168,8 @@ def run(*args: str, cwd: Path = ROOT) -> subprocess.CompletedProcess[str]:
 
 def test_junit_writes_the_times_of_the_test_files_under_the_working_directory(root: Path, tmp_path: Path) -> None:
     (tmp_path / "j.xml").write_text(JUNIT, encoding="utf-8")
-    assert run("junit", "t.json", "j.xml", cwd=root).returncode == 0
+    proc = run("junit", "t.json", "j.xml", cwd=root)
+    assert proc.returncode == 0
     assert json.loads((root / "t.json").read_text(encoding="utf-8")) == {
         "tests/a/test_x.py": 2.0,
         "tests/b/test_y.py": 2.0,
@@ -196,4 +200,6 @@ def test_check_with_warn_never_fails_and_a_clean_run_prints_nothing(tmp_path: Pa
     slow = write(tmp_path / "slow.json", {"slow.py": 4 * 400.0})
     proc = run("check", slow, "--warn")
     assert (proc.returncode, "::error::slow.py" in proc.stdout) == (0, True)
-    assert run("check", write(tmp_path / "ok.json", {"ok.py": 4.0})).stdout == ""
+    ok = write(tmp_path / "ok.json", {"ok.py": 4.0})
+    clean = run("check", ok)
+    assert clean.stdout == ""
