@@ -1,15 +1,15 @@
 # Agent Permissions Scan
 
-`agent-permissions-scan` · rule · advises
+`agent-permissions-scan` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | warn-only `script` gate |
-| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
-| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Type** | `rule` (`enforcement: block`) |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
 | **Eval cases** | 43 total, 43 executable |
 | **Enabled by default** | yes |
 
@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Warns only (observe): parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
+Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
 
 ## What it solves
 
@@ -25,28 +25,25 @@ Permission grants an agent's config can hold that a line-based pattern cannot ju
 
 ## How it works
 
-A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `block`.
 
-On a finding it prints:
+Parameters, from `manifest.yaml`:
+
+- `script`
+
+On a match it prints:
 
 > An agent permission config grants more than named, scoped actions (a bare or wildcard allow, a bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox), a deny entry is gone, or the config cannot be read. Scope the grant (Bash(npm test:*), a named tool list), keep the deny entry, use a mode that asks. A reviewed exception is a {file, path, value} entry under waive in .chock/devenv.json, added by a person in their own commit; in the agent only one already in HEAD counts, so an agent asks the person and never writes it.
 
-The rule text ships alongside, in the agent's ambient context:
-
-```text
-agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vscode/settings.json|.cursor/cli.json|opencode.json|.aider.conf.yml|.continue/**): grant named, scoped actions only
-never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve; never(remove): deny entry; observe: warns at commit+tool_use, enforce later
-```
-
 ## Which primitive it becomes
 
-A **warn-only gate**. `recompile` writes it under `.chock/compiled/agent-permissions-scan/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
+A **git hook**. `recompile` writes `.chock/compiled/agent-permissions-scan/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 
 ```bash
 chock add agent-permissions-scan
-chock sync --repo .
+chock sync .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:
