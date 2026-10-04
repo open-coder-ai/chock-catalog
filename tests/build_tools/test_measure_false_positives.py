@@ -177,3 +177,26 @@ def test_running_the_file_as_a_script_exits_zero(repo: Path, monkeypatch: pytest
     with pytest.raises(SystemExit) as stop:
         runpy.run_path(mfp.__file__, run_name="__main__")
     assert stop.value.code == 0
+
+
+@pytest.fixture
+def shallow(repo: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A depth-2 clone of the fixture: two commits, the older one cut off from its parent."""
+    dest = tmp_path_factory.mktemp("shallow") / "clone"
+    subprocess.run([GIT, "clone", "-q", "--depth", "2", f"file://{repo}", str(dest)], check=True, capture_output=True)
+    return dest
+
+
+def test_a_shallow_boundary_commit_is_skipped_but_a_true_root_is_kept(repo: Path, shallow: Path) -> None:
+    assert [subject for _, _, subject in mfp.commits(shallow, 300)] == ["add notes.md"]
+    assert mfp.commits(shallow, 300)[0][1] != mfp.EMPTY_TREE
+    assert mfp.commits(repo, 300)[-1][1] == mfp.EMPTY_TREE
+
+
+def test_a_shallow_clone_is_refused_unless_allowed(shallow: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert mfp.main(["demo", "--root", str(shallow)]) == 2
+    seen = capsys.readouterr()
+    assert "shallow" in seen.err
+    assert seen.out == ""
+    assert mfp.main(["demo", "--allow-shallow", "--root", str(shallow)]) == 0
+    assert "1 first-parent commits replayed" in capsys.readouterr().out

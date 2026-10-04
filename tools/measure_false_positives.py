@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Replay each observe pack's gate over the catalog's first-parent history and report how often it fires (D15)."""
+"""Replay each observe pack's gate over the catalog's first-parent history and report how often it fires (D15).
+
+`judged` counts commits with a file in the gate's scope (`applies_to.paths`); a gate with no paths judges every
+commit, so its rate is fires per commit. `--root` runs the pack scripts of that repo (the gate engine is this
+repo's): point it only at a trusted repo. A shallow clone is refused unless `--allow-shallow`.
+"""
 
 from __future__ import annotations
 
@@ -18,6 +23,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ".chock/bin/gate.py"
 DEFAULT_LIMIT = 300
+REFUSED = 2
 #: git's empty tree: the parent a root commit is diffed against.
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 #: A pack that imports one of these could reach the network; the measurement runs offline, so it declines.
@@ -40,14 +46,24 @@ def git(root: Path, *args: str) -> str:
     return done.stdout
 
 
+def is_shallow(root: Path) -> bool:
+    return git(root, "rev-parse", "--is-shallow-repository").strip() == "true"
+
+
 def commits(root: Path, limit: int) -> list[tuple[str, str, str]]:
-    """The last `limit` first-parent commits, newest first, as (sha, first parent, subject)."""
+    """The last `limit` first-parent commits, newest first, as (sha, first parent, subject).
+
+    A parentless commit is diffed against the empty tree only in a full clone, where it is a true root;
+    in a shallow clone it is the cut-off boundary, whose real parent is missing, so it is skipped.
+    """
+    shallow = is_shallow(root)
     rows = git(root, "rev-list", "--first-parent", f"--max-count={limit}", "--format=%H %P|%s", "HEAD").splitlines()
     out = []
     for row in rows[1::2]:
         head, _, subject = row.partition("|")
         sha, *parents = head.split()
-        out.append((sha, parents[0] if parents else EMPTY_TREE, subject))
+        if parents or not shallow:
+            out.append((sha, parents[0] if parents else EMPTY_TREE, subject))
     return out
 
 
@@ -183,8 +199,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("packs", nargs="*", help="pack ids; default: every pack whose gate declares warn")
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT, help="first-parent commits to replay")
     parser.add_argument("--json", action="store_true", help="print machine-readable output")
+    parser.add_argument(
+        "--allow-shallow", action="store_true", help="measure a shallow clone (its boundary is skipped)"
+    )
     parser.add_argument("--root", type=Path, default=ROOT, help="the catalog repo to measure")
     args = parser.parse_args(argv)
+    if is_shallow(args.root) and not args.allow_shallow:
+        print(
+            "refusing a shallow clone: its history is cut off; run `git fetch --unshallow` or pass --allow-shallow",
+            file=sys.stderr,
+        )
+        return REFUSED
     started = time.monotonic()
     report = measure(args.root, args.packs or observe_packs(args.root), args.limit)
     print(json.dumps(report, indent=2, sort_keys=True) if args.json else render(report))
