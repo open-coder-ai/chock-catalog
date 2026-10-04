@@ -9,22 +9,23 @@ from types import SimpleNamespace
 
 import policy_rows
 import pytest
+from trees import policy_dirs
 
 ROOT = Path(__file__).resolve().parents[2]
-IDS = {"scan-secrets", "scan-secrets-entropy", "git-safety"}
+IDS = {"pol-a", "pol-a-more", "pol-b"}
 
 
 @pytest.mark.parametrize(
     ("nodeid", "found"),
     [
-        ("t.py::test[scan-secrets]", {"scan-secrets"}),
-        ("t.py::test[scan-secrets-entropy::case-1]", {"scan-secrets-entropy"}),
-        ("t.py::test[scan_secrets_entropy]", {"scan-secrets-entropy"}),
-        ("t.py::test[git-safety-scan-secrets]", set()),
-        ("t.py::test[base/git-safety/x.yaml-scan-secrets]", {"git-safety"}),
-        ("t.py::test[scan-secrets|git-safety]", {"scan-secrets", "git-safety"}),
+        ("t.py::test[pol-a]", {"pol-a"}),
+        ("t.py::test[pol-a-more::case-1]", {"pol-a-more"}),
+        ("t.py::test[pol_a_more]", {"pol-a-more"}),
+        ("t.py::test[pol-b-pol-a]", set()),
+        ("t.py::test[base/pol-b/x.yaml-pol-a]", {"pol-b"}),
+        ("t.py::test[pol-a|pol-b]", {"pol-a", "pol-b"}),
         ("t.py::test[other]", set()),
-        ("t.py::test_scan_secrets", set()),
+        ("t.py::test_pol_a", set()),
         ("t.py::test", set()),
     ],
 )
@@ -44,42 +45,51 @@ def config(wanted: list[str] | None, dropped: list[list[object]]) -> SimpleNames
     return SimpleNamespace(getoption=lambda _: wanted, hook=hook)
 
 
+@pytest.fixture(autouse=True)
+def three_policies(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(policy_rows, "policy_dirs", lambda: [Path(i) for i in sorted(IDS)])
+
+
 def test_apply_drops_only_rows_about_other_policies() -> None:
     rows = items(
-        "t.py::t[scan-secrets]",
-        "t.py::t[scan-secrets-entropy]",
-        "t.py::t[git-safety]",
+        "t.py::t[pol-a]",
+        "t.py::t[pol-a-more]",
+        "t.py::t[pol-b]",
         "t.py::t[no-policy-here]",
         "t.py::plain",
     )
     dropped: list[list[object]] = []
-    policy_rows.apply(config(["scan-secrets-entropy"], dropped), rows)
-    assert [r.nodeid for r in rows] == ["t.py::t[scan-secrets-entropy]", "t.py::t[no-policy-here]", "t.py::plain"]
-    assert [r.nodeid for r in dropped[0]] == ["t.py::t[scan-secrets]", "t.py::t[git-safety]"]
+    policy_rows.apply(config(["pol-a-more"], dropped), rows)
+    assert [r.nodeid for r in rows] == ["t.py::t[pol-a-more]", "t.py::t[no-policy-here]", "t.py::plain"]
+    assert [r.nodeid for r in dropped[0]] == ["t.py::t[pol-a]", "t.py::t[pol-b]"]
 
 
-def test_more_than_one_policy_keeps_the_rows_of_each(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(policy_rows, "policy_dirs", lambda: [Path(i) for i in sorted(IDS)])
-    rows = items("t.py::t[scan-secrets]", "t.py::t[git-safety]", "t.py::t[scan-secrets-entropy]")
-    policy_rows.apply(config(["scan-secrets", "git-safety"], []), rows)
-    assert [r.nodeid for r in rows] == ["t.py::t[scan-secrets]", "t.py::t[git-safety]"]
+def test_more_than_one_policy_keeps_the_rows_of_each() -> None:
+    rows = items("t.py::t[pol-a]", "t.py::t[pol-b]", "t.py::t[pol-a-more]")
+    policy_rows.apply(config(["pol-a", "pol-b"], []), rows)
+    assert [r.nodeid for r in rows] == ["t.py::t[pol-a]", "t.py::t[pol-b]"]
 
 
 def test_no_policy_option_keeps_everything_and_deselects_nothing() -> None:
-    rows = items("t.py::t[scan-secrets]", "t.py::t[git-safety]")
+    rows = items("t.py::t[pol-a]", "t.py::t[pol-b]")
     dropped: list[list[object]] = []
     policy_rows.apply(config(None, dropped), rows)
     assert len(rows) == 2
     assert dropped == []
 
 
-def test_a_policy_that_drops_nothing_deselects_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(policy_rows, "policy_dirs", lambda: [Path(i) for i in sorted(IDS)])
-    rows = items("t.py::t[scan-secrets]", "t.py::plain")
+def test_a_policy_that_drops_nothing_deselects_nothing() -> None:
+    rows = items("t.py::t[pol-a]", "t.py::plain")
     dropped: list[list[object]] = []
-    policy_rows.apply(config(["scan-secrets"], dropped), rows)
+    policy_rows.apply(config(["pol-a"], dropped), rows)
     assert len(rows) == 2
     assert dropped == []
+
+
+def test_chosen_narrows_a_loop_to_the_policies_given_and_keeps_all_when_none_are() -> None:
+    assert policy_rows.chosen(config(["pol-b"], []), ["pol-a", "pol-b", "pol-c"]) == ["pol-b"]
+    assert policy_rows.chosen(config(["pol-a", "pol-c"], []), ["pol-a", "pol-b", "pol-c"]) == ["pol-a", "pol-c"]
+    assert policy_rows.chosen(config(None, []), iter(["pol-a", "pol-b"])) == ["pol-a", "pol-b"]
 
 
 def test_the_option_is_registered_without_a_default() -> None:
@@ -94,10 +104,11 @@ def collect(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_pytest_keeps_one_policys_rows_and_refuses_an_unknown_policy() -> None:
+    chosen = sorted(p.name for p in policy_dirs())[0]
     target = "tests/policies/test_every_policy.py"
-    rows = [x for x in collect(target, "--policy", "block-no-verify").stdout.splitlines() if "::" in x]
+    rows = [x for x in collect(target, "--policy", chosen).stdout.splitlines() if "::" in x]
     assert rows
-    assert all("block-no-verify" in x or "[" not in x for x in rows)
+    assert all(chosen in x or "[" not in x for x in rows)
     proc = collect(target, "--policy", "no-such-policy")
     assert proc.returncode == pytest.ExitCode.USAGE_ERROR
     assert "--policy names no policy: no-such-policy" in proc.stderr

@@ -6,10 +6,10 @@ import io
 import json
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 import pytest
+import untraced
 from policies import hardflagskit, scriptkit
 from policies.hardening_flags_cases import CARGO, CMAKE, KERNEL, MAKE, PRAGMA, RUST, SHELL, UNSCANNED
 from policies.hardflagskit import NAME
@@ -228,18 +228,34 @@ def test_the_shipped_table_loads_and_is_dated() -> None:
     assert len(doc["entries"]) == len(ENTRIES)
 
 
-def test_the_gate_is_fast_on_hostile_lines() -> None:
-    start = time.monotonic()
+def hostile_toml() -> None:
     for text in ("[" + " " * 20000 + "x\n", "[a" + " " * 100000, "[a" + "\t" * 100000 + "]x"):
         found("Cargo.toml", text)
     found("Cargo.toml", "profile.release " * 20000)
     found("Cargo.toml", "profile . release " * 20000)
-    assert time.monotonic() - start < 10
 
-    start = time.monotonic()
+
+def hostile_flags() -> None:
     text = ("-U_FORTIFY_SOURCE " * 4000 + "\n") * 5 + "X = " + "-z " * 20000 + "\n" + "[" * 5000 + "\n"
-    found("Makefile", text)
-    found("CMakeLists.txt", text)
-    found("Cargo.toml", text)
-    found("build.rs", text)
-    assert time.monotonic() - start < 20
+    for path in ("Makefile", "CMakeLists.txt", "Cargo.toml", "build.rs"):
+        found(path, text)
+
+
+CHILD = """
+import json, time
+from policies import test_hardening_flags as t
+def seconds(call):
+    start = time.monotonic()
+    call()
+    return time.monotonic() - start
+print(json.dumps([seconds(t.hostile_toml), seconds(t.hostile_flags)]))
+"""
+
+
+def test_the_gate_is_fast_on_hostile_lines() -> None:
+    """Timed in a child outside the coverage tracer; this process reads the same lines, so the gate stays covered."""
+    hostile_toml()
+    hostile_flags()
+    toml, flags = untraced.run(CHILD)
+    assert toml < 10
+    assert flags < 20

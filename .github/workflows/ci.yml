@@ -13,16 +13,15 @@ name: CI
 # FULL versus TARGETED. Everything runs in full -- every test, 100% line and branch coverage, every
 # guard's declared effects -- on a push to main, a schedule, a manual dispatch, and any release
 # or publish trigger added later: the rule is "not a pull request", so a new trigger is full until
-# someone argues otherwise. A pull request is targeted: one `policy` job per policy it touches and per policy
-# built on one (tools/select_plan.py), each running that policy's tests, its effects check, its adoption
-# transcript and a staged adopter of it alone, with 100% coverage of its own implementations. It escalates to
+# someone argues otherwise. A pull request is targeted: one `tests-policy` job per policy it touches and per
+# policy built on one, each running that policy's tests with its own implementations held to 100% coverage
+# (tools/select_tests.py --matrix), plus the changed tests no policy job owns (--residual). It escalates to
 # full when it touches anything that is not one policy's own files -- lib/, tools/, a shared test kit or
 # conftest, pyproject.toml, requirements/, .github/, .framework-ref -- when more than a handful of policies
-# are involved, and whenever the planner cannot tell. A full run's tests are `shards` jobs sized from the
-# times main last recorded (tools/durations.py), so wall time holds as the catalog grows. A generated image
-# is not one policy's file and forces nothing: the jobs that regenerate it check it. The other jobs run on
-# every PR as before.
-
+# are involved, and whenever the selector cannot tell. The jobs below that are not tests run on every PR; the
+# effects check and the adoption transcripts are scoped to the policies a PR touches, and the staged adopter
+# to the matrix policies. A full run's tests are shards cut from the per-file times main last recorded
+# (tools/plan_shards.py), so wall time holds as the catalog grows.
 
 # Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
 # framework needs (bash resolution, line endings, path handling) buys nothing here -- and
@@ -156,42 +155,36 @@ jobs:
       - name: Fail on drift
         run: git diff --exit-code -- docs/figures
 
-  # Decides, once, whether this run is full or targeted, and how a full one is cut, so every job below
-  # agrees. Only a pull request can be targeted; the base ref reaches the shell through the environment, as
-  # it does in the DCO check above. A planner that fails fails this job, which fails the `tests` gate:
-  # unsure is never "run less". The durations come from main's last green run; with none (a first run, an
-  # expired artifact) the shards are the default four, split by hash. Every shard downloads the one file
-  # this job uploads, so they all cut the suite the same way even if main records a newer one meanwhile.
+  # Decides, once, whether this run is full or targeted, so the test jobs below agree, and how a full run is cut
+  # into shards. Only a pull request can be targeted; the base ref reaches the shell through the environment, as
+  # it does in the DCO check above. A selector that fails fails this job, which fails the `tests` gate: unsure
+  # is never "run less". A targeted run gets the policy jobs (--matrix) and the test files no policy job owns
+  # (--residual). The per-file times main last recorded come back from the Actions cache, which a pull request
+  # may read and needs no permission; with none the shards are today's four-way hash split, and the plan says
+  # so. Every shard downloads the one plan this job uploads, so they all cut the suite the same way even if
+  # main saves newer times meanwhile.
   scope:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      actions: read
     outputs:
       full: ${{ steps.scope.outputs.full }}
-      jobs: ${{ steps.scope.outputs.jobs }}
-      has_jobs: ${{ steps.scope.outputs.has_jobs }}
-      rest: ${{ steps.scope.outputs.rest }}
+      matrix: ${{ steps.scope.outputs.matrix }}
+      has_matrix: ${{ steps.scope.outputs.has_matrix }}
+      residual: ${{ steps.scope.outputs.residual }}
+      paths: ${{ steps.scope.outputs.paths }}
       shards: ${{ steps.scope.outputs.shards }}
     steps:
-      # Full history: the planner diffs against the merge base with the PR's base.
+      # Full history: the selector diffs against the merge base with the PR's base.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Fetch the test durations main last recorded
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: |
-          echo '{}' > test-durations.json
-          run_id=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].id // empty' || true)
-          if [ -n "$run_id" ] && gh run download "$run_id" --repo "$REPO" --name test-durations --dir fetched; then
-            cp fetched/test-durations.json test-durations.json
-          else
-            echo "no durations from main; default shards, split by hash"
-          fi
+      - name: Restore the file times main last recorded
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: test-durations.json
+          key: test-durations-${{ github.sha }}
+          restore-keys: test-durations-
 
       - name: Plan this run
         id: scope
@@ -199,27 +192,41 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
         run: |
+          [ -f test-durations.json ] || echo '{}' > test-durations.json
+          python3 tools/plan_shards.py check test-durations.json --warn
+          python3 tools/plan_shards.py plan test-durations.json > shard-plan.json
+          full=true
+          matrix='[]'
+          residual=
+          paths=
           if [ "$EVENT_NAME" = pull_request ]; then
-            python3 tools/select_plan.py "origin/$BASE_REF" > plan.json
-          else
-            echo '{"full": true}' > plan.json
+            python3 tools/select_tests.py "origin/$BASE_REF" --matrix > matrix.out &
+            python3 tools/select_tests.py "origin/$BASE_REF" --residual > residual.out &
+            wait
+            if [ "$(cat matrix.out)" != FULL ]; then
+              full=false
+              matrix=$(cat matrix.out)
+              residual=$(tr '\n' ' ' < residual.out)
+              paths=$(python3 -c 'import json, sys; print(" ".join(j["path"] for j in json.load(sys.stdin)))' < matrix.out)
+            fi
           fi
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          plan = json.load(open("plan.json"))
-          jobs = plan.get("policies", [])
-          print("full=" + str(plan["full"]).lower())
-          print("jobs=" + json.dumps(jobs))
-          print("has_jobs=" + str(bool(jobs)).lower())
-          print("rest=" + plan.get("tests", ""))
-          PY
-          echo "shards=$(python3 tools/durations.py shards test-durations.json)" >> "$GITHUB_OUTPUT"
-          cat plan.json
+          has_matrix=false
+          [ "$matrix" = '[]' ] || has_matrix=true
+          shards=$(python3 -c 'import json; print(json.dumps(list(range(1, json.load(open("shard-plan.json"))["shards"] + 1))))')
+          {
+            echo "full=$full"
+            echo "matrix=$matrix"
+            echo "has_matrix=$has_matrix"
+            echo "residual=$residual"
+            echo "paths=$paths"
+            echo "shards=$shards"
+          } >> "$GITHUB_OUTPUT"
+          echo "full=$full policy jobs=$has_matrix shards=$shards"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
-          name: scope-durations
-          path: test-durations.json
+          name: shard-plan
+          path: shard-plan.json
           if-no-files-found: error
           retention-days: 1
 
@@ -229,7 +236,6 @@ jobs:
   # itself is now the gate over all four, because branch protection requires a check of that
   # name. Locally, `python tools/regen_all.py` runs the same checks in the same order.
   generated:
-    needs: scope
     runs-on: ubuntu-latest
     steps:
       # Full history: the transcript check diffs against the merge base with the PR's base.
@@ -336,10 +342,9 @@ jobs:
       # touches, the same trade the
       # reviewer-evidence step makes: an untouched policy's transcript can drift when
       # framework output changes, and is caught at its next edit rather than on every push.
-      # A NEW policy with no committed transcript fails here with the command to run. A targeted run
-      # checks them in the touched policy's own `policy` job; this is the full run's copy.
+      # A NEW policy with no committed transcript fails here with the command to run.
       - name: Adoption transcripts reproduce from an empty repo
-        if: github.event_name == 'pull_request' && needs.scope.outputs.full == 'true'
+        if: github.event_name == 'pull_request'
         env:
           BASE_REF: ${{ github.base_ref }}
         run: python tools/gen_adoption_transcript.py --check --base "origin/$BASE_REF"
@@ -353,15 +358,14 @@ jobs:
         run: >-
           ruff format --check base/java-security agentic-security/agentic-code-security tests
           tools/gen_java_security_contract.py tools/regen_all.py tools/gen_registry.py tools/check_installed.py
-          tools/owasp_llm.py tools/prose_counts.py tools/select_tests.py tools/select_plan.py tools/shard_tests.py
-          tools/durations.py tools/policy_rows.py
+          tools/owasp_llm.py tools/prose_counts.py tools/select_tests.py tools/shard_tests.py
+          tools/plan_shards.py tools/policy_rows.py
           tools/check_data_tables.py tools/gen_lib_copies.py tools/lib_imports.py lib/chock_scan
 
   # This repo is itself an adopter: `.agents/policies/` holds the subset it is governed by,
   # committed as a pinned copy. Checking it here proves the adoption flow on a real repo
   # rather than only in the framework's tests.
   adopter:
-    needs: scope
     runs-on: ubuntu-latest
     steps:
       # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
@@ -405,12 +409,21 @@ jobs:
       # else's machine, and nothing checked it. Behavioural, not a lint: the guard is run in a
       # throwaway workspace seeded with canaries and the filesystem is hashed either side.
       #
-      # Every guard is run, one throwaway workspace each, and that was the slowest step here. They run
-      # concurrently, and only on a full run: a targeted pull request checks the guards of the policies
-      # it touches, and those built on them, in their own `policy` jobs.
+      # Every guard is run, one throwaway workspace each, and that was the slowest step here. They
+      # now run concurrently, and a PR checks only the policies it touches (and those built on
+      # them); anything that is not one policy's own files -- tools/, lib/, a workflow, a pin --
+      # checks every one, as does every run that is not a PR. tools/select_tests.py decides, and
+      # falls back to everything whenever it cannot tell.
       - name: Declared effects match what the guards actually do
-        if: needs.scope.outputs.full == 'true'
-        run: python tools/check_effects.py
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            python tools/check_effects.py --base "origin/$BASE_REF"
+          else
+            python tools/check_effects.py
+          fi
 
       # Checks evidence when a PR carries it, and says so plainly when it does not. Not a
       # gate: nothing is rejected for lacking evidence, because requiring a ritual before
@@ -459,16 +472,15 @@ jobs:
           sys.exit(1 if failed else 0)
           PY
 
-  # The test suite is CI's longest step, so a full run is shards that start together and a gate
-  # that joins them. How many comes from the time main last recorded for each test file (the scope
-  # job): enough that each takes about six minutes, so wall time holds as policies are added. Each
-  # shard runs the whole files packed into its slice, longest first into the lightest slice
-  # (conftest.py, tools/shard_tests.py, tools/durations.py); with no recorded times it runs
-  # the tests whose node-id hash falls in its slice -- crc32, not Python's per-process hash(),
-  # because every xdist worker must keep the same tests. Either way the slices partition the suite
-  # -- none twice, none dropped -- and the job count the slice is cut by is the matrix's own, so
-  # editing the matrix cannot leave a slice unrun. Every test is independent (each already runs on
-  # any xdist worker), which is what makes this safe. Never on a PR that is targeted.
+  # The test suite is CI's longest step, so a full run is shards that start together and a gate that joins
+  # them. How many, and which whole test files each runs, is the plan the scope job cut from the time main last
+  # recorded for each file (tools/plan_shards.py): enough shards that each takes about six minutes with setup,
+  # four at the fewest. A shard keeps the tests of its files and, for a file too long to pack, the tests whose
+  # node-id hash falls in its slice (conftest.py, tools/shard_tests.py) -- crc32, not Python's per-process
+  # hash(), because every xdist worker must keep the same tests. The slices partition the suite -- none twice,
+  # none dropped -- and the job count the slice is cut by is the matrix's own, so editing the matrix cannot
+  # leave a slice unrun. Every test is independent (each already runs on any xdist worker), which is what makes
+  # this safe. Never on a PR that is targeted.
   tests-shard:
     needs: scope
     if: needs.scope.outputs.full == 'true'
@@ -512,7 +524,7 @@ jobs:
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
         with:
-          name: scope-durations
+          name: shard-plan
 
       # What the one `tests` step below used to say still holds, shard by shard: tests/ proves
       # every java-security rule case by case -- each refusing and silent case is a named test, and
@@ -543,22 +555,130 @@ jobs:
           COVERAGE_FILE: cov-shard-${{ matrix.shard }}
         run: >-
           python -m pytest --cov --cov-fail-under=0 --cov-report= -n auto
-          --shard "$SHARD/$SHARDS" --shard-durations test-durations.json --durations-out "durations-$SHARD.json"
+          --shard "$SHARD/$SHARDS" --shard-plan shard-plan.json --junitxml "junit-$SHARD.xml"
 
-      # The coverage data and this shard's file times travel together to the `tests` job.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: coverage-shard-${{ matrix.shard }}
-          path: |
-            cov-shard-${{ matrix.shard }}
-            durations-${{ matrix.shard }}.json
+          path: cov-shard-${{ matrix.shard }}
           if-no-files-found: error
           retention-days: 1
 
-  # A targeted pull request's policies run in their own jobs below. This runs the rest, whole: the test
-  # files the PR changed that no policy job runs, and the repo-wide standards test. No --cov, because a
-  # partial run cannot reach 100% and a gate it must fail would be a gate nobody could pass; the policy
-  # jobs hold their own implementations to 100%, and main holds the whole.
+      # Main sums these into the file times the next run is planned from.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        if: github.event_name == 'push'
+        with:
+          name: junit-shard-${{ matrix.shard }}
+          path: junit-${{ matrix.shard }}.xml
+          if-no-files-found: error
+          retention-days: 1
+
+  # Main records how long each test file took, for the plan of every later run. The times are saved before the
+  # cap is checked, so a file over the cap fails this job and still leaves the times behind. Cap: no single
+  # file may take more than five minutes of wall time on a full run; one that does cannot be balanced, and the
+  # message says to split it by activity. A timing cannot be a unit test, so this is where it is enforced.
+  durations:
+    needs: [scope, tests-shard]
+    if: github.event_name == 'push' && needs.scope.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          pattern: junit-shard-*
+          path: junit
+          merge-multiple: true
+
+      - name: Sum the junit times by test file
+        run: python3 tools/plan_shards.py junit test-durations.json junit/junit-*.xml
+
+      - name: Save the file times for the next run
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: test-durations.json
+          key: test-durations-${{ github.sha }}
+
+      - name: No test file takes longer than the cap
+        run: python3 tools/plan_shards.py check test-durations.json
+
+  # A targeted pull request runs one of these per policy it touches and per policy built on one. Each runs the
+  # test files that prove the policy and holds the policy's own implementations to 100% line and branch
+  # coverage, so the gate a full run enforces on main is enforced here for the code the PR can have changed.
+  # A package copied in from lib/ is left out of the measured code: it is identical to lib/ (check_registry.py
+  # fails on drift) and a full run, which any lib/ change triggers, covers lib/. Python the policy does not
+  # ship has nothing to measure. `--policy` keeps the walker tests (those that visit every policy) to the rows
+  # about this policy; a row that names no policy, or another one only, is the one thing it can drop. Matrix
+  # values reach the shell through the environment, never into the script text.
+  tests-policy:
+    needs: scope
+    if: needs.scope.outputs.full == 'false' && needs.scope.outputs.has_matrix == 'true'
+    name: tests-policy (${{ matrix.id }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.scope.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            .framework-ref
+            requirements/test.txt
+
+      - name: Read the framework pin
+        run: python3 -I tools/framework_ref.py read
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
+
+      - name: Install Chock and the test tooling
+        run: |
+          pip install ./.framework
+          pip install --require-hashes -r requirements/test.txt
+
+      - name: Tests of this policy, its implementations at 100% line and branch coverage
+        env:
+          POLICY: ${{ matrix.id }}
+          POLICY_PATH: ${{ matrix.path }}
+          TESTS: ${{ join(matrix.tests, ' ') }}
+        run: |
+          read -ra files <<< "$TESTS"
+          [ "${#files[@]}" -gt 0 ] || { echo "::error::no test names $POLICY; the selector is wrong"; exit 1; }
+          impl="$POLICY_PATH/implementations"
+          if [ ! -d "$impl" ] || ! find "$impl" -name '*.py' | grep -q .; then
+            python -m pytest -n auto --policy "$POLICY" "${files[@]}"
+            exit 0
+          fi
+          omit=
+          for lib in lib/*/; do
+            [ ! -d "$impl/$(basename "$lib")" ] || omit="$omit\"*/$impl/$(basename "$lib")/*\", "
+          done
+          printf '[tool.coverage.run]\nbranch = true\npatch = ["subprocess"]\nomit = [%s]\n' "${omit%, }" > "$RUNNER_TEMP/coverage.toml"
+          python -m pytest -n auto --policy "$POLICY" "${files[@]}" --cov="$impl" \
+            --cov-config="$RUNNER_TEMP/coverage.toml" --cov-branch --cov-fail-under=100 \
+            --cov-report=term-missing:skip-covered
+
+  # The test files a targeted pull request changed that no policy job owns, and the repo-wide standards test,
+  # whole and with no coverage gate: the policy jobs hold their own implementations to 100%, and main holds the
+  # rest.
   tests-targeted:
     needs: scope
     if: needs.scope.outputs.full == 'false'
@@ -596,36 +716,40 @@ jobs:
           pip install ./.framework
           pip install --require-hashes -r requirements/test.txt
 
-      - name: Changed tests and repo standards (targeted, no coverage gate)
+      - name: Changed tests no policy job owns, and repo standards
         env:
-          TESTS: ${{ needs.scope.outputs.rest }}
+          TESTS: ${{ needs.scope.outputs.residual }}
         run: |
           read -ra files <<< "$TESTS"
           python -m pytest -n auto "${files[@]}"
 
   # The required check, as `policies` is. A skipped job reports as passing and a failed one it
   # needs would skip this, so it always runs and fails unless exactly the jobs this run needed
-  # succeeded: `scope`, then the four shards (full) or the targeted run. On a full run it then
+  # succeeded: `scope`, then the shards (full), or the policy jobs and the changed tests (targeted). On a full run it then
   # does what the single job did last -- combine what the shards measured and fail below 100,
   # with the same [tool.coverage] settings, so what counts as covered has not moved.
   tests:
     if: always()
-    needs: [scope, tests-shard, tests-targeted]
+    needs: [scope, tests-shard, tests-targeted, tests-policy]
     runs-on: ubuntu-latest
     steps:
       - name: Every test job this run needed passed
         env:
           SCOPE: ${{ needs.scope.result }}
           FULL: ${{ needs.scope.outputs.full }}
+          HAS_MATRIX: ${{ needs.scope.outputs.has_matrix }}
           SHARDS: ${{ needs.tests-shard.result }}
           TARGETED: ${{ needs.tests-targeted.result }}
+          POLICY: ${{ needs.tests-policy.result }}
         run: |
-          echo "scope=$SCOPE full=$FULL shards=$SHARDS targeted=$TARGETED"
+          echo "scope=$SCOPE full=$FULL shards=$SHARDS targeted=$TARGETED policy=$POLICY (policy jobs: $HAS_MATRIX)"
           [ "$SCOPE" = success ] || exit 1
           if [ "$FULL" = true ]; then
-            [ "$SHARDS" = success ] && [ "$TARGETED" = skipped ] || exit 1
+            [ "$SHARDS" = success ] && [ "$TARGETED" = skipped ] && [ "$POLICY" = skipped ] || exit 1
           else
-            [ "$FULL" = false ] && [ "$TARGETED" = success ] && [ "$SHARDS" = skipped ] || exit 1
+            want=skipped
+            [ "$HAS_MATRIX" = true ] && want=success
+            [ "$FULL" = false ] && [ "$TARGETED" = success ] && [ "$SHARDS" = skipped ] && [ "$POLICY" = "$want" ] || exit 1
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -662,127 +786,13 @@ jobs:
           python -m coverage combine coverage-shards/cov-shard-*
           python -m coverage report
 
-      # What the next run cuts its shards by. A file that alone takes longer than a shard is
-      # supposed to means no split can balance it, so that fails here, naming it, the way the
-      # 300-line rule fails a file that is too long: split it by activity.
-      - name: Merge the file times, and no file takes longer than the cap
-        if: needs.scope.outputs.full == 'true'
-        run: |
-          python tools/durations.py merge test-durations.json coverage-shards/durations-*.json
-          python tools/durations.py check test-durations.json
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        if: needs.scope.outputs.full == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          name: test-durations
-          path: test-durations.json
-          if-no-files-found: error
-          retention-days: 30
-
-  # One job per policy a targeted pull request touches or that is built on one (tools/select_plan.py),
-  # so cost follows the change rather than the catalog: this policy's tests, its effects check, its
-  # adoption transcript when the PR touches it, and the policy staged alone into an empty repo as an
-  # adopter would take it. `--policy` keeps the walker tests to this policy's own rows. Its
-  # implementations must reach 100% line and branch coverage under those tests; a package copied in
-  # from lib/ is left out, being identical to lib/ (check_registry.py) and gated there by a full run.
-  # Matrix values reach the shell through the environment, never into the script text.
-  policy:
-    needs: scope
-    if: needs.scope.outputs.has_jobs == 'true'
-    name: policy (${{ matrix.policy }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(needs.scope.outputs.jobs) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: |
-            .framework-ref
-            requirements/test.txt
-
-      - name: Read the framework pin
-        run: python3 -I tools/framework_ref.py read
-
-      - name: Check out the framework
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-        with:
-          persist-credentials: false
-          repository: open-coder-ai/chock
-          ref: ${{ env.FRAMEWORK_REF }}
-          path: .framework
-
-      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
-      - name: The framework checkout is the pinned commit
-        run: python3 -I tools/framework_ref.py verify .framework
-
-      - name: Install Chock and the test tooling
-        run: |
-          pip install ./.framework
-          pip install --require-hashes -r requirements/test.txt
-
-      - name: Tests and evals of this policy, its implementations at 100% coverage
-        env:
-          POLICY: ${{ matrix.policy }}
-          TESTS: ${{ matrix.tests }}
-          IMPL: ${{ matrix.implementations }}
-          OMIT: ${{ matrix.omit }}
-        run: |
-          read -ra files <<< "$TESTS"
-          [ "${#files[@]}" -gt 0 ] || { echo "::error::no test names $POLICY; the planner is wrong"; exit 1; }
-          if [ -z "$IMPL" ]; then
-            python -m pytest -n auto --policy "$POLICY" "${files[@]}"
-            exit 0
-          fi
-          python -m pytest -n auto --policy "$POLICY" --cov --cov-fail-under=0 --cov-report= "${files[@]}"
-          omit=()
-          [ -z "$OMIT" ] || omit=(--omit="$OMIT")
-          python -m coverage report --include="$IMPL/*,$IMPL/**/*" "${omit[@]}" --fail-under=100
-
-      - name: Declared effects of this policy's guards match what they do
-        env:
-          POLICY: ${{ matrix.policy }}
-        run: python tools/check_effects.py --policies "$POLICY"
-
-      - name: Adoption transcript reproduces from an empty repo
-        if: matrix.transcript
-        env:
-          POLICY: ${{ matrix.policy }}
-        run: python tools/gen_adoption_transcript.py --check --policy "$POLICY"
-
-      # The staged-adopter job's steps, for this one policy: published as an adopter would install it,
-      # then validated with every eval case replayed. The OWASP claim needs the whole pack, so it stays
-      # with the full run.
-      - name: Stage this policy alone as an adopter would, and replay its evals
-        env:
-          FOLDER: ${{ matrix.folder }}
-        run: |
-          stage="$RUNNER_TEMP/staged"
-          mkdir -p "$stage"
-          cd "$stage"
-          git init --quiet .
-          git config user.email ci@chock.invalid
-          git config user.name ci
-          chock init . --skip-hooks
-          cp -r "$GITHUB_WORKSPACE/$FOLDER" .agents/policies/
-          chock sync --repo . --skip-hooks
-          chock check --repo .
-
-  # Everything PUBLISHED is checked separately, in a throwaway repo. A full run stages all of it; a
-  # targeted run stages each policy it touches alone, in that policy's `policy` job. Staging into
+  # Everything PUBLISHED is checked separately, in a throwaway repo. Staging into
   # `.agents/policies/` would overwrite the pinned copies above with `base/`, conflating
   # what this repo runs with what it ships -- the exact separation that makes editing a
-  # published policy safe.
+  # published policy safe. A full run stages every published policy; a targeted one stages the
+  # policies of the matrix and the skills they need, and none at all when the PR names no policy.
   staged-adopter:
     needs: scope
-    if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -813,8 +823,17 @@ jobs:
       - name: Install Chock
         run: pip install ./.framework
 
-      - name: Stage every published policy and skill as an adopter would
+      - name: Stage the published policies and skills as an adopter would
+        id: stage
+        env:
+          FULL: ${{ needs.scope.outputs.full }}
+          PATHS: ${{ needs.scope.outputs.paths }}
         run: |
+          if [ "$FULL" != true ] && [ -z "$PATHS" ]; then
+            echo "empty=true" >> "$GITHUB_OUTPUT"
+            echo "no policy in this pull request to stage"
+            exit 0
+          fi
           rm -rf /tmp/catalog-check
           mkdir -p /tmp/catalog-check
           cd /tmp/catalog-check
@@ -826,7 +845,7 @@ jobs:
           # Enumerating trees here is how the plugin check missed `compliance/` entirely.
           for tree in $(python "$GITHUB_WORKSPACE"/tools/trees.py); do
             if [ -d "$GITHUB_WORKSPACE/$tree" ]; then
-              cp -r "$GITHUB_WORKSPACE/$tree"/* .agents/policies/
+              [ "$FULL" != true ] || cp -r "$GITHUB_WORKSPACE/$tree"/* .agents/policies/
             else
               # trees.py is the source of truth for what this catalog publishes; a
               # listed tree with no directory means the staging step would validate
@@ -835,6 +854,11 @@ jobs:
               exit 1
             fi
           done
+          if [ "$FULL" != true ]; then
+            for path in $PATHS; do
+              cp -r "$GITHUB_WORKSPACE/$path" .agents/policies/
+            done
+          fi
           if [ -d "$GITHUB_WORKSPACE/skills" ]; then
             cp -r "$GITHUB_WORKSPACE"/skills/* .agents/skills/
           fi
@@ -845,14 +869,18 @@ jobs:
       # guard against a throwaway repo: a policy whose declared gate does not do what its eval
       # suite claims fails here. One run -- `chock check` already replays the evals, so the
       # `--only evals` step that followed it ran every case a second time.
-      - name: Validate every published policy and replay its evals
+      - name: Validate the staged policies and replay their evals
+        if: steps.stage.outputs.empty != 'true'
         run: chock check --repo /tmp/catalog-check
 
       # The README's coverage claim, re-derived: the staged adopter (which installs every
       # published policy) must score all ten OWASP ASI controls covered. This repo itself
       # stays minimal on purpose -- contributors should not wade through sixteen ambient
       # policies -- so the claim is verified where the full pack is actually installed.
+      # Needs the whole pack, so only a full run (and main, which is always full) makes it; the merge queue
+      # runs a full run before anything merges.
       - name: OWASP ASI coverage claim holds in the staged adopter
+        if: needs.scope.outputs.full == 'true'
         run: |
           cd /tmp/catalog-check
           report="$(chock compliance report --framework owasp_asi)"
@@ -862,32 +890,18 @@ jobs:
             exit 1
           fi
 
-  # The required check. A job skipped because a job it needs failed would report as passing, so this
-  # one always runs and fails unless every job this run needed succeeded and every job it did not need
-  # was skipped: `staged-adopter` on a full run, the `policy` jobs on a targeted one with policies.
+  # The required check. A job skipped because a job it needs failed would report as passing,
+  # so this one always runs and fails unless every job above succeeded.
   policies:
     if: always()
-    needs: [scope, generated, adopter, tests, staged-adopter, policy]
+    needs: [generated, adopter, tests, staged-adopter]
     runs-on: ubuntu-latest
     steps:
       - name: Every policies job passed
         env:
-          SCOPE: ${{ needs.scope.result }}
-          FULL: ${{ needs.scope.outputs.full }}
-          HAS_JOBS: ${{ needs.scope.outputs.has_jobs }}
-          GENERATED: ${{ needs.generated.result }}
-          ADOPTER: ${{ needs.adopter.result }}
-          TESTS: ${{ needs.tests.result }}
-          STAGED: ${{ needs.staged-adopter.result }}
-          POLICY: ${{ needs.policy.result }}
+          RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
-          echo "scope=$SCOPE full=$FULL has_jobs=$HAS_JOBS generated=$GENERATED adopter=$ADOPTER tests=$TESTS staged=$STAGED policy=$POLICY"
-          for result in "$SCOPE" "$GENERATED" "$ADOPTER" "$TESTS"; do
+          echo "generated, adopter, tests, staged-adopter: $RESULTS"
+          for result in $RESULTS; do
             [ "$result" = success ] || exit 1
           done
-          want=skipped
-          [ "$FULL" = true ] && want=success
-          [ "$STAGED" = "$want" ] || exit 1
-          want=skipped
-          [ "$HAS_JOBS" = true ] && want=success
-          [ "$POLICY" = "$want" ] || exit 1

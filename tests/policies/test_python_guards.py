@@ -14,6 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import policy_rows
 import pytest
 from policies import guard_cases_agent_env as env_cases
 from policies import guard_cases_fetch as fetch_cases
@@ -221,12 +222,15 @@ def test_the_source_never_prints_a_crash_marker(policy: str) -> None:
     assert not any(marker in text for marker in CRASH_MARKERS)
 
 
-def test_every_block_in_every_eval_suite_prints_a_reason() -> None:
-    """Replay each authored `expect: block` command of the Python guards; the reason must be plain."""
+def test_every_block_in_every_eval_suite_prints_a_reason(request: pytest.FixtureRequest) -> None:
+    """Replay each authored `expect: block` command of the Python guards; the reason must be plain.
+
+    With `--policy`, as a policy job runs it, only those guards are replayed, and the count is not asserted.
+    """
     import yaml  # noqa: PLC0415
 
     checked = 0
-    for policy in GUARDS:
+    for policy in policy_rows.chosen(request.config, GUARDS):
         suite = yaml.safe_load((ROOT / "base" / policy / "evals" / "suite.yaml").read_text(encoding="utf-8"))
         for case in suite["suite"]["cases"]:
             execute = case.get("execute") or {}
@@ -251,7 +255,7 @@ def test_every_block_in_every_eval_suite_prints_a_reason() -> None:
             assert done.stderr.strip(), (policy, case["id"])
             assert not any(m in done.stderr.lower() for m in CRASH_MARKERS), (policy, case["id"], done.stderr)
             checked += 1
-    assert checked >= 100
+    assert checked >= 100 or request.config.getoption("--policy")
 
 
 def test_a_guard_loaded_twice_does_not_share_a_parser() -> None:

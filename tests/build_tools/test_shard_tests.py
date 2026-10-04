@@ -15,12 +15,12 @@ ROOT = Path(__file__).resolve().parents[2]
 NODES = [f"tests/policies/test_x.py::test_case[{n}]" for n in range(200)]
 
 
-def config(spec: str | None, deselected: list[list[object]], times: str | None = None) -> SimpleNamespace:
+def config(spec: str | None, deselected: list[list[object]], plan: str | None = None) -> SimpleNamespace:
     def pytest_deselected(items: list[object]) -> None:
         deselected.append(items)
 
     hook = SimpleNamespace(pytest_deselected=pytest_deselected)
-    options = {"--shard": spec, "--shard-durations": times}
+    options = {"--shard": spec, "--shard-plan": plan}
     return SimpleNamespace(getoption=lambda name: options[name], hook=hook)
 
 
@@ -68,46 +68,15 @@ def test_a_single_shard_deselects_nothing() -> None:
     assert dropped == []
 
 
-def test_the_options_are_registered_without_a_default() -> None:
+def test_the_option_is_registered_without_a_default() -> None:
     seen: dict[str, object] = {}
     shard_tests.add_option(SimpleNamespace(addoption=lambda name, **kw: seen.update({name: kw})))
     assert seen["--shard"]["default"] is None
-    assert seen["--shard-durations"]["default"] is None
-
-
-FILES = {f"tests/policies/test_{n}.py": float(10 * (n + 1)) for n in range(6)}
-BY_FILE = [SimpleNamespace(nodeid=f"{f}::t{n}") for f in FILES for n in range(5)]
-
-
-def slices_by_time(times: str | None) -> list[list[str]]:
-    kept = []
-    for index in (1, 2, 3):
-        items = list(BY_FILE)
-        shard_tests.apply(config(f"{index}/3", [], times), items)
-        kept.append([i.nodeid for i in items])
-    return kept
-
-
-def test_with_times_a_file_stays_whole_in_one_slice_and_the_slices_partition_the_suite(tmp_path: Path) -> None:
-    path = tmp_path / "d.json"
-    path.write_text(json.dumps(FILES), encoding="utf-8")
-    kept = slices_by_time(str(path))
-    assert sorted(n for k in kept for n in k) == sorted(i.nodeid for i in BY_FILE)
-    for nodes in kept:
-        assert len({n.partition("::")[0] for n in nodes}) * 5 == len(nodes)
-    loads = [sum(FILES[n.partition("::")[0]] / 5 for n in nodes) for nodes in kept]
-    assert max(loads) - min(loads) <= 10
-
-
-@pytest.mark.parametrize("bad", ["absent.json", "empty.json"])
-def test_unreadable_or_empty_times_fall_back_to_the_hash(tmp_path: Path, bad: str) -> None:
-    (tmp_path / "empty.json").write_text("{}", encoding="utf-8")
-    hashed = slices_by_time(None)
-    assert slices_by_time(str(tmp_path / bad)) == hashed
+    assert seen["--shard-plan"]["default"] is None
 
 
 def collect(*args: str) -> subprocess.CompletedProcess[str]:
-    cmd = [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider", *args]
+    cmd = [sys.executable, "-m", "pytest", "--collect-only", "-p", "no:cacheprovider", *args]
     return subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, check=False)
 
 
@@ -115,6 +84,7 @@ def test_pytest_accepts_the_option_and_the_two_halves_of_a_file_make_it_whole() 
     target = "tests/test_repo_standards.py"
     ids = {i: [x for x in collect(target, "--shard", f"{i}/2").stdout.splitlines() if "::" in x] for i in (1, 2)}
     whole = [x for x in collect(target).stdout.splitlines() if "::" in x]
+    assert whole
     assert sorted(ids[1] + ids[2]) == sorted(whole)
     assert len(set(ids[1]) & set(ids[2])) == 0
 
@@ -125,8 +95,65 @@ def test_pytest_refuses_a_bad_spec_rather_than_running_nothing() -> None:
     assert "--shard wants N/M" in proc.stderr
 
 
+FILES = {f"tests/policies/test_{n}.py": float(10 * (n + 1)) for n in range(6)}
+BY_FILE = [SimpleNamespace(nodeid=f"{f}::t{n}") for f in FILES for n in range(5)]
+
+
+def planned(tmp_path: Path, plan: object) -> str:
+    path = tmp_path / "plan.json"
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    return str(path)
+
+
+def slices(plan: str | None, total: int = 3) -> list[list[str]]:
+    kept = []
+    for index in range(1, total + 1):
+        items = list(BY_FILE)
+        shard_tests.apply(config(f"{index}/{total}", [], plan), items)
+        kept.append([i.nodeid for i in items])
+    return kept
+
+
+def test_a_planned_file_stays_whole_in_its_slice_and_the_slices_partition_the_suite(tmp_path: Path) -> None:
+    names = sorted(FILES)
+    plan = {"shards": 3, "assignment": {n: i % 3 + 1 for i, n in enumerate(names)}, "split": []}
+    kept = slices(planned(tmp_path, plan))
+    assert sorted(n for k in kept for n in k) == sorted(i.nodeid for i in BY_FILE)
+    for index, nodes in enumerate(kept, start=1):
+        assert {n.partition("::")[0] for n in nodes} == {f for f, s in plan["assignment"].items() if s == index}
+
+
+def test_a_file_the_plan_splits_or_does_not_know_keeps_the_hash_of_its_tests(tmp_path: Path) -> None:
+    names = sorted(FILES)
+    plan = {"shards": 3, "assignment": {names[0]: 1}, "split": [names[1]]}
+    kept = slices(planned(tmp_path, plan))
+    assert sorted(n for k in kept for n in k) == sorted(i.nodeid for i in BY_FILE)
+    hashed = {i.nodeid: shard_tests.slice_of(i.nodeid, 3) for i in BY_FILE if not i.nodeid.startswith(names[0])}
+    for index, nodes in enumerate(kept, start=1):
+        assert {n for n in nodes if not n.startswith(names[0])} == {n for n, s in hashed.items() if s == index}
+
+
+def test_an_empty_plan_is_the_hash_split(tmp_path: Path) -> None:
+    empty = {"shards": 3, "assignment": {}, "split": []}
+    assert slices(planned(tmp_path, empty)) == slices(None)
+
+
+def test_a_plan_for_another_number_of_slices_is_an_error(tmp_path: Path) -> None:
+    plan = planned(tmp_path, {"shards": 4, "assignment": {}, "split": []})
+    with pytest.raises(pytest.UsageError, match="plan for 4 shards, not 3"):
+        slices(plan)
+
+
+@pytest.mark.parametrize("bad", ["absent.json", "garbled.json"])
+def test_a_missing_or_garbled_plan_is_an_error_not_a_different_split(tmp_path: Path, bad: str) -> None:
+    (tmp_path / "garbled.json").write_text("{", encoding="utf-8")
+    with pytest.raises(pytest.UsageError, match="is not a shard plan"):
+        slices(str(tmp_path / bad))
+
+
 def test_the_options_register_when_a_value_is_a_file_that_exists() -> None:
-    """CI passes `--shard-durations test-durations.json`; pytest reads an existing file there as a path."""
-    proc = collect("--shard", "1/2", "--shard-durations", "pyproject.toml")
-    assert proc.returncode == 0, proc.stderr
+    """CI passes `--shard-plan shard-plan.json`; pytest reads an existing file there as a path."""
+    proc = collect("--shard", "1/2", "--shard-plan", "pyproject.toml")
     assert "unrecognized arguments" not in proc.stderr
+    assert proc.returncode == pytest.ExitCode.USAGE_ERROR
+    assert "pyproject.toml is not a shard plan" in proc.stderr

@@ -4,15 +4,16 @@ A test belongs to the slice its node id hashes to, so the slices partition whate
 none twice, none dropped -- with no list to keep. crc32 rather than hash(): every xdist worker
 collects on its own and must keep the same tests, and hash() differs per process.
 
-With `--shard-durations FILE` (tools/durations.py) a whole test file goes to one slice instead, packed by
-the time the file took last run, so the slices finish together. An unreadable FILE falls back to the hash.
+With `--shard-plan FILE` (tools/plan_shards.py) a test file named in the plan goes whole to the slice the plan
+gives it, packed by the time it took last run so the slices finish together; every other test, including those of a
+file too long to pack, keeps the hash. The plan must be for the same number of slices as the spec, or it is an error.
 """
 
 from __future__ import annotations
 
 import zlib
 
-import durations
+import plan_shards
 import pytest
 
 
@@ -31,22 +32,25 @@ def slice_of(nodeid: str, total: int) -> int:
 
 def add_option(parser: pytest.Parser) -> None:
     parser.addoption("--shard", default=None, metavar="N/M", help="run only slice N of M of the collected tests")
-    parser.addoption(
-        "--shard-durations", default=None, metavar="FILE", help="balance the slices by recorded file times"
-    )
+    parser.addoption("--shard-plan", default=None, metavar="FILE", help="pack whole test files by the plan's times")
 
 
 def file_of(item: pytest.Item) -> str:
     return item.nodeid.partition("::")[0]
 
 
-def slicer(config: pytest.Config, items: list[pytest.Item], total: int):
-    """item -> slice number: the packed slice of its file when times are recorded, else the hash of its id."""
-    recorded = durations.load(path) if (path := config.getoption("--shard-durations")) else {}
-    if not recorded:
+def slicer(config: pytest.Config, total: int):
+    """item -> slice number: its file's slice in the plan, else the hash of its node id."""
+    if not (path := config.getoption("--shard-plan")):
         return lambda item: slice_of(item.nodeid, total)
-    packed = durations.balance(sorted({file_of(item) for item in items}), recorded, total)
-    return lambda item: packed[file_of(item)]
+    try:
+        plan = plan_shards.load_plan(path)
+    except ValueError as exc:
+        raise pytest.UsageError(str(exc)) from exc
+    if plan["shards"] != total:
+        message = f"{path} is a plan for {plan['shards']} shards, not {total}"
+        raise pytest.UsageError(message)
+    return lambda item: plan["assignment"].get(file_of(item)) or slice_of(item.nodeid, total)
 
 
 def apply(config: pytest.Config, items: list[pytest.Item]) -> None:
@@ -55,7 +59,7 @@ def apply(config: pytest.Config, items: list[pytest.Item]) -> None:
     if spec is None:
         return
     index, total = parse(spec)
-    which = slicer(config, items, total)
+    which = slicer(config, total)
     kept = [item for item in items if which(item) == index]
     dropped = [item for item in items if which(item) != index]
     if dropped:

@@ -2,11 +2,13 @@
 
 A row names a policy when a whole word of its parameters is that policy's id (underscores read as hyphens).
 A test with no such row, or a row naming no policy, always runs: only a row clearly about another policy goes.
+A test that walks every policy in one body, so has no rows to drop, narrows its own loop with `chosen`.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 
 import pytest
 from trees import policy_dirs
@@ -19,6 +21,12 @@ def named(nodeid: str, ids: set[str]) -> set[str]:
     _, bracket, params = nodeid.partition("[")
     words = WORD.findall(params) if bracket else []
     return {w for word in words for w in (word, word.replace("_", "-")) if w in ids}
+
+
+def chosen(config: pytest.Config, ids: Iterable[str]) -> list[str]:
+    """`ids`, or only those given with --policy: for a test that loops over every policy in its own body."""
+    wanted = config.getoption("--policy")
+    return [i for i in ids if not wanted or i in wanted]
 
 
 def add_option(parser: pytest.Parser) -> None:
