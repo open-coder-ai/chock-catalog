@@ -21,7 +21,8 @@ name: CI
 # are involved, and whenever the selector cannot tell. The jobs below that are not tests run on every PR; the
 # effects check is scoped to the policies a PR touches, and the staged adopter to the matrix policies.
 # Derived docs and images (README counts, policy pages, figures, brand card, coverage matrix, adoption
-# transcripts) are not checked here: they lag until the owner's release, and the nightly reports their drift. A full run's tests are shards cut from the per-file times main last recorded
+# transcripts) are not checked here: they lag until the owner's release, and the nightly reports their
+# drift. A full run's tests are shards cut from the per-file times main last recorded
 # (tools/plan_shards.py), so wall time holds as the catalog grows. A file is as slow as its longest test, which
 # is why a test that loops over every policy is parametrized per policy.
 
