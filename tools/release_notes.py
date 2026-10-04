@@ -18,6 +18,8 @@ import yaml
 from trees import ROOT, policy_dirs
 
 SEMVER = re.compile(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")
+#: A tag name that git cannot read as an option.
+TAG = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 
 
 def entries(manifest: dict | None) -> list[dict]:
@@ -50,6 +52,9 @@ def render(root: Path, version: str, since: str | None) -> str:
         msg = f"version must be MAJOR.MINOR.PATCH, got {version!r}"
         raise ValueError(msg)
     if since is not None:
+        if not TAG.fullmatch(since):
+            msg = f"unknown tag {since!r}"
+            raise ValueError(msg)
         known = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "--verify", "--quiet", f"{since}^{{commit}}"],
             capture_output=True,
@@ -76,10 +81,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--version", required=True, help="the catalog version, MAJOR.MINOR.PATCH")
     parser.add_argument("--since", help="the last catalog tag; omit for the first release")
-    parser.add_argument("--root", type=Path, default=ROOT, help="the catalog checkout (default: this one)")
     args = parser.parse_args(argv)
     try:
-        notes = render(args.root, args.version, args.since)
+        notes = render(ROOT, args.version, args.since)
     except ValueError as err:
         parser.error(str(err))
     print(notes, end="")

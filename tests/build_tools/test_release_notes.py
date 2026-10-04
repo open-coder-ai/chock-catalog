@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -93,24 +94,27 @@ def test_an_unknown_tag_is_refused(repo: Path) -> None:
         release_notes.render(repo, "0.2.0", "v9.9.9")
 
 
-def test_main_prints_the_notes(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    assert release_notes.main(["--version", "0.1.0", "--root", str(repo)]) == 0
+@pytest.mark.parametrize("tag", ["--output=x", "-x", "", "a b", "v1^{commit}"])
+def test_a_tag_git_could_read_as_an_option_is_refused(repo: Path, tag: str) -> None:
+    with pytest.raises(ValueError, match="unknown tag"):
+        release_notes.render(repo, "0.2.0", tag)
+
+
+def test_main_prints_the_notes(repo: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(release_notes, "ROOT", repo)
+    assert release_notes.main(["--version", "0.1.0"]) == 0
     assert capsys.readouterr().out.startswith("# Chock catalog v0.1.0\n")
 
 
-def test_main_exits_2_on_a_bad_argument(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_exits_2_on_a_bad_argument(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as raised:
-        release_notes.main(["--version", "x", "--root", str(repo)])
+        release_notes.main(["--version", "x"])
     assert raised.value.code == 2
     assert "MAJOR.MINOR.PATCH" in capsys.readouterr().err
 
 
-def test_the_script_runs_from_the_command_line(repo: Path) -> None:
-    script = Path(release_notes.__file__)
-    done = subprocess.run(
-        [sys.executable, str(script), "--version", "0.1.0", "--since", "v0.1.0", "--root", str(repo)],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    assert done.stdout == "# Chock catalog v0.1.0\n\nNo policy changelog entries since v0.1.0.\n"
+def test_the_script_entry_point_exits_with_main_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["release_notes.py", "--version", "x"])
+    with pytest.raises(SystemExit) as raised:
+        runpy.run_module("release_notes", run_name="__main__")
+    assert raised.value.code == 2
