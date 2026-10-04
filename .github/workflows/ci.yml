@@ -577,6 +577,7 @@ jobs:
   # cap is checked, so a file over the cap fails this job and still leaves the times behind. Cap: no single
   # file may take more than five minutes of wall time on a full run; one that does cannot be balanced, and the
   # message says to split it by activity. A timing cannot be a unit test, so this is where it is enforced.
+  # One file is exempt, named with its reason in tools/plan_shards.py (EXEMPT), and every run warns of it.
   durations:
     needs: [scope, tests-shard]
     if: github.event_name == 'push' && needs.scope.outputs.full == 'true'

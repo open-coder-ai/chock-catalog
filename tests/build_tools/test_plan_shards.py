@@ -196,10 +196,36 @@ def test_check_fails_naming_each_file_over_the_cap_and_warns_near_it(tmp_path: P
     assert "::warning::slow.py" not in proc.stdout
 
 
-def test_check_with_warn_never_fails_and_a_clean_run_prints_nothing(tmp_path: Path) -> None:
+def test_check_with_warn_never_fails(tmp_path: Path) -> None:
     slow = write(tmp_path / "slow.json", {"slow.py": 4 * 400.0})
     proc = run("check", slow, "--warn")
     assert (proc.returncode, "::error::slow.py" in proc.stdout) == (0, True)
-    ok = write(tmp_path / "ok.json", {"ok.py": 4.0})
-    clean = run("check", ok)
-    assert clean.stdout == ""
+
+
+def test_the_exempt_file_is_skipped_by_check_and_named_in_a_warning_on_every_run(tmp_path: Path) -> None:
+    (name,) = plan_shards.EXEMPT
+    over_the_cap = write(tmp_path / "t.json", {name: 4 * 417.0, "ok.py": 4.0})
+    proc = run("check", over_the_cap)
+    assert proc.returncode == 0
+    assert proc.stdout.count("::warning::") == 1
+    assert f"::warning::{name} is exempt from the 300s cap, temporarily: " in proc.stdout
+    assert "::error::" not in proc.stdout
+    clean = run("check", write(tmp_path / "ok.json", {"ok.py": 4.0}))
+    assert clean.returncode == 0
+    assert clean.stdout == proc.stdout.splitlines()[0] + "\n"
+    warned = run("check", over_the_cap, "--warn")
+    assert warned.stdout == clean.stdout
+
+
+def test_a_file_that_is_not_exempt_still_fails_beside_the_exempt_one(tmp_path: Path) -> None:
+    (name,) = plan_shards.EXEMPT
+    proc = run("check", write(tmp_path / "t.json", {name: 4 * 417.0, "slow.py": 4 * 400.0}))
+    assert proc.returncode == 1
+    assert "::error::slow.py takes about 400s" in proc.stdout
+    assert f"::error::{name}" not in proc.stdout
+
+
+def test_the_exemption_is_one_named_file_that_exists_with_a_reason() -> None:
+    assert list(plan_shards.EXEMPT) == ["tests/policies/test_every_policy.py"]
+    assert all((ROOT / rel).is_file() for rel in plan_shards.EXEMPT)
+    assert all(reason.strip() for reason in plan_shards.EXEMPT.values())

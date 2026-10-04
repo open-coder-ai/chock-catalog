@@ -4,7 +4,7 @@
     python tools/select_tests.py origin/main             # FULL, or one test file per line
     python tools/select_tests.py origin/main --policies  # FULL, or one policy id per line
     python tools/select_tests.py origin/main --matrix    # FULL, or JSON [{id, path, tests}] per policy job
-    python tools/select_tests.py origin/main --residual  # FULL, or the test files no policy job owns
+    python tools/select_tests.py origin/main --residual  # FULL, or the changed and always-run test files
 
 The changed files come from `git diff --name-only <base>...HEAD`. Only a change attributable to
 named policies narrows the run; every other change is FULL. Unsure is FULL: an unreadable diff, an
@@ -258,9 +258,13 @@ def matrix(root: Path, files: list[str]) -> list[dict] | None:
 
 
 def residual(root: Path, files: list[str]) -> list[str] | None:
-    """The selected test files no policy job owns: changed tests and the always-run ones; None when FULL."""
-    full, policies, tests = select(root, files)
-    return None if full else sorted(tests.difference(*(set(job["tests"]) for job in jobs(root, policies))))
+    """The test files the change names itself and the always-run ones, whole; None when FULL.
+
+    A policy job runs a changed test only under its --policy filter, so a changed test is also named here.
+    """
+    full, _, _ = select(root, files)
+    found = None if full else touches(root, files)
+    return None if found is None else sorted(found[1] | {t for t in ALWAYS if (root / t).is_file()})
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -269,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
     shape = parser.add_mutually_exclusive_group()
     shape.add_argument("--policies", action="store_true", help="print policy ids instead of test files")
     shape.add_argument("--matrix", action="store_true", help="print the policy jobs as JSON")
-    shape.add_argument("--residual", action="store_true", help="print the test files no policy job owns")
+    shape.add_argument("--residual", action="store_true", help="print the changed and always-run test files")
     args = parser.parse_args(argv)
     try:
         files = changed_files(args.base, ROOT)

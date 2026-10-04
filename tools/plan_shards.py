@@ -8,7 +8,7 @@
 A file's seconds are its tests' summed times; a shard runs them on WORKERS cores, so wall time is that over WORKERS.
 Whole files are packed longest first into the lightest shard. A file longer than a shard is not packed: its tests
 go to the shard their node id hashes to (shard_tests.slice_of), so the slices still partition the suite. With no
-times the plan is the plain four-way hash split. A missing or unreadable TIMES file is no times.
+times the plan is the plain four-way hash split. A missing or unreadable TIMES file is no times. `check` skips the one file in EXEMPT, and says so every run.
 """
 
 from __future__ import annotations
@@ -29,6 +29,10 @@ MIN_SHARDS, MAX_SHARDS = 4, 16
 CAP = 300.0
 #: A file this close to the cap draws a warning on a pull request.
 WARN_AT = 0.8
+#: The one file allowed past the cap, with why. Temporary: parametrizing it per policy removes the entry.
+EXEMPT = {
+    "tests/policies/test_every_policy.py": "walks every policy in one file, with a 372 s serial case; to be parametrized per policy",
+}
 TESTCASE = re.compile(r"<testcase\b([^>]*)>")
 ATTRIBUTE = re.compile(r'(\w+)="([^"]*)"')
 
@@ -129,14 +133,17 @@ def main(argv: list[str] | None = None) -> int:
             print("no recorded times: the four-way hash split", file=sys.stderr)
         print(json.dumps(chosen))
         return 0
-    for name, seconds in over(times, CAP).items():
+    counted = {name: seconds for name, seconds in times.items() if name not in EXEMPT}
+    for name, reason in EXEMPT.items():
+        print(f"::warning::{name} is exempt from the {CAP:.0f}s cap, temporarily: {reason}")
+    for name, seconds in over(counted, CAP).items():
         print(f"::error::{name} takes about {seconds:.0f}s of wall time, over the {CAP:.0f}s cap; split it by activity")
-    for name, seconds in over(times, CAP * WARN_AT).items():
+    for name, seconds in over(counted, CAP * WARN_AT).items():
         if seconds <= CAP:
             print(
                 f"::warning::{name} takes about {seconds:.0f}s of wall time, over {WARN_AT:.0%} of the {CAP:.0f}s cap"
             )
-    return 1 if over(times, CAP) and not args.warn else 0
+    return 1 if over(counted, CAP) and not args.warn else 0
 
 
 if __name__ == "__main__":

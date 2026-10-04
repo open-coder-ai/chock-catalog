@@ -59,13 +59,30 @@ def test_a_change_naming_no_policy_is_an_empty_matrix_and_the_standards_test(tre
     assert select_tests.residual(tree, ["docs/assets/social-preview.svg"]) == [STANDARDS]
 
 
-def test_the_residual_is_the_selected_tests_no_job_owns(tree: Path) -> None:
+def test_the_residual_is_the_changed_and_always_run_tests(tree: Path) -> None:
     write(tree, "base/beta/evals/suite.yaml")
+    assert select_tests.residual(tree, ["base/beta/evals/suite.yaml"]) == [STANDARDS]
     assert select_tests.residual(tree, ["base/beta/evals/suite.yaml", "tests/orphans/test_names_nothing.py"]) == [
         "tests/orphans/test_names_nothing.py",
         STANDARDS,
     ]
-    assert select_tests.residual(tree, ["base/beta/evals/suite.yaml", "tests/policies/test_walks.py"]) == [STANDARDS]
+
+
+def test_a_changed_test_is_in_the_residual_even_when_a_policy_job_owns_it(tree: Path) -> None:
+    """A policy job runs it only under --policy; the targeted run must also run it whole."""
+    write(tree, "base/beta/evals/suite.yaml")
+    changed = ["base/beta/evals/suite.yaml", "tests/policies/test_walks.py", "tests/policies/test_names_beta.py"]
+    (job,) = [j for j in select_tests.matrix(tree, changed) if j["id"] == "beta"]
+    assert {"tests/policies/test_walks.py", "tests/policies/test_names_beta.py"} <= set(job["tests"])
+    assert select_tests.residual(tree, changed) == [
+        "tests/policies/test_names_beta.py",
+        "tests/policies/test_walks.py",
+        STANDARDS,
+    ]
+
+
+def test_a_test_that_imports_a_changed_private_kit_is_in_the_residual(tree: Path) -> None:
+    assert select_tests.residual(tree, ["tests/policies/gammakit.py"]) == ["tests/policies/test_via_kit.py", STANDARDS]
 
 
 @pytest.mark.parametrize("changed", [[], ["pyproject.toml"], ["base/alpha/manifest.yaml", "tools/trees.py"]])
