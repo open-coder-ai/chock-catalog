@@ -38,11 +38,11 @@ ALWAYS = {"tests/test_repo_standards.py"}
 #: Tests of the code every policy shares (tools/, lib/): changing that is FULL, so they run then.
 SHARED_CODE_TESTS = ("tests/build_tools/", "tests/chock_scan/", "tests/policies/test_shell")
 #: Files tools/regen_all.py writes from the policies, so a policy change brings them along. The `generated`
-#: job checks them on every PR; these are the tests that read the real ones.
+#: job checks only registry.yaml's rows on a PR; the rest lag until the release. These are the tests that read the real ones.
 DERIVED = {"registry.yaml", "README.md", "SECURITY.md", "CONTRIBUTING.md", "docs/policy-prose.yaml"}
 DERIVED_READERS = ("tests/build_tools/test_gen_registry.py",)
-#: Files a generator writes that no test reads and no policy owns: the images, and docs/quickstart.sh. The
-#: `figures`, `brand-assets`, `generated` and `quickstart` jobs check them on every PR, so they need no test run.
+#: Files a generator writes that no test reads and no policy owns: the images, and docs/quickstart.sh. No PR job
+#: checks them (they lag until the release; the nightly reports drift), so a change to one needs no test run.
 GENERATED = {
     *(f"docs/assets/{name}" for name in ("coverage-matrix.svg", "logo.svg", "logo-512.png")),
     *(f"docs/assets/social-preview.{ext}" for ext in ("svg", "png")),
