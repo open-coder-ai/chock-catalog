@@ -107,19 +107,44 @@ def test_the_committed_registry_is_what_the_generator_writes() -> None:
     assert tail == []
 
 
+def _readme(kinds: dict[str, list[str]], evals: dict[str, tuple[int, int]], *, stale: bool) -> str:
+    """A README check_readme accepts for this catalog; stale sets every count it checks to 0."""
+
+    def n(*counted: str) -> int:
+        return 0 if stale else sum(len(kinds[k]) for k in counted)
+
+    def suite(pid: str) -> str:
+        return "0/0" if stale else "{}/{}".format(*evals[pid])
+
+    def rows(kind: str) -> str:
+        return "".join(
+            f"| [`{pid}`](base/{pid}) | runs `curl \\| sh` | {suite(pid)} |\n" for pid in sorted(kinds[kind])
+        )
+
+    badges = (("policies", n("gate", "guard", "text")), ("enforced", n("gate", "guard")), ("advisory", n("text")))
+    return "".join(
+        [
+            *(f'<img alt="{v} {label}" src="https://img.shields.io/badge/{label}-{v}-blue">\n' for label, v in badges),
+            f"\n| `enforced-at-commit` | the commit does not happen | {n('gate')} |\n",
+            f"| `in-agent` | the tool call is refused | {n('guard')} |\n",
+            f"| `advisory` | text an agent reads | {n('text')} |\n",
+            f"\n**Enforced at commit**\n\n{rows('gate')}",
+            f"\n**Enforced before the tool runs**\n\n{rows('guard')}",
+            f"\n**Advisory**\n\n{rows('text')}",
+        ]
+    )
+
+
 def test_the_readme_counts_it_writes_are_the_ones_check_readme_accepts(tmp_path: Path, monkeypatch) -> None:
-    real = (ROOT / "README.md").read_text(encoding="utf-8")
-    broken = re.sub(r"badge/policies-\d+-", "badge/policies-1-", real)
-    broken = re.sub(r'alt="\d+ advisory"', 'alt="1 advisory"', broken)
-    broken = re.sub(r"(\| `in-agent` \|[^|]*\|[ \t]*)\d+", r"\g<1>0", broken)
-    broken = re.sub(r"(`pin-github-actions`\]\([^)]*\)[^\n]*\|[ \t]*)\d+/\d+", r"\g<1>1/2", broken)
-    assert broken != real
-    (tmp_path / "README.md").write_text(broken, encoding="utf-8")
+    """Built from the catalog on disk, so it holds whether or not the committed README has caught up."""
+    kinds, evals = check_readme.classify_readme()
+    (tmp_path / "README.md").write_text(_readme(kinds, evals, stale=True), encoding="utf-8")
+    monkeypatch.setattr(check_readme, "README", tmp_path / "README.md")
+    assert check_readme.main() == 1
     assert gen_registry.update_readme(tmp_path) == "README.md counts rewritten"
     assert gen_registry.update_readme(tmp_path) == "README.md already current"
-    monkeypatch.setattr(check_readme, "README", tmp_path / "README.md")
     assert check_readme.main() == 0
-    assert (tmp_path / "README.md").read_text(encoding="utf-8") == real
+    assert (tmp_path / "README.md").read_text(encoding="utf-8") == _readme(kinds, evals, stale=False)
 
 
 def test_eval_counts_are_read_the_way_check_registry_reads_them() -> None:
@@ -176,11 +201,10 @@ def test_registry_only_fails_on_a_stale_row_and_writes_nothing_else(scoped: Path
     assert (scoped / "README.md").read_text(encoding="utf-8") == readme
 
 
-@pytest.mark.parametrize("flags", [[], ["--registry-only"]])
-def test_the_committed_files_are_what_the_generator_writes(flags: list[str]) -> None:
-    """Run as a script, the way CI and regen_all.py run it."""
+def test_the_committed_registry_rows_are_what_the_script_writes() -> None:
+    """Run as a script, the way CI runs it. README and prose counts lag until release: the nightly checks them."""
     proc = subprocess.run(
-        [sys.executable, str(ROOT / "tools" / "gen_registry.py"), "--check", *flags],
+        [sys.executable, str(ROOT / "tools" / "gen_registry.py"), "--check", "--registry-only"],
         capture_output=True,
         text=True,
         check=False,

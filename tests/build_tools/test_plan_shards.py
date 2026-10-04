@@ -63,7 +63,7 @@ def test_a_cache_saved_before_per_test_times_is_no_times_and_plans_the_hash_spli
     assert plan_shards.load(old) == {}
     proc = run("plan", old)
     assert proc.returncode == 0
-    assert json.loads(proc.stdout) == {"shards": 4, "assignment": {}, "split": [], "source": "none"}
+    assert json.loads(proc.stdout) == {"shards": 4, "assignment": {}, "split": [], "source": "none", "planned": []}
     assert "four-way hash split" in proc.stderr
     checked = run("check", old)
     assert checked.returncode == 0
@@ -128,7 +128,7 @@ def times(**seconds: float) -> dict[str, Times]:
 
 
 def test_no_times_is_the_four_way_hash_split() -> None:
-    assert plan_shards.plan({}) == {"shards": 4, "assignment": {}, "split": [], "source": "none"}
+    assert plan_shards.plan({}) == {"shards": 4, "assignment": {}, "split": [], "source": "none", "planned": []}
 
 
 def test_the_shard_count_is_wall_time_over_the_target_between_the_floor_and_the_ceiling() -> None:
@@ -274,3 +274,9 @@ def test_check_with_warn_never_fails(tmp_path: Path) -> None:
 
 def test_nothing_is_exempt_from_the_cap() -> None:
     assert not hasattr(plan_shards, "EXEMPT")
+
+
+def test_a_plan_says_how_long_each_shard_is_planned_to_take() -> None:
+    found = {"a.py": Times(40.0, 1.0, "t"), "b.py": Times(40.0, 1.0, "t")}
+    chosen = plan_shards.plan(found, target=1000, workers=1)
+    assert chosen["planned"] == [40.0, 40.0, 0.0, 0.0]

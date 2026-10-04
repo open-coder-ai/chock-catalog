@@ -4,6 +4,7 @@
     python tools/plan_shards.py junit OUT.json JUNIT.xml...   # per file: summed seconds, longest test, from junit files
     python tools/plan_shards.py plan TIMES.json               # JSON: shard count, each file's shard, files to split
     python tools/plan_shards.py check TIMES.json [--warn]     # a single test over the cap fails; near it is a warning
+    python tools/plan_shards.py report PLAN.json JUNIT.xml... # markdown: slowest tests and files, shards planned vs actual
 
 A file's seconds are its tests' summed times; a shard runs them on WORKERS cores, so its wall time is that over
 WORKERS, but never less than its longest test, which one core runs alone. Whole files are packed longest first into
@@ -20,6 +21,7 @@ import html
 import json
 import math
 import re
+import statistics
 import sys
 from pathlib import Path
 from typing import NamedTuple
@@ -35,6 +37,10 @@ CAP = 300.0
 WARN_AT = 0.8
 TESTCASE = re.compile(r"<testcase\b([^>]*)>")
 ATTRIBUTE = re.compile(r'(\w+)="([^"]*)"')
+SUITE = re.compile(r"<testsuite\b([^>]*)>")
+SHARD_FILE = re.compile(r"junit-(\d+)\.xml$")
+#: Rows of the slow-test report.
+SLOWEST_TESTS, SLOWEST_FILES = 20, 10
 
 
 class Times(NamedTuple):
@@ -99,9 +105,9 @@ def wall(times: Times, workers: int = WORKERS) -> float:
 
 
 def plan(times: dict[str, Times], target: float = TARGET, workers: int = WORKERS) -> dict:
-    """{"shards", "assignment": file -> shard 1..shards, "split": [files], "source"}; the hash split with no times."""
+    """{"shards", "assignment": file -> shard, "split": [files], "source", "planned": seconds per shard}; no times: hash split."""
     if not times:
-        return {"shards": MIN_SHARDS, "assignment": {}, "split": [], "source": "none"}
+        return {"shards": MIN_SHARDS, "assignment": {}, "split": [], "source": "none", "planned": []}
     cost = {name: wall(found, workers) for name, found in times.items()}
     shards = min(MAX_SHARDS, max(MIN_SHARDS, math.ceil(sum(cost.values()) / target)))
     split = sorted(name for name, seconds in cost.items() if seconds > target)
@@ -111,7 +117,8 @@ def plan(times: dict[str, Times], target: float = TARGET, workers: int = WORKERS
         lightest = min(range(shards), key=lambda i: (loads[i], i))
         loads[lightest] += cost[name]
         assignment[name] = lightest + 1
-    return {"shards": shards, "assignment": assignment, "split": split, "source": "durations"}
+    planned = [round(load, 1) for load in loads]
+    return {"shards": shards, "assignment": assignment, "split": split, "source": "durations", "planned": planned}
 
 
 def load_plan(path: str | Path) -> dict:
@@ -136,6 +143,46 @@ def over(times: dict[str, Times], limit: float) -> dict[str, tuple[str, float]]:
     return dict(sorted(slow.items(), key=lambda kv: -kv[1][1]))
 
 
+def cell(text: str) -> str:
+    """Text safe inside a markdown table cell."""
+    return text.replace("|", "\\|").replace("`", "'")
+
+
+def report(found: dict, paths: list[str], root: Path) -> str:
+    """Markdown for a step summary: the slowest tests and files of a run, and each shard planned versus actual."""
+    cases: list[tuple[float, str]] = []
+    actual: dict[int, float] = {}
+    for position, path in enumerate(paths, 1):
+        text = Path(path).read_text(encoding="utf-8")
+        named = SHARD_FILE.search(path)
+        suite = SUITE.search(text)
+        suite_attrs = dict(ATTRIBUTE.findall(suite.group(1))) if suite else {}
+        actual[int(named.group(1)) if named else position] = float(suite_attrs.get("time", 0))
+        for match in TESTCASE.finditer(text):
+            attrs = dict(ATTRIBUTE.findall(match.group(1)))
+            label = html.unescape(f"{attrs.get('classname', '')}::{attrs.get('name', '')}")
+            cases.append((float(attrs.get("time", 0)), label))
+    median = statistics.median(actual.values())
+    lines = ["## Slowest tests", "", "| seconds | test |", "|---:|---|"]
+    lines += [f"| {seconds:.1f} | `{cell(label)}` |" for seconds, label in sorted(cases, reverse=True)[:SLOWEST_TESTS]]
+    lines += ["", "## Slowest files", "", "| summed seconds | longest test seconds | file |", "|---:|---:|---|"]
+    by_file = sorted(times_from_junit(paths, root).items(), key=lambda kv: (-kv[1].seconds, kv[0]))
+    lines += [f"| {v.seconds:.1f} | {v.longest:.1f} | `{cell(name)}` |" for name, v in by_file[:SLOWEST_FILES]]
+    lines += [
+        "",
+        "## Shards, planned versus actual",
+        "",
+        "| shard | planned seconds | actual seconds | actual / median |",
+        "|---:|---:|---:|---:|",
+    ]
+    planned = found.get("planned", [])
+    for shard in sorted(actual):
+        plan_cell = f"{planned[shard - 1]:.0f}" if shard <= len(planned) else "-"
+        ratio = actual[shard] / median if median else 0.0
+        lines.append(f"| {shard} | {plan_cell} | {actual[shard]:.0f} | {ratio:.2f} |")
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -143,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
     junit.add_argument("out")
     junit.add_argument("inputs", nargs="+")
     sub.add_parser("plan").add_argument("times")
+    summary = sub.add_parser("report")
+    summary.add_argument("plan")
+    summary.add_argument("inputs", nargs="+")
     check = sub.add_parser("check")
     check.add_argument("times")
     check.add_argument("--warn", action="store_true", help="only warn; never fail")
@@ -151,6 +201,9 @@ def main(argv: list[str] | None = None) -> int:
         found = times_from_junit(args.inputs, Path.cwd())
         text = json.dumps({name: v._asdict() for name, v in found.items()}, indent=1)
         Path(args.out).write_text(text + "\n", encoding="utf-8")
+        return 0
+    if args.command == "report":
+        print(report(load_plan(args.plan), args.inputs, Path.cwd()), end="")
         return 0
     times = load(args.times)
     if args.command == "plan":

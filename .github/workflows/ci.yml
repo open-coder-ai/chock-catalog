@@ -25,6 +25,11 @@ name: CI
 # drift. A full run's tests are shards cut from the per-file times main last recorded
 # (tools/plan_shards.py), so wall time holds as the catalog grows. A file is as slow as its longest test, which
 # is why a test that loops over every policy is parametrized per policy.
+#
+# BUDGETS. Every job carries a `timeout-minutes`, and a job that reaches it fails the run: 9 for a test shard,
+# a policy job and the staged adopter, 3 for everything else. Each was set from the longest the job took on
+# recent runs plus half again (the numbers are in the PR that set them); growth shows up as a failure, not as a
+# slow merge. The durations job writes a slow-test report to its run summary.
 
 # Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
 # framework needs (bash resolution, line endings, path handling) buys nothing here -- and
@@ -34,6 +39,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The merge queue builds each entry on a temporary branch and waits for the required checks (`policies`,
+  # `tests`, `dco`) on this event. It is not a pull request, so `scope` plans it as a full run.
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -44,8 +52,9 @@ jobs:
   # Origin -- see CONTRIBUTING.md). Same in-workflow check as the framework repo:
   # works while private; the DCO App can replace it after launch.
   dco:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -56,14 +65,19 @@ jobs:
           # A branch name expanded by the runner into shell text is code injection waiting
           # for a branch with metacharacters; through the environment it stays data.
           BASE_REF: ${{ github.base_ref }}
+          # A merge-group run has no base ref: it is the commit the queue entry was built on.
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
+          base="origin/$BASE_REF"
+          [ "$EVENT_NAME" != merge_group ] || base="$BASE_SHA"
           missing=0
           while read -r sha; do
             if ! git log -1 --format=%B "$sha" | grep -qi '^Signed-off-by: .\+<.\+@.\+>'; then
               echo "::error::commit $sha lacks a Signed-off-by trailer (git commit -s)"
               missing=1
             fi
-          done < <(git rev-list --no-merges "origin/$BASE_REF..HEAD")
+          done < <(git rev-list --no-merges "$base..HEAD")
           exit "$missing"
 
   # Commit messages and PR bodies are as public as the diff and much easier to leak
@@ -72,6 +86,7 @@ jobs:
   no-private-data:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -126,6 +141,7 @@ jobs:
   # main saves newer times meanwhile.
   scope:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     outputs:
       full: ${{ steps.scope.outputs.full }}
       matrix: ${{ steps.scope.outputs.matrix }}
@@ -198,6 +214,7 @@ jobs:
   # name. Locally, `python tools/regen_all.py` runs the same checks in the same order.
   generated:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -298,6 +315,7 @@ jobs:
   # rather than only in the framework's tests.
   adopter:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
       # and a shallow clone has no merge base to find.
@@ -416,6 +434,7 @@ jobs:
     needs: scope
     if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 9
     strategy:
       fail-fast: false
       matrix:
@@ -514,6 +533,7 @@ jobs:
     needs: [scope, tests-shard]
     if: github.event_name == 'push' && needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -525,8 +545,18 @@ jobs:
           path: junit
           merge-multiple: true
 
+      # The plan this run was cut from, to set against what each shard took.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
+        with:
+          name: shard-plan
+
       - name: Sum the junit times by test file and keep each file's longest test
         run: python3 tools/plan_shards.py junit test-durations.json junit/junit-*.xml
+
+      # The slow-test report: the 20 slowest tests, the 10 slowest files, and each shard's planned versus actual
+      # time, in this run's summary. Read it before a shard drifts toward the 9-minute job budget.
+      - name: Slow-test report
+        run: python3 tools/plan_shards.py report shard-plan.json junit/junit-*.xml >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save the file times for the next run
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
@@ -550,6 +580,7 @@ jobs:
     if: needs.scope.outputs.full == 'false' && needs.scope.outputs.has_matrix == 'true'
     name: tests-policy (${{ matrix.id }})
     runs-on: ubuntu-latest
+    timeout-minutes: 9
     strategy:
       fail-fast: false
       matrix:
@@ -616,6 +647,7 @@ jobs:
     needs: scope
     if: needs.scope.outputs.full == 'false'
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -665,6 +697,7 @@ jobs:
     if: always()
     needs: [scope, tests-shard, tests-targeted, tests-policy]
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - name: Every test job this run needed passed
         env:
@@ -727,6 +760,7 @@ jobs:
   staged-adopter:
     needs: scope
     runs-on: ubuntu-latest
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -829,6 +863,7 @@ jobs:
     if: always()
     needs: [generated, adopter, tests, staged-adopter]
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - name: Every policies job passed
         env:
