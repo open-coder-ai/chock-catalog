@@ -1,0 +1,276 @@
+name: Release
+
+# The owner's two-step release, dispatch-only. Nothing here runs on a push, a merge or a schedule.
+#
+#   1. stage `prepare`: regenerate every derived file (README counts and rows, policy pages, coverage
+#      matrix, figures, brand card, adoption transcripts), run every check, and open a pull request
+#      `release/v<version>` into main. The pull request is the review artifact, like the adoption PR.
+#   2. the owner merges that pull request.
+#   3. stage `publish`: tag the merge commit `v<version>` and draft the GitHub release, its notes
+#      written by tools/release_notes.py from each policy's changelog since the previous tag. The
+#      owner reads the draft and publishes it.
+#
+# Agents never tag or release (standing rule); this workflow does, on the owner's dispatch.
+#
+# Both stages stop unless ci.yml succeeded at the commit they act on. It reads ci.yml's run, not every
+# check run on the commit, because the nightly drift job reports the lagging derived files as a failed
+# check on main's head by design, and reading it would block every release.
+#
+# CAVEAT -- the release pull request arrives with no CI, as the adoption PR does (adopt-framework.yml):
+# events raised with the built-in `GITHUB_TOKEN` start no workflow runs, so the required checks do not
+# report on it. Every check ci.yml runs is run in the `prepare` run, which the PR body links. To get
+# the required checks, close the PR and reopen it. A personal access token would avoid that click and
+# would put a long-lived credential in this repository's secrets.
+#
+# Linux only, consistent with the rest of this repo (see ci.yml's header).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Catalog version, MAJOR.MINOR.PATCH (no leading v)
+        type: string
+        required: true
+      stage:
+        description: prepare opens the release pull request; publish tags the merged one and drafts the release
+        type: choice
+        options:
+          - prepare
+          - publish
+        default: prepare
+
+permissions: {}
+
+# One release at a time, queued rather than cancelled: a cancel between `git push` and `gh pr create`
+# leaves a branch with no pull request on it.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read  # read ci.yml's run for the commit
+      pull-requests: read  # find the merged release pull request (publish)
+    outputs:
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      # A dispatch input is data: validated, never spliced into shell text.
+      - name: Validate the version, find the commit, require green CI
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+          STAGE: ${{ inputs.stage }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # Releases are cut from main; a dispatch from any other branch fails here, not green.
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::dispatch Release from main"; exit 1; }
+          if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::version must be MAJOR.MINOR.PATCH, for example 1.2.3"
+            exit 1
+          fi
+          if gh api "repos/$GH_REPO/git/ref/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "::error::tag v$VERSION already exists"
+            exit 1
+          fi
+          if [ "$STAGE" = publish ]; then
+            sha=$(gh pr list --state merged --base main --head "release/v$VERSION" \
+                    --json mergeCommit --jq '.[0].mergeCommit.oid // empty')
+            if [ -z "$sha" ]; then
+              echo "::error::no merged pull request from release/v$VERSION into main"
+              exit 1
+            fi
+          else
+            sha=$DISPATCH_SHA
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          verdict=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=100" \
+                      --jq '[.workflow_runs[] | select(.event == "push" or .event == "workflow_dispatch")]
+                            | sort_by(.created_at) | (last // {status: "none"}) | (.status + " " + (.conclusion // ""))')
+          {
+            echo "## Release gate"
+            echo
+            echo "commit \`$sha\`: ci.yml latest run: \`${verdict:-none}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$verdict" != "completed success" ]; then
+            echo "::error::ci.yml has not succeeded at $sha (latest run: ${verdict:-none})"
+            exit 1
+          fi
+
+  prepare:
+    if: inputs.stage == 'prepare'
+    needs: gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # push the release branch
+      pull-requests: write  # open the release pull request
+    steps:
+      - name: Check out the catalog at the commit the gate checked
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          # Credentials are not kept: the push below passes the token for one command.
+          persist-credentials: false
+          # Full history and tags: the release notes read the previous tag, and regen_all.py diffs
+          # against origin/main.
+          fetch-depth: 0
+          ref: ${{ needs.gate.outputs.sha }}
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      # The pin lives in the .framework-ref data file (see ci.yml's header). Anything but one full
+      # 40-hex commit SHA fails here, before checkout resolves it as a name.
+      - name: Read the framework pin
+        run: python3 -I tools/framework_ref.py read
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      # checkout resolves a ref by name, so a branch or tag spelled like the SHA could stand in.
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
+
+      - name: Install Chock and the test tooling
+        run: |
+          pip install ./.framework
+          pip install --require-hashes -r requirements/test.txt
+          pip install "cairosvg==2.9.0"
+
+      # The full run: every generator, then every check CI runs, including pytest at 100% coverage
+      # and the staged adopter. About 40 minutes is fine here, off every pull request's path.
+      - name: Regenerate everything, then run every check
+        run: python tools/regen_all.py
+
+      # regen_all.py re-makes a transcript only for a policy changed since main; a release re-makes
+      # them all, then proves each reproduces.
+      - name: Regenerate every adoption transcript
+        run: |
+          python tools/gen_adoption_transcript.py
+          python tools/gen_adoption_transcript.py --check
+
+      - name: Write the release notes
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          since=$(git describe --tags --abbrev=0 --match 'v[0-9]*' || true)
+          args=(--version "$VERSION")
+          if [ -n "$since" ]; then args+=(--since "$since"); fi
+          python tools/release_notes.py "${args[@]}" > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open the release pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          # The human who pressed the button signs the commit off: ci.yml's `dco` job requires a
+          # Signed-off-by trailer, and a bot cannot make the assertion for anybody.
+          ACTOR: ${{ github.triggering_actor }}
+          ACTOR_ID: ${{ github.actor_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          branch="release/v$VERSION"
+
+          # Regeneration adds files as well as changing them; `git diff` alone would miss a new one.
+          git add -A -N
+          if git diff --quiet; then
+            echo "::error::every derived file is already current, so there is nothing to release as a pull request"
+            exit 1
+          fi
+
+          # Never clobber an existing branch.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "::error::branch $branch already exists -- merge or delete its PR, then re-run"
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "chore(release): catalog v$VERSION" \
+                     -m "Regenerated with tools/regen_all.py. Every check it runs passed." \
+                     -m "Signed-off-by: $ACTOR <$ACTOR_ID+$ACTOR@users.noreply.github.com>"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$branch"
+
+          {
+            echo "Regenerates every derived file for catalog v$VERSION by running"
+            echo "\`python tools/regen_all.py\` in [this workflow run]($RUN_URL); every check it runs passed there."
+            echo
+            echo "Merge this, then dispatch **Release** with stage \`publish\` and version \`$VERSION\`"
+            echo "to tag the merge commit and draft the GitHub release."
+            echo
+            echo "### This PR has no CI, and that is expected"
+            echo
+            echo "GitHub starts no workflow runs for events raised with the built-in \`GITHUB_TOKEN\`, so the"
+            echo "required checks do not report on their own. **To get them:** close this PR and reopen it."
+            echo
+            echo "### Release notes (draft)"
+            echo
+            cat "$RUNNER_TEMP/notes.md"
+          } > "$RUNNER_TEMP/pr-body.md"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore(release): catalog v$VERSION" \
+            --body-file "$RUNNER_TEMP/pr-body.md"
+          echo "_Pull request opened from \`$branch\`._" >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    if: inputs.stage == 'publish'
+    needs: gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create the tag and the draft release
+    steps:
+      - name: Check out the merge commit the gate checked
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ needs.gate.outputs.sha }}
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+
+      # Written before the tag exists, so a notes failure leaves nothing behind.
+      - name: Write the release notes
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          since=$(git describe --tags --abbrev=0 --match 'v[0-9]*' || true)
+          args=(--version "$VERSION")
+          if [ -n "$since" ]; then args+=(--since "$since"); fi
+          python tools/release_notes.py "${args[@]}" > "$RUNNER_TEMP/notes.md"
+
+      # A draft release has no tag until it is published, so the tag is made here, on the commit the
+      # gate checked, and the draft is verified against it.
+      - name: Tag the merge commit and draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ needs.gate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/git/refs" -f "ref=refs/tags/v$VERSION" -f "sha=$SHA" >/dev/null
+          gh release create "v$VERSION" \
+            --draft \
+            --verify-tag \
+            --title "Chock catalog v$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md"
+          echo "Tagged \`v$VERSION\` at \`$SHA\` and drafted the release. Read it, then publish it." >> "$GITHUB_STEP_SUMMARY"
