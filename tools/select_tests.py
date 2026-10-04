@@ -3,6 +3,8 @@
 
     python tools/select_tests.py origin/main             # FULL, or one test file per line
     python tools/select_tests.py origin/main --policies  # FULL, or one policy id per line
+    python tools/select_tests.py origin/main --matrix    # FULL, or JSON [{id, path, tests}] per policy job
+    python tools/select_tests.py origin/main --residual  # FULL, or the changed and always-run test files
 
 The changed files come from `git diff --name-only <base>...HEAD`. Only a change attributable to
 named policies narrows the run; every other change is FULL. Unsure is FULL: an unreadable diff, an
@@ -13,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import re
 import subprocess
 import sys
@@ -38,6 +41,17 @@ SHARED_CODE_TESTS = ("tests/build_tools/", "tests/chock_scan/", "tests/policies/
 #: job checks them on every PR; these are the tests that read the real ones.
 DERIVED = {"registry.yaml", "README.md", "SECURITY.md", "CONTRIBUTING.md", "docs/policy-prose.yaml"}
 DERIVED_READERS = ("tests/build_tools/test_gen_registry.py",)
+#: Files a generator writes that no test reads and no policy owns: the images, and docs/quickstart.sh. The
+#: `figures`, `brand-assets`, `generated` and `quickstart` jobs check them on every PR, so they need no test run.
+GENERATED = {
+    *(f"docs/assets/{name}" for name in ("coverage-matrix.svg", "logo.svg", "logo-512.png")),
+    *(f"docs/assets/social-preview.{ext}" for ext in ("svg", "png")),
+    *(f"docs/figures/{stem}-{theme}.svg" for stem in ("enforcement", "family") for theme in ("dark", "light")),
+    *(f"docs/figures/social-card.{ext}" for ext in ("svg", "png")),
+    "docs/quickstart.sh",
+}
+#: More policies than this is a change to the catalog's core; one balanced full run beats this many jobs.
+MAX_POLICY_JOBS = 8
 #: Folders whose tests are not one suite, so one that names no policy does not borrow from a neighbour.
 MIXED_FOLDERS = ("tests/build_tools/", "tests/chock_scan/", "tests/policies/")
 
@@ -187,8 +201,9 @@ def attribute(
         return None
     if pid and (root / rel).is_file():
         return {pid}, set()
-    if rel in DERIVED and all((root / reader).is_file() for reader in DERIVED_READERS):
-        return set(), set(DERIVED_READERS)
+    readers = DERIVED_READERS if rel in DERIVED else () if rel in GENERATED and (root / rel).is_file() else None
+    if readers is not None and all((root / reader).is_file() for reader in readers):
+        return set(), set(readers)
     if is_test(rel) and rel in graph:
         return set(), {rel}
     if rel in graph and Path(rel).name not in PACKAGE_WIDE and 0 < len(back[rel]) < SHARED_IMPORTERS:
@@ -196,8 +211,8 @@ def attribute(
     return None
 
 
-def select(root: Path, files: list[str]) -> tuple[bool, set[str], set[str]]:
-    """(full, policies, tests): everything the change touches, or FULL when it is not all attributable."""
+def touches(root: Path, files: list[str]) -> tuple[set[str], set[str]] | None:
+    """(policies the files belong to, tests they name), or None when one is not attributable."""
     ids = set(policy_ids(root))
     graph = import_graph(root)
     back = importers(graph)
@@ -206,26 +221,76 @@ def select(root: Path, files: list[str]) -> tuple[bool, set[str], set[str]]:
     for rel in files:
         found = attribute(root, rel, ids, graph, back)
         if found is None:
-            return True, set(), set()
+            return None
         touched |= found[0]
         tests |= found[1]
-    if not files:
+    return (touched, tests) if files else None
+
+
+def select(root: Path, files: list[str]) -> tuple[bool, set[str], set[str]]:
+    """(full, policies, tests): everything the change touches, or FULL when it is not all attributable."""
+    found = touches(root, files)
+    if found is None:
         return True, set(), set()
-    covered = dependents(root, touched)
-    return False, covered, tests | proving_tests(root, covered) | {t for t in ALWAYS if (root / t).is_file()}
+    covered = dependents(root, found[0])
+    if len(covered) > MAX_POLICY_JOBS:
+        return True, set(), set()
+    return False, covered, found[1] | proving_tests(root, covered) | {t for t in ALWAYS if (root / t).is_file()}
+
+
+def jobs(root: Path, policies: set[str]) -> list[dict]:
+    """One job per policy: its id, its folder, and the test files that prove it."""
+    folders, owned = policy_ids(root), owners(root)
+    return [
+        {
+            "id": pid,
+            "path": folders[pid].relative_to(root).as_posix(),
+            "tests": sorted(rel for rel, hit in owned.items() if pid in hit),
+        }
+        for pid in sorted(policies)
+    ]
+
+
+def matrix(root: Path, files: list[str]) -> list[dict] | None:
+    """The policy jobs a change needs, or None when the run is FULL."""
+    full, policies, _ = select(root, files)
+    return None if full else jobs(root, policies)
+
+
+def residual(root: Path, files: list[str]) -> list[str] | None:
+    """The test files the change names itself and the always-run ones, whole; None when FULL.
+
+    A policy job runs a changed test only under its --policy filter, so a changed test is also named here.
+    """
+    full, _, _ = select(root, files)
+    found = None if full else touches(root, files)
+    return None if found is None else sorted(found[1] | {t for t in ALWAYS if (root / t).is_file()})
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("base", help="the ref the PR targets, e.g. origin/main")
-    parser.add_argument("--policies", action="store_true", help="print policy ids instead of test files")
+    shape = parser.add_mutually_exclusive_group()
+    shape.add_argument("--policies", action="store_true", help="print policy ids instead of test files")
+    shape.add_argument("--matrix", action="store_true", help="print the policy jobs as JSON")
+    shape.add_argument("--residual", action="store_true", help="print the changed and always-run test files")
     args = parser.parse_args(argv)
     try:
-        full, policies, tests = select(ROOT, changed_files(args.base, ROOT))
+        files = changed_files(args.base, ROOT)
+        if args.matrix:
+            result = matrix(ROOT, files)
+        elif args.residual:
+            result = residual(ROOT, files)
+        else:
+            full, policies, tests = select(ROOT, files)
+            result = None if full else sorted(policies if args.policies else tests)
     except (SystemExit, SyntaxError, OSError) as exc:
         print(f"{exc}; running everything.", file=sys.stderr)
-        full, policies, tests = True, set(), set()
-    print(FULL if full else "\n".join(sorted(policies if args.policies else tests)))
+        result = None
+    if result is None:
+        print(FULL)
+    else:
+        print(json.dumps(result) if args.matrix else "\n".join(result))
     return 0
 
 

@@ -10,10 +10,11 @@ from __future__ import annotations
 import contextlib
 import json
 import random
-import time
+from pathlib import Path
 from types import ModuleType
 
 import pytest
+import untraced
 
 SEEDS = range(60)
 TRIVIA = ["", " ", "\n", "\r\n", "\t", "// c /* x\n", "//\r\n", "/**/", "/* // \n * */", '/*"*/', '// "\n']
@@ -169,11 +170,26 @@ HOSTILE = {
 }
 
 
+CHILD = """
+import contextlib, json, sys, time
+from pathlib import Path
+from chock_scan.conftest import load
+from chock_scan.test_jsonc_fuzz import HOSTILE
+jsonc = load(Path(sys.argv[1]), "jsonc")
+text = HOSTILE[sys.argv[2]](jsonc.LIMIT)
+start = time.perf_counter()
+with contextlib.suppress(jsonc.JsoncError):
+    jsonc.loads(text)
+print(json.dumps([time.perf_counter() - start]))
+"""
+
+
 @pytest.mark.parametrize("name", sorted(HOSTILE))
 def test_hostile_input_at_the_size_limit_finishes_quickly(jsonc: ModuleType, name: str) -> None:
+    """Timed in a child outside the coverage tracer; this process reads the input too, so its lines stay covered."""
     text = HOSTILE[name](jsonc.LIMIT)
     assert len(text) <= jsonc.LIMIT
-    start = time.perf_counter()
     with contextlib.suppress(jsonc.JsoncError):
         jsonc.loads(text)
-    assert time.perf_counter() - start < 5
+    (seconds,) = untraced.run(CHILD, str(Path(jsonc.__file__).parent), name)
+    assert seconds < 5

@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 import pytest
+import untraced
 from policies import scriptkit
 from policies.instrkit import fired, gate, payload, run
 
@@ -93,14 +94,34 @@ SHAPES = {
 }
 
 
-@pytest.mark.parametrize("shape", SHAPES)
-def test_the_reviewed_shapes_judge_in_time(shape: str, tmp_path: Path) -> None:
-    text = SHAPES[shape][: gate.MAX_TEXT]
-    repo = scriptkit.init_repo(tmp_path / "r", {"AGENTS.md": text})
+def judged(text: str, repo: Path) -> float:
+    """Seconds the gate takes, run as a process, to judge `text` as an edit to AGENTS.md and as its baseline."""
     started = time.monotonic()
     run({"AGENTS.md": text + "\nBe brief.\n"}, repo)
     run({"AGENTS.md": text}, repo, baseline=True)
-    assert time.monotonic() - started < 10, shape
+    return time.monotonic() - started
+
+
+MANY = (("without asking " * 116 + "never push " * 160) * 80)[: gate.MAX_TEXT - 100]
+CHILD = """
+import json, sys, tempfile
+from pathlib import Path
+from policies import scriptkit
+from policies import test_scan_instruction_files_review as t
+text = t.MANY if sys.argv[1] == "" else t.SHAPES[sys.argv[1]][: t.gate.MAX_TEXT]
+with tempfile.TemporaryDirectory() as tmp:
+    repo = scriptkit.init_repo(Path(tmp) / "r", {"AGENTS.md": text})
+    print(json.dumps([t.judged(text, repo)]))
+"""
+
+
+@pytest.mark.parametrize("shape", SHAPES)
+def test_the_reviewed_shapes_judge_in_time(shape: str, tmp_path: Path) -> None:
+    """Timed in a child outside the coverage tracer; this process judges the text too, so the gate stays covered."""
+    text = SHAPES[shape][: gate.MAX_TEXT]
+    judged(text, scriptkit.init_repo(tmp_path / "r", {"AGENTS.md": text}))
+    (seconds,) = untraced.run(CHILD, shape)
+    assert seconds < 10, shape
 
 
 def test_a_comma_list_after_a_negation_asks_since_it_reads_like_a_new_clause() -> None:
@@ -202,12 +223,9 @@ def test_a_secret_in_a_fetched_url_asks() -> None:
 
 
 def test_many_phrases_against_many_negated_targets_judge_in_time(tmp_path: Path) -> None:
-    text = (("without asking " * 116 + "never push " * 160) * 80)[: gate.MAX_TEXT - 100]
-    repo = scriptkit.init_repo(tmp_path / "r", {"AGENTS.md": text})
-    started = time.monotonic()
-    run({"AGENTS.md": text + "\nBe brief.\n"}, repo)
-    run({"AGENTS.md": text}, repo, baseline=True)
-    assert time.monotonic() - started < 10
+    judged(MANY, scriptkit.init_repo(tmp_path / "r", {"AGENTS.md": MANY}))
+    (seconds,) = untraced.run(CHILD, "")
+    assert seconds < 10
 
 
 def test_a_negated_target_shared_by_two_phrases_is_judged_once_and_stays_negated() -> None:
