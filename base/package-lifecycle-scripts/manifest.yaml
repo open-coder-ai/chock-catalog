@@ -1,14 +1,14 @@
 id: package-lifecycle-scripts
 name: "Flag Package Lifecycle Scripts"
-version: "0.0.1"
+version: "0.1.0"
 description: >
-  Warns (observe rollout) when a change adds or edits code that runs at install or build time: npm
+  Blocks fetch-exec class hooks and asks about other new ones when a change adds or edits code that runs at install or build time: npm
   install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned git/URL deps;
   setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks; build.rs and
-  build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven, Gradle exec. Never
-  refuses yet; judges file text, not what a hook runs. Friction, not a security boundary.
+  build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven, Gradle exec. Judges
+  file text, not what a hook runs. Friction, not a security boundary.
 artifact: rule
-enforcement: advise
+enforcement: block
 mandatory: false
 effects:
 - read_only
@@ -24,14 +24,14 @@ hook:
   gate:
     kind: script
     "on": [commit, tool_use]
-    action: warn
+    action: block
     message: >
       A change adds or edits code that runs when a package is installed or built (an npm lifecycle
       script, setup.py command override, build.rs, MSBuild Exec, gemspec extension and the like), or a
       git or URL dependency with no commit pin. Whoever controls that code or URL runs it on every
       machine that installs the package. Keep install and build steps offline and explicit: download to
       a file, verify a pinned checksum, run it as a separate reviewed step, and pin git dependencies to a
-      40-hex commit. This policy only warns while it is measured (rollout observe); it has no waiver yet.
+      40-hex commit. A person who has reviewed the change approves the ask; there is no waiver yet.
     params:
       script: package-lifecycle-scripts-gate.py
 
@@ -39,7 +39,7 @@ compliance:
   owasp_asi:
   - control: ASI04
     coverage: partial
-    note: "flags new or changed install- and build-time hooks and unpinned git/URL dependencies in package manifests; warns only (observe) and judges file text, not what a hook runs"
+    note: "flags new or changed install- and build-time hooks and unpinned git/URL dependencies in package manifests; blocks fetch-exec class and asks about other hooks, and judges file text, not what a hook runs"
 
 provenance:
   author: "chock-core"
@@ -57,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-04'
+  changes:
+  - "Promoted from observe to block (rollout D15). The catalog's own history measured a 0.0% fire rate over 154 first-parent commits (chock-catalog#223), under the 5% bar. `hook.gate.action` is now `block` and `enforcement` is `block`: the script's own verdicts stand, so a fetch-exec class hook is refused and any other new or changed hook asks. Eval cases keep their inputs; the 21 that expected `warn` now expect the verdict the script gives (16 block, 5 ask) per the pack's own gate. No detection, scope or threshold change. Only the catalog's own history was measured; an adopter observe run was not."
 - version: 0.0.1
   date: '2026-10-02'
   changes:
