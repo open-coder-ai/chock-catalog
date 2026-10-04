@@ -764,19 +764,19 @@ policies:
     as findings with exploit scenarios. Advisory: refuses nothing, writes no waiver, lowers no gate.'
 - id: block-hook-bypass-in-files
   path: base/block-hook-bypass-in-files
-  version: 0.0.1
+  version: 0.1.0
   artifact: hook
-  enforcement: advise
+  enforcement: block
   mandatory: false
-  mechanism: warn-only gate
-  enforces: advisory
+  mechanism: content_regex
+  enforces: enforced-at-commit
   eval_cases: 28
   eval_executed: 28
   description: 'Friction, not a security boundary: flags lines added to hook launchers and scripts that
     switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
     set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit,
     lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile,
-    justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.'
+    justfile, .envrc, *.sh. Blocks. Misses: split lines, -n.'
 - id: agent-devenv-autoexec
   path: base/agent-devenv-autoexec
   version: 0.0.1

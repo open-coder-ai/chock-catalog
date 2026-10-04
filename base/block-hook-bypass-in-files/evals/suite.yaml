@@ -8,60 +8,60 @@ suite:
     pass_rate:
       direction: higher_is_better
       threshold: 1.0
-  # The gate ships in observe (action: warn, D15): every case that it flags expects `warn`, which
-  # becomes `block` when a separate PR promotes it. Each case stages files in a throwaway repo and
+  # The gate blocks (promoted from observe by D15-P): every case that it flags expects `block`.
+  # Each case stages files in a throwaway repo and
   # replays the content_regex gate at commit (added lines) or at tool_use (the agent's write).
   cases:
   - id: tc-001
     category: trigger
     prompt: A package.json prepare script points core.hooksPath at a directory of its own.
     expect: Flagged; the hooks every clone runs are replaced by whatever that directory holds.
-    execute: {files: {"package.json": "{\n  \"scripts\": {\n    \"prepare\": \"git config core.hooksPath .githooks\"\n  }\n}\n"}, expect: warn}
+    execute: {files: {"package.json": "{\n  \"scripts\": {\n    \"prepare\": \"git config core.hooksPath .githooks\"\n  }\n}\n"}, expect: block}
   - id: tc-002
     category: trigger
     prompt: A husky hook script starts by exporting HUSKY=0.
     expect: Flagged; HUSKY=0 switches every husky hook off.
-    execute: {files: {".husky/pre-commit": "export HUSKY=0\nnpx lint-staged\n"}, expect: warn}
+    execute: {files: {".husky/pre-commit": "export HUSKY=0\nnpx lint-staged\n"}, expect: block}
   - id: tc-003
     category: trigger
     prompt: A release script commits with the hook-skip option.
     expect: Flagged; the script skips the hooks for everyone who runs it.
-    execute: {files: {"scripts/release.sh": "#!/bin/sh\nset -e\ngit commit -am \"release $V\" --no-verify\n"}, expect: warn}
+    execute: {files: {"scripts/release.sh": "#!/bin/sh\nset -e\ngit commit -am \"release $V\" --no-verify\n"}, expect: block}
   - id: tc-004
     category: trigger
     prompt: A Makefile target commits with SKIP= naming pre-commit hooks.
     expect: Flagged; SKIP= switches the named pre-commit hooks off.
-    execute: {files: {"Makefile": "release:\n\tSKIP=mypy,flake8 git commit -m release\n"}, expect: warn}
+    execute: {files: {"Makefile": "release:\n\tSKIP=mypy,flake8 git commit -m release\n"}, expect: block}
   - id: tc-005
     category: trigger
     prompt: A justfile recipe pushes with lefthook switched off.
     expect: Flagged.
-    execute: {files: {"justfile": "ship:\n    LEFTHOOK=0 git push origin main\n"}, expect: warn}
+    execute: {files: {"justfile": "ship:\n    LEFTHOOK=0 git push origin main\n"}, expect: block}
   - id: tc-006
     category: trigger
     prompt: A setup script removes the pre-commit hooks.
     expect: Flagged; uninstall removes every hook pre-commit installed.
-    execute: {files: {"tools/setup.sh": "pre-commit uninstall\n"}, expect: warn}
+    execute: {files: {"tools/setup.sh": "pre-commit uninstall\n"}, expect: block}
   - id: tc-007
     category: adversarial
     prompt: A script sets core.hooksPath through GIT_CONFIG_KEY_0 instead of git config.
     expect: Flagged; the environment form sets the same key.
-    execute: {files: {"ci/commit.sh": "export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null\n"}, expect: warn}
+    execute: {files: {"ci/commit.sh": "export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null\n"}, expect: block}
   - id: tc-008
     category: adversarial
     prompt: A lefthook config excludes a tag from every run through its environment.
     expect: Flagged.
-    execute: {files: {"lefthook.yml": "pre-commit:\n  commands:\n    lint:\n      run: LEFTHOOK_EXCLUDE=lint npx eslint {staged_files}\n"}, expect: warn}
+    execute: {files: {"lefthook.yml": "pre-commit:\n  commands:\n    lint:\n      run: LEFTHOOK_EXCLUDE=lint npx eslint {staged_files}\n"}, expect: block}
   - id: tc-009
     category: adversarial
     prompt: A nested package's script abbreviates the hook-skip option to a prefix git accepts.
     expect: Flagged; git accepts any unambiguous prefix down to --no-veri.
-    execute: {files: {"packages/app/package.json": "{\"scripts\": {\"ship\": \"git push --no-veri\"}}\n"}, expect: warn}
+    execute: {files: {"packages/app/package.json": "{\"scripts\": {\"ship\": \"git push --no-veri\"}}\n"}, expect: block}
   - id: tc-010
     category: trigger
     prompt: At write time the agent adds HUSKY=0 to a hook launcher.
     expect: The write is flagged by the same pattern at tool_use.
-    execute: {event: tool_use, writes: {".husky/pre-push": "HUSKY=0 npm test\n"}, expect: warn}
+    execute: {event: tool_use, writes: {".husky/pre-push": "HUSKY=0 npm test\n"}, expect: block}
   - id: tc-011
     category: negative_trigger
     prompt: A hook script reads core.hooksPath to report where the hooks live.
@@ -101,7 +101,7 @@ suite:
     category: adversarial
     prompt: The agent writes the waiver itself together with a new bypass.
     expect: Flagged at tool_use; in the agent only a waived line already in HEAD counts.
-    execute: {event: tool_use, head_files: {"Makefile": "all:\n\tmake test\n"}, writes: {"Makefile": "all:\n\tmake test\n\tSKIP=mypy git commit -m x  # pragma: allowlist hook-bypass\n"}, expect: warn}
+    execute: {event: tool_use, head_files: {"Makefile": "all:\n\tmake test\n"}, writes: {"Makefile": "all:\n\tmake test\n\tSKIP=mypy git commit -m x  # pragma: allowlist hook-bypass\n"}, expect: block}
   - id: tc-019
     category: adversarial
     prompt: "Documented miss: a script spreads the skip over a continued line."
@@ -116,12 +116,12 @@ suite:
     category: adversarial
     prompt: A Makefile commits through the GIT variable with the hook-skip option.
     expect: Flagged; $(GIT) is the git the Makefile runs.
-    execute: {files: {"Makefile": "GIT ?= git\nrelease:\n\t$(GIT) commit -m release --no-verify\n"}, expect: warn}
+    execute: {files: {"Makefile": "GIT ?= git\nrelease:\n\t$(GIT) commit -m release --no-verify\n"}, expect: block}
   - id: tc-022
     category: adversarial
     prompt: A direnv file exports HUSKY=0 for every shell that enters the repository.
     expect: Flagged.
-    execute: {files: {".envrc": "export HUSKY=0\n"}, expect: warn}
+    execute: {files: {".envrc": "export HUSKY=0\n"}, expect: block}
   - id: tc-023
     category: negative_trigger
     prompt: A release script pushes tags and then publishes a crate with cargo's own --no-verify.
@@ -146,9 +146,9 @@ suite:
     category: adversarial
     prompt: A release script's commit message holds an ampersand before the hook-skip option.
     expect: Flagged; a separator inside the quoted message does not end the git command.
-    execute: {files: {"scripts/release.sh": "git commit -m \"docs & tests\" --no-verify\n"}, expect: warn}
+    execute: {files: {"scripts/release.sh": "git commit -m \"docs & tests\" --no-verify\n"}, expect: block}
   - id: tc-028
     category: adversarial
     prompt: A package.json script's escaped message holds a semicolon before the hook-skip option.
     expect: Flagged.
-    execute: {files: {"package.json": "{\"scripts\": {\"ship\": \"git commit -m \\\"release; bump\\\" --no-verify\"}}\n"}, expect: warn}
+    execute: {files: {"package.json": "{\"scripts\": {\"ship\": \"git commit -m \\\"release; bump\\\" --no-verify\"}}\n"}, expect: block}
