@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -14,12 +15,13 @@ ROOT = Path(__file__).resolve().parents[2]
 NODES = [f"tests/policies/test_x.py::test_case[{n}]" for n in range(200)]
 
 
-def config(spec: str | None, deselected: list[list[object]]) -> SimpleNamespace:
+def config(spec: str | None, deselected: list[list[object]], times: str | None = None) -> SimpleNamespace:
     def pytest_deselected(items: list[object]) -> None:
         deselected.append(items)
 
     hook = SimpleNamespace(pytest_deselected=pytest_deselected)
-    return SimpleNamespace(getoption=lambda name: {"--shard": spec}[name], hook=hook)
+    options = {"--shard": spec, "--shard-durations": times}
+    return SimpleNamespace(getoption=lambda name: options[name], hook=hook)
 
 
 @pytest.mark.parametrize(("spec", "want"), [("1/4", (1, 4)), ("4/4", (4, 4)), ("1/1", (1, 1)), ("12/30", (12, 30))])
@@ -66,10 +68,42 @@ def test_a_single_shard_deselects_nothing() -> None:
     assert dropped == []
 
 
-def test_the_option_is_registered_without_a_default() -> None:
+def test_the_options_are_registered_without_a_default() -> None:
     seen: dict[str, object] = {}
     shard_tests.add_option(SimpleNamespace(addoption=lambda name, **kw: seen.update({name: kw})))
     assert seen["--shard"]["default"] is None
+    assert seen["--shard-durations"]["default"] is None
+
+
+FILES = {f"tests/policies/test_{n}.py": float(10 * (n + 1)) for n in range(6)}
+BY_FILE = [SimpleNamespace(nodeid=f"{f}::t{n}") for f in FILES for n in range(5)]
+
+
+def slices_by_time(times: str | None) -> list[list[str]]:
+    kept = []
+    for index in (1, 2, 3):
+        items = list(BY_FILE)
+        shard_tests.apply(config(f"{index}/3", [], times), items)
+        kept.append([i.nodeid for i in items])
+    return kept
+
+
+def test_with_times_a_file_stays_whole_in_one_slice_and_the_slices_partition_the_suite(tmp_path: Path) -> None:
+    path = tmp_path / "d.json"
+    path.write_text(json.dumps(FILES), encoding="utf-8")
+    kept = slices_by_time(str(path))
+    assert sorted(n for k in kept for n in k) == sorted(i.nodeid for i in BY_FILE)
+    for nodes in kept:
+        assert len({n.partition("::")[0] for n in nodes}) * 5 == len(nodes)
+    loads = [sum(FILES[n.partition("::")[0]] / 5 for n in nodes) for nodes in kept]
+    assert max(loads) - min(loads) <= 10
+
+
+@pytest.mark.parametrize("bad", ["absent.json", "empty.json"])
+def test_unreadable_or_empty_times_fall_back_to_the_hash(tmp_path: Path, bad: str) -> None:
+    (tmp_path / "empty.json").write_text("{}", encoding="utf-8")
+    hashed = [[n for n in slice_ if True] for slice_ in slices_by_time(None)]
+    assert slices_by_time(str(tmp_path / bad)) == hashed
 
 
 def collect(*args: str) -> subprocess.CompletedProcess[str]:
