@@ -463,7 +463,7 @@ jobs:
   # that joins them. How many comes from the time main last recorded for each test file (the scope
   # job): enough that each takes about six minutes, so wall time holds as policies are added. Each
   # shard runs the whole files packed into its slice, longest first into the lightest slice
-  # (tests/conftest.py, tools/shard_tests.py, tools/durations.py); with no recorded times it runs
+  # (conftest.py, tools/shard_tests.py, tools/durations.py); with no recorded times it runs
   # the tests whose node-id hash falls in its slice -- crc32, not Python's per-process hash(),
   # because every xdist worker must keep the same tests. Either way the slices partition the suite
   # -- none twice, none dropped -- and the job count the slice is cut by is the matrix's own, so

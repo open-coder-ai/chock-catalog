@@ -1,4 +1,9 @@
-"""`pytest --shard N/M`, `--policy ID` and `--durations-out FILE`: CI's slices of the suite and its timings."""
+"""`pytest --shard N/M`, `--policy ID` and `--durations-out FILE`: CI's slices of the suite and its timings.
+
+Here, at the repo root, and not in tests/: while the command line is parsed an option is not yet known, so
+its value (`--shard-durations test-durations.json`) reads as a path, and pytest then looks for conftests
+beside that path instead of under tests/. The root one is found whichever way the options are spelled.
+"""
 
 from __future__ import annotations
 

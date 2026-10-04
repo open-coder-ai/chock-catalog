@@ -123,3 +123,10 @@ def test_pytest_refuses_a_bad_spec_rather_than_running_nothing() -> None:
     proc = collect("tests/test_repo_standards.py", "--shard", "0/2")
     assert proc.returncode == pytest.ExitCode.USAGE_ERROR
     assert "--shard wants N/M" in proc.stderr
+
+
+def test_the_options_register_when_a_value_is_a_file_that_exists() -> None:
+    """CI passes `--shard-durations test-durations.json`; pytest reads an existing file there as a path."""
+    proc = collect("--shard", "1/2", "--shard-durations", "pyproject.toml")
+    assert proc.returncode == 0, proc.stderr
+    assert "unrecognized arguments" not in proc.stderr
