@@ -33,16 +33,16 @@ def held(tmp_path: Path, files: dict[str, str]) -> Path:
 # --- the script ----------------------------------------------------------------------------------------------
 
 
-def test_the_manifest_declares_a_script_gate_that_only_warns() -> None:
+def test_the_manifest_declares_a_script_gate_that_blocks() -> None:
     manifest = scriptkit.manifest(POLICY)
     gate = manifest["hook"]["gate"]
     assert (gate["kind"], gate["on"], gate["action"], gate["params"]) == (
         "script",
         ["commit", "tool_use"],
-        "warn",
+        "block",
         {"script": NAME},
     )
-    assert (manifest["artifact"], manifest["enforcement"]) == ("rule", "advise")
+    assert (manifest["artifact"], manifest["enforcement"]) == ("rule", "block")
     assert len(manifest["description"]) <= 500
 
 
@@ -231,7 +231,7 @@ def test_a_fault_exits_2_and_never_reads_as_a_verdict(repo: Path) -> None:
     assert "could not reach a decision" in proc.stderr
 
 
-def test_the_engine_warns_on_a_new_grant_and_not_on_one_already_there(tmp_path: Path) -> None:
+def test_the_engine_blocks_on_a_new_grant_and_not_on_one_already_there(tmp_path: Path) -> None:
     base = held(tmp_path, {CLAUDE: settings(allow=["Bash(curl:*)"])})
     scriptkit.write(base, {CLAUDE: settings(allow=["Read", "Bash(curl:*)"])})
     scriptkit.git(base, "add", "-A")
@@ -239,7 +239,7 @@ def test_the_engine_warns_on_a_new_grant_and_not_on_one_already_there(tmp_path: 
     scriptkit.write(base, {CLAUDE: settings(allow=["Read", "Bash(curl:*)", "Bash(sudo:*)"])})
     scriptkit.git(base, "add", "-A")
     _, err = gatekit.judge(POLICY, base, gatekit.COMMIT)
-    assert "Bash(sudo:*)" in err and "Bash(curl:*)" not in err and "warn" in err.lower()
+    assert "Bash(sudo:*)" in err and "Bash(curl:*)" not in err and "refused" in err.lower()
 
 
 def test_the_engine_flags_a_removed_deny_entry_at_commit_and_at_the_turns_end(tmp_path: Path) -> None:
