@@ -1,7 +1,8 @@
 id: rtk-dangerous-actions-blocker
 name: "rtk Dangerous Actions Blocker"
-version: "0.2.3"
+version: "0.2.4"
 description: >
+  Deprecated: use block-destructive-commands, which shares this policy's destructive-command table.
   rtk#1007. Destructive verdicts come from the chock_destructive table shared with block-
   destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset
   --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's
@@ -29,13 +30,15 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-09-13T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-05T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: deprecated
+  deprecated_at: "2026-10-05T00:00:00Z"
+  replacement_id: block-destructive-commands
   reviewed_by:
     - "chock-core"
 
@@ -48,6 +51,10 @@ tags:
 - requested-by:rtk-ai/rtk#1007
 
 changelog:
+- version: 0.2.4
+  date: '2026-10-05'
+  changes:
+  - "Deprecated (owner decision B3): block-destructive-commands replaces this policy. Both read the same chock_destructive table; this one stays installable until the next catalog release removes it. Behaviour is unchanged."
 - version: 0.2.3
   date: '2026-10-03'
   changes:
