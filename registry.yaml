@@ -569,7 +569,7 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.2.3
+  version: 0.2.4
   artifact: rule
   enforcement: advise
   mandatory: false
@@ -577,11 +577,12 @@ policies:
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 105
   eval_executed: 105
-  description: 'rtk#1007. Destructive verdicts come from the chock_destructive table shared with block-
-    destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard,
-    clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk''s safe list,
-    bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys,
-    ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.'
+  description: 'Deprecated: use block-destructive-commands, which shares this policy''s destructive-command
+    table. rtk#1007. Destructive verdicts come from the chock_destructive table shared with block- destructive-commands:
+    the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard, clean -f, IaC destroy,
+    cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk''s safe list, bare lease, stash drop,
+    prunes, -auto-approve). Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline
+    *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
   version: 0.1.0
