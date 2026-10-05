@@ -25,12 +25,7 @@ from trees import policy_dirs
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 PROSE = DOCS / "policy-prose.yaml"
-REGISTRY = ROOT / "registry.yaml"
-
-#: The engine's label keywords (registry `label`), as the word a page shows.
-LABEL_WORD = {"block": "blocks", "ask": "asks", "warn": "warns", "advise": "advisory"}
-
-
+LABEL_WORD = {"block": "blocks", "ask": "asks", "warn": "warns", "advise": "advisory"}  # label keyword -> page word
 MARK_START = "<!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->"
 MARK_END = "<!-- generated:end -->"
 
@@ -263,16 +258,15 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict, label:
 
 def build() -> dict[Path, str]:
     prose = yaml.safe_load(PROSE.read_text(encoding="utf-8"))
-    rows = {p["id"]: p for p in yaml.safe_load(REGISTRY.read_text(encoding="utf-8"))["policies"]}
+    rows = yaml.safe_load((ROOT / "registry.yaml").read_text(encoding="utf-8"))["policies"]
+    lab = {p["id"]: p["label"]["claude-code"] for p in rows}
     out: dict[Path, str] = {}
     for policy_dir in policy_dirs():
         manifest = yaml.safe_load((policy_dir / "manifest.yaml").read_text(encoding="utf-8"))
         policy_id = manifest["id"]
         if policy_id not in prose:
             raise SystemExit(f"docs/policy-prose.yaml has no entry for '{policy_id}'")
-        out[DOCS / policy_id / "README.md"] = render(
-            policy_id, policy_dir, manifest, prose[policy_id], rows[policy_id]["label"]["claude-code"]
-        )
+        out[DOCS / policy_id / "README.md"] = render(policy_id, policy_dir, manifest, prose[policy_id], lab[policy_id])
     return out
 
 
