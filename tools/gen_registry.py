@@ -92,8 +92,6 @@ def derive_labels(root: Path = ROOT) -> dict[str, dict]:
             for key, fmt in LABEL_FORMATS:
                 client = bundle_build.CLIENTS[fmt]
                 package = built / fmt / manifest["id"]
-                if not package.is_dir():
-                    continue
                 hooks = package / packaging.supports(client.package_agent, packaging.HOOKS)
                 gate = package / SCRIPTS_TEMPLATE.format(name="gate.json")
                 grade, says = bundle_grade.grade_of(

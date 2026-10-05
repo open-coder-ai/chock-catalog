@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+import gen_registry
 import pytest
 import yaml
 from trees import ROOT
@@ -49,3 +50,10 @@ def test_first_sentence_agrees_with_label(row):
 
 def test_rows_checked():
     assert len(ROWS) == len({r["id"] for r in ROWS}) > 0
+
+
+def test_a_row_rendered_without_a_label_keeps_the_one_it_had():
+    row = gen_registry.facts(ROOT / ROWS[0]["path"])
+    old = ["- id: x", "  label:", "    misses: null", "  description: d"]
+    assert gen_registry.render_row(row, old)[len(gen_registry.FIELDS) + 1 :][:2] == ["  label:", "    misses: null"]
+    assert "  label:" not in gen_registry.render_row(row, ["- id: x"])
