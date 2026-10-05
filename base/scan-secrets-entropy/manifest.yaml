@@ -1,8 +1,8 @@
 id: scan-secrets-entropy
 name: "Scan Secrets Entropy"
-version: "0.1.0"
+version: "0.1.1"
 description: >
-  Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy values
+  Friction, not a security boundary: asks a person before a write adds secrets scan-secrets misses -- high-entropy values
   (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test
   keys, Slack/AWS key-id shapes, Luhn-valid cards. Asks a person (HP01 entropy is a heuristic, so it asks rather than blocks). Misses: values split
   across lines, over 150 chars, cut by # or & when unquoted, under other key names, written like
@@ -33,7 +33,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-05T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-05'
+  changes:
+  - "Description now says what the policy does on Claude Code: asks. Behaviour unchanged."
 - version: 0.1.0
   date: '2026-10-04'
   changes:

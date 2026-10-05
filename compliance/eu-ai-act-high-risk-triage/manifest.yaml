@@ -1,11 +1,11 @@
 id: eu-ai-act-high-risk-triage
 name: "EU AI Act — High-Risk Triage"
-version: "0.0.3"
+version: "0.0.4"
 description: >
-  Flag when code puts an AI system into an EU AI Act Annex III high-risk domain —
+  Warns when code puts an AI system into an EU AI Act Annex III high-risk domain —
   biometrics, critical infrastructure, education, employment, essential services and
-  credit, law enforcement, migration, justice and elections — and require the Article
-  9-15 obligations be owned before the capability ships. Use when adding scoring,
+  credit, law enforcement, migration, justice and elections — and asks for an owner
+  of the Article 9-15 obligations before the capability ships. Use when adding scoring,
   ranking, eligibility, or screening over people. Do NOT use for banned practices
   (see eu-ai-act-prohibited-practices) or for systems with no natural-person impact.
 artifact: rule
@@ -70,7 +70,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-12T00:00:00Z"
-  updated_at: "2026-09-29T00:00:00Z"
+  updated_at: "2026-10-05T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -97,3 +97,7 @@ changelog:
   changes:
   - "Make the deterministic part a gate. hook.gate (kind: content_regex, on: [commit, tool_use], action: warn) flags added lines that name an Annex III scoring, ranking or screening of people (credit scoring, loan approval, resume or applicant ranking, biometric identification, recidivism, exam proctoring, visa or asylum triage, insurance pricing, benefit eligibility, employee monitoring). It can only warn: at commit the reason prints and the commit proceeds, in the agent the reason reaches the agent (and the user at Stop) and nothing is denied. The domain call, the provider or deployer role and the Article 6(3) question stay advisory rule text."
   - "Enforcement stays advise: a warn-only mechanism is not credited as enforcing. Fraud detection and biometric verification, which Annex III excludes, are not named by the pattern."
+- version: 0.0.4
+  date: '2026-10-05'
+  changes:
+  - "Description now says what the policy does on Claude Code: warns. Behaviour unchanged."

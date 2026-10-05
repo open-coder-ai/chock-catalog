@@ -8,16 +8,22 @@ the description's hand wrapping while the text is unchanged; a removed policy's 
 
 from __future__ import annotations
 
+import json
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import prose_counts
 import yaml
+from agentseam import packaging
 from check_readme import classify_readme
 from check_registry import said, suite_counts
+from chock.plugin import bundle_build, bundle_grade
+from chock.plugin.store import SCRIPTS_TEMPLATE
 from mechanism import CEILING, classify
-from trees import ROOT, policy_dirs
+from trees import ROOT, TREES, policy_dirs
 
 #: Every row field but `id` and `description`, in the order each row lists them.
 FIELDS = (
@@ -31,6 +37,10 @@ FIELDS = (
     "eval_cases",
     "eval_executed",
 )
+#: Label key, build format, then the engine's own hooks path and agent for that format.
+LABEL_FORMATS = (("claude-code", "claude"), ("cursor", "cursor"), ("codex", "codex"), ("copilot", "copilot"))
+#: The marker whose trailing sentence is what a policy says it misses.
+MISSES = re.compile(r"(?:Misses|Not caught here):\s*(.*?\.(?=\s|$)|.*)", re.S)
 #: The README's tier rows, as check_readme.py reads them, and which kinds each counts.
 LADDER = (("enforced-at-commit", ("gate",)), ("in-agent", ("guard",)), ("advisory", ("text",)))
 BADGES = (("policies", ("gate", "guard", "text")), ("enforced", ("gate", "guard")), ("advisory", ("text",)))
@@ -58,6 +68,58 @@ def facts(policy_dir: Path, root: Path = ROOT) -> dict:
     }
 
 
+def misses(description: str) -> str | None:
+    """The sentence after the first `Misses:` or `Not caught here:`, or None."""
+    found = MISSES.search(" ".join(description.split()))
+    return found.group(1).strip() if found else None
+
+
+def derive_labels(root: Path = ROOT) -> dict[str, dict]:
+    """Each policy's label, graded by the engine from the hooks its built packages ship."""
+    labels: dict[str, dict] = {}
+    with tempfile.TemporaryDirectory() as tmp:
+        for tree in TREES:
+            if (root / tree).is_dir():
+                subprocess.run(
+                    ["chock", "plugin", "build", "--repo", str(root), "--policies-dir", tree, "--format", "all",
+                     "--out-dir", str(Path(tmp) / tree)],
+                    check=True, capture_output=True, text=True,
+                )  # fmt: skip
+        for policy_dir in policy_dirs(root):
+            manifest = yaml.safe_load((policy_dir / "manifest.yaml").read_text(encoding="utf-8"))
+            built = Path(tmp) / policy_dir.parent.name
+            label: dict = {}
+            for key, fmt in LABEL_FORMATS:
+                client = bundle_build.CLIENTS[fmt]
+                package = built / fmt / manifest["id"]
+                if not package.is_dir():
+                    continue
+                hooks = package / packaging.supports(client.package_agent, packaging.HOOKS)
+                gate = package / SCRIPTS_TEMPLATE.format(name="gate.json")
+                grade, says = bundle_grade.grade_of(
+                    hooks.read_text(encoding="utf-8") if hooks.is_file() else None,
+                    gate.read_text(encoding="utf-8") if gate.is_file() else None,
+                    client.agent,
+                )
+                label[key] = {"keyword": bundle_grade.enforcement_keyword(grade), "says": says}
+            label["misses"] = misses(manifest.get("description") or "")
+            labels[manifest["id"]] = label
+    return labels
+
+
+def _flow(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False)
+
+
+def _label(label: dict) -> list[str]:
+    """The `label:` block, one flow mapping per format (JSON is valid YAML flow)."""
+    return [
+        "  label:",
+        *(f"    {k}: {_flow(v)}" for k, v in label.items() if k != "misses"),
+        f"    misses: {_flow(label['misses'])}",
+    ]
+
+
 def _scalar(value: object) -> str:
     return yaml.safe_dump(value, width=10**6).removesuffix("\n").removesuffix("\n...")
 
@@ -76,10 +138,22 @@ def _description(text: str, old: list[str]) -> list[str]:
     return ["  " + line for line in dumped.splitlines()]
 
 
+def _old_label(old: list[str]) -> list[str]:
+    """The label lines an existing row already carries, for a caller that derives none."""
+    start = next((i for i, line in enumerate(old) if line == "  label:"), None)
+    if start is None:
+        return []
+    end = start + 1
+    while end < len(old) and old[end].startswith("    "):
+        end += 1
+    return old[start:end]
+
+
 def render_row(row: dict, old: list[str]) -> list[str]:
     return [
         f"- id: {row['id']}",
         *(f"  {k}: {_scalar(row[k])}" for k in FIELDS),
+        *(_label(row["label"]) if "label" in row else _old_label(old)),
         *_description(row["description"], old),
     ]
 
@@ -110,7 +184,8 @@ def update_registry(root: Path = ROOT, *, write: bool = True) -> str:
     path = root / "registry.yaml"
     before = path.read_text(encoding="utf-8")
     head, rows, tail = split_rows(before.splitlines())
-    on_disk = {row["id"]: row for row in (facts(d, root) for d in policy_dirs(root))}
+    labels = derive_labels(root)
+    on_disk = {row["id"]: {**row, "label": labels[row["id"]]} for row in (facts(d, root) for d in policy_dirs(root))}
     order = [pid for pid in rows if pid in on_disk] + [pid for pid in on_disk if pid not in rows]
     body = [line for pid in order for line in render_row(on_disk[pid], rows.get(pid, []))]
     removed = sorted(set(rows) - set(on_disk))

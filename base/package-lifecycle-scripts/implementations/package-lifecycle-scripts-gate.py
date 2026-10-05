@@ -15,7 +15,7 @@ from lifecycle import ASK, BLOCK, Hit, digest
 from lifecycle.dispatch import read, reader_kind
 from lifecycle.targets import npm_script
 
-SAY = {BLOCK: "fetch-exec class (would block)", ASK: "new or changed hook (would ask)"}
+SAY = {BLOCK: "fetch-exec class (blocks)", ASK: "new or changed hook (asks)"}
 
 
 #: Text past this size is not scanned (the patterns are linear, but the budget is 30 s for every file):
@@ -76,7 +76,7 @@ def main() -> int:
         "as a reviewed step, and pin git or URL dependencies to a commit. A person reviews any new hook.",
         file=sys.stderr,
     )
-    # 1 refuses, 3 asks; the manifest's declared action (warn while observed) caps either.
+    # 1 refuses, 3 asks; the manifest's declared action (block) is the ceiling.
     return 1 if any(item["level"] == BLOCK for item in found) else 3
 
 
