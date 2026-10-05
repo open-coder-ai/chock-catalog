@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "scan-secret-files",
-  "version": "0.0.1",
-  "description": "Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores. Warns only (observe). Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.",
+  "version": "0.1.0",
+  "description": "Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores. Blocks; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask. Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.",
   "author": {
     "name": "chock-core"
   },
@@ -12,13 +12,13 @@
     "chock",
     "policy-as-code",
     "hook",
-    "advise"
+    "block"
   ],
   "extensions": {
     "io.github.open-coder-ai": {
       "manifest": "manifest.yaml",
       "artifact": "hook",
-      "enforcement": "advise",
+      "enforcement": "block",
       "coverage_without_chock": "advisory"
     }
   }

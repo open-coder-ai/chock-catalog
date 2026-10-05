@@ -1,15 +1,15 @@
 # Scan Secret Files
 
-`scan-secret-files` · rule · enforces
+`scan-secret-files` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
-| **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | guard script `sbf_core.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
+| **Type** | `hook` (`enforcement: block`) |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
 | **Eval cases** | 25 total, 25 executable |
 | **Enabled by default** | yes |
 
@@ -17,7 +17,7 @@
 
 ## What it is about
 
-Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores. Warns only (observe). Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.
+Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores. Blocks; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask. Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.
 
 ## What it solves
 
@@ -25,17 +25,19 @@ scan-secrets reads one line at a time, so it cannot tell that a whole file is a 
 
 ## How it works
 
-A guard script, `implementations/sbf_core.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `block`.
 
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+Parameters, from `manifest.yaml`:
 
-```text
+- `script`
 
-```
+On a match it prints:
+
+> This file is a secret, or holds one: a private key or key store, a cloud, registry or tool credential file, Terraform state, a dotenv file with live values, or a browser credential store. Keep it out of the repository: add it to .gitignore, load the value from the environment or a secret manager, and commit a template with placeholders (.env.example) instead. Rotate any credential that was written or pushed. There is no inline waiver; a person who has reviewed a fixture commits it from their own shell.
 
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/scan-secret-files/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+A **git hook**. `recompile` writes `.chock/compiled/scan-secret-files/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 
