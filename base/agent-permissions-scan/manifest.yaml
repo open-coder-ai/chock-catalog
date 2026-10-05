@@ -1,20 +1,20 @@
 id: agent-permissions-scan
 name: "Agent Permissions Scan"
-version: "0.0.1"
+version: "0.1.0"
 description: >
-  Warns only (observe): parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
+  Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
 artifact: rule
-enforcement: advise
+enforcement: block
 mandatory: false
 rule:
   text: |
     agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vscode/settings.json|.cursor/cli.json|opencode.json|.aider.conf.yml|.continue/**): grant named, scoped actions only
-    never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve; never(remove): deny entry; observe: warns at commit+tool_use, enforce later
+    never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve; never(remove): deny entry; blocks at commit+tool_use
 hook:
   gate:
     kind: script
     "on": [commit, tool_use]
-    action: warn
+    action: block
     message: >
       An agent permission config grants more than named, scoped actions (a bare or wildcard allow, a
       bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox), a
@@ -33,20 +33,20 @@ compliance:
   owasp_asi:
   - control: ASI03
     coverage: partial
-    note: "warns (observe rollout) when a change widens an agent's permission config: wildcard or bare allows, removed deny entries, bypass default modes, auto-approve switches; MCP configs, command text and tools outside the listed files are out of scope"
+    note: "blocks when a change widens an agent's permission config: wildcard or bare allows, removed deny entries, bypass default modes, auto-approve switches; MCP configs, command text and tools outside the listed files are out of scope"
   owasp_llm_2025:
   - control: LLM06
     coverage: partial
-    note: "Excessive Agency: reads the structured permission files line-based block-wildcard-agent-permissions cannot (multi-line arrays, unquoted YAML, removed deny entries); warns only until promoted"
+    note: "Excessive Agency: reads the structured permission files line-based block-wildcard-agent-permissions cannot (multi-line arrays, unquoted YAML, removed deny entries)"
   mitre_atlas:
   - control: AML.T0083
     coverage: partial
-    note: "narrows the blast radius of any credential an over-granted agent config would expose; warns only"
+    note: "narrows the blast radius of any credential an over-granted agent config would expose"
 
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-04T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -59,6 +59,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-04'
+  changes:
+  - "Promoted from observe to block (plan decision D15): the gate's declared action is now block and its enforcement block; detection, scope and the script are unchanged. D15-M measured a fire rate of 0.0% over the catalog's 154 first-parent commits (chock-catalog#223), under the 5% bar. Adopters that installed 0.0.1 see commits and agent writes that carry a finding refused instead of warned; a reviewed exception stays a {file, path, value} waiver in .chock/devenv.json."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

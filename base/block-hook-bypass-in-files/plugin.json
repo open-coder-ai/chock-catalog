@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-hook-bypass-in-files",
-  "version": "0.0.1",
-  "description": "Friction, not a security boundary: flags lines added to hook launchers and scripts that switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit, lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile, justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.",
+  "version": "0.1.0",
+  "description": "Friction, not a security boundary: flags lines added to hook launchers and scripts that switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit, lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile, justfile, .envrc, *.sh. Blocks. Misses: split lines, -n.",
   "author": {
     "name": "chock-core"
   },
@@ -12,13 +12,13 @@
     "chock",
     "policy-as-code",
     "hook",
-    "advise"
+    "block"
   ],
   "extensions": {
     "io.github.open-coder-ai": {
       "manifest": "manifest.yaml",
       "artifact": "hook",
-      "enforcement": "advise",
+      "enforcement": "block",
       "coverage_without_chock": "advisory"
     }
   }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ci-github-actions-security",
-  "version": "0.0.1",
-  "description": "Friction, not a security boundary: warns (observe) on GitHub Actions weaknesses a change adds to workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout under pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets inherit or inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning, agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.",
+  "version": "0.1.0",
+  "description": "Friction, not a security boundary: refuses or asks (each rule's tier) on GitHub Actions weaknesses a change adds to workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout under pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets inherit or inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning, agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.",
   "author": {
     "name": "chock-core"
   },
@@ -12,13 +12,13 @@
     "chock",
     "policy-as-code",
     "hook",
-    "advise"
+    "block"
   ],
   "extensions": {
     "io.github.open-coder-ai": {
       "manifest": "manifest.yaml",
       "artifact": "hook",
-      "enforcement": "advise",
+      "enforcement": "block",
       "coverage_without_chock": "advisory"
     }
   }
