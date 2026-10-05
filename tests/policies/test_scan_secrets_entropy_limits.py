@@ -34,7 +34,7 @@ def test_a_stated_miss_is_still_missed_and_still_stated(miss: str) -> None:
     assert miss in description
 
 
-def test_the_description_says_it_only_warns_and_is_not_a_boundary() -> None:
+def test_the_description_says_it_asks_and_is_not_a_boundary() -> None:
     description = re.sub(r"\s+", " ", scriptkit.manifest(kit.POLICY)["description"])
     assert description.startswith("Friction, not a security boundary")
-    assert "Warns only (observe)" in description
+    assert "Asks a person" in description
