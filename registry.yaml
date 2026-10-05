@@ -9,6 +9,8 @@ source: https://github.com/open-coder-ai/chock-catalog
 #   check reports as "no executable form"); it counts toward eval_cases, never toward
 #   eval_executed. Both counts are verified against each policy's suite by
 #   tools/check_registry.py -- drift here fails CI the same way a stale version does.
+# label: what the policy does on each agent, derived from the hooks it ships (tools/gen_registry.py). Read this, not enforcement.
+# enforcement: the manifest's tier (propagation default and index ranking); it does not say what the policy blocks.
 policies:
 - id: agent-discipline
   path: base/agent-discipline
