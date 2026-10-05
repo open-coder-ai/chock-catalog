@@ -1,15 +1,17 @@
 # Scan Secrets Entropy
 
-`scan-secrets-entropy` · rule · advises
+`scan-secrets-entropy` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
-| **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | warn-only `script` gate |
-| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
-| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Type** | `hook` |
+| **On Claude Code** | asks — asks on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
 | **Eval cases** | 25 total, 25 executable |
 | **Enabled by default** | yes |
 
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy values (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test keys, Slack/AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split across lines, over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control characters.
+Friction, not a security boundary: asks a person before a write adds secrets scan-secrets misses -- high-entropy values (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test keys, Slack/AWS key-id shapes, Luhn-valid cards. Asks a person (HP01 entropy is a heuristic, so it asks rather than blocks). Misses: values split across lines, over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control characters.
 
 ## What it solves
 
@@ -25,21 +27,25 @@ scan-secrets refuses vendor prefixes and a fixed set of assignment patterns, so 
 
 ## How it works
 
-A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `ask`.
 
-On a finding it prints:
+Parameters, from `manifest.yaml`:
+
+- `script`
+
+On a match it prints:
 
 > Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose structure checks out, or a card number. Move it to an environment variable or a secret store and reference it; rotate it if it was ever real. A person who has checked a test value keeps it with 'pragma: allowlist secret' on the same line (a person's commit, push or CI honours it; in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
 
 ## Which primitive it becomes
 
-A **warn-only gate**. `recompile` writes it under `.chock/compiled/scan-secrets-entropy/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
+A **git hook**. `recompile` writes `.chock/compiled/scan-secrets-entropy/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 
 ```bash
 chock add scan-secrets-entropy
-chock sync --repo .
+chock sync .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:

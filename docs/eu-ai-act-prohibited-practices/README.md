@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
+| **Type** | `rule` |
+| **On Claude Code** | advisory — advisory only: skill text, nothing stops a violation |
+| **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | rule text |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |
 | **Compiles to** | `ambient-rule` |
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-Refuse to implement AI practices banned outright by EU AI Act Article 5: social scoring, untargeted facial-image scraping, emotion inference at work or school, biometric categorisation by sensitive traits, profiling-only predictive policing, subliminal or vulnerability-based manipulation, real-time remote biometric ID in public spaces, and NCII/CSAM generators. Use when a feature request names any of these. Do NOT use for lawful biometric verification, fraud detection, or safety/medical emotion detection.
+Advisory rule that tells the agent to decline AI practices banned outright by EU AI Act Article 5: social scoring, untargeted facial-image scraping, emotion inference at work or school, biometric categorisation by sensitive traits, profiling-only predictive policing, subliminal or vulnerability-based manipulation, real-time remote biometric ID in public spaces, and NCII/CSAM generators. Use when a feature request names any of these. Do NOT use for lawful biometric verification, fraud detection, or safety/medical emotion detection.
 
 ## What it solves
 

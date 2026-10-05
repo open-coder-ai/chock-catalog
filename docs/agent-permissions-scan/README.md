@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: block`) |
+| **Type** | `rule` |
+| **On Claude Code** | blocks — refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |

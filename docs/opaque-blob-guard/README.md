@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
+| **Type** | `rule` |
+| **On Claude Code** | warns — warns on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | warn-only `script` gate |
 | **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
 | **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |

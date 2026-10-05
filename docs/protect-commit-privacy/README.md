@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
+| **Type** | `rule` |
+| **On Claude Code** | blocks — refuses a matched shell command before it runs |
+| **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | commit-time guard script `protect-commit-privacy-commit-msg.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ambient-rule` |
