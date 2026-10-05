@@ -48,6 +48,8 @@ base/refname-filename-metachar:
   chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-curl-pipe-sh:
   chock_shellparse: [args, parse, quoting, targets, writes]
+base/guard-memory-writes:
+  chock_scan: [hostmatch, hosts, idn, safe_read, urls]
 base/scan-instruction-files:
   chock_scan: [data_table, entropy, safe_read]
 base/scan-hidden-content:

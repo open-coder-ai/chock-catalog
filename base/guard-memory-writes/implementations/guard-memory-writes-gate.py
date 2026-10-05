@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
-"""Report git history, a long code block, a duplicate or a secret in an agent-memory file; the engine keeps the new."""
+"""Report git history, a long code block, a duplicate or a secret (refused), and instruction-shaped text (asked), in an agent-memory file; the engine keeps the new."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import re
+import shutil
+import subprocess
 import sys
+from collections import Counter
+from pathlib import Path
+
+# The detection module and the shared chock_scan copy ship beside this script; no bytecode cache is written.
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import memory_instructions  # noqa: E402 -- after the path setup
 
 MEMORY_PATH = re.compile(r"(^|/)MEMORY\.md$|^CLAUDE\.local\.md$|^\.claude/memory/|^memory/.+\.md$")
 # Absolute paths only: the gate's `outside_repo` globs (the manifest) are what lets one reach this script.
@@ -103,6 +113,12 @@ SECRET = re.compile(
 FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 BULLET = re.compile(r"^([-*+]|\d+[.)])\s+")
 MAX_BLOCK_LINES = 20
+ALLOW_EXIT, BLOCK_EXIT, UNREADABLE_EXIT, ASK_EXIT, WARN_EXIT = 0, 1, 2, 3, 4
+# Observe rollout (plan D15): an instruction-shaped finding warns. D15-M's measurement promotes it by setting ASK_EXIT.
+INSTRUCTION_EXIT = WARN_EXIT
+FROM_DISK = frozenset({"tool_use", "pre-tool-use"})
+FROM_HEAD = frozenset({"commit", "agent-commit", "stop", "push"})
+GIT = shutil.which("git") or "git"
 
 
 def fenced_blocks(lines: list[str]) -> tuple[set[int], list[tuple[int, int]]]:
@@ -176,25 +192,68 @@ def judge(path: str, text: str) -> list[dict]:
     return [row for _, row in sorted(found.items())]
 
 
+def memory_files(payload: dict) -> dict[str, str]:
+    """The written memory files by path as the gate reads it (backslashes folded), in path order."""
+    folded = ((path.replace("\\", "/"), text) for path, text in sorted(payload.get("writes", {}).items()))
+    return {path: text for path, text in folded if MEMORY_PATH.search(path) or OUTSIDE_MEMORY.match(path)}
+
+
 def findings(payload: dict) -> list[dict]:
+    """Every refusal-tier finding of each memory file, then its ask-tier findings, file by file."""
+    files = memory_files(payload)
+    entries = memory_instructions.allowlist(str(payload.get("repo_root", "."))) if files else None
     found = []
-    for path, text in sorted(payload.get("writes", {}).items()):
-        norm = path.replace("\\", "/")
-        if MEMORY_PATH.search(norm) or OUTSIDE_MEMORY.match(norm):
-            found += judge(norm, text)
+    for path, text in files.items():
+        structural = judge(path, text)
+        secrets = {row["line"] for row in structural if row["key"].startswith("secret|")}
+        found += structural + memory_instructions.ask_rows(path, text, entries, secrets)
     return found
+
+
+def before_text(payload: dict, path: str, text: str) -> str | None:
+    """The file before the change, as the engine's baseline sees it, or None when there was none: the file on disk
+    before a tool write, HEAD at commit and at the turn's end, which reaches the script as a write already on disk."""
+    event, root = str(payload.get("event", "")), Path(str(payload.get("repo_root", ".")))
+    if event in FROM_DISK:
+        try:
+            disk = (root / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            disk = None
+        if disk != text:
+            return disk
+    elif event not in FROM_HEAD:
+        return None
+    if Path(path).is_absolute():
+        return None
+    shown = subprocess.run(  # noqa: S603 -- git itself, reading one blob; nothing from the write is run
+        [GIT, "-C", str(root), "cat-file", "blob", f"HEAD:./{path}"], capture_output=True, check=False, timeout=10
+    )
+    return shown.stdout.decode("utf-8", "replace") if shown.returncode == 0 else None
+
+
+def refuses(payload: dict) -> bool:
+    """Whether the change adds a refusal-tier finding: one the text before it did not have."""
+    if payload.get("baseline"):
+        return False
+    for path, text in memory_files(payload).items():
+        old = before_text(payload, path, text)
+        held = Counter(row["key"] for row in judge(path, old)) if old is not None else Counter()
+        if Counter(row["key"] for row in judge(path, text)) - held:
+            return True
+    return False
 
 
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
-    except json.JSONDecodeError:
+        found = findings(payload)
+        block = refuses(payload) if found else False
+    except (ValueError, TypeError, AttributeError, OSError, subprocess.SubprocessError):
         print("guard-memory-writes: stdin is not the gate JSON", file=sys.stderr)
-        return 2
-    found = findings(payload)
+        return UNREADABLE_EXIT
     print(json.dumps({"findings": found}))
     if not found:
-        return 0
+        return ALLOW_EXIT
     print("guard-memory-writes: memory must not hold this (path:line):", file=sys.stderr)
     for item in found:
         print(f"  {item['path']}:{item['line']}: {item['message']}", file=sys.stderr)
@@ -203,7 +262,8 @@ def main() -> int:
         "it, drop duplicates, never store a secret (rotate any that was written). No waiver exists.",
         file=sys.stderr,
     )
-    return 1
+    print(memory_instructions.ADVICE, file=sys.stderr)
+    return BLOCK_EXIT if block else INSTRUCTION_EXIT
 
 
 if __name__ == "__main__":
