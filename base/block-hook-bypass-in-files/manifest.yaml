@@ -1,14 +1,14 @@
 id: block-hook-bypass-in-files
 name: "Block Hook Bypass In Files"
-version: "0.0.1"
+version: "0.1.0"
 description: >
   Friction, not a security boundary: flags lines added to hook launchers and scripts that switch
   git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
   set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a
   pre-commit, lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook,
-  package.json, Makefile, justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.
+  package.json, Makefile, justfile, .envrc, *.sh. Blocks. Misses: split lines, -n.
 artifact: hook
-enforcement: advise
+enforcement: block
 mandatory: false
 effects:
 - read_only
@@ -62,7 +62,7 @@ hook:
   gate:
     kind: content_regex
     "on": [commit, tool_use]
-    action: warn
+    action: block
     message: >
       This line switches git hooks off for everyone who runs this file (a hook-skip option on a
       git command, a new hooks path (core.hooksPath), a hook manager's off-switch variable such as HUSKY set to zero, or an
@@ -80,7 +80,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-04T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -93,6 +93,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-04'
+  changes:
+  - "Promoted from observe to block (D15-P, roadmap 5.3 HP04 files; target verdict block). D15-M (chock-catalog#223) measured a fire rate of 0.0% (23 judged) over the catalog's 154 first-parent commits at fa26774, within the 5% bar. The gate's action is now block and the enforcement is block; the pattern, scope and paths are unchanged. The eval cases that expected warn now expect block. Adopters that ran this pack in observe now have it refuse; this repo's own installed copy is refreshed by the owner."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

@@ -8,7 +8,7 @@ suite:
     pass_rate:
       direction: higher_is_better
       threshold: 1.0
-  # The gate ships at action: warn (rollout observe, D15): a trigger expects `warn`, never `block`.
+  # The gate ships at action: block (D15): a deny-tier rule expects `block`, an ask-tier rule `ask`.
   # Every executable case runs the script gate in a throwaway repository. URLs are under example.com.
   cases:
   - id: tc-001
@@ -19,7 +19,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM ubuntu\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-002
     category: negative_trigger
     prompt: A commit adds a Dockerfile pinned by digest, built FROM an earlier stage, running as a non-root user.
@@ -37,7 +37,7 @@ suite:
     execute:
       files:
         Dockerfile: "ARG BASE\nFROM ${BASE}\nUSER 1000\n"
-      expect: warn
+      expect: ask
   - id: tc-004
     category: adversarial
     prompt: COPY --from names an external image rather than a stage, pulling it unpinned.
@@ -46,7 +46,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY --from=nginx /etc/nginx /etc/nginx\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-005
     category: trigger
     prompt: The final stage of a multi-stage Dockerfile switches back to USER root.
@@ -55,7 +55,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\nRUN id\nUSER root\n"
-      expect: warn
+      expect: block
   - id: tc-006
     category: adversarial
     prompt: The root user is hidden behind an ARG default in the final stage.
@@ -64,7 +64,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nARG RUNAS=0\nUSER ${RUNAS}\n"
-      expect: warn
+      expect: block
   - id: tc-007
     category: adversarial
     prompt: A download is piped into sh across a line continuation, so no single line shows both halves.
@@ -73,7 +73,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -fsSL https://get.example.com/install.sh \\\n    | sh\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-008
     category: adversarial
     prompt: The same split fetch-exec is written inside a RUN heredoc.
@@ -82,7 +82,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN <<EOF\nset -e\nwget -qO- https://get.example.com/install.sh \\\n  | bash\nEOF\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-009
     category: negative_trigger
     prompt: A RUN downloads to a file, verifies its checksum and only then runs it.
@@ -100,7 +100,7 @@ suite:
     execute:
       files:
         Containerfile: "FROM python:3.12@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -fsSLk https://example.com/x -o x && pip install --trusted-host pypi.example.com app\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-011
     category: trigger
     prompt: An apt install skips signature checks.
@@ -109,7 +109,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM debian:12@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN apt-get update && apt-get install -y --allow-unauthenticated tool\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-012
     category: trigger
     prompt: A secret-named ENV holds a literal value.
@@ -121,7 +121,7 @@ suite:
           FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000
           ENV DB_PASSWORD=hunter2
           USER 1000
-      expect: warn
+      expect: block
   - id: tc-013
     category: negative_trigger
     prompt: A secret-named ARG has no default and the secret arrives through a BuildKit secret mount.
@@ -139,7 +139,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY id_rsa .env /root/\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-015
     category: trigger
     prompt: An ADD fetches a git repository by branch, not commit.
@@ -148,7 +148,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nADD git@github.com:example/tool.git#main /src\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-016
     category: trigger
     prompt: A RUN step asks BuildKit for a privileged build sandbox.
@@ -157,7 +157,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN --security=insecure mount -t tmpfs none /mnt\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-017
     category: behavior
     prompt: chmod 777 and a setuid bit are added (ask tier).
@@ -166,7 +166,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN chmod -R 777 /app && chmod u+s /usr/local/bin/tool\nUSER 1000\n"
-      expect: warn
+      expect: ask
   - id: tc-018
     category: behavior
     prompt: sudo, an SSH server and a root password are added to the image.
@@ -175,7 +175,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM debian:12@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN apt-get install -y openssh-server && echo 'root:pw' | chpasswd\nEXPOSE 22\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-019
     category: behavior
     prompt: A git clone builds from a moving branch, and an ONBUILD RUN is added.
@@ -184,7 +184,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN git clone --branch main https://example.com/tool.git\nONBUILD RUN make\nUSER 1000\n"
-      expect: warn
+      expect: ask
   - id: tc-020
     category: trigger
     prompt: A compose service runs privileged with the Docker socket mounted.
@@ -193,7 +193,7 @@ suite:
     execute:
       files:
         compose.yaml: "services:\n  agent:\n    image: example/agent:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    privileged: true\n    volumes:\n      - /var/run/docker.sock:/var/run/docker.sock\n"
-      expect: warn
+      expect: block
   - id: tc-021
     category: adversarial
     prompt: cap_add ALL and an unconfined seccomp profile arrive through a YAML anchor merged with <<.
@@ -202,7 +202,7 @@ suite:
     execute:
       files:
         docker-compose.yml: "x-defaults: &defaults\n  cap_add: [ALL]\n  security_opt: [\"seccomp:unconfined\"]\nservices:\n  app:\n    <<: *defaults\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
-      expect: warn
+      expect: block
   - id: tc-022
     category: trigger
     prompt: A compose service shares the host network and pid namespaces and mounts ~/.ssh.
@@ -211,7 +211,7 @@ suite:
     execute:
       files:
         compose.yml: "services:\n  dev:\n    image: example/dev:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    network_mode: host\n    pid: host\n    volumes:\n      - ${HOME}/.ssh:/root/.ssh:ro\n"
-      expect: warn
+      expect: block
   - id: tc-023
     category: trigger
     prompt: A compose database publishes its port on every interface with a literal password.
@@ -227,7 +227,7 @@ suite:
                 POSTGRES_PASSWORD: hunter2
               ports:
                 - "5432:5432"
-      expect: warn
+      expect: block
   - id: tc-024
     category: negative_trigger
     prompt: An ordinary compose file with pinned images, loopback ports, named volumes and env references.
@@ -261,7 +261,7 @@ suite:
     execute:
       files:
         compose.yaml: "services:\n  cache:\n    image: redis\n    ports: [\"127.0.0.1:6379:6379\"]\n"
-      expect: warn
+      expect: ask
   - id: tc-026
     category: adversarial
     prompt: A compose file uses an alias with no anchor, which no loader reads one way.
@@ -270,7 +270,7 @@ suite:
     execute:
       files:
         compose.yaml: "services:\n  app:\n    <<: *missing\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
-      expect: warn
+      expect: block
   - id: tc-027
     category: behavior
     prompt: A change edits a Dockerfile that already ran as root at HEAD, touching only an unrelated line.
@@ -300,7 +300,7 @@ suite:
       event: tool_use
       writes:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\n# chock: allow dk-last-user-root\nUSER root\n"
-      expect: warn
+      expect: block
   - id: tc-030
     category: negative_trigger
     prompt: A markdown page quotes a privileged compose snippet and a root Dockerfile.
@@ -318,7 +318,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN wget -qO- https://get.example.com/install.sh | sh\nUSER 1000\n"
-      expect: warn
+      expect: block
   - id: tc-032
     category: adversarial
     prompt: A quoted "<<EOF" in an earlier RUN tries to swallow the root final stage as a heredoc body.
@@ -327,7 +327,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\nRUN echo \"x<<EOF\"\nUSER root\n"
-      expect: warn
+      expect: block
   - id: tc-033
     category: adversarial
     prompt: A USER 1000 line sits inside a heredoc opened as "cat << EOF" (a space after the angle brackets), so Docker never runs it.
@@ -336,7 +336,7 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN cat << EOF > /etc/motd\nhello\nUSER 1000\nEOF\n"
-      expect: warn
+      expect: block
   - id: tc-034
     category: adversarial
     prompt: A chmod 777 is split across a line continuation in the middle of the command name.
@@ -345,4 +345,4 @@ suite:
     execute:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN ch\\\nmod 777 /srv\nUSER 1000\n"
-      expect: warn
+      expect: ask

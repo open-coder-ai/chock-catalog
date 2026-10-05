@@ -1,14 +1,14 @@
 id: ci-github-actions-security
 name: "CI GitHub Actions Security"
-version: "0.0.1"
+version: "0.1.0"
 description: >
-  Friction, not a security boundary: warns (observe) on GitHub Actions weaknesses a change adds to
+  Friction, not a security boundary: refuses or asks (each rule's tier) on GitHub Actions weaknesses a change adds to
   workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout under
   pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets inherit or
   inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning, agent steps on
   untrusted text. Misses: step outputs, composite internals, custom runner labels.
 artifact: hook
-enforcement: advise
+enforcement: block
 mandatory: false
 effects:
 - read_only
@@ -19,9 +19,8 @@ hook:
   gate:
     kind: script
     "on": [commit, tool_use]
-    # Rollout observe (D15) for one policy: rollout is set per repository, so a new pack warns until
-    # its false-positive rate is measured; a separate change raises this to block.
-    action: warn
+    # The ceiling; the script picks each rule's tier (block or ask) from implementations/ghascan/rules.py.
+    action: block
     message: >
       A GitHub Actions workflow, composite action or Dependabot file gained a weakness (each finding
       names its rule, CWE and fix). Fix it as the finding says. A person who has reviewed one may keep it
@@ -33,7 +32,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-04T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -46,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-04'
+  changes:
+  - "Promoted from observe to enforce (D15). The pack cleared D15 with a fire rate of 0.6% over the catalog's full first-parent history (154 commits, chock-catalog#223; one adopter not measured). The manifest moves from action: warn / enforcement: advise to action: block / enforcement: block, the ceiling; the script already exits 1 for a block-tier rule and 3 for an ask-tier one, so each rule now lands on its roadmap default (section 6 ci-github-actions-security table). Eval cases that expected warn now expect that tier. No detection, scope or threshold change."
 - version: 0.0.1
   date: '2026-10-02'
   changes:
