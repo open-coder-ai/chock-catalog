@@ -1,15 +1,15 @@
 id: scan-secrets-entropy
 name: "Scan Secrets Entropy"
-version: "0.0.1"
+version: "0.1.0"
 description: >
   Friction, not a security boundary: flags secrets scan-secrets misses -- high-entropy values
   (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test
-  keys, Slack/AWS key-id shapes, Luhn-valid cards. Warns only (observe). Misses: values split
+  keys, Slack/AWS key-id shapes, Luhn-valid cards. Asks a person (HP01 entropy is a heuristic, so it asks rather than blocks). Misses: values split
   across lines, over 150 chars, cut by # or & when unquoted, under other key names, written like
   code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parens or concatenation, in XML,
   or padded with control characters.
 artifact: hook
-enforcement: advise
+enforcement: block
 mandatory: false
 effects:
 - read_only
@@ -20,7 +20,7 @@ hook:
   gate:
     kind: script
     "on": [commit, tool_use]
-    action: warn
+    action: ask
     message: >
       Possible secret: a high-entropy value assigned to a secret-like key, a vendor token whose
       structure checks out, or a card number. Move it to an environment variable or a secret store
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.0
+  date: '2026-10-04'
+  changes:
+  - "Promoted from observe to ask (D15): hook.gate.action warn -> ask and enforcement advise -> block, the verdict roadmap HP01 gives the entropy tier (a heuristic, so it asks a person rather than blocks). The measured fire rate over the catalog's first-parent history was 1.9% (chock-catalog#223), under D15's 5% bar. No change to detection, scope, paths or thresholds; the script already exited ask."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

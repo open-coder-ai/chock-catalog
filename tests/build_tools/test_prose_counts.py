@@ -145,8 +145,13 @@ def test_gen_registry_writes_and_checks_the_prose(catalog: Path) -> None:
     assert gen_registry.update_prose(catalog) == "SECURITY.md counts rewritten\nCONTRIBUTING.md counts rewritten"
 
 
-def test_the_committed_prose_counts_are_current() -> None:
-    assert prose_counts.update(ROOT, write=False) == [
+def test_the_committed_prose_has_only_generated_counts(tmp_path: Path) -> None:
+    """Whether the counts are current is the nightly's check: they lag until release."""
+    for name in ("registry.yaml", *prose_counts.FILES):
+        (tmp_path / name).write_text((ROOT / name).read_text(encoding="utf-8"), encoding="utf-8")
+    written = prose_counts.update(tmp_path, write=True)
+    assert all(line.endswith(("counts rewritten", "counts already current")) for line in written), written
+    assert prose_counts.update(tmp_path, write=False) == [
         "SECURITY.md counts already current",
         "CONTRIBUTING.md counts already current",
     ]
