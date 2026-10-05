@@ -1,8 +1,8 @@
 id: eu-ai-act-prohibited-practices
 name: "EU AI Act — Prohibited Practices"
-version: "0.0.2"
+version: "0.0.3"
 description: >
-  Refuse to implement AI practices banned outright by EU AI Act Article 5: social
+  Advisory rule that tells the agent to decline AI practices banned outright by EU AI Act Article 5: social
   scoring, untargeted facial-image scraping, emotion inference at work or school,
   biometric categorisation by sensitive traits, profiling-only predictive policing,
   subliminal or vulnerability-based manipulation, real-time remote biometric ID in
@@ -36,7 +36,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-12T00:00:00Z"
-  updated_at: "2026-08-12T00:00:00Z"
+  updated_at: "2026-10-05T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -58,3 +58,7 @@ changelog:
   date: '2026-08-16'
   changes:
   - "Add compliance claims (eu_ai_act); no mechanism change."
+- version: 0.0.3
+  date: '2026-10-05'
+  changes:
+  - "Description now says what the policy does on Claude Code: advises. Behaviour unchanged."

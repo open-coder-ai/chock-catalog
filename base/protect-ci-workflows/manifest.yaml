@@ -1,8 +1,8 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.2.3"
+version: "0.2.4"
 description: >
-  Stops an agent weakening the checks that review its work. Shell guard refuses writes to
+  Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to
   .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
   into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate
   asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS,
@@ -43,7 +43,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-05T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -57,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.4
+  date: '2026-10-05'
+  changes:
+  - "Description now says what the policy does on Claude Code: asks. Behaviour unchanged."
 - version: 0.2.3
   date: '2026-10-03'
   changes:

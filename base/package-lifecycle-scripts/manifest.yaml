@@ -1,6 +1,6 @@
 id: package-lifecycle-scripts
 name: "Flag Package Lifecycle Scripts"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Blocks fetch-exec class hooks and asks about other new ones when a change adds or edits code that runs at install or build time: npm
   install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned git/URL deps;
@@ -44,7 +44,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-05T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -57,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-05'
+  changes:
+  - "Runtime messages said '(would block)' and '(would ask)' and a comment said warn caps the verdict, but the pack blocks since 0.1.0: the messages now say '(blocks)' and '(asks)'. Behaviour unchanged."
 - version: 0.1.0
   date: '2026-10-04'
   changes:
