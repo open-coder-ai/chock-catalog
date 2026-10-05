@@ -52,7 +52,7 @@ POLICIES = REGISTRY["policies"]
 PACKS = {}
 for policy in POLICIES:
     PACKS.setdefault(policy["path"].split("/")[0], []).append(policy)
-BLOCKING = [p["id"] for p in POLICIES if p.get("enforcement") == "block"]
+BLOCKING = [p["id"] for p in POLICIES if p["label"]["claude-code"]["keyword"] == "block"]
 AT_COMMIT = [p for p in POLICIES if p.get("enforces") == "enforced-at-commit"]
 IN_AGENT_WORDS = {"enforced", "enforceable", "best-effort"}
 PRE_TOOL = [

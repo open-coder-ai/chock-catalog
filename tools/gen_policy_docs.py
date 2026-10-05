@@ -25,8 +25,7 @@ from trees import policy_dirs
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 PROSE = DOCS / "policy-prose.yaml"
-
-
+LABEL_WORD = {"block": "blocks", "ask": "asks", "warn": "warns", "advise": "advisory"}  # label keyword -> page word
 MARK_START = "<!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->"
 MARK_END = "<!-- generated:end -->"
 
@@ -77,7 +76,7 @@ def load_cases(policy_dir: Path) -> list[dict]:
     return block.get("cases") or block.get("test_cases") or []
 
 
-def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str:
+def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict, label: dict) -> str:
     kind = kind_of(policy_dir, manifest)
     tree = policy_dir.parent.name
     gate = (manifest.get("hook") or {}).get("gate") or {}
@@ -99,7 +98,10 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
         "",
         "| | |",
         "| :--- | :--- |",
-        f"| **Type** | `{manifest.get('artifact')}` (`enforcement: {manifest.get('enforcement')}`) |",
+        f"| **Type** | `{manifest.get('artifact')}` |",
+        f"| **On Claude Code** | {LABEL_WORD[label['keyword']]} — {label['says']} |",
+        f"| **Manifest tier** | `enforcement: {manifest.get('enforcement')}` "
+        "(propagation and index ranking; not what it blocks) |",
         f"| **Mechanism** | {_mechanism(kind, gate, scripts, manifest)} |",
         f"| **Reaches** | {WARN_ONLY_REACH if warn_only else CEILING[kind]}{TOOL_USE_REACH if tool_use else ''} |",
         f"| **Compiles to** | {', '.join(_warn_surfaces(gate) if warn_only else SURFACES[kind])} |",
@@ -256,13 +258,15 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict) -> str
 
 def build() -> dict[Path, str]:
     prose = yaml.safe_load(PROSE.read_text(encoding="utf-8"))
+    rows = yaml.safe_load((ROOT / "registry.yaml").read_text(encoding="utf-8"))["policies"]
+    lab = {p["id"]: p["label"]["claude-code"] for p in rows}
     out: dict[Path, str] = {}
     for policy_dir in policy_dirs():
         manifest = yaml.safe_load((policy_dir / "manifest.yaml").read_text(encoding="utf-8"))
         policy_id = manifest["id"]
         if policy_id not in prose:
             raise SystemExit(f"docs/policy-prose.yaml has no entry for '{policy_id}'")
-        out[DOCS / policy_id / "README.md"] = render(policy_id, policy_dir, manifest, prose[policy_id])
+        out[DOCS / policy_id / "README.md"] = render(policy_id, policy_dir, manifest, prose[policy_id], lab[policy_id])
     return out
 
 
