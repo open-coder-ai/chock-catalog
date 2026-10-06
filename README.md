@@ -213,7 +213,7 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | :--- | :--- |
 | What a policy does in Claude Code | 39 block, 3 ask, 5 warn, 24 advise |
 | Eval cases in the registry | 4,280, of which 4,098 replay automatically |
-| OWASP ASI risks with a policy | 10 of 10; every mapping `partial`; 0 fully covered |
+| OWASP ASI risks | 10 of 10 have a policy; 7 have a slice refused at commit; ASI10 asks at commit, ASI06 warns only, ASI08 advisory only; 0 fully covered |
 
 **Enforced at commit** — declarative gates and commit-time scripts, verified by replaying their own gate against a throwaway repo on every push.
 
@@ -309,20 +309,20 @@ Advisory, like everything else with no mechanism. Regulatory scoping is judgemen
 
 **Agentic security** — the OWASP Top 10 for Agentic Applications (2026), in `agentic-security/`: one advisory policy per ASI category, plus slices a diff can literally show, enforced by narrower policies named for what they block. These govern the agentic system you are *building*; everything else governs the agent doing the building.
 
-The mapping is **partial everywhere**. As of catalog commit `9a64623`, from each manifest's `compliance.owasp_asi`: 10 of 10 risks have a policy; 9 have a slice that runs at commit (ASI08 is advisory only); none is fully covered. A slice is marked (asks) or (warns) where its Claude Code label says so; several policies run in observe rollout first, and each manifest's `compliance` note says exactly what its slice reaches.
+The mapping is **partial everywhere**. As of catalog commit `9a64623`, from each manifest's `compliance.owasp_asi`: 10 of 10 risks have a policy; 7 have a slice refused at commit (ASI01–05, 07, 09); ASI10 is refused in the agent (best-effort) and only asks a person at commit; ASI06 only warns; ASI08 is advisory only; none is fully covered. Each manifest's `compliance` note says exactly what its slice reaches, and a slice that only asks or warns is marked.
 
 | Risk | Advisory policy | Slice at commit | Slice in-agent | Also steers (advisory) |
 | :--- | :--- | :--- | :--- | :--- |
-| ASI01 Agent goal hijack | `owasp-asi01-agent-goal-hijack` | `block-invisible-unicode`, `scan-instruction-files` | none | `injection-defense`, `scan-hidden-content` (warns) |
-| ASI02 Tool misuse | `owasp-asi02-tool-misuse` | `agentic-code-security`, `block-destructive-commands` | `block-curl-pipe-sh`, `block-unapproved-egress`, `protect-ci-workflows` (asks), `rtk-dangerous-actions-blocker` | none |
+| ASI01 Agent goal hijack | `owasp-asi01-agent-goal-hijack` | `block-invisible-unicode`, `scan-instruction-files` | none | `injection-defense`, `scan-hidden-content` |
+| ASI02 Tool misuse | `owasp-asi02-tool-misuse` | `agentic-code-security`, `block-destructive-commands` | `block-curl-pipe-sh`, `block-unapproved-egress`, `protect-ci-workflows`, `rtk-dangerous-actions-blocker` | none |
 | ASI03 Identity and privilege abuse | `owasp-asi03-identity-privilege-abuse` | `agent-permissions-scan`, `agentic-code-security`, `block-wildcard-agent-permissions`, `block-wildcard-iam`, `iam-policy-scan` | `block-persistence-shapes`, `block-secret-store-reads`, `protect-agent-config` | none |
-| ASI04 Agentic supply chain | `owasp-asi04-agentic-supply-chain` | `agentic-code-security`, `block-unpinned-agent-components`, `dockerfile-compose-security`, `lockfile-integrity`, `package-lifecycle-scripts`, `pin-github-actions`, `registry-config`, `verify-dependency-exists`, `verify-mcp-allowlist` | none | `block-fetch-exec-in-files` (warns), `opaque-blob-guard` (warns) |
-| ASI05 Unexpected code execution | `owasp-asi05-unexpected-code-execution` | `agentic-code-security`, `block-unsafe-code-execution`, `dockerfile-compose-security`, `hardening-flags` | none | `agent-devenv-autoexec` (warns), `code-safety` |
-| ASI06 Memory and context poisoning | `owasp-asi06-memory-context-poisoning` | `guard-memory-writes` | none | none |
+| ASI04 Agentic supply chain | `owasp-asi04-agentic-supply-chain` | `agentic-code-security`, `block-unpinned-agent-components`, `dockerfile-compose-security`, `lockfile-integrity`, `package-lifecycle-scripts`, `pin-github-actions`, `registry-config`, `verify-dependency-exists`, `verify-mcp-allowlist` | none | `block-fetch-exec-in-files`, `opaque-blob-guard` |
+| ASI05 Unexpected code execution | `owasp-asi05-unexpected-code-execution` | `agentic-code-security`, `block-unsafe-code-execution`, `dockerfile-compose-security`, `hardening-flags` | none | `agent-devenv-autoexec`, `code-safety` |
+| ASI06 Memory and context poisoning | `owasp-asi06-memory-context-poisoning` | `guard-memory-writes` (warns only) | none | none |
 | ASI07 Insecure inter-agent communication | `owasp-asi07-insecure-inter-agent-communication` | `agentic-code-security` | none | none |
 | ASI08 Cascading failures | `owasp-asi08-cascading-failures` | none | none | none |
 | ASI09 Human-agent trust | `owasp-asi09-human-agent-trust` | `agentic-code-security` | none | none |
-| ASI10 Rogue agents | `owasp-asi10-rogue-agents` | `scan-suppression-markers` (asks) | `block-persistence-shapes`, `block-unguarded-agent-spawn` | none |
+| ASI10 Rogue agents | `owasp-asi10-rogue-agents` | `scan-suppression-markers` (asks only) | `block-persistence-shapes`, `block-unguarded-agent-spawn` | none |
 
 How the claim is re-derived on every build, and what `partial` versus `full` means, is in [docs/coverage.md](docs/coverage.md).
 
