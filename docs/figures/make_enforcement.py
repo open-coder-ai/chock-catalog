@@ -59,10 +59,9 @@ def render(t, name):
         H,
         t,
         "Chock-catalog enforcement coverage",
-        f"Of {total} chock-catalog policies, {enforced_at_commit} are enforced at commit and "
-        f"{in_agent} more are enforced in-agent, for {enforced_at_commit + in_agent} enforced "
-        f"overall -- {advisory} are advisory only, read by the agent but "
-        "backed by no mechanism.",
+        f"Of {total} chock-catalog policies, {enforced_at_commit} are enforced at commit, "
+        f"{in_agent} are refused in the agent (best-effort, failing open), and {advisory} "
+        "are advisory only, read by the agent but backed by no mechanism.",
     )
 
     svg += p.text(
@@ -113,8 +112,8 @@ def render(t, name):
     svg += p.text(
         BAR_X,
         legend_y,
-        f"{enforced_at_commit + in_agent} enforced ({enforced_at_commit} at commit + "
-        f"{in_agent} in-agent) — {advisory} advisory, the largest slice",
+        f"{enforced_at_commit} enforced at commit, {in_agent} in-agent (best-effort, "
+        f"fails open), {advisory} advisory only",
         t["secondary"],
         13,
     )
