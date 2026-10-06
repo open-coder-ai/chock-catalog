@@ -1,15 +1,17 @@
 # CI GitHub Actions Security
 
-`ci-github-actions-security` · rule · advises
+`ci-github-actions-security` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
-| **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | warn-only `script` gate |
-| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
-| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Type** | `hook` |
+| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
 | **Eval cases** | 43 total, 43 executable |
 | **Enabled by default** | yes |
 
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-Friction, not a security boundary: warns (observe) on GitHub Actions weaknesses a change adds to workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout under pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets inherit or inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning, agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.
+Friction, not a security boundary: refuses or asks (each rule's tier) on GitHub Actions weaknesses a change adds to workflows, composite actions and dependabot.yml: event text in run/script, PR-head checkout under pull_request_target/workflow_run/issue_comment, missing or write-all permissions, secrets inherit or inlined, self-hosted runners on PRs, GITHUB_ENV writes, artifact and cache poisoning, agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.
 
 ## What it solves
 
@@ -25,21 +27,25 @@ An agent that writes CI writes the workflow most likely to be attacked. Text fro
 
 ## How it works
 
-A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `block`.
 
-On a finding it prints:
+Parameters, from `manifest.yaml`:
+
+- `script`
+
+On a match it prints:
 
 > A GitHub Actions workflow, composite action or Dependabot file gained a weakness (each finding names its rule, CWE and fix). Fix it as the finding says. A person who has reviewed one may keep it with '# chock: allow <rule id>' on that line and commit from their own shell; in the agent only a line already committed in HEAD counts, so an agent asks the person rather than writing the comment.
 
 ## Which primitive it becomes
 
-A **warn-only gate**. `recompile` writes it under `.chock/compiled/ci-github-actions-security/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
+A **git hook**. `recompile` writes `.chock/compiled/ci-github-actions-security/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 
 ```bash
 chock add ci-github-actions-security
-chock sync --repo .
+chock sync .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:

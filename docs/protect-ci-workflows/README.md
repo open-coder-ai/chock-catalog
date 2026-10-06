@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
+| **Type** | `rule` |
+| **On Claude Code** | asks — refuses a matched shell command before it runs; asks on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | guard script `protect-ci-workflows.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-Stops an agent weakening the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs ship no gate.
+Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs ship no gate.
 
 ## What it solves
 

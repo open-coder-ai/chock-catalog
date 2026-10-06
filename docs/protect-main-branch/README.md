@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `hook` (`enforcement: block`) |
+| **Type** | `hook` |
+| **On Claude Code** | advisory — advisory only: skill text, nothing stops a violation |
+| **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | forbidden_ref gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |

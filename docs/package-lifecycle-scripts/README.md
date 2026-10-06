@@ -1,15 +1,17 @@
 # Flag Package Lifecycle Scripts
 
-`package-lifecycle-scripts` · rule · advises
+`package-lifecycle-scripts` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
-| **Mechanism** | warn-only `script` gate |
-| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
-| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Type** | `rule` |
+| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
 | **Eval cases** | 28 total, 28 executable |
 | **Enabled by default** | yes |
 
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-Warns (observe rollout) when a change adds or edits code that runs at install or build time: npm install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned git/URL deps; setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks; build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven, Gradle exec. Never refuses yet; judges file text, not what a hook runs. Friction, not a security boundary.
+Blocks fetch-exec class hooks and asks about other new ones when a change adds or edits code that runs at install or build time: npm install/prepare/pack scripts, gypfile without native sources, bin shadowing, unpinned git/URL deps; setup.py cmdclass and import-time calls, .pth imports, conftest, pyproject build hooks; build.rs and build-deps; go:generate; MSBuild Exec; gemspec, extconf, Podfile, Composer, Maven, Gradle exec. Judges file text, not what a hook runs. Friction, not a security boundary.
 
 ## What it solves
 
@@ -25,28 +27,25 @@ Install-time and build-time hooks are how recent supply-chain worms spread (Shai
 
 ## How it works
 
-A `script` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `block`.
 
-On a finding it prints:
+Parameters, from `manifest.yaml`:
 
-> A change adds or edits code that runs when a package is installed or built (an npm lifecycle script, setup.py command override, build.rs, MSBuild Exec, gemspec extension and the like), or a git or URL dependency with no commit pin. Whoever controls that code or URL runs it on every machine that installs the package. Keep install and build steps offline and explicit: download to a file, verify a pinned checksum, run it as a separate reviewed step, and pin git dependencies to a 40-hex commit. This policy only warns while it is measured (rollout observe); it has no waiver yet.
+- `script`
 
-The rule text ships alongside, in the agent's ambient context:
+On a match it prints:
 
-```text
-avoid(install_time_and_build_time_scripts); if_required: explain(why), keep_offline: true, pin(git_and_url_deps: commit)
-prefer: download to a file, verify checksum, run as a reviewed step; never add hooks that fetch, decode or eval
-```
+> A change adds or edits code that runs when a package is installed or built (an npm lifecycle script, setup.py command override, build.rs, MSBuild Exec, gemspec extension and the like), or a git or URL dependency with no commit pin. Whoever controls that code or URL runs it on every machine that installs the package. Keep install and build steps offline and explicit: download to a file, verify a pinned checksum, run it as a separate reviewed step, and pin git dependencies to a 40-hex commit. A person who has reviewed the change approves the ask; there is no waiver yet.
 
 ## Which primitive it becomes
 
-A **warn-only gate**. `recompile` writes it under `.chock/compiled/package-lifecycle-scripts/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
+A **git hook**. `recompile` writes `.chock/compiled/package-lifecycle-scripts/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 
 ```bash
 chock add package-lifecycle-scripts
-chock sync --repo .
+chock sync .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:

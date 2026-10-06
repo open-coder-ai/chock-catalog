@@ -1,15 +1,17 @@
 # Block Hook Bypass In Files
 
-`block-hook-bypass-in-files` · rule · advises
+`block-hook-bypass-in-files` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
 | | |
 | :--- | :--- |
-| **Type** | `hook` (`enforcement: advise`) |
-| **Mechanism** | warn-only `content_regex` gate |
-| **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
-| **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
+| **Type** | `hook` |
+| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
+| **Mechanism** | content_regex gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
 | **Eval cases** | 28 total, 28 executable |
 | **Enabled by default** | yes |
 
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-Friction, not a security boundary: flags lines added to hook launchers and scripts that switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit, lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile, justfile, .envrc, *.sh. Warns only (observe). Misses: split lines, -n.
+Friction, not a security boundary: flags lines added to hook launchers and scripts that switch git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath set by git config or GIT_CONFIG_*, the husky, lefthook and pre-commit off-switch variables, a pre-commit, lefthook or husky (v8 and older) uninstall -- in .husky/, .githooks/, lefthook, package.json, Makefile, justfile, .envrc, *.sh. Blocks. Misses: split lines, -n.
 
 ## What it solves
 
@@ -25,21 +27,27 @@ block-no-verify refuses an agent's command that skips git hooks, but not the sam
 
 ## How it works
 
-A `content_regex` gate runs on `commit` and `tool_use` and only warns: its action is `warn`, so it prints its findings and never refuses. It does not enforce anything, so the policy counts as advisory.
+A declarative `content_regex` gate, evaluated on `commit` and `tool_use`, action `block`.
 
-On a finding it prints:
+Parameters, from `manifest.yaml`:
+
+- `allowlist_pragma`
+- `content_pattern`
+- `scan`
+
+On a match it prints:
 
 > This line switches git hooks off for everyone who runs this file (a hook-skip option on a git command, a new hooks path (core.hooksPath), a hook manager's off-switch variable such as HUSKY set to zero, or an uninstall). Fix the failing hook instead. A person who has reviewed it may keep it with 'pragma: allowlist hook-bypass' on the same line (a person's commit honours it; in the agent only a line already in HEAD counts). An agent asks a person; it never writes the pragma.
 
 ## Which primitive it becomes
 
-A **warn-only gate**. `recompile` writes it under `.chock/compiled/block-hook-bypass-in-files/` for each surface its `on` names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but its exit never refuses a commit or a write.
+A **git hook**. `recompile` writes `.chock/compiled/block-hook-bypass-in-files/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 
 ```bash
 chock add block-hook-bypass-in-files
-chock sync --repo .
+chock sync .
 ```
 
 Or copy the folder — it does the same thing, byte for byte:

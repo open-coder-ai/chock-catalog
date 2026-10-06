@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
+| **Type** | `rule` |
+| **On Claude Code** | warns — warns on an agent's file writes and at turn end |
+| **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | warn-only `content_regex` gate |
 | **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
 | **Compiles to** | `git-hook`, `ci-gate`, `pre-tool-use`, `ambient-rule` |
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-Flag when code puts an AI system into an EU AI Act Annex III high-risk domain — biometrics, critical infrastructure, education, employment, essential services and credit, law enforcement, migration, justice and elections — and require the Article 9-15 obligations be owned before the capability ships. Use when adding scoring, ranking, eligibility, or screening over people. Do NOT use for banned practices (see eu-ai-act-prohibited-practices) or for systems with no natural-person impact.
+Warns when code puts an AI system into an EU AI Act Annex III high-risk domain — biometrics, critical infrastructure, education, employment, essential services and credit, law enforcement, migration, justice and elections — and asks for an owner of the Article 9-15 obligations before the capability ships. Use when adding scoring, ranking, eligibility, or screening over people. Do NOT use for banned practices (see eu-ai-act-prohibited-practices) or for systems with no natural-person impact.
 
 ## What it solves
 

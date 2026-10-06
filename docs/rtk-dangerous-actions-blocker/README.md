@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: advise`) |
+| **Type** | `rule` |
+| **On Claude Code** | blocks — refuses a matched shell command before it runs |
+| **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | guard script `rtk-dangerous-actions-blocker.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
@@ -17,7 +19,7 @@
 
 ## What it is about
 
-rtk#1007. Destructive verdicts come from the chock_destructive table shared with block- destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's safe list, bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.
+Deprecated: use block-destructive-commands, which shares this policy's destructive-command table. rtk#1007. Destructive verdicts come from the chock_destructive table shared with block- destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's safe list, bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.
 
 ## What it solves
 

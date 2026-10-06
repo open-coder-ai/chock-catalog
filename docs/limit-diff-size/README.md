@@ -6,7 +6,9 @@
 
 | | |
 | :--- | :--- |
-| **Type** | `rule` (`enforcement: block`) |
+| **Type** | `rule` |
+| **On Claude Code** | advisory — advisory only: skill text, nothing stops a violation |
+| **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | commit-time guard script `limit-diff-size-pre-commit.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ambient-rule` |
