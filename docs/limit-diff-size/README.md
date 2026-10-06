@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | advisory — advisory only: skill text, nothing stops a violation |
+| **On Claude Code** | advisory — text only in a plugin: nothing in the plugin stops a violation; the enforcement the manifest declares is not carried by a plugin |
 | **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | commit-time guard script `limit-diff-size-pre-commit.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |

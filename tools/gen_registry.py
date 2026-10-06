@@ -22,7 +22,8 @@ from check_readme import classify_readme
 from check_registry import said, suite_counts
 from chock.plugin import bundle_build, bundle_grade
 from chock.plugin.store import SCRIPTS_TEMPLATE
-from mechanism import CEILING, classify
+from label_honesty import TEXT_ONLY_SAYS, data_label, fail_open_qualifier, honest_asks, status_label
+from mechanism import CEILING, NONE, classify
 from trees import ROOT, TREES, policy_dirs
 
 #: Every row field but `id` and `description`, in the order each row lists them.
@@ -31,6 +32,7 @@ FIELDS = (
     "version",
     "artifact",
     "enforcement",
+    "status",
     "mandatory",
     "mechanism",
     "enforces",
@@ -38,7 +40,13 @@ FIELDS = (
     "eval_executed",
 )
 #: Label key, build format, then the engine's own hooks path and agent for that format.
-LABEL_FORMATS = (("claude-code", "claude"), ("cursor", "cursor"), ("codex", "codex"), ("copilot", "copilot"))
+LABEL_FORMATS = (
+    ("claude-code", "claude"),
+    ("cursor", "cursor"),
+    ("codex", "codex"),
+    ("copilot", "copilot"),
+    ("devin", "devin"),
+)
 #: The marker whose trailing sentence is what a policy says it misses.
 MISSES = re.compile(r"(?:Misses|Not caught here):\s*(.*?\.(?=\s|$)|.*)", re.S)
 #: The README's tier rows, as check_readme.py reads them, and which kinds each counts.
@@ -59,6 +67,7 @@ def facts(policy_dir: Path, root: Path = ROOT) -> dict:
         "version": str(manifest["version"]),
         "artifact": manifest.get("artifact"),
         "enforcement": manifest.get("enforcement"),
+        "status": (manifest.get("lifecycle") or {}).get("status"),
         "mandatory": bool(manifest.get("mandatory")),
         "mechanism": mechanism,
         "enforces": CEILING[kind],
@@ -88,18 +97,26 @@ def derive_labels(root: Path = ROOT) -> dict[str, dict]:
         for policy_dir in policy_dirs(root):
             manifest = yaml.safe_load((policy_dir / "manifest.yaml").read_text(encoding="utf-8"))
             built = Path(tmp) / policy_dir.parent.name
+            policy_kind, _ = classify(policy_dir, manifest)
             label: dict = {}
             for key, fmt in LABEL_FORMATS:
                 client = bundle_build.CLIENTS[fmt]
                 package = built / fmt / manifest["id"]
                 hooks = package / packaging.supports(client.package_agent, packaging.HOOKS)
                 gate = package / SCRIPTS_TEMPLATE.format(name="gate.json")
+                hooks_text = hooks.read_text(encoding="utf-8") if hooks.is_file() else None
                 grade, says = bundle_grade.grade_of(
-                    hooks.read_text(encoding="utf-8") if hooks.is_file() else None,
-                    gate.read_text(encoding="utf-8") if gate.is_file() else None,
-                    client.agent,
+                    hooks_text, gate.read_text(encoding="utf-8") if gate.is_file() else None, client.agent
                 )
+                if hooks_text is None and policy_kind != NONE:
+                    says = TEXT_ONLY_SAYS
+                elif hooks_text is not None:
+                    grade, says = honest_asks(grade, says, hooks_text, client.agent)
+                    says += fail_open_qualifier(client.agent)
                 label[key] = {"keyword": bundle_grade.enforcement_keyword(grade), "says": says}
+            label["status"] = status_label(manifest)
+            if dated := data_label(policy_dir):
+                label["data"] = dated
             label["misses"] = misses(manifest.get("description") or "")
             labels[manifest["id"]] = label
     return labels

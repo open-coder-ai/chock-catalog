@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | asks — refuses a matched shell command before it runs; asks on an agent's file writes and at turn end |
+| **On Claude Code** | asks — refuses a matched shell command before it runs; asks on an agent's file writes; refuses at turn end (this client cannot prompt there) |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | guard script `protect-ci-workflows.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
