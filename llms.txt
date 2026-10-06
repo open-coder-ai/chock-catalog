@@ -1,13 +1,22 @@
 # chock-catalog
 
-> The policy catalog for Chock — policies you can adopt, each labelled by what it actually
-> enforces, with replayed evals as the evidence rather than a claim in an appendix.
+> The policy catalog for Chock: open-source guardrails for AI coding agents. Rules the agent
+> reads, checks that run as it writes, and gates at commit and in CI. Each policy is labelled by
+> what it actually enforces, with replayed evals as the evidence rather than a claim in an appendix.
 
-42 policies, one folder per id under `base/` (plus `compliance/` and `agentic-security/` packs
-that only earn their place where they apply). Every policy states its enforcement tier —
-`enforced-at-commit`, `in-agent`, or `advisory` — and the tier is checked by CI against what the
-mechanism actually does, not asserted in prose. The catalog is itself a Chock adopter: it runs
-its own `base/` policies against itself in `.agents/policies/`.
+71 policies (source: `registry.yaml`): 35 enforced at commit, 11 in agent (best-effort, fails
+open), 25 advisory. They sit in one folder per id: 53 under `base/`, 15 under `agentic-security/`
+and 3 under `compliance/`. The 71 carry 4,280 eval cases; 4,098 of them replay automatically.
+Each policy states its enforcement tier (`enforced-at-commit`, `best-effort` or `advisory` in
+`registry.yaml`), and CI checks the tier against what the mechanism does, not what prose says.
+No agent reaches "enforced": only the commit and CI gates are. The OWASP Agentic (ASI) mapping
+is partial: 7 of the 10 controls have a slice refused at commit (ASI01-05, 07, 09); none is
+fully covered. The catalog is itself a Chock adopter: it runs its own `base/` policies against
+itself in `.agents/policies/`.
+
+Install: chock is not on PyPI. Use the frozen engine,
+`pip install "chock @ git+https://github.com/open-coder-ai/chock@992711af4cf8d4fd9c4c861f10ef6e53374d75d7"`
+(Python 3.11 or newer).
 
 ## Docs
 
@@ -22,7 +31,7 @@ its own `base/` policies against itself in `.agents/policies/`.
   the uncondensed argument for gates over prompts, what `chock sync` compiles a manifest into,
   and what editing your own copy of a policy looks like.
 - [docs/coverage.md](https://github.com/open-coder-ai/chock-catalog/blob/main/docs/coverage.md):
-  how the OWASP ASI 10/10 coverage claim is re-derived on every build, and what `partial` versus
+  how the OWASP ASI mapping is derived from the manifests, and what `partial` versus
   `full` means.
 - [docs/demo-session.md](https://github.com/open-coder-ai/chock-catalog/blob/main/docs/demo-session.md):
   the untrimmed transcript of a real blocked-then-passing commit, captured by actually running

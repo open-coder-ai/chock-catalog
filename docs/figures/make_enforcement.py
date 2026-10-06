@@ -61,7 +61,7 @@ def render(t, name):
         "Chock-catalog enforcement coverage",
         f"Of {total} chock-catalog policies, {enforced_at_commit} are enforced at commit and "
         f"{in_agent} more are enforced in-agent, for {enforced_at_commit + in_agent} enforced "
-        f"overall -- {advisory}, more than half, are advisory only, read by the agent but "
+        f"overall -- {advisory} are advisory only, read by the agent but "
         "backed by no mechanism.",
     )
 
