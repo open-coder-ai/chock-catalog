@@ -147,7 +147,7 @@ Evidence: the Python guards this catalog ships import no network or model client
 | Without policies | agent writes it, then human review, then SAST in CI, then security review, then release; each late finding is a round trip |
 | With policies | the guard refuses the write, the agent reads the reason and fixes it in the same turn, and the commit gate and CI check it again |
 
-Review, SAST and security review still happen. They see fewer of the findings they keep repeating.
+Review, SAST and security review still happen; the known classes are refused while the agent writes, so they are fixed before review.
 
 ### Where your code goes
 
@@ -344,7 +344,7 @@ Every policy has [its own page](docs/): what it solves, how it works, which prim
 
 **What does it cost?** Free and open source under Apache-2.0. A check costs no tokens. Advisory policies use context.
 
-**Does it replace SAST or code review?** No. Chock doesn't replace code review, your SAST suite or a penetration test. It targets the known classes those stages keep finding, earlier, in the agent's own turn.
+**Does it replace SAST or code review?** No. Chock doesn't replace code review, your SAST suite or a penetration test. It refuses known classes while the agent writes, so they are fixed before review.
 
 **Which OWASP and CWE items does it cover?** OWASP ASI01–10, every mapping partial: see the [table above](#what-it-stops). Every rule in the Java security packs names its CWE. Manifests also carry `owasp_llm_2025`, `mitre_atlas` and `eu_ai_act` mappings where a policy claims them.
 
