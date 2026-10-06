@@ -1,10 +1,11 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.3.2"
+version: "0.4.0"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
   AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .windsurf/, .agents/, .chock/, ...),
-  MCP/hook client configs (.mcp.json, ...), hook files of Cline, Kiro, Augment, Windsurf and Devin (user and machine level too), ~/.claude.json, Claude Code plugin roots (.claude-plugin/, their hooks/), .git/{hooks,config}, policy implementations/: redirect,
+  MCP/hook client configs (.mcp.json, ...), guardrails toggles ([~/].chock/guardrails.json, its
+  state/ record), plugin install markers (chock.selection.json), hook files of Cline, Kiro, Augment, Windsurf and Devin (user and machine level too), ~/.claude.json, Claude Code plugin roots (.claude-plugin/, their hooks/), .git/{hooks,config}, policy implementations/: redirect,
   rm/mv/tee/sed -i, cp into, git checkout/restore, a write through a symlink to one; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir (best effort). Folder names match
   without regard to case. An instruction file under docs/ asks a person instead. Coarse: also eval or sh -c of
   computed text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync`
@@ -13,7 +14,7 @@ artifact: rule
 enforcement: advise
 rule:
   text: |
-    agent_config(AGENTS.md+wrappers|.{claude,cursor,codex,gemini,windsurf,agents,chock,junie,devin,grok,tabnine,augment,claude-plugin}/**|.github/{copilot*,hooks/}|.{clinerules,kiro}/hooks/|.kiro/agents/|<plugin>/hooks/|.mcp.json|.vscode/mcp.json|~/.claude.json|.git/{hooks,config}): never(edit|delete|set CLAUDE_CODE_PLUGIN_DIRS|--plugin-dir); any case; symlink same
+    agent_config(AGENTS.md+wrappers|.{claude,cursor,codex,gemini,windsurf,agents,chock,junie,devin,grok,tabnine,augment,claude-plugin}/|.github/{copilot*,hooks/}|.{clinerules,kiro}/hooks/|.kiro/agents/|<plugin>/hooks/|{.,.vscode/}mcp.json|~/.claude.json|chock.selection.json|.git/{hooks,config}): never(edit|delete|CLAUDE_CODE_PLUGIN_DIRS|--plugin-dir); any case; links same
     docs/**/{AGENTS,CLAUDE,GEMINI,copilot-instructions}.md|.cursorrules|.windsurfrules|.aider.conf.yml: ask_person; no marker passes
 hook:
   gate:
@@ -50,7 +51,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-10-03T00:00:00Z"
+  updated_at: "2026-10-06T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -64,6 +65,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.0
+  date: '2026-10-06'
+  changes:
+  - "Behaviour change, the files that switch a chock bundle's guardrails (eval cases tc-1433 to tc-1462; tests in test_protect_agent_config_guardrails.py). Named in the protected list, as a shell write and as an Edit/Write: the guardrails toggle files `.chock/guardrails.json` and `~/.chock/guardrails.json`, and the record `chock bundle on|off` keeps of them, `.chock/state/guardrails.sha256` and `~/.chock/state/guardrails.sha256`. The shell guard already refused these as part of `.chock/`; the Edit/Write gate now refuses the record too, which it had let through as the engine's own `.chock/state/` file. New: a chock-built plugin's install marker `chock.selection.json`, which records the custom-policy code a person accepted, matched as the exact file name in any folder and any case, so `chock.selection.json5` stays open. Reads (`cat`, `jq`) pass. The Edit/Write gate now follows links below `.chock/state/` and `.chock/log/` before it lets an engine file through, so a link there to a protected file is judged by that file. The engine's built-in guard (chock-guardrails-protect) refuses the same paths in every merged plugin; this lists them for a repository that installs protect-agent-config without that plugin."
 - version: 0.3.2
   date: '2026-10-03'
   changes:
