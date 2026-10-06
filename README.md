@@ -336,7 +336,7 @@ Every policy has [its own page](docs/): what it solves, how it works, which prim
 
 **Does Chock use an LLM?** No. Each check is a deterministic script. A check costs no tokens; a refusal adds one short reason to the agent's context.
 
-**Does my code leave my machine?** Chock never sends your code anywhere and adds no new place it goes. Your agent still sends context to its own model provider. Installing fetches policies once from the catalog you name.
+**Does my code leave my machine?** Chock adds no new place your code goes. Your agent still sends context to its own model provider. Installing fetches policies once from the catalog you name.
 
 **Which agents does it work with?** 15 adapters are generated from one `AGENTS.md`. What a policy reaches differs per agent, and `.chock/coverage.json` records every pair. Commit-time enforcement is git's, so it covers any agent and any human. No agent reaches `enforced` at tool use today.
 
