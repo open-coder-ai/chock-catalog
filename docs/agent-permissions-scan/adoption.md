@@ -89,7 +89,8 @@ INDEX.md: ~362 tokens (chars/4, max 2000)
 ## `$ chock validate .`
 
 ```text
-[PASS] All checks passed.
+[PASS] Passed with warnings.
+  [WARN]  …/.agents/policies/agent-permissions-scan/manifest.yaml :: lifecycle: Production artifact should record reviewed_by.
 ```
 
 ## `$ chock eval --repo .`

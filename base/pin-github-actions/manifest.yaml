@@ -1,6 +1,6 @@
 id: pin-github-actions
 name: "Pin GitHub Actions"
-version: "0.0.6"
+version: "0.0.7"
 description: >
   Blocks uses: of an action/reusable workflow at a movable ref (not a lowercase 40-hex SHA) and
   a docker:// image without @sha256, quoted, JSON or flow; an alias, escape or value off the
@@ -123,7 +123,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -131,6 +131,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.7
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-08-26'
   changes:
