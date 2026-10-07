@@ -804,15 +804,15 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.3.2
+  version: 0.4.0
   artifact: rule
   enforcement: advise
   status: draft
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1432
-  eval_executed: 1432
+  eval_cases: 1462
+  eval_executed: 1462
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
@@ -823,8 +823,9 @@ policies:
     misses: null
   description: 'Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes
     to AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .windsurf/, .agents/,
-    .chock/, ...), MCP/hook client configs (.mcp.json, ...), hook files of Cline, Kiro, Augment, Windsurf
-    and Devin (user and machine level too), ~/.claude.json, Claude Code plugin roots (.claude-plugin/,
+    .chock/, ...), MCP/hook client configs (.mcp.json, ...), guardrails toggles ([~/].chock/guardrails.json,
+    its state/ record), plugin install markers (chock.selection.json), hook files of Cline, Kiro, Augment,
+    Windsurf and Devin (user and machine level too), ~/.claude.json, Claude Code plugin roots (.claude-plugin/,
     their hooks/), .git/{hooks,config}, policy implementations/: redirect, rm/mv/tee/sed -i, cp into,
     git checkout/restore, a write through a symlink to one; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir
     (best effort). Folder names match without regard to case. An instruction file under docs/ asks a

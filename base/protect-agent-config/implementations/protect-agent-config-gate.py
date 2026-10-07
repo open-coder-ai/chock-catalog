@@ -20,6 +20,8 @@ from pathset import ASK, BLOCK, normalise, verdict
 
 # What the engine itself writes during a turn: its session log would fail the turn's-end walk. The shell guard still protects them.
 ENGINE_OWN = (".chock/state", ".chock/log")
+# The record `chock bundle on|off` keeps of the guardrails toggle file: the engine writes it only from a person's shell.
+RECORD = ".chock/state/guardrails.sha256"
 BLOCKED = (
     "This path is agent configuration or enforcement (instruction files, permission files, the dependency allowlist, "
     "vendored gates, policy implementations, whole agent folders). An agent must not edit its own guardrails through "
@@ -75,21 +77,24 @@ def relative(root: Path, path: str) -> str:
 
 
 def engine_own(rel: str) -> bool:
-    """Whether a path is something the engine writes itself."""
+    """Whether a path is something the engine writes itself during a turn."""
     normal = normalise(rel)
+    if normal == RECORD or normal.startswith(RECORD + "/"):
+        return False
     return any(normal == own or normal.startswith(own + "/") for own in ENGINE_OWN)
 
 
 def judge(root: Path, path: str) -> str:
     """`block`, `ask` or an empty string: the strictest verdict of the path as written, folded, and followed through its links."""
     rel = relative(root, path)
-    if engine_own(rel):
-        return ""
     real = os.path.realpath(root)
     followed = follow(real, path.replace("\\", "/"))  # a `..` after a link is read as written, not folded
     if followed is None:
         return BLOCK
-    named = [path, rel, *(os.path.relpath(f, real) if f.startswith(real + "/") else f for f in followed)]
+    inside = [os.path.relpath(f, real) if f.startswith(real + "/") else f for f in followed]
+    if all(engine_own(name) for name in (rel, *inside)):  # a link there to a protected file is judged by that file
+        return ""
+    named = [path, rel, *inside]
     kinds = {verdict(name, real) for name in named}
     return BLOCK if BLOCK in kinds else ASK if ASK in kinds else ""
 
