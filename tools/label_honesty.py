@@ -21,15 +21,14 @@ DATED_DATA = ("compromised-package-ioc", "verify-mcp-allowlist")
 DATED_SAYS = "data as of {as_of}; an installed plugin does not update it: re-running the install is the update"
 
 
-def status_label(manifest: dict) -> dict:
-    """The manifest's `lifecycle.status`, and what replaced a deprecated policy."""
+def status_label(manifest: dict) -> dict | None:
+    """A badge for a deprecated policy, naming what replaced it; draft and production show none (BV-C3)."""
     lifecycle = manifest.get("lifecycle") or {}
-    status = str(lifecycle.get("status") or "unknown")
-    says = f"lifecycle status: {status}"
-    if status == "deprecated":
-        says = "deprecated" + (f": use {lifecycle['replacement_id']}" if lifecycle.get("replacement_id") else "")
-        says += f" (since {str(lifecycle['deprecated_at'])[:10]})" if lifecycle.get("deprecated_at") else ""
-    return {"keyword": status, "says": says}
+    if lifecycle.get("status") != "deprecated":
+        return None
+    says = "deprecated" + (f": use {lifecycle['replacement_id']}" if lifecycle.get("replacement_id") else "")
+    says += f" (since {str(lifecycle['deprecated_at'])[:10]})" if lifecycle.get("deprecated_at") else ""
+    return {"keyword": "deprecated", "says": says}
 
 
 def data_label(policy_dir: Path) -> dict | None:

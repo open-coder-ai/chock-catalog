@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
+import re
+
 import check_registry
 import pytest
 import yaml
 from agentseam.vendor_config import VENDOR_CONFIG
 from chock import vendors
 from chock.plugin import bundle_build
+from label_honesty import status_label
 from mechanism import NONE, classify
 from trees import ROOT, policy_dirs
 
@@ -19,6 +23,7 @@ CLIENTS = (
     ("copilot", "copilot"),
     ("devin", "devin"),
 )
+DRAFT = re.compile(r"\bdraft\b", re.IGNORECASE)
 
 
 def _manifest(pid: str) -> dict:
@@ -50,9 +55,28 @@ def test_devin_has_a_key_that_says_it_fails_open() -> None:
 
 def test_every_row_carries_its_manifests_lifecycle_status() -> None:
     for pid, row in ROWS.items():
-        status = _manifest(pid)["lifecycle"]["status"]
-        assert row["status"] == status == row["label"]["status"]["keyword"]
+        assert row["status"] == _manifest(pid)["lifecycle"]["status"]
     assert ROWS["rtk-dangerous-actions-blocker"]["label"]["status"]["says"].startswith("deprecated")
+
+
+def test_only_a_deprecated_policy_carries_a_status_badge() -> None:
+    for pid, row in ROWS.items():
+        badge = row["label"].get("status")
+        assert (badge is not None) == (row["status"] == "deprecated"), pid
+        assert badge is None or badge["keyword"] == "deprecated"
+    assert status_label({"lifecycle": {"status": "draft"}}) is None
+    assert status_label({"lifecycle": {"status": "production"}}) is None
+
+
+def test_no_generated_reader_facing_file_says_draft() -> None:
+    files = [ROOT / "README.md", ROOT / "llms.txt", *ROOT.glob("docs/*/README.md")]
+    for policy_dir in policy_dirs():
+        files += [policy_dir / "plugin.json", *policy_dir.glob("skills/*/SKILL.md")]
+    said = [
+        f.relative_to(ROOT).as_posix() for f in files if f.is_file() and DRAFT.search(f.read_text(encoding="utf-8"))
+    ]
+    said += [f"registry.yaml label of {pid}" for pid, row in ROWS.items() if DRAFT.search(json.dumps(row["label"]))]
+    assert said == []
 
 
 def test_a_policy_whose_enforcement_no_plugin_carries_is_text_only() -> None:

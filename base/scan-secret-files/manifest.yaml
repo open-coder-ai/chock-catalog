@@ -1,6 +1,6 @@
 id: scan-secret-files
 name: "Scan Secret Files"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Friction, not a security boundary: flags files that are secrets by name or content -- private
   keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc,
@@ -40,13 +40,17 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by: []
 
 security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.1.0
   date: '2026-10-04'
   changes:

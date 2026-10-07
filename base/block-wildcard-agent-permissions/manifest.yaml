@@ -1,6 +1,6 @@
 id: block-wildcard-agent-permissions
 name: "Block Wildcard Agent Permissions"
-version: "0.0.9"
+version: "0.0.10"
 description: >
   Blocks agent grants that allow everything: a bare Bash wildcard, a `*` in an
   allow/alwaysAllow/tools array on the same line, or quoted defaultMode bypassPermissions. Any
@@ -66,7 +66,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -74,6 +74,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.10
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.9
   date: '2026-10-02'
   changes:

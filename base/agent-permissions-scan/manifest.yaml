@@ -1,6 +1,6 @@
 id: agent-permissions-scan
 name: "Agent Permissions Scan"
-version: "0.1.0"
+version: "0.1.1"
 description: >
   Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
 artifact: rule
@@ -52,13 +52,17 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by: []
 
 security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.1.0
   date: '2026-10-04'
   changes:

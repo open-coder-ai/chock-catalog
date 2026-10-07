@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-destructive-commands",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths; mv/chmod/chown -R of system dirs; dd to devices, mkfs; account lockouts; force, delete and mirror pushes; history rewrites; IaC destroy; listed cloud and platform deletes; DB drops. Asks: rm -rf off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre-push: no non-ff.",
   "author": {
     "name": "chock-core"

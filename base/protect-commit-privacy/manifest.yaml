@@ -1,6 +1,6 @@
 id: protect-commit-privacy
 name: "Protect Commit Privacy"
-version: "0.2.4"
+version: "0.2.5"
 description: >
   Keeps the development conversation out of git history. Guard refuses `git commit` and `gh pr
   create|edit` whose message or body (inline -m/-b, -F/--file/--body-file, heredoc on -F -) holds
@@ -31,7 +31,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -39,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.5
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.2.4
   date: '2026-10-03'
   changes:

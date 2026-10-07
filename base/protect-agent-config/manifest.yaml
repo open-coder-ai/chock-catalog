@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.4.0"
+version: "0.4.1"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to
   AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .windsurf/, .agents/, .chock/, ...),
@@ -57,7 +57,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -65,6 +65,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.1
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier best-effort, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.4.0
   date: '2026-10-06'
   changes:
