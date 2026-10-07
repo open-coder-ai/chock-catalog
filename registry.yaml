@@ -134,7 +134,7 @@ policies:
     config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.2.1
+  version: 0.2.2
   artifact: rule
   enforcement: advise
   status: draft
@@ -1000,7 +1000,7 @@ policies:
     turn''s end.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.5.1
+  version: 0.5.2
   artifact: rule
   enforcement: advise
   status: draft
@@ -1050,7 +1050,7 @@ policies:
     computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.7
+  version: 0.0.8
   artifact: hook
   enforcement: block
   status: draft
@@ -1322,7 +1322,7 @@ policies:
     not a boundary.'
 - id: lockfile-integrity
   path: base/lockfile-integrity
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   status: draft
@@ -1589,7 +1589,7 @@ policies:
     shape. A guard refuses git and file commands creating such names. No waiver. Friction, not a boundary.
 - id: scan-hidden-content
   path: base/scan-hidden-content
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: advise
   status: draft
@@ -1712,7 +1712,7 @@ policies:
     in a call, parens or concatenation, in XML, or padded with control characters.'
 - id: registry-config
   path: base/registry-config
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   status: draft
