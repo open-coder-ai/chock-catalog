@@ -2,9 +2,10 @@
 codec and the URL Standard's UTS 46 processing may disagree.
 
 Limits: the stdlib codec is IDNA2003 on Unicode 3.2 tables. A name using a code point outside that
-repertoire, a format character (Cf), or a deviation character is refused, not guessed; a name the
-codec accepts but a URL Standard client rejects reaches nothing there. Flags come from an embedded
-subset of lookalike letters and from unicodedata names, not from Unicode's confusables or Scripts data.
+repertoire, a format character (Cf), a deviation character, or a letter whose lowercase Unicode 3.2 lacks
+is refused, not guessed; a name the codec accepts but a URL Standard client rejects reaches nothing there.
+Flags come from an embedded subset of lookalike letters and from unicodedata names, not from Unicode's
+confusables or Scripts data.
 """
 
 from __future__ import annotations
@@ -68,6 +69,7 @@ def _label(label: str) -> str:
             or char in IGNORABLE
             or unicodedata.category(char) == "Cf"
             or UCD_3_2.category(char) == "Cn"
+            or _case_pair_after_3_2(char)
         ):
             msg = f"U+{ord(char):04X}: the stdlib IDNA2003 codec and the URL Standard may read it differently"
             raise UnparseableError(msg)
@@ -85,6 +87,11 @@ def _label(label: str) -> str:
         msg = f"{label!r}: Unicode 3.2 and current Unicode tables map this label differently"
         raise UnparseableError(msg)
     return ascii_label.lower()
+
+
+def _case_pair_after_3_2(char: str) -> bool:
+    """A letter whose lowercase Unicode 3.2 lacks: RFC 3491 keeps it (CPython gh-155292), UTS 46 lowercases it."""
+    return any(UCD_3_2.category(low) == "Cn" for low in char.lower())
 
 
 def decode_alabel(label: str) -> str:

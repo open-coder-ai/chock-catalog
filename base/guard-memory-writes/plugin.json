@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "guard-memory-writes",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate line or a secret. Warns (observe, ASI06) on an added line that tells the agent to run a command or fetch a URL, an encoded blob, and, only where the repo keeps .chock/egress-allowlist.txt, a URL host off it. Judges memory files only (MEMORY.md, CLAUDE.local.md, .claude/memory/**, memory/**/*.md, the agent's own stores) and what a change adds. No waiver. A write after an untrusted fetch is not seen.",
   "author": {
     "name": "chock-core"

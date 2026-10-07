@@ -1,6 +1,6 @@
 id: block-unapproved-egress
 name: "Block Unapproved Egress"
-version: "0.2.2"
+version: "0.2.3"
 description: "Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet, scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:. Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation."
 artifact: rule
 enforcement: advise
@@ -40,10 +40,14 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.2.2
+- version: 0.2.3
   date: '2026-10-07'
   changes:
   - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier best-effort, no open bug issue, no chock check warning. Behaviour unchanged."
+- version: 0.2.2
+  date: '2026-10-07'
+  changes:
+  - "The shared host reader (chock_scan) now refuses a name holding a letter whose lowercase Unicode 3.2 lacks (Georgian U+10A0-10C5, Cherokee U+13A0-13F4, U+04C0, U+2132, U+2183) on every Python. From CPython 3.12.15 (gh-155292, CVE-2026-17084) the stdlib IDNA2003 codec keeps those letters while the URL Standard lowercases them, so the two read two different hosts; older interpreters lowercased them and accepted the name. Such a name now gets the verdict for a host that cannot be read, the same on every interpreter."
 - version: 0.2.1
   date: '2026-10-03'
   changes:

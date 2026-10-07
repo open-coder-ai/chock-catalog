@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.5.2"
+version: "0.5.3"
 description: >
   Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host).
   Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate
@@ -58,10 +58,14 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.5.2
+- version: 0.5.3
   date: '2026-10-07'
   changes:
   - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
+- version: 0.5.2
+  date: '2026-10-07'
+  changes:
+  - "The shared host reader (chock_scan) now refuses a name holding a letter whose lowercase Unicode 3.2 lacks (Georgian U+10A0-10C5, Cherokee U+13A0-13F4, U+04C0, U+2132, U+2183) on every Python. From CPython 3.12.15 (gh-155292, CVE-2026-17084) the stdlib IDNA2003 codec keeps those letters while the URL Standard lowercases them, so the two read two different hosts; older interpreters lowercased them and accepted the name. Such a name now gets the verdict for a host that cannot be read, the same on every interpreter."
 - version: 0.5.1
   date: '2026-10-02'
   changes:
