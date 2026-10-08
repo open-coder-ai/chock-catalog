@@ -3,7 +3,7 @@ contact_links:
   - name: 💬 Question or idea
     url: https://github.com/open-coder-ai/chock-catalog/discussions
     about: Ask questions and share ideas in Discussions — issues are for policy defects and proposals.
-  - name: 🔒 Security vulnerability
+  - name: Report a security issue privately
     url: https://github.com/open-coder-ai/chock-catalog/security/advisories/new
     about: Guard scripts run on every commit in adopter repos — report vulnerabilities privately, never as a public issue.
   - name: 🛠️ Framework bug (chock CLI)
