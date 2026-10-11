@@ -49,13 +49,13 @@ def test_an_endpoint_override_in_either_settings_file_is_found(repo: Path) -> No
         assert keys(repo, {path: text}) == ["ap-endpoint-override|env.ANTHROPIC_BASE_URL|https://x.test"]
 
 
-def test_the_mcp_switches_are_found_per_server(repo: Path) -> None:
+def test_enabling_every_mcp_server_is_found(repo: Path) -> None:
     text = json.dumps({"enableAllProjectMcpServers": True, "enabledMcpjsonServers": ["a", "b"]})
-    assert sorted(keys(repo, {CLAUDE: text})) == [
-        "ap-mcp-enable-all|enableAllProjectMcpServers|true",
-        "ap-mcp-preapproved|enabledMcpjsonServers|a",
-        "ap-mcp-preapproved|enabledMcpjsonServers|b",
-    ]
+    assert keys(repo, {CLAUDE: text}) == ["ap-mcp-enable-all|enableAllProjectMcpServers|true"]
+
+
+def test_a_named_server_list_is_a_scoped_grant(repo: Path) -> None:
+    assert keys(repo, {CLAUDE: json.dumps({"enabledMcpjsonServers": ["github", "postgres"]})}) == []
 
 
 @pytest.mark.parametrize(

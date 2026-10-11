@@ -1384,7 +1384,7 @@ policies:
     .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git
     push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger,
     yolo, autoAccept, yes-always, regex-all VS Code approve, Claude project env API-endpoint overrides
-    and .mcp.json server pre-enables. Misses: other MCP configs, user-level settings, scripts, Read.'
+    and enableAllProjectMcpServers. Misses: other MCP configs, user-level settings, scripts, Read.'
 - id: block-persistence-shapes
   path: base/block-persistence-shapes
   version: 0.0.4

@@ -17,7 +17,7 @@ ALLOW, DENY, MODE, FLAG, VSCODE, SKIP = (
     "ap-skip-flag",
 )
 CODEX = "ap-codex-never-danger"
-ENDPOINT, MCP_ALL, MCP_LISTED = "ap-endpoint-override", "ap-mcp-enable-all", "ap-mcp-preapproved"
+ENDPOINT, MCP_ALL = "ap-endpoint-override", "ap-mcp-enable-all"
 ALLOW_KEYS = frozenset({"allow", "allowedtools", "allowedcommands", "allowed", "alwaysallow", "autoapprove", "tools"})
 #: Key names end in one of these (`claudeCode.initialPermissionMode`, `chat.tools.global.autoApprove`).
 MODE_ENDINGS = ("defaultmode", "permissionmode", "approvalmode")
@@ -160,16 +160,12 @@ def _surface(name: str, value: object, where: str, surface: str) -> Iterator[Hit
 
 
 def _claude_project(value: object, where: str) -> Iterator[Hit]:
-    """Project settings that redirect the API endpoint or enable .mcp.json servers before anyone reviews them."""
+    """Project settings that redirect the API endpoint or enable every .mcp.json server unreviewed."""
     head, _, var = where.partition(".")
     if head == "env" and var and "." not in var and rules.endpoint_env(var) and _set(value):
         yield Hit(ENDPOINT, where, rules.norm(value), "an env override sends the agent's API traffic to another endpoint")
     if where == "enableAllProjectMcpServers" and rules.truthy(value):
         yield Hit(MCP_ALL, where, "true", "every .mcp.json server is enabled without a prompt")
-    if where == "enabledMcpjsonServers":
-        for server in value if isinstance(value, list) else [value]:
-            if _set(server):
-                yield Hit(MCP_LISTED, where, rules.norm(server), "a .mcp.json server is enabled without a prompt")
 
 
 def _set(value: object) -> bool:

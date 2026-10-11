@@ -689,9 +689,9 @@ suite:
       event: commit
       expect: block
   - id: tc-048
-    category: trigger
-    prompt: "Committed project settings pre-approve a named .mcp.json server."
-    expect: "The gate blocks the non-empty enabledMcpjsonServers."
+    category: negative_trigger
+    prompt: "Committed project settings pre-approve a named, reviewed .mcp.json server: a named, scoped grant."
+    expect: "Nothing is reported; verify-mcp-allowlist decides which servers may run."
     execute:
       files:
         ".claude/settings.local.json": |
@@ -699,11 +699,11 @@ suite:
             "enabledMcpjsonServers": ["filesystem"]
           }
       event: commit
-      expect: block
+      expect: allow
   - id: tc-049
-    category: adversarial
-    prompt: "A change appends one more server to an enabledMcpjsonServers list HEAD already held."
-    expect: "The gate blocks the added server."
+    category: negative_trigger
+    prompt: "A team adds one more reviewed server to the enabledMcpjsonServers list HEAD already held."
+    expect: "Nothing is reported; a named server list is a scoped grant."
     execute:
       head_files:
         ".claude/settings.json": |
@@ -712,7 +712,7 @@ suite:
         ".claude/settings.json": |
           {"enabledMcpjsonServers": ["github", "shell"]}
       event: commit
-      expect: block
+      expect: allow
   - id: tc-050
     category: adversarial
     prompt: "A repeated env key hides the endpoint override behind an empty last value."

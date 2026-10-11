@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 3 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~388 tokens (chars/4, max 2000)
+INDEX.md: ~382 tokens (chars/4, max 2000)
 Recompiled 1 policies
 agent-permissions-scan:
   claude: enforced-at-commit + best-effort at tool use (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~388 tokens (chars/4, max 2000)
+INDEX.md: ~382 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -144,8 +144,8 @@ agent-permissions-scan  [deterministic]
   PASS  tc-045                             authored  .claude/settings.local.json:1: [ap-endpoint-override] an env overri…
   PASS  tc-046                             authored  .claude/settings.json:3: [ap-endpoint-override] an env override sen…
   PASS  tc-047                             authored  .claude/settings.json:2: [ap-mcp-enable-all] every .mcp.json server…
-  PASS  tc-048                             authored  .claude/settings.local.json:2: [ap-mcp-preapproved] a .mcp.json ser…
-  PASS  tc-049                             authored  .claude/settings.json:1: [ap-mcp-preapproved] a .mcp.json server is…
+  PASS  tc-048                             authored  gate exit 0
+  PASS  tc-049                             authored  gate exit 0
   PASS  tc-050                             authored  .claude/settings.json:1: [ap-endpoint-override] an env override sen…
   PASS  tc-051                             authored  gate exit 0
   PASS  tc-052                             authored  gate exit 0
@@ -199,5 +199,5 @@ agent-permissions-scan  [deterministic]
 ```text
 - **agent-permissions-scan**:
   agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vscode/settings.json|.cursor/cli.json|opencode.json|.aider.conf.yml|.continue/**): grant named, scoped actions only
-  never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve, claude env ANTHROPIC_*_URL|OPENAI_BASE_URL|*_API_BASE, enableAllProjectMcpServers|enabledMcpjsonServers; never(remove): deny entry; blocks at commit+tool_use
+  never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve, claude env ANTHROPIC_*_URL|OPENAI_BASE_URL|*_API_BASE, enableAllProjectMcpServers; never(remove): deny entry; blocks at commit+tool_use
 ```
