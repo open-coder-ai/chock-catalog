@@ -59,7 +59,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by: []
 
 security:
@@ -70,6 +70,10 @@ changelog:
   date: '2026-10-10'
   changes:
   - "Blocks the Check Point Research project-config shapes (CVE-2025-59536, CVE-2026-21852) in .claude/settings.json and .claude/settings.local.json. ap-endpoint-override: a non-empty top-level env entry named ANTHROPIC_BASE_URL, ANTHROPIC_API_URL, ANTHROPIC_<PROVIDER>_BASE_URL (Bedrock, Vertex, Foundry), OPENAI_BASE_URL or any *_API_BASE, which sends the agent's API traffic and key to another host. ap-mcp-enable-all: enableAllProjectMcpServers true. ap-mcp-preapproved: each non-empty name in enabledMcpjsonServers, which enables a .mcp.json server without its consent prompt. As before, only what a change adds over HEAD is refused, so a repository that already commits one is not refused for unrelated edits. Hook commands are not judged: chock sync writes them, and agent-devenv-autoexec warns on risky ones. Misses: user-level and managed settings (the hook never passes a write outside the repository to this gate); endpoint keys of other agents (Codex model_providers base_url, Gemini .env files) and any other env name that redirects traffic (proxies, CA bundles: agent-devenv-autoexec warns); an env set in .mcp.json server entries; disabledMcpjsonServers is not compared."
+- version: 0.1.1
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.1.0
   date: '2026-10-04'
   changes:

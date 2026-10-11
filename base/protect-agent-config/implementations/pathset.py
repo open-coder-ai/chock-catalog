@@ -53,6 +53,8 @@ PROTECTED = (
     ".chock/config.yaml",
     ".chock/security.json",
     ".chock/agentic-security.json",
+    ".chock/guardrails.json",  # switches a bundle's policies on and off; `~/.chock/` too, as a segment
+    ".chock/state/guardrails.sha256",  # the record `chock bundle` keeps of it: the Edit/Write gate refuses it too
     ".chock/state",  # shell only: the engine's own session log there would fail the Edit/Write gate's turn's-end walk
     ".git/hooks",
     ".git/config",  # core.hooksPath, core.fsmonitor and aliases there run code the way a hook does
@@ -77,11 +79,12 @@ PROTECTED = (
     ".kiro/agents/",  # Kiro agent config, which declares hooks
 )
 # Files outside the repository, which no entry above names. A user's Cline folder (`~/Documents/Cline/Hooks`, as a segment whatever
-# precedes it) and `~/.claude.json` (user-scope MCP servers and trust flags: the exact name, as a segment, so `.claude.json5` is not
-# one) match anywhere; the machine-wide hook and settings files match from the start of the path, so `src/etc/` is not one.
+# precedes it), `~/.claude.json` (user-scope MCP servers and trust flags: the exact name, as a segment, so `.claude.json5` is not
+# one) and a chock-built plugin's install marker `chock.selection.json` (the custom-policy hashes a person accepted) match anywhere; the machine-wide hook and settings files match from the start of the path, so `src/etc/` is not one.
 _OUTSIDE = re.compile(
     r"(?:^|/)documents/cline/hooks(?:/|$)"
     r"|(?:^|/)\.claude\.json(?:[/:]|$)"
+    r"|(?:^|/)chock\.selection\.json(?:[/:]|$)"
     r"|^(?:/etc/(?:(?:windsurf|devin)/hooks|augment/settings)\.json"
     r"|/library/application support/(?:(?:windsurf|devin)/hooks|augment/settings)\.json"
     r"|[a-z]:/programdata/(?:(?:windsurf|devin)/hooks|augment/settings)\.json)"

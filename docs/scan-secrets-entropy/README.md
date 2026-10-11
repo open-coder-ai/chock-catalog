@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `hook` |
-| **On Claude Code** | asks — asks on an agent's file writes and at turn end |
+| **On Claude Code** | asks — asks on an agent's file writes; refuses at turn end (this client cannot prompt there) |
 | **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |

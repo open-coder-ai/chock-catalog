@@ -1,6 +1,6 @@
 id: verify-dependency-exists
 name: "Dependency Allowlist"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node, Rust, Ruby, PHP, JVM,
   .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from
@@ -59,7 +59,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
   - "chock-core"
 
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:

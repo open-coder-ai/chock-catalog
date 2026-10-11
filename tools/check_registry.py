@@ -11,6 +11,13 @@ import yaml
 from mechanism import CEILING, classify
 
 ROOT = Path(__file__).resolve().parents[1]
+#: Reserved for a user's own policies (builder v2, decision D5): no catalog policy id may start with it.
+RESERVED_PREFIX = "my-"
+
+
+def reserved_ids(ids: list[str]) -> list[str]:
+    """The ids that start with the prefix reserved for user policies."""
+    return sorted(i for i in ids if i.startswith(RESERVED_PREFIX))
 
 
 def said(text: str | None) -> str:
@@ -60,6 +67,9 @@ def main() -> int:
 
     if check_data_tables.main([], ROOT):
         return 1
+    if reserved := reserved_ids([*on_disk, *listed]):
+        print(f"ids starting with {RESERVED_PREFIX!r} are reserved for user policies: {', '.join(reserved)}")
+        return 1
     if listed != on_disk:
         print("registry.yaml is stale.")
         print("  missing from registry:", sorted(set(on_disk) - set(listed)))
@@ -90,6 +100,9 @@ def main() -> int:
             stale.append(
                 f"{p['id']}: version {p.get('version')}, manifest says {m['version']}"
             )
+        lifecycle = (m.get("lifecycle") or {}).get("status")
+        if p.get("status") != lifecycle:
+            stale.append(f"{p['id']}: status {p.get('status')}, manifest lifecycle says {lifecycle}")
         executed, total = suite_counts(d)
         if p.get("eval_cases") != total:
             stale.append(

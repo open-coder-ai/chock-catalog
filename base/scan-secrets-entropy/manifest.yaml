@@ -1,6 +1,6 @@
 id: scan-secrets-entropy
 name: "Scan Secrets Entropy"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Friction, not a security boundary: asks a person before a write adds secrets scan-secrets misses -- high-entropy values
   (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test
@@ -39,13 +39,17 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by: []
 
 security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.1.1
   date: '2026-10-05'
   changes:

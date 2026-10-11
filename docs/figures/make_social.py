@@ -12,7 +12,7 @@ def render():
     t = p.theme("light")
     counts = read_counts()
     total = sum(n for n, _, _ in counts)
-    enforced = counts[0][0] + counts[1][0]
+    enforced = counts[0][0]
 
     svg = p.open_svg(
         W,
@@ -20,7 +20,7 @@ def render():
         t,
         "chock-catalog",
         f"chock-catalog: the policy catalog for chock. {enforced} of {total} policies are "
-        "enforced, not just advised.",
+        "enforced at commit, not just advised.",
     )
     svg += p.text(96, 280, "chock-catalog", t["text"], 76, p.MONO, "700")
     svg += p.text(
@@ -34,7 +34,7 @@ def render():
     svg += p.text(
         128,
         436,
-        f"{enforced} of {total} policies enforced",
+        f"{enforced} of {total} enforced at commit",
         t["text"],
         40,
         weight="700",

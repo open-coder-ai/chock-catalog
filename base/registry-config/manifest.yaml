@@ -1,6 +1,6 @@
 id: registry-config
 name: "Registry Config"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Refuses package-manager config that redirects installs or weakens them: literal tokens, http or
   unlisted registry hosts (parsed, so lookalike and userinfo spellings fail), TLS or checksum checks
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.2
+  date: '2026-10-07'
+  changes:
+  - "The shared host reader (chock_scan) now refuses a name holding a letter whose lowercase Unicode 3.2 lacks (Georgian U+10A0-10C5, Cherokee U+13A0-13F4, U+04C0, U+2132, U+2183) on every Python. From CPython 3.12.15 (gh-155292, CVE-2026-17084) the stdlib IDNA2003 codec keeps those letters while the URL Standard lowercases them, so the two read two different hosts; older interpreters lowercased them and accepted the name. Such a name now gets the verdict for a host that cannot be read, the same on every interpreter."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

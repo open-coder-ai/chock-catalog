@@ -9,6 +9,7 @@ published bypass to its expected host or refusal; every real URL cited by this c
 from __future__ import annotations
 
 import ipaddress
+import unicodedata
 from types import SimpleNamespace
 
 import pytest
@@ -19,6 +20,10 @@ WPT_IDNA = [c for name in ("wpt-toascii.json", "wpt-IdnaTestV2.json") for c in f
 SSRF = fixture("ssrf-corpus.json")
 REAL = (FIXTURES / "real-urls.txt").read_text(encoding="utf-8").split()
 EDGE = "".join(map(chr, range(0x21)))
+#: Letters whose lowercase Unicode 3.2 lacks: RFC 3491 keeps them, UTS 46 lowercases them (CPython gh-155292).
+CASE_PAIRS_AFTER_3_2 = frozenset(map(chr, [0x04C0, *range(0x10A0, 0x10C6), *range(0x13A0, 0x13F5), 0x2132, 0x2183]))
+#: Exact, so drift either way fails. Unicode 14 (Python 3.11) lacks U+31C86, which 2 inputs hold.
+IDNA_ACCEPTED = {"14.0.0": 568, "15.0.0": 570, "15.1.0": 570}
 
 
 @pytest.fixture(params=sources("urls"))
@@ -69,7 +74,25 @@ def test_never_disagrees_with_the_url_standards_idna_tests(hk: SimpleNamespace) 
         if want is None or host.name != want.removesuffix("."):
             disagreements.append((case["input"], want, host))
     assert not disagreements
-    assert accepted >= 585  # 587 on Python 3.11 (Unicode 14), 589 on 3.12 and 3.13
+    # 19 fewer than 3.12.14 accepted: from CPython 3.12.15 (gh-155292, CVE-2026-17084) RFC 3491 keeps the case
+    # pairs above, so IDNA2003 and the URL Standard name two hosts, and idn refuses the label on every interpreter.
+    # The count measures over-refusal; the drop is a deliberate tightening, not a weaker check.
+    assert accepted == IDNA_ACCEPTED[unicodedata.unidata_version]
+
+
+def test_refuses_letters_whose_case_pair_unicode_3_2_lacks(hk: SimpleNamespace) -> None:
+    held = [c["input"] for c in WPT_IDNA if CASE_PAIRS_AFTER_3_2 & set(c["input"])]
+    accepted = []
+    for text in held:
+        try:
+            accepted.append((text, hk.hosts.normalize_host(text)))
+        except hk.hosts.UnparseableError:
+            continue
+    assert not accepted
+    assert len(held) == 222
+    for char in sorted(CASE_PAIRS_AFTER_3_2):
+        with pytest.raises(hk.hosts.UnparseableError):
+            hk.hosts.normalize_host(f"a{char}b.example")
 
 
 @pytest.mark.parametrize("case", SSRF, ids=[f"{c['source']}:{c['input']!r}" for c in SSRF])

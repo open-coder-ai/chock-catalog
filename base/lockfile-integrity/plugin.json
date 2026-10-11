@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "lockfile-integrity",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Script gate (commit, agent write, CI) over npm, yarn, pnpm, bun, poetry, uv, Pipfile, Cargo, go.sum, Gemfile, composer and NuGet locks. Blocks: source off the registry list or not https, missing hash, hash changed for a locked version, unpinned git source, unreadable lock. Asks: SHA-1-only hash, transitive install script, lock or manifest moved alone, go.sum lines removed, lock ignored or deleted. Judges what a change adds. Friction, not a security boundary.",
   "author": {
     "name": "chock-core"

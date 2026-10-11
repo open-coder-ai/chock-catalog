@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-secret-store-reads",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Best-effort guard against an agent reading credentials from the shell: cat, grep, sed, cp, tar, base64, source or < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, ~/.netrc, ~/.kube, ~/.gnupg, agent CLI dirs, browser login DBs, wallets, .env (not .env.example), *.tfstate; interpreter one-liners naming them; gh auth token, aws sts get-session-token, git credential fill. Asks on env/printenv dumps. Misses: scripts, unresolved variables, xargs lists, $(...) results.",
   "author": {
     "name": "chock-core"

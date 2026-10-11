@@ -1,6 +1,6 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.1.2"
+version: "0.1.3"
 description: >
   Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
   (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
@@ -31,7 +31,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -39,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.3
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier best-effort, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.1.2
   date: '2026-10-03'
   changes:

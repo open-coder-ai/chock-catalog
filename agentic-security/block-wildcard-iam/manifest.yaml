@@ -1,6 +1,6 @@
 id: block-wildcard-iam
 name: "Block Wildcard IAM"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a
   wildcard action, resource or principal in string or list form, any quote style
@@ -113,13 +113,17 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by: []
 
 security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-08-13'
   changes:

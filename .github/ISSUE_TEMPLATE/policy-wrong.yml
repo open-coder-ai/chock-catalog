@@ -1,0 +1,96 @@
+name: This policy is wrong
+description: A policy blocks what it should allow, allows what it should block, or claims too much
+title: "[policy-wrong]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a vulnerability in a guard script, do not open a public issue: use the private security advisory link in the issue chooser.
+  - type: input
+    id: policy-id
+    attributes:
+      label: Policy id
+      description: e.g. `scan-secrets`.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Which is it?
+      options:
+        - Misses something it claims to catch (false negative)
+        - Blocks something it should allow (false positive — a gate that cannot be satisfied gets disabled)
+        - Claims more enforcement than it delivers (labelled `enforced*` but does not exit non-zero)
+        - The label is wrong for an agent
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      description: The agent the policy ran on, if any.
+      options:
+        - claude-code
+        - cursor
+        - codex
+        - copilot
+        - devin
+        - other
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: The staged content, branch, or command.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What the gate did
+      description: Paste the output verbatim.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+  - type: textarea
+    id: eval-case
+    attributes:
+      label: Eval case (optional, and the most useful thing you can add)
+      description: The case in `base/<id>/evals/suite.yaml` shape that would fail today.
+      render: yaml
+    validations:
+      required: false
+  - type: input
+    id: catalog-ref
+    attributes:
+      label: Catalog ref
+      description: The tag or commit you installed (`source_commit` in `chock.lock`).
+    validations:
+      required: false
+  - type: input
+    id: chock-version
+    attributes:
+      label: chock version
+      description: Output of `chock --version`.
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: OS
+    validations:
+      required: false
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot (optional)
+      description: Drag an image here if it helps. Check it shows nothing you would not post publicly.
+    validations:
+      required: false
