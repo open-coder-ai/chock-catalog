@@ -1,6 +1,6 @@
 id: ask-credential-switching
 name: "Ask Credential Switching"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Best effort, ask only. Asks a person before a shell command switches the identity later commands act
   as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure set of a key; gcloud
@@ -44,6 +44,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.2
+  date: '2026-10-11'
+  changes:
+  - "Follows the client (plan C1c, owner decision 2026-10-11: let it through). The engine (chock a2dd3de) sets CHOCK_CAN_ASK per wire event; where it is \"0\" (the client cannot show an ask as a prompt there) a found switch exits 0 and prints one stderr note naming what was let through, instead of the refusal the client made of an ask. Unset or any other value asks as before. The registry label reads the event the guard is wired at per client: asks on Claude Code and Cursor (beforeShellExecution); on Copilot, asks in VS Code and is not enforced in Copilot CLI; not enforced on Codex and Devin."
 - version: 0.0.1
   date: '2026-10-11'
   changes:

@@ -119,8 +119,8 @@ def derive_labels(root: Path = ROOT) -> dict[str, dict]:
                     says = TEXT_ONLY_SAYS
                 elif hooks_text is not None:
                     grade, says = honest_asks(grade, says, hooks_text, client.agent)
-                    grade, says = honest_guard(manifest["id"], grade, says, client.agent)
-                    says += fail_open_qualifier(client.agent)
+                    grade, says = honest_guard(manifest["id"], grade, says, hooks_text, client.agent)
+                    says += fail_open_qualifier(client.agent) if grade != bundle_grade.ADVISORY else ""
                 label[key] = {"keyword": bundle_grade.enforcement_keyword(grade), "says": says}
             if status := status_label(manifest):
                 label["status"] = status
