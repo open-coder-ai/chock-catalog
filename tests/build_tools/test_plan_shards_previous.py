@@ -9,7 +9,6 @@ from pathlib import Path
 
 import plan_shards
 import pytest
-from plan_shards import Times
 
 ROOT = Path(__file__).resolve().parents[2]
 JUNIT = """<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" tests="2">
@@ -32,15 +31,15 @@ def root(tmp_path: Path) -> Path:
 
 
 def test_previous_times_fill_in_the_files_still_on_disk_that_no_junit_names(root: Path) -> None:
-    found = {"tests/a/test_x.py": Times(2.0, 1.5, "new")}
+    found = {"tests/a/test_x.py": plan_shards.Times(2.0, 1.5, "new")}
     previous = {
-        "tests/a/test_x.py": Times(9.0, 9.0, "old"),
-        "tests/b/test_y.py": Times(4.0, 3.0, "kept"),
-        "tests/c/test_gone.py": Times(7.0, 7.0, "deleted"),
+        "tests/a/test_x.py": plan_shards.Times(9.0, 9.0, "old"),
+        "tests/b/test_y.py": plan_shards.Times(4.0, 3.0, "kept"),
+        "tests/c/test_gone.py": plan_shards.Times(7.0, 7.0, "deleted"),
     }
     assert plan_shards.merged(found, previous, root) == {
-        "tests/a/test_x.py": Times(2.0, 1.5, "new"),
-        "tests/b/test_y.py": Times(4.0, 3.0, "kept"),
+        "tests/a/test_x.py": plan_shards.Times(2.0, 1.5, "new"),
+        "tests/b/test_y.py": plan_shards.Times(4.0, 3.0, "kept"),
     }
 
 
@@ -50,8 +49,8 @@ def test_junit_with_previous_keeps_the_times_of_a_shard_that_wrote_no_junit(root
     (root / "old.json").write_text(json.dumps(old), encoding="utf-8")
     assert run("junit", "t.json", "j.xml", "--previous", "old.json", cwd=root).returncode == 0
     assert plan_shards.load(root / "t.json") == {
-        "tests/a/test_x.py": Times(2.0, 1.5, "test_one"),
-        "tests/b/test_y.py": Times(4.0, 3.0, "kept"),
+        "tests/a/test_x.py": plan_shards.Times(2.0, 1.5, "test_one"),
+        "tests/b/test_y.py": plan_shards.Times(4.0, 3.0, "kept"),
     }
 
 
