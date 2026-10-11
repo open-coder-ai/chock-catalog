@@ -741,6 +741,8 @@ TOOL_UNKNOWN = 'unknown'
 
 ARGV_FALLBACK_ENV = 'CHOCK_ARGV_FALLBACK'
 
+CAN_ASK_ENV = 'CHOCK_CAN_ASK'
+
 _POSIX_BASH = ('bash', '/bin/bash', '/usr/bin/bash')
 
 _GIT_FOR_WINDOWS = ('C:\\Program Files\\Git', 'C:\\Program Files (x86)\\Git')
@@ -804,6 +806,7 @@ def bash_candidates() -> list[str]:
 def interpreter_env(interpreter: str) -> dict[str, str]:
     """The environment a guard runs in: on Windows, Git's usr/bin ahead on PATH for sed and grep."""
     env = dict(_chock_os.environ)
+    env.pop(CAN_ASK_ENV, None)
     if _chock_os.name != _WINDOWS:
         return env
     home = _chock_Path(interpreter).parent
@@ -872,7 +875,7 @@ def _no_interpreter(guard: _chock_Path, deadline: float) -> tuple[str, str]:
     print(f'chock: {reason}', file=sys.stderr)
     return (GUARD_ERRORED, reason)
 
-def run_guard_detailed(guard: _chock_Path, command: str, tool: str='') -> tuple[str, str]:
+def run_guard_detailed(guard: _chock_Path, command: str, tool: str='', *, can_ask: bool | None=None) -> tuple[str, str]:
     """`run_guard`'s verdict plus the guard's own first line, which an ask carries to the user."""
     args, fallback = split_command(command)
     if not args:
@@ -885,6 +888,7 @@ def run_guard_detailed(guard: _chock_Path, command: str, tool: str='') -> tuple[
         env = {**interpreter_env(interpreter), 'CHOCK_RAW_COMMAND': command, 'CHOCK_TOOL': normalize_tool(tool)}
         if fallback:
             env[ARGV_FALLBACK_ENV] = '1'
+        env.update({} if can_ask is None else {CAN_ASK_ENV: '1' if can_ask else '0'})
         proc = _chock_subprocess.run([interpreter, str(guard), *args], capture_output=True, text=True, encoding='utf-8', errors='replace', env=env, timeout=time_left(deadline, [interpreter, str(guard)]), check=False)
     except _chock_subprocess.TimeoutExpired:
         print(f'chock: guard timed out after {ENGINE_BUDGET_SECONDS}s, not checked', file=sys.stderr)
@@ -941,14 +945,14 @@ def log_outcome(guard: _chock_Path, tool: str, *, verdict: str) -> None:
     except Exception:
         return
 
-def evaluate(argv: list[str], command: str, tool: str='') -> tuple[str, str] | None:
+def evaluate(argv: list[str], command: str, tool: str='', *, can_ask: bool | None=None) -> tuple[str, str] | None:
     """Run the guard named on `argv` (`--guard <path>`) against `command`."""
     guard = guard_path_from_argv(argv)
     if guard is None:
         return None
     if not guard.exists():
         return (VERDICT_DENY, f"chock guard {guard} is missing, so this command cannot be checked. Run `chock sync --repo .` to reinstall the policy's guards.")
-    verdict, message = run_guard_detailed(guard, command, tool)
+    verdict, message = run_guard_detailed(guard, command, tool, can_ask=can_ask)
     logged = {GUARD_BLOCKED: 'block', GUARD_ASKED: 'ask', GUARD_CLEAN: 'allow'}
     if verdict in logged:
         log_outcome(guard, tool, verdict=logged[verdict])
@@ -966,6 +970,8 @@ _EDIT_KEYS = (('old_string', 'new_string'), ('oldString', 'newString'), ('old_st
 _EDIT_LIST = 'edits'
 
 _CRLF = '\r\n'
+
+_CREATE_TEXT = 'file_text'
 
 def _edit_call_input(event):
     raw = getattr(event, 'raw', None)
@@ -1027,6 +1033,14 @@ def edited_text(event, root=None):
             return None
     return text
 
+def created_text(event):
+    """The whole file a write call carries: the adapter's content, else `tool_input.file_text`; None otherwise."""
+    content = getattr(event, 'content', None)
+    if isinstance(content, str):
+        return content
+    text = _edit_call_input(event).get(_CREATE_TEXT)
+    return text if isinstance(text, str) else None
+
 def added_from_event(event):
     """What an edit call introduces -- what `added_lines` means for it -- or {} for any other call."""
     replacements = edit_replacements(event)
@@ -1053,11 +1067,17 @@ _HUNK = '@@'
 
 _OPS = (('add', _ADD), ('delete', _DELETE), ('update', _UPDATE))
 
+_PATCH_KEYS = ('command', 'input', 'patch')
+
 def patch_text(event):
     """The patch an apply_patch call carries, from its first to its last marker; None otherwise."""
     raw = getattr(event, 'raw', None)
     tool_input = raw.get('tool_input') if isinstance(raw, dict) else None
-    command = tool_input.get('command') if isinstance(tool_input, dict) else None
+    command = tool_input if isinstance(tool_input, str) else None
+    for key in _PATCH_KEYS if isinstance(tool_input, dict) else ():
+        if tool_input.get(key) is not None:
+            command = tool_input[key]
+            break
     if isinstance(command, list):
         command = '\n'.join((part for part in command if isinstance(part, str)))
     start = command.find(_BEGIN) if isinstance(command, str) else -1
@@ -1694,6 +1714,80 @@ def settle_unreadable_stop(root, policy, refusal):
         return (VERDICT_WARN, text)
     return (VERDICT_DENY, refusal + (_UNREADABLE_STOP_LAST.format(cap=REENTRY_CAP) if index == REENTRY_CAP else ''))
 
+_PARENT = '..'
+
+_DRIVE_COLON = ':'
+
+_ROOTS_KEY = 'workspace_roots'
+
+def _folded(pure):
+    """`pure` with `..` folded lexically; an absolute path never climbs above its anchor."""
+    parts = []
+    for part in pure.parts:
+        if part != _PARENT:
+            parts.append(part)
+        elif len(parts) > 1:
+            parts.pop()
+    return type(pure)(*parts)
+
+def _workspace_root(text):
+    """A workspace root as a path: `/C:/x` is `C:/x`; anything else as given."""
+    if text[:1] == '/' and text[2:3] == _DRIVE_COLON and text[1:2].isalpha() and (text[3:4] in ('', '/', '\\')):
+        return text[1:]
+    return text
+
+def _holds(root, path):
+    """Whether `path`, absolute or relative, lies under `root`, compared the way `root` is spelled."""
+    flavour = _chock_PureWindowsPath if root[1:2] == _DRIVE_COLON else _chock_PurePosixPath
+    try:
+        _folded(flavour(root) / str(path)).relative_to(flavour(root))
+    except ValueError:
+        return False
+    return True
+
+def workspace_roots(event):
+    """The folders the client says the agent works in, normalised; [] when it names none."""
+    raw = getattr(event, 'raw', None)
+    roots = raw.get(_ROOTS_KEY) if isinstance(raw, dict) else None
+    if not isinstance(roots, list):
+        return []
+    return [_workspace_root(root) for root in roots if isinstance(root, str) and root]
+
+def workspace_root(event):
+    """The workspace root holding the event's path, else the first one; None when the client names none."""
+    roots = workspace_roots(event)
+    path = getattr(event, 'path', None)
+    return next((root for root in roots if path and _holds(root, path)), roots[0] if roots else None)
+
+_SEVERITY = (VERDICT_DENY, VERDICT_ESCALATE, VERDICT_WARN)
+
+_GIT_DIR = '.git'
+
+def _repository(folder):
+    """The repository `folder` is in: the nearest folder holding `.git`, or None outside one."""
+    here = _chock_Path(folder).absolute()
+    return next((f for f in (here, *here.parents) if (f / _GIT_DIR).exists()), None)
+
+def stop_roots(event, fallback):
+    """The event's `cwd` and every workspace root inside a repository, the first per repository; else [fallback]."""
+    by_repository = {}
+    for named in filter(None, (getattr(event, 'cwd', None), *workspace_roots(event))):
+        repository = _repository(named)
+        if repository is not None:
+            by_repository.setdefault(repository, _chock_Path(named))
+    return list(by_repository.values()) or [fallback]
+
+def per_root(said):
+    """One (decision, judged files) for each root's own: the most severe verdict, findings under each root's name."""
+    if len(said) == 1:
+        return said[0][1:]
+    spoken = [(root, decision) for root, decision, _judged in said if decision]
+    judged = {path: text for _root, _decision, files in said for path, text in files.items()}
+    if not spoken:
+        return (None, judged)
+    verdict = min((decision[0] for _root, decision in spoken), key=_SEVERITY.index)
+    return ((verdict, '\n'.join((f'In {root}:\n{decision[1]}' for root, decision in spoken))), judged)
+
 GATE_FLAG = '--gate'
 
 STOP_FLAG = '--stop'
@@ -1709,10 +1803,6 @@ _GIT = 'git'
 _UTF8 = 'utf-8'
 
 _PATH_ERRORS = 'surrogateescape'
-
-_PARENT = '..'
-
-_DRIVE_COLON = ':'
 
 _DELETED = 'D'
 
@@ -1754,23 +1844,13 @@ def writes_from_event(event, root=None):
     if patched:
         return patched
     path = getattr(event, 'path', None)
-    content = getattr(event, 'content', None)
+    content = created_text(event)
     edited = edited_text(event, root)
     if path and edited is not None:
         return {str(path): edited}
     if not path or not isinstance(content, str):
         return {}
     return {str(path): content}
-
-def _folded(pure):
-    """`pure` with `..` folded lexically; an absolute path never climbs above its anchor."""
-    parts = []
-    for part in pure.parts:
-        if part != _PARENT:
-            parts.append(part)
-        elif len(parts) > 1:
-            parts.pop()
-    return type(pure)(*parts)
 
 def repo_relative(path, root):
     """`path` relative to `root` in POSIX form, as scope globs are written; as given when outside `root`."""
@@ -1883,31 +1963,34 @@ def root_for(gate):
     return parents[_GATE_DEPTH_TO_CHOCK].parent
 
 def repo_root_for(event, gate):
-    """The repository under judgement: the compiled layout's root, else where the agent works."""
+    """The repository under judgement: the compiled layout's root, else the event's cwd, else its workspace root.
+
+    Of several workspace roots, the one holding the written path; this process's cwd only when there are none.
+    """
     root = root_for(gate)
     if root is not None:
         return root
-    cwd = getattr(event, 'cwd', None)
+    cwd = getattr(event, 'cwd', None) or workspace_root(event)
     return _chock_Path(cwd) if cwd else _chock_Path.cwd()
 
-def writes_for(event, gate, deadline=None, why=None):
+def writes_for(event, gate, deadline=None, why=None, root=None):
     """What this event puts under judgement: the call's own text, or what the turn left behind (None: unlisted)."""
+    root = repo_root_for(event, gate) if root is None else root
     if event.event == PRE_TOOL:
-        return writes_from_event(event, repo_root_for(event, gate))
-    return writes_from_worktree(repo_root_for(event, gate), deadline, why)
+        return writes_from_event(event, root)
+    return writes_from_worktree(root, deadline, why)
 
 def _missing_gate(gate):
     """A gate the hook names but that is not on disk: a broken install, so a refusal that says so."""
     return (VERDICT_DENY, f'chock gate {gate} is missing, so this write cannot be checked. Run `chock sync --repo .` to rebuild the compiled gates.')
 
-def _gate_says(gate, event, name, deadline):
-    """(decision, judged files): what the compiled gate says about this event, before a re-entered stop is weighed."""
+def _gate_says(gate, event, name, deadline, root):
+    """(decision, judged files): what the compiled gate says about this event in `root`, before a re-entered stop."""
     if not gate.exists():
         return (_missing_gate(gate), {})
-    root = repo_root_for(event, gate)
     outside = outside_globs(gate)
     why = []
-    listed = writes_for(event, gate, deadline, why)
+    listed = writes_for(event, gate, deadline, why, root)
     if listed is None:
         return (gate_decision(GATE_ERRORED, why[-1] if why else 'git status gave no answer', gate), {})
     writes = judged_files(listed, root, outside, lambda path: repo_paths(path, root))
@@ -1926,10 +2009,12 @@ def evaluate_gate(argv, event):
     name = _EVENT_ARG.get(getattr(event, 'event', ''))
     if gate is None or name is None:
         return None
-    decision, judged = _gate_says(gate, event, name, engine_deadline())
+    deadline = engine_deadline()
     if event.event == PRE_TOOL:
-        return decision
-    return settle_stop(event, repo_root_for(event, gate), gate, decision, judged)
+        return _gate_says(gate, event, name, deadline, repo_root_for(event, gate))[0]
+    roots = [repo_root_for(event, gate)] if root_for(gate) else stop_roots(event, repo_root_for(event, gate))
+    decision, judged = per_root([(root, *_gate_says(gate, event, name, deadline, root)) for root in roots])
+    return settle_stop(event, roots[0], gate, decision, judged)
 
 TOOL_CALL_FLAG = '--tool-call'
 
@@ -2192,6 +2277,19 @@ def _chock_unreadable():
     decision = Decision.escalate(reason) if action == "ask" else Decision.deny(reason)
     text, code = respond(degrade(decision, event), event)
     return (text, code) if _chock_refuses(text, code) else ("", 2)
+#: Per wire event mapped to pre_tool: whether the client shows a guard's ask as a prompt.
+_CHOCK_CAN_ASK = {'PreToolUse': True}
+_CHOCK_EVENT_KEYS = ('hook_event_name', 'hookEventName', 'agent_action_name')
+
+
+def _chock_wire_name(raw):
+    names = (raw.get(key) for key in _CHOCK_EVENT_KEYS) if isinstance(raw, dict) else ()
+    return next((name for name in names if isinstance(name, str)), None)
+
+
+def _chock_can_ask(raw):
+    # An event this bundle cannot name, or one the vendor data does not list, cannot prompt.
+    return _CHOCK_CAN_ASK.get(_chock_wire_name(raw), False)
 
 
 def _spoken(verdict):
@@ -2203,7 +2301,7 @@ def _spoken(verdict):
 
 def _judge(event):
     if event.event == "pre_tool" and event.command:
-        verdict = evaluate(sys.argv[1:], event.command, event.tool or "")
+        verdict = evaluate(sys.argv[1:], event.command, event.tool or "", can_ask=_chock_can_ask(event.raw))
         if verdict is not None:
             outcome, reason = verdict
             return Decision.escalate(reason) if outcome == ESCALATE else Decision.deny(reason)
