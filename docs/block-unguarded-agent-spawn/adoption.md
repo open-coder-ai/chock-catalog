@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~378 tokens (chars/4, max 2000)
+INDEX.md: ~391 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-unguarded-agent-spawn:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~378 tokens (chars/4, max 2000)
+INDEX.md: ~391 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -139,9 +139,24 @@ block-unguarded-agent-spawn  [deterministic]
   PASS  tc-041                             authored  BLOCKED: codex --ask-for-approval never starts a coding agent with …
   PASS  tc-042                             authored  BLOCKED: claude --dangerously-skip-permissions starts a coding agen…
   PASS  tc-043                             authored  guard exit 0
+  PASS  tc-044                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-045                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-046                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-047                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-048                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-049                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-050                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-051                             authored  BLOCKED: a request to DeepSeek Harness's control API (127.0.0.1:308…
+  PASS  tc-052                             authored  guard exit 0
+  PASS  tc-053                             authored  guard exit 0
+  PASS  tc-054                             authored  guard exit 0
+  PASS  tc-055                             authored  guard exit 0
+  PASS  tc-056                             authored  guard exit 0
+  PASS  tc-057                             authored  guard exit 0
+  PASS  tc-058                             authored  guard exit 0
   score 1.00
 
-5 policies: 43 pass, 41 skipped
+5 policies: 58 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -167,5 +182,5 @@ block-unguarded-agent-spawn  [deterministic]
 ```text
 - **block-unguarded-agent-spawn**:
   never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
-  if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
+  never(http_to(dsh 127.0.0.1:3080/api)+body(danger-full-access|approval_never)); if(unattended_run_needed|wider_access): ask_person; person_starts_it
 ```

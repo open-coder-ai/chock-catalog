@@ -1,17 +1,18 @@
 id: block-unguarded-agent-spawn
 name: "Block Unguarded Agent Spawn"
-version: "0.1.2"
+version: "0.2.0"
 description: >
-  Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
-  bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never, danger-full-access;
-  gemini --yolo or --approval-mode yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline,
-  goose, opencode auto-approve. Looks through cd, bash -c, sudo, env, npx, uvx. Misses: config, aliases, scripts, ssh.
+  Best effort. Refuses agents with safety off: claude --dangerously-skip-permissions, bypassPermissions,
+  wildcard --allowedTools; codex --full-auto, --yolo, -a never, danger-full-access; gemini --yolo; cursor-agent --force;
+  aider --yes-always; copilot --allow-all-tools; amp, cline, goose, opencode auto-approve; DeepSeek Harness
+  127.0.0.1:3080/api calls lifting sandbox/approvals (CVE-2026-82533). Sees through bash -c, sudo, npx.
+  Misses: config, aliases, scripts, ssh, other dsh ports, file bodies.
 artifact: rule
 enforcement: advise
 rule:
   text: |
     never(spawn_agent): claude(--dangerously-skip-permissions|bypassPermissions|--allowedTools_*), codex(--full-auto|--yolo|-a_never|--sandbox_danger-full-access), gemini(--yolo|-y|--approval-mode_yolo), cursor-agent(--force|-f), aider(--yes-always), copilot(--allow-all-tools), amp|cline|goose|opencode(auto-approve flags)
-    if(unattended_run_needed): ask_person; person_starts_it  # spawn with default approvals and sandbox
+    never(http_to(dsh 127.0.0.1:3080/api)+body(danger-full-access|approval_never)); if(unattended_run_needed|wider_access): ask_person; person_starts_it
 effects:
 - read_only
 approval:
@@ -26,7 +27,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-10-02T12:00:00Z"
+  updated_at: "2026-10-11T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -40,6 +41,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-10-11'
+  changes:
+  - "Refuses a shell HTTP request (curl, wget, HTTPie http/https, xh, Invoke-RestMethod/irm, Invoke-WebRequest/iwr) to DeepSeek Harness's loopback control API -- port 3080, path /api, host localhost, 127.x, 0.0.0.0, [::1] or omitted -- whose arguments or heredoc carry danger-full-access or an approval set to never: the one-command sandbox escape of CVE-2026-82533 (OX Security, https://www.ox.security/blog/cve-2026-82533-deepseek-harness-ai-agent-sandbox-escape/; VulnCheck CNA, https://www.cve.org/CVERecord?id=CVE-2026-82533). Other ports, /api paths on other hosts, other localhost:3080 paths and API calls that leave sandbox and approvals alone pass. Misses: a dsh started on another port, a body read from a file (-d @x.json), a host spelled another way (decimal IP, a DNS name that resolves to loopback, --resolve/--connect-to), and requests from interpreter one-liners."
 - version: 0.1.2
   date: '2026-10-07'
   changes:

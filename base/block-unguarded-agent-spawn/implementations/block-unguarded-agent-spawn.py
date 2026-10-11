@@ -5,6 +5,8 @@
 # Refuse launching a coding agent (claude, codex, gemini, cursor-agent, aider, copilot, amp, cline, goose, opencode) with
 # its permission and sandbox checks off. Best effort: the agent is recognised by program name (or its npx/uvx package),
 # so an alias or a wrapper script is out of reach, and each agent's flag list is the one its documentation names.
+# Also refuses a shell HTTP request to DeepSeek Harness's loopback control API that switches the session's sandbox or
+# approvals off (CVE-2026-82533): the agent turning its own safety off from inside the sandbox.
 
 import os
 import re
@@ -43,6 +45,18 @@ EXECUTABLE = re.compile(r"\.(?:exe|cmd|bat|ps1|com)$", re.IGNORECASE)
 TOOL_FLAGS = frozenset(("--allowedTools", "--allowed-tools"))
 WILDCARD_TOOL = re.compile(r"\*|[A-Za-z_][A-Za-z0-9_]*\(:?\*\)")
 Check = Callable[[Cmd, list[str]], str]
+#: Shell HTTP clients; the request's URL and body are read from their arguments and heredoc.
+HTTP_CLIENTS = frozenset(
+    ("curl", "wget", "http", "https", "xh", "xhs", "invoke-restmethod", "irm", "invoke-webrequest", "iwr")
+)
+#: DeepSeek Harness (`dsh`) serves its agent-control API at /api on 127.0.0.1:3080 by default (CVE-2026-82533).
+HARNESS_API = re.compile(
+    r"(?:--url=|-uri:?)?(?:https?://)?(?:localhost|127(?:\.\d{1,3}){1,3}|0\.0\.0\.0|\[(?:::1?|::ffff:127\.0\.0\.1)\])?"
+    r":3080/api(?:[/?#].*)?",
+    re.IGNORECASE,
+)
+#: The session change the advisory names: sandbox danger-full-access, or approval set to never.
+ESCAPE = re.compile(r"danger[-_]full[-_]access|approval[\w-]*[\"']?\s*[:=]\s*[\"']?never\b", re.IGNORECASE)
 
 
 def value_of(args: list[str], flag: str) -> str:
@@ -152,9 +166,24 @@ def launched(cmd: Cmd) -> tuple[str, list[str]]:
     return (agent, cmd.args[cmd.args.index(words[0]) + 1 :]) if agent else ("", [])
 
 
+def harness_escape(cmd: Cmd) -> bool:
+    """Whether an HTTP client asks the dsh control API to switch the sandbox or approvals off."""
+    if EXECUTABLE.sub("", cmd.name).lower() not in HTTP_CLIENTS:
+        return False
+    if not any(HARNESS_API.fullmatch(arg) for arg in cmd.args):
+        return False
+    return bool(ESCAPE.search(" ".join([*cmd.args, cmd.doc])))
+
+
 def check(raw: str) -> str | None:
     """The unsafe launch a command line contains, or None; every command of a pipeline or list is judged."""
     for cmd in commands(raw):
+        if harness_escape(cmd):
+            return (
+                "a request to DeepSeek Harness's control API (127.0.0.1:3080/api) that switches the sandbox or approvals "
+                "off lets the agent escape its own sandbox (CVE-2026-82533). Keep working inside the sandbox; if the task "
+                "needs wider access, ask the person to change the session's mode in the dsh UI themselves."
+            )
         agent, args = launched(cmd)
         unsafe = AGENTS[agent](cmd, args) if agent else ""
         if unsafe:
