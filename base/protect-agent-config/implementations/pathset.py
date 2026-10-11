@@ -17,11 +17,22 @@ INSTRUCTIONS = (
     ".cursorrules",
     ".windsurfrules",
     ".aider.conf.yml",
+    ".goosehints",  # Goose, at any level from the working directory up to the repository root
+)
+# Project config files read by their exact name, at any level (opencode and Kilo look from the working directory up to the git root):
+# matched as a whole path segment, so `docs/opencode.json.md` is not one.
+NAMED = (
+    "opencode.json",  # opencode
+    "opencode.jsonc",
+    "kilo.json",  # Kilo Code
+    "kilo.jsonc",
+    ".continuerc.json",  # Continue, workspace level
 )
 # A name ending in `/` is a whole folder, matched as a path segment: everything below it is protected, whatever its name.
 # Any other name is matched as text anywhere in the path.
 PROTECTED = (
     *INSTRUCTIONS,
+    *NAMED,
     ".claude/settings",
     ".mcp.json",
     # Project-level MCP (and hook) config a supported client reads: a server an agent registers there runs with its authority.
@@ -77,6 +88,12 @@ PROTECTED = (
     ".clinerules/hooks/",  # Cline
     ".kiro/hooks/",  # Kiro hooks
     ".kiro/agents/",  # Kiro agent config, which declares hooks
+    ".kilocode/",  # Kilo Code: rules, workflows, mcp.json (read for backward compatibility)
+    ".kilo/",  # Kilo Code: kilo.jsonc, rules
+    ".opencode/",  # opencode: agents, commands, plugins (plugins run code)
+    ".factory/",  # Factory Droid: settings.json, hooks.json, mcp.json, droids
+    ".amp/",  # Amp: settings.json (permissions, MCP servers), skills
+    ".continue/",  # Continue: rules, mcpServers, models
 )
 # Files outside the repository, which no entry above names. A user's Cline folder (`~/Documents/Cline/Hooks`, as a segment whatever
 # precedes it), `~/.claude.json` (user-scope MCP servers and trust flags: the exact name, as a segment, so `.claude.json5` is not
@@ -93,7 +110,8 @@ _OUTSIDE = re.compile(
 GUARD_SOURCES = re.compile(r"\.agents/policies/.*implementations")
 _FOLDERS = re.compile("|".join(f"(?:^|/){re.escape(p[:-1])}(?:/|$)" for p in PROTECTED if p.endswith("/")))
 INSTRUCTION_TEXT = tuple(p.lower() for p in INSTRUCTIONS)
-_FIRM = tuple(p.lower() for p in PROTECTED if not p.endswith("/") and p not in INSTRUCTIONS)
+_NAMED = re.compile("|".join(f"(?:^|/){re.escape(p)}(?:[/:]|$)" for p in NAMED))
+_FIRM = tuple(p.lower() for p in PROTECTED if not p.endswith("/") and p not in (*INSTRUCTIONS, *NAMED))
 BLOCK, ASK = "block", "ask"
 
 
@@ -116,6 +134,7 @@ def verdict(path: str, base: str | None = None) -> str:
     if (
         any(part in normal for part in _FIRM)
         or _FOLDERS.search(normal)
+        or _NAMED.search(normal)
         or GUARD_SOURCES.search(normal)
         or _OUTSIDE.search(normal)
         or plugin_hooks(normal, base)

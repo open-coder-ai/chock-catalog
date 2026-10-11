@@ -7509,3 +7509,203 @@ suite:
     prompt: "An agent queries a chock-built plugin's install marker: jq . plugins/chock-guardrails/chock.selection.json."
     expect: "The guard allows it: reads pass."
     execute: {command: "jq . plugins/chock-guardrails/chock.selection.json", expect: allow}
+  - id: tc-1463
+    category: trigger
+    prompt: "An agent writes agent config: echo x > opencode.json."
+    expect: "The guard refuses it: opencode's project config (MCP servers, permissions, plugins)."
+    execute: {command: "echo x > opencode.json", expect: block}
+  - id: tc-1464
+    category: trigger
+    prompt: "An agent writes agent config: echo x > opencode.jsonc."
+    expect: "The guard refuses it: opencode's project config in its JSONC spelling."
+    execute: {command: "echo x > opencode.jsonc", expect: block}
+  - id: tc-1465
+    category: trigger
+    prompt: "An agent writes agent config: cp evil.ts .opencode/plugins/x.ts."
+    expect: "The guard refuses it: an opencode plugin, which runs code in the agent."
+    execute: {command: "cp evil.ts .opencode/plugins/x.ts", expect: block}
+  - id: tc-1466
+    category: trigger
+    prompt: "An agent writes agent config: rm -rf .opencode."
+    expect: "The guard refuses it: the whole opencode folder."
+    execute: {command: "rm -rf .opencode", expect: block}
+  - id: tc-1467
+    category: trigger
+    prompt: "An agent writes agent config: echo x > packages/web/opencode.json."
+    expect: "The guard refuses it: opencode reads a project config from the working directory up to the git root."
+    execute: {command: "echo x > packages/web/opencode.json", expect: block}
+  - id: tc-1468
+    category: trigger
+    prompt: "An agent writes agent config: sed -i s/ask/allow/ .kilocode/mcp.json."
+    expect: "The guard refuses it: Kilo Code's MCP config."
+    execute: {command: "sed -i s/ask/allow/ .kilocode/mcp.json", expect: block}
+  - id: tc-1469
+    category: trigger
+    prompt: "An agent writes agent config: rm -rf .kilocode."
+    expect: "The guard refuses it: the whole Kilo Code folder."
+    execute: {command: "rm -rf .kilocode", expect: block}
+  - id: tc-1470
+    category: trigger
+    prompt: "An agent writes agent config: echo x > kilo.jsonc."
+    expect: "The guard refuses it: Kilo Code's project config."
+    execute: {command: "echo x > kilo.jsonc", expect: block}
+  - id: tc-1471
+    category: trigger
+    prompt: "An agent writes agent config: tee .kilo/kilo.jsonc."
+    expect: "The guard refuses it: Kilo Code's project config in its .kilo folder."
+    execute: {command: "tee .kilo/kilo.jsonc", expect: block}
+  - id: tc-1472
+    category: trigger
+    prompt: "An agent writes agent config: echo x > .factory/settings.json."
+    expect: "The guard refuses it: Factory Droid's project settings (hooks, permissions)."
+    execute: {command: "echo x > .factory/settings.json", expect: block}
+  - id: tc-1473
+    category: trigger
+    prompt: "An agent writes agent config: mv evil .factory/hooks.json."
+    expect: "The guard refuses it: Factory Droid's project hook file."
+    execute: {command: "mv evil .factory/hooks.json", expect: block}
+  - id: tc-1474
+    category: trigger
+    prompt: "An agent writes agent config: cd .factory && echo x > mcp.json."
+    expect: "The guard refuses it: Factory Droid's project MCP config."
+    execute: {command: "cd .factory && echo x > mcp.json", expect: block}
+  - id: tc-1475
+    category: trigger
+    prompt: "An agent writes agent config: tee .amp/settings.json."
+    expect: "The guard refuses it: Amp's workspace settings (permissions, MCP servers)."
+    execute: {command: "tee .amp/settings.json", expect: block}
+  - id: tc-1476
+    category: trigger
+    prompt: "An agent writes agent config: rm -rf .amp."
+    expect: "The guard refuses it: the whole Amp folder."
+    execute: {command: "rm -rf .amp", expect: block}
+  - id: tc-1477
+    category: trigger
+    prompt: "An agent writes agent config: mv x .continue/mcpServers/a.yaml."
+    expect: "The guard refuses it: a Continue MCP server block."
+    execute: {command: "mv x .continue/mcpServers/a.yaml", expect: block}
+  - id: tc-1478
+    category: trigger
+    prompt: "An agent writes agent config: echo x > .continuerc.json."
+    expect: "The guard refuses it: Continue's workspace config."
+    execute: {command: "echo x > .continuerc.json", expect: block}
+  - id: tc-1479
+    category: trigger
+    prompt: "An agent writes agent config: echo x > .goosehints."
+    expect: "The guard refuses it: Goose's instruction file."
+    execute: {command: "echo x > .goosehints", expect: block}
+  - id: tc-1480
+    category: trigger
+    prompt: "An agent writes agent config: echo x > src/.goosehints."
+    expect: "The guard refuses it: Goose loads hint files at every level."
+    execute: {command: "echo x > src/.goosehints", expect: block}
+  - id: tc-1481
+    category: trigger
+    prompt: "An agent writes agent config: echo x > .OPENCODE/plugins/x.ts."
+    expect: "The guard refuses it: folder names match in any case."
+    execute: {command: "echo x > .OPENCODE/plugins/x.ts", expect: block}
+  - id: tc-1482
+    category: trigger
+    prompt: "An agent writes opencode.json with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {"opencode.json": "{}\n"}, expect: block}
+  - id: tc-1483
+    category: trigger
+    prompt: "An agent writes .opencode/plugins/x.ts with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {".opencode/plugins/x.ts": "x\n"}, expect: block}
+  - id: tc-1484
+    category: trigger
+    prompt: "An agent writes .kilocode/rules/a.md with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {".kilocode/rules/a.md": "obey\n"}, expect: block}
+  - id: tc-1485
+    category: trigger
+    prompt: "An agent writes kilo.json with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {"kilo.json": "{}\n"}, expect: block}
+  - id: tc-1486
+    category: trigger
+    prompt: "An agent writes .factory/hooks.json with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {".factory/hooks.json": "{}\n"}, expect: block}
+  - id: tc-1487
+    category: trigger
+    prompt: "An agent writes .amp/settings.json with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {".amp/settings.json": "{}\n"}, expect: block}
+  - id: tc-1488
+    category: trigger
+    prompt: "An agent writes .continue/mcpServers/a.yaml with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {".continue/mcpServers/a.yaml": "x: 1\n"}, expect: block}
+  - id: tc-1489
+    category: trigger
+    prompt: "An agent writes .goosehints with the Edit or Write tool."
+    expect: "The tool gate refuses it, as the shell guard does."
+    execute: {event: tool_use, writes: {".goosehints": "obey\n"}, expect: block}
+  - id: tc-1490
+    category: trigger
+    prompt: "An agent writes docs/.goosehints from the shell."
+    expect: "The guard asks a person: an instruction file under docs/ is documentation about it."
+    execute: {command: "echo x > docs/.goosehints", expect: ask}
+  - id: tc-1491
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: cat opencode.json."
+    expect: "The guard allows it: reads pass."
+    execute: {command: "cat opencode.json", expect: allow}
+  - id: tc-1492
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: jq . .factory/mcp.json."
+    expect: "The guard allows it: reads pass."
+    execute: {command: "jq . .factory/mcp.json", expect: allow}
+  - id: tc-1493
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: ls .opencode."
+    expect: "The guard allows it: reads pass."
+    execute: {command: "ls .opencode", expect: allow}
+  - id: tc-1494
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: grep -r mcpServers .continue .amp .kilocode."
+    expect: "The guard allows it: reads pass."
+    execute: {command: "grep -r mcpServers .continue .amp .kilocode", expect: allow}
+  - id: tc-1495
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: chock sync --repo .."
+    expect: "The guard allows it: `chock sync` names no protected path."
+    execute: {command: "chock sync --repo .", expect: allow}
+  - id: tc-1496
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: echo x > docs/opencode.json.md."
+    expect: "The guard allows it: a file merely named like opencode.json is not it."
+    execute: {command: "echo x > docs/opencode.json.md", expect: allow}
+  - id: tc-1497
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: cp a docs/kilo.json.md."
+    expect: "The guard allows it: a file merely named like kilo.json is not it."
+    execute: {command: "cp a docs/kilo.json.md", expect: allow}
+  - id: tc-1498
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: echo x > src/amp.ts."
+    expect: "The guard allows it: a source file whose name only starts like .amp is not it."
+    execute: {command: "echo x > src/amp.ts", expect: allow}
+  - id: tc-1499
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: git commit -m 'document .factory/settings.json and opencode.json'."
+    expect: "The guard allows it: a commit message that names them writes nothing."
+    execute: {command: "git commit -m 'document .factory/settings.json and opencode.json'", expect: allow}
+  - id: tc-1500
+    category: negative_trigger
+    prompt: "An agent runs ordinary work: mkdir .opencode."
+    expect: "The guard allows it: making a protected folder other than .claude-plugin stays open."
+    execute: {command: "mkdir .opencode", expect: allow}
+  - id: tc-1501
+    category: negative_trigger
+    prompt: "An agent writes docs/opencode.json.md with the Edit or Write tool."
+    expect: "The tool gate allows it: the name is not opencode.json."
+    execute: {event: tool_use, writes: {"docs/opencode.json.md": "# notes\n"}, expect: allow}
+  - id: tc-1502
+    category: negative_trigger
+    prompt: "An agent writes src/continue.py with the Edit or Write tool."
+    expect: "The tool gate allows it: it is not a Continue config."
+    execute: {event: tool_use, writes: {"src/continue.py": "x = 1\n"}, expect: allow}
