@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ask-credential-switching",
+  "version": "0.0.1",
+  "description": "Best effort, ask only. Asks a person before a shell command switches the identity later commands act as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure set of a key; gcloud account, configuration, login or impersonation; az account set, az login as a principal or identity; kubectl use-context or set-credentials; writes to ~/.aws, ~/.config/gcloud, ~/.azure. Names in .chock/credential-allowlist.json pass. Misses: scripts, SDKs, env files, credential_process.",
+  "author": {
+    "name": "chock-core"
+  },
+  "repository": "https://github.com/open-coder-ai/chock-catalog",
+  "license": "Apache-2.0",
+  "keywords": [
+    "chock",
+    "policy-as-code",
+    "rule",
+    "advise",
+    "asi03"
+  ],
+  "extensions": {
+    "io.github.open-coder-ai": {
+      "manifest": "manifest.yaml",
+      "artifact": "rule",
+      "enforcement": "advise",
+      "coverage_without_chock": "advisory"
+    }
+  }
+}

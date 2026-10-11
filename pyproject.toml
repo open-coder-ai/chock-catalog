@@ -24,6 +24,7 @@ source = [
     "base/block-no-verify/implementations",
     "base/block-persistence-shapes/implementations",
     "base/block-unapproved-egress/implementations",
+    "base/ask-credential-switching/implementations",
     "base/block-secret-store-reads/implementations",
     "base/block-unguarded-agent-spawn/implementations",
     "base/protect-agent-config/implementations",

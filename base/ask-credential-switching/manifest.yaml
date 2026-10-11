@@ -1,0 +1,50 @@
+id: ask-credential-switching
+name: "Ask Credential Switching"
+version: "0.0.1"
+description: >
+  Best effort, ask only. Asks a person before a shell command switches the identity later commands act
+  as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure set of a key; gcloud
+  account, configuration, login or impersonation; az account set, az login as a principal or identity; kubectl use-context or
+  set-credentials; writes to ~/.aws, ~/.config/gcloud, ~/.azure. Names in .chock/credential-allowlist.json pass.
+  Misses: scripts, SDKs, env files, credential_process.
+artifact: rule
+enforcement: advise
+rule:
+  text: |
+    ask_person: switch_identity(aws(--profile|AWS_PROFILE=|AWS_*KEY*=|$env:|sts_assume-role|configure_set_cred)|gcloud(set_account|configurations_activate|auth_login|impersonate)|az(account_set|login_principal|login_identity)|kubectl(use-context|set-credentials)|write(~/.aws|~/.config/gcloud|~/.azure)); say(identity), ask(intended?)
+    pass: reads(configure_list|config_list|account_show), names_in(.chock/credential-allowlist.json@HEAD)  # person-only, own commit
+effects:
+- read_only
+approval:
+  required: false
+
+compliance:
+  owasp_asi:
+  - control: ASI03
+    coverage: partial
+    note: "asks a person before the agent moves its shell onto another cloud or cluster identity; switches made by scripts, SDK code, env files and credential_process are out of scope"
+  mitre_atlas:
+  - control: AML.T0083
+    coverage: partial
+    note: "puts a person's decision in front of an agent picking up a stronger credential the developer's machine already holds"
+
+provenance:
+  author: "chock-core"
+  created_at: "2026-10-11T00:00:00Z"
+  updated_at: "2026-10-11T00:00:00Z"
+  source_repo: "https://github.com/open-coder-ai/chock-catalog"
+  license: "Apache-2.0"
+  trust_tier: "community"
+
+lifecycle:
+  status: draft
+  reviewed_by: []
+
+security:
+  content_instructions: never-obey
+
+changelog:
+- version: 0.0.1
+  date: '2026-10-11'
+  changes:
+  - "Initial release (plan C1, the ask variant of P1.5; shapes checked against the AWS CLI v2, gcloud, az and kubectl references on 2026-10-11; advisory: a PreToolUse guard on the shell that exits 3 to ask and never refuses). A Python guard (implementations/ask-credential-switching.py, stdlib only, beside the shared chock_shellparse) reads each simple command through bash -c, eval, sudo, env and $(...) and asks before: aws with --profile (any subcommand but configure list, list-profiles, get and sts get-caller-identity), AWS_PROFILE or AWS_DEFAULT_PROFILE set for a command or exported, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY or AWS_SESSION_TOKEN set or exported, the same five set in PowerShell ($env:AWS_PROFILE = \"p\"; the value is read from the line, case kept), aws sts assume-role (and -with-web-identity, -with-saml), aws configure set of a credential key (access keys, session token, role_arn, source_profile, credential_source, credential_process, web_identity_token_file, sso_*); gcloud config set account (or core/account), gcloud config configurations activate, gcloud auth activate-service-account, gcloud auth login (not with --no-activate, which leaves the active account alone) and auth application-default login, and --impersonate-service-account on any gcloud command or gcloud config set auth/impersonate_service_account (a delegation chain is named whole); az account set, az login --service-principal and --identity; kubectl config use-context (use) and set-credentials; a shell write (redirect, tee, cp, mv, dd, sed -i) to ~/.aws/credentials, ~/.aws/config, ~/.config/gcloud/ or ~/.azure/. The prompt names the identity switched to and tells the agent to ask the person whether it is intended. A client that cannot prompt before a tool call (Cursor, Codex, Devin) refuses instead, the stricter outcome (plan decision D6); the registry label says so per client (tools/label_honesty.py ASK_ONLY_GUARDS: asks on Claude Code and Copilot, refuses elsewhere). A switch to a name listed in .chock/credential-allowlist.json ({aws, gcloud, azure, kubernetes}: lists of profile, role ARN, access key id, account, configuration, subscription, principal or context names) passes silently; the file is read from HEAD only, so an agent's uncommitted edit never counts (protect-agent-config refuses agent writes under .chock/), and a file outside that closed schema is not honoured at all. A switch that names no identity (a login that picks one interactively, a write to a store) always asks. A name held in a variable the line does not assign cannot match the list, so it asks, naming the variable. Not caught: switches inside scripts, Makefiles or SDK code, credential_process and env files, AWS_SHARED_CREDENTIALS_FILE, AWS_CONFIG_FILE, KUBECONFIG and CLOUDSDK_* variables, gcloud --account and --configuration flags, kubectl --context, kubectx, PowerShell Set-Item Env: and [Environment]::SetEnvironmentVariable, az login --subscription, interpreter code that writes a store, and a write to a store reached by a relative path after cd ~."

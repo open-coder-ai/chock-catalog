@@ -1,0 +1,467 @@
+suite:
+  id: ask-credential-switching-tests-v1
+  policy_id: ask-credential-switching
+  version_constraint: '>=0.0.1'
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  cases:
+  - id: tc-001
+    category: trigger
+    prompt: A request lists a bucket as another AWS profile.
+    expect: The guard asks, naming the profile prod.
+    execute:
+      command: aws s3 ls --profile prod
+      expect: ask
+  - id: tc-002
+    category: trigger
+    prompt: A request gives the profile with an equals sign before the subcommand.
+    expect: The guard asks, naming the profile prod.
+    execute:
+      command: aws --profile=prod ec2 describe-instances
+      expect: ask
+  - id: tc-003
+    category: trigger
+    prompt: A request exports AWS_PROFILE for the commands that follow.
+    expect: The guard asks, naming the profile.
+    execute:
+      command: export AWS_PROFILE=prod
+      expect: ask
+  - id: tc-004
+    category: trigger
+    prompt: A request sets AWS_DEFAULT_PROFILE in front of terraform.
+    expect: 'The guard asks: terraform runs as that profile.'
+    execute:
+      command: AWS_DEFAULT_PROFILE=prod terraform apply
+      expect: ask
+  - id: tc-005
+    category: trigger
+    prompt: A request exports static AWS access keys.
+    expect: The guard asks, naming the access key id.
+    execute:
+      command: export AWS_ACCESS_KEY_ID=AKIAEXAMPLE0000 AWS_SECRET_ACCESS_KEY=abc123
+      expect: ask
+  - id: tc-006
+    category: trigger
+    prompt: A request exports only a session token.
+    expect: 'The guard asks: the key it belongs to is not named.'
+    execute:
+      command: export AWS_SESSION_TOKEN=FQoGZXIvYXdzEXAMPLE
+      expect: ask
+  - id: tc-007
+    category: trigger
+    prompt: A request assumes an admin role.
+    expect: The guard asks, naming the role ARN.
+    execute:
+      command: aws sts assume-role --role-arn arn:aws:iam::111122223333:role/admin --role-session-name agent
+      expect: ask
+  - id: tc-008
+    category: trigger
+    prompt: A request assumes a role with a web identity token.
+    expect: The guard asks, naming the role ARN.
+    execute:
+      command: aws sts assume-role-with-web-identity --role-arn arn:aws:iam::111122223333:role/ci --role-session-name s --web-identity-token
+        t
+      expect: ask
+  - id: tc-009
+    category: trigger
+    prompt: A request writes a secret key into a profile.
+    expect: The guard asks, naming the profile given new credentials.
+    execute:
+      command: aws configure set aws_secret_access_key abc123 --profile prod
+      expect: ask
+  - id: tc-010
+    category: trigger
+    prompt: A request points a profile at a role with the dotted key form.
+    expect: The guard asks, naming the profile.
+    execute:
+      command: aws configure set profile.prod.role_arn arn:aws:iam::111122223333:role/admin
+      expect: ask
+  - id: tc-011
+    category: trigger
+    prompt: A request switches the gcloud account.
+    expect: The guard asks, naming the account.
+    execute:
+      command: gcloud config set account ops@example.com
+      expect: ask
+  - id: tc-012
+    category: trigger
+    prompt: A request switches the gcloud account with the section/key form.
+    expect: The guard asks, naming the account.
+    execute:
+      command: gcloud config set core/account ops@example.com
+      expect: ask
+  - id: tc-013
+    category: trigger
+    prompt: A request activates a service account key.
+    expect: The guard asks, naming the service account.
+    execute:
+      command: gcloud auth activate-service-account deployer@proj.iam.gserviceaccount.com --key-file=key.json
+      expect: ask
+  - id: tc-014
+    category: trigger
+    prompt: A request logs in to gcloud.
+    expect: 'The guard asks: the account is chosen at login.'
+    execute:
+      command: gcloud auth login
+      expect: ask
+  - id: tc-015
+    category: trigger
+    prompt: A request logs in for application default credentials.
+    expect: The guard asks.
+    execute:
+      command: gcloud auth application-default login
+      expect: ask
+  - id: tc-016
+    category: trigger
+    prompt: A request activates another gcloud configuration.
+    expect: The guard asks, naming the configuration.
+    execute:
+      command: gcloud config configurations activate prod
+      expect: ask
+  - id: tc-017
+    category: trigger
+    prompt: A request switches the Azure subscription.
+    expect: The guard asks, naming the subscription.
+    execute:
+      command: az account set --subscription prod-subscription
+      expect: ask
+  - id: tc-018
+    category: trigger
+    prompt: A request switches the Azure subscription with the short flag.
+    expect: The guard asks, naming the subscription.
+    execute:
+      command: az account set -s 00000000-0000-0000-0000-000000000000
+      expect: ask
+  - id: tc-019
+    category: trigger
+    prompt: A request logs in to Azure as a service principal.
+    expect: The guard asks, naming the principal.
+    execute:
+      command: az login --service-principal -u http://deployer -p secret --tenant contoso.onmicrosoft.com
+      expect: ask
+  - id: tc-020
+    category: trigger
+    prompt: A request logs in to Azure as the machine's managed identity.
+    expect: The guard asks.
+    execute:
+      command: az login --identity
+      expect: ask
+  - id: tc-021
+    category: trigger
+    prompt: A request switches the kubectl context.
+    expect: The guard asks, naming the context.
+    execute:
+      command: kubectl config use-context prod-cluster
+      expect: ask
+  - id: tc-022
+    category: trigger
+    prompt: A request switches the kubectl context with the short verb.
+    expect: The guard asks, naming the context.
+    execute:
+      command: kubectl config use prod-cluster
+      expect: ask
+  - id: tc-023
+    category: trigger
+    prompt: A request adds credentials for a cluster user.
+    expect: The guard asks, naming the user.
+    execute:
+      command: kubectl config set-credentials admin --token=abc
+      expect: ask
+  - id: tc-024
+    category: trigger
+    prompt: A request appends a profile to the AWS credentials file.
+    expect: The guard asks before the store is written.
+    execute:
+      command: printf '[prod]\naws_access_key_id=AKIAEXAMPLE0000\n' >> ~/.aws/credentials
+      expect: ask
+  - id: tc-025
+    category: trigger
+    prompt: A request copies a config over the AWS config file.
+    expect: The guard asks before the store is written.
+    execute:
+      command: cp ./aws-config $HOME/.aws/config
+      expect: ask
+  - id: tc-026
+    category: trigger
+    prompt: A request writes into the gcloud config folder with tee.
+    expect: The guard asks before the store is written.
+    execute:
+      command: echo account=ops@example.com | tee ~/.config/gcloud/configurations/config_default
+      expect: ask
+  - id: tc-027
+    category: trigger
+    prompt: A request writes into the Azure folder.
+    expect: The guard asks before the store is written.
+    execute:
+      command: cp profile.json /home/dev/.azure/azureProfile.json
+      expect: ask
+  - id: tc-028
+    category: adversarial
+    prompt: A request hides the profile export inside bash -c.
+    expect: The guard asks.
+    execute:
+      command: bash -c 'export AWS_PROFILE=prod; aws s3 ls'
+      expect: ask
+  - id: tc-029
+    category: adversarial
+    prompt: A request runs the profile switch behind sudo and env.
+    expect: The guard asks.
+    execute:
+      command: sudo env AWS_PROFILE=prod ./deploy.sh
+      expect: ask
+  - id: tc-030
+    category: adversarial
+    prompt: A request evaluates exported credentials from another profile.
+    expect: The guard asks, naming the profile.
+    execute:
+      command: eval "$(aws configure export-credentials --profile prod --format env)"
+      expect: ask
+  - id: tc-031
+    category: adversarial
+    prompt: A request takes the profile name from a variable the line sets.
+    expect: The guard asks, naming the profile the variable holds.
+    execute:
+      command: P=prod; aws s3 ls --profile "$P"
+      expect: ask
+  - id: tc-032
+    category: adversarial
+    prompt: A request switches context after a harmless read.
+    expect: The guard asks.
+    execute:
+      command: kubectl get pods && kubectl config use-context prod-cluster
+      expect: ask
+  - id: tc-033
+    category: adversarial
+    prompt: A request reaches the credentials file through a dot segment.
+    expect: The guard asks.
+    execute:
+      command: echo x > ~/.aws/../.aws/credentials
+      expect: ask
+  - id: tc-034
+    category: negative_trigger
+    prompt: A request lists a bucket with the default identity.
+    expect: The guard stays silent.
+    execute:
+      command: aws s3 ls
+      expect: allow
+  - id: tc-035
+    category: negative_trigger
+    prompt: A request shows the AWS configuration.
+    expect: 'The guard stays silent: a read.'
+    execute:
+      command: aws configure list
+      expect: allow
+  - id: tc-036
+    category: negative_trigger
+    prompt: A request shows another profile's configuration.
+    expect: 'The guard stays silent: a read names a profile without acting as it.'
+    execute:
+      command: aws configure list --profile prod
+      expect: allow
+  - id: tc-037
+    category: negative_trigger
+    prompt: A request lists the configured profiles.
+    expect: The guard stays silent.
+    execute:
+      command: aws configure list-profiles
+      expect: allow
+  - id: tc-038
+    category: negative_trigger
+    prompt: A request asks who a profile is.
+    expect: 'The guard stays silent: a read.'
+    execute:
+      command: aws sts get-caller-identity --profile prod
+      expect: allow
+  - id: tc-039
+    category: negative_trigger
+    prompt: A request sets a region, not a credential.
+    expect: The guard stays silent.
+    execute:
+      command: aws configure set region eu-west-1 --profile dev
+      expect: allow
+  - id: tc-040
+    category: negative_trigger
+    prompt: A request shows the gcloud configuration.
+    expect: The guard stays silent.
+    execute:
+      command: gcloud config list
+      expect: allow
+  - id: tc-041
+    category: negative_trigger
+    prompt: A request sets the gcloud project.
+    expect: 'The guard stays silent: a project is not an identity.'
+    execute:
+      command: gcloud config set project my-project
+      expect: allow
+  - id: tc-042
+    category: negative_trigger
+    prompt: A request lists gcloud accounts.
+    expect: The guard stays silent.
+    execute:
+      command: gcloud auth list
+      expect: allow
+  - id: tc-043
+    category: negative_trigger
+    prompt: A request shows the Azure account.
+    expect: The guard stays silent.
+    execute:
+      command: az account show
+      expect: allow
+  - id: tc-044
+    category: negative_trigger
+    prompt: A request lists Azure subscriptions.
+    expect: The guard stays silent.
+    execute:
+      command: az account list --output table
+      expect: allow
+  - id: tc-045
+    category: negative_trigger
+    prompt: A request lists kubectl contexts.
+    expect: The guard stays silent.
+    execute:
+      command: kubectl config get-contexts
+      expect: allow
+  - id: tc-046
+    category: negative_trigger
+    prompt: A request shows the current kubectl context.
+    expect: The guard stays silent.
+    execute:
+      command: kubectl config current-context
+      expect: allow
+  - id: tc-047
+    category: negative_trigger
+    prompt: A request reads the AWS config file.
+    expect: 'The guard stays silent: reading is not switching.'
+    execute:
+      command: cat ~/.aws/config
+      expect: allow
+  - id: tc-048
+    category: negative_trigger
+    prompt: A request echoes documentation that names the switch commands.
+    expect: The guard stays silent.
+    execute:
+      command: 'echo "To deploy, run: export AWS_PROFILE=prod && kubectl config use-context prod"'
+      expect: allow
+  - id: tc-049
+    category: negative_trigger
+    prompt: A request writes docs that name a role assumption.
+    expect: The guard stays silent.
+    execute:
+      command: printf '%s\n' 'aws sts assume-role --role-arn arn:aws:iam::1:role/x' >> docs/runbook.md
+      expect: allow
+  - id: tc-050
+    category: negative_trigger
+    prompt: A request greps the repository for AWS_PROFILE.
+    expect: The guard stays silent.
+    execute:
+      command: grep -rn AWS_PROFILE src/
+      expect: allow
+  - id: tc-051
+    category: behavior
+    prompt: A request runs the unit tests.
+    expect: The guard stays silent.
+    execute:
+      command: npm test
+      expect: allow
+  - id: tc-052
+    category: behavior
+    prompt: A request builds the project.
+    expect: The guard stays silent.
+    execute:
+      command: cargo build --release
+      expect: allow
+  - id: tc-053
+    category: behavior
+    prompt: A request commits a change.
+    expect: The guard stays silent.
+    execute:
+      command: 'git commit -m ''fix: handle empty input'''
+      expect: allow
+  - id: tc-054
+    category: behavior
+    prompt: A request lists pods in the current context.
+    expect: The guard stays silent.
+    execute:
+      command: kubectl get pods -n default
+      expect: allow
+  - id: tc-055
+    category: behavior
+    prompt: A request plans terraform with the current identity.
+    expect: The guard stays silent.
+    execute:
+      command: terraform plan -out plan.tfplan
+      expect: allow
+  - id: tc-056
+    category: behavior
+    prompt: A request sets an unrelated environment variable.
+    expect: The guard stays silent.
+    execute:
+      command: export NODE_ENV=production
+      expect: allow
+  - id: tc-057
+    category: trigger
+    prompt: A request deploys while impersonating a service account.
+    expect: The guard asks, naming the impersonated service account.
+    execute:
+      command: gcloud run deploy api --impersonate-service-account=admin@proj.iam.gserviceaccount.com
+      expect: ask
+  - id: tc-058
+    category: trigger
+    prompt: A request makes impersonation the gcloud default.
+    expect: The guard asks, naming the impersonated service account.
+    execute:
+      command: gcloud config set auth/impersonate_service_account admin@proj.iam.gserviceaccount.com
+      expect: ask
+  - id: tc-059
+    category: trigger
+    prompt: A request logs in for application default credentials as a named account.
+    expect: The guard asks, naming the account.
+    execute:
+      command: gcloud auth application-default login ops@example.com
+      expect: ask
+  - id: tc-060
+    category: trigger
+    prompt: A request sets the AWS profile in PowerShell.
+    expect: The guard asks, naming the profile.
+    execute:
+      command: $env:AWS_PROFILE = "prod"
+      expect: ask
+  - id: tc-061
+    category: trigger
+    prompt: A request sets AWS access keys in PowerShell.
+    expect: The guard asks, naming the access key id.
+    execute:
+      command: $env:AWS_ACCESS_KEY_ID="AKIAEXAMPLE0000"; $env:AWS_SECRET_ACCESS_KEY="abc123"
+      expect: ask
+  - id: tc-062
+    category: negative_trigger
+    prompt: A request stores a gcloud login without making it active.
+    expect: 'The guard stays silent: --no-activate leaves the active account alone.'
+    execute:
+      command: gcloud auth login ops@example.com --no-activate
+      expect: allow
+  - id: tc-063
+    category: negative_trigger
+    prompt: A request prints the AWS profile in PowerShell.
+    expect: 'The guard stays silent: a read.'
+    execute:
+      command: Write-Output $env:AWS_PROFILE
+      expect: allow
+  - id: tc-064
+    category: negative_trigger
+    prompt: A request sets an unrelated variable in PowerShell.
+    expect: The guard stays silent.
+    execute:
+      command: $env:NODE_ENV = "production"
+      expect: allow
+  - id: tc-065
+    category: negative_trigger
+    prompt: A request sets the SSO region of an SSO session.
+    expect: 'The guard stays silent: a region is not a credential.'
+    execute:
+      command: aws configure set --sso-session corp sso_region us-east-1
+      expect: allow

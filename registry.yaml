@@ -1667,3 +1667,26 @@ policies:
     checks off, install scripts on (npm, Yarn, pnpm, Bun, pip, uv, Poetry, conda, Go, Cargo, NuGet,
     Maven, Bundler, Composer, Hex, Dependabot); asks on extra indexes, replaces, no cooldown. Added
     only. Ship observe first. Friction, not a boundary.'
+- id: ask-credential-switching
+  path: base/ask-credential-switching
+  version: 0.0.1
+  artifact: rule
+  enforcement: advise
+  status: draft
+  mandatory: false
+  mechanism: guard script
+  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  eval_cases: 65
+  eval_executed: 65
+  label:
+    claude-code: {"keyword": "ask", "says": "asks before a matched shell command runs"}
+    cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs (this client cannot prompt there)"}
+    codex: {"keyword": "block", "says": "refuses a matched shell command before it runs (this client cannot prompt there)"}
+    copilot: {"keyword": "ask", "says": "asks before a matched shell command runs"}
+    devin: {"keyword": "block", "says": "refuses a matched shell command before it runs (this client cannot prompt there); fails open: a hook error lets the call proceed (vendor docs only, not witnessed)"}
+    misses: "scripts, SDKs, env files, credential_process."
+  description: 'Best effort, ask only. Asks a person before a shell command switches the identity later
+    commands act as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure
+    set of a key; gcloud account, configuration, login or impersonation; az account set, az login as
+    a principal or identity; kubectl use-context or set-credentials; writes to ~/.aws, ~/.config/gcloud,
+    ~/.azure. Names in .chock/credential-allowlist.json pass. Misses: scripts, SDKs, env files, credential_process.'

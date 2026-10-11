@@ -22,7 +22,14 @@ from check_readme import classify_readme
 from check_registry import said, suite_counts
 from chock.plugin import bundle_build, bundle_grade
 from chock.plugin.store import SCRIPTS_TEMPLATE
-from label_honesty import TEXT_ONLY_SAYS, data_label, fail_open_qualifier, honest_asks, status_label
+from label_honesty import (
+    TEXT_ONLY_SAYS,
+    data_label,
+    fail_open_qualifier,
+    honest_asks,
+    honest_guard,
+    status_label,
+)
 from mechanism import CEILING, NONE, classify
 from trees import ROOT, TREES, policy_dirs
 
@@ -112,6 +119,7 @@ def derive_labels(root: Path = ROOT) -> dict[str, dict]:
                     says = TEXT_ONLY_SAYS
                 elif hooks_text is not None:
                     grade, says = honest_asks(grade, says, hooks_text, client.agent)
+                    grade, says = honest_guard(manifest["id"], grade, says, client.agent)
                     says += fail_open_qualifier(client.agent)
                 label[key] = {"keyword": bundle_grade.enforcement_keyword(grade), "says": says}
             if status := status_label(manifest):

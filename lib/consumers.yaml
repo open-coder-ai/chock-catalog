@@ -6,6 +6,8 @@ base/block-destructive-commands:
   chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-no-verify:
   chock_shellparse: [args, parse, quoting, targets, writes]
+base/ask-credential-switching:
+  chock_shellparse: [args, parse, quoting, targets, writes]
 base/block-secret-store-reads:
   chock_scan: [data_table, safe_read]
   chock_shellparse: [args, parse, quoting, targets, writes]

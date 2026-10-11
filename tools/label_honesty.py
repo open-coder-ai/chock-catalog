@@ -19,6 +19,11 @@ TEXT_ONLY_SAYS = "text only in a plugin: nothing in the plugin stops a violation
 #: states the oldest table's `as_of`. Which policies is a catalog decision; the date is read from the tables.
 DATED_DATA = ("compromised-package-ioc", "verify-mcp-allowlist")
 DATED_SAYS = "data as of {as_of}; an installed plugin does not update it: re-running the install is the update"
+#: Command guards that only ever ask (exit 3), never refuse: a catalog decision, since the engine grades every
+#: guard as refusing. tests/build_tools/test_registry_labels.py holds each to a guard with no refusing exit.
+ASK_ONLY_GUARDS = ("ask-credential-switching",)
+GUARD_ASKS = "asks before a matched shell command runs"
+GUARD_REFUSES = "refuses a matched shell command before it runs (this client cannot prompt there)"
 
 
 def status_label(manifest: dict) -> dict | None:
@@ -83,3 +88,11 @@ def honest_asks(grade: int, says: str, hooks_text: str, agent: str) -> tuple[int
     if not honours(pre_tool if writes else stop):
         grade = bundle_grade.BLOCKS if writes else bundle_grade.STOP_ONLY
     return grade, says[: says.index("asks ")] + tail
+
+
+def honest_guard(policy_id: str, grade: int, says: str, agent: str) -> tuple[int, str]:
+    """An ask-only guard's label: it asks where the client can prompt before a tool call, and refuses elsewhere."""
+    if policy_id not in ASK_ONLY_GUARDS or grade != bundle_grade.BLOCKS:
+        return grade, says
+    gate = VENDOR_CONFIG[agent]["verdicts"]["gates"].get(vendors.pre_tool_event(agent), {})
+    return (bundle_grade.ASKS, GUARD_ASKS) if gate.get("honours_escalate") else (grade, GUARD_REFUSES)
