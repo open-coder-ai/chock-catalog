@@ -16,4 +16,4 @@ agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vs
 never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve, claude env ANTHROPIC_*_URL|OPENAI_BASE_URL|*_API_BASE, enableAllProjectMcpServers; never(remove): deny entry; blocks at commit+tool_use
 ```
 
-This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` can refuse an agent's shell command before it runs; blocks at commit, on an agent's file writes and at turn end. See https://github.com/open-coder-ai/chock
+This skill is advisory: the client reading it has no mechanism to enforce it. The same policy compiled by `chock` blocks at commit, on an agent's file writes and at turn end. See https://github.com/open-coder-ai/chock
