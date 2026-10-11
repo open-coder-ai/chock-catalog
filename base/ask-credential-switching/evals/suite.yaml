@@ -402,3 +402,66 @@ suite:
     execute:
       command: export NODE_ENV=production
       expect: allow
+  - id: tc-057
+    category: trigger
+    prompt: A request deploys while impersonating a service account.
+    expect: The guard asks, naming the impersonated service account.
+    execute:
+      command: gcloud run deploy api --impersonate-service-account=admin@proj.iam.gserviceaccount.com
+      expect: ask
+  - id: tc-058
+    category: trigger
+    prompt: A request makes impersonation the gcloud default.
+    expect: The guard asks, naming the impersonated service account.
+    execute:
+      command: gcloud config set auth/impersonate_service_account admin@proj.iam.gserviceaccount.com
+      expect: ask
+  - id: tc-059
+    category: trigger
+    prompt: A request logs in for application default credentials as a named account.
+    expect: The guard asks, naming the account.
+    execute:
+      command: gcloud auth application-default login ops@example.com
+      expect: ask
+  - id: tc-060
+    category: trigger
+    prompt: A request sets the AWS profile in PowerShell.
+    expect: The guard asks, naming the profile.
+    execute:
+      command: $env:AWS_PROFILE = "prod"
+      expect: ask
+  - id: tc-061
+    category: trigger
+    prompt: A request sets AWS access keys in PowerShell.
+    expect: The guard asks, naming the access key id.
+    execute:
+      command: $env:AWS_ACCESS_KEY_ID="AKIAEXAMPLE0000"; $env:AWS_SECRET_ACCESS_KEY="abc123"
+      expect: ask
+  - id: tc-062
+    category: negative_trigger
+    prompt: A request stores a gcloud login without making it active.
+    expect: 'The guard stays silent: --no-activate leaves the active account alone.'
+    execute:
+      command: gcloud auth login ops@example.com --no-activate
+      expect: allow
+  - id: tc-063
+    category: negative_trigger
+    prompt: A request prints the AWS profile in PowerShell.
+    expect: 'The guard stays silent: a read.'
+    execute:
+      command: Write-Output $env:AWS_PROFILE
+      expect: allow
+  - id: tc-064
+    category: negative_trigger
+    prompt: A request sets an unrelated variable in PowerShell.
+    expect: The guard stays silent.
+    execute:
+      command: $env:NODE_ENV = "production"
+      expect: allow
+  - id: tc-065
+    category: negative_trigger
+    prompt: A request sets the SSO region of an SSO session.
+    expect: 'The guard stays silent: a region is not a credential.'
+    execute:
+      command: aws configure set --sso-session corp sso_region us-east-1
+      expect: allow

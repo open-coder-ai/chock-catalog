@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~383 tokens (chars/4, max 2000)
+INDEX.md: ~388 tokens (chars/4, max 2000)
 Recompiled 1 policies
 ask-credential-switching:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~383 tokens (chars/4, max 2000)
+INDEX.md: ~388 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -152,9 +152,18 @@ ask-credential-switching  [deterministic]
   PASS  tc-054                             authored  guard exit 0
   PASS  tc-055                             authored  guard exit 0
   PASS  tc-056                             authored  guard exit 0
+  PASS  tc-057                             authored  CONFIRM: this command switches the identity later commands act as: …
+  PASS  tc-058                             authored  CONFIRM: this command switches the identity later commands act as: …
+  PASS  tc-059                             authored  CONFIRM: this command switches the identity later commands act as: …
+  PASS  tc-060                             authored  CONFIRM: this command switches the identity later commands act as: …
+  PASS  tc-061                             authored  CONFIRM: this command switches the identity later commands act as: …
+  PASS  tc-062                             authored  guard exit 0
+  PASS  tc-063                             authored  guard exit 0
+  PASS  tc-064                             authored  guard exit 0
+  PASS  tc-065                             authored  guard exit 0
   score 1.00
 
-5 policies: 56 pass, 41 skipped
+5 policies: 65 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -179,6 +188,6 @@ ask-credential-switching  [deterministic]
 
 ```text
 - **ask-credential-switching**:
-  ask_person: switch_identity(aws(--profile|AWS_PROFILE=|AWS_*KEY*=|sts_assume-role|configure_set_cred)|gcloud(set_account|configurations_activate|auth_login)|az(account_set|login_principal|login_identity)|kubectl(use-context|set-credentials)|write(~/.aws|~/.config/gcloud|~/.azure)); say(identity), ask(intended?)
+  ask_person: switch_identity(aws(--profile|AWS_PROFILE=|AWS_*KEY*=|$env:|sts_assume-role|configure_set_cred)|gcloud(set_account|configurations_activate|auth_login|impersonate)|az(account_set|login_principal|login_identity)|kubectl(use-context|set-credentials)|write(~/.aws|~/.config/gcloud|~/.azure)); say(identity), ask(intended?)
   pass: reads(configure_list|config_list|account_show), names_in(.chock/credential-allowlist.json@HEAD)  # person-only, own commit
 ```

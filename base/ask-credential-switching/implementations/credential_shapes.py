@@ -23,6 +23,7 @@ AWS_VALUES = frozenset(
         *("--cli-read-timeout", "--cli-connect-timeout", "--cli-binary-format", "--role-arn", "--role-session-name"),
         *("--serial-number", "--token-code", "--duration-seconds", "--external-id", "--policy", "--policy-arns"),
         *("--web-identity-token", "--provider-id", "--principal-arn", "--saml-assertion", "--tags"),
+        *("--sso-session", "--services"),
     )
 )
 #: `aws` subcommands that only show what is configured: they pass whatever profile they name.
@@ -56,6 +57,7 @@ KUBECTL_VALUES = frozenset(("--kubeconfig", "--context", "--cluster", "--user", 
 HOME = r"(?:~|\$HOME|\$\{HOME\}|%USERPROFILE%|\$env:USERPROFILE|/root|/home/[^/]+|/users/[^/]+|[a-z]:/users/[^/]+)"
 STORE = re.compile(rf"{HOME}/(?:\.aws/(?:credentials|config)|\.config/gcloud(?:/.*)?|\.azure(?:/.*)?)", re.I)
 VARIABLE = re.compile(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?")
+PS_ENV = re.compile(r"""\$env:([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:'([^']*)'|"([^"]*)"|([^\s;|&]*))""", re.I)
 
 
 def value(args: list[str], *names: str) -> str | None:
@@ -133,10 +135,24 @@ def gcloud(cmd: Cmd) -> Switch | None:
         return Switch(
             "gcloud", who, f"the service account {who or '(named in its key file)'} (activate-service-account)"
         )
-    if words[:2] == ["auth", "login"] or words[:3] == ["auth", "application-default", "login"]:
-        who = at(words, 2) if words[1] == "login" else None
+    login = words[:2] == ["auth", "login"] and "--no-activate" not in cmd.args  # stored, not made active
+    if login or words[:3] == ["auth", "application-default", "login"]:
+        who = at(words, 2 if words[1] == "login" else 3)
         return Switch("gcloud", who, f"the Google account {who or '(chosen at login)'} (gcloud {' '.join(words[:3])})")
     return None
+
+
+def gcloud_impersonate(cmd: Cmd) -> Switch | None:
+    """`--impersonate-service-account` on any gcloud command, or set as the default with `gcloud config set`."""
+    words = positionals(cmd.args, GCLOUD_VALUES)
+    if cmd.name != "gcloud":
+        return None
+    who = shown(value(cmd.args, "--impersonate-service-account"), cmd.env)
+    if who is None and words[:2] == ["config", "set"] and at(words, 2) == "auth/impersonate_service_account":
+        who = at(words, 3) or ""
+    if who is None:
+        return None
+    return Switch("gcloud", who or None, f"the impersonated service account {who or '(not named)'} (gcloud)")
 
 
 def az(cmd: Cmd) -> Switch | None:
@@ -189,7 +205,21 @@ def file_write(cmd: Cmd) -> Switch | None:
     return None
 
 
-def switches(cmd: Cmd) -> list[Switch]:
+def powershell_env(cmd: Cmd, raw: str) -> list[Switch]:
+    """`$env:AWS_PROFILE = "p"`: the parser lowercases that word, so the values are read from the line it confirms."""
+    name, eq, _ = cmd.name[len("$env:") :].partition("=") if cmd.name.startswith("$env:") else ("", "", "")
+    name = name.upper()
+    if name not in (*AWS_PROFILE_ENV, *AWS_KEY_ENV) or not (eq or cmd.args[:1] == ["="]):
+        return []
+    values = {m.group(1).upper(): next(g for g in m.groups()[1:] if g is not None) for m in PS_ENV.finditer(raw)}
+    env = {name: values.get(name, "$" + name)}
+    if "AWS_ACCESS_KEY_ID" in values:
+        env.setdefault("AWS_ACCESS_KEY_ID", values["AWS_ACCESS_KEY_ID"])
+    return aws_env(env) if name in AWS_PROFILE_ENV else aws_env(env)[-1:]
+
+
+def switches(cmd: Cmd, raw: str = "") -> list[Switch]:
     """Every switch one simple command makes; a read-only `aws` command passes whatever its environment holds."""
-    found = [hit for check in (aws, gcloud, az, kubectl, file_write) if (hit := check(cmd))]
+    found = [hit for check in (aws, gcloud, gcloud_impersonate, az, kubectl, file_write) if (hit := check(cmd))]
+    found += powershell_env(cmd, raw)
     return found if aws_read(cmd) else [*found, *aws_env(cmd.env)]

@@ -10,8 +10,8 @@ import pytest
 import yaml
 from agentseam.vendor_config import VENDOR_CONFIG
 from chock import vendors
-from chock.plugin import bundle_build
-from label_honesty import status_label
+from chock.plugin import bundle_build, bundle_grade
+from label_honesty import ASK_ONLY_GUARDS, GUARD_ASKS, GUARD_REFUSES, honest_guard, status_label
 from mechanism import NONE, classify
 from trees import ROOT, policy_dirs
 
@@ -110,3 +110,32 @@ def test_a_catalog_policy_cannot_take_the_user_prefix(monkeypatch, capsys) -> No
 
 def test_no_published_policy_uses_the_user_prefix() -> None:
     assert check_registry.reserved_ids(list(ROWS)) == []
+
+
+@pytest.mark.parametrize("pid", ASK_ONLY_GUARDS)
+def test_an_ask_only_guard_has_no_refusing_exit(pid: str) -> None:
+    """The catalog may label a guard as asking only while nothing it ships or proves refuses."""
+    impl = ROOT / ROWS[pid]["path"] / "implementations"
+    source = "\n".join(p.read_text(encoding="utf-8") for p in impl.glob("*.py"))
+    assert not re.search(r"\bBLOCK\b|return 1\b|exit\(1\)", source)
+    suite = yaml.safe_load((ROOT / ROWS[pid]["path"] / "evals" / "suite.yaml").read_text(encoding="utf-8"))
+    verdicts = {c["execute"]["expect"] for c in suite["suite"]["cases"] if c.get("execute")}
+    assert verdicts == {"ask", "allow"}
+
+
+@pytest.mark.parametrize("pid", ASK_ONLY_GUARDS)
+def test_an_ask_only_guard_asks_where_the_client_can_prompt_and_refuses_elsewhere(pid: str) -> None:
+    label = ROWS[pid]["label"]
+    assert label["claude-code"]["keyword"] == label["copilot"]["keyword"] == "ask"
+    assert label["claude-code"]["says"] == GUARD_ASKS
+    for key in ("cursor", "codex", "devin"):
+        assert label[key]["keyword"] == "block"
+        assert label[key]["says"].startswith(GUARD_REFUSES)
+
+
+def test_honest_guard_leaves_other_policies_and_grades_alone() -> None:
+    assert honest_guard("block-secret-store-reads", bundle_grade.BLOCKS, "x", "claude_code") == (
+        bundle_grade.BLOCKS,
+        "x",
+    )
+    assert honest_guard(ASK_ONLY_GUARDS[0], bundle_grade.ADVISORY, "x", "claude_code") == (bundle_grade.ADVISORY, "x")

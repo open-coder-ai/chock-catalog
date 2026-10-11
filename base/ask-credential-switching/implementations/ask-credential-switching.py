@@ -26,10 +26,10 @@ SHOWN = 3
 
 
 def found(raw: str) -> list[shapes.Switch]:
-    """Each switch the line makes, in order; a trailing no-op command carries what the line exports."""
+    """Each identity the line switches to, once, in order; a trailing no-op command carries what the line exports."""
     out: list[shapes.Switch] = []
     for cmd in commands(f"{raw}\n:"):
-        out += [hit for hit in shapes.switches(cmd) if hit not in out]
+        out += [hit for hit in shapes.switches(cmd, raw) if hit[:2] not in {seen[:2] for seen in out}]
     return out
 
 

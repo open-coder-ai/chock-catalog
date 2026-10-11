@@ -232,7 +232,7 @@ def test_reads_and_unrelated_forms_pass(command: str, tmp_path: Path) -> None:
         "export AWS_SHARED_CREDENTIALS_FILE=/tmp/creds",
         "export KUBECONFIG=~/prod.kubeconfig",
         "gcloud compute instances list --account ops@example.com",
-        "gcloud run deploy --impersonate-service-account admin@p.iam.gserviceaccount.com",
+        "Set-Item Env:AWS_PROFILE prod",
         "kubectl --context prod delete pod x",
         "kubectx prod",
         "export CLOUDSDK_CORE_ACCOUNT=ops@example.com",
