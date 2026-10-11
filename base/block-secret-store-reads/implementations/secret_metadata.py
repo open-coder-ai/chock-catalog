@@ -85,15 +85,14 @@ def canonical(host: str) -> str:
     """A host as one comparable string: dotted-quad IPv4, compressed IPv6, or a lowercase name without a trailing dot.
     IPv4 written as IPv4-mapped, IPv4-compatible or NAT64 IPv6 reads as the IPv4 address."""
     host = unquote(host).strip().lower()
-    if host.startswith("[") and host.endswith("]"):
-        host = host[1:-1].split("%", 1)[0]
-        try:
-            six = ipaddress.IPv6Address(host)
-        except ValueError:
-            return host
-        four = six.ipv4_mapped or (
-            ipaddress.IPv4Address(int(six) & 0xFFFFFFFF) if any(six in n for n in NAT64) else None
-        )
+    inner = host[1:-1] if host.startswith("[") and host.endswith("]") else host
+    try:
+        six = ipaddress.IPv6Address(inner.split("%", 1)[0])
+    except ValueError:
+        six = None
+    if six is not None:
+        embedded = any(six in net for net in NAT64)
+        four = six.ipv4_mapped or (ipaddress.IPv4Address(int(six) & 0xFFFFFFFF) if embedded else None)
         return str(four or six)
     number = _ipv4(host)
     return str(ipaddress.IPv4Address(number)) if number is not None else host.rstrip(".")
@@ -108,8 +107,6 @@ def split(word: str) -> tuple[str, str]:
     hostport = authority.rpartition("@")[2]
     host = hostport[: hostport.index("]") + 1] if hostport.startswith("[") and "]" in hostport else hostport
     host = host if host.startswith("[") else host.split(":", 1)[0]
-    if host.count(":") > 1 and not host.startswith("["):
-        host = f"[{host}]"
     path = re.split(r"[?#]", after, maxsplit=1)[0]
     return canonical(host), "/" + "/".join(store.collapse(unquote(path)))
 
