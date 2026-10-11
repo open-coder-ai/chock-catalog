@@ -1409,27 +1409,28 @@ policies:
     add, git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.'
 - id: block-secret-store-reads
   path: base/block-secret-store-reads
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 89
-  eval_executed: 89
+  eval_cases: 115
+  eval_executed: 115
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     codex: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     copilot: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     devin: {"keyword": "block", "says": "refuses a matched shell command before it runs; fails open: a hook error lets the call proceed (vendor docs only, not witnessed)"}
-    misses: "scripts, unresolved variables, xargs lists, $(...) results."
-  description: 'Best-effort guard against an agent reading credentials from the shell: cat, grep, sed,
-    cp, tar, base64, source or < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, ~/.netrc, ~/.kube, ~/.gnupg,
-    agent CLI dirs, browser login DBs, wallets, .env (not .env.example), *.tfstate; interpreter one-liners
-    naming them; gh auth token, aws sts get-session-token, git credential fill. Asks on env/printenv
-    dumps. Misses: scripts, unresolved variables, xargs lists, $(...) results.'
+    misses: "scripts, unresolved variables, xargs lists, $(...) results, metadata reached by DNS name, proxy or SDK."
+  description: 'Best-effort guard against an agent reading credentials from the shell: cat, cp, tar,
+    source or < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, agent CLI dirs, browser DBs, wallets, .env,
+    *.tfstate; interpreter one-liners naming them; token printers (gh auth token, aws sts); curl, wget
+    or iwr to cloud metadata credential paths (169.254.169.254, 169.254.170.2, GCE). Asks on env dumps.
+    Misses: scripts, unresolved variables, xargs lists, $(...) results, metadata reached by DNS name,
+    proxy or SDK.'
 - id: guard-deletion
   path: base/guard-deletion
   version: 0.0.2
