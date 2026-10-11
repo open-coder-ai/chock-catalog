@@ -11,8 +11,8 @@ Open-source guardrails for AI coding agents: rules the agent reads, checks that 
 [chock](https://github.com/open-coder-ai/chock) · [chock-catalog](https://github.com/open-coder-ai/chock-catalog) · chock.sh (launching soon)
 
 <p>
-<img alt="71 policies" src="https://img.shields.io/badge/policies-71-blue">
-<img alt="46 enforced" src="https://img.shields.io/badge/enforced-46-brightgreen">
+<img alt="72 policies" src="https://img.shields.io/badge/policies-72-blue">
+<img alt="47 enforced" src="https://img.shields.io/badge/enforced-47-brightgreen">
 <img alt="25 advisory" src="https://img.shields.io/badge/advisory-25-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -237,6 +237,7 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | [`rtk-dangerous-actions-blocker`](docs/rtk-dangerous-actions-blocker/) | deprecated -- use `block-destructive-commands`, which shares its destructive-command table; adds its own rows for credential-file reads and inline `*_API_KEY` values | 105/105 |
 | [`block-unguarded-agent-spawn`](docs/block-unguarded-agent-spawn/) | Refuses launching a coding agent with its approvals or sandbox off (`claude --dangerously-skip-permissions`, `codex --yolo`, `gemini --yolo`); OWASP ASI10. | 58/58 |
 | [`block-secret-store-reads`](docs/block-secret-store-reads/) | Refuses a shell read of a credential store (`cat ~/.npmrc`, `tar ~/.ssh`, `cp .env`, `*.tfstate`) and token printers (`gh auth token`, `git credential fill`); asks before an `env` dump; OWASP ASI03. | 115/115 |
+| [`ask-credential-switching`](docs/ask-credential-switching/) | Asks a person before a shell command switches cloud or cluster identity (`aws --profile`, `AWS_PROFILE=`, `sts assume-role`, `gcloud config set account`, `az account set`, `kubectl config use-context`); names on a person-only allowlist pass; never refuses; OWASP ASI03. | 56/56 |
 | [`block-persistence-shapes`](docs/block-persistence-shapes/) | Refuses shell commands that publish or keep access after the session — `npm`/`twine`/`cargo`/`docker push` and registry-auth edits, repos made public, user services, launch agents, cron, Run keys, `authorized_keys`, runner registration, sudoers, setuid bits, detached downloads; **asks** before `gh release create`, `git remote add` and `git push` to a URL. Best effort on the command text; OWASP ASI03, ASI10 | 109/109 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
@@ -292,7 +293,7 @@ Every policy is labelled with what it actually reaches. The label is stated up f
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 35 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 11 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
 | `advisory` | text an agent reads and may or may not follow | 25 |
 
 Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay. No agent reaches `enforced` today: commit-time enforcement is git's, and at tool use the best an agent gets is best-effort. OWASP mappings are partial, and the engine is frozen at the commit above. Chock does not stop every attack: it closes common, known entry points before they ship.
