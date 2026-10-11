@@ -118,11 +118,11 @@ def test_a_bad_today_is_a_usage_error(value: str, capsys: pytest.CaptureFixture[
 def test_the_script_runs_on_its_own() -> None:
     script = ROOT / "tools" / "check_data_tables.py"
     done = subprocess.run(
-        [sys.executable, script, "--today", "2026-10-02"], capture_output=True, text=True, check=False
+        [sys.executable, script, "--today", "2026-10-10"], capture_output=True, text=True, check=False
     )
     assert done.returncode == 0
     assert done.stdout.startswith("data tables: ")
-    assert done.stdout.endswith(" checked, fresh on 2026-10-02\n")
+    assert done.stdout.endswith(" checked, fresh on 2026-10-10\n")
 
 
 @pytest.mark.parametrize(

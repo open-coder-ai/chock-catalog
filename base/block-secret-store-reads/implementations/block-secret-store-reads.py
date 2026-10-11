@@ -19,6 +19,7 @@ from itertools import takewhile
 
 FAULT: ImportError | None = None
 try:
+    import secret_metadata as metadata
     import secret_paths as store
     import secret_printers as printers
     import secret_readers as readers
@@ -39,6 +40,15 @@ def refuse(what: str) -> Verdict:
     return BLOCK, (
         f"BLOCKED: {what} would put a credential into the agent's context. Ask the person for the one value "
         "you need, or have them run the command themselves."
+    )
+
+
+def refuse_metadata(what: str) -> Verdict:
+    return BLOCK, (
+        f"BLOCKED: a request to {what} can return cloud credentials into the agent's context. Use the cloud "
+        "CLI or SDK, which reads them without printing them; read only the region or instance id from the "
+        "metadata paths left open (for example /latest/meta-data/placement/region); or ask the person for the "
+        "one value you need."
     )
 
 
@@ -63,8 +73,9 @@ def decode(match: re.Match[str]) -> str:
 class Guard:
     """Judges commands in order, following `cd` so relative paths resolve where the shell would."""
 
-    def __init__(self, table: store.Table) -> None:
+    def __init__(self, table: store.Table, endpoints: metadata.Table) -> None:
         self.table = table
+        self.endpoints = endpoints
         self.cwd: tuple[str, ...] | None = None
 
     def path_hit(self, path: str, cmd: Cmd, *, walk: bool = False) -> store.Hit | None:
@@ -140,6 +151,8 @@ class Guard:
         if cmd.name in ("cd", "pushd"):
             self.chdir(cmd)
             return None
+        if what := metadata.request(cmd, self.endpoints, interpreter=self.interpreter(cmd.name)):
+            return refuse_metadata(what)
         if found := self.reads(cmd) or self.script(cmd) or self.git(cmd) or self.find_exec(cmd):
             return verdict(found)
         what = printers.printer(cmd, self.table.printers)
@@ -171,11 +184,11 @@ def strongest(found: list[Verdict]) -> Verdict:
 def check(raw: str) -> Verdict:
     """The verdict for a command line, read as written, with backslash paths read as slashes (Windows) and with
     `$'..'` quoting decoded; each `$(...)` and backtick body is judged as a command line of its own."""
-    table = store.load()
+    table, endpoints = store.load(), metadata.load()
     texts = dict.fromkeys((raw, raw.replace("\\", "/"), ANSI_C.sub(decode, raw)))
     found = []
     for text in texts:
-        guard = Guard(table)
+        guard = Guard(table, endpoints)
         found += [guard.judge_all(line) for line in dict.fromkeys((text, *printers.substitutions(text)))]
     return strongest([*found, confirm(printers.DUMP) if printers.dump(raw) else None])
 
