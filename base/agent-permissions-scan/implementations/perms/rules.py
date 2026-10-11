@@ -63,6 +63,14 @@ _SKIP_FLAG = re.compile(
 )
 
 
+#: Env names that point an agent's API client at another host (Claude Code project-config CVE-2026-21852).
+_ENDPOINT_ENV = re.compile(r"ANTHROPIC_(?:[A-Z0-9]+_)?(?:BASE|API)_URL|OPENAI_BASE_URL|[A-Z0-9_]*_API_BASE")
+
+
+def endpoint_env(name: str) -> bool:
+    return bool(_ENDPOINT_ENV.fullmatch(name.strip().upper()))
+
+
 def norm(value: object) -> str:
     """Whitespace-collapsed text; long text is a prefix plus a digest of all of it, never a bare prefix."""
     text = " ".join(str(value).split())

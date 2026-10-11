@@ -53,7 +53,7 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~365 tokens (chars/4, max 2000)
+INDEX.md: ~389 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-secret-store-reads:
   claude: best-effort (live-run)
@@ -83,7 +83,7 @@ Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 hook entr(y/ies) in .windsurf/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~365 tokens (chars/4, max 2000)
+INDEX.md: ~389 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -185,9 +185,35 @@ block-secret-store-reads  [deterministic]
   PASS  tc-087                             authored  guard exit 0
   PASS  tc-088                             authored  guard exit 0
   PASS  tc-089                             authored  guard exit 0
+  PASS  tc-090                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-091                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-092                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-093                             authored  BLOCKED: a request to the Google Compute Engine metadata server (me…
+  PASS  tc-094                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-095                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-096                             authored  BLOCKED: a request to the AWS instance metadata service over IPv6 (…
+  PASS  tc-097                             authored  BLOCKED: a request to the ECS task credential endpoint ($AWS_CONTAI…
+  PASS  tc-098                             authored  BLOCKED: a request to the Amazon ECS task credential endpoint (169.…
+  PASS  tc-099                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-100                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-101                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-102                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-103                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-104                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-105                             authored  BLOCKED: a request to the cloud instance metadata service (169.254.…
+  PASS  tc-106                             authored  guard exit 0
+  PASS  tc-107                             authored  guard exit 0
+  PASS  tc-108                             authored  guard exit 0
+  PASS  tc-109                             authored  guard exit 0
+  PASS  tc-110                             authored  guard exit 0
+  PASS  tc-111                             authored  guard exit 0
+  PASS  tc-112                             authored  guard exit 0
+  PASS  tc-113                             authored  guard exit 0
+  PASS  tc-114                             authored  guard exit 0
+  PASS  tc-115                             authored  guard exit 0
   score 1.00
 
-5 policies: 89 pass, 41 skipped
+5 policies: 115 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -212,6 +238,6 @@ block-secret-store-reads  [deterministic]
 
 ```text
 - **block-secret-store-reads**:
-  never(read|print): credential_stores(~/.ssh(not_*.pub)|~/.aws|~/.npmrc|~/.netrc|~/.kube|~/.gnupg|agent_cli_dirs|browser_dbs|wallets|.env(not_.env.example)|*.tfstate)|tokens(gh_auth_token|aws_sts|git_credential_fill), via(cat|grep|sed|cp|tar|base64|source|<|interpreter)
+  never(read|print): credential_stores(~/.ssh(not_*.pub)|~/.aws|~/.npmrc|~/.netrc|~/.kube|~/.gnupg|agent_cli_dirs|browser_dbs|wallets|.env(not_.env.example)|*.tfstate)|tokens(gh_auth_token|aws_sts|git_credential_fill)|metadata_creds(169.254.169.254|169.254.170.2|fd00:ec2::254|metadata.google.internal), via(cat|grep|sed|cp|tar|base64|source|<|interpreter|curl|wget)
   ask: env|printenv|set|export_-p  # dumps every secret; if(value_needed): ask_person_for_that_value
 ```

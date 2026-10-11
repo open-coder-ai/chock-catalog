@@ -1,17 +1,17 @@
 id: block-secret-store-reads
 name: "Block Secret Store Reads"
-version: "0.0.3"
+version: "0.0.4"
 description: >
-  Best-effort guard against an agent reading credentials from the shell: cat, grep, sed, cp,
-  tar, base64, source or < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, ~/.netrc, ~/.kube, ~/.gnupg,
-  agent CLI dirs, browser login DBs, wallets, .env (not .env.example), *.tfstate; interpreter
-  one-liners naming them; gh auth token, aws sts get-session-token, git credential fill. Asks on
-  env/printenv dumps. Misses: scripts, unresolved variables, xargs lists, $(...) results.
+  Best-effort guard against an agent reading credentials from the shell: cat, cp, tar, source or
+  < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, agent CLI dirs, browser DBs, wallets, .env, *.tfstate;
+  interpreter one-liners naming them; token printers (gh auth token, aws sts); curl, wget or iwr to cloud
+  metadata credential paths (169.254.169.254, 169.254.170.2, GCE). Asks on env dumps. Misses: scripts,
+  unresolved variables, xargs lists, $(...) results, metadata reached by DNS name, proxy or SDK.
 artifact: rule
 enforcement: advise
 rule:
   text: |
-    never(read|print): credential_stores(~/.ssh(not_*.pub)|~/.aws|~/.npmrc|~/.netrc|~/.kube|~/.gnupg|agent_cli_dirs|browser_dbs|wallets|.env(not_.env.example)|*.tfstate)|tokens(gh_auth_token|aws_sts|git_credential_fill), via(cat|grep|sed|cp|tar|base64|source|<|interpreter)
+    never(read|print): credential_stores(~/.ssh(not_*.pub)|~/.aws|~/.npmrc|~/.netrc|~/.kube|~/.gnupg|agent_cli_dirs|browser_dbs|wallets|.env(not_.env.example)|*.tfstate)|tokens(gh_auth_token|aws_sts|git_credential_fill)|metadata_creds(169.254.169.254|169.254.170.2|fd00:ec2::254|metadata.google.internal), via(cat|grep|sed|cp|tar|base64|source|<|interpreter|curl|wget)
     ask: env|printenv|set|export_-p  # dumps every secret; if(value_needed): ask_person_for_that_value
 effects:
 - read_only
@@ -31,7 +31,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-10T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-10'
+  changes:
+  - "Refuses shell requests to cloud instance-metadata credential endpoints (plan G4): 169.254.169.254 (AWS, Azure, GCP and OCI paths), fd00:ec2::254, metadata.google.internal and the ECS task endpoint 169.254.170.2, also through $AWS_CONTAINER_CREDENTIALS_RELATIVE_URI or _FULL_URI. Read from curl, wget, httpie, xh, aria2c, iwr/Invoke-WebRequest, irm/Invoke-RestMethod, nc, ncat and telnet arguments, a /dev/tcp or /dev/udp redirect, and interpreter one-liners and heredocs. Every path is refused except a short list that holds no credential: AWS placement/region, availability-zone, instance-id, instance-type, ami-id, hostnames, local-ipv4, the unsigned identity document and the IMDSv2 session token (bound to the instance); GCE zone, id, name, hostname, machine-type and project ids; Azure compute location, zone, vmSize, vmId, name, resourceGroupName and osType; OCI region, availability domain, id, shape and display name; ECS task metadata v2/v3/v4. The address is read as curl reads it (decimal, hex, octal and short IPv4 forms, IPv4-mapped and NAT64 IPv6, a trailing dot, userinfo), the path percent-decoded once with dot segments resolved, and variables assigned earlier in the line and brace lists expanded. In interpreter code an allowed URL must be a whole string literal, and a metadata address with no URL around it is refused (its path is built elsewhere). The endpoint table is a curated data file (implementations/data/metadata_endpoints.json, 365-day freshness). Not caught: a metadata address reached through a DNS name of its own, an unresolved variable, curl --resolve/--connect-to or a proxy, a URL list file (wget -i), curl [a-b] range globs, socat, other link-local providers (for example Alibaba 100.100.100.200), an address spelled in another form inside interpreter code, and a cloud CLI or SDK, which reads the credentials without printing them. False positive: data or an output name that is itself a metadata credential URL in a fetcher's arguments."
 - version: 0.0.3
   date: '2026-10-07'
   changes:
