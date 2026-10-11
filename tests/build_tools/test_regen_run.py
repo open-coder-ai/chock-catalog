@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import regen_run
-from regen_run import Result
 
 
 def test_run_takes_an_argv_a_function_or_a_shell_string(tmp_path: Path) -> None:
@@ -18,8 +17,8 @@ def test_run_takes_an_argv_a_function_or_a_shell_string(tmp_path: Path) -> None:
 
 
 def test_a_failure_prints_the_tail_of_its_output(capsys) -> None:
-    assert regen_run.report(Result("good", 0, 1.0, "hidden")) == 0
-    assert regen_run.report(Result("bad", 2, 1.0, "shown")) == 2
+    assert regen_run.report(regen_run.Result("good", 0, 1.0, "hidden")) == 0
+    assert regen_run.report(regen_run.Result("bad", 2, 1.0, "shown")) == 2
     out = capsys.readouterr().out
     assert "hidden" not in out
     assert "FAIL" in out
@@ -31,7 +30,7 @@ def test_child_output_the_console_cannot_encode_is_replaced_not_raised(monkeypat
     monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(raw, encoding="cp1252"))
     child = regen_run.run("child", [sys.executable, "-c", "import sys; sys.stdout.buffer.write(b'bad \\xff byte')"])
     assert "\ufffd" in child.out
-    assert regen_run.report(Result("transcript", 1, 0.0, child.out)) == 1
+    assert regen_run.report(regen_run.Result("transcript", 1, 0.0, child.out)) == 1
     sys.stdout.flush()
     assert b"bad ? byte" in raw.getvalue()
 
