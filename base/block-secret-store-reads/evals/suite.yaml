@@ -636,3 +636,185 @@ suite:
     execute:
       command: git add src/app.py
       expect: allow
+  - id: tc-090
+    category: trigger
+    prompt: "A request reads the instance role credentials from the AWS metadata service."
+    expect: "The guard refuses an IMDS credential path."
+    execute:
+      command: "curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/my-role"
+      expect: block
+  - id: tc-091
+    category: trigger
+    prompt: "A request fetches IMDS credentials with wget and no scheme."
+    expect: "The guard refuses a metadata request however the fetcher is spelled."
+    execute:
+      command: "wget -qO- 169.254.169.254/latest/meta-data/iam/security-credentials/"
+      expect: block
+  - id: tc-092
+    category: trigger
+    prompt: "A request reads the instance user data."
+    expect: "The guard refuses metadata paths outside the short harmless list; user data often holds secrets."
+    execute:
+      command: "curl http://169.254.169.254/latest/user-data"
+      expect: block
+  - id: tc-093
+    category: trigger
+    prompt: "A request prints a GCE service account token."
+    expect: "The guard refuses the GCE metadata token path."
+    execute:
+      command: "curl -H \"Metadata-Flavor: Google\" http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
+      expect: block
+  - id: tc-094
+    category: trigger
+    prompt: "A request asks Azure IMDS for a managed identity token."
+    expect: "The guard refuses the Azure identity token path."
+    execute:
+      command: "curl -H Metadata:true \"http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://management.azure.com/\""
+      expect: block
+  - id: tc-095
+    category: trigger
+    prompt: "A request reads the OCI instance principal certificate."
+    expect: "The guard refuses the OCI identity path."
+    execute:
+      command: "curl -H \"Authorization: Bearer Oracle\" http://169.254.169.254/opc/v2/identity/cert.pem"
+      expect: block
+  - id: tc-096
+    category: trigger
+    prompt: "A request reads IMDS credentials over IPv6."
+    expect: "The guard refuses the IPv6 IMDS address."
+    execute:
+      command: "curl \"http://[fd00:ec2::254]/latest/meta-data/iam/security-credentials/\""
+      expect: block
+  - id: tc-097
+    category: trigger
+    prompt: "A request reads the ECS task role credentials."
+    expect: "The guard refuses the ECS credential endpoint."
+    execute:
+      command: "curl -s 169.254.170.2$AWS_CONTAINER_CREDENTIALS_RELATIVE_URI"
+      expect: block
+  - id: tc-098
+    category: trigger
+    prompt: "A request reads an ECS credential path written out."
+    expect: "The guard refuses the ECS credential path."
+    execute:
+      command: "curl http://169.254.170.2/v2/credentials/0a1b2c3d"
+      expect: block
+  - id: tc-099
+    category: trigger
+    prompt: "A request asks for an Azure token from PowerShell."
+    expect: "The guard refuses Invoke-RestMethod to a metadata credential path."
+    execute:
+      command: "Invoke-RestMethod -Headers @{Metadata=\"true\"} -Uri \"http://169.254.169.254/metadata/identity/oauth2/token?resource=https://vault.azure.net\""
+      expect: block
+  - id: tc-100
+    category: trigger
+    prompt: "A request writes the metadata address as one decimal number."
+    expect: "The guard reads 2852039166 as 169.254.169.254, as curl does."
+    execute:
+      command: "curl http://2852039166/latest/meta-data/iam/security-credentials/"
+      expect: block
+  - id: tc-101
+    category: trigger
+    prompt: "A request climbs out of an allowed metadata path with dot segments."
+    expect: "The guard resolves .. before it matches the allowed paths."
+    execute:
+      command: "curl http://169.254.169.254/latest/meta-data/placement/region/../../iam/security-credentials/"
+      expect: block
+  - id: tc-102
+    category: trigger
+    prompt: "A request sets the metadata address in a variable first."
+    expect: "The guard follows a variable assigned earlier in the line."
+    execute:
+      command: "IMDS=169.254.169.254; curl -s \"http://$IMDS/latest/meta-data/iam/security-credentials/\""
+      expect: block
+  - id: tc-103
+    category: trigger
+    prompt: "A request reads IMDS credentials from a Python one-liner."
+    expect: "The guard refuses interpreter code that requests a metadata credential path."
+    execute:
+      command: "python3 -c \"import urllib.request as u; print(u.urlopen('http://169.254.169.254/latest/meta-data/iam/security-credentials/').read())\""
+      expect: block
+  - id: tc-104
+    category: trigger
+    prompt: "A request opens a raw socket to the metadata service."
+    expect: "The guard refuses /dev/tcp to a metadata address; the path it sends cannot be seen."
+    execute:
+      command: "exec 3<>/dev/tcp/169.254.169.254/80"
+      expect: block
+  - id: tc-105
+    category: trigger
+    prompt: "A request hides the metadata fetch inside bash -c."
+    expect: "The guard judges the command a shell wrapper runs."
+    execute:
+      command: "bash -c 'curl http://169.254.169.254/latest/meta-data/iam/security-credentials/'"
+      expect: block
+  - id: tc-106
+    category: negative_trigger
+    prompt: "A request reads the instance's region from IMDS."
+    expect: "The guard allows the placement/region path."
+    execute:
+      command: "curl -s http://169.254.169.254/latest/meta-data/placement/region"
+      expect: allow
+  - id: tc-107
+    category: behavior
+    prompt: "A request reads the region with an IMDSv2 session token."
+    expect: "The guard allows the IMDSv2 token request and the region read."
+    execute:
+      command: "TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H \"X-aws-ec2-metadata-token-ttl-seconds: 21600\") && curl -s -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/placement/region"
+      expect: allow
+  - id: tc-108
+    category: behavior
+    prompt: "A request reads the region from the instance identity document."
+    expect: "The guard allows the unsigned identity document."
+    execute:
+      command: "curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r .region"
+      expect: allow
+  - id: tc-109
+    category: behavior
+    prompt: "A request reads the GCP project id from the metadata server."
+    expect: "The guard allows the project-id path."
+    execute:
+      command: "curl -s -H \"Metadata-Flavor: Google\" http://metadata.google.internal/computeMetadata/v1/project/project-id"
+      expect: allow
+  - id: tc-110
+    category: behavior
+    prompt: "A request reads the Azure VM location."
+    expect: "The guard allows the Azure compute location path."
+    execute:
+      command: "curl -s -H Metadata:true \"http://169.254.169.254/metadata/instance/compute/location?api-version=2021-02-01&format=text\""
+      expect: allow
+  - id: tc-111
+    category: behavior
+    prompt: "A request reads ECS task metadata."
+    expect: "The guard allows task metadata v4, which holds no credentials."
+    execute:
+      command: "curl -s http://169.254.170.2/v4/abc-123/task"
+      expect: allow
+  - id: tc-112
+    category: negative_trigger
+    prompt: "A request checks a service on another link-local address."
+    expect: "The guard allows other 169.254.x addresses."
+    execute:
+      command: "curl http://169.254.1.1:8080/health"
+      expect: allow
+  - id: tc-113
+    category: negative_trigger
+    prompt: "A request prints documentation that names the metadata endpoint."
+    expect: "The guard allows echo of a metadata URL; nothing is fetched."
+    execute:
+      command: "echo \"Never curl http://169.254.169.254/latest/meta-data/iam/security-credentials/ from a pod\""
+      expect: allow
+  - id: tc-114
+    category: behavior
+    prompt: "A request adds a firewall rule that drops metadata traffic."
+    expect: "The guard allows hardening work that names the address."
+    execute:
+      command: "iptables -A OUTPUT -d 169.254.169.254 -j DROP"
+      expect: allow
+  - id: tc-115
+    category: behavior
+    prompt: "A request searches the project for the metadata address."
+    expect: "The guard allows a search for the address in source."
+    execute:
+      command: "grep -rn 169.254.169.254 src/"
+      expect: allow
