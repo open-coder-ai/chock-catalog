@@ -1103,27 +1103,28 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.1.2
+  version: 0.2.0
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 43
-  eval_executed: 43
+  eval_cases: 58
+  eval_executed: 58
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     codex: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     copilot: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     devin: {"keyword": "block", "says": "refuses a matched shell command before it runs; fails open: a hook error lets the call proceed (vendor docs only, not witnessed)"}
-    misses: "config, aliases, scripts, ssh."
-  description: 'Best-effort guard against launching a coding agent with safety checks off: claude --dangerously-skip-permissions,
-    bypassPermissions or a wildcard --allowedTools; codex --full-auto, --yolo, --ask-for-approval never,
-    danger-full-access; gemini --yolo or --approval-mode yolo; cursor-agent --force; aider --yes-always;
-    copilot --allow-all-tools; amp, cline, goose, opencode auto-approve. Looks through cd, bash -c,
-    sudo, env, npx, uvx. Misses: config, aliases, scripts, ssh.'
+    misses: "config, aliases, scripts, ssh, other dsh ports, file bodies."
+  description: 'Best effort. Refuses agents with safety off: claude --dangerously-skip-permissions,
+    bypassPermissions, wildcard --allowedTools; codex --full-auto, --yolo, -a never, danger-full-access;
+    gemini --yolo; cursor-agent --force; aider --yes-always; copilot --allow-all-tools; amp, cline,
+    goose, opencode auto-approve; DeepSeek Harness 127.0.0.1:3080/api calls lifting sandbox/approvals
+    (CVE-2026-82533). Sees through bash -c, sudo, npx. Misses: config, aliases, scripts, ssh, other
+    dsh ports, file bodies.'
 - id: scan-suppression-markers
   path: base/scan-suppression-markers
   version: 0.0.1
