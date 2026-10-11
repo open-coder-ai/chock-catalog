@@ -12,14 +12,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 43 total, 43 executable |
+| **Eval cases** | 54 total, 54 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
+Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve, Claude project env API-endpoint overrides and enableAllProjectMcpServers. Misses: other MCP configs, user-level settings, scripts, Read.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> An agent permission config grants more than named, scoped actions (a bare or wildcard allow, a bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox), a deny entry is gone, or the config cannot be read. Scope the grant (Bash(npm test:*), a named tool list), keep the deny entry, use a mode that asks. A reviewed exception is a {file, path, value} entry under waive in .chock/devenv.json, added by a person in their own commit; in the agent only one already in HEAD counts, so an agent asks the person and never writes it.
+> An agent permission config grants more than named, scoped actions (a bare or wildcard allow, a bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox, a project env override of the API endpoint, every .mcp.json server enabled without a prompt), a deny entry is gone, or the config cannot be read. Scope the grant (Bash(npm test:*), a named tool list), keep the deny entry, use a mode that asks. Set an API endpoint in your own shell or user-level settings, and name the reviewed servers in enabledMcpjsonServers. A reviewed exception is a {file, path, value} entry under waive in .chock/devenv.json, added by a person in their own commit; in the agent only one already in HEAD counts, so an agent asks the person and never writes it.
 
 ## Which primitive it becomes
 
