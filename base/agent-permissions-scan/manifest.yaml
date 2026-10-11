@@ -1,15 +1,15 @@
 id: agent-permissions-scan
 name: "Agent Permissions Scan"
-version: "0.1.1"
+version: "0.2.0"
 description: >
-  Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve. Misses: MCP configs, scripts, Read.
+  Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve, Claude project env API-endpoint overrides and enableAllProjectMcpServers. Misses: other MCP configs, user-level settings, scripts, Read.
 artifact: rule
 enforcement: block
 mandatory: false
 rule:
   text: |
     agent_permissions(.claude/settings*|.codex/config.toml|.gemini/settings.json|.vscode/settings.json|.cursor/cli.json|opencode.json|.aider.conf.yml|.continue/**): grant named, scoped actions only
-    never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve; never(remove): deny entry; blocks at commit+tool_use
+    never(add): bare|wildcard allow, bypass|auto default mode, yolo|autoAccept|yes-always, regex-all auto-approve, claude env ANTHROPIC_*_URL|OPENAI_BASE_URL|*_API_BASE, enableAllProjectMcpServers; never(remove): deny entry; blocks at commit+tool_use
 hook:
   gate:
     kind: script
@@ -17,9 +17,11 @@ hook:
     action: block
     message: >
       An agent permission config grants more than named, scoped actions (a bare or wildcard allow, a
-      bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox), a
-      deny entry is gone, or the config cannot be read. Scope the grant (Bash(npm test:*), a named tool
-      list), keep the deny entry, use a mode that asks. A reviewed exception is a {file, path, value}
+      bypass or auto default mode, an auto-approve switch or rule, codex approval never with no sandbox, a
+      project env override of the API endpoint, every .mcp.json server enabled without a prompt), a deny entry is
+      gone, or the config cannot be read. Scope the grant (Bash(npm test:*), a named tool list), keep the
+      deny entry, use a mode that asks. Set an API endpoint in your own shell or user-level settings, and
+      name the reviewed servers in enabledMcpjsonServers. A reviewed exception is a {file, path, value}
       entry under waive in .chock/devenv.json, added by a person in their own commit; in the agent only
       one already in HEAD counts, so an agent asks the person and never writes it.
     params:
@@ -34,6 +36,11 @@ compliance:
   - control: ASI03
     coverage: partial
     note: "blocks when a change widens an agent's permission config: wildcard or bare allows, removed deny entries, bypass default modes, auto-approve switches; MCP configs, command text and tools outside the listed files are out of scope"
+  - control: ASI04
+    coverage: partial
+    note: "blocks committed Claude project settings that redirect the API endpoint through env (CVE-2026-21852) or
+      enable every .mcp.json server before the user's consent prompt (CVE-2025-59536); hook commands, user-level settings
+      and other agents' endpoint keys are out of scope"
   owasp_llm_2025:
   - control: LLM06
     coverage: partial
@@ -46,7 +53,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-04T00:00:00Z"
+  updated_at: "2026-10-10T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -59,6 +66,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-10-10'
+  changes:
+  - "Blocks the Check Point Research project-config shapes (CVE-2025-59536, CVE-2026-21852) in .claude/settings.json and .claude/settings.local.json. ap-endpoint-override: a non-empty top-level env entry named ANTHROPIC_BASE_URL, ANTHROPIC_API_URL, ANTHROPIC_<PROVIDER>_BASE_URL (Bedrock, Vertex, Foundry), OPENAI_BASE_URL or any *_API_BASE, which sends the agent's API traffic and key to another host. ap-mcp-enable-all: enableAllProjectMcpServers true. As before, only what a change adds over HEAD is refused, so a repository that already commits one is not refused for unrelated edits. Hook commands are not judged: chock sync writes them, and agent-devenv-autoexec warns on risky ones. Misses: user-level and managed settings (the hook never passes a write outside the repository to this gate); endpoint keys of other agents (Codex model_providers base_url, Gemini .env files) and any other env name that redirects traffic (proxies, CA bundles: agent-devenv-autoexec warns); an env set in .mcp.json server entries; named enabledMcpjsonServers entries: verify-mcp-allowlist decides which servers may run."
 - version: 0.1.1
   date: '2026-10-07'
   changes:

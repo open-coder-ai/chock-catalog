@@ -17,6 +17,7 @@ ALLOW, DENY, MODE, FLAG, VSCODE, SKIP = (
     "ap-skip-flag",
 )
 CODEX = "ap-codex-never-danger"
+ENDPOINT, MCP_ALL = "ap-endpoint-override", "ap-mcp-enable-all"
 ALLOW_KEYS = frozenset({"allow", "allowedtools", "allowedcommands", "allowed", "alwaysallow", "autoapprove", "tools"})
 #: Key names end in one of these (`claudeCode.initialPermissionMode`, `chat.tools.global.autoApprove`).
 MODE_ENDINGS = ("defaultmode", "permissionmode", "approvalmode")
@@ -154,6 +155,22 @@ def _surface(name: str, value: object, where: str, surface: str) -> Iterator[Hit
             yield Hit(FLAG, f"{where}.enabled", "false", "folder trust is off")
     if surface == "opencode" and name == "permission":
         yield from _opencode(value, where)
+    if surface == "claude":
+        yield from _claude_project(value, where)
+
+
+def _claude_project(value: object, where: str) -> Iterator[Hit]:
+    """Project settings that redirect the API endpoint or enable every .mcp.json server unreviewed."""
+    head, _, var = where.partition(".")
+    if head == "env" and var and "." not in var and rules.endpoint_env(var) and _set(value):
+        yield Hit(ENDPOINT, where, rules.norm(value), "an env override sends the agent's API traffic to another endpoint")
+    if where == "enableAllProjectMcpServers" and rules.truthy(value):
+        yield Hit(MCP_ALL, where, "true", "every .mcp.json server is enabled without a prompt")
+
+
+def _set(value: object) -> bool:
+    """A scalar that is not empty: an empty or null value sets nothing."""
+    return isinstance(value, (str, int, float)) and not isinstance(value, bool) and bool(str(value).strip())
 
 
 def _opencode(value: object, where: str) -> Iterator[Hit]:
