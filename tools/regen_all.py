@@ -16,11 +16,14 @@ are checked only once the plugin packages are known current.
 from __future__ import annotations
 
 import argparse
+import filecmp
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from importlib.util import find_spec
 from pathlib import Path
@@ -31,7 +34,12 @@ from gen_adoption_transcript import changed_policy_ids
 from trees import ROOT, TREES, policy_dirs
 
 PY = sys.executable
-Cmd = list[str] | str
+#: An argv (no shell, so cmd.exe and bash agree), a function returning (rc, output), or a bash script
+#: for the steps that only run on POSIX (the staged adopter).
+Cmd = list[str] | Callable[[], tuple[int, str]] | str
+#: Children print UTF-8 whatever the console's code page; `run` decodes it as UTF-8.
+CHILD_ENV = os.environ | {"PYTHONIOENCODING": "utf-8"}
+FIGURES = ROOT / "docs" / "figures"
 #: Written by `chock sync` with this machine's interpreter path. They are regenerated on purpose
 #: when the framework changes (tools/adopt_framework.py), never as a side effect of this tool.
 VENDOR_HOOK_CONFIGS = (
@@ -78,8 +86,7 @@ class Result(NamedTuple):
     out: str
 
 
-def run(label: str, cmd: Cmd, cwd: Path = ROOT) -> Result:
-    start = time.monotonic()
+def _capture(cmd: list[str] | str, cwd: Path) -> tuple[int, str]:
     proc = subprocess.run(
         cmd,
         cwd=cwd,
@@ -88,16 +95,40 @@ def run(label: str, cmd: Cmd, cwd: Path = ROOT) -> Result:
         encoding="utf-8",
         errors="replace",
         shell=isinstance(cmd, str),
+        env=CHILD_ENV,
         check=False,
     )
-    return Result(label, proc.returncode, time.monotonic() - start, (proc.stdout + proc.stderr).strip())
+    return proc.returncode, (proc.stdout + proc.stderr).strip()
+
+
+def run(label: str, cmd: Cmd, cwd: Path = ROOT) -> Result:
+    start = time.monotonic()
+    rc, out = cmd() if callable(cmd) else _capture(cmd, cwd)
+    return Result(label, rc, time.monotonic() - start, out)
+
+
+def say(text: str) -> None:
+    """Print what the console's encoding can show (cp1252 has no U+FFFD); never raise on it."""
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    print(text.encode(encoding, errors="replace").decode(encoding, errors="replace"))
 
 
 def report(result: Result) -> int:
-    print(f"  {'ok  ' if result.rc == 0 else 'FAIL'} {result.secs:6.1f}s  {result.label}")
+    say(f"  {'ok  ' if result.rc == 0 else 'FAIL'} {result.secs:6.1f}s  {result.label}")
     if result.rc:
-        print("\n".join("        " + line for line in result.out.splitlines()[-25:]))
+        say("\n".join("        " + line for line in result.out.splitlines()[-25:]))
     return result.rc
+
+
+def render_figures(figures: Path = FIGURES) -> tuple[int, str]:
+    """Run each make_*.py in `figures` (make_social writes to the working directory); stop at a failure."""
+    outs = []
+    for script in sorted(figures.glob("make_*.py")):
+        rc, out = _capture([PY, script.name], figures)
+        outs.append(out)
+        if rc:
+            return rc, "\n".join(outs)
+    return 0, "\n".join(outs)
 
 
 def plugin_build(tree: str, *, check: bool = False) -> list[str]:
@@ -131,11 +162,18 @@ def sync() -> int:
     return rc
 
 
-def regenerate(base: str) -> int:
+def regenerate(base: str, *, adopt: bool = False, transcripts: bool = True) -> int:
+    """Every derived file. `adopt` (tools/adopt_framework.py) also rewrites the installed packages and
+    vendor hook configs and re-makes every transcript (or none, without `transcripts`), not just the changed ones."""
     print("== regenerate (dependency order)")
     rc = report(run("lib copies (before packaging: plugins ship them)", [PY, "tools/gen_lib_copies.py"]))
+    if adopt:
+        rc = max(rc, report(run("plugin build (installed)", ["chock", "plugin", "build", "--repo", "."])))
     rc = max([rc] + [report(run(f"plugin build {tree}", plugin_build(tree))) for tree in TREES])
-    rc = max(rc, sync())
+    if adopt:
+        rc = max(rc, report(run("chock sync (recompile + hooks + index + lockfile)", ["chock", "sync", "--repo", "."])))
+    else:
+        rc = max(rc, sync())
     for update in (gen_registry.update_registry, gen_registry.update_readme, gen_registry.update_prose):
         start = time.monotonic()
         print(f"  ok   {time.monotonic() - start:6.1f}s  {update()}")
@@ -144,13 +182,17 @@ def regenerate(base: str) -> int:
         ("coverage matrix", [PY, "tools/gen_coverage_matrix.py"]),
         ("java-security setup contract", [PY, "tools/gen_java_security_contract.py"]),
         ("quickstart.sh", [PY, "tools/gen_quickstart_sh.py"]),
-        ("figures", f'cd docs/figures && for g in make_*.py; do "{PY}" "$g" || exit 1; done'),
+        ("figures", render_figures),
     ]
     if find_spec("cairosvg"):
-        steps.append(("brand card", f'cd docs/assets && "{PY}" gen_brand_assets.py'))
+        steps.append(("brand card", [PY, "docs/assets/gen_brand_assets.py"]))
     else:
         print("  skip          brand card: pip install cairosvg==2.9.0 to regenerate (CI checks the SVG)")
     rc = max([rc] + [report(run(label, cmd)) for label, cmd in steps])
+    if adopt:
+        if transcripts:
+            rc = max(rc, report(run("adoption transcripts", [PY, "tools/gen_adoption_transcript.py"])))
+        return rc
     published = {d.name for d in policy_dirs()}
     for pid in sorted(changed_policy_ids(base) & published):
         rc = max(
@@ -159,14 +201,27 @@ def regenerate(base: str) -> int:
     return rc
 
 
-def figures_check(scratch: Path) -> Cmd:
-    """Re-render the figures in a copy and diff: --check-only writes nothing in the tree."""
-    copy = scratch / "figures"
-    return (
-        f'mkdir -p "{copy}/docs" && cp -r docs/figures "{copy}/docs/" && cp registry.yaml "{copy}/" && '
-        f'(cd "{copy}/docs/figures" && for g in make_*.py; do "{PY}" "$g" >/dev/null || exit 1; done) && '
-        f'diff -r -x __pycache__ docs/figures "{copy}/docs/figures"'
-    )
+def differing(left: Path, right: Path) -> list[str]:
+    """Files that differ, or exist on one side only, between two trees (__pycache__ ignored)."""
+    cmp = filecmp.dircmp(left, right, ignore=["__pycache__"])
+    found = [f"{left / name}" for name in cmp.diff_files + cmp.left_only + cmp.right_only + cmp.funny_files]
+    return found + [f for sub in cmp.common_dirs for f in differing(left / sub, right / sub)]
+
+
+def figures_check(scratch: Path, root: Path = ROOT) -> Callable[[], tuple[int, str]]:
+    """Re-render the figures in a copy and compare: --check-only writes nothing in the tree."""
+
+    def check() -> tuple[int, str]:
+        copy = scratch / "figures" / "docs" / "figures"
+        shutil.copytree(root / "docs" / "figures", copy, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy2(root / "registry.yaml", scratch / "figures" / "registry.yaml")
+        rc, out = render_figures(copy)
+        if rc:
+            return rc, out
+        stale = differing(root / "docs" / "figures", copy)
+        return int(bool(stale)), "\n".join(f"stale: {path}" for path in stale)
+
+    return check
 
 
 def lagging_checks(scratch: Path) -> list[tuple[str, Cmd, tuple[str, ...]]]:
@@ -191,7 +246,7 @@ def lagging_checks(scratch: Path) -> list[tuple[str, Cmd, tuple[str, ...]]]:
         ("figures", figures_check(scratch), ("docs/figures/",)),
     ]
     if find_spec("cairosvg"):
-        card = f'cd docs/assets && "{PY}" gen_brand_assets.py --check'
+        card = [PY, "docs/assets/gen_brand_assets.py", "--check"]
         checks.append(("brand card --check", card, ("docs/assets/social-preview.svg",)))
     return checks
 
