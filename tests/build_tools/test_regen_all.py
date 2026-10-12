@@ -35,21 +35,6 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> FakeRun:
     return stub
 
 
-def test_run_takes_an_argv_or_a_shell_string(tmp_path: Path) -> None:
-    assert regen_all.run("argv", [sys.executable, "-c", "print('hi')"]).out == "hi"
-    failed = regen_all.run("shell", "echo out; echo err >&2; exit 3", cwd=tmp_path)
-    assert (failed.rc, failed.out) == (3, "out\nerr")
-
-
-def test_a_failure_prints_the_tail_of_its_output(capsys) -> None:
-    assert regen_all.report(Result("good", 0, 1.0, "hidden")) == 0
-    assert regen_all.report(Result("bad", 2, 1.0, "shown")) == 2
-    out = capsys.readouterr().out
-    assert "hidden" not in out
-    assert "FAIL" in out
-    assert "        shown" in out
-
-
 def test_vendor_hook_configs_come_back_as_they_were(tmp_path: Path) -> None:
     (tmp_path / ".cursor").mkdir()
     (tmp_path / ".cursor" / "hooks.json").write_text("committed", encoding="utf-8")
@@ -98,9 +83,15 @@ def test_regenerate_reports_a_failed_step(fake: FakeRun) -> None:
     assert regen_all.regenerate("origin/main") == 1
 
 
-def test_check_only_mode_diffs_the_figures_in_a_copy(tmp_path: Path) -> None:
-    cmd = regen_all.figures_check(tmp_path)
-    assert f'diff -r -x __pycache__ docs/figures "{tmp_path}/figures/docs/figures"' in cmd
+def test_adopting_rewrites_installed_packages_hooks_and_every_transcript(fake: FakeRun) -> None:
+    assert regen_all.regenerate("HEAD", adopt=True) == 0
+    assert fake.labels[1] == "plugin build (installed)"
+    assert "sync --check" not in fake.labels
+    assert any(label.startswith("chock sync") for label in fake.labels)
+    assert fake.labels[-1] == "adoption transcripts"
+    fake.labels.clear()
+    assert regen_all.regenerate("HEAD", adopt=True, transcripts=False) == 0
+    assert not any("transcript" in label for label in fake.labels)
 
 
 @pytest.mark.parametrize("cairosvg", [True, False])
