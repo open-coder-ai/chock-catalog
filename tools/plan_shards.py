@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Plan a full run's shards from the per-file times the last run on main recorded.
 
-    python tools/plan_shards.py junit OUT.json JUNIT.xml...   # per file: summed seconds, longest test, from junit files
+    python tools/plan_shards.py junit OUT.json JUNIT.xml... [--previous OLD.json]  # per file: seconds, longest test
     python tools/plan_shards.py plan TIMES.json               # JSON: shard count, each file's shard, files to split
     python tools/plan_shards.py check TIMES.json [--warn]     # a single test over the cap fails; near it is a warning
     python tools/plan_shards.py report PLAN.json JUNIT.xml... # markdown: slowest tests and files, shards planned vs actual
 
 A file's seconds are its tests' summed times; a shard runs them on WORKERS cores, so its wall time is that over
-WORKERS, but never less than its longest test, which one core runs alone. Whole files are packed longest first into
-the lightest shard. A file longer than a shard is not packed: its tests go to the shard their node id hashes to
-(shard_tests.slice_of), so the slices still partition the suite. With no times the plan is the plain four-way hash
-split. A missing, unreadable or old-format (file to seconds) TIMES file is no times. The cap is on one test, the one
-unit that cannot be split: a file of many short tests is balanced across shards and never fails it.
+WORKERS, but never less than its longest test, which one core runs alone. A shard has measured up to 1.4 times
+what that model plans (xdist's tail, startup, coverage); TARGET keeps that well inside the 9-minute job budget.
+Whole files are packed longest first into the lightest shard. A file longer than a shard is not packed: its tests
+go to the shard their node id hashes to (shard_tests.slice_of), so the slices still partition the suite. With no
+times the plan is the plain four-way hash split. A missing, unreadable or old-format (file to seconds) TIMES file is
+no times. The cap is on one test, the one unit that cannot be split: a file of many short tests is balanced across
+shards and never fails it. `junit --previous` keeps the old times of files no junit names, as when a shard timed out.
 """
 
 from __future__ import annotations
@@ -28,8 +30,8 @@ from typing import NamedTuple
 
 #: Cores on a hosted runner, which pytest -n auto spreads a shard's tests across.
 WORKERS = 4
-#: Wall seconds of tests one shard should take; with setup, a shard then runs about six minutes.
-TARGET = 270.0
+#: Planned wall seconds of tests per shard; at 1.4 times that, a shard runs about five minutes with setup.
+TARGET = 180.0
 MIN_SHARDS, MAX_SHARDS = 4, 16
 #: No single test may take longer than this on a full run: it fails the durations job on main.
 CAP = 300.0
@@ -97,6 +99,12 @@ def times_from_junit(paths: list[str], root: Path) -> dict[str, Times]:
                 longest = (seconds, test) if seconds > before.longest else (before.longest, before.test)
                 out[name] = Times(before.seconds + seconds, *longest)
     return dict(sorted(out.items()))
+
+
+def merged(found: dict[str, Times], previous: dict[str, Times], root: Path) -> dict[str, Times]:
+    """`found`, plus each `previous` file still on disk that `found` lacks: a dead shard's files keep their times."""
+    kept = {name: times for name, times in previous.items() if name not in found and (root / name).is_file()}
+    return dict(sorted({**kept, **found}.items()))
 
 
 def wall(times: Times, workers: int = WORKERS) -> float:
@@ -189,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
     junit = sub.add_parser("junit")
     junit.add_argument("out")
     junit.add_argument("inputs", nargs="+")
+    junit.add_argument("--previous", help="times to keep for files no junit file names")
     sub.add_parser("plan").add_argument("times")
     summary = sub.add_parser("report")
     summary.add_argument("plan")
@@ -199,6 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "junit":
         found = times_from_junit(args.inputs, Path.cwd())
+        found = merged(found, load(args.previous), Path.cwd()) if args.previous else found
         text = json.dumps({name: v._asdict() for name, v in found.items()}, indent=1)
         Path(args.out).write_text(text + "\n", encoding="utf-8")
         return 0
