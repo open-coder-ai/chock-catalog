@@ -114,7 +114,7 @@ def build_transcript(policy_dir: Path) -> str:
 
 
 def _git_names(root: Path, *args: str) -> list[str]:
-    proc = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8")
+    proc = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if proc.returncode != 0:
         raise SystemExit(f"git {' '.join(args)} failed:\n{proc.stderr}")
     return proc.stdout.splitlines()
