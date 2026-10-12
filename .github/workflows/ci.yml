@@ -423,7 +423,7 @@ jobs:
 
   # The test suite is CI's longest step, so a full run is shards that start together and a gate that joins
   # them. How many, and which whole test files each runs, is the plan the scope job cut from the time main last
-  # recorded for each file (tools/plan_shards.py): enough shards that each takes about six minutes with setup,
+  # recorded for each file (tools/plan_shards.py): enough shards that each takes about five minutes with setup,
   # four at the fewest. A shard keeps the tests of its files and, for a file too long to pack, the tests whose
   # node-id hash falls in its slice (conftest.py, tools/shard_tests.py) -- crc32, not Python's per-process
   # hash(), because every xdist worker must keep the same tests. The slices partition the suite -- none twice,
@@ -514,13 +514,13 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      # Main sums these into the file times the next run is planned from.
+      # Main sums these into the file times the next run is planned from, a failed shard's too.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        if: github.event_name == 'push'
+        if: always() && github.event_name == 'push'
         with:
           name: junit-shard-${{ matrix.shard }}
           path: junit-${{ matrix.shard }}.xml
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 1
 
   # Main records how long each test file took, and its longest single test, for the plan of every later run. The
@@ -528,10 +528,11 @@ jobs:
   # behind. Cap: no single test may take more than five minutes of wall time on a full run. A file of many
   # tests is balanced across shards, so its sum is never capped; one test cannot be split, so it is, and the
   # message names it and says to split it by activity. A timing cannot be a unit test, so this is where it is
-  # enforced. Nothing is exempt.
+  # enforced. Nothing is exempt. It runs when a shard fails too: a shard that timed out writes no junit, so its
+  # files keep the times main recorded before, and the next plan is cut from what the others measured.
   durations:
     needs: [scope, tests-shard]
-    if: github.event_name == 'push' && needs.scope.outputs.full == 'true'
+    if: always() && github.event_name == 'push' && needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -550,8 +551,18 @@ jobs:
         with:
           name: shard-plan
 
+      # The cache's path is part of its key, so the times come back under their saved name and are moved aside.
+      - name: Restore the file times main last recorded
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: test-durations.json
+          key: test-durations-${{ github.sha }}
+          restore-keys: test-durations-
+
       - name: Sum the junit times by test file and keep each file's longest test
-        run: python3 tools/plan_shards.py junit test-durations.json junit/junit-*.xml
+        run: |
+          if [ -f test-durations.json ]; then mv test-durations.json previous-durations.json; else echo '{}' > previous-durations.json; fi
+          python3 tools/plan_shards.py junit test-durations.json junit/junit-*.xml --previous previous-durations.json
 
       # The slow-test report: the 20 slowest tests, the 10 slowest files, and each shard's planned versus actual
       # time, in this run's summary. Read it before a shard drifts toward the 9-minute job budget.
