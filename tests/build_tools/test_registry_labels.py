@@ -4,14 +4,26 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
+from pathlib import Path
 
 import check_registry
 import pytest
 import yaml
+from agentseam import packaging
 from agentseam.vendor_config import VENDOR_CONFIG
 from chock import vendors
 from chock.plugin import bundle_build, bundle_grade
-from label_honesty import ASK_ONLY_GUARDS, GUARD_ASKS, GUARD_REFUSES, honest_guard, status_label
+from label_honesty import (
+    ASK_ONLY_GUARDS,
+    GUARD_ASKS,
+    GUARD_NOT_ENFORCED,
+    GUARD_SPLIT,
+    guard_can_ask,
+    honest_guard,
+    status_label,
+)
 from mechanism import NONE, classify
 from trees import ROOT, policy_dirs
 
@@ -30,13 +42,35 @@ def _manifest(pid: str) -> dict:
     return yaml.safe_load((ROOT / ROWS[pid]["path"] / "manifest.yaml").read_text(encoding="utf-8"))
 
 
+@pytest.fixture(scope="module")
+def guard_hooks(tmp_path_factory: pytest.TempPathFactory) -> dict[tuple[str, str], str]:
+    """The hooks file each ask-only guard's built package ships, per label key."""
+    out = tmp_path_factory.mktemp("built")
+    hooks = {}
+    for pid in ASK_ONLY_GUARDS:
+        tree = Path(ROWS[pid]["path"]).parent.as_posix()
+        subprocess.run(
+            [sys.executable, "-m", "chock", "plugin", "build", "--repo", str(ROOT), "--policies-dir", tree, "--format", "all",
+             "--policy", pid, "--out-dir", str(out / pid)],
+            check=True, capture_output=True, text=True,
+        )  # fmt: skip
+        for key, fmt in CLIENTS:
+            rel = packaging.supports(bundle_build.CLIENTS[fmt].package_agent, packaging.HOOKS)
+            hooks[pid, key] = (out / pid / fmt / pid / rel).read_text(encoding="utf-8")
+    return hooks
+
+
 @pytest.mark.parametrize(("key", "fmt"), CLIENTS)
-def test_a_label_asks_only_where_the_client_can_prompt(key: str, fmt: str) -> None:
+def test_a_label_asks_only_where_the_client_can_prompt(
+    key: str, fmt: str, guard_hooks: dict[tuple[str, str], str]
+) -> None:
+    """An ask-only guard is held to the events it is wired at; every other label to the client's pre-tool event."""
     agent = bundle_build.CLIENTS[fmt].agent
-    honours = VENDOR_CONFIG[agent]["verdicts"]["gates"][vendors.pre_tool_event(agent)]["honours_escalate"]
+    honours = VENDOR_CONFIG[agent]["verdicts"]["gates"].get(vendors.pre_tool_event(agent), {}).get("honours_escalate")
     for pid, row in ROWS.items():
         if row["label"][key]["keyword"] == "ask":
-            assert honours, f"{pid} says it asks on {key}, which cannot prompt at its pre-tool event"
+            can = True in guard_can_ask(guard_hooks[pid, key], agent) if pid in ASK_ONLY_GUARDS else honours
+            assert can, f"{pid} says it asks on {key}, which cannot prompt where it is wired"
 
 
 def test_cursor_and_codex_refuse_what_claude_asks() -> None:
@@ -123,19 +157,71 @@ def test_an_ask_only_guard_has_no_refusing_exit(pid: str) -> None:
     assert verdicts == {"ask", "allow"}
 
 
+#: CHOCK_CAN_ASK at the events the guard is wired at (chock a2dd3de, agentseam `verdicts.gates`).
+WIRED_CAN_ASK = {
+    "claude-code": {True},
+    "cursor": {True},
+    "codex": {False},
+    "copilot": {True, False},
+    "devin": {False},
+}
+
+
 @pytest.mark.parametrize("pid", ASK_ONLY_GUARDS)
-def test_an_ask_only_guard_asks_where_the_client_can_prompt_and_refuses_elsewhere(pid: str) -> None:
+@pytest.mark.parametrize(("key", "fmt"), CLIENTS)
+def test_an_ask_only_guards_wired_events_are_what_the_engine_passes(
+    pid: str, key: str, fmt: str, guard_hooks: dict[tuple[str, str], str]
+) -> None:
+    assert guard_can_ask(guard_hooks[pid, key], bundle_build.CLIENTS[fmt].agent) == WIRED_CAN_ASK[key]
+
+
+@pytest.mark.parametrize("pid", ASK_ONLY_GUARDS)
+def test_an_ask_only_guard_asks_where_the_client_can_prompt_and_is_not_enforced_elsewhere(pid: str) -> None:
     label = ROWS[pid]["label"]
-    assert label["claude-code"]["keyword"] == label["copilot"]["keyword"] == "ask"
-    assert label["claude-code"]["says"] == GUARD_ASKS
-    for key in ("cursor", "codex", "devin"):
-        assert label[key]["keyword"] == "block"
-        assert label[key]["says"].startswith(GUARD_REFUSES)
+    assert label["claude-code"] == label["cursor"] == {"keyword": "ask", "says": GUARD_ASKS}
+    assert label["copilot"] == {"keyword": "ask", "says": GUARD_SPLIT["vscode_copilot"]}
+    assert "not enforced in Copilot CLI" in label["copilot"]["says"]
+    for key in ("codex", "devin"):
+        assert label[key] == {"keyword": "advise", "says": GUARD_NOT_ENFORCED}
+
+
+def _hooks(event: str) -> str:
+    return json.dumps({"hooks": {event: [{"hooks": [{"command": "x --guard g.py"}]}]}})
 
 
 def test_honest_guard_leaves_other_policies_and_grades_alone() -> None:
-    assert honest_guard("block-secret-store-reads", bundle_grade.BLOCKS, "x", "claude_code") == (
+    hooks = _hooks("PreToolUse")
+    assert honest_guard("block-secret-store-reads", bundle_grade.BLOCKS, "x", hooks, "claude_code") == (
         bundle_grade.BLOCKS,
         "x",
     )
-    assert honest_guard(ASK_ONLY_GUARDS[0], bundle_grade.ADVISORY, "x", "claude_code") == (bundle_grade.ADVISORY, "x")
+    assert honest_guard(ASK_ONLY_GUARDS[0], bundle_grade.ADVISORY, "x", hooks, "claude_code") == (
+        bundle_grade.ADVISORY,
+        "x",
+    )
+
+
+def test_honest_guard_reads_the_wired_event_not_the_agents_pre_tool_event() -> None:
+    pid = ASK_ONLY_GUARDS[0]
+    assert vendors.pre_tool_event("cursor") == "preToolUse"
+    assert honest_guard(pid, bundle_grade.BLOCKS, "x", _hooks("beforeShellExecution"), "cursor") == (
+        bundle_grade.ASKS,
+        GUARD_ASKS,
+    )
+    assert honest_guard(pid, bundle_grade.BLOCKS, "x", _hooks("preToolUse"), "cursor") == (
+        bundle_grade.ADVISORY,
+        GUARD_NOT_ENFORCED,
+    )
+
+
+def test_an_event_the_engine_does_not_list_is_not_enforced() -> None:
+    assert guard_can_ask(_hooks("SomeFutureEvent"), "claude_code") == {False}
+    assert honest_guard(ASK_ONLY_GUARDS[0], bundle_grade.BLOCKS, "x", _hooks("SomeFutureEvent"), "claude_code")[0] == (
+        bundle_grade.ADVISORY
+    )
+
+
+def test_a_split_client_without_wording_stops_the_generator(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delitem(GUARD_SPLIT, "vscode_copilot")
+    with pytest.raises(SystemExit, match="GUARD_SPLIT"):
+        honest_guard(ASK_ONLY_GUARDS[0], bundle_grade.BLOCKS, "x", _hooks("PreToolUse"), "vscode_copilot")

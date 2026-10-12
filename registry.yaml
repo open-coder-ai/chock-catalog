@@ -1669,7 +1669,7 @@ policies:
     only. Ship observe first. Friction, not a boundary.'
 - id: ask-credential-switching
   path: base/ask-credential-switching
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   status: draft
@@ -1680,10 +1680,10 @@ policies:
   eval_executed: 65
   label:
     claude-code: {"keyword": "ask", "says": "asks before a matched shell command runs"}
-    cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs (this client cannot prompt there)"}
-    codex: {"keyword": "block", "says": "refuses a matched shell command before it runs (this client cannot prompt there)"}
-    copilot: {"keyword": "ask", "says": "asks before a matched shell command runs"}
-    devin: {"keyword": "block", "says": "refuses a matched shell command before it runs (this client cannot prompt there); fails open: a hook error lets the call proceed (vendor docs only, not witnessed)"}
+    cursor: {"keyword": "ask", "says": "asks before a matched shell command runs"}
+    codex: {"keyword": "advise", "says": "not enforced (this client cannot prompt before a shell command)"}
+    copilot: {"keyword": "ask", "says": "asks before a matched shell command runs in VS Code; not enforced in Copilot CLI (it cannot prompt there)"}
+    devin: {"keyword": "advise", "says": "not enforced (this client cannot prompt before a shell command)"}
     misses: "scripts, SDKs, env files, credential_process."
   description: 'Best effort, ask only. Asks a person before a shell command switches the identity later
     commands act as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure

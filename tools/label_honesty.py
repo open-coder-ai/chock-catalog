@@ -10,6 +10,7 @@ import yaml
 from agentseam import matrix
 from agentseam.vendor_config import VENDOR_CONFIG
 from chock import vendors
+from chock.gate.runtime_bundle import pre_tool_can_ask
 from chock.plugin import bundle_grade
 
 #: Said by a policy whose declared enforcement no plugin hook carries (a git hook or CI gate, or a
@@ -19,11 +20,16 @@ TEXT_ONLY_SAYS = "text only in a plugin: nothing in the plugin stops a violation
 #: states the oldest table's `as_of`. Which policies is a catalog decision; the date is read from the tables.
 DATED_DATA = ("compromised-package-ioc", "verify-mcp-allowlist")
 DATED_SAYS = "data as of {as_of}; an installed plugin does not update it: re-running the install is the update"
-#: Command guards that only ever ask (exit 3), never refuse: a catalog decision, since the engine grades every
-#: guard as refusing. tests/build_tools/test_registry_labels.py holds each to a guard with no refusing exit.
+#: Command guards that only ever ask (exit 3), never refuse, and let a call through where the engine sets
+#: CHOCK_CAN_ASK=0: a catalog decision, since the engine grades every guard as refusing.
+#: tests/build_tools/test_registry_labels.py holds each to a guard with no refusing exit.
 ASK_ONLY_GUARDS = ("ask-credential-switching",)
 GUARD_ASKS = "asks before a matched shell command runs"
-GUARD_REFUSES = "refuses a matched shell command before it runs (this client cannot prompt there)"
+GUARD_NOT_ENFORCED = "not enforced (this client cannot prompt before a shell command)"
+#: One bundle read by two products that spell the wired event differently, one able to prompt and one not.
+GUARD_SPLIT = {
+    "vscode_copilot": f"{GUARD_ASKS} in VS Code; not enforced in Copilot CLI (it cannot prompt there)",
+}
 
 
 def status_label(manifest: dict) -> dict | None:
@@ -90,9 +96,28 @@ def honest_asks(grade: int, says: str, hooks_text: str, agent: str) -> tuple[int
     return grade, says[: says.index("asks ")] + tail
 
 
-def honest_guard(policy_id: str, grade: int, says: str, agent: str) -> tuple[int, str]:
-    """An ask-only guard's label: it asks where the client can prompt before a tool call, and refuses elsewhere."""
+def guard_can_ask(hooks_text: str, agent: str) -> set[bool]:
+    """CHOCK_CAN_ASK at each event a guard is wired at, from the engine's own map (agentseam `verdicts.gates`).
+
+    Every spelling of a wired event counts (Copilot: VS Code's PreToolUse, Copilot CLI's preToolUse); an
+    event the map does not list gets 0, as the engine passes.
+    """
+    can_ask = pre_tool_can_ask(agent)
+    values: set[bool] = set()
+    for event in bundle_grade.events_for(json.loads(hooks_text), "--guard"):
+        values |= {v for name, v in can_ask.items() if name.lower() == event.lower()} or {False}
+    return values
+
+
+def honest_guard(policy_id: str, grade: int, says: str, hooks_text: str, agent: str) -> tuple[int, str]:
+    """An ask-only guard's label: it asks where the client prompts at the wired event, and is not enforced elsewhere."""
     if policy_id not in ASK_ONLY_GUARDS or grade != bundle_grade.BLOCKS:
         return grade, says
-    gate = VENDOR_CONFIG[agent]["verdicts"]["gates"].get(vendors.pre_tool_event(agent), {})
-    return (bundle_grade.ASKS, GUARD_ASKS) if gate.get("honours_escalate") else (grade, GUARD_REFUSES)
+    values = guard_can_ask(hooks_text, agent)
+    if values == {True}:
+        return bundle_grade.ASKS, GUARD_ASKS
+    if True not in values:
+        return bundle_grade.ADVISORY, GUARD_NOT_ENFORCED
+    if agent not in GUARD_SPLIT:
+        sys.exit(f"{policy_id}: {agent} prompts at some spellings of its wired event only; add GUARD_SPLIT wording")
+    return bundle_grade.ASKS, GUARD_SPLIT[agent]
