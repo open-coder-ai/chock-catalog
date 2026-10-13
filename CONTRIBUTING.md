@@ -260,6 +260,17 @@ change under the project's license (Apache-2.0). Add it with the `-s` flag:
 git commit -s -m "feat(scan-secrets): add vendor token prefixes"
 ```
 
+Or let a hook add it: install [pre-commit](https://pre-commit.com) once and enable the
+`commit-msg` hook this repo ships (`.pre-commit-config.yaml`), before `chock sync` so chock keeps it:
+
+```bash
+pip install pre-commit
+pre-commit install --hook-type commit-msg
+chock sync --repo .
+```
+
+The dev container (`.devcontainer/`) runs those for you.
+
 CI checks every PR commit for the `Signed-off-by:` trailer. Forgot one?
 `git commit --amend -s --no-edit && git push --force-with-lease`
 (or `git rebase --signoff main` for several).
