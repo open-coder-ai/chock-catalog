@@ -36,7 +36,7 @@
         "environment": {
           "env": {
             "PYTHONDONTWRITEBYTECODE": "1",
-            "PLUGIN_ROOT": "/home/user/chock-bundles/copilot/protect-commit-privacy"
+            "PLUGIN_ROOT": "<bundle-root>/copilot/protect-commit-privacy"
           }
         },
         "conditions": {
@@ -121,7 +121,7 @@
         "environment": {
           "env": {
             "PYTHONDONTWRITEBYTECODE": "1",
-            "PLUGIN_ROOT": "/home/user/chock-bundles/copilot/protect-commit-privacy"
+            "PLUGIN_ROOT": "<bundle-root>/copilot/protect-commit-privacy"
           }
         },
         "conditions": {
@@ -193,7 +193,7 @@
           "cpu_count": 4,
           "env": {
             "PYTHONDONTWRITEBYTECODE": "1",
-            "PLUGIN_ROOT": "/home/user/chock-bundles/copilot/protect-commit-privacy"
+            "PLUGIN_ROOT": "<bundle-root>/copilot/protect-commit-privacy"
           }
         },
         "conditions": {
