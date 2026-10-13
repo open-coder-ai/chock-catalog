@@ -20,7 +20,10 @@ __pycache__/
 # Editor and IDE local state (an .iml file was committed once already)
 .idea/
 *.iml
-.vscode/
+.vscode/*
+# ...except the shared recommendations and tasks
+!.vscode/extensions.json
+!.vscode/tasks.json
 .DS_Store
 
 # Local gate-outcome evidence log (written by the PreToolUse gate at run time)

@@ -65,7 +65,7 @@ def report(result: Result) -> int:
 
 
 def render_figures(figures: Path = FIGURES) -> tuple[int, str]:
-    """Run each make_*.py in `figures` (make_social writes to the working directory); stop at a failure."""
+    """Run each make_*.py in `figures`; stop at a failure."""
     outs = []
     for script in sorted(figures.glob("make_*.py")):
         rc, out = _capture([PY, script.name], figures)

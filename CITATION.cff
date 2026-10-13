@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: If you use this catalog, please cite it as below.
+title: chock-catalog
+abstract: >-
+  The policy catalog for chock: policies for coding agents, each labelled by
+  what actually enforces it.
+type: software
+authors:
+  - name: Open Coder AI
+license: Apache-2.0
+repository-code: https://github.com/open-coder-ai/chock-catalog
+url: https://github.com/open-coder-ai/chock-catalog

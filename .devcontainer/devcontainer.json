@@ -1,0 +1,14 @@
+{
+  "name": "chock-catalog",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": "pip install chock pre-commit && pip install --require-hashes -r requirements/test.txt && pre-commit install --hook-type commit-msg && chock sync --repo .",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"],
+      "settings": {
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["-q"]
+      }
+    }
+  }
+}

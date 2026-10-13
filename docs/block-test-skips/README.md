@@ -57,7 +57,7 @@ cd <your-repo> && chock sync --repo .
 
 ## Customising it
 
-The skip markers and the test-path regex are constants at the top of `implementations/block-test-skips-gate.py`; add a framework's marker there. A reviewed skip is waived by a person with `chock: allow test-skip` on the line, honoured at commit only in chock 0.13.0, never in the agent.
+The skip markers and the test-path regex are constants at the top of `implementations/block-test-skips-gate.py`; add a framework's marker there. A reviewed skip is waived by a person with `chock: allow test-skip` on the line, honoured at commit only, never in the agent or for an agent's commit (`CHOCK_AGENT_COMMIT` set).
 
 Once copied, the policy is **yours**. `recompile` reads your copy as the source, so an edit reaches the compiled artifact and changes what actually happens. Nothing upstream overwrites it; re-copying from this repo is an explicit act.
 
