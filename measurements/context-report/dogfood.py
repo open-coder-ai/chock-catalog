@@ -12,6 +12,8 @@ from pathlib import Path
 from context_report.produce.run import produce_statement
 
 PRODUCER_ID = "https://github.com/open-coder-ai/context-report#local-dogfood"
+#: Stands in for the build machine's bundle directory, which names its home directory.
+BUNDLE_ROOT = "<bundle-root>"
 
 
 def _rows(stmt: dict) -> dict[str, dict]:
@@ -34,7 +36,9 @@ def _run(target: dict, env: dict[str, str], out: Path, suffix: str, n: int) -> d
     )
     dest = out / target["format"] / f"{Path(target['path']).name}{suffix}.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(json.dumps(stmt, indent=2) + "\n", encoding="utf-8")
+    # Scrubbed after the producer ran: results and hashes stay as measured; no local path is kept.
+    text = json.dumps(stmt, indent=2).replace(json.dumps(str(target["bundles"]))[1:-1], BUNDLE_ROOT)
+    dest.write_text(text + "\n", encoding="utf-8")
     return stmt
 
 
@@ -55,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     bundles = Path(args.bundles).resolve()
     for t in targets:
         t["abs_path"] = bundles / t["path"]
+        t["bundles"] = bundles
     out = Path(args.out)
 
     per_format: dict[str, dict] = defaultdict(

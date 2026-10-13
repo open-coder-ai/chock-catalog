@@ -22,7 +22,7 @@ TIERS = (
     # (label, enforces-classifier, enforcement colour index -- strongest last)
     ("enforced at commit", lambda w: w == "enforced-at-commit", 2),
     ("in-agent", lambda w: w.startswith(IN_AGENT_WORDS), 1),
-    ("advisory", lambda w: True, 0),
+    ("advisory", lambda w: w == "advisory", 0),
 )
 
 
@@ -46,6 +46,9 @@ def read_counts():
             if matches(word):
                 counts[label] += 1
                 break
+        else:
+            policy = entry.partition("\n")[0]
+            raise SystemExit(f"unknown 'enforces' word {word!r} in {REGISTRY} ({policy})")
     return [(counts[label], label, idx) for label, _, idx in TIERS]
 
 
