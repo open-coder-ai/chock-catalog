@@ -254,8 +254,10 @@ def test_on_this_catalog_only_its_ci_files_match() -> None:
     tracked = listed.stdout.split("\0")
     hits = [path for path in tracked if path and pattern().search(path)]
     # The chock_scan corpus vendors three upstream GitLab CI templates as parser fixtures; they are data, not CI.
+    # .pre-commit-config.yaml is the DCO sign-off hook config, gated as CI config on purpose.
     ci = re.compile(
         r"\.github/(workflows/[^/]+\.ya?ml|dependabot\.yml|CODEOWNERS)"
+        r"|\.pre-commit-config\.yaml"
         r"|tests/chock_scan/corpus/vendor/gitlab-ci/(Docker|Python|SAST)\.gitlab-ci\.yml"
     )
     assert hits
