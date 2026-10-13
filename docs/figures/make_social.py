@@ -1,11 +1,14 @@
 """GitHub social preview card: name, one line, one true number. Light theme only."""
 
+from pathlib import Path
+
 import palette as p
 from make_enforcement import read_counts
 
 W, H = 1280, 640
-DEST_SVG = "social-card.svg"
-DEST_PNG = "social-card.png"
+HERE = Path(__file__).resolve().parent
+DEST_SVG = HERE / "social-card.svg"
+DEST_PNG = HERE / "social-card.png"
 
 
 def render():
@@ -47,7 +50,7 @@ def main():
     svg = render()
     with open(DEST_SVG, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(svg)
-    print("wrote", DEST_SVG)
+    print("wrote", DEST_SVG.name)
 
     # PNG conversion needs cairosvg, which the `figures` CI job deliberately does not
     # install (see VISUAL.md: "nothing in CI may depend on it"). Locally, regenerate and
@@ -56,10 +59,10 @@ def main():
     try:
         import cairosvg
     except ImportError:
-        print("cairosvg not installed; skipped regenerating", DEST_PNG)
+        print("cairosvg not installed; skipped regenerating", DEST_PNG.name)
         return
-    cairosvg.svg2png(url=DEST_SVG, write_to=DEST_PNG, output_width=W, output_height=H)
-    print("wrote", DEST_PNG)
+    cairosvg.svg2png(url=str(DEST_SVG), write_to=str(DEST_PNG), output_width=W, output_height=H)
+    print("wrote", DEST_PNG.name)
 
 
 if __name__ == "__main__":
