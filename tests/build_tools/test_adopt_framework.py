@@ -161,6 +161,32 @@ def test_a_failed_regeneration_stops_before_the_checks(monkeypatch, capsys) -> N
     assert "regeneration failed" in capsys.readouterr().err
 
 
+def test_the_registry_is_regenerated_after_the_pin_moves_and_before_the_checks(pin: Path, monkeypatch) -> None:
+    stub = _fake(monkeypatch)
+
+    def update_registry() -> str:
+        assert pin.read_text(encoding="utf-8") == SHA + "\n"
+        stub.labels.append("registry")
+        return "registry.yaml rewritten"
+
+    monkeypatch.setattr(regen_all.gen_registry, "update_registry", update_registry)
+    assert adopt_framework.main([SHA]) == 0
+    assert stub.labels.index("registry") < stub.labels.index("check")
+
+
+@pytest.mark.usefixtures("pin")
+def test_a_failed_registry_regeneration_stops_before_the_checks(monkeypatch) -> None:
+    stub = _fake(monkeypatch)
+
+    def update_registry() -> str:
+        raise ValueError
+
+    monkeypatch.setattr(regen_all.gen_registry, "update_registry", update_registry)
+    with pytest.raises(ValueError):
+        adopt_framework.main([SHA])
+    assert "check" not in stub.labels
+
+
 @pytest.mark.usefixtures("pin")
 def test_a_failed_check_fails_the_adoption(monkeypatch, capsys) -> None:
     _fake(monkeypatch, failing=("workflow safety",))
