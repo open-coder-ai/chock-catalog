@@ -1,6 +1,6 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.2.5"
+version: "0.2.6"
 description: >
   Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to
   .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
@@ -57,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.6
+  date: '2026-10-13'
+  changes:
+  - "Text: supersedes the 0.2.0 entry's count. On the catalog's own tree the set matches its CI files (every workflow, dependabot, CODEOWNERS, the pre-commit config) and, besides them, the three GitLab CI templates the chock_scan corpus vendors as parser fixtures. Behaviour unchanged."
 - version: 0.2.5
   date: '2026-10-07'
   changes:
