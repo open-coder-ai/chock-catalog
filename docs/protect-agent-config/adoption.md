@@ -1598,9 +1598,18 @@ protect-agent-config  [deterministic]
   PASS  tc-1500                            authored  guard exit 0
   PASS  tc-1501                            authored  gate exit 0 [gate derived from manifest; policy not compiled]
   PASS  tc-1502                            authored  gate exit 0 [gate derived from manifest; policy not compiled]
+  PASS  tc-1503                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1504                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1505                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1506                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1507                            authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-1508                            authored  This path is agent configuration or enforcement (instruction files,…
+  PASS  tc-1509                            authored  guard exit 0
+  PASS  tc-1510                            authored  guard exit 0
+  PASS  tc-1511                            authored  gate exit 0 [gate derived from manifest; policy not compiled]
   score 1.00
 
-5 policies: 1502 pass, 41 skipped
+5 policies: 1511 pass, 41 skipped
 41 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

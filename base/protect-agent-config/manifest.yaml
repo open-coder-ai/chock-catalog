@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.5.0"
+version: "0.5.1"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent
   folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...),
@@ -53,7 +53,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-10-10T00:00:00Z"
+  updated_at: "2026-10-13T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.1
+  date: '2026-10-13'
+  changes:
+  - "Coverage pinned, behaviour unchanged: the decision-log settings `.chock/chock-log.json` (keys `level`, `max_bytes`; added by chock#262), in the repository and in `~/.chock/`, are a person's to change, so an agent cannot lower or turn off logging. Both were already refused as a shell write and as an Edit/Write by the whole-folder `.chock/` rule, which matches as a path segment wherever it sits (the same rule covers `~/.chock/guardrails.json`); this release pins that with eval cases tc-1503 to tc-1511 and tests in test_protect_agent_config_log.py. Reading the file (`cat`, `jq`, `grep`, `git log -p`) stays allowed, and a file merely named like it outside `.chock/` (`docs/chock-log.json.md`) stays open. The Edit/Write gate's exemption for what the engine writes during a turn (`.chock/state`, `.chock/log`) does not reach it."
 - version: 0.5.0
   date: '2026-10-10'
   changes:
