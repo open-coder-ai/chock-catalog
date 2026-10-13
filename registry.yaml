@@ -800,7 +800,7 @@ policies:
     existing hard link.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.2.5
+  version: 0.2.6
   artifact: rule
   enforcement: advise
   status: production
