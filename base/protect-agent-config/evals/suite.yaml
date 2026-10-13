@@ -7709,3 +7709,48 @@ suite:
     prompt: "An agent writes src/continue.py with the Edit or Write tool."
     expect: "The tool gate allows it: it is not a Continue config."
     execute: {event: tool_use, writes: {"src/continue.py": "x = 1\n"}, expect: allow}
+  - id: tc-1503
+    category: trigger
+    prompt: "An agent turns the decision log off from the shell: echo '{\"level\": \"off\"}' > .chock/chock-log.json"
+    expect: "The guard refuses it: the log settings are a person's to change."
+    execute: {command: "echo '{\"level\": \"off\"}' > .chock/chock-log.json", expect: block}
+  - id: tc-1504
+    category: trigger
+    prompt: "An agent lowers the user-level decision log from the shell: echo '{\"level\": \"off\"}' > ~/.chock/chock-log.json"
+    expect: "The guard refuses it: `.chock/` matches as a segment wherever it sits."
+    execute: {command: "echo '{\"level\": \"off\"}' > ~/.chock/chock-log.json", expect: block}
+  - id: tc-1505
+    category: trigger
+    prompt: "An agent edits the log level in place: sed -i s/full/off/ .chock/chock-log.json"
+    expect: "The guard refuses the in-place edit."
+    execute: {command: "sed -i s/full/off/ .chock/chock-log.json", expect: block}
+  - id: tc-1506
+    category: trigger
+    prompt: "An agent deletes the decision-log settings: rm .chock/chock-log.json"
+    expect: "The guard refuses the delete."
+    execute: {command: "rm .chock/chock-log.json", expect: block}
+  - id: tc-1507
+    category: trigger
+    prompt: "The agent writes .chock/chock-log.json with the Edit or Write tool."
+    expect: "The tool gate refuses it."
+    execute: {event: tool_use, writes: {".chock/chock-log.json": "{\"level\": \"off\"}\n"}, expect: block}
+  - id: tc-1508
+    category: trigger
+    prompt: "The agent writes the user-level log settings with the Write tool: /Users/dev/.chock/chock-log.json"
+    expect: "The tool gate refuses it."
+    execute: {event: tool_use, writes: {"/Users/dev/.chock/chock-log.json": "{\"max_bytes\": 1}\n"}, expect: block}
+  - id: tc-1509
+    category: negative_trigger
+    prompt: "An agent reads the decision-log settings: cat .chock/chock-log.json"
+    expect: "The guard allows reads."
+    execute: {command: "cat .chock/chock-log.json", expect: allow}
+  - id: tc-1510
+    category: negative_trigger
+    prompt: "An agent reads the user-level log level: jq .level ~/.chock/chock-log.json"
+    expect: "The guard allows reads."
+    execute: {command: "jq .level ~/.chock/chock-log.json", expect: allow}
+  - id: tc-1511
+    category: negative_trigger
+    prompt: "An agent writes docs/chock-log.json.md with the Edit or Write tool."
+    expect: "The tool gate allows it: a file merely named like the settings is not them."
+    execute: {event: tool_use, writes: {"docs/chock-log.json.md": "# notes\n"}, expect: allow}
