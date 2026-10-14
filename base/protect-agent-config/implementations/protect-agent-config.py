@@ -2,7 +2,7 @@
 # fmt: off
 "exec" "$(command -v python3 || command -v python)" "$0" "$@"
 # fmt: on
-# Refuse shell commands that write to agent-config or vendored enforcement paths; reads and `chock sync` pass.
+# Refuse shell commands that write to agent-config or vendored enforcement paths, or run `chock resume`; reads and `chock sync` pass.
 # Best effort: a write must target a protected path or a directory holding one, as the command resolves it (cd, `..`, variables, globs; see pathguard.py).
 
 import os
@@ -19,7 +19,7 @@ from pathset import BLOCK, PROTECTED, hit, normalise, verdict
 from pathwrap import too_deep
 
 # `hit` and `normalise` are the guard's path test, which the tests and the gate's parity check call as `guard.hit`.
-__all__ = ["ASK", "BLIND", "DEEP", "LOADS", "PROTECTED", "REASON", "check", "hit", "normalise", "run"]
+__all__ = ["ASK", "BLIND", "DEEP", "LOADS", "PROTECTED", "REASON", "RESUMES", "check", "hit", "normalise", "run"]
 
 REASON = "shell write touching agent config is refused -- an agent must not edit its own guardrails. Regenerate managed files with `chock sync`. For any other change, ask the person: they make it from their own shell."
 
@@ -32,14 +32,29 @@ BLIND = "shell command runs script text the guard cannot read (eval or a shell f
 
 ASK = "shell write to an instruction file under docs/ needs a person's decision -- it is documentation about a guardrail file, but the same name is read as instructions where it sits. Ask the person, or make the change from their own shell."
 
+RESUMES = "shell command runs `chock resume` -- refused: only a person lifts a stop (`chock stop`), from their own terminal. Ask the person."
+
+# `chock resume` as its launcher spells it: the engine's own name, or Python running its module.
+_CHOCK = frozenset(("chock", "chock.exe", "chock.cmd"))
+
 DEEP = "shell command nested too deep to check (a script inside a script, five or more levels) -- refused because it cannot be judged. Run the inner commands one at a time, or ask the person."
 
 
+def _resumes(name: str, args: list[str]) -> bool:
+    """Whether a command is `chock resume` (or `python -m chock resume`), whatever options come first."""
+    if name.startswith(("python", "py")) and "chock" in args and args[args.index("chock") - 1] == "-m":
+        name, args = "chock", args[args.index("chock") + 1 :]
+    words = [a for a in args if not a.startswith("-")]
+    return name in _CHOCK and words[:1] == ["resume"]
+
+
 def check(raw: str) -> str | None:
-    """The reason a command edits protected files (REASON, LOADS, BLIND, DEEP), ASK when it only writes docs instruction files, or None."""
+    """The reason a command edits protected files (REASON, LOADS, BLIND, DEEP) or lifts a stop (RESUMES), ASK when it only writes docs instruction files, or None."""
     raw = _TRAILING.sub("/", raw.rstrip())
     if too_deep(raw):
         return DEEP
+    if any(_resumes(cmd.name, cmd.args) for cmd in commands(raw)):
+        return RESUMES
     asked: list[str] = []
 
     def firm(path: str) -> bool:
