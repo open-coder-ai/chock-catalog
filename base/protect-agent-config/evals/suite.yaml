@@ -7754,3 +7754,8 @@ suite:
     prompt: "An agent writes docs/chock-log.json.md with the Edit or Write tool."
     expect: "The tool gate allows it: a file merely named like the settings is not them."
     execute: {event: tool_use, writes: {"docs/chock-log.json.md": "# notes\n"}, expect: allow}
+  - id: tc-1512
+    category: trigger
+    prompt: "An agent deletes the person's stop (`chock stop`) that refuses its tool calls: rm .chock/stop.json"
+    expect: "The guard refuses it: only a person's `chock resume` lifts a stop."
+    execute: {command: "rm .chock/stop.json", expect: block}
