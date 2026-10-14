@@ -1,6 +1,6 @@
 id: ask-credential-switching
 name: "Ask Credential Switching"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Best effort, ask only. Asks a person before a shell command switches the identity later commands act
   as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure set of a key; gcloud
@@ -37,13 +37,18 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
-  reviewed_by: []
+  status: production
+  reviewed_by:
+    - "chock-core"
 
 security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-14'
+  changes:
+  - "Status draft -> production (plan GAP-10, by the catalog's BV-C3 promotion rule), measured at catalog main 3e9d2d3 on engine a2dd3de: 65 of 65 eval cases executed and passing in chock check on a staged adopter (suite bar pass_rate 1.0), tier best-effort, no open bug issue naming the policy, no chock check warning; reviewed_by records chock-core (C1 was reviewed and merged in chock-catalog#254). Labels unchanged from 0.0.2: asks on Claude Code and Cursor; on Copilot, asks in VS Code and is not enforced in Copilot CLI; not enforced on Codex and Devin. Behaviour unchanged."
 - version: 0.0.2
   date: '2026-10-11'
   changes:

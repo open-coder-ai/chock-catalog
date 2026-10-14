@@ -1669,10 +1669,10 @@ policies:
     only. Ship observe first. Friction, not a boundary.'
 - id: ask-credential-switching
   path: base/ask-credential-switching
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
-  status: draft
+  status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
