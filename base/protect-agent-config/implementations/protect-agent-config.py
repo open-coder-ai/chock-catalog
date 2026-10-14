@@ -40,10 +40,55 @@ _CHOCK = frozenset(("chock", "chock.exe", "chock.cmd"))
 DEEP = "shell command nested too deep to check (a script inside a script, five or more levels) -- refused because it cannot be judged. Run the inner commands one at a time, or ask the person."
 
 
-def _resumes(name: str, args: list[str]) -> bool:
-    """Whether a command is `chock resume` (or `python -m chock resume`), whatever options come first."""
-    if name.startswith(("python", "py")) and "chock" in args and args[args.index("chock") - 1] == "-m":
-        name, args = "chock", args[args.index("chock") + 1 :]
+# Python's short options: flags that take no value, and the ones whose value follows (`-X dev`, `-W error`).
+_PY_FLAGS = "bBdEhiIOPqRsSuvx"
+_PY_MODULE = re.compile(rf"-[{_PY_FLAGS}]*m(.*)")
+_PY_VALUED = re.compile(rf"-[{_PY_FLAGS}]*[XW]$")
+_PY_CODE = re.compile(rf"-[{_PY_FLAGS}]*c")
+# `script` (util-linux) runs the command its `-c` (in a cluster: `-qec`) or `--command` names; BSD's runs the words after its file.
+_SCRIPT_C = re.compile(r"-[a-zA-Z]*c(.*)")
+_DEPTH = 4
+
+
+def _python_module(args: list[str]) -> tuple[str, list[str]] | None:
+    """The module `python [options] -m <module> args` runs and its arguments (`-mchock`, `-Im chock`, `-X v -m chock`), or None."""
+    i = 0
+    while i < len(args) and args[i].startswith("-") and args[i] != "-":
+        found = _PY_MODULE.fullmatch(args[i])
+        if found:
+            if found.group(1):
+                return found.group(1), args[i + 1 :]
+            return (args[i + 1 : i + 2] or [""])[0], args[i + 2 :]
+        if _PY_CODE.match(args[i]):
+            return None
+        i += 2 if _PY_VALUED.match(args[i]) else 1
+    return None
+
+
+def _script_command(args: list[str]) -> str | None:
+    """The command line `script` runs: `-c CMD`, `-qec CMD`, `-cCMD`, `--command[=]CMD`, or BSD's `script [-q] file cmd args`."""
+    for i, arg in enumerate(args):
+        if arg.startswith("--command"):
+            return arg.split("=", 1)[1] if "=" in arg else " ".join(args[i + 1 : i + 2])
+        found = _SCRIPT_C.fullmatch(arg) if not arg.startswith("--") else None
+        if found:
+            return found.group(1) or " ".join(args[i + 1 : i + 2])
+    words = [a for a in args if not a.startswith("-")]
+    return " ".join(words[1:]) or None
+
+
+def _resumes(name: str, args: list[str], depth: int = 0) -> bool:
+    """Whether a command is `chock resume`, `python -m chock resume`, or `script` running one, whatever options come first."""
+    if name.startswith(("python", "py")):
+        module = _python_module(args)
+        if module is None or module[0].split(".")[0] != "chock":
+            return False
+        name, args = "chock", module[1]
+    if name == "script":
+        inner = _script_command(args)
+        return (
+            inner is not None and depth < _DEPTH and any(_resumes(c.name, c.args, depth + 1) for c in commands(inner))
+        )
     words = [a for a in args if not a.startswith("-")]
     return name in _CHOCK and words[:1] == ["resume"]
 

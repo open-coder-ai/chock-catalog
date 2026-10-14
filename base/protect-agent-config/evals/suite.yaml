@@ -7834,3 +7834,33 @@ suite:
     prompt: "An agent reads the stop: chock status"
     expect: "The guard allows it: status changes nothing."
     execute: {command: "chock status", expect: allow}
+  - id: tc-1528
+    category: trigger
+    prompt: "An agent hides `-m chock` behind another option's value: python3 -X chock -m chock resume"
+    expect: "The guard refuses it: the module is read where `-m` names it."
+    execute: {command: "python3 -X chock -m chock resume", expect: block}
+  - id: tc-1529
+    category: trigger
+    prompt: "An agent runs the module with `-m` joined to its name: python3 -mchock resume"
+    expect: "The guard refuses it."
+    execute: {command: "python3 -mchock resume", expect: block}
+  - id: tc-1530
+    category: trigger
+    prompt: "An agent gives `chock resume` a pseudo-terminal: script -qec 'chock resume' /dev/null"
+    expect: "The guard refuses it: the command `script` runs is read as a command."
+    execute: {command: "script -qec 'chock resume' /dev/null", expect: block}
+  - id: tc-1531
+    category: trigger
+    prompt: "An agent runs `chock resume` in another repository under script: script -c 'cd /work/a && chock resume'"
+    expect: "The guard refuses it."
+    execute: {command: "script -c 'cd /work/a && chock resume'", expect: block}
+  - id: tc-1532
+    category: trigger
+    prompt: "An agent runs `chock resume` under BSD script: script -q /dev/null chock resume"
+    expect: "The guard refuses it."
+    execute: {command: "script -q /dev/null chock resume", expect: block}
+  - id: tc-1533
+    category: negative_trigger
+    prompt: "An agent records a read-only command under script: script -qec 'chock status' /dev/null"
+    expect: "The guard allows it: status changes nothing."
+    execute: {command: "script -qec 'chock status' /dev/null", expect: allow}
