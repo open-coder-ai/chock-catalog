@@ -7864,3 +7864,13 @@ suite:
     prompt: "An agent records a read-only command under script: script -qec 'chock status' /dev/null"
     expect: "The guard allows it: status changes nothing."
     execute: {command: "script -qec 'chock status' /dev/null", expect: allow}
+  - id: tc-1543
+    category: trigger
+    prompt: "An agent names script's command with the long option joined: script --command='chock resume' /dev/null"
+    expect: "The guard refuses it."
+    execute: {command: "script --command='chock resume' /dev/null", expect: block}
+  - id: tc-1544
+    category: trigger
+    prompt: "An agent names script's command with the long option apart: script --command 'chock resume' /dev/null"
+    expect: "The guard refuses it."
+    execute: {command: "script --command 'chock resume' /dev/null", expect: block}
