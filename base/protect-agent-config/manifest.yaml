@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.6.0"
+version: "0.6.1"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent
   folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...),
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.1
+  date: '2026-10-15'
+  changes:
+  - "Coverage pinned, behaviour unchanged: chock's runtimes now load one shared module, `_chock_runtime.py`, from beside each per-agent entry (chock RT-SPLIT), in `.chock/bin/` on the sync route and in every installed plugin's `scripts/` folder. An agent that deletes or rewrites it makes every hook refuse, but it must not be able to swap in its own copy either. It was already refused as a shell write and as an Edit/Write: `.chock/bin` and the whole-folder `.chock/`, `.cursor/`, `.agents/` and `.claude/` rules cover every plugin root `chock install` uses (`~/.chock/marketplace/<client>/`, `~/.cursor/plugins/local/`, `~/.agents/plugins/`) and Claude Code's own plugin cache. This release pins that with eval cases tc-1534 to tc-1542. Reading the file stays allowed."
 - version: 0.6.0
   date: '2026-10-14'
   changes:

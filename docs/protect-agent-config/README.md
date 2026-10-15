@@ -12,7 +12,7 @@
 | **Mechanism** | guard script `pathconf.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 1533 total, 1533 executable |
+| **Eval cases** | 1542 total, 1542 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
