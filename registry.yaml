@@ -771,15 +771,15 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.5.1
+  version: 0.6.0
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1511
-  eval_executed: 1511
+  eval_cases: 1535
+  eval_executed: 1535
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
@@ -793,11 +793,11 @@ policies:
     of Cline, Kiro, Augment, Windsurf and Devin (user and machine level too), ~/.claude.json, Claude
     Code plugin roots, project config of Kilo Code, opencode, Factory, Amp, Continue and Goose, .git/{hooks,config},
     policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, a write through
-    a symlink; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir (best effort). Any case. An instruction
-    file under docs/ asks a person instead. Coarse: also eval or sh -c of computed text, shells fed
-    by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write:
-    tool gate, same set and verdicts. Misses: user config under ~/.config/, writes a script makes, an
-    existing hard link.'
+    a symlink; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir, chock resume (best effort). Any case. An
+    instruction file under docs/ asks a person instead. Coarse: also eval or sh -c of computed text,
+    shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass.
+    Edit/Write: tool gate, same set and verdicts. Misses: user config under ~/.config/, writes a script
+    makes, an existing hard link.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
   version: 0.2.6
