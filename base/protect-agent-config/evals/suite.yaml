@@ -7909,3 +7909,13 @@ suite:
     prompt: "An agent reads an installed plugin's shared runtime: cat ~/.chock/marketplace/claude-code/chock-guardrails/scripts/_chock_runtime.py"
     expect: "The guard allows reads."
     execute: {command: "cat ~/.chock/marketplace/claude-code/chock-guardrails/scripts/_chock_runtime.py", expect: allow}
+  - id: tc-1543
+    category: trigger
+    prompt: "An agent names script's command with the long option joined: script --command='chock resume' /dev/null"
+    expect: "The guard refuses it."
+    execute: {command: "script --command='chock resume' /dev/null", expect: block}
+  - id: tc-1544
+    category: trigger
+    prompt: "An agent names script's command with the long option apart: script --command 'chock resume' /dev/null"
+    expect: "The guard refuses it."
+    execute: {command: "script --command 'chock resume' /dev/null", expect: block}
