@@ -771,15 +771,15 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.6.0
+  version: 0.6.1
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1535
-  eval_executed: 1535
+  eval_cases: 1544
+  eval_executed: 1544
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
