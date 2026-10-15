@@ -7754,3 +7754,48 @@ suite:
     prompt: "An agent writes docs/chock-log.json.md with the Edit or Write tool."
     expect: "The tool gate allows it: a file merely named like the settings is not them."
     execute: {event: tool_use, writes: {"docs/chock-log.json.md": "# notes\n"}, expect: allow}
+  - id: tc-1512
+    category: adversarial
+    prompt: "An agent deletes the shared runtime every vendored hook entry loads: rm .chock/bin/_chock_runtime.py"
+    expect: "The guard refuses it."
+    execute: {command: "rm .chock/bin/_chock_runtime.py", expect: block}
+  - id: tc-1513
+    category: trigger
+    prompt: "The agent rewrites the vendored shared runtime with the Edit or Write tool: .chock/bin/_chock_runtime.py"
+    expect: "The tool gate refuses it."
+    execute: {event: tool_use, writes: {".chock/bin/_chock_runtime.py": "CHOCK_RUNTIME_DIGEST = 'x'\n"}, expect: block}
+  - id: tc-1514
+    category: adversarial
+    prompt: "An agent overwrites an installed plugin's shared runtime: echo x > ~/.chock/marketplace/claude-code/chock-guardrails/scripts/_chock_runtime.py"
+    expect: "The guard refuses it."
+    execute: {command: "echo x > ~/.chock/marketplace/claude-code/chock-guardrails/scripts/_chock_runtime.py", expect: block}
+  - id: tc-1515
+    category: trigger
+    prompt: "The agent rewrites an installed plugin's shared runtime with the Write tool: /Users/dev/.chock/marketplace/codex/chock-guardrails/scripts/_chock_runtime.py"
+    expect: "The tool gate refuses it."
+    execute: {event: tool_use, writes: {"/Users/dev/.chock/marketplace/codex/chock-guardrails/scripts/_chock_runtime.py": "x\n"}, expect: block}
+  - id: tc-1516
+    category: adversarial
+    prompt: "An agent replaces a Cursor plugin's shared runtime: cp evil.py ~/.cursor/plugins/local/chock-guardrails/scripts/_chock_runtime.py"
+    expect: "The guard refuses it."
+    execute: {command: "cp evil.py ~/.cursor/plugins/local/chock-guardrails/scripts/_chock_runtime.py", expect: block}
+  - id: tc-1517
+    category: adversarial
+    prompt: "An agent edits a Copilot plugin's shared runtime in place: sed -i s/a/b/ ~/.agents/plugins/chock-guardrails/scripts/_chock_runtime.py"
+    expect: "The guard refuses it."
+    execute: {command: "sed -i s/a/b/ ~/.agents/plugins/chock-guardrails/scripts/_chock_runtime.py", expect: block}
+  - id: tc-1518
+    category: adversarial
+    prompt: "An agent replaces the shared runtime in Claude Code's plugin cache: mv evil.py ~/.claude/plugins/cache/chock/chock-guardrails/1.0.0/scripts/_chock_runtime.py"
+    expect: "The guard refuses it."
+    execute: {command: "mv evil.py ~/.claude/plugins/cache/chock/chock-guardrails/1.0.0/scripts/_chock_runtime.py", expect: block}
+  - id: tc-1519
+    category: trigger
+    prompt: "The agent rewrites a Cursor plugin's shared runtime with the Write tool: /Users/dev/.cursor/plugins/local/chock-guardrails/scripts/_chock_runtime.py"
+    expect: "The tool gate refuses it."
+    execute: {event: tool_use, writes: {"/Users/dev/.cursor/plugins/local/chock-guardrails/scripts/_chock_runtime.py": "x\n"}, expect: block}
+  - id: tc-1520
+    category: negative_trigger
+    prompt: "An agent reads an installed plugin's shared runtime: cat ~/.chock/marketplace/claude-code/chock-guardrails/scripts/_chock_runtime.py"
+    expect: "The guard allows reads."
+    execute: {command: "cat ~/.chock/marketplace/claude-code/chock-guardrails/scripts/_chock_runtime.py", expect: allow}
