@@ -230,7 +230,7 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
 | [`block-no-verify`](docs/block-no-verify/) | `--no-verify`, which bypasses every gate above, and an agent setting or clearing the overrides meant for a person (`CHOCK_ALLOW`, `CHOCK_AGENT_COMMIT`, `CLAUDECODE`, `AI_AGENT`) in its own command | 107/107 |
-| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 1542/1542 |
+| [`protect-agent-config`](docs/protect-agent-config/) | shell edits to the agent's own instruction, permission and enforcement files (now including the policy guard sources themselves) -- self-modification refused up front | 1544/1544 |
 | [`block-curl-pipe-sh`](docs/block-curl-pipe-sh/) | piping a network download into a shell or script interpreter — `curl … \| sh`, `wget … \| bash`, `curl … \| python`, `bash -c "$(curl …)"`, `iwr … \| iex` — while download-to-file and pipes into non-interpreter tools stay allowed | 72/72 |
 | [`protect-ci-workflows`](docs/protect-ci-workflows/) | shell writes to the CI/CD config that gates a change — `.github/workflows/`, `.github/actions/`, `.github/dependabot.yml` — so an agent can't delete or loosen the checks reviewing its own work; reads and `chock sync` pass | 55/55 |
 | [`block-unapproved-egress`](docs/block-unapproved-egress/) | a network client that uploads data — `curl -d`/`-F`/`--upload-file`, `-X POST`, `wget --post-file`, `Invoke-WebRequest -Method POST` — to a host outside the egress allowlist; fetch-only traffic and `pip install` pass. A tool-time floor, not a network sandbox | 145/145 |
@@ -357,7 +357,7 @@ Issues and PRs welcome, including "this policy is wrong": an overstated policy i
 | First contribution | How |
 | :--- | :--- |
 | Add an eval case for a bypass | a case in the policy's `evals/suite.yaml` that the gate should refuse |
-| Write a new policy | `chock new policy <id>`, then the checks below |
+| Write a new policy | `chock new policy <id>`, moved to `base/<id>/` -- see [New policy](CONTRIBUTING.md#new-policy) |
 | Pick up a threat | the [threat ledger](https://github.com/open-coder-ai/chock-threat-intel) |
 | Something small | [a good first issue](https://github.com/open-coder-ai/chock-catalog/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) |
 
