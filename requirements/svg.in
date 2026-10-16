@@ -1,0 +1,2 @@
+# The brand card's renderer: tools/regen_all.py skips that check without it (release and nightly drift install it).
+cairosvg==2.9.0

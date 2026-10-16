@@ -247,10 +247,14 @@ jobs:
       - name: The framework checkout is the pinned commit
         run: python3 -I tools/framework_ref.py verify .framework
 
+      # Every dependency and the build backend by hash, then the verified checkout without them;
+      # `pip check` fails if requirements/framework.in lags the framework's own dependencies.
       - name: Install Chock and the lint tooling
         run: |
-          pip install ./.framework
-          pip install --require-hashes -r requirements/test.txt
+          pip install --require-hashes -r requirements/framework.txt -r requirements/test.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       # First, not last: it is the cheapest check here and the one most often tripped -- every
       # version bump and every eval case changes a row. `--registry-only` fails where a row is not
@@ -346,7 +350,11 @@ jobs:
         run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock
-        run: pip install ./.framework
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       # `chock check` is every truth check at once: validate, the lockfile, and a replay of
       # every executable eval case. A separate `chock check --only evals` replayed them twice.
@@ -469,8 +477,10 @@ jobs:
 
       - name: Install Chock and the test tooling
         run: |
-          pip install ./.framework
-          pip install --require-hashes -r requirements/test.txt
+          pip install --require-hashes -r requirements/framework.txt -r requirements/test.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
         with:
@@ -626,8 +636,10 @@ jobs:
 
       - name: Install Chock and the test tooling
         run: |
-          pip install ./.framework
-          pip install --require-hashes -r requirements/test.txt
+          pip install --require-hashes -r requirements/framework.txt -r requirements/test.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - name: Tests of this policy, its implementations at 100% line and branch coverage
         env:
@@ -689,8 +701,10 @@ jobs:
 
       - name: Install Chock and the test tooling
         run: |
-          pip install ./.framework
-          pip install --require-hashes -r requirements/test.txt
+          pip install --require-hashes -r requirements/framework.txt -r requirements/test.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - name: Changed tests no policy job owns, and repo standards
         env:
@@ -799,7 +813,11 @@ jobs:
         run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install Chock
-        run: pip install ./.framework
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - name: Stage the published policies and skills as an adopter would
         id: stage

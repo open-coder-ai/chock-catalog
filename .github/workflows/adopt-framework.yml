@@ -129,8 +129,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      # A directory install, not a wheel: adopt_framework.py identifies the engine by the checkout
+      # its direct_url.json names. `pip check` fails when the adopted ref needs a dependency
+      # requirements/framework.in does not list.
       - name: Install the engine at the ref being adopted
-        run: pip install ./.framework
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip install --no-deps --no-build-isolation ./.framework
+          pip check
 
       # The whole adoption: rewrite the pin, regenerate every derived artifact, run every
       # check. Non-zero here means the diff is not adoptable, and no PR is opened.

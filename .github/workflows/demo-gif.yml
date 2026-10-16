@@ -52,7 +52,11 @@ jobs:
         run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install chock
-        run: pip install ./.framework
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - name: Render tape
         uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2
@@ -96,7 +100,11 @@ jobs:
         run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install chock
-        run: pip install ./.framework
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - name: Render tape
         uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2
