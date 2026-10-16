@@ -5,7 +5,8 @@ overstated policy is worse here than a missing one.
 
 ## The three rules
 
-All are mechanical, and all are checked by CI rather than by a reviewer's memory.
+All are mechanical, and all are checked by a machine rather than by a reviewer's memory:
+rules 1 and 2 by CI on every PR, rule 3 by the nightly run against `main` and by the release.
 
 **1. A policy claims only what it can do.** If it does not exit non-zero, it is advisory,
 and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->25<!-- /gen --> of the <!-- gen:policies -->72<!-- /gen -->
@@ -22,11 +23,14 @@ that could have failed.
 python tools/gen_adoption_transcript.py --policy <your-policy-id>
 ```
 
-and commit `docs/<id>/adoption.md` in the same PR. The tool adopts your policy into an
-empty repository — init, copy, recompile, install-hooks, validate, eval — and records what
-the tools printed. CI re-runs the same adoption and diffs: pasted or edited output fails,
-because the transcript's value is that it *cannot* be written by hand. A PR touching a
-policy without its transcript fails with exactly this command.
+(`python tools/regen_all.py` runs it for every policy you changed) and commit
+`docs/<id>/adoption.md` in the same PR. The tool adopts your policy into an empty
+repository — init, copy, recompile, install-hooks, validate, eval — and records what the
+tools printed. PR CI does not run it: a missing or stale transcript does not fail a PR. The
+nightly workflow runs `python tools/gen_adoption_transcript.py --check` against `main` and
+fails on a transcript that does not reproduce, and the release regenerates every transcript
+and checks it — so pasted or edited output is caught there, because the transcript's value
+is that it *cannot* be written by hand.
 
 ## Good first contributions
 
@@ -48,8 +52,8 @@ Or, without waiting for an issue to be filed, roughly in order of usefulness:
    the internal ones.
 3. **Extend `block-destructive-commands`** with the commands your stack actually has —
    `helm uninstall`, `aws s3 rm --recursive`, `dropdb`.
-4. **Write a policy for your domain.** `chock init` installs a `policy-init` skill;
-   ask your agent to run it and it scaffolds a conformant folder.
+4. **Write a policy for your domain.** Scaffold it with `chock new policy` and move it to
+   `base/<id>/` — see [New policy](#new-policy).
 
 The [threat ledger](https://github.com/open-coder-ai/chock-threat-intel/blob/main/reference/agentic-threat-ledger.md) in chock-threat-intel is the open work list for new
 gates: each `policy wanted` entry names a published threat nothing here covers yet and links
@@ -225,6 +229,21 @@ base/<id>/
 
 `docs/<id>/README.md` is generated — edit `manifest.yaml` and
 `docs/policy-prose.yaml`, then run `python tools/gen_policy_docs.py`.
+
+### New policy
+
+`chock new policy` writes the installed tree (`.agents/policies/<id>/`) and re-indexes it,
+not the catalog source, so move the folder to `base/` and put the index files back:
+
+```bash
+chock new policy <id> --kind content_regex   # or guard, script, rule, skill: a tested template
+mv .agents/policies/<id> base/<id>
+git restore .agents/policies/INDEX.md .agents/policies/INDEX-extended.md .chock/registry.json
+```
+
+Then edit `base/<id>/manifest.yaml` and `evals/suite.yaml`, add a `<id>:` entry
+(`solves`, `customise`) to `docs/policy-prose.yaml` and a row for it in the README's
+table for its kind, and run `python tools/regen_all.py` until it ends `== CLEAN`.
 
 ## What CI runs
 

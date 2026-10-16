@@ -357,7 +357,7 @@ Issues and PRs welcome, including "this policy is wrong": an overstated policy i
 | First contribution | How |
 | :--- | :--- |
 | Add an eval case for a bypass | a case in the policy's `evals/suite.yaml` that the gate should refuse |
-| Write a new policy | `chock new policy <id>`, then the checks below |
+| Write a new policy | `chock new policy <id>`, moved to `base/<id>/` -- see [New policy](CONTRIBUTING.md#new-policy) |
 | Pick up a threat | the [threat ledger](https://github.com/open-coder-ai/chock-threat-intel) |
 | Something small | [a good first issue](https://github.com/open-coder-ai/chock-catalog/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) |
 
