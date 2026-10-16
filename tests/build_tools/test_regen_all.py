@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 import regen_all
-from regen_all import Result
 
 
 class FakeRun:
@@ -18,10 +17,10 @@ class FakeRun:
         self.labels: list[str] = []
         self.failing = failing
 
-    def __call__(self, label: str, cmd: regen_all.Cmd, cwd: Path = regen_all.ROOT) -> Result:
+    def __call__(self, label: str, cmd: regen_all.Cmd, cwd: Path = regen_all.ROOT) -> regen_all.Result:
         del cmd, cwd
         self.labels.append(label)
-        return Result(label, int(any(label.startswith(f) for f in self.failing)), 0.0, "tail line")
+        return regen_all.Result(label, int(any(label.startswith(f) for f in self.failing)), 0.0, "tail line")
 
 
 @pytest.fixture
