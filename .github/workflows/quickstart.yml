@@ -49,7 +49,11 @@ jobs:
         run: python3 -I tools/framework_ref.py verify .framework
 
       - name: Install chock
-        run: pip install ./.framework
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - name: docs/quickstart.sh matches the README
         run: python tools/gen_quickstart_sh.py --check

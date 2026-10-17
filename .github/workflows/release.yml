@@ -142,9 +142,10 @@ jobs:
 
       - name: Install Chock and the test tooling
         run: |
-          pip install ./.framework
-          pip install --require-hashes -r requirements/test.txt
-          pip install "cairosvg==2.9.0"
+          pip install --require-hashes -r requirements/framework.txt -r requirements/test.txt -r requirements/svg.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       # The full run: every generator, then every check CI runs, including pytest at 100% coverage
       # and the staged adopter. About 40 minutes is fine here, off every pull request's path.

@@ -43,7 +43,11 @@ jobs:
           python-version: "3.12"
 
       - name: Install Chock
-        run: pip install ./.framework
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       # No --base: every policy, from an empty repository. A failure here means the
       # committed transcripts no longer describe what the tools print -- regenerate with
@@ -90,9 +94,10 @@ jobs:
       # cairosvg is the brand card's renderer; regen_all skips that check without it.
       - name: Install Chock and the generators' tooling
         run: |
-          pip install ./.framework
-          pip install --require-hashes -r requirements/test.txt
-          pip install "cairosvg==2.9.0"
+          pip install --require-hashes -r requirements/framework.txt -r requirements/test.txt -r requirements/svg.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pip check
 
       - name: Derived files that lag until the release are current
         run: |

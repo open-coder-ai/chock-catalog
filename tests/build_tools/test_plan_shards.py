@@ -9,7 +9,8 @@ from pathlib import Path
 
 import plan_shards
 import pytest
-from plan_shards import Times
+
+Times = plan_shards.Times
 
 ROOT = Path(__file__).resolve().parents[2]
 JUNIT = """<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" tests="3">
