@@ -325,3 +325,17 @@ suite:
     execute:
       command: "make >& 'build;log'"
       expect: block
+  - id: tc-042
+    category: trigger
+    prompt: An agent creates a file whose name holds a backslash, which a POSIX shell reads as an escape.
+    expect: The guard refuses the file name.
+    execute:
+      command: "touch 'dir\\sub.txt'"
+      expect: block
+  - id: tc-043
+    category: negative_trigger
+    prompt: An agent creates a file in a PowerShell session using a backslash as the path separator.
+    expect: The guard allows it; in PowerShell a backslash separates path segments.
+    execute:
+      command: "New-Item -Path 'dir\\sub.txt'"
+      expect: allow
