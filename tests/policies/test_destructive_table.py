@@ -11,10 +11,11 @@ import re
 
 import pytest
 from policies import guard_cases_destructive as authored
+from policies import guard_cases_destructive_dryrun as dryrun
 from policies import guard_cases_destructive_review as review
 from policies import guardkit
 
-CASES = authored.CASES + review.CASES
+CASES = authored.CASES + review.CASES + dryrun.CASES
 FALLBACK = authored.FALLBACK + review.FALLBACK
 POLICIES = ("block-destructive-commands", "rtk-dangerous-actions-blocker")
 GUARDS = {policy: guardkit.load_guard(policy) for policy in POLICIES}
@@ -30,7 +31,7 @@ def test_both_policies_ship_the_same_table() -> None:
     assert digest(POLICIES[0]) == digest(POLICIES[1])
     assert len(digest(POLICIES[0])) >= 6
     tables = {policy: guard.chock_destructive for policy, guard in GUARDS.items()}
-    assert {t.TABLE_VERSION for t in tables.values()} == {"1.0.0"}
+    assert {t.TABLE_VERSION for t in tables.values()} == {"1.1.0"}
     assert tables[POLICIES[0]].TABLE == tables[POLICIES[1]].TABLE
     for policy, table in tables.items():
         assert f"base/{policy}/implementations/chock_destructive" in table.__file__.replace("\\", "/")
