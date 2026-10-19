@@ -193,6 +193,24 @@ def gh(cmd: Cmd) -> Verdict:
     return None
 
 
+def push_flag(rest: list[str]) -> str:
+    """The value of git push --repo, or ''."""
+    return after(rest, "--repo") or next((a.split("=", 1)[1] for a in rest if a.startswith("--repo=")), "")
+
+
+def refspec_shaped(operand: str) -> bool:
+    """`HEAD:main`, `feature:main`, `+topic:main`: a dotless `a:b` that reads like a refspec but is, as git's first operand, a host."""
+    head, colon, _ = operand.partition(":")
+    return (
+        bool(colon)
+        and "://" not in operand
+        and "::" not in operand
+        and not head.startswith("[")
+        and "@" not in head
+        and "." not in head
+    )
+
+
 def git_urls(sub: str, conf: list[str], rest: list[str]) -> list[str]:
     """The repository URLs a git command would send to: push targets, new remotes, remote.X.url and url.X.insteadOf settings."""
     ops = positionals(rest, GIT_VALUE)
@@ -202,8 +220,7 @@ def git_urls(sub: str, conf: list[str], rest: list[str]) -> list[str]:
     urls = [v for k, v in keyed if REMOTE_URL_KEY.fullmatch(k.lower())]
     urls += [m.group(1) for k, _ in keyed if (m := INSTEAD_OF.fullmatch(k))]
     if sub == "push":
-        flag = after(rest, "--repo") or next((a.split("=", 1)[1] for a in rest if a.startswith("--repo=")), "")
-        urls.append(flag or next(iter(ops), ""))
+        urls.append(push_flag(rest) or next(iter(ops), ""))
     elif sub == "remote" and ops[:1] in (["add"], ["set-url"]):
         urls += ops[2:3]
     return urls
@@ -215,4 +232,11 @@ def git_remote(cmd: Cmd, allow: Allowlist) -> Verdict:
         return None
     sub, conf, rest = git_parts(cmd.args)
     hosts = [h for url in git_urls(sub, conf, rest) if url and (h := remote_host(url, variable=True))]
-    return next((v for host in hosts if (v := unapproved(allow, f"git {sub} to", host))), None)
+    verdict = next((v for host in hosts if (v := unapproved(allow, f"git {sub} to", host))), None)
+    first = positionals(rest, GIT_VALUE)[:1]
+    if verdict and sub == "push" and not push_flag(rest) and first and refspec_shaped(first[0]):
+        return refuse(
+            f"git reads the first operand '{first[0][:60]}' as the repository, a host outside the egress allowlist. "
+            f"To push a refspec, name the remote first: git push origin {first[0][:60]}. {ASK_PERSON}"
+        )
+    return verdict

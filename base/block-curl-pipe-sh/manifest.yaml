@@ -1,11 +1,11 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.1.3"
+version: "0.1.4"
 description: >
-  Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
-  (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
-  iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker
-  exec bodies, or downloaded and run in one command with no checksum or signature step.
+  Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws s3 cp to
+  stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh,
+  deno, bun, su, source, eval, iex) by pipe, substitution or here-string, also inside
+  bash -c/ssh/docker exec bodies, or downloaded then run with no checksum or signature step.
   nc/socat/one-liner reads ask. Misses: aliases, functions, outside variables, encoded text,
   renamed downloads. Friction only.
 artifact: rule
@@ -15,7 +15,7 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(remote_exec): fetch(curl|wget|iwr|irm) piped|substituted|here-string|run-after-download into interpreter(sh|bash|python|php|pwsh|source|eval|iex), quoted bodies too; ask: nc|socat|net one-liner
+    block(remote_exec): fetch(curl|wget|iwr|irm|ssh_host_cmd|scp|rsync|aws_s3_cp to_stdout) piped|substituted|here-string|run-after-download into interpreter(sh|bash|python|php|pwsh|source|eval|iex), quoted bodies too; ask: nc|socat|net one-liner
     allow: download_to_file, fetch|non_interpreter(jq|tar|gpg), download+verify(sha256sum -c|gpg --verify)+run; prefer: curl -o file; read; verify; run
 effects:
 - read_only
@@ -25,7 +25,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-19T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -39,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.4
+  date: '2026-10-19'
+  changes:
+  - "A remote file read over a transport is fetched content (catalog review m1): `ssh host <cmd>` with any remote command, and scp, rsync or aws s3 cp writing a remote source to stdout (`-`), are refused the same way as curl when piped, substituted or process-substituted into a shell or interpreter, inside bash -c/ssh/docker exec bodies too, and when redirected or tee'd to a file that is then run with no verify step between. Eval cases tc-073..tc-081. Not counted: a copy to a local file later run (scp host:f . && sh f), `ssh host` with no remote command, other object stores (gsutil, az), and the crude fallback reading (unbalanced quotes, CHOCK_ARGV_FALLBACK), which still needs a listed downloader because ssh and a shell name together are ordinary (ssh host bash -lc make). The description's lists drop process substitution, busybox and $SHELL to stay within 500 characters; the guard reads them as before."
 - version: 0.1.3
   date: '2026-10-07'
   changes:
