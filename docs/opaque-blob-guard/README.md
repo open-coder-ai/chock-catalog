@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | warns — warns on an agent's file writes and at turn end |
+| **On Claude Code** | warns — warns on an agent's file writes and at turn end. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | warn-only `script` gate |
 | **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |

@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end |
+| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | commit-time guard script `no-a11y-regression-pre-commit.py` + tool-use script gate |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen; also judged at tool use, `best-effort` once `chock sync` has run (a crashed hook fails open) |
