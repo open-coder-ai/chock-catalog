@@ -1505,15 +1505,15 @@ policies:
     with no new distributionSha256Sum. Misses text-encoded or prefixed payloads, other folders.'
 - id: refname-filename-metachar
   path: base/refname-filename-metachar
-  version: 0.1.2
+  version: 0.1.3
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 41
-  eval_executed: 41
+  eval_cases: 43
+  eval_executed: 43
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
@@ -1523,9 +1523,10 @@ policies:
     misses: null
   description: Refuses names a shell, CI step or git can misread. Paths a change adds or renames into
     (commit, agent writes), and branches and tags pushed (pre-push), with command substitution, an IFS
-    expansion, a backtick, ; & | < >, a control or bidi character, a base64-decode shape, a leading
-    dash or trailing space or dot in a segment, or a '..' segment; a ref also with a full commit id's
-    shape. A guard refuses git and file commands creating such names. No waiver. Friction, not a boundary.
+    expansion, a backtick, ; & | < >, a double quote, a backslash, a control or bidi character, a base64-decode
+    shape, a leading dash or trailing space or dot in a segment, or a '..' segment; a ref also with
+    a full commit id's shape. A guard refuses git and file commands creating such names. No waiver.
+    Friction, not a boundary.
 - id: scan-hidden-content
   path: base/scan-hidden-content
   version: 0.0.2

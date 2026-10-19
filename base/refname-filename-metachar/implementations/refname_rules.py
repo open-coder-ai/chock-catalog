@@ -42,10 +42,11 @@ def _segment_problems(name: str, *, dotdot: bool) -> list[tuple[str, str]]:
     return found
 
 
-def problems(name: str, *, dotdot: bool = True) -> list[tuple[str, str]]:
+def problems(name: str, *, dotdot: bool = True, backslash: bool = True) -> list[tuple[str, str]]:
     """(code, reason) for each way a path or ref name can be misread; empty when it is plain.
 
     `dotdot` is off for a command's operands, where `../x` is ordinary navigation, and on for a tracked path or ref.
+    `backslash` is off for a PowerShell operand, where a backslash separates path segments.
     """
     found = []
     if any(unicodedata.category(char) == "Cc" or char in _BIDI for char in name):
@@ -54,6 +55,10 @@ def problems(name: str, *, dotdot: bool = True) -> list[tuple[str, str]]:
         found.append((SUBST, "shell substitution syntax (dollar-paren, dollar-brace, $IFS or a backtick)"))
     if _OPERATOR.search(name):
         found.append(("operator", "a shell operator (; & | < >)"))
+    if '"' in name:
+        found.append(("quote", "a double quote, which a shell and git both read as quoting"))
+    if backslash and "\\" in name:
+        found.append(("backslash", "a backslash, which a POSIX shell reads as an escape and git prints quoted"))
     if _DECODE.search(name):
         found.append(("decode", "a base64-decode shape"))
     found += _segment_problems(name, dotdot=dotdot)
