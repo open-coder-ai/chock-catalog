@@ -128,15 +128,15 @@ policies:
     config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.2.3
+  version: 0.2.4
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 145
-  eval_executed: 145
+  eval_cases: 156
+  eval_executed: 156
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
