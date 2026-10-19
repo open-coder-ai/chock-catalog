@@ -65,6 +65,10 @@ def test_this_repo_pin_is_valid() -> None:
     assert framework_ref.read_pin(ROOT) is not None
 
 
+def test_the_pin_file_is_checked_out_with_lf() -> None:
+    assert _git(ROOT, "check-attr", "eol", "--", framework_ref.PIN_FILE).endswith(": eol: lf")
+
+
 def test_read_exports_the_pin_to_the_job_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     env_file = tmp_path / "github_env"
     env_file.write_text("EARLIER=1\n", encoding="utf-8")
