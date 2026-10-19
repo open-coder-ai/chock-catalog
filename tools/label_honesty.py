@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -15,20 +16,44 @@ from chock.plugin import bundle_grade
 
 #: Said by a policy whose declared enforcement no plugin hook carries (a git hook or CI gate, or a
 #: `tool_call` warn): the plugin ships its skill text and nothing else.
-TEXT_ONLY_SAYS = "text only in a plugin: nothing in the plugin stops a violation; the enforcement the manifest declares is not carried by a plugin"
+TEXT_ONLY_SAYS = (
+    "text only in a plugin. Nothing in the plugin stops a violation."
+    " The plugin does not carry the enforcement the manifest declares"
+)
 #: Policies whose shipped data tables age inside an installed plugin (BV-1 section 5.3): the label
 #: states the oldest table's `as_of`. Which policies is a catalog decision; the date is read from the tables.
 DATED_DATA = ("compromised-package-ioc", "verify-mcp-allowlist")
-DATED_SAYS = "data as of {as_of}; an installed plugin does not update it: re-running the install is the update"
+DATED_SAYS = "data as of {as_of}. An installed plugin does not update it. Re-run the install to update it"
 #: Command guards that only ever ask (exit 3), never refuse, and let a call through where the engine sets
 #: CHOCK_CAN_ASK=0: a catalog decision, since the engine grades every guard as refusing.
 #: tests/build_tools/test_registry_labels.py holds each to a guard with no refusing exit.
 ASK_ONLY_GUARDS = ("ask-credential-switching",)
 GUARD_ASKS = "asks before a matched shell command runs"
 GUARD_NOT_ENFORCED = "not enforced (this client cannot prompt before a shell command)"
+#: Added where the matrix records a pre-tool hook that lets the call through on an error, on vendor docs alone.
+FAIL_OPEN_SAYS = (
+    ". If the hook errors, the action goes through. That comes from the vendor's docs only."
+    " Chock has not seen it happen in a live run"
+)
+CANNOT = "because this client cannot prompt there"
+CANNOT_EITHER = "because this client cannot prompt at either point"
+#: Where the engine's asking gate text starts, after any guard text.
+GATE_ASKS = re.compile(r"(?:^|; |\. )[Aa]sks ")
+#: An asking gate wired at the write and at turn end, keyed (honours at the write, honours at turn end).
+ASK_TAILS = {
+    (True, True): "asks on an agent's file writes and at turn end",
+    (True, False): f"asks on an agent's file writes. It refuses at turn end, {CANNOT}",
+    (False, True): f"refuses an agent's file writes, {CANNOT}. It asks at turn end",
+    (False, False): f"refuses an agent's file writes and refuses at turn end, {CANNOT_EITHER}",
+}
+#: An asking gate wired at turn end only, keyed by whether the client honours an ask there.
+ASK_STOP_ONLY = {
+    True: "asks at turn end only. It does not check a file write when it happens",
+    False: f"refuses at turn end only, {CANNOT}. It does not check a file write when it happens",
+}
 #: One bundle read by two products that spell the wired event differently, one able to prompt and one not.
 GUARD_SPLIT = {
-    "vscode_copilot": f"{GUARD_ASKS} in VS Code; not enforced in Copilot CLI (it cannot prompt there)",
+    "vscode_copilot": f"{GUARD_ASKS} in VS Code. Not enforced in Copilot CLI, because it cannot prompt there",
 }
 
 
@@ -61,7 +86,7 @@ def fail_open_qualifier(agent: str) -> str:
     """What to add where the matrix records a fail-open pre-tool hook resting on vendor docs alone."""
     unwitnessed = matrix.basis(agent) == "vendor-docs"
     if matrix.capability(agent, "pre_tool")["fail_mode"] == matrix.FAIL_OPEN and unwitnessed:
-        return "; fails open: a hook error lets the call proceed (vendor docs only, not witnessed)"
+        return FAIL_OPEN_SAYS
     return ""
 
 
@@ -81,19 +106,12 @@ def honest_asks(grade: int, says: str, hooks_text: str, agent: str) -> tuple[int
     def honours(event: str) -> bool:
         return bool(gates.get(event, {}).get("honours_escalate"))
 
-    cannot = "(this client cannot prompt there)"
-    turn_end = "asks at turn end" if honours(stop) else f"refuses at turn end {cannot}"
-    only = "asks at turn end only" if honours(stop) else f"refuses at turn end only {cannot}"
-    if writes:
-        on_writes = (
-            "asks on an agent's file writes" if honours(pre_tool) else f"refuses an agent's file writes {cannot}"
-        )
-        tail = f"{on_writes}; {turn_end}"
-    else:
-        tail = f"{only}; the write itself is not judged"
+    tail = ASK_TAILS[honours(pre_tool), honours(stop)] if writes else ASK_STOP_ONLY[honours(stop)]
     if not honours(pre_tool if writes else stop):
         grade = bundle_grade.BLOCKS if writes else bundle_grade.STOP_ONLY
-    return grade, says[: says.index("asks ")] + tail
+    # A guard's half comes first: the engine joins it with "; " (before VOICE-3a) or ". ".
+    guard = says[: GATE_ASKS.search(says).start()]
+    return grade, f"{guard}. {tail[:1].upper()}{tail[1:]}" if guard else tail
 
 
 def guard_can_ask(hooks_text: str, agent: str) -> set[bool]:

@@ -81,10 +81,10 @@ def test_cursor_and_codex_refuse_what_claude_asks() -> None:
         assert "asks" not in label["cursor"]["says"] + label["codex"]["says"]
 
 
-def test_devin_has_a_key_that_says_it_fails_open() -> None:
+def test_devin_has_a_key_that_says_a_hook_error_lets_the_action_through() -> None:
     hooked = [r["label"]["devin"]["says"] for r in ROWS.values() if r["label"]["devin"]["keyword"] != "advise"]
     assert hooked
-    assert all("fails open" in says for says in hooked)
+    assert all("If the hook errors, the action goes through" in says for says in hooked)
 
 
 def test_every_row_carries_its_manifests_lifecycle_status() -> None:
@@ -130,7 +130,7 @@ def test_dated_data_states_its_date_and_that_reinstalling_updates_it() -> None:
     for pid in ("compromised-package-ioc", "verify-mcp-allowlist"):
         data = ROWS[pid]["label"]["data"]
         assert data["as_of"] in data["says"]
-        assert "re-running the install is the update" in data["says"]
+        assert "Re-run the install to update it" in data["says"]
     assert sum("data" in r["label"] for r in ROWS.values()) == 2
 
 
@@ -180,7 +180,7 @@ def test_an_ask_only_guard_asks_where_the_client_can_prompt_and_is_not_enforced_
     label = ROWS[pid]["label"]
     assert label["claude-code"] == label["cursor"] == {"keyword": "ask", "says": GUARD_ASKS}
     assert label["copilot"] == {"keyword": "ask", "says": GUARD_SPLIT["vscode_copilot"]}
-    assert "not enforced in Copilot CLI" in label["copilot"]["says"]
+    assert "Not enforced in Copilot CLI" in label["copilot"]["says"]
     for key in ("codex", "devin"):
         assert label[key] == {"keyword": "advise", "says": GUARD_NOT_ENFORCED}
 
