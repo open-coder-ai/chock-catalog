@@ -206,3 +206,13 @@ def test_verify_refuses_a_replace_object_standing_in(repo, monkeypatch: pytest.M
     assert (path / "payload.py").exists()
     monkeypatch.setenv("FRAMEWORK_REF", pinned)
     assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+
+
+def test_a_refusal_names_the_status_lines_it_saw(repo, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    path, pinned, _ = repo
+    (path / "a\tb.txt").write_text("x", encoding="utf-8")
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+    err = capsys.readouterr().err
+    assert "::notice::?? " in err
+    assert "\t" not in err.split("::notice::", 1)[1]
