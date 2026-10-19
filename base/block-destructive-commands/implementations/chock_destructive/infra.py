@@ -22,6 +22,23 @@ KUBECTL_VALUES = frozenset(
         "--request-timeout",
     )
 )
+# `kubectl delete` reads these as values too; the second set widens a delete past one named resource.
+_KUBECTL_DELETE_VALUES = KUBECTL_VALUES | frozenset(
+    ("-l", "--selector", "-f", "--filename", "-k", "--kustomize", "--field-selector", "--grace-period", "--timeout")
+) | frozenset(("--cascade", "-o", "--output"))
+_KUBECTL_WIDE = frozenset(
+    ("--all", "-A", "--all-namespaces", "-l", "--selector", "-f", "--filename", "-k", "--kustomize", "--field-selector")
+)
+# One of these is one name on the API but everything inside it on the cluster.
+_KUBECTL_CASCADING = frozenset(
+    (
+        *("ns", "namespace", "namespaces", "node", "nodes", "crd", "crds"),
+        *("customresourcedefinition", "customresourcedefinitions", "pv", "persistentvolume", "persistentvolumes"),
+    )
+)
+# kubectl's documented dry runs carry a value; a bare --dry-run (deprecated) and --dry-run=none are judged as a run.
+_KUBECTL_DRY = frozenset(("--dry-run=client", "--dry-run=server"))
+_NOT_DRY = frozenset(("false", "none", "no", "0"))
 HELM_VALUES = frozenset(("-n", "--namespace", "--kube-context", "--kubeconfig", "--kube-apiserver", "--kube-token"))
 DOCKER_VALUES = frozenset(
     (
@@ -119,9 +136,30 @@ _SQL = (
 SQL_CLIENTS = frozenset(("psql", "mysql", "mariadb", "sqlite3", "mongosh", "mongo", "redis-cli", "clickhouse-client"))
 
 
+def dry_run(args: list[str], *flags: str) -> bool:
+    """A documented dry-run flag switched on: bare or `=true`; `=false` and `=none` run for real."""
+    return any(a.partition("=")[0] in flags and a.partition("=")[2].lower() not in _NOT_DRY for a in args)
+
+
+def one_resource(args: list[str]) -> str:
+    """`kubectl delete pod my-pod` or `pod/my-pod`: one kind and one name, no selector, file, --all or cascading kind."""
+    items = positionals(args, _KUBECTL_DELETE_VALUES)
+    if items[:1] != ["delete"] or flags_of(args) & _KUBECTL_WIDE:
+        return ""
+    words = items[1].split("/") if len(items) == 2 else items[1:]  # noqa: PLR2004 -- kind/name as one word
+    if len(words) != 2 or any("," in w or not w for w in words) or words[0].lower() in _KUBECTL_CASCADING:  # noqa: PLR2004
+        return ""
+    return "/".join(words)
+
+
 def kubectl(cmd: Cmd) -> Hit:
     verb = positionals(cmd.args, KUBECTL_VALUES)[:1]
-    return {"delete": ("kubectl-delete", ""), "drain": ("kubectl-drain", "")}.get(verb[0]) if verb else None
+    if verb[:1] not in (["delete"], ["drain"]) or _KUBECTL_DRY & set(cmd.args):
+        return None
+    if verb == ["drain"]:
+        return "kubectl-drain", ""
+    one = one_resource(cmd.args)
+    return ("kubectl-delete-one", one) if one else ("kubectl-delete", "")
 
 
 def _opts(args: list[str]) -> dict[str, str]:
@@ -145,7 +183,10 @@ def pulumi(cmd: Cmd) -> Hit:
 
 
 def aws(cmd: Cmd) -> Hit:
+    """s3 documents --dryrun and the other services --dry-run; either one changes nothing."""
     items, flags = positionals(cmd.args, _AWS_VALUES), flags_of(cmd.args)
+    if dry_run(cmd.args, "--dryrun", "--dry-run"):
+        return None
     service = next((i for i in items if i == "s3" or i in _AWS_DELETES), "")
     action = after(items, service)
     s3 = {"rm": "--recursive", "rb": "--force", "sync": "--delete"}
@@ -190,6 +231,8 @@ def anywhere(words: tuple[str, ...], limit: int | None, values: frozenset[str] =
 
 def helm(cmd: Cmd) -> Hit:
     verb = positionals(cmd.args, HELM_VALUES)[:1]
+    if dry_run(cmd.args, "--dry-run"):
+        return None
     return ("helm-uninstall", "") if verb and verb[0] in ("uninstall", "delete", "del", "un") else None
 
 

@@ -58,15 +58,15 @@ policies:
     only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.2.4
+  version: 0.3.0
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: commit-time guard script
   enforces: enforced-at-commit
-  eval_cases: 170
-  eval_executed: 170
+  eval_cases: 189
+  eval_executed: 189
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
@@ -74,12 +74,11 @@ policies:
     copilot: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     devin: {"keyword": "block", "says": "refuses a matched shell command before it runs. If the hook errors, the action goes through. That comes from the vendor's docs only. Chock has not seen it happen in a live run"}
     misses: null
-  description: 'Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive
-    table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths;
-    mv/chmod/chown -R of system dirs; dd to devices, mkfs; account lockouts; force, delete and mirror
-    pushes; history rewrites; IaC destroy; listed cloud and platform deletes; DB drops. Asks: rm -rf
-    off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre-push: no
-    non-ff.'
+  description: 'Best-effort, on parsed commands (echo ignored); one verdict table shared with rtk-dangerous-actions-blocker.
+    Blocks recursive deletes of root, home, abs paths or .git; mv/chmod/chown -R of system dirs; dd
+    to devices, mkfs; lockouts; force, delete, mirror pushes; history rewrites; switch --discard; IaC
+    destroy; cloud deletes; DB drops. Asks: rm -rf off a safe list, one named kubectl delete, bare lease,
+    stash drop, -auto-approve, drain, prunes, API deletes. Dry runs pass. Pre-push: no non-ff.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
   version: 0.1.1
@@ -868,15 +867,15 @@ policies:
     the current branch, and at push time by parsing the refs the agent is pushing.
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.2.4
+  version: 0.3.0
   artifact: rule
   enforcement: advise
   status: deprecated
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 105
-  eval_executed: 105
+  eval_cases: 111
+  eval_executed: 111
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
@@ -886,11 +885,11 @@ policies:
     status: {"keyword": "deprecated", "says": "deprecated: use block-destructive-commands (since 2026-10-05)"}
     misses: null
   description: 'Deprecated: use block-destructive-commands, which shares this policy''s destructive-command
-    table. rtk#1007. Destructive verdicts come from the chock_destructive table shared with block- destructive-commands:
-    the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard, clean -f, IaC destroy,
-    cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk''s safe list, bare lease, stash drop,
-    prunes, -auto-approve). Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline
-    *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.'
+    table. rtk#1007. Same table as block-destructive-commands: blocks root/home/.git deletes, force/delete/mirror
+    pushes, reset --hard, clean -f, switch --discard, IaC destroy, cloud deletes, DB drops, lockouts;
+    asks rm -rf off rtk''s safe list, one named kubectl delete, bare lease, stash drop, prunes; dry-run
+    flags pass. Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN.
+    Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
   version: 0.1.1
