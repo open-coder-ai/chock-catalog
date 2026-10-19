@@ -190,8 +190,8 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | Policy | Blocks | Evals |
 | :--- | :--- | ---: |
 | [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
-| [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes -- vendor tokens, private keys, JWTs, named key and password values, URI credentials -- and secret files by path (`.env*`, keys); misses split or encoded values | 55/55 |
-| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 55/55 |
+| [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes -- vendor tokens, private keys, JWTs, named key and password values, URI credentials -- and secret files by path (`.env*`, keys); misses split or encoded values | 58/58 |
+| [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 59/59 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 72/72 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 17/17 |
 | [`pin-github-actions`](docs/pin-github-actions/) | a workflow that references any action or reusable workflow, `actions/*` included, by a movable tag or branch instead of a lowercase 40-character SHA, or a `docker://` image without `@sha256` -- so a re-tagged or compromised release can't change what CI runs; local actions pass | 63/63 |

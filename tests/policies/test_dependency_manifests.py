@@ -64,9 +64,36 @@ def test_listed_and_normalised_equivalent_names_are_silent(repo: Path) -> None:
     assert run(repo, writes) == (0, {"findings": []}, "")
 
 
-def test_a_missing_allowlist_lists_nothing(tmp_path: Path) -> None:
+def test_a_missing_allowlist_is_none_and_a_manifest_change_warns_naming_what_was_not_checked(tmp_path: Path) -> None:
     bare = scriptkit.init_repo(tmp_path / "bare", {"README.md": "x\n"})
-    code, document, _ = run(bare, {"requirements.txt": "requests\n"})
+    assert mod.load_allowlist(bare) is None
+    code, document, err = run(bare, {"requirements.txt": "requests\n", "sub\\package.json": "{}", "README.md": "y\n"})
+    assert (code, document) == (4, {})
+    assert err.startswith(f"dependency-manifests: {ALLOWLIST} does not exist, so the dependencies named in ")
+    assert "requirements.txt, sub/package.json were not checked" in err
+    assert "README.md" not in err
+    assert "--seed" in err
+
+
+def test_a_missing_allowlist_is_silent_on_a_change_that_touches_no_manifest(tmp_path: Path) -> None:
+    bare = scriptkit.init_repo(tmp_path / "bare", {"README.md": "x\n"})
+    assert run(bare, {"README.md": "y\n", "src/app.py": "import requests\n"}) == (0, {}, "")
+
+
+@pytest.mark.parametrize("text", ["", "# nothing approved yet\n", "\n\n"])
+def test_an_allowlist_that_exists_but_lists_nothing_still_refuses(tmp_path: Path, text: str) -> None:
+    root = scriptkit.init_repo(tmp_path / "r", {ALLOWLIST: text})
+    assert mod.load_allowlist(root) == []
+    code, document, _ = run(root, {"requirements.txt": "requests\n"})
+    assert (code, keys(document)) == (1, ["py|requests"])
+
+
+def test_a_dangling_symlink_at_the_allowlist_path_is_an_unreadable_allowlist_not_a_missing_one(tmp_path: Path) -> None:
+    root = scriptkit.init_repo(tmp_path / "r", {"README.md": "x\n"})
+    (root / ".chock").mkdir()
+    (root / ALLOWLIST).symlink_to("nowhere.txt")
+    assert mod.load_allowlist(root) == []
+    code, document, _ = run(root, {"requirements.txt": "requests\n"})
     assert (code, keys(document)) == (1, ["py|requests"])
 
 

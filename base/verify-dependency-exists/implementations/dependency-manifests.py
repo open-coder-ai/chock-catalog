@@ -2,16 +2,18 @@
 """Report each dependency a written manifest names that the allowlist does not list; the engine keeps what a change adds.
 
 Runs as the policy's script gate: stdin is {"event", "repo_root", "writes": {path: text}}; exit 0 allows, 1 refuses, 3 asks,
-2 is a fault in this check. It prints a findings document, one finding per unlisted name keyed by ecosystem and normalised
-name, and the engine runs it again on the baseline text and refuses only the keys the change holds more of. `--seed`
-prints the names the tracked manifests hold now, for a first allowlist. Manifests are parsed, never run, and no file
-outside the written set is read, bar the allowlist (and the tracked files under --seed).
+4 warns (no allowlist exists yet, so a manifest change is allowed with a note), 2 is a fault in this check. It prints a
+findings document, one finding per unlisted name keyed by ecosystem and normalised name, and the engine runs it again on
+the baseline text and refuses only the keys the change holds more of. `--seed` prints the names the tracked manifests
+hold now, for a first allowlist. Manifests are parsed, never run, and no file outside the written set is read, bar the
+allowlist (and the tracked files under --seed).
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import posixpath
 import subprocess
 import sys
@@ -28,19 +30,31 @@ from depnames.pyreq import includes
 
 ALLOWLIST = ".chock/dependency-allowlist.txt"
 MAX_CHARS = 16_000_000
-ASK, BLOCK = 3, 1
+ALLOW, ASK, BLOCK, WARN = 0, 3, 1, 4
 MAX_LINE_LOOKUPS = 500
 MAX_LOOKUP_LINES = 20_000
 REFUSALS = {xmlsafe.RefusedError: "declares a DOCTYPE or ENTITY and is not parsed"}
 ADVICE = (
     "ask a person to add it, and confirm the package exists in its registry and is the intended one (no lookup is made)"
 )
+UNSEEDED = (
+    "dependency-manifests: {allowlist} does not exist, so the dependencies named in {paths} were not checked. "
+    "Allowed with this note. A person seeds the list (`dependency-manifests.py --seed`, then reviews it), commits it, "
+    "and from then on an unlisted name is refused."
+)
 
 
-def load_allowlist(root: Path) -> list[str]:
-    """Allowlist entries as written; blank lines and `#` comments are dropped, and a missing file is an empty list."""
+def load_allowlist(root: Path) -> list[str] | None:
+    """Allowlist entries as written; blank lines and `#` comments are dropped.
+
+    None when nothing exists at the allowlist path at all: a repository that has not seeded one, which a plugin-only
+    install cannot do. A file that is there but cannot be read is an empty list, so every name is unlisted.
+    """
+    path = root / ALLOWLIST
+    if not os.path.lexists(path):
+        return None
     try:
-        text = safe_read.read_text(root / ALLOWLIST)
+        text = safe_read.read_text(path)
     except safe_read.UnreadableError:
         return []
     lines = (line.split(" #", 1)[0].strip() for line in text.splitlines())
@@ -103,6 +117,20 @@ def covers(manifest_dir: str, lock_dir: str) -> bool:
     return lock_dir in ("", manifest_dir) or manifest_dir.startswith(lock_dir + "/")
 
 
+def written(payload: dict) -> dict[str, str]:
+    """The change's files by POSIX path."""
+    return {path.replace("\\", "/"): text for path, text in payload.get("writes", {}).items()}
+
+
+def unseeded(payload: dict) -> int:
+    """No allowlist exists: a change to a manifest or lockfile is allowed with a note naming it; any other change is silent."""
+    found = sorted(targets(written(payload)))
+    if not found:
+        return ALLOW
+    print(UNSEEDED.format(allowlist=ALLOWLIST, paths=", ".join(found)), file=sys.stderr)
+    return WARN
+
+
 def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict]]:
     """(block findings, ask findings): a lockfile name or a manifest that cannot be parsed asks.
 
@@ -111,7 +139,7 @@ def judge(payload: dict, allowed: Allowed) -> tuple[list[dict], list[dict]]:
     """
     manifest: list[dict] = []
     locks: list[dict] = []
-    writes = {path.replace("\\", "/"): text for path, text in payload.get("writes", {}).items()}
+    writes = written(payload)
     found = targets(writes)
     manifest_dirs = [(fam.eco, posixpath.dirname(path)) for path, fam in found.items() if not fam.lock]
     for path, fam in sorted(found.items()):
@@ -171,7 +199,10 @@ def main() -> int:
         return seed(Path.cwd())
     try:
         payload = json.load(sys.stdin)
-        manifest, locks = judge(payload, Allowed(load_allowlist(Path(payload["repo_root"]))))
+        entries = load_allowlist(Path(payload["repo_root"]))
+        if entries is None:
+            return unseeded(payload)
+        manifest, locks = judge(payload, Allowed(entries))
     except Exception as exc:  # noqa: BLE001 -- a fault must not read as a verdict
         print(f"dependency-manifests: internal error ({type(exc).__name__}); manifests not checked", file=sys.stderr)
         return 2
