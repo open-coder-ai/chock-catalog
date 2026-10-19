@@ -21,6 +21,7 @@ from label_honesty import (
     GUARD_NOT_ENFORCED,
     GUARD_SPLIT,
     guard_can_ask,
+    honest_asks,
     honest_guard,
     status_label,
 )
@@ -81,10 +82,10 @@ def test_cursor_and_codex_refuse_what_claude_asks() -> None:
         assert "asks" not in label["cursor"]["says"] + label["codex"]["says"]
 
 
-def test_devin_has_a_key_that_says_it_fails_open() -> None:
+def test_devin_has_a_key_that_says_a_hook_error_lets_the_action_through() -> None:
     hooked = [r["label"]["devin"]["says"] for r in ROWS.values() if r["label"]["devin"]["keyword"] != "advise"]
     assert hooked
-    assert all("fails open" in says for says in hooked)
+    assert all("If the hook errors, the action goes through" in says for says in hooked)
 
 
 def test_every_row_carries_its_manifests_lifecycle_status() -> None:
@@ -130,7 +131,7 @@ def test_dated_data_states_its_date_and_that_reinstalling_updates_it() -> None:
     for pid in ("compromised-package-ioc", "verify-mcp-allowlist"):
         data = ROWS[pid]["label"]["data"]
         assert data["as_of"] in data["says"]
-        assert "re-running the install is the update" in data["says"]
+        assert "Re-run the install to update it" in data["says"]
     assert sum("data" in r["label"] for r in ROWS.values()) == 2
 
 
@@ -180,7 +181,7 @@ def test_an_ask_only_guard_asks_where_the_client_can_prompt_and_is_not_enforced_
     label = ROWS[pid]["label"]
     assert label["claude-code"] == label["cursor"] == {"keyword": "ask", "says": GUARD_ASKS}
     assert label["copilot"] == {"keyword": "ask", "says": GUARD_SPLIT["vscode_copilot"]}
-    assert "not enforced in Copilot CLI" in label["copilot"]["says"]
+    assert "Not enforced in Copilot CLI" in label["copilot"]["says"]
     for key in ("codex", "devin"):
         assert label[key] == {"keyword": "advise", "says": GUARD_NOT_ENFORCED}
 
@@ -225,3 +226,28 @@ def test_a_split_client_without_wording_stops_the_generator(monkeypatch: pytest.
     monkeypatch.delitem(GUARD_SPLIT, "vscode_copilot")
     with pytest.raises(SystemExit, match="GUARD_SPLIT"):
         honest_guard(ASK_ONLY_GUARDS[0], bundle_grade.BLOCKS, "x", _hooks("PreToolUse"), "vscode_copilot")
+
+
+#: A guard plus an asking gate wired at Claude Code's write and turn-end events.
+GUARD_AND_GATE = json.dumps(
+    {
+        "hooks": {
+            e: [{"hooks": [{"command": "x --guard g.py"}, {"command": "x --gate"}]}] for e in ("PreToolUse", "Stop")
+        }
+    }
+)
+ASKED = (
+    bundle_grade.ASKS,
+    "refuses a matched shell command before it runs. Asks on an agent's file writes."
+    " It refuses at turn end, because this client cannot prompt there",
+)
+
+
+def test_honest_asks_reads_the_engines_semicolon_wording() -> None:
+    says = "refuses a matched shell command before it runs; asks on an agent's file writes and at turn end"
+    assert honest_asks(bundle_grade.ASKS, says, GUARD_AND_GATE, "claude_code") == ASKED
+
+
+def test_honest_asks_reads_the_engines_sentence_wording() -> None:
+    says = "refuses a matched shell command before it runs. Asks on an agent's file writes and at turn end"
+    assert honest_asks(bundle_grade.ASKS, says, GUARD_AND_GATE, "claude_code") == ASKED
