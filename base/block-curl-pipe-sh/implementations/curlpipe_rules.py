@@ -41,7 +41,7 @@ FETCHERS = frozenset(
 NETREADERS = frozenset(("nc", "ncat", "netcat", "socat", "telnet"))
 #: Copiers that write a remote file to stdout when the destination is `-`.
 TRANSPORTS = frozenset(("scp", "rsync"))
-_REMOTE = re.compile(r"^(?:[\w.-]+@)?[\w.-]{2,}:|^(?:rsync|s3|gs|az)://", re.IGNORECASE)
+_REMOTE = re.compile(r"^(?:(?:[\w.-]+@)?[\w.-]{2,}:|(?:rsync|s3|gs|az)://)", re.IGNORECASE)
 VERIFIERS = frozenset(
     ("sha1sum", "sha224sum", "sha256sum", "sha384sum", "sha512sum", "shasum", "md5sum", "b2sum", "b3sum", "cksum")
 )
