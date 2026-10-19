@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refuse workflow triggers that hand a fork's code our secrets, and unverified framework checkouts."""
+"""Refuse workflow triggers that hand a fork's code our secrets, and unverified framework checkouts or installs."""
 
 from __future__ import annotations
 
@@ -19,6 +19,14 @@ UNTRUSTED_REFS = ("github.event.pull_request.head.sha", "github.event.pull_reque
 FRAMEWORK_REF = re.compile(r"framework[_-]?ref", re.IGNORECASE)
 PINS = {"${{ env.FRAMEWORK_REF }}", "${{ inputs.framework_ref }}"}
 TOOL = "python3 -I tools/framework_ref.py"
+# Git pins come from the framework's own pyproject; an assignment, not a pipe, so `bash -e` sees a refusal.
+DIRECT_DEPS = (
+    'pins="$(python -I tools/framework_ref.py direct-deps .framework)"',
+    '[ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"',
+    "pip check",
+    "python -I tools/framework_ref.py deps .framework",
+)
+FRAMEWORK_INSTALL = re.compile(r"\bpip3? (?:install|wheel)\b.*\./\.framework\b")
 BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
 HEXISH = re.compile(r"[0-9a-fA-F]{7,64}")
 # A verify step is its command and the ref it checks: shell, working-directory or extra env could neuter it.
@@ -132,6 +140,27 @@ def framework_checkouts(name: str, workflow: dict) -> list[str]:
     return problems
 
 
+def _follows(lines: list[str], wanted: list[str]) -> bool:
+    """`wanted` appear in `lines` in this order (other lines may sit between them)."""
+    rest = iter(lines)
+    return all(line in rest for line in wanted)
+
+
+def framework_installs(name: str, workflow: dict) -> list[str]:
+    """A step that installs ./.framework then installs the git commits it pins, `pip check`s, and checks each commit."""
+    problems = []
+    for job_id, job in (workflow.get("jobs") or {}).items():
+        for step in job.get("steps") or []:
+            lines = [line.strip() for line in _run(step).splitlines()]
+            installs = [i for i, line in enumerate(lines) if FRAMEWORK_INSTALL.search(line)]
+            if installs and not _follows(lines[installs[-1] + 1 :], list(DIRECT_DEPS)):
+                problems.append(
+                    f"{name} job {job_id!r} installs ./.framework without then running, in order: "
+                    + "; ".join(DIRECT_DEPS)
+                )
+    return problems
+
+
 def check(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     workflow = yaml.safe_load(text)
@@ -146,7 +175,7 @@ def check(path: Path) -> list[str]:
     problems += [
         f"{path.name} checks out {ref}, which a contributor controls." for ref in UNTRUSTED_REFS if ref in text
     ]
-    return problems + framework_checkouts(path.name, workflow)
+    return problems + framework_checkouts(path.name, workflow) + framework_installs(path.name, workflow)
 
 
 def main() -> int:
