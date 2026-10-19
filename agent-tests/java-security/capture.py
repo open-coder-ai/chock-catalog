@@ -8,6 +8,7 @@ chock's own, for every tool event the agent has, the agent makes a few edits, an
 each payload's event, tool and field shapes.
 
     python kit.py capture --dir ~/shop-codex            # wire the logger
+    python kit.py capture --dir ~/shop-claude --watch A.java   # also wire file_changed, where it needs a file list
     ... in the agent: create a file, change a line, change two places in one file ...
     python kit.py capture --dir ~/shop-codex --show     # what arrived
     python kit.py capture --dir ~/shop-codex --stop     # unwire it
@@ -20,6 +21,7 @@ this kit wrote (tagged with its owner); a hook entry without that tag is never t
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -38,6 +40,8 @@ VENDOR = {
 }
 #: Every event a write or an edit could reach, in the order a tool call meets them.
 EVENTS = ("pre_tool", "post_tool", "file_changed")
+#: Why agentseam may leave a wireable event out, in the words the kit prints.
+_WHY_UNWIRED = {"file_changed": "needs --watch FILE"}
 PROMPT = """Now, in {vendor}, open this workspace and ask for these three changes, one chat each:
 
   1. Create src/main/java/com/acme/shop/order/CaptureProbe.java with an empty class CaptureProbe.
@@ -66,15 +70,38 @@ def wireable(vendor: str) -> list[str]:
     return [event for event in EVENTS if event in getattr(adapter, "REVERSE_EVENT_MAP", {})]
 
 
-def start(workspace: Path, vendor: str) -> str:
-    """Wire the logger for every write-reachable event this agent has; returns the config written."""
+def _command(workspace: Path, vendor: str) -> str:
+    return f'"{sys.executable}" "{HOOK}" "{log_path(workspace)}" "{vendor}"'
+
+
+def start(workspace: Path, vendor: str, watch: list[str] | None = None) -> tuple[str, list[str], list[str]]:
+    """Wire the logger; returns the config written, the events agentseam wired, and one line per wireable event it did not."""
     seam = _agentseam()
-    command = f'"{sys.executable}" "{HOOK}" "{log_path(workspace)}" "{vendor}"'
+    command = _command(workspace, vendor)
+    options = {}
+    if watch:
+        if "watch" not in inspect.signature(seam.install.install).parameters:
+            sys.exit("--watch needs an agentseam whose install() takes watch=[...]: pip install --upgrade chock")
+        options["watch"] = watch
     # One call for all events: a second install under the same owner replaces the first.
-    written = seam.install.install(vendor, wireable(vendor), command, str(workspace), owner=OWNER, fail_closed=False)
+    written = seam.install.install(
+        vendor, wireable(vendor), command, str(workspace), owner=OWNER, fail_closed=False, **options
+    )
     if vendor == "vscode_copilot":
         _complete_copilot(Path(written))
-    return str(Path(written).resolve().relative_to(workspace.resolve()))
+    wired = [
+        event
+        for event in wireable(vendor)
+        if seam.install.installed(
+            vendor, str(workspace), OWNER, events=[event], command=command, fail_closed=False, **options
+        )
+    ]
+    unwired = [
+        f"{event}: {_WHY_UNWIRED.get(event, 'agentseam left it out')}"
+        for event in wireable(vendor)
+        if event not in wired
+    ]
+    return str(Path(written).resolve().relative_to(workspace.resolve())), wired, unwired
 
 
 def _complete_copilot(config: Path) -> None:
@@ -155,6 +182,8 @@ def command(args: argparse.Namespace) -> None:
         stop(workspace, vendor)
         print(f"{vendor}: capture hook removed; the log stays at {log_path(workspace)}")
     else:
-        config = start(workspace, vendor)
-        print(f"{vendor}: capture hook wired in {config} for {', '.join(wireable(vendor))}")
+        config, wired, unwired = start(workspace, vendor, args.watch)
+        print(f"{vendor}: capture hook wired in {config} for {', '.join(wired)}")
+        for line in unwired:
+            print(f"  not wired, {line}")
         print(PROMPT.format(vendor=vendor, workspace=workspace))

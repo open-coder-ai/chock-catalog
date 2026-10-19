@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | blocks — refuses a matched shell command before it runs |
+| **On Claude Code** | blocks — refuses a matched shell command before it runs. Where its description says it asks, it asks. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | guard script `block-persistence-shapes.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |

@@ -24,10 +24,12 @@ from chock.plugin import bundle_build, bundle_grade
 from chock.plugin.store import SCRIPTS_TEMPLATE
 from label_honesty import (
     TEXT_ONLY_SAYS,
+    asks_in_evals,
     data_label,
     fail_open_qualifier,
     honest_asks,
     honest_guard,
+    honest_mixed,
     status_label,
 )
 from mechanism import CEILING, NONE, classify
@@ -112,14 +114,16 @@ def derive_labels(root: Path = ROOT) -> dict[str, dict]:
                 hooks = package / packaging.supports(client.package_agent, packaging.HOOKS)
                 gate = package / SCRIPTS_TEMPLATE.format(name="gate.json")
                 hooks_text = hooks.read_text(encoding="utf-8") if hooks.is_file() else None
-                grade, says = bundle_grade.grade_of(
-                    hooks_text, gate.read_text(encoding="utf-8") if gate.is_file() else None, client.agent
-                )
+                gate_text = gate.read_text(encoding="utf-8") if gate.is_file() else None
+                grade, says = bundle_grade.grade_of(hooks_text, gate_text, client.agent)
                 if hooks_text is None and policy_kind != NONE:
                     says = TEXT_ONLY_SAYS
                 elif hooks_text is not None:
                     grade, says = honest_asks(grade, says, hooks_text, client.agent)
                     grade, says = honest_guard(manifest["id"], grade, says, hooks_text, client.agent)
+                    grade, says = honest_mixed(
+                        grade, says, hooks_text, client.agent, asks_in_evals(policy_dir, gate_text)
+                    )
                     says += fail_open_qualifier(client.agent) if grade != bundle_grade.ADVISORY else ""
                 label[key] = {"keyword": bundle_grade.enforcement_keyword(grade), "says": says}
             if status := status_label(manifest):
