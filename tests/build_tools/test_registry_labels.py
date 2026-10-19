@@ -21,6 +21,7 @@ from label_honesty import (
     GUARD_NOT_ENFORCED,
     GUARD_SPLIT,
     guard_can_ask,
+    honest_asks,
     honest_guard,
     status_label,
 )
@@ -225,3 +226,28 @@ def test_a_split_client_without_wording_stops_the_generator(monkeypatch: pytest.
     monkeypatch.delitem(GUARD_SPLIT, "vscode_copilot")
     with pytest.raises(SystemExit, match="GUARD_SPLIT"):
         honest_guard(ASK_ONLY_GUARDS[0], bundle_grade.BLOCKS, "x", _hooks("PreToolUse"), "vscode_copilot")
+
+
+#: A guard plus an asking gate wired at Claude Code's write and turn-end events.
+GUARD_AND_GATE = json.dumps(
+    {
+        "hooks": {
+            e: [{"hooks": [{"command": "x --guard g.py"}, {"command": "x --gate"}]}] for e in ("PreToolUse", "Stop")
+        }
+    }
+)
+ASKED = (
+    bundle_grade.ASKS,
+    "refuses a matched shell command before it runs. Asks on an agent's file writes."
+    " It refuses at turn end, because this client cannot prompt there",
+)
+
+
+def test_honest_asks_reads_the_engines_semicolon_wording() -> None:
+    says = "refuses a matched shell command before it runs; asks on an agent's file writes and at turn end"
+    assert honest_asks(bundle_grade.ASKS, says, GUARD_AND_GATE, "claude_code") == ASKED
+
+
+def test_honest_asks_reads_the_engines_sentence_wording() -> None:
+    says = "refuses a matched shell command before it runs. Asks on an agent's file writes and at turn end"
+    assert honest_asks(bundle_grade.ASKS, says, GUARD_AND_GATE, "claude_code") == ASKED
