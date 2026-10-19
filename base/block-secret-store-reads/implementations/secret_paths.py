@@ -203,10 +203,14 @@ def _inside(rest: tuple[str, ...], entry: Entry, *, walk: bool) -> bool:
 
 
 def _home(low: tuple[str, ...], table: Table, *, walk: bool, code: bool) -> Hit | None:
+    """A home entry the path names: below `~`, or a relative path whose own segments (leading `..` dropped) name it."""
     homed = low[0] == "~"
+    rest = low[1:] if homed else tuple(dropwhile(lambda p: p == "..", low))
+    if not homed and (low[0] == "/" or not rest):
+        return None
     for entry in table.home:
-        usable = homed or (low[0] != "/" and (entry.relative == "always" or (code and entry.relative == "code")))
-        if usable and _inside(low[1:] if homed else tuple(dropwhile(lambda p: p == "..", low)), entry, walk=walk):
+        usable = homed or entry.relative == "always" or (code and entry.relative == "code")
+        if usable and _inside(rest, entry, walk=walk):
             return entry.label, entry.action
     return None
 

@@ -1,14 +1,13 @@
 id: rtk-dangerous-actions-blocker
 name: "rtk Dangerous Actions Blocker"
-version: "0.2.4"
+version: "0.3.0"
 description: >
   Deprecated: use block-destructive-commands, which shares this policy's destructive-command table.
-  rtk#1007. Destructive verdicts come from the chock_destructive table shared with block-
-  destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset
-  --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's
-  safe list, bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads
-  (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container
-  exec.
+  rtk#1007. Same table as block-destructive-commands: blocks root/home/.git deletes,
+  force/delete/mirror pushes, reset --hard, clean -f, switch --discard, IaC destroy, cloud deletes,
+  DB drops, lockouts; asks rm -rf off rtk's safe list, one named kubectl delete, bare lease, stash
+  drop, prunes; dry-run flags pass. Own rows block credential-file reads (.env, keys, ~/.ssh) and
+  echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.
 artifact: rule
 enforcement: advise
 compliance:
@@ -20,8 +19,8 @@ compliance:
   - ASI02
 rule:
   text: |
-    block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
-    ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve, pkill_-f, systemctl_disable; skip_inside: docker|kubectl_exec(file rows); prefix: rtk
+    block: shared table (= block-destructive-commands: rm_-rf(/|~|.|abs|.git),push(-f|+ref|:ref|--mirror),reset_--hard|clean_-f|checkout_.|switch_--discard,destroy|cloud_delete,sql_drop|dropdb),read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws),echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
+    ask: rm_-rf(off safe_list),kubectl_delete(one_named),lease_bare,stash_drop,branch_-D,docker_prune,-auto-approve,pkill_-f,systemctl_disable;allow: dry_run(tool_flag);skip_inside: container_exec(file rows);prefix: rtk
 effects:
 - read_only
 approval:
@@ -30,7 +29,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-09-13T00:00:00Z"
-  updated_at: "2026-10-05T00:00:00Z"
+  updated_at: "2026-10-19T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -51,6 +50,10 @@ tags:
 - requested-by:rtk-ai/rtk#1007
 
 changelog:
+- version: 0.3.0
+  date: '2026-10-19'
+  changes:
+  - "Through the shared table (1.1.0; block-destructive-commands 0.3.0 lists every form): a tool's documented dry-run flag exempts the command (git clean -n, git push -n/--dry-run, kubectl --dry-run=client|server, helm --dry-run, aws --dryrun/--dry-run); kubectl delete of one named resource asks instead of blocking (a namespace, node, CRD or persistent volume still blocks); git switch --discard-changes/-f and rm -r of a .git directory block; the rm messages name a scoped relative path as the alternative. 6 eval cases added (tc-106 to tc-111); tc-066 flips block to ask, which is the fix."
 - version: 0.2.4
   date: '2026-10-05'
   changes:

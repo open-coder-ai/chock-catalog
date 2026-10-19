@@ -20,6 +20,7 @@ from label_honesty import (
     GUARD_ASKS,
     GUARD_NOT_ENFORCED,
     GUARD_SPLIT,
+    fail_open_qualifier,
     guard_can_ask,
     honest_asks,
     honest_guard,
@@ -82,10 +83,29 @@ def test_cursor_and_codex_refuse_what_claude_asks() -> None:
         assert "asks" not in label["cursor"]["says"] + label["codex"]["says"]
 
 
-def test_devin_has_a_key_that_says_a_hook_error_lets_the_action_through() -> None:
-    hooked = [r["label"]["devin"]["says"] for r in ROWS.values() if r["label"]["devin"]["keyword"] != "advise"]
+@pytest.mark.parametrize(
+    ("key", "basis"), [("claude-code", "(measured)"), ("devin", "(vendor docs only, not witnessed)")]
+)
+def test_a_fail_open_client_says_a_hook_error_lets_the_action_through_and_how_that_was_established(
+    key: str, basis: str
+) -> None:
+    hooked = [r["label"][key]["says"] for r in ROWS.values() if r["label"][key]["keyword"] != "advise"]
     assert hooked
-    assert all("If the hook errors, the action goes through" in says for says in hooked)
+    assert all(says.endswith(f"If the hook errors, the action goes through {basis}") for says in hooked)
+    assert all("If the hook errors" not in r["label"]["cursor"]["says"] for r in ROWS.values())
+
+
+def test_a_blocking_units_ask_cases_are_refused_where_the_client_cannot_prompt() -> None:
+    """Catalog review M1: guard-deletion asks on a removed check, and codex and devin cannot ask."""
+    for key in ("codex", "devin"):
+        says = ROWS["guard-deletion"]["label"][key]["says"]
+        assert says.startswith("blocks") and "it refuses" in says and "cannot prompt" in says
+    assert "it asks at the write" in ROWS["guard-deletion"]["label"]["claude-code"]["says"]
+    assert (
+        "it refuses, because this client cannot prompt before a shell command"
+        in (ROWS["block-destructive-commands"]["label"]["codex"]["says"])
+    )
+    assert "Where its description says it asks" not in ROWS["java-security"]["label"]["codex"]["says"]
 
 
 def test_every_row_carries_its_manifests_lifecycle_status() -> None:
@@ -179,8 +199,12 @@ def test_an_ask_only_guards_wired_events_are_what_the_engine_passes(
 @pytest.mark.parametrize("pid", ASK_ONLY_GUARDS)
 def test_an_ask_only_guard_asks_where_the_client_can_prompt_and_is_not_enforced_elsewhere(pid: str) -> None:
     label = ROWS[pid]["label"]
-    assert label["claude-code"] == label["cursor"] == {"keyword": "ask", "says": GUARD_ASKS}
-    assert label["copilot"] == {"keyword": "ask", "says": GUARD_SPLIT["vscode_copilot"]}
+    assert label["claude-code"] == {"keyword": "ask", "says": GUARD_ASKS + fail_open_qualifier("claude_code")}
+    assert label["cursor"] == {"keyword": "ask", "says": GUARD_ASKS}
+    assert label["copilot"] == {
+        "keyword": "ask",
+        "says": GUARD_SPLIT["vscode_copilot"] + fail_open_qualifier("vscode_copilot"),
+    }
     assert "Not enforced in Copilot CLI" in label["copilot"]["says"]
     for key in ("codex", "devin"):
         assert label[key] == {"keyword": "advise", "says": GUARD_NOT_ENFORCED}
