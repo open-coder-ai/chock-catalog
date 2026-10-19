@@ -31,9 +31,12 @@ name: CI
 # recent runs plus half again (the numbers are in the PR that set them); growth shows up as a failure, not as a
 # slow merge. The durations job writes a slow-test report to its run summary.
 
-# Linux only. Policies are text plus POSIX guard scripts, so the platform matrix that the
-# framework needs (bash resolution, line endings, path handling) buys nothing here -- and
-# Windows bills 2x, macOS 10x, on a private repo.
+# Linux, plus one Windows job. Policies are text plus POSIX guard scripts, so the platform matrix that the
+# framework needs (bash resolution, line endings, path handling) buys nothing across the whole suite -- and
+# Windows bills 2x, macOS 10x, on a private repo. The one Windows job runs `chock check` as an adopter and
+# nothing else, on a push to main and on a pull request that touches `.chock/`, `.framework-ref`,
+# `requirements/` or `.github/workflows/`, so a Windows adopter's view of this catalog is measured, not assumed.
+# It is not part of the `policies` gate: its log is the evidence, and a red run is a finding to follow up.
 on:
   push:
     branches: [main]
@@ -149,6 +152,7 @@ jobs:
       residual: ${{ steps.scope.outputs.residual }}
       paths: ${{ steps.scope.outputs.paths }}
       shards: ${{ steps.scope.outputs.shards }}
+      windows: ${{ steps.scope.outputs.windows }}
     steps:
       # Full history: the selector diffs against the merge base with the PR's base.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
@@ -189,6 +193,17 @@ jobs:
           fi
           has_matrix=false
           [ "$matrix" = '[]' ] || has_matrix=true
+          # The Windows adopter check bills at 2x: a pull request runs it only for the files an adopter's install
+          # depends on; a merge-queue entry skips it (the push to main that follows runs it).
+          windows=true
+          if [ "$EVENT_NAME" = merge_group ]; then
+            windows=false
+          elif [ "$EVENT_NAME" = pull_request ]; then
+            windows=false
+            if git diff --name-only "origin/$BASE_REF...HEAD" | grep -qE '^(\.chock/|\.framework-ref$|requirements/|\.github/workflows/)'; then
+              windows=true
+            fi
+          fi
           shards=$(python3 -c 'import json; print(json.dumps(list(range(1, json.load(open("shard-plan.json"))["shards"] + 1))))')
           {
             echo "full=$full"
@@ -197,8 +212,9 @@ jobs:
             echo "residual=$residual"
             echo "paths=$paths"
             echo "shards=$shards"
+            echo "windows=$windows"
           } >> "$GITHUB_OUTPUT"
-          echo "full=$full policy jobs=$has_matrix shards=$shards"
+          echo "full=$full policy jobs=$has_matrix shards=$shards windows=$windows"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
@@ -206,6 +222,55 @@ jobs:
           path: shard-plan.json
           if-no-files-found: error
           retention-days: 1
+
+  # The same adopter check on Windows, where git checks text out with CRLF and paths use backslashes. The install
+  # step runs under bash so the pinned-dependency lines are the ones tools/check_workflows.py requires; the pin
+  # read and verify steps stay in the default shell, since that tool allows the verify step no extra keys.
+  # The 9-minute budget is provisional until a run on main records the real time. Not in the `policies` gate.
+  windows-adopter:
+    needs: scope
+    if: needs.scope.outputs.windows == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .framework-ref
+
+      - name: Read the framework pin
+        run: python3 -I tools/framework_ref.py read
+
+      - name: Check out the framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          persist-credentials: false
+          repository: open-coder-ai/chock
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: .framework
+
+      - name: The framework checkout is the pinned commit
+        run: python3 -I tools/framework_ref.py verify .framework
+
+      - name: Install Chock
+        shell: bash
+        run: |
+          pip install --require-hashes -r requirements/framework.txt
+          pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
+          pip install --no-deps .framework/dist/*.whl
+          pins="$(python -I tools/framework_ref.py direct-deps .framework)"
+          [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
+          pip check
+          python -I tools/framework_ref.py deps .framework
+
+      - name: This repo is a valid adopter on Windows
+        run: chock check
 
   # What `policies` used to run as one serial job is four jobs that start together: the
   # generated-file checks answer in about a minute, and the three slow ones -- this repo as an
