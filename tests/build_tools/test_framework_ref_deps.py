@@ -123,3 +123,34 @@ def test_deps_refuses_a_checkout_without_a_project_table(
 ) -> None:
     assert _deps(monkeypatch, str(tmp_path), {}) == framework_ref.REFUSED
     assert "no [project] table" in capsys.readouterr().err
+
+
+class _Dist:
+    version = "0.3.5"
+
+    def __init__(self, text: str | None) -> None:
+        self.text = text
+
+    def read_text(self, _name: str) -> str | None:
+        return self.text
+
+
+@pytest.mark.parametrize(
+    ("text", "origin"),
+    [
+        (None, {}),
+        (
+            '{"url": "https://github.com/open-coder-ai/agentseam"}',
+            {"url": "https://github.com/open-coder-ai/agentseam"},
+        ),
+        ("not json", {}),
+        ('["a list"]', {}),
+    ],
+)
+def test_installed_reads_direct_url_json(monkeypatch: pytest.MonkeyPatch, text: str | None, origin: dict) -> None:
+    monkeypatch.setattr(framework_ref, "distribution", lambda _name: _Dist(text))
+    assert framework_ref._installed("agentseam") == (origin, "0.3.5")
+
+
+def test_installed_is_none_for_a_missing_distribution() -> None:
+    assert framework_ref._installed("no-such-distribution-for-chock-tests") is None
