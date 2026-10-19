@@ -689,3 +689,12 @@ suite:
           - the retry bug was fixed in https://github.com/org/repo/commit/abc1234
       event: commit
       expect: warn
+  - id: tc-046
+    category: negative_trigger
+    prompt: A local memory file records that the database password comes from an environment variable, in the quoted shape.
+    expect: 'The commit is allowed: an environment reference is not a secret (follows scan-secrets 0.1.2).'
+    execute:
+      files:
+        CLAUDE.local.md: "- db: password = \"${DB_PASSWORD}\" is read from the deploy environment\n"
+      event: commit
+      expect: allow

@@ -1008,15 +1008,15 @@ policies:
     computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.8
+  version: 0.0.9
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 45
-  eval_executed: 44
+  eval_cases: 46
+  eval_executed: 45
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}
