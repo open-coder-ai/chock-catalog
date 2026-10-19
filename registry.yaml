@@ -34,15 +34,15 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.1.3
+  version: 0.1.4
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 72
-  eval_executed: 72
+  eval_cases: 81
+  eval_executed: 81
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
@@ -50,12 +50,11 @@ policies:
     copilot: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     devin: {"keyword": "block", "says": "refuses a matched shell command before it runs. If the hook errors, the action goes through. That comes from the vendor's docs only. Chock has not seen it happen in a live run"}
     misses: "aliases, functions, outside variables, encoded text, renamed downloads."
-  description: 'Best-effort guard on parsed commands: refuses a download wired into a shell or interpreter
-    (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, busybox, su, $SHELL, source, eval,
-    iex) by pipe, substitution, here-string or process substitution, also inside bash -c/ssh/docker
-    exec bodies, or downloaded and run in one command with no checksum or signature step. nc/socat/one-liner
-    reads ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction
-    only.'
+  description: 'Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws
+    s3 cp to stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua,
+    pwsh, deno, bun, su, source, eval, iex) by pipe, substitution or here-string, also inside bash -c/ssh/docker
+    exec bodies, or downloaded then run with no checksum or signature step. nc/socat/one-liner reads
+    ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
   version: 0.2.4
@@ -1411,15 +1410,15 @@ policies:
     add, git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.'
 - id: block-secret-store-reads
   path: base/block-secret-store-reads
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 115
-  eval_executed: 115
+  eval_cases: 122
+  eval_executed: 122
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
