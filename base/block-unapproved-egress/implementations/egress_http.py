@@ -52,6 +52,7 @@ WGET_SHORT = dict(
         --execute --output-file --append-output --input-file --base --tries --output-document --timeout --wait --quota
         --directory-prefix --user-agent --accept --reject --domains --include-directories --exclude-directories --level
         """),
+        strict=True,
     )
 )
 WGET_UPLOAD = frozenset(("--post-data", "--post-file", "--body-data", "--body-file"))
