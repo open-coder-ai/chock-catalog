@@ -255,6 +255,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       # First, not last: it is the cheapest check here and the one most often tripped -- every
       # version bump and every eval case changes a row. `--registry-only` fails where a row is not
@@ -355,6 +356,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       # `chock check` is every truth check at once: validate, the lockfile, and a replay of
       # every executable eval case. A separate `chock check --only evals` replayed them twice.
@@ -481,6 +483,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
         with:
@@ -640,6 +643,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Tests of this policy, its implementations at 100% line and branch coverage
         env:
@@ -705,6 +709,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Changed tests no policy job owns, and repo standards
         env:
@@ -818,6 +823,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Stage the published policies and skills as an adopter would
         id: stage

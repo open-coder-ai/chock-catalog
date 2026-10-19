@@ -207,3 +207,37 @@ def test_runs_as_a_script() -> None:
     cmd = [sys.executable, str(ROOT / "tools" / "check_workflows.py")]
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stderr
+
+
+@pytest.mark.parametrize(
+    ("run", "ok"),
+    [
+        (f"pip install --no-deps ./.framework\npip check\n{check_workflows.DEPS}\n", True),
+        (
+            f"pip wheel --wheel-dir .framework/dist ./.framework\npip install .framework/dist/*.whl\n{check_workflows.DEPS}",
+            True,
+        ),
+        ("pip install --no-deps ./.framework\npip check\n", False),
+        (f"{check_workflows.DEPS}\npip install --no-deps ./.framework\n", False),
+        (f"pip install ./.framework\n# {check_workflows.DEPS}\n", False),
+        ("pip install -r requirements/test.txt\n", True),
+    ],
+)
+def test_a_framework_install_runs_the_deps_check_after_it(run: str, ok: bool) -> None:
+    problems = check_workflows.framework_installs("w.yml", {"jobs": {"j": {"steps": [{"run": run}]}}})
+    assert (problems == []) is ok
+    if not ok:
+        assert problems == [f"w.yml job 'j' installs ./.framework without a later `{check_workflows.DEPS}` line"]
+
+
+def test_every_framework_install_here_runs_the_deps_check() -> None:
+    found = 0
+    for path in check_workflows.WORKFLOWS:
+        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert check_workflows.framework_installs(path.name, workflow) == []
+        found += sum(
+            bool(check_workflows.FRAMEWORK_INSTALL.search(_run))
+            for job in (workflow.get("jobs") or {}).values()
+            for _run in (str(s.get("run", "")) for s in job.get("steps") or [])
+        )
+    assert found >= 13

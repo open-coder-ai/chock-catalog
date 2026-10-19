@@ -57,6 +57,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Render tape
         uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2
@@ -105,6 +106,7 @@ jobs:
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Render tape
         uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2

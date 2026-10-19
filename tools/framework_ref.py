@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""The framework pin is one full commit SHA, and a checkout of it is that commit, clean, or the job fails."""
+"""The framework pin is one full commit SHA, a checkout of it is that commit, clean, and its pinned deps are installed."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
+import tomllib
+from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PIN_FILE = ".framework-ref"
 SHA = re.compile(r"[0-9a-f]{40}")
 REFUSED = 2
+# PEP 508 direct reference: `name[extras] @ url ; marker`. Version specifiers are pip check's job.
+DIRECT = re.compile(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[[^\]]*\])?\s*@\s*([^\s;]+)")
+GIT_COMMIT = re.compile(r"git\+(https://github\.com/[^@\s]+?)(?:\.git)?@([0-9a-f]{40})")
 
 
 def valid(ref: str) -> bool:
@@ -94,6 +100,53 @@ def _verify(path: str) -> int:
     return 0
 
 
+def _installed(name: str) -> tuple[dict, str] | None:
+    """(PEP 610 direct_url.json, version) of an installed distribution; {} for an index install."""
+    try:
+        dist = distribution(name)
+    except PackageNotFoundError:
+        return None
+    try:
+        origin = json.loads(dist.read_text("direct_url.json") or "{}")
+    except ValueError:
+        origin = {}
+    return (origin if isinstance(origin, dict) else {}), dist.version
+
+
+def _accepts(url: str, origin: dict) -> bool:
+    """A git commit pin is met by that commit, cloned or as GitHub's archive of it; any other URL by itself."""
+    if git := GIT_COMMIT.fullmatch(url):
+        repo, commit = git.groups()
+        if (origin.get("vcs_info") or {}).get("commit_id") == commit:
+            return origin.get("url", "").removeprefix("git+").removesuffix(".git") == repo
+        return "archive_info" in origin and origin.get("url") == f"{repo}/archive/{commit}.tar.gz"
+    return origin.get("url") == url
+
+
+def _deps(path: str) -> int:
+    try:
+        project = tomllib.loads((Path(path) / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    except (OSError, ValueError, KeyError) as err:
+        return _refuse(f"{path}/pyproject.toml: no [project] table to read pins from ({err})")
+    problems = []
+    for requirement in project.get("dependencies", []):
+        if not (pin := DIRECT.match(requirement)):
+            continue
+        name, url = pin.groups()
+        if (installed := _installed(name)) is None:
+            problems.append(f"{name} is not installed; {path}/pyproject.toml pins {url}")
+        elif not _accepts(url, origin := installed[0]):
+            have = origin.get("url") or f"{installed[1]} from a package index"
+            problems.append(
+                f"{path}/pyproject.toml pins {name} @ {url}, but the installed {name} is {have}; "
+                "pin the same commit in requirements/framework.in and regenerate requirements/framework.txt"
+            )
+    if problems:
+        return _refuse("; ".join(problems))
+    print(f"every direct-reference dependency {path}/pyproject.toml pins is the one installed")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -101,11 +154,15 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("check", help="validate $FRAMEWORK_REF before anything checks it out")
     verify = sub.add_parser("verify", help="fail unless the checkout at PATH is exactly $FRAMEWORK_REF")
     verify.add_argument("path")
+    deps = sub.add_parser("deps", help="fail unless every direct-reference dependency PATH pins is what is installed")
+    deps.add_argument("path")
     args = parser.parse_args(argv)
     if args.cmd == "read":
         return _read()
     if args.cmd == "check":
         return _check()
+    if args.cmd == "deps":
+        return _deps(args.path)
     return _verify(args.path)
 
 

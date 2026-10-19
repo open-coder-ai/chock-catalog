@@ -202,3 +202,72 @@ def test_verify_refuses_a_replace_object_standing_in(repo, monkeypatch: pytest.M
     assert (path / "payload.py").exists()
     monkeypatch.setenv("FRAMEWORK_REF", pinned)
     assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+
+
+AGENTSEAM = "https://github.com/open-coder-ai/agentseam"
+
+
+def _framework(tmp_path: Path, *deps: str) -> str:
+    lines = ", ".join(f'"{d}"' for d in deps)
+    (tmp_path / "pyproject.toml").write_text(f'[project]\nname = "chock"\ndependencies = [{lines}]\n', encoding="utf-8")
+    return str(tmp_path)
+
+
+def _deps(monkeypatch: pytest.MonkeyPatch, path: str, installed: dict[str, tuple[dict, str]]) -> int:
+    monkeypatch.setattr(framework_ref, "_installed", installed.get)
+    return framework_ref.main(["deps", path])
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        {"url": f"{AGENTSEAM}/archive/{SHA}.tar.gz", "archive_info": {"hashes": {"sha256": "0" * 64}}},
+        {"url": f"git+{AGENTSEAM}", "vcs_info": {"vcs": "git", "commit_id": SHA}},
+        {"url": f"{AGENTSEAM}.git", "vcs_info": {"vcs": "git", "commit_id": SHA}},
+    ],
+)
+def test_deps_accepts_the_pinned_commit_cloned_or_archived(tmp_path, monkeypatch, capsys, origin: dict) -> None:
+    path = _framework(tmp_path, f"agentseam @ git+{AGENTSEAM}@{SHA}", "pyyaml>=6.0")
+    assert _deps(monkeypatch, path, {"agentseam": (origin, "0.3.5")}) == 0
+    assert "is the one installed" in capsys.readouterr().out
+
+
+def test_deps_refuses_the_index_release_of_the_same_version(tmp_path, monkeypatch, capsys) -> None:
+    """Run 39188425493: chock pinned an agentseam commit, PyPI's 0.3.5 was installed, and pip check passed."""
+    path = _framework(tmp_path, f"agentseam @ git+{AGENTSEAM}@{SHA}")
+    assert _deps(monkeypatch, path, {"agentseam": ({}, "0.3.5")}) == framework_ref.REFUSED
+    err = capsys.readouterr().err
+    assert f"pins agentseam @ git+{AGENTSEAM}@{SHA}, but the installed agentseam is 0.3.5 from a package index" in err
+    assert "requirements/framework.txt" in err
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        {"url": f"{AGENTSEAM}/archive/{'1' * 40}.tar.gz", "archive_info": {}},
+        {"url": f"{AGENTSEAM}/archive/{SHA}.zip", "archive_info": {}},
+        {"url": f"git+{AGENTSEAM}", "vcs_info": {"vcs": "git", "commit_id": "1" * 40}},
+        {"url": "git+https://github.com/someone/agentseam", "vcs_info": {"vcs": "git", "commit_id": SHA}},
+        {"url": f"https://example.invalid/archive/{SHA}.tar.gz", "archive_info": {}},
+        {"url": f"file:///src/agentseam-{SHA}.tar.gz", "archive_info": {}},
+    ],
+)
+def test_deps_refuses_another_commit_or_source(tmp_path, monkeypatch, origin: dict) -> None:
+    path = _framework(tmp_path, f"agentseam @ git+{AGENTSEAM}@{SHA}")
+    assert _deps(monkeypatch, path, {"agentseam": (origin, "0.3.5")}) == framework_ref.REFUSED
+
+
+def test_deps_refuses_a_pinned_dependency_that_is_not_installed(tmp_path, monkeypatch, capsys) -> None:
+    path = _framework(tmp_path, f"agentseam[cli] @ git+{AGENTSEAM}@{SHA} ; python_version >= '3.9'")
+    assert _deps(monkeypatch, path, {}) == framework_ref.REFUSED
+    assert "agentseam is not installed" in capsys.readouterr().err
+
+
+def test_deps_leaves_version_specifiers_to_pip_check(tmp_path, monkeypatch) -> None:
+    path = _framework(tmp_path, "agentseam==0.3.5", "jsonschema>=4.18,<5")
+    assert _deps(monkeypatch, path, {}) == 0
+
+
+def test_deps_refuses_a_checkout_without_a_project_table(tmp_path, monkeypatch, capsys) -> None:
+    assert _deps(monkeypatch, str(tmp_path), {}) == framework_ref.REFUSED
+    assert "no [project] table" in capsys.readouterr().err
