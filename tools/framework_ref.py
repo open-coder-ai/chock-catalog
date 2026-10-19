@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
-"""The framework pin is one full commit SHA, and a checkout of it is that commit, clean, or the job fails."""
+"""The framework pin is one full commit SHA, a checkout of it is that commit, clean, and so is each git dep it pins."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
+import tomllib
+from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PIN_FILE = ".framework-ref"
 SHA = re.compile(r"[0-9a-f]{40}")
 REFUSED = 2
+# PEP 508 direct reference: `name[extras] @ url ; marker`. Version specifiers are requirements/framework.txt's.
+DIRECT = re.compile(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[[^\]]*\])?\s*@\s*([^\s;]+)")
+GIT_COMMIT = re.compile(r"git\+(https://github\.com/open-coder-ai/[A-Za-z0-9._-]+?)(?:\.git)?@([0-9a-f]{40})")
 
 
 def valid(ref: str) -> bool:
@@ -94,6 +100,74 @@ def _verify(path: str) -> int:
     return 0
 
 
+def _pyproject_deps(path: str) -> list[str] | None:
+    try:
+        return tomllib.loads((Path(path) / "pyproject.toml").read_text(encoding="utf-8"))["project"].get(
+            "dependencies", []
+        )
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _direct_deps(path: str) -> int:
+    """Print `name@url` per direct reference PATH's pyproject pins; each must be an open-coder-ai commit."""
+    if (requirements := _pyproject_deps(path)) is None:
+        return _refuse(f"{path}/pyproject.toml: no [project] table to read pins from")
+    pins, problems = [], []
+    for requirement in requirements:
+        if pin := DIRECT.match(requirement):
+            name, url = pin.groups()
+            if GIT_COMMIT.fullmatch(url):
+                pins.append(f"{name}@{url}")
+            else:
+                problems.append(f"{name} @ {url}")
+    if problems:
+        return _refuse(
+            f"{path}/pyproject.toml pins {', '.join(problems)}; only "
+            "git+https://github.com/open-coder-ai/<repo>@<40 lowercase hex> installs without a hash"
+        )
+    print("\n".join(pins), end="\n" if pins else "")
+    return 0
+
+
+def _installed(name: str) -> tuple[dict, str] | None:
+    """(PEP 610 direct_url.json, version) of an installed distribution; {} for an index install."""
+    try:
+        dist = distribution(name)
+    except PackageNotFoundError:
+        return None
+    try:
+        origin = json.loads(dist.read_text("direct_url.json") or "{}")
+    except ValueError:
+        origin = {}
+    return (origin if isinstance(origin, dict) else {}), dist.version
+
+
+def _deps(path: str) -> int:
+    """Fail unless each git commit PATH's pyproject pins is the one installed (pip check compares versions only)."""
+    if (requirements := _pyproject_deps(path)) is None:
+        return _refuse(f"{path}/pyproject.toml: no [project] table to read pins from")
+    problems = []
+    for requirement in requirements:
+        if not (pin := DIRECT.match(requirement)):
+            continue
+        name, url = pin.groups()
+        git = GIT_COMMIT.fullmatch(url)
+        if (installed := _installed(name)) is None:
+            problems.append(f"{name} is not installed; {path}/pyproject.toml pins {url}")
+            continue
+        origin, version = installed
+        found = (origin.get("vcs_info") or {}).get("commit_id")
+        repo = origin.get("url", "").removeprefix("git+").removesuffix(".git")
+        if not git or (repo, found) != git.groups():
+            have = f"{repo}@{found}" if found else origin.get("url") or f"{version} from a package index"
+            problems.append(f"{path}/pyproject.toml pins {name} @ {url}, but the installed {name} is {have}")
+    if problems:
+        return _refuse("; ".join(problems))
+    print(f"every git dependency {path}/pyproject.toml pins is installed at its commit")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -101,11 +175,19 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("check", help="validate $FRAMEWORK_REF before anything checks it out")
     verify = sub.add_parser("verify", help="fail unless the checkout at PATH is exactly $FRAMEWORK_REF")
     verify.add_argument("path")
+    direct = sub.add_parser("direct-deps", help="print the git commit pins in PATH's pyproject, one per line")
+    direct.add_argument("path")
+    deps = sub.add_parser("deps", help="fail unless each git commit PATH's pyproject pins is the one installed")
+    deps.add_argument("path")
     args = parser.parse_args(argv)
     if args.cmd == "read":
         return _read()
     if args.cmd == "check":
         return _check()
+    if args.cmd == "direct-deps":
+        return _direct_deps(args.path)
+    if args.cmd == "deps":
+        return _deps(args.path)
     return _verify(args.path)
 
 
