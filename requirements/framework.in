@@ -1,6 +1,8 @@
 # The framework's runtime dependencies (open-coder-ai/chock pyproject.toml at .framework-ref) and its
 # build backend, installed by hash; CI then builds the framework checkout with --no-deps --no-build-isolation
 # and `pip check` fails the job when a framework bump adds or changes a dependency this file lacks.
+# A git pin in that pyproject is installed from it by tools/framework_ref.py direct-deps, not copied here.
+# agentseam==0.3.5 is .framework-ref's PyPI pin; drop it once .framework-ref pins agentseam by commit.
 agentseam==0.3.5
 jsonschema>=4.18,<5
 pyyaml>=6.0

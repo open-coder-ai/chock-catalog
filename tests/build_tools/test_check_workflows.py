@@ -207,3 +207,50 @@ def test_runs_as_a_script() -> None:
     cmd = [sys.executable, str(ROOT / "tools" / "check_workflows.py")]
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stderr
+
+
+PINS, INSTALL_PINS, _, DEPS = check_workflows.DIRECT_DEPS
+
+
+@pytest.mark.parametrize(
+    ("run", "ok"),
+    [
+        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\npip check\n{DEPS}\n", True),
+        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\npip check\n", False),
+        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\n{DEPS}\npip check\n", False),
+        (
+            "pip wheel --wheel-dir .framework/dist ./.framework\npip install .framework/dist/*.whl\n"
+            f"{PINS}\n{INSTALL_PINS}\npip check\n{DEPS}",
+            True,
+        ),
+        ("pip install --no-deps ./.framework\npip check\n", False),
+        (f"pip install --no-deps ./.framework\n{PINS}\npip check\n", False),
+        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\n", False),
+        (f"pip install --no-deps ./.framework\npip check\n{PINS}\n{INSTALL_PINS}\n", False),
+        (f"{PINS}\n{INSTALL_PINS}\npip install --no-deps ./.framework\npip check\n", False),
+        (
+            "pip install ./.framework\n"
+            "python -I tools/framework_ref.py direct-deps .framework | xargs -r pip install --no-deps\npip check\n",
+            False,
+        ),
+        ("pip install -r requirements/test.txt\n", True),
+    ],
+)
+def test_a_framework_install_then_installs_and_checks_its_git_pins(run: str, ok: bool) -> None:
+    problems = check_workflows.framework_installs("w.yml", {"jobs": {"j": {"steps": [{"run": run}]}}})
+    assert (problems == []) is ok
+    if not ok:
+        assert problems[0].startswith("w.yml job 'j' installs ./.framework without then running, in order: ")
+
+
+def test_every_framework_install_here_installs_its_git_pins() -> None:
+    found = 0
+    for path in check_workflows.WORKFLOWS:
+        workflow = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert check_workflows.framework_installs(path.name, workflow) == []
+        found += sum(
+            bool(check_workflows.FRAMEWORK_INSTALL.search(run))
+            for job in (workflow.get("jobs") or {}).values()
+            for run in (str(s.get("run", "")) for s in job.get("steps") or [])
+        )
+    assert found >= 13
