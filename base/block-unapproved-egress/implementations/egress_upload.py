@@ -193,6 +193,14 @@ def gh(cmd: Cmd) -> Verdict:
     return None
 
 
+def push_repository(operand: str) -> str:
+    """The first push operand when it names a repository (a URL, `ext::`, `user@host:path`, `host.tld:path`), else ''."""
+    # A `<ref>:<ref>` refspec (`HEAD:main`, `feature:main`, `+topic:main`) reads like scp syntax but names no host.
+    head, colon, _ = operand.partition(":")
+    refspec = colon and "://" not in operand and "::" not in operand and not head.startswith("[") and "@" not in head
+    return "" if refspec and "." not in head else operand
+
+
 def git_urls(sub: str, conf: list[str], rest: list[str]) -> list[str]:
     """The repository URLs a git command would send to: push targets, new remotes, remote.X.url and url.X.insteadOf settings."""
     ops = positionals(rest, GIT_VALUE)
@@ -203,7 +211,7 @@ def git_urls(sub: str, conf: list[str], rest: list[str]) -> list[str]:
     urls += [m.group(1) for k, _ in keyed if (m := INSTEAD_OF.fullmatch(k))]
     if sub == "push":
         flag = after(rest, "--repo") or next((a.split("=", 1)[1] for a in rest if a.startswith("--repo=")), "")
-        urls.append(flag or next(iter(ops), ""))
+        urls.append(flag or push_repository(next(iter(ops), "")))
     elif sub == "remote" and ops[:1] in (["add"], ["set-url"]):
         urls += ops[2:3]
     return urls
