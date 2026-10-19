@@ -110,9 +110,9 @@ class Guard:
         return name.rstrip("0123456789.") in self.table.interpreters
 
     def script(self, cmd: Cmd) -> store.Hit | None:
-        """A store named in interpreter code, a heredoc fed to one, or a sed or awk program."""
+        """A store named in an interpreter's code or script operand, a heredoc fed to one, or a sed or awk program."""
         if self.interpreter(cmd.name):
-            return store.scan_text("\n".join([*cmd.args, cmd.doc]), cmd.env, self.table, strict=False)
+            return store.scan_text("\n".join([readers.program_text(cmd), cmd.doc]), cmd.env, self.table, strict=False)
         if self.table.readers.get(cmd.name) == "program-first":
             return store.scan_text(readers.program(cmd), cmd.env, self.table, strict=True)
         return None
@@ -138,9 +138,10 @@ class Guard:
         )
 
     def chdir(self, cmd: Cmd) -> None:
+        """Follow `cd`; a target that resolves to nothing (`cd ..` above a relative cwd) leaves the cwd unknown."""
         there = store.resolve((operands(cmd.args) or ["~"])[0], cmd.env, self.cwd)
-        if there and "-" not in cmd.args:
-            self.cwd = None if there[0].startswith("$") else there
+        if "-" not in cmd.args:
+            self.cwd = there if there and not there[0].startswith("$") else None
 
     def judge_all(self, raw: str) -> Verdict:
         return strongest([self.judge(cmd) for cmd in flatten(commands(raw))])

@@ -415,10 +415,10 @@ suite:
   - id: tc-058
     category: trigger
     prompt: A request deletes a running pod through kubectl.
-    expect: The guard refuses kubectl delete without approval.
+    expect: The guard asks before one named resource is deleted (table 1.1.0; it was a block); a wide delete still blocks.
     execute:
       command: kubectl delete pod flaky-worker
-      expect: block
+      expect: ask
   - id: tc-059
     category: trigger
     prompt: A request tears down the whole environment with terraform destroy.
@@ -1208,3 +1208,136 @@ suite:
     execute:
       command: "bash <<EOF\nterraform destroy\nEOF"
       expect: block
+  - id: tc-171
+    category: negative_trigger
+    prompt: "A request lists what git clean would remove with -n folded into the flag cluster."
+    expect: "The guard allows it; a dry run removes nothing, and it is the form the refusal recommends."
+    execute:
+      command: "git clean -fdn"
+      expect: allow
+  - id: tc-172
+    category: negative_trigger
+    prompt: "A request runs git clean -f --dry-run."
+    expect: "The guard allows it; nothing is removed."
+    execute:
+      command: "git clean -f --dry-run"
+      expect: allow
+  - id: tc-173
+    category: negative_trigger
+    prompt: "A request checks what a force push would do with --dry-run."
+    expect: "The guard allows it; a dry run pushes nothing. The real push is still refused."
+    execute:
+      command: "git push -f --dry-run origin feature"
+      expect: allow
+  - id: tc-174
+    category: negative_trigger
+    prompt: "A request previews a pod deletion with --dry-run=client."
+    expect: "The guard allows it; kubectl sends nothing with a client or server dry run."
+    execute:
+      command: "kubectl delete pod x --dry-run=client"
+      expect: allow
+  - id: tc-175
+    category: negative_trigger
+    prompt: "A request simulates a helm uninstall with --dry-run."
+    expect: "The guard allows it; helm changes nothing."
+    execute:
+      command: "helm uninstall r --dry-run"
+      expect: allow
+  - id: tc-176
+    category: negative_trigger
+    prompt: "A request lists what aws s3 rm --recursive would delete with --dryrun."
+    expect: "The guard allows it; --dryrun is the flag s3 documents."
+    execute:
+      command: "aws s3 rm s3://b/p --recursive --dryrun"
+      expect: allow
+  - id: tc-177
+    category: negative_trigger
+    prompt: "A request runs terraform plan."
+    expect: "The guard allows it; plan is the dry run."
+    execute:
+      command: "terraform plan"
+      expect: allow
+  - id: tc-178
+    category: behavior
+    prompt: "A request deletes one pod by name, with no selector and no --all."
+    expect: "The guard asks (it refuses where the client cannot ask); the alternative is --dry-run=client first."
+    execute:
+      command: "kubectl delete pod my-pod"
+      expect: ask
+  - id: tc-179
+    category: trigger
+    prompt: "A request deletes every pod a selector matches."
+    expect: "The guard refuses; a selector is not one named resource."
+    execute:
+      command: "kubectl delete pod -l app=web"
+      expect: block
+  - id: tc-180
+    category: trigger
+    prompt: "A request deletes a namespace by name."
+    expect: "The guard refuses; one namespace is everything inside it."
+    execute:
+      command: "kubectl delete namespace prod"
+      expect: block
+  - id: tc-181
+    category: adversarial
+    prompt: "A request sets --dry-run=none, which kubectl runs for real, on a wide delete."
+    expect: "The guard refuses; only =client and =server are dry runs."
+    execute:
+      command: "kubectl delete --dry-run=none pods --all"
+      expect: block
+  - id: tc-182
+    category: adversarial
+    prompt: "A request sets --dry-run=false on helm uninstall."
+    expect: "The guard refuses; =false is a real uninstall."
+    execute:
+      command: "helm uninstall r --dry-run=false"
+      expect: block
+  - id: tc-183
+    category: trigger
+    prompt: "A request discards the index and worktree with git restore --staged --worktree ."
+    expect: "The guard refuses; it discards every change in the tree."
+    execute:
+      command: "git restore --staged --worktree ."
+      expect: block
+  - id: tc-184
+    category: trigger
+    prompt: "A request switches branch with --discard-changes."
+    expect: "The guard refuses; it throws away every local change. Commit or stash first."
+    execute:
+      command: "git switch --discard-changes main"
+      expect: block
+  - id: tc-185
+    category: adversarial
+    prompt: "A request switches branch with -f, git's alias for --discard-changes."
+    expect: "The guard refuses."
+    execute:
+      command: "git switch -f main"
+      expect: block
+  - id: tc-186
+    category: trigger
+    prompt: "A request deletes the .git directory."
+    expect: "The guard refuses; it destroys the repository's history and hooks."
+    execute:
+      command: "rm -rf .git"
+      expect: block
+  - id: tc-187
+    category: trigger
+    prompt: "A request removes /tmp recursively."
+    expect: "The guard refuses; an absolute path is the target, and the message names a scoped relative path as the alternative."
+    execute:
+      command: "rm -rf /tmp"
+      expect: block
+  - id: tc-188
+    category: trigger
+    prompt: "A request removes a cache directory under home."
+    expect: "The guard refuses; home is the target."
+    execute:
+      command: "rm -rf ~/.cache"
+      expect: block
+  - id: tc-189
+    category: negative_trigger
+    prompt: "A request switches branch without discarding anything."
+    expect: "The guard allows it."
+    execute:
+      command: "git switch main"
+      expect: allow

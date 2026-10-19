@@ -55,6 +55,11 @@ def _safe(path: str) -> bool:
     return path.rstrip("/").rsplit("/", 1)[-1] in SAFE_DIRS
 
 
+def _git_dir(path: str) -> bool:
+    """`.git` at the end of the path: the repository's history and hooks, wherever the repository sits."""
+    return path.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] == ".git"
+
+
 def has(cmd: Cmd, short: set[str], long: str) -> bool:
     """A short flag, or any prefix of three characters or more of the long one (getopt takes unambiguous prefixes;
     an ambiguous one fails to run anyway, so matching it only errs strict)."""
@@ -71,6 +76,8 @@ def rm(cmd: Cmd) -> Hit:
         return "rm-rf", hit
     if hit := next((t for t in targets if is_root(t)), None):
         return "rm-root", hit
+    if hit := next((t for t in targets if _git_dir(t)), None):
+        return "rm-git", hit
     hit = next((t for t in targets if not _safe(t)), None) if forced else None
     return None if hit is None else ("rm-relative", hit)
 

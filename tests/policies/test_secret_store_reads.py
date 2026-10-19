@@ -190,6 +190,7 @@ def test_scan_text_reads_code_for_stores_and_leaves_ordinary_code_alone() -> Non
 # Each probed miss: the command, and the words the policy text uses to admit it.
 MISSES = {
     "a script file that reads the store": ("python3 steal.py", "scripts"),
+    "a store handed to a script as an argument": ("python3 app.py ~/.aws/credentials", "scripts"),
     "a variable the parser never saw assigned": ("cat $UNSET/.npmrc", "unresolved variables"),
     "a list piped in for xargs": ("xargs cat < list", "xargs"),
     "find piped into xargs": ("find ~/.ssh -type f | xargs cat", "xargs"),

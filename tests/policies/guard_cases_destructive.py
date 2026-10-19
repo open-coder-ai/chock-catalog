@@ -187,7 +187,7 @@ CASES: list[tuple[str, str | None]] = [
     ("gh repo view o/r", None),
     ("kubectl drain node-1 --ignore-daemonsets", "kubectl-drain"),
     ("kubectl cordon node-1", None),
-    ("kubectl delete pod x", "kubectl-delete"),
+    ("kubectl delete pod x", "kubectl-delete-one"),  # one named resource asks (table 1.1.0)
     ("helm uninstall web", "helm-uninstall"),
     # containers
     ("docker compose down -v", "compose-down-volumes"),
