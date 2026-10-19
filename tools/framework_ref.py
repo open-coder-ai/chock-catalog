@@ -49,13 +49,13 @@ def _git(path: str, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
 
 
-def _head(path: str) -> str:
-    """The checked-out commit, or "" when there is none or the worktree differs from it."""
+def _head(path: str) -> tuple[str, list[str]]:
+    """(checked-out commit, up to 8 status lines); the commit is "" when there is none or the worktree differs."""
     head = _git(path, "rev-parse", "--verify", "HEAD^{commit}")
     status = _git(path, "status", "--porcelain", "--untracked-files=all", "--ignored")
     if head.returncode or status.returncode or status.stdout:
-        return ""
-    return head.stdout.strip()
+        return "", status.stdout.splitlines()[:8]
+    return head.stdout.strip(), []
 
 
 def _refuse(message: str) -> int:
@@ -91,11 +91,14 @@ def _verify(path: str) -> int:
     ref = _env_ref()
     if ref is None:
         return _refuse("FRAMEWORK_REF must be a full 40-character lowercase commit SHA (no branch, tag or short SHA)")
-    head = _head(path)
+    head, dirty = _head(path)
     if head != ref:
-        return _refuse(
+        code = _refuse(
             f"{path} is checked out at {head or 'no clean commit'}, not the pinned {ref}; refusing to use it"
         )
+        for line in dirty:
+            print(f"::notice::{line.encode('unicode_escape').decode('ascii')}", file=sys.stderr)
+        return code
     print(f"{path} is the pinned commit {ref}")
     return 0
 
