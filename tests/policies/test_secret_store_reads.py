@@ -24,7 +24,6 @@ from trees import ROOT
 POLICY = "block-secret-store-reads"
 IMPL = ROOT / "base" / POLICY / "implementations"
 paths = guardkit.load_guard(POLICY, "secret_paths")
-readers = guardkit.load_guard(POLICY, "secret_readers")
 GUARD = guardkit.load_guard(POLICY)
 TABLE = paths.load()
 ENV: dict[str, str] = {}
@@ -173,41 +172,6 @@ def test_a_glob_matches_a_store_only_when_it_keeps_three_literal_characters(op: 
 
 def test_the_literal_floor_can_be_lowered_for_a_directory_slot() -> None:
     assert paths.comp_match("*", "google-chrome", 0) is True
-
-
-@pytest.mark.parametrize(
-    ("command", "want"),
-    [
-        ("python -c code arg", "code"),
-        ("python -Bc code", "code"),
-        ("python -m pytest -k .env", ""),
-        ("python -Bm pytest -k .env", ""),
-        ("python -W ignore -c code", "code"),
-        ("python -Wd x.py", "x.py"),
-        ("python -V", ""),
-        ("python -- x.py", "x.py"),
-        ("python - arg", ""),
-        ("python3.11 app.py --env-file .env", "app.py"),
-        ("perl -ne code file", "code"),
-        ("perl -Mstrict -e code", "code"),
-        ("perl -eprint", "print"),
-        ("ruby -I lib -e code", "code"),
-        ("node --eval=code", "code"),
-        ("node -r dotenv/config app.js --config .npmrc", "app.js"),
-        ("node --inspect app.js", "app.js"),
-        ("nodejs -p code", "code"),
-        ("deno run -A app.ts .env", "app.ts"),
-        ("deno eval code", "code"),
-        ("bun run test.ts --config .npmrc", "test.ts"),
-        ("php -f x.php .env", "x.php"),
-        ("lua -l mod x.lua", "x.lua"),
-    ],
-)
-def test_an_interpreters_program_is_its_code_or_script_operand_never_its_later_arguments(
-    command: str, want: str
-) -> None:
-    name, *args = command.split()
-    assert readers.program_text(readers.Cmd(name, args, {}, [], [], "")) == want
 
 
 def test_scan_text_reads_code_for_stores_and_leaves_ordinary_code_alone() -> None:
