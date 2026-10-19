@@ -93,8 +93,8 @@ protect-main-branch  [deterministic]
   PASS  derived-ref-commit-unprotected     derived   gate exit 0
   score 1.00
 
-5 policies: 9 pass, 41 skipped
-41 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 9 pass, 44 skipped
+44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces

@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/goose.py --tool-call \".chock/compiled/token-efficiency/pre-tool-use/tool-call-gate.json\"",
+            "on_failure": "block",
+            "timeout": 45
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/goose.py --record \".chock/compiled/token-efficiency/pre-tool-use/tool-call-gate.json\"",
+            "on_failure": "block",
+            "timeout": 45
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -51,8 +51,13 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+  claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
+  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 3 hook entr(y/ies) in .gemini/settings.json
+  gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
+  gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
+  vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
 INDEX.md: ~396 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-agent-config:
@@ -78,10 +83,14 @@ Registered 3 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 2 hook entr(y/ies) in .agents/hooks.json
 Registered 3 hook entr(y/ies) in .codex/hooks.json
 Registered 2 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 3 hook entr(y/ies) in .factory/hooks.json
 Registered 3 hook entr(y/ies) in .gemini/settings.json
+Registered 3 hook entr(y/ies) in .agents/plugins/chock/hooks/hooks.json
 Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
+Registered 3 hook entr(y/ies) in .vibe/hooks.toml
+Registered 3 hook entr(y/ies) in .openhands/hooks.json
 Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
-Registered 1 hook entr(y/ies) in .windsurf/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~396 tokens (chars/4, max 2000)
 ```
@@ -1638,10 +1647,12 @@ protect-agent-config  [deterministic]
   PASS  tc-1540                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
   PASS  tc-1541                            authored  This path is agent configuration or enforcement (instruction files,…
   PASS  tc-1542                            authored  guard exit 0
+  PASS  tc-1543                            authored  BLOCKED: shell command runs `chock resume` -- refused: only a perso…
+  PASS  tc-1544                            authored  BLOCKED: shell command runs `chock resume` -- refused: only a perso…
   score 1.00
 
-5 policies: 1542 pass, 41 skipped
-41 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 1544 pass, 44 skipped
+44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -1658,10 +1669,18 @@ protect-agent-config  [deterministic]
 .chock/compiled/protect-agent-config/pre-tool-use/cursor-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/devin-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/factory_droid-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/factory_droid-write-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/gate.json
 .chock/compiled/protect-agent-config/pre-tool-use/gemini_cli-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/goose-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/goose-write-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/grok-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/mistral_vibe-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/mistral_vibe-write-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/openhands-hooks.json
+.chock/compiled/protect-agent-config/pre-tool-use/openhands-write-hooks.json
 .chock/compiled/protect-agent-config/pre-tool-use/pretooluse-write.json
 .chock/compiled/protect-agent-config/pre-tool-use/pretooluse.json
 .chock/compiled/protect-agent-config/pre-tool-use/tabnine-hooks.json
@@ -1670,8 +1689,12 @@ protect-agent-config  [deterministic]
 .chock/compiled/protect-agent-config/stop/codex_cli-hooks.json
 .chock/compiled/protect-agent-config/stop/cursor-hooks.json
 .chock/compiled/protect-agent-config/stop/devin-hooks.json
+.chock/compiled/protect-agent-config/stop/factory_droid-hooks.json
 .chock/compiled/protect-agent-config/stop/gate.json
 .chock/compiled/protect-agent-config/stop/gemini_cli-hooks.json
+.chock/compiled/protect-agent-config/stop/goose-hooks.json
+.chock/compiled/protect-agent-config/stop/mistral_vibe-hooks.json
+.chock/compiled/protect-agent-config/stop/openhands-hooks.json
 .chock/compiled/protect-agent-config/stop/stop.json
 .chock/compiled/protect-agent-config/stop/tabnine-hooks.json
 .chock/compiled/protect-agent-config/stop/vscode_copilot-hooks.json

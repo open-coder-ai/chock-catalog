@@ -87,8 +87,8 @@ limit-diff-size  [deterministic]
   PASS  tc-011                             authored  script exit 0
   score 1.00
 
-5 policies: 3 pass, 49 skipped
-49 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 3 pass, 52 skipped
+52 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
