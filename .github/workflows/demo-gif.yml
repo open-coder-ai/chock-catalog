@@ -56,7 +56,10 @@ jobs:
           pip install --require-hashes -r requirements/framework.txt
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
+          pins="$(python -I tools/framework_ref.py direct-deps .framework)"
+          [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Render tape
         uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2
@@ -104,7 +107,10 @@ jobs:
           pip install --require-hashes -r requirements/framework.txt
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
+          pins="$(python -I tools/framework_ref.py direct-deps .framework)"
+          [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Render tape
         uses: charmbracelet/vhs-action@f6d7db07a432fcd3b06772628d36a57f96d95dcf  # v2
