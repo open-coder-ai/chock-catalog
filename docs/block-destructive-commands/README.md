@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | blocks — refuses a matched shell command before it runs |
+| **On Claude Code** | blocks — refuses a matched shell command before it runs. Where its description says it asks, it asks. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | commit-time guard script `block-destructive-commands-pre-push.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |

@@ -98,6 +98,8 @@ CASES = [
     ("New-Item -ItemType File -Path 'a;b'", BLOCK),
     ("Rename-Item a.txt -NewName:'x;y'", BLOCK),
     ("Set-Content -Path notes.txt -Value 'a;b'", OK),
+    ("touch 'dir\\sub.txt'", BLOCK),
+    ("touch 'q\"x.txt'", BLOCK),
     ("cat 'a;b'", OK),
     ("rm -rf 'old;dir'", OK),
     # Substitution syntax counts when spelled literally; unquoted, the shell expands it.
@@ -228,6 +230,7 @@ def test_powershell_text_is_read_as_powershell(capsys: pytest.CaptureFixture[str
         ("${x'} = 1; New-Item -Path 'a;b'", BLOCK),
         ("${a`}b #} = 1; New-Item -Path 'a;b'", BLOCK),
         ('New-Item "${env:OUT}/x.txt"', OK),
+        ("New-Item -Path 'dir\\sub.txt'", OK),
     ],
 )
 def test_powershell_escapes_and_subexpressions(command: str, want: int, monkeypatch, capsys) -> None:

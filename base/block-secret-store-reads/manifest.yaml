@@ -1,6 +1,6 @@
 id: block-secret-store-reads
 name: "Block Secret Store Reads"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   Best-effort guard against an agent reading credentials from the shell: cat, cp, tar, source or
   < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, agent CLI dirs, browser DBs, wallets, .env, *.tfstate;
@@ -31,7 +31,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-10T00:00:00Z"
+  updated_at: "2026-10-19T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-10-19'
+  changes:
+  - "False blocks removed (catalog review M5). A verb that walks trees over `..` (rg pattern .., grep -r p .., cp -r .. /tmp/bak) no longer reads as every home store: a relative path matches a home entry only through its own segments, so cp -r ../.ssh /tmp/x is still refused and a bare `..` matches nothing. An interpreter's arguments are read for store names only in its -c/-e code (inside a short-option cluster too, perl -ne), an --eval-style value, the script operand (python x.py, deno run x.ts, php -f x.php) and a heredoc, never in the program's own arguments, so python -m pytest -k .env and node test.js --config .npmrc are allowed while python -c \"open('.env')\" is still refused; a store handed to a script as an argument (python3 app.py ~/.aws/credentials) is now a documented miss under scripts. A cd .. above a relative working directory leaves the directory unknown instead of stale, so cd sub && cd .. && cat .ssh/id_rsa is refused. Eval cases tc-116..tc-122."
 - version: 0.0.4
   date: '2026-10-10'
   changes:

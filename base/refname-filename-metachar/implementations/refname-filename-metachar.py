@@ -131,13 +131,13 @@ def file_operands(cmd: Cmd) -> list[str]:
     return found
 
 
-def named(cmd: Cmd) -> list[tuple[str, str, list[tuple[str, str]]]]:
+def named(cmd: Cmd, *, ps: bool = False) -> list[tuple[str, str, list[tuple[str, str]]]]:
     """(kind, name, problems) for every ref and path the command would create."""
     found = []
     if cmd.name == "git":
         sub, _, rest = git_parts(cmd.args)
         found += [("branch or tag name", ref, ref_problems(ref)) for ref in created_refs(sub, rest, cmd.doc)]
-    found += [("file name", path, problems(path, dotdot=False)) for path in file_operands(cmd)]
+    found += [("file name", path, problems(path, dotdot=False, backslash=not ps)) for path in file_operands(cmd)]
     return found
 
 
@@ -159,8 +159,9 @@ def check(raw: str) -> str | None:
         budget -= len(script)
         if depth > MAX_DEPTH or len(seen) > MAX_SCRIPTS or budget < 0:
             return TOO_DEEP
+        ps = is_powershell(script)
         try:
-            text, inner = mark_expansions(script, powershell=is_powershell(script))
+            text, inner = mark_expansions(script, powershell=ps)
             if len(text) > LONG_UNBALANCED and shellparse._Scan(text).run() is None:
                 return UNBALANCED  # the parser's fallback for unbalanced quoting slows quadratically
             _SCRIPTS.clear()
@@ -170,7 +171,7 @@ def check(raw: str) -> str | None:
         except UnreadableError:
             return UNCLOSED
         pending += [(inner_script, depth + 1) for inner_script in _scripts(cmds, inner)]
-        found = [item for cmd in cmds for item in named(cmd) if item[2]]
+        found = [item for cmd in cmds for item in named(cmd, ps=ps) if item[2]]
         if found:
             kind, name, problems_found = found[0]
             return describe(kind, name.replace(EXPANDED, "$"), problems_found)
