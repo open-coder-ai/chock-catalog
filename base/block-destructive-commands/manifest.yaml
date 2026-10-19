@@ -1,13 +1,13 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.2.4"
+version: "0.3.0"
 description: >
-  Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table
-  shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths;
-  mv/chmod/chown -R of system dirs; dd to devices, mkfs; account lockouts; force, delete and
-  mirror pushes; history rewrites; IaC destroy; listed cloud and platform deletes; DB drops. Asks:
-  rm -rf off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes.
-  Pre-push: no non-ff.
+  Best-effort, on parsed commands (echo ignored); one verdict table shared with
+  rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home, abs paths or .git;
+  mv/chmod/chown -R of system dirs; dd to devices, mkfs; lockouts; force, delete, mirror pushes;
+  history rewrites; switch --discard; IaC destroy; cloud deletes; DB drops. Asks: rm -rf off a safe
+  list, one named kubectl delete, bare lease, stash drop, -auto-approve, drain, prunes, API deletes.
+  Dry runs pass. Pre-push: no non-ff.
 artifact: rule
 enforcement: advise
 compliance:
@@ -19,8 +19,8 @@ compliance:
   - ASI02
 rule:
   text: |
-    block(shared table): rm|rmdir|mv|chmod|chown_-R(root|home|/etc..), rm_-rf(abs|.|$PWD), dd_of=/dev|mkfs|wipefs|shred, lock(authorized_keys|usermod_-L|passwd_-l|chattr_+i|kill_-1|crontab_-r), git(push_-f|+ref|-d|:ref|--mirror, reset_--hard, clean_-f, checkout|restore_., reflog|gc|filter), iac_destroy, cloud|k8s|helm|paas_delete, sql_drop|dropdb
-    ask: rm_-rf(off safe_list), lease_bare, stash_drop, branch_-D, -auto-approve, drain, prune, pkill_-f, systemctl_disable, api_DELETE; push: refuse_non_ff
+    block: rm|mv|chmod|chown_-R(root|home|sys),rm_-rf(abs|.|$PWD|.git),dd_of=/dev|mkfs|wipefs|shred,lockout(authkeys|usermod|passwd|chattr_+i|kill_-1|crontab),git(push_-f|+ref|-d|:ref|--mirror,reset_--hard,clean_-f,checkout|restore_.|switch_--discard,reflog|gc|filter),iac_destroy,cloud|k8s|helm_delete,sql_drop
+    ask: rm_-rf(off safe_list),kubectl_delete(1_named),lease_bare,stash_drop,branch_-D,-auto-approve,drain,prune,pkill_-f,systemctl_disable,api_DELETE;allow: tool_dry_run;push: refuse_non_ff
 hook:
   script:
     "on": [push]
@@ -32,7 +32,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-19T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -46,6 +46,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.0
+  date: '2026-10-19'
+  changes:
+  - "The guard allows what its own refusal recommends (pre-release review: catalog M3, plugins M3 and M4). Each tool's documented dry-run flag exempts the command: git clean -n/--dry-run (nothing is removed, whatever -f says), git push -n/--dry-run (nothing is pushed, even with --force, a '+' refspec or --mirror), kubectl --dry-run=client|server (a bare --dry-run, which kubectl deprecates, and --dry-run=none run for real and keep their verdict), helm --dry-run (not =false), aws --dryrun and --dry-run (not --no-dry-run). terraform plan was never refused; a case now pins it."
+  - "kubectl delete of one named resource (`kubectl delete pod my-pod` or `pod/my-pod`: one kind, one name, no --all, -A, -l/--selector, -f, -k or --field-selector) asks instead of blocking; a client that cannot prompt turns the ask into a refusal (the per-client label says which). A namespace, node, CRD or persistent volume is one name for everything inside it and still blocks. New blocks: git switch --discard-changes (and -f, its alias; --detach stays allowed) and rm -r of a path whose last segment is .git (the repository's history and hooks). git restore . and git restore --staged --worktree . were already refused and git stash drop|clear already asks; cases pin them."
+  - "Messages: the rm -rf and rm -r blocks name a scoped relative path as the alternative (rm has no dry run; /tmp, ~/.cache and every other absolute or home path stay refused), the rm -rf ask names mv instead of a dry run, and the one-named kubectl ask names --dry-run=client. Table 1.1.0 (rows rm-git, switch-discard, kubectl-delete-one). 19 eval cases added (tc-171 to tc-189); tc-058 flips block to ask, which is the fix. Same change in rtk-dangerous-actions-blocker 0.3.0 through the shared table."
 - version: 0.2.4
   date: '2026-10-07'
   changes:
