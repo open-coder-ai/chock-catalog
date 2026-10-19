@@ -7,6 +7,7 @@ chock's own, which never objects and never fails, and a summary of what it caugh
 
 from __future__ import annotations
 
+import inspect
 import json
 import shlex
 import shutil
@@ -35,6 +36,12 @@ def _logger_commands(config: Path) -> list[str]:
     return [command for command in commands if "capture_hook" in command]
 
 
+def _wired(out: str) -> list[str]:
+    """The events the kit's "capture hook wired" line names."""
+    line = next(line for line in out.splitlines() if "capture hook wired" in line)
+    return line.split(" for ", 1)[1].split(", ")
+
+
 def _call(command: str, payload) -> subprocess.CompletedProcess:
     text = payload if isinstance(payload, str) else json.dumps(payload)
     return subprocess.run(shlex.split(command), input=text, capture_output=True, text=True, check=False)
@@ -50,9 +57,8 @@ EDIT = {
 def test_the_logger_records_every_write_event_and_never_objects(tmp_path: Path, capsys) -> None:
     workspace = _setup(tmp_path)
     kit.main(["capture", "--dir", str(workspace)])
-    assert "for pre_tool, post_tool, file_changed" in capsys.readouterr().out
     commands = _logger_commands(workspace / ".claude" / "settings.json")
-    assert len(commands) == 3
+    assert len(commands) == len(_wired(capsys.readouterr().out)), "the report names what the config holds"
     for payload in (EDIT, "not json at all"):
         done = _call(commands[0], payload)
         assert (done.returncode, done.stdout) == (0, ""), "silence is the one reply every agent reads as allow"
@@ -69,8 +75,30 @@ def test_the_logger_records_every_write_event_and_never_objects(tmp_path: Path, 
 def test_an_agent_is_wired_only_for_the_events_it_has(tmp_path: Path, capsys) -> None:
     workspace = _setup(tmp_path, agent="codex")
     kit.main(["capture", "--dir", str(workspace)])
-    assert "for pre_tool, post_tool\n" in capsys.readouterr().out
+    assert _wired(capsys.readouterr().out) == ["pre_tool", "post_tool"]
     assert len(_logger_commands(workspace / ".codex" / "hooks.json")) == 2
+
+
+def test_an_event_left_unwired_says_why(tmp_path: Path, capsys) -> None:
+    workspace = _setup(tmp_path)
+    kit.main(["capture", "--dir", str(workspace)])
+    out = capsys.readouterr().out
+    if "file_changed" not in _wired(out):
+        assert "not wired, file_changed: needs --watch FILE" in out
+
+
+def test_watch_wires_file_changed_where_agentseam_takes_a_list(tmp_path: Path, capsys) -> None:
+    workspace = _setup(tmp_path)
+    takes_watch = "watch" in inspect.signature(capture._agentseam().install.install).parameters
+    if not takes_watch:
+        with pytest.raises(SystemExit, match="--watch needs an agentseam"):
+            kit.main(["capture", "--dir", str(workspace), "--watch", "A.java"])
+        return
+    kit.main(["capture", "--dir", str(workspace), "--watch", "A.java"])
+    out = capsys.readouterr().out
+    assert "file_changed" in _wired(out)
+    assert "not wired" not in out
+    assert len(_logger_commands(workspace / ".claude" / "settings.json")) == len(_wired(out))
 
 
 def test_another_agent_can_be_captured_in_the_same_workspace(tmp_path: Path, capsys) -> None:

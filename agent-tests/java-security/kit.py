@@ -268,6 +268,12 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("capture", help="record what the agent really sends its hooks when it edits")
     p.add_argument("--dir", default=".")
     p.add_argument("--vendor", help="agentseam's name for the agent (default: the workspace's): gemini_cli, grok, ...")
+    p.add_argument(
+        "--watch",
+        action="append",
+        metavar="FILE",
+        help="a file to watch, wiring file_changed where the agent needs one (repeatable)",
+    )
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--show", action="store_true", help="summarise what was captured")
     mode.add_argument("--stop", action="store_true", help="remove the capture hook")
