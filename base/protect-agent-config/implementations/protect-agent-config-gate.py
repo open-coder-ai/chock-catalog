@@ -14,7 +14,7 @@ from pathlib import Path
 # treats an exit it did not ask for as a refusal, never as an allow.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from pathlink import follow
+from pathlink import follow, within
 from pathmatch import DEVICE, DRIVE
 from pathset import ASK, BLOCK, normalise, verdict
 
@@ -24,7 +24,7 @@ ENGINE_OWN = (".chock/state", ".chock/log")
 RECORD = ".chock/state/guardrails.sha256"
 BLOCKED = (
     "This path is agent configuration or enforcement (instruction files, permission files, the dependency allowlist, "
-    "vendored gates, policy implementations, whole agent folders). An agent must not edit its own guardrails through "
+    "vendored gates, the lockfile, policy implementations, whole agent folders). An agent must not edit its own guardrails through "
     "the Edit or Write tools. Propose the change to a human -- say which file and what should change and why -- and "
     "wait for approval; regenerate managed files with `chock sync`. A person edits these files from their own shell."
 )
@@ -88,10 +88,10 @@ def judge(root: Path, path: str) -> str:
     """`block`, `ask` or an empty string: the strictest verdict of the path as written, folded, and followed through its links."""
     rel = relative(root, path)
     real = os.path.realpath(root)
-    followed = follow(real, path.replace("\\", "/"))  # a `..` after a link is read as written, not folded
+    followed = follow(real, path)  # a `..` after a link is read as written, not folded
     if followed is None:
         return BLOCK
-    inside = [os.path.relpath(f, real) if f.startswith(real + "/") else f for f in followed]
+    inside = [within(real, f) for f in followed]
     if all(engine_own(name) for name in (rel, *inside)):  # a link there to a protected file is judged by that file
         return ""
     named = [path, rel, *inside]

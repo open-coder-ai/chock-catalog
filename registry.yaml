@@ -106,11 +106,11 @@ policies:
     HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.4.4
+  version: 0.5.0
   artifact: rule
   enforcement: advise
   status: production
-  mandatory: false
+  mandatory: true
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
   eval_cases: 107
@@ -126,7 +126,8 @@ policies:
     on commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
     git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; hook manager uninstall; aliases
     and rebase --exec defined in the command. Asks on plumbing, unset hooksPath, another GIT_DIR and
-    config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.'
+    config files. Refuses person-only CHOCK_*/marker changes. Mandatory. Misses: older aliases, scripts,
+    $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
   version: 0.2.3
@@ -771,15 +772,15 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.6.1
+  version: 0.7.0
   artifact: rule
   enforcement: advise
   status: production
-  mandatory: false
+  mandatory: true
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1544
-  eval_executed: 1544
+  eval_cases: 1560
+  eval_executed: 1560
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs; blocks on an agent's file writes and at turn end"}
@@ -789,15 +790,15 @@ policies:
     misses: "user config under ~/.config/, writes a script makes, an existing hard link."
   description: 'Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes
     to AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...),
-    MCP/hook client configs (.mcp.json, ...), guardrails toggles, plugin install markers, hook files
-    of Cline, Kiro, Augment, Windsurf and Devin (user and machine level too), ~/.claude.json, Claude
-    Code plugin roots, project config of Kilo Code, opencode, Factory, Amp, Continue and Goose, .git/{hooks,config},
-    policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, a write through
-    a symlink; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir, chock resume (best effort). Any case. An
-    instruction file under docs/ asks a person instead. Coarse: also eval or sh -c of computed text,
-    shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass.
-    Edit/Write: tool gate, same set and verdicts. Misses: user config under ~/.config/, writes a script
-    makes, an existing hard link.'
+    MCP/hook client configs (.mcp.json, ...), guardrails toggles, plugin install markers, chock.lock,
+    hook files of Cline, Kiro, Augment, Windsurf and Devin (user and machine level), ~/.claude.json,
+    Claude Code plugin roots, project config of Kilo Code, opencode, Factory, Amp, Continue and Goose,
+    .git/{hooks,config}, policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore,
+    a write through a symlink; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir, chock resume (best effort).
+    Any case. An instruction file under docs/ asks a person. Coarse: also eval or sh -c of computed
+    text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync`
+    pass. Edit/Write: tool gate, same set and verdicts. Misses: user config under ~/.config/, writes
+    a script makes, an existing hard link.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
   version: 0.2.6

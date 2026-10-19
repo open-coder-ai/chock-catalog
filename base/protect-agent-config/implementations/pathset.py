@@ -19,7 +19,7 @@ INSTRUCTIONS = (
     ".aider.conf.yml",
     ".goosehints",  # Goose, at any level from the working directory up to the repository root
 )
-# Project config files read by their exact name, at any level (opencode and Kilo look from the working directory up to the git root):
+# Files read by their exact name, at any level (opencode and Kilo look for theirs from the working directory up to the git root):
 # matched as a whole path segment, so `docs/opencode.json.md` is not one.
 NAMED = (
     "opencode.json",  # opencode
@@ -27,6 +27,7 @@ NAMED = (
     "kilo.json",  # Kilo Code
     "kilo.jsonc",
     ".continuerc.json",  # Continue, workspace level
+    "chock.lock",  # chock's lockfile: the hashes `chock check` verifies the installed packs and compiled gates against
 )
 # A name ending in `/` is a whole folder, matched as a path segment: everything below it is protected, whatever its name.
 # Any other name is matched as text anywhere in the path.
