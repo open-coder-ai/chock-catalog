@@ -260,3 +260,60 @@ def test_direct_deps_refuses_anything_but_an_org_commit(tmp_path: Path, capsys, 
 def test_direct_deps_refuses_a_checkout_without_a_project_table(tmp_path: Path, capsys) -> None:
     assert framework_ref.main(["direct-deps", str(tmp_path)]) == framework_ref.REFUSED
     assert "no [project] table" in capsys.readouterr().err
+
+
+def _deps(monkeypatch: pytest.MonkeyPatch, path: str, installed: dict[str, tuple[dict, str]]) -> int:
+    monkeypatch.setattr(framework_ref, "_installed", installed.get)
+    return framework_ref.main(["deps", path])
+
+
+@pytest.mark.parametrize(
+    "repo", ["https://github.com/open-coder-ai/agentseam", "https://github.com/open-coder-ai/agentseam.git"]
+)
+def test_deps_accepts_the_pinned_commit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, repo: str) -> None:
+    path = _framework(tmp_path, f"agentseam @ {AGENTSEAM}@{SHA}", "pyyaml>=6.0")
+    origin = {"url": repo, "vcs_info": {"vcs": "git", "commit_id": SHA}}
+    assert _deps(monkeypatch, path, {"agentseam": (origin, "0.3.5")}) == 0
+    assert "is installed at its commit" in capsys.readouterr().out
+
+
+def test_deps_refuses_the_index_release_of_the_same_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """Run 39188425493: chock pinned an agentseam commit, PyPI's 0.3.5 was installed, and pip check passed."""
+    path = _framework(tmp_path, f"agentseam @ {AGENTSEAM}@{SHA}")
+    assert _deps(monkeypatch, path, {"agentseam": ({}, "0.3.5")}) == framework_ref.REFUSED
+    err = capsys.readouterr().err
+    assert f"pins agentseam @ {AGENTSEAM}@{SHA}, but the installed agentseam is 0.3.5 from a package index" in err
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        {"url": "https://github.com/open-coder-ai/agentseam", "vcs_info": {"vcs": "git", "commit_id": "1" * 40}},
+        {"url": "https://github.com/someone/agentseam", "vcs_info": {"vcs": "git", "commit_id": SHA}},
+        {"url": f"https://github.com/open-coder-ai/agentseam/archive/{SHA}.tar.gz", "archive_info": {}},
+        {"url": f"file:///src/agentseam-{SHA}", "dir_info": {}},
+    ],
+)
+def test_deps_refuses_another_commit_or_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, origin: dict) -> None:
+    path = _framework(tmp_path, f"agentseam @ {AGENTSEAM}@{SHA}")
+    assert _deps(monkeypatch, path, {"agentseam": (origin, "0.3.5")}) == framework_ref.REFUSED
+
+
+def test_deps_refuses_a_pinned_dependency_that_is_not_installed(tmp_path: Path, monkeypatch, capsys) -> None:
+    path = _framework(tmp_path, f"agentseam @ {AGENTSEAM}@{SHA}")
+    assert _deps(monkeypatch, path, {}) == framework_ref.REFUSED
+    assert "agentseam is not installed" in capsys.readouterr().err
+
+
+def test_deps_leaves_version_pins_to_pip_check(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = _framework(tmp_path, "agentseam==0.3.5", "jsonschema>=4.18,<5")
+    assert _deps(monkeypatch, path, {}) == 0
+
+
+def test_deps_refuses_a_checkout_without_a_project_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    assert _deps(monkeypatch, str(tmp_path), {}) == framework_ref.REFUSED
+    assert "no [project] table" in capsys.readouterr().err

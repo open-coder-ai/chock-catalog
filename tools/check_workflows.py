@@ -23,6 +23,8 @@ TOOL = "python3 -I tools/framework_ref.py"
 DIRECT_DEPS = (
     'pins="$(python -I tools/framework_ref.py direct-deps .framework)"',
     '[ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"',
+    "pip check",
+    "python -I tools/framework_ref.py deps .framework",
 )
 FRAMEWORK_INSTALL = re.compile(r"\bpip3? (?:install|wheel)\b.*\./\.framework\b")
 BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
@@ -145,16 +147,16 @@ def _follows(lines: list[str], wanted: list[str]) -> bool:
 
 
 def framework_installs(name: str, workflow: dict) -> list[str]:
-    """A step that installs ./.framework then installs the git commits its pyproject pins, before `pip check`."""
+    """A step that installs ./.framework then installs the git commits it pins, `pip check`s, and checks each commit."""
     problems = []
     for job_id, job in (workflow.get("jobs") or {}).items():
         for step in job.get("steps") or []:
             lines = [line.strip() for line in _run(step).splitlines()]
             installs = [i for i, line in enumerate(lines) if FRAMEWORK_INSTALL.search(line)]
-            if installs and not _follows(lines[installs[-1] + 1 :], [*DIRECT_DEPS, "pip check"]):
+            if installs and not _follows(lines[installs[-1] + 1 :], list(DIRECT_DEPS)):
                 problems.append(
                     f"{name} job {job_id!r} installs ./.framework without then running, in order: "
-                    + "; ".join([*DIRECT_DEPS, "pip check"])
+                    + "; ".join(DIRECT_DEPS)
                 )
     return problems
 

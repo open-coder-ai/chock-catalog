@@ -50,6 +50,7 @@ jobs:
           pins="$(python -I tools/framework_ref.py direct-deps .framework)"
           [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       # No --base: every policy, from an empty repository. A failure here means the
       # committed transcripts no longer describe what the tools print -- regenerate with
@@ -102,6 +103,7 @@ jobs:
           pins="$(python -I tools/framework_ref.py direct-deps .framework)"
           [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       - name: Derived files that lag until the release are current
         run: |

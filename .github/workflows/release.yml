@@ -148,6 +148,7 @@ jobs:
           pins="$(python -I tools/framework_ref.py direct-deps .framework)"
           [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       # The full run: every generator, then every check CI runs, including pytest at 100% coverage
       # and the staged adopter. About 40 minutes is fine here, off every pull request's path.

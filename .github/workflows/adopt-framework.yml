@@ -140,6 +140,7 @@ jobs:
           pins="$(python -I tools/framework_ref.py direct-deps .framework)"
           [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
+          python -I tools/framework_ref.py deps .framework
 
       # The whole adoption: rewrite the pin, regenerate every derived artifact, run every
       # check. Non-zero here means the diff is not adoptable, and no PR is opened.

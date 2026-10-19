@@ -209,16 +209,18 @@ def test_runs_as_a_script() -> None:
     assert proc.returncode == 0, proc.stderr
 
 
-PINS, INSTALL_PINS = check_workflows.DIRECT_DEPS
+PINS, INSTALL_PINS, _, DEPS = check_workflows.DIRECT_DEPS
 
 
 @pytest.mark.parametrize(
     ("run", "ok"),
     [
-        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\npip check\n", True),
+        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\npip check\n{DEPS}\n", True),
+        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\npip check\n", False),
+        (f"pip install --no-deps ./.framework\n{PINS}\n{INSTALL_PINS}\n{DEPS}\npip check\n", False),
         (
             "pip wheel --wheel-dir .framework/dist ./.framework\npip install .framework/dist/*.whl\n"
-            f"{PINS}\n{INSTALL_PINS}\npip check",
+            f"{PINS}\n{INSTALL_PINS}\npip check\n{DEPS}",
             True,
         ),
         ("pip install --no-deps ./.framework\npip check\n", False),
@@ -234,7 +236,7 @@ PINS, INSTALL_PINS = check_workflows.DIRECT_DEPS
         ("pip install -r requirements/test.txt\n", True),
     ],
 )
-def test_a_framework_install_then_installs_its_git_pins_before_pip_check(run: str, ok: bool) -> None:
+def test_a_framework_install_then_installs_and_checks_its_git_pins(run: str, ok: bool) -> None:
     problems = check_workflows.framework_installs("w.yml", {"jobs": {"j": {"steps": [{"run": run}]}}})
     assert (problems == []) is ok
     if not ok:
