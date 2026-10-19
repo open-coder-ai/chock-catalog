@@ -39,6 +39,9 @@ FETCHERS = frozenset(
     )
 )
 NETREADERS = frozenset(("nc", "ncat", "netcat", "socat", "telnet"))
+#: Copiers that write a remote file to stdout when the destination is `-`.
+TRANSPORTS = frozenset(("scp", "rsync"))
+_REMOTE = re.compile(r"^(?:(?:[\w.-]+@)?[\w.-]{2,}:|(?:rsync|s3|gs|az)://)", re.IGNORECASE)
 VERIFIERS = frozenset(
     ("sha1sum", "sha224sum", "sha256sum", "sha384sum", "sha512sum", "shasum", "md5sum", "b2sum", "b3sum", "cksum")
 )
@@ -142,11 +145,22 @@ def inner_cmds(cmd: Cmd, depth: int = 0) -> list[Cmd]:
     return [c for first in commands(inner or "") for c in (first, *inner_cmds(first, depth + 1))]
 
 
+def streams_remote(cmd: Cmd) -> bool:
+    """ssh running a remote command, or scp, rsync or aws s3 cp writing a remote file to stdout: its output is fetched."""
+    if cmd.name == "ssh":
+        return bool(runner_inner(cmd))
+    if cmd.name in TRANSPORTS or (cmd.name == "aws" and cmd.args[:2] == ["s3", "cp"]):
+        return "-" in cmd.args and any(_REMOTE.match(arg) for arg in cmd.args[: cmd.args.index("-")])
+    return False
+
+
 def fetch_strength(cmd: Cmd, depth: int = 0) -> int:
     """STRONG for a downloader or a command carrying a download's output, WEAK for a raw socket or net one-liner."""
     cmd = resolve(cmd)
     words = [cmd.name, *cmd.args, *cmd.reads]
     if cmd.name in FETCHERS or cmd.name == PH_FETCHER or any(PH[STRONG] in word for word in words):
+        return STRONG
+    if streams_remote(cmd):
         return STRONG
     socket = any(r.startswith(("/dev/tcp/", "/dev/udp/")) for r in cmd.reads)
     weak = cmd.name in NETREADERS or socket or any(PH[WEAK] in word for word in words)

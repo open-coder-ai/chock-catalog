@@ -6,6 +6,7 @@ Hit = tuple[str, str] | None
 _LEASE = "--force-with-lease"
 _WHOLE = frozenset(("", ".", "..", "*", ":", ":/", ":/*", ":/.", ":(top)", ":(top)*", ":(top)."))
 _NOW = frozenset(("now", "all", "0"))
+_DRY = frozenset(("-n", "--dry-run"))
 
 
 def _whole_tree(targets: list[str]) -> str:
@@ -13,8 +14,16 @@ def _whole_tree(targets: list[str]) -> str:
     return next((t for t in targets if t.rstrip("/") in _WHOLE or set(t) <= set("./")), "")
 
 
+def _dry(flags: set[str], floor: int) -> bool:
+    """-n or --dry-run (git takes any unambiguous prefix; `floor` is the shortest one for that subcommand)."""
+    return bool(flags & _DRY) or any(abbreviates(f, "--dry-run", floor) for f in flags if f.startswith("--"))
+
+
 def push(rest: list[str]) -> Hit:
+    """A dry run pushes nothing, whatever else is asked (`--dr` is the shortest prefix that is not --delete)."""
     flags, targets = flags_of(rest), operands(rest)
+    if _dry(flags, len("--dr")):
+        return None
     forced = min((t for t in targets if t.startswith("+") or ":+" in t), default="")
     deleted = min((t for t in targets if t.startswith(":") and len(t) > 1), default="")
     if flags & {"-f", "--force"}:
@@ -56,12 +65,19 @@ def history(sub: str, rest: list[str]) -> Hit:
 
 
 def local(sub: str, rest: list[str]) -> Hit:
-    """reset --hard, clean -f, stash drop/clear, branch -D."""
+    """reset --hard, clean -f (not with -n/--dry-run, which removes nothing), switch --discard-changes/-f, stash
+    drop/clear, branch -D."""
     flags = flags_of(rest)
     first = operands(rest)[:1]
+    forced = any(f == "-f" or abbreviates(f, "--force", 3) for f in flags)
     found = {
         "reset": ("reset-hard", "") if any(abbreviates(f, "--hard", 3) for f in flags) else None,
-        "clean": ("clean-force", "") if any(f == "-f" or abbreviates(f, "--force", 3) for f in flags) else None,
+        "clean": ("clean-force", "") if forced and not _dry(flags, len("--d")) else None,
+        "switch": (
+            ("switch-discard", "")
+            if forced or any(abbreviates(f, "--discard-changes", len("--di")) for f in flags if f.startswith("--"))
+            else None
+        ),
         "stash": ("stash-drop", first[0]) if first in (["drop"], ["clear"]) else None,
         "branch": (
             ("branch-force-delete", "")

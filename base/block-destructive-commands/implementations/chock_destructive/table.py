@@ -2,7 +2,7 @@
 
 from typing import NamedTuple
 
-TABLE_VERSION = "1.0.0"
+TABLE_VERSION = "1.1.0"
 BLOCK, ASK = 1, 3
 
 
@@ -14,6 +14,7 @@ class Row(NamedTuple):
 
 
 _PERSON = " is refused. Ask the person to run it themselves; prefer a scoped or dry-run form."
+_SCOPED = " is refused. Ask the person to run it themselves; name a scoped relative path instead (rm has no dry run)."
 _REWRITE = " rewrites remote history. Rebase onto the remote and push fast-forward; a rewrite is the person's call."
 
 
@@ -27,10 +28,11 @@ def _ask(text: str) -> Row:
 
 TABLE: dict[str, Row] = {
     # files and devices
-    "rm-rf": _block("rm -rf targeting '{0}' (absolute path, home, '.', '..' or the working directory)"),
-    "rm-root": _block("rm -r targeting '{0}' (root, a system directory or home)"),
+    "rm-rf": Row(BLOCK, "rm -rf targeting '{0}' (absolute path, home, '.', '..' or the working directory)" + _SCOPED),
+    "rm-root": Row(BLOCK, "rm -r targeting '{0}' (root, a system directory or home)" + _SCOPED),
+    "rm-git": Row(BLOCK, "rm -r of '{0}' destroys the repository's history and hooks. Ask the person to run it themselves."),
     "rm-relative": _ask(
-        "rm -rf on '{0}' is recursive and unrecoverable; confirm the target, or use a trash/dry-run alternative."
+        "rm -rf on '{0}' is recursive and unrecoverable; confirm the target, or move it aside with mv instead."
     ),
     "unlink-root": _block("{0} on root, a system directory or home"),
     "mv-root": _block("mv of '{0}' (root, a system directory or home)"),
@@ -66,6 +68,10 @@ TABLE: dict[str, Row] = {
     "clean-force": _block("git clean -f"),
     "checkout-all": _block("git checkout of the whole tree ('{0}')"),
     "restore-all": _block("git restore of the whole tree ('{0}')"),
+    "switch-discard": Row(
+        BLOCK,
+        "git switch --discard-changes throws away every local change. Ask the person to run it themselves; commit or stash first, or restore one path.",
+    ),
     "stash-drop": _ask("git stash {0} deletes stashed work; confirm, or git stash list and drop one entry."),
     "branch-force-delete": _ask(
         "git branch -D deletes a branch even if unmerged; confirm, or use -d for a merged branch."
@@ -73,6 +79,9 @@ TABLE: dict[str, Row] = {
     "history-rewrite": _block("git {0} (it destroys history or unreachable objects)"),
     # infrastructure, cloud, platforms and data
     "kubectl-delete": _block("kubectl delete"),
+    "kubectl-delete-one": _ask(
+        "kubectl delete of the one named resource '{0}' cannot be undone; confirm, or run it with --dry-run=client first."
+    ),
     "kubectl-drain": _ask("kubectl drain evicts every pod on the node; confirm the node, or cordon it first."),
     "iac-destroy": _block("{0}"),
     "iac-auto-approve": _ask(

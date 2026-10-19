@@ -147,8 +147,9 @@ CASES: dict[str, list[tuple[str, int]]] = {
         ("git branch", OK),
         ("git branch -D topic && git reset --hard", BLOCK),
         ("git branch -D a && git branch -D b", ASK),
-        ("kubectl delete pod x", BLOCK),
-        ("kubectl -n prod delete pod x", BLOCK),
+        ("kubectl delete pod x", ASK),  # one named resource asks (table 1.1.0)
+        ("kubectl -n prod delete pod x", ASK),
+        ("kubectl delete pods --all", BLOCK),
         ("kubectl get pods delete", OK),
         ("terraform destroy", BLOCK),
         ("terraform plan destroy-me", OK),
