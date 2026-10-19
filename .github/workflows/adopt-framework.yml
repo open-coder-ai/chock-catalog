@@ -131,14 +131,15 @@ jobs:
 
       # A directory install, not a wheel: adopt_framework.py identifies the engine by the checkout
       # its direct_url.json names. `pip check` fails when the adopted ref needs a dependency
-      # requirements/framework.in does not list; `pip check` passes a same-version build of another
-      # commit, so `deps` fails unless each commit the adopted pyproject pins is the one installed.
+      # requirements/framework.in does not list. Git pins (agentseam) come from the adopted pyproject
+      # itself, by commit: a copy in framework.txt could only agree with it by hand.
       - name: Install the engine at the ref being adopted
         run: |
           pip install --require-hashes -r requirements/framework.txt
           pip install --no-deps --no-build-isolation ./.framework
+          pins="$(python -I tools/framework_ref.py direct-deps .framework)"
+          [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
-          python -I tools/framework_ref.py deps .framework
 
       # The whole adoption: rewrite the pin, regenerate every derived artifact, run every
       # check. Non-zero here means the diff is not adoptable, and no PR is opened.

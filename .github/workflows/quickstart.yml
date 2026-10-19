@@ -53,8 +53,9 @@ jobs:
           pip install --require-hashes -r requirements/framework.txt
           pip wheel --no-deps --no-build-isolation --wheel-dir .framework/dist ./.framework
           pip install --no-deps .framework/dist/*.whl
+          pins="$(python -I tools/framework_ref.py direct-deps .framework)"
+          [ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"
           pip check
-          python -I tools/framework_ref.py deps .framework
 
       - name: docs/quickstart.sh matches the README
         run: python tools/gen_quickstart_sh.py --check

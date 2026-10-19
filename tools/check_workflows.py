@@ -19,7 +19,11 @@ UNTRUSTED_REFS = ("github.event.pull_request.head.sha", "github.event.pull_reque
 FRAMEWORK_REF = re.compile(r"framework[_-]?ref", re.IGNORECASE)
 PINS = {"${{ env.FRAMEWORK_REF }}", "${{ inputs.framework_ref }}"}
 TOOL = "python3 -I tools/framework_ref.py"
-DEPS = "python -I tools/framework_ref.py deps .framework"
+# Git pins come from the framework's own pyproject; an assignment, not a pipe, so `bash -e` sees a refusal.
+DIRECT_DEPS = (
+    'pins="$(python -I tools/framework_ref.py direct-deps .framework)"',
+    '[ -z "$pins" ] || xargs pip install --no-deps --no-build-isolation --force-reinstall <<< "$pins"',
+)
 FRAMEWORK_INSTALL = re.compile(r"\bpip3? (?:install|wheel)\b.*\./\.framework\b")
 BRANCH = re.compile(r"[A-Za-z0-9._/-]+")
 HEXISH = re.compile(r"[0-9a-fA-F]{7,64}")
@@ -134,15 +138,24 @@ def framework_checkouts(name: str, workflow: dict) -> list[str]:
     return problems
 
 
+def _follows(lines: list[str], wanted: list[str]) -> bool:
+    """`wanted` appear in `lines` in this order (other lines may sit between them)."""
+    rest = iter(lines)
+    return all(line in rest for line in wanted)
+
+
 def framework_installs(name: str, workflow: dict) -> list[str]:
-    """A step that installs ./.framework then runs `deps`: pip check passes a same-version build of another commit."""
+    """A step that installs ./.framework then installs the git commits its pyproject pins, before `pip check`."""
     problems = []
     for job_id, job in (workflow.get("jobs") or {}).items():
         for step in job.get("steps") or []:
             lines = [line.strip() for line in _run(step).splitlines()]
             installs = [i for i, line in enumerate(lines) if FRAMEWORK_INSTALL.search(line)]
-            if installs and DEPS not in lines[installs[-1] + 1 :]:
-                problems.append(f"{name} job {job_id!r} installs ./.framework without a later `{DEPS}` line")
+            if installs and not _follows(lines[installs[-1] + 1 :], [*DIRECT_DEPS, "pip check"]):
+                problems.append(
+                    f"{name} job {job_id!r} installs ./.framework without then running, in order: "
+                    + "; ".join([*DIRECT_DEPS, "pip check"])
+                )
     return problems
 
 
