@@ -892,15 +892,15 @@ policies:
     Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: production
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 55
-  eval_executed: 55
+  eval_cases: 58
+  eval_executed: 58
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}
@@ -935,15 +935,15 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.1.2
+  version: 0.2.0
   artifact: hook
   enforcement: block
   status: production
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 55
-  eval_executed: 55
+  eval_cases: 59
+  eval_executed: 59
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -951,12 +951,12 @@ policies:
     copilot: {"keyword": "block", "says": "blocks at turn end only; the write itself is not judged. Where its description says it asks, it refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     devin: {"keyword": "block", "says": "blocks at turn end only; the write itself is not judged. Where its description says it asks, it refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (vendor docs only, not witnessed)"}
     misses: null
-  description: 'Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node,
-    Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added
-    name missing from .chock/dependency-allowlist.txt and asks on a lockfile-only addition. Not read:
-    computed lists, sources, some pattern-read forms (see docs), versions. Opt-in: seed the allowlist,
-    run in rollout observe, then `chock enable verify-dependency-exists`. Runs: commit, agent write,
-    turn''s end.'
+  description: 'Allowlist gate for new dependencies; no registry lookup. Reads Python, Node, Rust, Ruby,
+    PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing
+    from .chock/dependency-allowlist.txt, asks on a lockfile-only one. Not read: computed lists, sources,
+    versions, some forms (see docs). No allowlist file (plugin-only installs): a manifest change warns,
+    never blocks. Repo form is opt-in: seed, observe, `chock enable`. Runs: commit, agent write, turn''s
+    end.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
   version: 0.5.3
@@ -1007,15 +1007,15 @@ policies:
     computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.8
+  version: 0.0.9
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 45
-  eval_executed: 44
+  eval_cases: 46
+  eval_executed: 45
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}

@@ -1,6 +1,6 @@
 id: guard-memory-writes
 name: "Guard Memory Writes"
-version: "0.0.8"
+version: "0.0.9"
 description: >
   Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate
   line or a secret. Warns (observe, ASI06) on an added line that tells the agent to run a
@@ -43,7 +43,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-10-04T00:00:00Z"
+  updated_at: "2026-10-19T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -56,6 +56,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.9
+  date: '2026-10-19'
+  changes:
+  - "The secret pattern follows scan-secrets 0.1.2 verbatim (a test holds the two equal): the quoted `password = '...'` shape is silent on a value that starts with $, {{ or %(, so a memory note that records `password = \"${DB_PASSWORD}\"` is no longer refused as a secret. No other change."
 - version: 0.0.1
   date: '2026-09-29'
   changes:

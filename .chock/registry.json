@@ -345,13 +345,13 @@
       {
         "id": "scan-secrets",
         "artifact": "hook",
-        "version": "0.1.0",
+        "version": "0.1.2",
         "name": "Scan Secrets",
         "description": "Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values. Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.",
         "path": ".agents/policies/scan-secrets",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
-        "lifecycle_status": "draft",
+        "lifecycle_status": "production",
         "dependencies": [],
         "script_hashes": {}
       }
@@ -407,15 +407,43 @@
       {
         "id": "verify-dependency-exists",
         "artifact": "hook",
-        "version": "0.0.5",
+        "version": "0.2.0",
         "name": "Dependency Allowlist",
-        "description": "Allowlist gate for new dependencies; no registry lookup is made. Watches requirements.txt, pyproject.toml ([project] and poetry dependencies), package.json, go.mod; blocks an added name missing from .chock/dependency-allowlist.txt. Not read: -r/-e lines, requirements-dev.txt, poetry groups, [dependency-groups]. Opt-in: fill the allowlist, then `chock enable verify-dependency-exists`. Runs: commit, agent write (vs disk), turn's end (vs HEAD).",
+        "description": "Allowlist gate for new dependencies; no registry lookup. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from .chock/dependency-allowlist.txt, asks on a lockfile-only one. Not read: computed lists, sources, versions, some forms (see docs). No allowlist file (plugin-only installs): a manifest change warns, never blocks. Repo form is opt-in: seed, observe, `chock enable`. Runs: commit, agent write, turn's end.",
         "path": ".agents/policies/verify-dependency-exists",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
-        "lifecycle_status": "draft",
+        "lifecycle_status": "production",
         "dependencies": [],
-        "script_hashes": {}
+        "script_hashes": {
+          "chock_scan/__init__.py": "2b874f5489fb4b059b06556e17224cc796086db1deb38eb360fa645614b3bf05",
+          "chock_scan/safe_read.py": "af2e3a989ce83c39707b652fec88461ac821f6012da80f8f4ebb58a7890b6c67",
+          "chock_scan/yamlpath.py": "0655dd360885d27adb99f08f372a9f00a9c5dcae715e30869338c8bc06b2b675",
+          "chock_scan/yamlpath_block.py": "d460f7b82fb9bf38381951c14b37729397a5715773eab794dcdacfb67df683e9",
+          "chock_scan/yamlpath_blockscalar.py": "b566961a1871c4f4bfc42e45aaba608ae463a78cade583a9ee6877fdf74acf26",
+          "chock_scan/yamlpath_cursor.py": "87218fc40e3e35460b233a8ae3ab6a6e7a1c6ef433229e2e3c7f4dc5c9737a5c",
+          "chock_scan/yamlpath_flow.py": "b4fe4b51b62270fab6d81cac78e2fd9ed7de7096df4cf72b751f44f4411f97ae",
+          "chock_scan/yamlpath_scalar.py": "eb688c83caa188fa6cb5a92393ffbfe56ea89ea1691d1115107a5bcf3f0647ff",
+          "dependency-manifests.py": "e8f0b9e1fca69481569bd9b5e92bf7b690eb2db6e2e64c0ac957a30125829ffe",
+          "depnames/__init__.py": "a70c72d0639874c50f76467ea89b85be99b10c628a5fdd7c2bda63934706d925",
+          "depnames/dart.py": "e56740f1fc5e83aff404934e37124b4b6157a210f1582f9a938b162edc881fcd",
+          "depnames/dotnet.py": "ea4fc10bdc40aabb8b3484df9a304bb4bf2df608f39101ea78a85e3d7f271823",
+          "depnames/elixir.py": "0d936f84527e60f7799e73f03bc7fd19d9e4e0d4bca049f86d2a05fda36295d5",
+          "depnames/families.py": "9a3126ecbc06040035e99a3c34245f8ba2edc657ef3d1f8c1ade77b1f7e0b375",
+          "depnames/golang.py": "1b79e5b55172e0359d5ad8822e3e11e5d7ea094dc8c060dd050e9e9d6ead30c5",
+          "depnames/gradle.py": "379949d560098927d05823902b9430c5ba9bb2a3c887d951c6cfec17aa8fa0f4",
+          "depnames/lockfiles.py": "a4237024a07085f016cff916e64e1c940f415cbfd1cf30981f883d8cdda6365f",
+          "depnames/maven.py": "f95463815c12589ae96bf4d3ff5b415bd9f95389941e28f4b49d2549d03e99dc",
+          "depnames/node.py": "335389fee5a199b93de650e5e7eb4d544dad65bdaeeff68d74ff85ae9e27a987",
+          "depnames/norm.py": "098b34c25ba268c36716b089f557a8136d6aa5b19e8bb60dab62682a5ce4cfe8",
+          "depnames/php.py": "3a0f4bd1ad29e5535b4fa4ebb823413923fd77b8682c6c1db274dea3ebe5d35d",
+          "depnames/pyreq.py": "36e1808f9e606a636cf5c6507b8e939d60668ff5525d9f451ab90855b753ae3d",
+          "depnames/pytoml.py": "6b24e43c735c08d5ce21c2d73cfd91b1fc6d3b2e522d89343a219bc132635f5e",
+          "depnames/ruby.py": "774e914b903cc9d23e1756475f34e824f880cb36aa5e1149a2f90e9dfb834c81",
+          "depnames/rust.py": "929bfb410ac5be5ea8f849ac325128cfc7bdf23b17c016cdcea8160c702e0061",
+          "depnames/swift.py": "40862fa9bef50d0dd06527fc2374003f585d26cc6b0a36bf733c86b7e58d7aaf",
+          "depnames/xmlsafe.py": "c73ac9f4105b2fbddec50e2d1468e60bab6d5503e60bb2795069e5491b95d407"
+        }
       }
     ],
     "verify-mcp-allowlist": [

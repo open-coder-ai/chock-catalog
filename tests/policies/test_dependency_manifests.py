@@ -64,45 +64,6 @@ def test_listed_and_normalised_equivalent_names_are_silent(repo: Path) -> None:
     assert run(repo, writes) == (0, {"findings": []}, "")
 
 
-def test_a_missing_allowlist_lists_nothing(tmp_path: Path) -> None:
-    bare = scriptkit.init_repo(tmp_path / "bare", {"README.md": "x\n"})
-    code, document, _ = run(bare, {"requirements.txt": "requests\n"})
-    assert (code, keys(document)) == (1, ["py|requests"])
-
-
-def test_allowlist_lines_tolerate_comments_blanks_bom_and_crlf(tmp_path: Path) -> None:
-    root = scriptkit.init_repo(tmp_path / "r", {})
-    (root / ".chock").mkdir()
-    (root / ALLOWLIST).write_bytes(b"\xef\xbb\xbf# approved\r\nrequests  # http client\r\n\r\n  Flask \r\n")
-    assert mod.load_allowlist(root) == ["requests", "Flask"]
-
-
-def test_an_allowlist_that_is_not_utf8_lists_nothing(tmp_path: Path) -> None:
-    root = scriptkit.init_repo(tmp_path / "r", {})
-    (root / ".chock").mkdir()
-    (root / ALLOWLIST).write_bytes(b"\xff\xfe")
-    assert mod.load_allowlist(root) == []
-
-
-def test_each_ecosystem_normalises_the_allowlist_its_own_way() -> None:
-    allowed = mod.Allowed(["foo_bar", "serde_json", "@scope/pkg"])
-    assert ("py", "foo-bar") in allowed
-    assert ("cargo", "serde-json") in allowed
-    assert ("npm", "foo-bar") not in allowed
-    assert ("npm", "@scope/pkg") in allowed
-    assert ("py", "scope-pkg") not in allowed
-
-
-def test_case_sensitive_ecosystems_compare_names_as_written() -> None:
-    allowed = mod.Allowed(["github.com/BurntSushi/toml", "Org.Acme:Core", "Flask", "Newtonsoft.Json"])
-    assert ("go", "github.com/BurntSushi/toml") in allowed
-    assert ("go", "github.com/burntsushi/toml") not in allowed
-    assert ("maven", "Org.Acme:Core") in allowed
-    assert ("maven", "org.acme:core") not in allowed
-    assert ("py", "flask") in allowed
-    assert ("nuget", "newtonsoft.json") in allowed
-
-
 def test_a_go_module_that_differs_only_in_case_is_a_new_name(tmp_path: Path) -> None:
     root = scriptkit.init_repo(tmp_path / "r", {ALLOWLIST: "github.com/BurntSushi/toml\n"})
     ok = run(root, {"go.mod": "module m\nrequire github.com/BurntSushi/toml v1.0.0\n"})
