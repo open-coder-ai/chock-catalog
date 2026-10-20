@@ -200,3 +200,11 @@ def test_a_shallow_clone_is_refused_unless_allowed(shallow: Path, capsys: pytest
     assert seen.out == ""
     assert mfp.main(["demo", "--allow-shallow", "--root", str(shallow)]) == 0
     assert "1 first-parent commits replayed" in capsys.readouterr().out
+
+
+def test_the_replay_context_asks_git_once_per_distinct_arguments(repo: Path) -> None:
+    cache: dict = {("rev-parse", "HEAD"): "seeded"}
+    ctx = mfp.replay_context(mfp.load_engine(), repo, {"paths": ("*.txt",)}, ("sha", "parent"), cache)
+    assert ctx._git("rev-parse", "HEAD") == "seeded"
+    assert ctx._git("rev-parse", "--is-inside-work-tree").strip() == "true"
+    assert cache[("rev-parse", "--is-inside-work-tree")].strip() == "true"
