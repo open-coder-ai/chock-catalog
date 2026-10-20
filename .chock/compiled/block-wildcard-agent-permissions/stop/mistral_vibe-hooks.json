@@ -1,0 +1,8 @@
+[
+  {
+    "type": "post_agent",
+    "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/mistral_vibe.py --gate \".chock/compiled/block-wildcard-agent-permissions/stop/gate.json\"",
+    "name": "agentseam-post_agent-5991567d",
+    "timeout": 45
+  }
+]

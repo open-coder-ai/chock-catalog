@@ -51,9 +51,14 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
+  claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
+  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 hook entr(y/ies) in .gemini/settings.json
+  gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
+  gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~389 tokens (chars/4, max 2000)
+  vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
+INDEX.md: ~397 tokens (chars/4, max 2000)
 Recompiled 1 policies
 rtk-dangerous-actions-blocker:
   claude: best-effort (live-run)
@@ -78,12 +83,16 @@ Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .factory/hooks.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .agents/plugins/chock/hooks/hooks.json
 Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
+Registered 1 hook entr(y/ies) in .vibe/hooks.toml
+Registered 1 hook entr(y/ies) in .openhands/hooks.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-Registered 1 hook entr(y/ies) in .windsurf/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~389 tokens (chars/4, max 2000)
+INDEX.md: ~397 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -161,7 +170,7 @@ rtk-dangerous-actions-blocker  [deterministic]
   PASS  tc-063                             authored  BLOCKED: aws s3 rm --recursive is refused. Ask the person to run it…
   PASS  tc-064                             authored  BLOCKED: helm uninstall/delete is refused. Ask the person to run it…
   PASS  tc-065                             authored  BLOCKED: dropdb is refused. Ask the person to run it themselves; pr…
-  PASS  tc-066                             authored  BLOCKED: kubectl delete is refused. Ask the person to run it themse…
+  PASS  tc-066                             authored  CONFIRM: kubectl delete of the one named resource 'pod/web' cannot …
   PASS  tc-067                             authored  BLOCKED: git push with a '+' force-refspec ('+main') rewrites remot…
   PASS  tc-068                             authored  BLOCKED: git reset --hard is refused. Ask the person to run it them…
   PASS  tc-069                             authored  BLOCKED: rm -rf targeting '/var/log' (absolute path, home, '.', '..…
@@ -201,10 +210,16 @@ rtk-dangerous-actions-blocker  [deterministic]
   PASS  tc-103                             authored  guard exit 0
   PASS  tc-104                             authored  BLOCKED: terraform destroy (destroy) is refused. Ask the person to …
   PASS  tc-105                             authored  BLOCKED: rm -rf targeting '/' (absolute path, home, '.', '..' or th…
+  PASS  tc-106                             authored  guard exit 0
+  PASS  tc-107                             authored  guard exit 0
+  PASS  tc-108                             authored  guard exit 0
+  PASS  tc-109                             authored  BLOCKED: rm -r of '.git' destroys the repository's history and hook…
+  PASS  tc-110                             authored  BLOCKED: git switch --discard-changes throws away every local chang…
+  PASS  tc-111                             authored  BLOCKED: kubectl delete is refused. Ask the person to run it themse…
   score 1.00
 
-5 policies: 105 pass, 41 skipped
-41 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 111 pass, 44 skipped
+44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -217,8 +232,12 @@ rtk-dangerous-actions-blocker  [deterministic]
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/codex_cli-hooks.json
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/cursor-hooks.json
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/devin-hooks.json
+.chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/factory_droid-hooks.json
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/gemini_cli-hooks.json
+.chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/goose-hooks.json
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/grok-hooks.json
+.chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/mistral_vibe-hooks.json
+.chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/openhands-hooks.json
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/pretooluse.json
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/tabnine-hooks.json
 .chock/compiled/rtk-dangerous-actions-blocker/pre-tool-use/windsurf-hooks.json
@@ -228,6 +247,6 @@ rtk-dangerous-actions-blocker  [deterministic]
 
 ```text
 - **rtk-dangerous-actions-blocker**:
-  block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
-  ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve, pkill_-f, systemctl_disable; skip_inside: docker|kubectl_exec(file rows); prefix: rtk
+  block: shared table (= block-destructive-commands: rm_-rf(/|~|.|abs|.git),push(-f|+ref|:ref|--mirror),reset_--hard|clean_-f|checkout_.|switch_--discard,destroy|cloud_delete,sql_drop|dropdb),read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws),echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
+  ask: rm_-rf(off safe_list),kubectl_delete(one_named),lease_bare,stash_drop,branch_-D,docker_prune,-auto-approve,pkill_-f,systemctl_disable;allow: dry_run(tool_flag);skip_inside: container_exec(file rows);prefix: rtk
 ```

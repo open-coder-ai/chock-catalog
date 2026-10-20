@@ -12,14 +12,14 @@
 | **Mechanism** | commit-time guard script `block-destructive-commands-pre-push.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ambient-rule` |
-| **Eval cases** | 170 total, 170 executable |
+| **Eval cases** | 189 total, 189 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Best-effort, on parsed commands (echo ignored); verdicts come from the chock_destructive table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home or abs paths; mv/chmod/chown -R of system dirs; dd to devices, mkfs; account lockouts; force, delete and mirror pushes; history rewrites; IaC destroy; listed cloud and platform deletes; DB drops. Asks: rm -rf off a safe list, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Pre-push: no non-ff.
+Best-effort, on parsed commands (echo ignored); one verdict table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home, abs paths or .git; mv/chmod/chown -R of system dirs; dd to devices, mkfs; lockouts; force, delete, mirror pushes; history rewrites; switch --discard; IaC destroy; cloud deletes; DB drops. Asks: rm -rf off a safe list, one named kubectl delete, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Dry runs pass. Pre-push: no non-ff.
 
 ## What it solves
 
@@ -32,8 +32,8 @@ A guard script, `implementations/block-destructive-commands-pre-push.py`, run by
 The rule text ships alongside, so an agent reading its context knows the constraint before it stages the change rather than only after being refused:
 
 ```text
-block(shared table): rm|rmdir|mv|chmod|chown_-R(root|home|/etc..), rm_-rf(abs|.|$PWD), dd_of=/dev|mkfs|wipefs|shred, lock(authorized_keys|usermod_-L|passwd_-l|chattr_+i|kill_-1|crontab_-r), git(push_-f|+ref|-d|:ref|--mirror, reset_--hard, clean_-f, checkout|restore_., reflog|gc|filter), iac_destroy, cloud|k8s|helm|paas_delete, sql_drop|dropdb
-ask: rm_-rf(off safe_list), lease_bare, stash_drop, branch_-D, -auto-approve, drain, prune, pkill_-f, systemctl_disable, api_DELETE; push: refuse_non_ff
+block: rm|mv|chmod|chown_-R(root|home|sys),rm_-rf(abs|.|$PWD|.git),dd_of=/dev|mkfs|wipefs|shred,lockout(authkeys|usermod|passwd|chattr_+i|kill_-1|crontab),git(push_-f|+ref|-d|:ref|--mirror,reset_--hard,clean_-f,checkout|restore_.|switch_--discard,reflog|gc|filter),iac_destroy,cloud|k8s|helm_delete,sql_drop
+ask: rm_-rf(off safe_list),kubectl_delete(1_named),lease_bare,stash_drop,branch_-D,-auto-approve,drain,prune,pkill_-f,systemctl_disable,api_DELETE;allow: tool_dry_run;push: refuse_non_ff
 ```
 
 ## Which primitive it becomes

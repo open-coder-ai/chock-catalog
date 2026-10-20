@@ -12,14 +12,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 55 total, 55 executable |
+| **Eval cases** | 59 total, 59 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Allowlist gate for new dependencies; no registry lookup is made. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from .chock/dependency-allowlist.txt and asks on a lockfile-only addition. Not read: computed lists, sources, some pattern-read forms (see docs), versions. Opt-in: seed the allowlist, run in rollout observe, then `chock enable verify-dependency-exists`. Runs: commit, agent write, turn's end.
+Allowlist gate for new dependencies; no registry lookup. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from .chock/dependency-allowlist.txt, asks on a lockfile-only one. Not read: computed lists, sources, versions, some forms (see docs). No allowlist file (plugin-only installs): a manifest change warns, never blocks. Repo form is opt-in: seed, observe, `chock enable`. Runs: commit, agent write, turn's end.
 
 ## What it solves
 

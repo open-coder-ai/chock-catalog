@@ -12,14 +12,14 @@
 | **Mechanism** | guard script `rtk-dangerous-actions-blocker.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 105 total, 105 executable |
+| **Eval cases** | 111 total, 111 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Deprecated: use block-destructive-commands, which shares this policy's destructive-command table. rtk#1007. Destructive verdicts come from the chock_destructive table shared with block- destructive-commands: the same blocks (root/home deletes, force/delete/mirror pushes, reset --hard, clean -f, IaC destroy, cloud deletes, DB drops, lockouts) and asks (rm -rf off rtk's safe list, bare lease, stash drop, prunes, -auto-approve). Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.
+Deprecated: use block-destructive-commands, which shares this policy's destructive-command table. rtk#1007. Same table as block-destructive-commands: blocks root/home/.git deletes, force/delete/mirror pushes, reset --hard, clean -f, switch --discard, IaC destroy, cloud deletes, DB drops, lockouts; asks rm -rf off rtk's safe list, one named kubectl delete, bare lease, stash drop, prunes; dry-run flags pass. Own rows block credential-file reads (.env, keys, ~/.ssh) and echo or inline *_API_KEY/_SECRET/_TOKEN. Skips file rows in container exec.
 
 ## What it solves
 
@@ -32,8 +32,8 @@ A guard script, `implementations/rtk-dangerous-actions-blocker.py`, run before t
 The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
 ```text
-block: chock_destructive table (= block-destructive-commands: rm_-rf(/|~|.|abs), push(-f|+ref|:ref|--mirror), reset_--hard|clean_-f|checkout_., destroy|cloud_delete, sql_drop|dropdb), read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws), echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
-ask: rm_-rf(relative, off safe_list), lease_bare, stash_drop, branch_-D, docker_*_prune, -auto-approve, pkill_-f, systemctl_disable; skip_inside: docker|kubectl_exec(file rows); prefix: rtk
+block: shared table (= block-destructive-commands: rm_-rf(/|~|.|abs|.git),push(-f|+ref|:ref|--mirror),reset_--hard|clean_-f|checkout_.|switch_--discard,destroy|cloud_delete,sql_drop|dropdb),read(.env|*.pem|*.key|id_rsa|~/.ssh|~/.aws),echo|inline($*_API_KEY|$*_SECRET|$*_TOKEN)
+ask: rm_-rf(off safe_list),kubectl_delete(one_named),lease_bare,stash_drop,branch_-D,docker_prune,-auto-approve,pkill_-f,systemctl_disable;allow: dry_run(tool_flag);skip_inside: container_exec(file rows);prefix: rtk
 ```
 
 ## Which primitive it becomes

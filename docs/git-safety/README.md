@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | advisory — advisory only: skill text, nothing stops a violation |
+| **On Claude Code** | advisory — advisory only. It is skill text, and nothing stops a violation |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | rule text |
 | **Reaches** | `advisory` — an agent reads it and may or may not follow it |

@@ -51,8 +51,13 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+  claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
+  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+  gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
+  gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
+  vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
 INDEX.md: ~405 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-test-skips:
@@ -78,7 +83,11 @@ Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 2 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .factory/hooks.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 2 hook entr(y/ies) in .agents/plugins/chock/hooks/hooks.json
+Registered 2 hook entr(y/ies) in .vibe/hooks.toml
+Registered 2 hook entr(y/ies) in .openhands/hooks.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~405 tokens (chars/4, max 2000)
@@ -185,8 +194,8 @@ block-test-skips  [deterministic]
   PASS  tc-090                             authored  src/Button.test.tsx:7: test skip or focus marker: it.each([[1]]).sk…
   score 1.00
 
-5 policies: 89 pass, 42 skipped
-42 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 89 pass, 45 skipped
+45 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -202,15 +211,23 @@ block-test-skips  [deterministic]
 .chock/compiled/block-test-skips/managed-setting/managed-settings.json
 .chock/compiled/block-test-skips/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/block-test-skips/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/block-test-skips/pre-tool-use/factory_droid-write-hooks.json
 .chock/compiled/block-test-skips/pre-tool-use/gate.json
 .chock/compiled/block-test-skips/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/block-test-skips/pre-tool-use/goose-write-hooks.json
+.chock/compiled/block-test-skips/pre-tool-use/mistral_vibe-write-hooks.json
+.chock/compiled/block-test-skips/pre-tool-use/openhands-write-hooks.json
 .chock/compiled/block-test-skips/pre-tool-use/pretooluse-write.json
 .chock/compiled/block-test-skips/stop/antigravity-hooks.json
 .chock/compiled/block-test-skips/stop/codex_cli-hooks.json
 .chock/compiled/block-test-skips/stop/cursor-hooks.json
 .chock/compiled/block-test-skips/stop/devin-hooks.json
+.chock/compiled/block-test-skips/stop/factory_droid-hooks.json
 .chock/compiled/block-test-skips/stop/gate.json
 .chock/compiled/block-test-skips/stop/gemini_cli-hooks.json
+.chock/compiled/block-test-skips/stop/goose-hooks.json
+.chock/compiled/block-test-skips/stop/mistral_vibe-hooks.json
+.chock/compiled/block-test-skips/stop/openhands-hooks.json
 .chock/compiled/block-test-skips/stop/stop.json
 .chock/compiled/block-test-skips/stop/tabnine-hooks.json
 .chock/compiled/block-test-skips/stop/vscode_copilot-hooks.json
