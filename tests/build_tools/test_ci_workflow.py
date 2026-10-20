@@ -19,6 +19,8 @@ QUICK = ("dco", "no-private-data", "scope", "generated")
 HEAVY = ("tests-shard", "tests-policy")
 #: A job that hits its budget fails the run; no job may be given more than this.
 BUDGET_CEILING = 9
+#: windows-adopter replays every installed eval case on a Windows runner: measured 10m49s on 2026-10-20 (run 39458107775), plus half again.
+WINDOWS_ADOPTER_BUDGET = 17
 GIT = shutil.which("git") or "git"
 BASH = shutil.which("bash") or "bash"
 SIGNED = "Signed-off-by: A <a@users.noreply.github.com>"
@@ -43,7 +45,9 @@ def test_a_run_is_full_unless_it_is_a_pull_request() -> None:
 
 def test_every_job_has_a_time_budget_within_the_ceiling() -> None:
     budgets = {name: job.get("timeout-minutes") for name, job in JOBS.items()}
-    assert all(isinstance(b, int) and 0 < b <= BUDGET_CEILING for b in budgets.values()), budgets
+    ceilings = {name: WINDOWS_ADOPTER_BUDGET if name == "windows-adopter" else BUDGET_CEILING for name in budgets}
+    assert all(isinstance(b, int) and 0 < b <= ceilings[name] for name, b in budgets.items()), budgets
+    assert budgets["windows-adopter"] == WINDOWS_ADOPTER_BUDGET
     assert all(budgets[name] == BUDGET_CEILING for name in HEAVY)
     assert all(budgets[name] <= 3 for name in QUICK)
 
