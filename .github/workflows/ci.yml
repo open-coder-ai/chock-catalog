@@ -200,7 +200,7 @@ jobs:
             windows=false
           elif [ "$EVENT_NAME" = pull_request ]; then
             windows=false
-            if git diff --name-only "origin/$BASE_REF...HEAD" | grep -qE '^(\.chock/|\.framework-ref$|requirements/|\.github/workflows/)'; then
+            if git diff --name-only "origin/$BASE_REF...HEAD" | grep -qE '^(\.chock/|\.framework-ref$|requirements/|\.github/workflows/|tools/framework_ref\.py$)'; then
               windows=true
             fi
           fi
@@ -231,7 +231,7 @@ jobs:
     needs: scope
     if: needs.scope.outputs.windows == 'true'
     runs-on: windows-latest
-    timeout-minutes: 9
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -387,7 +387,7 @@ jobs:
   # rather than only in the framework's tests.
   adopter:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
     steps:
       # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
       # and a shallow clone has no merge base to find.
