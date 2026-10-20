@@ -818,3 +818,52 @@ suite:
     execute:
       command: "grep -rn 169.254.169.254 src/"
       expect: allow
+  - id: tc-116
+    category: negative_trigger
+    prompt: "A request searches the parent directory for a pattern."
+    expect: "The guard allows rg over ..; a walk over a parent directory names no credential store."
+    execute:
+      command: "rg pattern .."
+      expect: allow
+  - id: tc-117
+    category: negative_trigger
+    prompt: "A request greps the parent directory recursively."
+    expect: "The guard allows grep -r over .."
+    execute:
+      command: "grep -r pattern .."
+      expect: allow
+  - id: tc-118
+    category: negative_trigger
+    prompt: "A request backs up the parent directory."
+    expect: "The guard allows cp -r of .. to a backup folder."
+    execute:
+      command: "cp -r .. /tmp/bak"
+      expect: allow
+  - id: tc-119
+    category: behavior
+    prompt: "A request copies a credential directory reached through the parent directory."
+    expect: "The guard still refuses; the path's own segments name ~/.ssh."
+    execute:
+      command: "cp -r ../.ssh /tmp/bak"
+      expect: block
+  - id: tc-120
+    category: negative_trigger
+    prompt: "A request runs the tests whose names mention .env."
+    expect: "The guard allows it; -k .env is pytest's argument, not code the interpreter runs."
+    execute:
+      command: "python -m pytest -k .env"
+      expect: allow
+  - id: tc-121
+    category: negative_trigger
+    prompt: "A request runs a Node script with an option value named .npmrc."
+    expect: "The guard allows it; only the script operand and -e/-c code are read for store names."
+    execute:
+      command: "node test.js --config .npmrc"
+      expect: allow
+  - id: tc-122
+    category: behavior
+    prompt: "A request changes into a subfolder, back up, then reads an SSH key by a relative path."
+    expect: "The guard refuses; after cd .. above a relative cwd the path is judged on its own segments."
+    execute:
+      command: "cd sub && cd .. && cat .ssh/id_rsa"
+      expect: block

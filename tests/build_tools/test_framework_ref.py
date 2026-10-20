@@ -65,6 +65,10 @@ def test_this_repo_pin_is_valid() -> None:
     assert framework_ref.read_pin(ROOT) is not None
 
 
+def test_the_pin_file_is_checked_out_with_lf() -> None:
+    assert _git(ROOT, "check-attr", "eol", "--", framework_ref.PIN_FILE).endswith(": eol: lf")
+
+
 def test_read_exports_the_pin_to_the_job_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
     env_file = tmp_path / "github_env"
     env_file.write_text("EARLIER=1\n", encoding="utf-8")
@@ -202,3 +206,13 @@ def test_verify_refuses_a_replace_object_standing_in(repo, monkeypatch: pytest.M
     assert (path / "payload.py").exists()
     monkeypatch.setenv("FRAMEWORK_REF", pinned)
     assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+
+
+def test_a_refusal_names_the_status_lines_it_saw(repo, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    path, pinned, _ = repo
+    (path / "a\tb.txt").write_text("x", encoding="utf-8")
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+    err = capsys.readouterr().err
+    assert "::notice::?? " in err
+    assert "\t" not in err.split("::notice::", 1)[1]

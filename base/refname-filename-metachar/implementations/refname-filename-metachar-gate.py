@@ -5,9 +5,10 @@ Runs as the policy's script gate: stdin is {"event", "repo_root", "writes": {pat
 2 is a fault in this check (the engine refuses then too). It prints a findings document keyed by the path, and the
 engine runs it again on the baseline text, which holds only paths that already existed, so a path the change adds or
 renames into is judged and one already tracked never blocks an edit to it. git quotes a path holding a control
-character, a double quote or a backslash ("a\\nb"); a quoted path is refused as such. The engine trims the names
-it lists, so at a commit this gate also asks git for the added and renamed names NUL-separated, and judges one
-with a leading or trailing space as new.
+character, a double quote or a backslash ("a\\nb"); an engine that lists paths as text hands this gate the quoted
+form, which is refused as such, and one that lists them NUL-separated hands it the verbatim name, which the rules
+refuse for the quote and the backslash themselves. The engine trims the names it lists, so at a commit this gate also
+asks git for the added and renamed names NUL-separated, and judges one with a leading or trailing space as new.
 """
 
 from __future__ import annotations

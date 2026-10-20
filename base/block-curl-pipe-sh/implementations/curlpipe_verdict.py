@@ -7,10 +7,11 @@ from curlpipe_rules import STRONG
 BLOCK, ASK = 1, 3
 Verdict = tuple[int, str] | None
 ADVICE = "Download it to a file, read or verify it (sha256sum -c, gpg --verify), then run it as a separate step."
-#: Any downloader, socket reader or URL: what a body has to mention to be worth reading again.
+#: Any downloader, remote transport, socket reader or URL: what a body has to mention to be worth reading again.
 FETCH_HINT = re.compile(
     r"(?<![\w-])(?:curl|wget2?|fetch|aria2c|lynx|https?|xh|curlie|iwr|irm|invoke-webrequest|invoke-restmethod"
-    r"|start-bitstransfer|nc|ncat|netcat|socat|telnet)(?![\w-])|/dev/(?:tcp|udp)/|downloadstring|urlopen|urllib",
+    r"|start-bitstransfer|nc|ncat|netcat|socat|telnet|ssh|scp|rsync|aws)(?![\w-])|/dev/(?:tcp|udp)/|downloadstring"
+    r"|urlopen|urllib",
     re.IGNORECASE,
 )
 _CRUDE_FETCH = re.compile(

@@ -117,6 +117,10 @@ CURL_CAUGHT = {
     "after-background": f"echo hi & {FETCH} | sh",
     "backtick-in-bash-c": f'bash -c "`{FETCH}`"',
     "here-string": f'sh <<< "$({FETCH})"',
+    "ssh-transport": "ssh build-host cat setup.sh | sh",
+    "scp-to-stdout": "scp build-host:setup.sh - | sh",
+    "rsync-to-stdout": "rsync build-host:setup.sh - | bash",
+    "aws-s3-to-stdout": "aws s3 cp s3://b/setup.sh - | sh",
 }
 CURL_MISSED = {
     "alias": (f"alias s=sh; {FETCH} | s", "aliases"),

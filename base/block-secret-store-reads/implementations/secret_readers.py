@@ -1,8 +1,9 @@
-"""Which arguments of a reading or copying command are files it reads (stdlib only)."""
+"""Which arguments of a reading or copying command are files it reads, and what an interpreter runs (stdlib only)."""
 
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
 from chock_shellparse import Cmd, flags_of, operands, positionals
 
@@ -39,6 +40,32 @@ FETCHERS = {
     "curl": frozenset(("-o", "--output")),
     "wget": frozenset(("-O", "-o", "-P", "--output-document", "--output-file", "--directory-prefix")),
 }
+
+
+class Interp(NamedTuple):
+    """How one interpreter names its program: options whose value is code, a module, or something else."""
+
+    code: frozenset[str]
+    module: frozenset[str] = frozenset()
+    values: frozenset[str] = frozenset()
+
+
+def _i(code: str, module: str = "", values: str = "") -> Interp:
+    return Interp(frozenset(code.split()), frozenset(module.split()), frozenset(values.split()))
+
+
+#: A short option is read inside a cluster too (`perl -ne 'code'`, `python -Wd -c code`); a value may be attached.
+INTERPRETERS = {
+    "python": _i("-c", "-m", "-W -X --check-hash-based-pycs"),
+    "node": _i("-e --eval -p --print", "", "-r --require --import --loader --input-type -C --conditions"),
+    "ruby": _i("-e", "", "-I -r -C -E -F"),
+    "perl": _i("-e -E", "", "-I -M -m -F"),
+    "php": _i("-r -f", "", "-c -d -z"),
+    "lua": _i("-e", "", "-l"),
+    "deno": _i("eval", "", "-c --config --import-map --lock"),
+    "bun": _i("-e --eval -p --print", "", "-r --preload"),
+}
+_ALIASES = {"nodejs": "node"}
 
 
 def values(args: list[str], flags: tuple[str, ...]) -> list[str]:
@@ -101,3 +128,42 @@ def candidates(cmd: Cmd, mode: str) -> list[str]:
         return _fetch_inputs(cmd) + given
     handlers = {"sources": _sources, "archive": _archive}
     return [WRAPPED.sub("", p) for p in (handlers[mode](cmd) if mode in handlers else operands(cmd.args)) + given]
+
+
+def _cluster(arg: str, nxt: str, spec: Interp) -> tuple[str, str | None, int]:
+    """('code'|'module'|'', its text, words taken) for a short-option cluster; a value is the rest of the cluster, else the next word."""
+    for at, char in enumerate(arg[1:], 1):
+        rest = arg[at + 1 :]
+        if f"-{char}" in spec.code:
+            return "code", rest or nxt, 1 if rest else 2
+        if f"-{char}" in spec.module:
+            return "module", "", 2
+        if f"-{char}" in spec.values:
+            return "", None, 1 if rest else 2
+    return "", None, 1
+
+
+def program_text(cmd: Cmd) -> str:
+    """The text an interpreter runs: its -c/-e code or the script operand it names; later words are the program's own arguments."""
+    name = cmd.name.rstrip("0123456789.")
+    spec = INTERPRETERS.get(_ALIASES.get(name, name), Interp(frozenset()))
+    args = cmd.args[1:] if name in ("deno", "bun") and cmd.args[:1] == ["run"] else cmd.args
+    i = 0
+    while i < len(args):
+        arg, nxt = args[i], args[i + 1] if i + 1 < len(args) else ""
+        if arg in spec.code or arg == "--":
+            return nxt
+        if arg in spec.module or arg == "-":
+            return ""
+        if arg.split("=", 1)[0] in spec.code and "=" in arg:
+            return arg.split("=", 1)[1]
+        if not arg.startswith("-"):
+            return arg
+        if arg in spec.values:
+            i += 2
+            continue
+        kind, text, taken = _cluster(arg, nxt, spec) if arg[1:2] != "-" else ("", None, 1)
+        if kind:
+            return text or ""
+        i += taken
+    return ""
