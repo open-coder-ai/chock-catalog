@@ -216,3 +216,55 @@ def test_a_refusal_names_the_status_lines_it_saw(repo, monkeypatch: pytest.Monke
     err = capsys.readouterr().err
     assert "::notice::?? " in err
     assert "\t" not in err.split("::notice::", 1)[1]
+
+
+@pytest.fixture
+def crlf_repo(tmp_path: Path) -> tuple[Path, str]:
+    """A commit that stores CRLF under `* text=auto eol=lf`, re-checked-out so git reports the file modified."""
+    path = tmp_path / "crlf"
+    path.mkdir()
+    _git(path, "init", "-q")
+    (path / "LICENSE").write_bytes(b"one\r\ntwo\r\n")
+    _git(path, "-c", "core.autocrlf=false", "add", "LICENSE")  # no attributes yet: the blob keeps its CRLF
+    (path / ".gitattributes").write_bytes(b"* text=auto eol=lf\n")
+    _git(path, "-c", "core.autocrlf=false", "add", ".gitattributes")
+    _git(path, "-c", "core.autocrlf=false", "commit", "-q", "-m", "crlf")
+    _git(path, "read-tree", "--reset", "-u", "HEAD")  # the checkout normalizes LICENSE to LF
+    (path / "LICENSE").write_bytes(b"one\ntwo\n")  # new size, so git rehashes it instead of trusting the index
+    return path, _git(path, "rev-parse", "HEAD")
+
+
+def test_the_crlf_fixture_is_reported_modified_by_git(crlf_repo) -> None:
+    path, _ = crlf_repo
+    assert _git(path, "-c", "core.autocrlf=false", "diff", "--name-only", "HEAD", "--") == "LICENSE"
+
+
+def test_verify_passes_when_only_line_endings_differ(crlf_repo, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    path, pinned = crlf_repo
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == 0
+    out = capsys.readouterr().out
+    assert f"is the pinned commit {pinned}" in out
+    assert "1 tracked file(s)" in out
+    assert "only in line endings" in out
+
+
+def test_verify_refuses_a_content_change_beside_line_endings(crlf_repo, monkeypatch: pytest.MonkeyPatch) -> None:
+    path, pinned = crlf_repo
+    (path / "LICENSE").write_bytes(b"one\r\ntwx\r\n")
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+
+
+def test_verify_refuses_an_untracked_file_beside_line_endings(crlf_repo, monkeypatch: pytest.MonkeyPatch) -> None:
+    path, pinned = crlf_repo
+    (path / "setup.py").write_text("x", encoding="utf-8")
+    monkeypatch.setenv("FRAMEWORK_REF", pinned)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+
+
+def test_verify_refuses_a_wrong_head_beside_line_endings(crlf_repo, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+    path, _ = crlf_repo
+    monkeypatch.setenv("FRAMEWORK_REF", "0" * 40)
+    assert framework_ref.main(["verify", str(path)]) == framework_ref.REFUSED
+    assert f"not the pinned {'0' * 40}" in capsys.readouterr().err
