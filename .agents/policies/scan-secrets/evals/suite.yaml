@@ -437,3 +437,23 @@ suite:
         deploy.sh: "git clone https://deploy:S3cr3tP4ss@git.internal.corp/app.git\n"  # pragma: allowlist secret
         app.env.txt: "DB=postgres://app:hunter2xyz9@db.prod.corp:5432/x\n"  # pragma: allowlist secret
       expect: block
+  - id: tc-056
+    category: negative_trigger
+    prompt: "The agent writes a config whose quoted password is a ${VAR} reference."
+    expect: "The write is allowed: an environment reference is not a secret, even in the quoted password shape."
+    execute: {event: tool_use, writes: {"config.py": "password = \"${DB_PASSWORD}\"\n"}, expect: allow}
+  - id: tc-057
+    category: negative_trigger
+    prompt: A commit adds a settings module and a deploy script whose quoted passwords are $VAR and ${VAR} references.
+    expect: The hook allows them; the quoted password shape no longer fires on a value that starts like a reference.
+    execute:
+      files:
+        settings.py: "password = \"$DB_PASSWORD\"\nSECRET_KEY = \"${SECRET_KEY}\"\n"
+        deploy.sh: "export DB_PASSWORD=\"${DB_PASSWORD_PROD}\"\n"
+        render.py: "password = \"%(db_password)s\" % env\n"
+      expect: allow
+  - id: tc-058
+    category: negative_trigger
+    prompt: "The agent writes a config that reads its password from os.environ and from process.env."
+    expect: "The write is allowed: an environment lookup is not a secret."
+    execute: {event: tool_use, writes: {"config.py": "password = os.environ.get(\"DB_PASSWORD\")\n", "config.js": "const password = process.env.DB_PASSWORD;\n"}, expect: allow}
