@@ -226,12 +226,12 @@ jobs:
   # The same adopter check on Windows, where git checks text out with CRLF and paths use backslashes. The install
   # step runs under bash so the pinned-dependency lines are the ones tools/check_workflows.py requires; the pin
   # read and verify steps stay in the default shell, since that tool allows the verify step no extra keys.
-  # The 9-minute budget is provisional until a run on main records the real time. Not in the `policies` gate.
+  # The 9-minute budget is provisional until a run on main records the real time. Not in the `policies` gate.   
   windows-adopter:
     needs: scope
     if: needs.scope.outputs.windows == 'true'
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 17
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
