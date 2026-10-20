@@ -57,10 +57,17 @@ def test_the_manifest_declares_the_gate_and_the_pre_push_script() -> None:
         ("notes ", "trailing"),
         ("config.", "trailing"),
         ("a/../b", "dotdot"),
+        ('q"x.txt', "quote"),
+        ("r\\x.txt", "backslash"),
     ],
 )
 def test_each_rule_names_its_shape(name: str, want: str) -> None:
     assert want in codes(name)
+
+
+def test_backslash_is_a_path_separator_only_where_the_caller_says_so() -> None:
+    assert "backslash" not in codes("dir\\sub.txt", backslash=False)
+    assert "backslash" in codes("dir\\sub.txt")
 
 
 @pytest.mark.parametrize(

@@ -21,6 +21,8 @@
 
 # Generated trees: every file, including extensionless shims.
 .chock/** text eol=lf
+# The extensionless framework pin matches no *.ext rule; CRLF there makes read_pin refuse it.
+.framework-ref text eol=lf
 
 # Guard implementations are shell scripts named without extensions in some trees.
 */implementations/** text eol=lf
