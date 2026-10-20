@@ -1,14 +1,15 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.4.4"
+version: "0.5.0"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
   git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; hook manager uninstall; aliases
   and rebase --exec defined in the command. Asks on plumbing, unset hooksPath, another GIT_DIR and
-  config files. Refuses person-only CHOCK_*/marker changes. Misses: older aliases, scripts, $VARs.
+  config files. Refuses person-only CHOCK_*/marker changes. Mandatory. Misses: older aliases, scripts, $VARs.
 artifact: rule
 enforcement: advise
+mandatory: true
 rule:
   text: |
     never(commit|push|merge|am|rebase|pull|cherry-pick|revert): --no-verify|-n(commit|am); never(set): core.hooksPath|HUSKY=0|SKIP=|LEFTHOOK=0|kin; never: pre-commit|lefthook|husky uninstall; ask: commit-tree|update-ref|GIT_DIR|config files
@@ -21,7 +22,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-19T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -35,6 +36,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.0
+  date: '2026-10-19'
+  changes:
+  - "Behaviour change, the policy cannot be switched off from the config it guards (chock review B1, M2; pre-release fix CAT-6). `mandatory: true`: the engine ignores this policy in `.chock/config.yaml` `policies.disabled` (POL-1), `chock disable` refuses it, and `chock validate` reports a config entry that names it as dead. This policy refuses the commands that skip the hooks chock installs and the person-only variables that answer or lower them; a config line that disabled it would have lifted both in one unguarded write (the review's chain wrote that line through a wrapper script and ran `chock sync`). Guard verdicts are unchanged, so no eval case is added; the flag is a manifest fact the engine reads."
 - version: 0.4.4
   date: '2026-10-07'
   changes:

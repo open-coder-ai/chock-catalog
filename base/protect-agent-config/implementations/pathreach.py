@@ -7,7 +7,7 @@ import posixpath
 import re
 from collections.abc import Callable
 
-from pathlink import follow
+from pathlink import follow, within
 from pathmatch import DEVICE, DRIVE, DYNAMIC, FRESH, PIECE, expand, pattern
 from pathset import INSTRUCTION_TEXT
 from pathtext import braces
@@ -148,7 +148,7 @@ class Reach:
         if found is None:
             return True  # too wide, or too long a chain, to read: refused
         for there in found:
-            inside = os.path.relpath(there, real) if there == real or there.startswith(real + "/") else there
+            inside = within(real, there)
             if self.hit(inside) or (parents and self._parent(self.normal(inside))):
                 return True
         return False

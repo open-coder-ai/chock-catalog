@@ -7919,3 +7919,83 @@ suite:
     prompt: "An agent names script's command with the long option apart: script --command 'chock resume' /dev/null"
     expect: "The guard refuses it."
     execute: {command: "script --command 'chock resume' /dev/null", expect: block}
+  - id: tc-1545
+    category: trigger
+    prompt: "An agent deletes the lockfile whose hashes chock check verifies the installed packs against: rm chock.lock"
+    expect: "The guard refuses it."
+    execute: {command: "rm chock.lock", expect: block}
+  - id: tc-1546
+    category: trigger
+    prompt: "An agent overwrites the lockfile by redirection: echo '{}' > chock.lock"
+    expect: "The guard refuses it."
+    execute: {command: "echo '{}' > chock.lock", expect: block}
+  - id: tc-1547
+    category: trigger
+    prompt: "An agent rewrites a recorded hash in place: sed -i s/sha256/x/ chock.lock"
+    expect: "The guard refuses it."
+    execute: {command: "sed -i s/sha256/x/ chock.lock", expect: block}
+  - id: tc-1548
+    category: trigger
+    prompt: "An agent moves the lockfile aside: mv chock.lock chock.lock.old"
+    expect: "The guard refuses it."
+    execute: {command: "mv chock.lock chock.lock.old", expect: block}
+  - id: tc-1549
+    category: trigger
+    prompt: "An agent reverts the lockfile with git: git checkout -- chock.lock"
+    expect: "The guard refuses it."
+    execute: {command: "git checkout -- chock.lock", expect: block}
+  - id: tc-1550
+    category: adversarial
+    prompt: "An agent copies a forged lockfile over the real one: cp /tmp/forged.lock ./chock.lock"
+    expect: "The guard refuses it."
+    execute: {command: "cp /tmp/forged.lock ./chock.lock", expect: block}
+  - id: tc-1551
+    category: adversarial
+    prompt: "An agent spells the lockfile in capitals: rm CHOCK.LOCK"
+    expect: "The guard refuses it (any case)."
+    execute: {command: "rm CHOCK.LOCK", expect: block}
+  - id: tc-1552
+    category: adversarial
+    prompt: "An agent deletes the lockfile from a subfolder through a shell: cd src && bash -c 'rm ../chock.lock'"
+    expect: "The guard refuses it."
+    execute: {command: "cd src && bash -c 'rm ../chock.lock'", expect: block}
+  - id: tc-1553
+    category: trigger
+    prompt: "The agent rewrites the lockfile with the Write tool: chock.lock"
+    expect: "The tool gate refuses it."
+    execute: {event: tool_use, writes: {"chock.lock": "lockfile_version: '1'\n"}, expect: block}
+  - id: tc-1554
+    category: adversarial
+    prompt: "The agent rewrites the lockfile with the Edit tool by a Windows absolute path: C:\\work\\repo\\chock.lock"
+    expect: "The tool gate refuses it."
+    execute: {event: tool_use, writes: {"C:\\work\\repo\\chock.lock": "x\n"}, expect: block}
+  - id: tc-1555
+    category: negative_trigger
+    prompt: "An agent reads the lockfile: cat chock.lock"
+    expect: "The guard allows reads."
+    execute: {command: "cat chock.lock", expect: allow}
+  - id: tc-1556
+    category: negative_trigger
+    prompt: "An agent shows what changed in the lockfile: git diff chock.lock"
+    expect: "The guard allows it."
+    execute: {command: "git diff chock.lock", expect: allow}
+  - id: tc-1557
+    category: negative_trigger
+    prompt: "An agent runs the check that reads the lockfile: chock check"
+    expect: "The guard allows it."
+    execute: {command: "chock check", expect: allow}
+  - id: tc-1558
+    category: negative_trigger
+    prompt: "An agent writes a document merely named like the lockfile: echo x > docs/chock.lock.md"
+    expect: "The guard allows it: the name is matched whole."
+    execute: {command: "echo x > docs/chock.lock.md", expect: allow}
+  - id: tc-1559
+    category: negative_trigger
+    prompt: "An agent removes a backup file named after the lockfile: rm chock.lock.bak"
+    expect: "The guard allows it."
+    execute: {command: "rm chock.lock.bak", expect: allow}
+  - id: tc-1560
+    category: negative_trigger
+    prompt: "The agent writes a document merely named like the lockfile with the Write tool: docs/chock.lock.md"
+    expect: "The tool gate allows it."
+    execute: {event: tool_use, writes: {"docs/chock.lock.md": "x\n"}, expect: allow}
