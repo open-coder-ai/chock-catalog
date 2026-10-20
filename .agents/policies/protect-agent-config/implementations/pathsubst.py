@@ -23,7 +23,7 @@ def resolver(root: str) -> Callable[[str], str | None]:
 
     The repository folder is the one the guard runs in: git-dir is `.git` below it, as in a plain checkout.
     """
-    known = re.fullmatch(r"(?:[A-Za-z]:)?[\w./-]+", root) is not None
+    known = re.fullmatch(r"(?:[A-Za-z]:)?[\w./~-]+", root) is not None
 
     def read(body: str) -> str | None:
         body = body.strip()
