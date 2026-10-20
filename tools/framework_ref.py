@@ -49,13 +49,32 @@ def _git(path: str, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True, check=False, env=env)
 
 
-def _head(path: str) -> tuple[str, list[str]]:
-    """(checked-out commit, up to 8 status lines); the commit is "" when there is none or the worktree differs."""
+def _head(path: str) -> tuple[str, list[str], int]:
+    """(checked-out commit, up to 8 status lines, files differing only in line endings).
+
+    The commit is "" when there is none or the worktree differs in more than line endings: a Windows checkout of a
+    commit that stores CRLF under an `eol=lf` attribute reports those files modified, and that is not an edit.
+    """
     head = _git(path, "rev-parse", "--verify", "HEAD^{commit}")
-    status = _git(path, "status", "--porcelain", "--untracked-files=all", "--ignored")
-    if head.returncode or status.returncode or status.stdout:
-        return "", status.stdout.splitlines()[:8]
-    return head.stdout.strip(), []
+    edited = any(
+        _git(path, "diff", *flags, "--ignore-cr-at-eol", "--quiet").returncode for flags in ((), ("--cached",))
+    )
+    # Ignored files count as untracked here: a stray ignored setup.py is as much a substitution as a visible one.
+    untracked = _git(path, "ls-files", "--others")
+    if head.returncode or edited or untracked.returncode or untracked.stdout:
+        status = _git(path, "status", "--porcelain", "--untracked-files=all", "--ignored")
+        return "", status.stdout.splitlines()[:8], 0
+    return head.stdout.strip(), [], _eol_only(path)
+
+
+def _eol_only(path: str) -> int:
+    """How many tracked files git reports modified although only their line endings differ from HEAD."""
+    changed = _git(path, "diff", "--name-only", "-z", "HEAD", "--").stdout.split("\0")
+    return sum(
+        1
+        for name in changed
+        if name and not _git(path, "diff", "--ignore-cr-at-eol", "--quiet", "HEAD", "--", name).returncode
+    )
 
 
 def _refuse(message: str) -> int:
@@ -91,7 +110,7 @@ def _verify(path: str) -> int:
     ref = _env_ref()
     if ref is None:
         return _refuse("FRAMEWORK_REF must be a full 40-character lowercase commit SHA (no branch, tag or short SHA)")
-    head, dirty = _head(path)
+    head, dirty, eol_only = _head(path)
     if head != ref:
         code = _refuse(
             f"{path} is checked out at {head or 'no clean commit'}, not the pinned {ref}; refusing to use it"
@@ -100,6 +119,8 @@ def _verify(path: str) -> int:
             print(f"::notice::{line.encode('unicode_escape').decode('ascii')}", file=sys.stderr)
         return code
     print(f"{path} is the pinned commit {ref}")
+    if eol_only:
+        print(f"::notice::{eol_only} tracked file(s) in {path} differ from the commit only in line endings")
     return 0
 
 
