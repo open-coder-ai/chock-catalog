@@ -1,0 +1,9 @@
+[
+  {
+    "type": "pre_tool",
+    "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/mistral_vibe.py --guard \".agents/policies/protect-ci-workflows/implementations/protect-ci-workflows.py\"",
+    "match": "bash|powershell|git_bash",
+    "name": "agentseam-pre_tool-7f3e65c0",
+    "timeout": 45
+  }
+]

@@ -51,8 +51,13 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+  claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
+  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 hook entr(y/ies) in .gemini/settings.json
+  gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
+  gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
+  vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
 INDEX.md: ~320 tokens (chars/4, max 2000)
 Recompiled 1 policies
 token-efficiency:
@@ -76,7 +81,11 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
 Registered 3 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
+Registered 1 hook entr(y/ies) in .factory/hooks.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .agents/plugins/chock/hooks/hooks.json
+Registered 1 hook entr(y/ies) in .vibe/hooks.toml
+Registered 1 hook entr(y/ies) in .openhands/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~320 tokens (chars/4, max 2000)
 ```
@@ -90,8 +99,8 @@ INDEX.md: ~320 tokens (chars/4, max 2000)
 ## `$ chock eval --repo .`
 
 ```text
-5 policies: 48 skipped
-48 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 51 skipped
+51 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -105,7 +114,11 @@ INDEX.md: ~320 tokens (chars/4, max 2000)
 .chock/compiled/token-efficiency/pre-tool-use/cursor-post-hooks.json
 .chock/compiled/token-efficiency/pre-tool-use/cursor-postfailure-hooks.json
 .chock/compiled/token-efficiency/pre-tool-use/cursor-tool-call-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/factory_droid-tool-call-hooks.json
 .chock/compiled/token-efficiency/pre-tool-use/gemini_cli-tool-call-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/goose-tool-call-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/mistral_vibe-tool-call-hooks.json
+.chock/compiled/token-efficiency/pre-tool-use/openhands-tool-call-hooks.json
 .chock/compiled/token-efficiency/pre-tool-use/posttooluse.json
 .chock/compiled/token-efficiency/pre-tool-use/posttoolusefailure.json
 .chock/compiled/token-efficiency/pre-tool-use/pretooluse-toolcall.json

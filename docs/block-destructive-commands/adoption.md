@@ -51,9 +51,14 @@ Registered 1 pre-push policy implementation(s)
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
+  claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
+  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 hook entr(y/ies) in .gemini/settings.json
+  gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
+  gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~398 tokens (chars/4, max 2000)
+  vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
+INDEX.md: ~397 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-destructive-commands:
   claude: best-effort (live-run)
@@ -78,12 +83,16 @@ Registered 1 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 1 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 1 hook entr(y/ies) in .factory/hooks.json
 Registered 1 hook entr(y/ies) in .gemini/settings.json
+Registered 1 hook entr(y/ies) in .agents/plugins/chock/hooks/hooks.json
 Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
+Registered 1 hook entr(y/ies) in .vibe/hooks.toml
+Registered 1 hook entr(y/ies) in .openhands/hooks.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
-Registered 1 hook entr(y/ies) in .windsurf/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~398 tokens (chars/4, max 2000)
+INDEX.md: ~397 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -153,7 +162,7 @@ block-destructive-commands  [deterministic]
   PASS  tc-055                             authored  guard exit 0
   PASS  tc-056                             authored  guard exit 0
   PASS  tc-057                             authored  BLOCKED: git checkout of the whole tree ('.') is refused. Ask the p…
-  PASS  tc-058                             authored  BLOCKED: kubectl delete is refused. Ask the person to run it themse…
+  PASS  tc-058                             authored  CONFIRM: kubectl delete of the one named resource 'pod/flaky-worker…
   PASS  tc-059                             authored  BLOCKED: terraform destroy (destroy) is refused. Ask the person to …
   PASS  tc-060                             authored  BLOCKED: aws s3 rb --force is refused. Ask the person to run it the…
   PASS  tc-061                             authored  guard exit 0
@@ -266,10 +275,29 @@ block-destructive-commands  [deterministic]
   PASS  tc-168                             authored  CONFIRM: curl DELETE deletes through an infrastructure API with cre…
   PASS  tc-169                             authored  BLOCKED: pulumi destroy is refused. Ask the person to run it themse…
   PASS  tc-170                             authored  BLOCKED: terraform destroy (destroy) is refused. Ask the person to …
+  PASS  tc-171                             authored  guard exit 0
+  PASS  tc-172                             authored  guard exit 0
+  PASS  tc-173                             authored  guard exit 0
+  PASS  tc-174                             authored  guard exit 0
+  PASS  tc-175                             authored  guard exit 0
+  PASS  tc-176                             authored  guard exit 0
+  PASS  tc-177                             authored  guard exit 0
+  PASS  tc-178                             authored  CONFIRM: kubectl delete of the one named resource 'pod/my-pod' cann…
+  PASS  tc-179                             authored  BLOCKED: kubectl delete is refused. Ask the person to run it themse…
+  PASS  tc-180                             authored  BLOCKED: kubectl delete is refused. Ask the person to run it themse…
+  PASS  tc-181                             authored  BLOCKED: kubectl delete is refused. Ask the person to run it themse…
+  PASS  tc-182                             authored  BLOCKED: helm uninstall/delete is refused. Ask the person to run it…
+  PASS  tc-183                             authored  BLOCKED: git restore of the whole tree ('.') is refused. Ask the pe…
+  PASS  tc-184                             authored  BLOCKED: git switch --discard-changes throws away every local chang…
+  PASS  tc-185                             authored  BLOCKED: git switch --discard-changes throws away every local chang…
+  PASS  tc-186                             authored  BLOCKED: rm -r of '.git' destroys the repository's history and hook…
+  PASS  tc-187                             authored  BLOCKED: rm -rf targeting '/tmp' (absolute path, home, '.', '..' or…
+  PASS  tc-188                             authored  BLOCKED: rm -rf targeting '~/.cache' (absolute path, home, '.', '..…
+  PASS  tc-189                             authored  guard exit 0
   score 1.00
 
-5 policies: 170 pass, 41 skipped
-41 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 189 pass, 44 skipped
+44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -283,8 +311,12 @@ block-destructive-commands  [deterministic]
 .chock/compiled/block-destructive-commands/pre-tool-use/codex_cli-hooks.json
 .chock/compiled/block-destructive-commands/pre-tool-use/cursor-hooks.json
 .chock/compiled/block-destructive-commands/pre-tool-use/devin-hooks.json
+.chock/compiled/block-destructive-commands/pre-tool-use/factory_droid-hooks.json
 .chock/compiled/block-destructive-commands/pre-tool-use/gemini_cli-hooks.json
+.chock/compiled/block-destructive-commands/pre-tool-use/goose-hooks.json
 .chock/compiled/block-destructive-commands/pre-tool-use/grok-hooks.json
+.chock/compiled/block-destructive-commands/pre-tool-use/mistral_vibe-hooks.json
+.chock/compiled/block-destructive-commands/pre-tool-use/openhands-hooks.json
 .chock/compiled/block-destructive-commands/pre-tool-use/pretooluse.json
 .chock/compiled/block-destructive-commands/pre-tool-use/tabnine-hooks.json
 .chock/compiled/block-destructive-commands/pre-tool-use/windsurf-hooks.json
@@ -294,6 +326,6 @@ block-destructive-commands  [deterministic]
 
 ```text
 - **block-destructive-commands**:
-  block(shared table): rm|rmdir|mv|chmod|chown_-R(root|home|/etc..), rm_-rf(abs|.|$PWD), dd_of=/dev|mkfs|wipefs|shred, lock(authorized_keys|usermod_-L|passwd_-l|chattr_+i|kill_-1|crontab_-r), git(push_-f|+ref|-d|:ref|--mirror, reset_--hard, clean_-f, checkout|restore_., reflog|gc|filter), iac_destroy, cloud|k8s|helm|paas_delete, sql_drop|dropdb
-  ask: rm_-rf(off safe_list), lease_bare, stash_drop, branch_-D, -auto-approve, drain, prune, pkill_-f, systemctl_disable, api_DELETE; push: refuse_non_ff
+  block: rm|mv|chmod|chown_-R(root|home|sys),rm_-rf(abs|.|$PWD|.git),dd_of=/dev|mkfs|wipefs|shred,lockout(authkeys|usermod|passwd|chattr_+i|kill_-1|crontab),git(push_-f|+ref|-d|:ref|--mirror,reset_--hard,clean_-f,checkout|restore_.|switch_--discard,reflog|gc|filter),iac_destroy,cloud|k8s|helm_delete,sql_drop
+  ask: rm_-rf(off safe_list),kubectl_delete(1_named),lease_bare,stash_drop,branch_-D,-auto-approve,drain,prune,pkill_-f,systemctl_disable,api_DELETE;allow: tool_dry_run;push: refuse_non_ff
 ```

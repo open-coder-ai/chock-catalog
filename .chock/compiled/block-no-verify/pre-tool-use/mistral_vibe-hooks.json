@@ -1,0 +1,9 @@
+[
+  {
+    "type": "pre_tool",
+    "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/mistral_vibe.py --guard \".agents/policies/block-no-verify/implementations/block-no-verify.py\"",
+    "match": "bash|powershell|git_bash",
+    "name": "agentseam-pre_tool-15b7ea20",
+    "timeout": 45
+  }
+]

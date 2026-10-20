@@ -51,8 +51,13 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
+  claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
+  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+  gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
+  gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
+  vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
 INDEX.md: ~439 tokens (chars/4, max 2000)
 Recompiled 1 policies
 block-wildcard-iam:
@@ -78,7 +83,11 @@ Registered 2 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 1 hook entr(y/ies) in .agents/hooks.json
 Registered 2 hook entr(y/ies) in .codex/hooks.json
 Registered 1 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 2 hook entr(y/ies) in .factory/hooks.json
 Registered 2 hook entr(y/ies) in .gemini/settings.json
+Registered 2 hook entr(y/ies) in .agents/plugins/chock/hooks/hooks.json
+Registered 2 hook entr(y/ies) in .vibe/hooks.toml
+Registered 2 hook entr(y/ies) in .openhands/hooks.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~439 tokens (chars/4, max 2000)
@@ -135,8 +144,8 @@ block-wildcard-iam  [deterministic]
   PASS  tc-038                             authored  Broad privilege grant detected. Name the actions and resources the …
   score 1.00
 
-5 policies: 38 pass, 41 skipped
-41 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 38 pass, 44 skipped
+44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -153,15 +162,23 @@ block-wildcard-iam  [deterministic]
 .chock/compiled/block-wildcard-iam/mcp-gateway/gateway-gate.json
 .chock/compiled/block-wildcard-iam/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/block-wildcard-iam/pre-tool-use/cursor-write-hooks.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/factory_droid-write-hooks.json
 .chock/compiled/block-wildcard-iam/pre-tool-use/gate.json
 .chock/compiled/block-wildcard-iam/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/goose-write-hooks.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/mistral_vibe-write-hooks.json
+.chock/compiled/block-wildcard-iam/pre-tool-use/openhands-write-hooks.json
 .chock/compiled/block-wildcard-iam/pre-tool-use/pretooluse-write.json
 .chock/compiled/block-wildcard-iam/stop/antigravity-hooks.json
 .chock/compiled/block-wildcard-iam/stop/codex_cli-hooks.json
 .chock/compiled/block-wildcard-iam/stop/cursor-hooks.json
 .chock/compiled/block-wildcard-iam/stop/devin-hooks.json
+.chock/compiled/block-wildcard-iam/stop/factory_droid-hooks.json
 .chock/compiled/block-wildcard-iam/stop/gate.json
 .chock/compiled/block-wildcard-iam/stop/gemini_cli-hooks.json
+.chock/compiled/block-wildcard-iam/stop/goose-hooks.json
+.chock/compiled/block-wildcard-iam/stop/mistral_vibe-hooks.json
+.chock/compiled/block-wildcard-iam/stop/openhands-hooks.json
 .chock/compiled/block-wildcard-iam/stop/stop.json
 .chock/compiled/block-wildcard-iam/stop/tabnine-hooks.json
 .chock/compiled/block-wildcard-iam/stop/vscode_copilot-hooks.json

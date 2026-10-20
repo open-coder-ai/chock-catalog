@@ -1,0 +1,16 @@
+[
+  {
+    "type": "pre_tool",
+    "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/mistral_vibe.py --tool-call \".chock/compiled/token-efficiency/pre-tool-use/tool-call-gate.json\"",
+    "match": "*",
+    "name": "agentseam-pre_tool-cfb34027",
+    "timeout": 45
+  },
+  {
+    "type": "post_tool",
+    "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/mistral_vibe.py --record \".chock/compiled/token-efficiency/pre-tool-use/tool-call-gate.json\"",
+    "match": "*",
+    "name": "agentseam-post_tool-0203fa14",
+    "timeout": 45
+  }
+]

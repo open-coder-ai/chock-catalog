@@ -51,8 +51,13 @@ No git-pre-push.sh policies found; pre-push dispatcher unchanged
 Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
+  claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
+  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 3 hook entr(y/ies) in .gemini/settings.json
+  gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
+  gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
+  vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
 INDEX.md: ~393 tokens (chars/4, max 2000)
 Recompiled 1 policies
 protect-ci-workflows:
@@ -78,10 +83,14 @@ Registered 3 Cursor hook entr(y/ies) in .cursor/hooks.json
 Registered 2 hook entr(y/ies) in .agents/hooks.json
 Registered 3 hook entr(y/ies) in .codex/hooks.json
 Registered 2 hook entr(y/ies) in .devin/hooks.v1.json
+Registered 3 hook entr(y/ies) in .factory/hooks.json
 Registered 3 hook entr(y/ies) in .gemini/settings.json
+Registered 3 hook entr(y/ies) in .agents/plugins/chock/hooks/hooks.json
 Registered 1 hook entr(y/ies) in .grok/hooks/agentseam.json
+Registered 3 hook entr(y/ies) in .vibe/hooks.toml
+Registered 3 hook entr(y/ies) in .openhands/hooks.json
 Registered 2 hook entr(y/ies) in .tabnine/agent/settings.json
-Registered 1 hook entr(y/ies) in .windsurf/hooks.json
+Registered 1 hook entr(y/ies) in .devin/hooks.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
 INDEX.md: ~393 tokens (chars/4, max 2000)
 ```
@@ -153,8 +162,8 @@ protect-ci-workflows  [deterministic]
   PASS  tc-055                             authored  gate exit 0 [gate derived from manifest; policy not compiled]
   score 1.00
 
-5 policies: 55 pass, 41 skipped
-41 case(s) have no executable form; they are agent-mode material (tier 3).
+5 policies: 55 pass, 44 skipped
+44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
 ## Compiled surfaces
@@ -172,10 +181,18 @@ protect-ci-workflows  [deterministic]
 .chock/compiled/protect-ci-workflows/pre-tool-use/cursor-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/devin-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/factory_droid-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/factory_droid-write-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/gate.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/gemini_cli-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/gemini_cli-write-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/goose-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/goose-write-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/grok-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/mistral_vibe-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/mistral_vibe-write-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/openhands-hooks.json
+.chock/compiled/protect-ci-workflows/pre-tool-use/openhands-write-hooks.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/pretooluse-write.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/pretooluse.json
 .chock/compiled/protect-ci-workflows/pre-tool-use/tabnine-hooks.json
@@ -184,8 +201,12 @@ protect-ci-workflows  [deterministic]
 .chock/compiled/protect-ci-workflows/stop/codex_cli-hooks.json
 .chock/compiled/protect-ci-workflows/stop/cursor-hooks.json
 .chock/compiled/protect-ci-workflows/stop/devin-hooks.json
+.chock/compiled/protect-ci-workflows/stop/factory_droid-hooks.json
 .chock/compiled/protect-ci-workflows/stop/gate.json
 .chock/compiled/protect-ci-workflows/stop/gemini_cli-hooks.json
+.chock/compiled/protect-ci-workflows/stop/goose-hooks.json
+.chock/compiled/protect-ci-workflows/stop/mistral_vibe-hooks.json
+.chock/compiled/protect-ci-workflows/stop/openhands-hooks.json
 .chock/compiled/protect-ci-workflows/stop/stop.json
 .chock/compiled/protect-ci-workflows/stop/tabnine-hooks.json
 .chock/compiled/protect-ci-workflows/stop/vscode_copilot-hooks.json

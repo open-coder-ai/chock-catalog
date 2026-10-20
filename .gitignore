@@ -48,3 +48,5 @@ __pycache__/
 .chock/bin/**/*.pyc
 .chock/compiled/**/__pycache__/
 .chock/compiled/**/*.pyc
+# chock: a stop (`chock stop`) is local to this machine and never committed
+.chock/stop.json
