@@ -150,9 +150,9 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "47ff46faf00e86089e79b868077ac2443e75bb879af7224190477d0c65e3360f",
+      "sha256": "80c27b6ce2f14571b1c2a1fa23e7f71e305ca3e21f760b3557509dfd430560d0",
       "source": "local",
-      "artifacts_sha256": "a0c954ac4dc60d6ef423be4a83ae51013c62c7a8de6fc0c62dbd643567a571ea"
+      "artifacts_sha256": "ca3a8e962500230003da3d5ce2a93000604ce33dbd89786bf7c6f14af3c18577"
     },
     {
       "id": "token-efficiency",
@@ -174,7 +174,7 @@
       "id": "verify-dependency-exists",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "13aa0c70fba537663190a77b1b5a865edeeb324209bd7d0102e2a8c8cf0c2ec7",
+      "sha256": "a9863ff48e249f07a60a56f2b4cebacf24b7c541173c909be84f6f6991788955",
       "source": "local"
     },
     {

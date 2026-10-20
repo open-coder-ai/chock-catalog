@@ -1,6 +1,6 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.1.0"
+version: "0.1.2"
 description: >
   Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key
   and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds,
@@ -49,7 +49,8 @@ hook:
         |api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
         |secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
         |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
-        |password\s*=\s*["'][^"'\s]{12,}["']
+        # v1 quoted password, now silent on a value that starts like a reference: $VAR, ${VAR}, {{ x }}, %(x)s
+        |password\s*=\s*["'](?!\$|\{\{|%[({])[^"'\s]{12,}["']
         |(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}
         # v1 bare password, now silent on SOPS, vault:, Terraform references and environment lookups
         |password\s*[=:]\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])[^\s"'${}]{12,}
@@ -122,13 +123,13 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-19T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -136,6 +137,15 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-19'
+  changes:
+  - "False positive fixed (plugin review M2): the quoted `password = '...'` alternative, the one 0.0.1 shape with no reference exclusion, fired on `password = \"${DB_PASSWORD}\"` and `password = \"$DB_PASSWORD\"`. It is now silent on a quoted value that starts with $, {{ or %( -- the exclusions the named-credential rule already applied -- and still fires on a literal of twelve or more characters, with or without digits. The unquoted and `os.environ` / `process.env` forms the review also named were already silent; eval cases pin all of them at the agent's write and at commit."
+  - "Not changed, and why: a new .env file is still refused by path whatever its values hold, and a waiver pragma the agent writes on the same line still does not count at tool use. Both live in the engine's content_regex kind (the path rule has no content exemption; the HEAD rule for agent waivers is chock 0.14.0's), not in this manifest."
+- version: 0.1.1
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.1.0
   date: '2026-10-02'
   changes:

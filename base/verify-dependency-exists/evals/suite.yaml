@@ -318,3 +318,23 @@ suite:
     prompt: "A listed requirement takes its version, and an index URL its token, from environment variables."
     expect: "The commit is allowed: a variable in a version or an option is not a package name."
     execute: {"event": "commit", "files": {"requirements.txt": "requests==${PINNED}\n--index-url https://${TOKEN}@host/simple\n-e ./${LOCAL_DIR}\n"}, "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}, "expect": "allow"}
+  - id: tc-058
+    category: negative_trigger
+    prompt: "The agent adds an unlisted package to requirements.txt in a repository that has no .chock/dependency-allowlist.txt at all."
+    expect: "The write is allowed with a note (warn), not refused: with no allowlist to check against, the gate says what it did not check and how a person seeds the list."
+    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: warn}
+  - id: tc-059
+    category: negative_trigger
+    prompt: "A commit adds a package to package.json in a repository that has no .chock/dependency-allowlist.txt."
+    expect: "The commit is allowed with a note (warn)."
+    execute: {event: commit, head_files: {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\"}}\n"}, files: {"package.json": "{\"dependencies\": {\"requests\": \"1.0.0\", \"evil-pkg\": \"1.0.0\"}}\n"}, expect: warn}
+  - id: tc-060
+    category: negative_trigger
+    prompt: "With no allowlist file, the agent writes a file that is not a manifest or lockfile."
+    expect: "The write is allowed silently: the note is for manifest changes only."
+    execute: {event: tool_use, writes: {"README.md": "# app\n"}, expect: allow}
+  - id: tc-061
+    category: adversarial
+    prompt: "An allowlist file exists but holds only a comment, and the agent adds an unlisted package."
+    expect: "The write is refused: an allowlist that exists is the allowlist, however short; only a file that does not exist is an unseeded repository."
+    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: block, repo_files: {".chock/dependency-allowlist.txt": "# nothing approved yet\n"}}

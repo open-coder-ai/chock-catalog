@@ -46,7 +46,8 @@ SECRET = re.compile(
 |api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
-|password\s*=\s*["'][^"'\s]{12,}["']
+# v1 quoted password, now silent on a value that starts like a reference: $VAR, ${VAR}, {{ x }}, %(x)s
+|password\s*=\s*["'](?!\$|\{\{|%[({])[^"'\s]{12,}["']
 |(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}
 # v1 bare password, now silent on SOPS, vault:, Terraform references and environment lookups
 |password\s*[=:]\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])[^\s"'${}]{12,}
