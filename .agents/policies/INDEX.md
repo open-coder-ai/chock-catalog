@@ -14,8 +14,8 @@
   block(destructive_command @position-aware): rm_-rf(abs|~|$HOME|.|..)|Remove-Item|rd|del_-Recurse, git_push_--force, git_reset_--hard, git_checkout_., git_clean_-f, kubectl_delete, terraform_destroy, aws_s3(rm_--recursive|rb_--force), dropdb, helm(uninstall|delete), docker_volume(rm|prune)|system_prune, gcloud_delete(any_operand), find(-delete|-exec_rm)|shred|truncate @dangerous_target, wipefs(-a|-o)
   require_approval: branch_-D; prefer: stash|soft_reset|dry-run; push: refuse_non_ff
 - **block-no-verify**:
-  never(commit|merge|am|rebase|push): --no-verify|-n(commit|am); never(set): core.hooksPath; never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT
-  if(hook_fails|override_needed): fix_issue|ask_person; never(skip_hook)
+  never(commit|push|merge|am|rebase|pull|cherry-pick|revert): --no-verify|-n(commit|am); never(set): core.hooksPath|HUSKY=0|SKIP=|LEFTHOOK=0|kin; never: pre-commit|lefthook|husky uninstall; ask: commit-tree|update-ref|GIT_DIR|config files
+  never(agent_set|unset): CHOCK_ALLOW*|CHOCK_AGENT_COMMIT|CHOCK_DIFF_LIMIT|CLAUDECODE|AI_AGENT; if(hook_fails|override_needed): fix_issue|ask_person
 - **block-unapproved-egress**:
   block(egress): fetch(curl|wget|iwr|irm) + upload(-d|--data*|--json|-F|-T|--upload-file|-X POST|PUT|PATCH|-Body|-InFile) to host NOT in allowlist; curl -K|--config refused
   allow: fetch_only(GET), allowlisted_host(github|pypi|npm|...); floor_not_sandbox; no marker or pragma passes: ask_person
@@ -37,9 +37,6 @@
 - **memory-discipline**:
   persist: decisions|preferences|non_derivable_facts; never_persist: file_contents|git_history|task_intermediates; see(guard-memory-writes): pasted_git_history|code_block>20_lines|duplicate_line|secret, enforced at commit and agent write
   extract(atomic_facts); consolidate(near_duplicate_facts); decay(stale); verify(memory) before_recommend
-- **protect-agent-config**:
-  agent_config(AGENTS.md+wrappers|.claude/settings|.mcp.json|.chock/{config.yaml,*security.json,*allowlist.txt,bin,compiled,state}|.git/hooks|.agents/policies/*/implementations|.{cursor,codex,windsurf}/hooks.json|.{cursor,vscode}/mcp.json|.{codex,grok}/config.toml|.gemini/settings.json|.junie/mcp/mcp.json|.devin/{mcp_config,config,hooks.v1}.json|.grok/hooks/|.agents/{mcp_config,hooks}.json|.tabnine/agent/settings.json|.github/hooks/): never(edit|delete)
-  else ask_person; no marker passes
 
 ## Gates — enforced automatically at commit/push, and in the agent where noted
 
