@@ -807,9 +807,9 @@ def degrade(decision, event):
 
 # >>> agentseam handler >>>
 # Not self-contained: chock's guard logic lives in the sibling _chock_runtime.py, loaded from this
-# file's own folder and pinned to the render this entry came from. Missing, unreadable, another
-# version, or failing to import: every call refuses (_CHOCK_RUNTIME_FAULT), never allows.
-_CHOCK_RUNTIME_PIN = 'a0dfe128bff953bb9f650d1e8712bf3c519af60325fa39207fadbd566c886124'
+# file's own folder and pinned to the sha256 of that file's bytes (CRLF read as LF), hashed before they are executed.
+# Missing, unreadable, another version, or failing to import: every call refuses (_CHOCK_RUNTIME_FAULT), never allows.
+_CHOCK_RUNTIME_PIN = '1338b7f2c52bc6aa85599d6913bab34e13784a39897247e3d84c092684bbb443'
 
 
 def _chock_load_runtime():
@@ -819,17 +819,33 @@ def _chock_load_runtime():
         sys.path.insert(0, here)
     path = _chock_os.path.join(here, '_chock_runtime.py')
     try:
-        from importlib.machinery import SourceFileLoader
-        from types import ModuleType
+        from hashlib import sha256
+        from importlib.abc import InspectLoader
+        from importlib.util import module_from_spec, spec_from_loader
 
-        shared = ModuleType('_chock_runtime')
+        class PinnedBytes(InspectLoader):
+            """Hands the import machinery the bytes already read and hashed; it never opens the file again."""
+
+            def __init__(self, source):
+                self.source = source
+
+            def get_source(self, fullname):
+                return self.source.decode("utf-8")
+
+            def get_code(self, fullname):
+                return compile(self.source, path, "exec")
+
+        with open(path, "rb") as handle:
+            source = handle.read()
+        if sha256(source.replace(b"\r\n", b"\n")).hexdigest() != _CHOCK_RUNTIME_PIN:
+            return "%s is not the version this entry was built with" % path
+        loader = PinnedBytes(source)
+        shared = module_from_spec(spec_from_loader('_chock_runtime', loader))
         shared.__file__ = path
-        shared.__loader__ = SourceFileLoader('_chock_runtime', path)
-        shared.__loader__.exec_module(shared)
+        shared.__loader__ = loader
+        loader.exec_module(shared)
     except BaseException as exc:  # noqa: BLE001 -- a SystemExit from its top level must refuse too
         return "chock could not load %s (%s)" % (path, type(exc).__name__)
-    if getattr(shared, "CHOCK_RUNTIME_DIGEST", None) != _CHOCK_RUNTIME_PIN:
-        return "%s is not the version this entry was built with" % path
     globals().update((name, value) for name, value in vars(shared).items() if not name.startswith("__"))
     return None
 
@@ -842,7 +858,7 @@ if _CHOCK_RUNTIME_FAULT is not None:
 
 _GIT = _chock_shutil.which('git') or 'git'
 
-_INSTRUCTION = "Chock: this clone's git hooks are NOT installed -- git never clones hooks, so commit-time gates will not run locally until a person runs, from their own shell:\n    pip install chock && chock sync --repo .\nAsk them to run it before the first commit; `chock sync` refuses an agent's shell. (The repo's CI gate, where wired, enforces regardless.)"
+_INSTRUCTION = "Chock: this clone's git hooks are NOT installed -- git never clones hooks, so commit-time gates will not run locally until a person runs, from their own shell:\n    pip install chock && chock sync --repo .\nAsk them to run it before the first commit; `chock sync` refuses an agent's shell except `chock sync --committed`, which arms a clean clone from what is committed. (The repo's CI gate, where wired, enforces regardless.)"
 
 def _repo_root() -> _chock_Path:
     root = _chock_os.environ.get('CLAUDE_PROJECT_DIR')
@@ -890,7 +906,7 @@ def _chock_handle_session_start(event):
     if _chock_importable():
         try:
             proc = _chock_subprocess.run(
-                [sys.executable, "-m", "chock", "sync", "--repo", str(repo_root)],
+                [sys.executable, "-m", "chock", "sync", "--committed", "--repo", str(repo_root)],
                 cwd=repo_root,
                 capture_output=True,
                 text=True,
@@ -902,7 +918,7 @@ def _chock_handle_session_start(event):
             return Decision.allow(
                 context=(
                     "Chock: this clone's git hooks were not installed (git never clones hooks); "
-                    "armed them now with `chock sync`."
+                    "armed them now from what is committed (`chock sync --committed`)."
                 )
             )
 

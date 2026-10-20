@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 from chock_shellparse.parse import Cmd, _parse
 from pathfeed import shown, strings
-from pathmatch import DYNAMIC
+from pathmatch import DRIVE, DYNAMIC
 from pathtext import matching, scan
 from pathwords import PRODUCERS
 from pathwrap import unwrap
@@ -73,7 +73,8 @@ class Scripts:
 
     def outside(self, token: str, env: dict[str, str]) -> bool:
         """Whether a path is plainly outside the repository (absolute, below some other folder)."""
-        return self._path(token, env)[0].startswith("/")
+        path = self._path(token, env)[0]
+        return path.startswith("/") or DRIVE.match(path) is not None
 
     def wrapped(self, cmd: Cmd) -> bool:
         """A command that runs another (su -c, flock, strace, trap ...): the inner command is judged where it runs."""
