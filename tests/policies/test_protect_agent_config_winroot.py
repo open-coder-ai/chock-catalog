@@ -15,6 +15,7 @@ pathsubst = sys.modules["pathsubst"]
 ROOTS = [
     pytest.param("C:/Users/runner/work/r", id="drive-slash"),
     pytest.param("c:\\Users\\runner\\work\\r", id="drive-backslash"),
+    pytest.param("C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\chock-eval-x\\repo", id="drive-short-name"),
 ]
 
 
@@ -37,7 +38,9 @@ def test_cd_into_a_git_dir_substitution_then_hooks_reaches_the_hooks_folder(
     assert _refuses("cd $(git rev-parse --git-dir) && cd hooks && echo x > pre-commit", root, monkeypatch)
 
 
-@pytest.mark.parametrize("root", ["C:/Users/runner/work/r", "/work/r"])
+@pytest.mark.parametrize(
+    "root", ["C:/Users/runner/work/r", "c:/users/runner~1/appdata/local/temp/chock-eval-x/repo", "/work/r"]
+)
 def test_the_resolver_reads_the_git_dir_of_a_drive_root(root: str) -> None:
     read = pathsubst.resolver(root)
     assert read("git rev-parse --git-dir") == f"{root}/.git"
