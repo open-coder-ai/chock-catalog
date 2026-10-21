@@ -48,6 +48,8 @@ chock add agent-permissions-scan
 chock sync .
 ```
 
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnQtcGVybWlzc2lvbnMtc2NhbiIsInZlcnNpb24iOiIwLjIuMCIsInNoYTI1NiI6IjY2OWRlMGU5MTk0ZjA1NjJhYjRiOWNiMzAwZTY5ZGNmOTdkN2E5NTBlNzY3OTBiMmMxZGM3ODdmMGY3OTE3ZWEifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+
 Or copy the folder — it does the same thing, byte for byte:
 
 ```bash

@@ -48,6 +48,8 @@ chock add java-security
 chock sync .
 ```
 
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiamF2YS1zZWN1cml0eSIsInZlcnNpb24iOiIwLjcuMCIsInNoYTI1NiI6IjJiMWE4NTg4MTk0NmUxYmI2NTE1NzE4MzJjNGJlZDQ3ZjNmMjJlNjI1NTc1OWVkMjFkM2ExNzBkZWM5NzAwNTgifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+
 Or copy the folder — it does the same thing, byte for byte:
 
 ```bash

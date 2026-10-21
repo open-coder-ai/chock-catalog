@@ -47,6 +47,8 @@ chock add owasp-asi09-human-agent-trust
 chock sync --repo .
 ```
 
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoib3dhc3AtYXNpMDktaHVtYW4tYWdlbnQtdHJ1c3QiLCJ2ZXJzaW9uIjoiMC4wLjIiLCJzaGEyNTYiOiI5YWFjODIzOTMwZjk5Y2Y3Njg1NzZhOGQyZDY2YWM2MDAzNDI4Y2RhMmZhYjM0ZWU5ZTNmMGI3NTVkY2UxNmY2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+
 Or copy the folder — it does the same thing, byte for byte:
 
 ```bash

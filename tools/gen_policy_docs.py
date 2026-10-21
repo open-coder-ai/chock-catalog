@@ -4,10 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 
 import yaml
+from chock.lock import compute_pack_hash
 
 from policy_doc_text import CEILING, PRIMITIVE, SURFACES, TOOL_USE_REACH
 from mechanism import (
@@ -28,6 +33,9 @@ PROSE = DOCS / "policy-prose.yaml"
 LABEL_WORD = {"block": "blocks", "ask": "asks", "warn": "warns", "advise": "advisory"}  # label keyword -> page word
 MARK_START = "<!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->"
 MARK_END = "<!-- generated:end -->"
+BUILDER = "https://chock.sh/coding/builder/"
+CATALOG_SOURCE = "https://github.com/open-coder-ai/chock-catalog"
+LINK_RE = re.compile(re.escape(BUILDER) + r"#s=([A-Za-z0-9_-]+)")
 
 
 #: The one classifier (tools/mechanism.py), so this page and the registry cannot disagree.
@@ -76,7 +84,53 @@ def load_cases(policy_dir: Path) -> list[dict]:
     return block.get("cases") or block.get("test_cases") or []
 
 
-def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict, label: dict) -> str:
+def selection_code(policy_id: str, version: str, sha256: str, ref: str) -> str:
+    """The builder's share code: the compact schema-2 selection of one policy for Claude Code, base64url, unpadded."""
+    selection = {
+        "schema": 2,
+        "client": "claude-code",
+        "bundle": {"version": "1.0.0"},
+        "catalog": {"source": CATALOG_SOURCE, "ref": ref},
+        "policies": [{"from": "catalog", "id": policy_id, "version": version, "sha256": sha256}],
+    }
+    raw = json.dumps(selection, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def decode_code(code: str) -> dict:
+    return json.loads(base64.urlsafe_b64decode(code + "=" * (-len(code) % 4)))
+
+
+def _head() -> str:
+    """The checkout's commit: what the builder fetches when no earlier ref still holds this policy's pack."""
+    try:
+        done = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise SystemExit(
+            "gen_policy_docs: the builder link needs `git rev-parse HEAD`; run it in a git checkout"
+        ) from exc
+    return done.stdout.strip()
+
+
+def catalog_ref(page: Path, policy_id: str, version: str, sha256: str) -> str:
+    """The ref the page already pins while its policy version and pack hash are unchanged, else the checkout's HEAD.
+
+    HEAD moves with every commit, so rendering it each time would rewrite every page and fail every `--check`.
+    """
+    match = LINK_RE.search(page.read_text(encoding="utf-8")) if page.exists() else None
+    if match:
+        try:
+            pinned = decode_code(match.group(1))
+            entry = pinned["policies"][0]
+            if (entry["id"], entry["version"], entry["sha256"]) == (policy_id, version, sha256):
+                return pinned["catalog"]["ref"]
+        except (ValueError, KeyError, IndexError, TypeError):
+            pass
+    return _head()
+
+
+def render(policy_dir: Path, manifest: dict, prose: dict, label: dict, builder_link: str) -> str:
+    policy_id = manifest["id"]
     kind = kind_of(policy_dir, manifest)
     tree = policy_dir.parent.name
     gate = (manifest.get("hook") or {}).get("gate") or {}
@@ -216,6 +270,8 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict, label:
         "chock sync ." if kind != "text" else "chock sync --repo .",
         "```",
         "",
+        f"Or [Open in the chock.sh builder]({builder_link}): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.",
+        "",
         "Or copy the folder — it does the same thing, byte for byte:",
         "",
         "```bash",
@@ -260,13 +316,18 @@ def build() -> dict[Path, str]:
     prose = yaml.safe_load(PROSE.read_text(encoding="utf-8"))
     rows = yaml.safe_load((ROOT / "registry.yaml").read_text(encoding="utf-8"))["policies"]
     lab = {p["id"]: p["label"]["claude-code"] for p in rows}
+    versions = {p["id"]: str(p["version"]) for p in rows}
     out: dict[Path, str] = {}
     for policy_dir in policy_dirs():
         manifest = yaml.safe_load((policy_dir / "manifest.yaml").read_text(encoding="utf-8"))
         policy_id = manifest["id"]
         if policy_id not in prose:
             raise SystemExit(f"docs/policy-prose.yaml has no entry for '{policy_id}'")
-        out[DOCS / policy_id / "README.md"] = render(policy_id, policy_dir, manifest, prose[policy_id], lab[policy_id])
+        page = DOCS / policy_id / "README.md"
+        sha256 = compute_pack_hash(policy_dir)
+        ref = catalog_ref(page, policy_id, versions[policy_id], sha256)
+        link = f"{BUILDER}#s={selection_code(policy_id, versions[policy_id], sha256, ref)}"
+        out[page] = render(policy_dir, manifest, prose[policy_id], lab[policy_id], link)
     return out
 
 

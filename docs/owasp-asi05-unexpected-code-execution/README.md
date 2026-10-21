@@ -47,6 +47,8 @@ chock add owasp-asi05-unexpected-code-execution
 chock sync --repo .
 ```
 
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoib3dhc3AtYXNpMDUtdW5leHBlY3RlZC1jb2RlLWV4ZWN1dGlvbiIsInZlcnNpb24iOiIwLjAuMiIsInNoYTI1NiI6IjEwYjc1ZTU0NDI0MjViMjFmYmIxYTk4N2Q0YjI0Njg2YTk1Nzc0NGRjOGM2MzQ2NGQ4NDFlMWMyZjdkY2ZiNmEifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+
 Or copy the folder — it does the same thing, byte for byte:
 
 ```bash

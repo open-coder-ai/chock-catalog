@@ -51,6 +51,8 @@ chock add block-persistence-shapes
 chock sync .
 ```
 
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stcGVyc2lzdGVuY2Utc2hhcGVzIiwidmVyc2lvbiI6IjAuMC40Iiwic2hhMjU2IjoiZDQxOWExYjgwMTJiM2ZhNjNiMjFmODIwNDg1YzM0MTVjMmQ5YjQzYjU1NjRmNWIwODE1OTJiYmQwYjc0MDM2ZSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+
 Or copy the folder — it does the same thing, byte for byte:
 
 ```bash
