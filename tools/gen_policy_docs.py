@@ -4,20 +4,13 @@
 from __future__ import annotations
 
 import argparse
-import base64
-import io
-import json
-import re
-import subprocess
 import sys
-import tarfile
-import tempfile
 from pathlib import Path
 
 import yaml
-from chock.lock import compute_pack_hash
+from builder_link import builder_url
 
-from policy_doc_text import CEILING, PRIMITIVE, SURFACES, TOOL_USE_REACH
+from policy_doc_text import CEILING, PRIMITIVE, SURFACES, TOOL_USE_REACH, WARN_ONLY_PRIMITIVE, WARN_ONLY_REACH
 from mechanism import (
     EVENT_SCRIPT,
     GATE,
@@ -36,21 +29,10 @@ PROSE = DOCS / "policy-prose.yaml"
 LABEL_WORD = {"block": "blocks", "ask": "asks", "warn": "warns", "advise": "advisory"}  # label keyword -> page word
 MARK_START = "<!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->"
 MARK_END = "<!-- generated:end -->"
-BUILDER = "https://chock.sh/coding/builder/"
-CATALOG_SOURCE = "https://github.com/open-coder-ai/chock-catalog"
-LINK_RE = re.compile(re.escape(BUILDER) + r"#s=([A-Za-z0-9_-]+)")
 
 
 #: The one classifier (tools/mechanism.py), so this page and the registry cannot disagree.
 _KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard"}
-
-
-WARN_ONLY_PRIMITIVE = (
-    "A **warn-only gate**. `recompile` writes it under `.chock/compiled/{id}/` for each surface its `on` "
-    "names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but "
-    "its exit never refuses a commit or a write."
-)
-WARN_ONLY_REACH = "`advisory` — the gate runs and prints its findings; it never refuses"
 
 
 def kind_of(policy_dir: Path, manifest: dict) -> str:
@@ -85,83 +67,6 @@ def load_cases(policy_dir: Path) -> list[dict]:
     suite = yaml.safe_load(suite_path.read_text(encoding="utf-8")) or {}
     block = suite.get("suite") or suite.get("eval_suite") or {}
     return block.get("cases") or block.get("test_cases") or []
-
-
-def selection_code(policy_id: str, version: str, sha256: str, ref: str) -> str:
-    """The builder's share code: the compact schema-2 selection of one policy for Claude Code, base64url, unpadded."""
-    selection = {
-        "schema": 2,
-        "client": "claude-code",
-        "bundle": {"version": "1.0.0"},
-        "catalog": {"source": CATALOG_SOURCE, "ref": ref},
-        "policies": [{"from": "catalog", "id": policy_id, "version": version, "sha256": sha256}],
-    }
-    raw = json.dumps(selection, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
-
-
-def decode_code(code: str) -> dict:
-    return json.loads(base64.urlsafe_b64decode(code + "=" * (-len(code) % 4)))
-
-
-def _git(*args: str) -> str | None:
-    """Stdout of a git command run in the checkout, None when git fails."""
-    try:
-        done = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True)
-    except (OSError, subprocess.CalledProcessError):
-        return None
-    return done.stdout.strip()
-
-
-def _folder_ref(policy_dir: Path) -> str | None:
-    """The newest commit that touched the folder, when the folder is unmodified against it."""
-    rel = policy_dir.relative_to(ROOT).as_posix()
-    if _git("status", "--porcelain", "--", rel) != "":
-        return None
-    return _git("log", "-1", "--format=%H", "--", rel) or None
-
-
-def _pinned_ref(page: Path, policy_id: str, version: str, sha256: str) -> str | None:
-    """The ref the page already pins, while its policy version and pack hash are unchanged."""
-    match = LINK_RE.search(page.read_text(encoding="utf-8")) if page.exists() else None
-    if not match:
-        return None
-    try:
-        pinned = decode_code(match.group(1))
-        entry = pinned["policies"][0]
-        if (entry["id"], entry["version"], entry["sha256"]) == (policy_id, version, sha256):
-            return pinned["catalog"]["ref"]
-    except (ValueError, KeyError, IndexError, TypeError):
-        pass
-    return None
-
-
-def catalog_ref(page: Path, policy_dir: Path, version: str, sha256: str, *, keep_pinned: bool) -> str:
-    """A commit that holds the pack: the folder's last commit, else the page's pin, else the checkout's HEAD.
-
-    `keep_pinned` ranks the page's own pin first, so `--check` ignores the ref and a shallow clone cannot fail it.
-    """
-    pinned = _pinned_ref(page, policy_dir.name, version, sha256)
-    candidates = [pinned, _folder_ref(policy_dir)] if keep_pinned else [_folder_ref(policy_dir), pinned]
-    ref = next((c for c in candidates if c), None) or _git("rev-parse", "HEAD")
-    if not ref:
-        raise SystemExit("gen_policy_docs: the builder link needs a git checkout (`git rev-parse HEAD` failed)")
-    return ref
-
-
-def ref_holds_pack(ref: str, policy_dir: Path, sha256: str) -> bool:
-    """True when the folder at `ref` hashes to `sha256`."""
-    rel = policy_dir.relative_to(ROOT).as_posix()
-    try:
-        done = subprocess.run(
-            ["git", "archive", "--format=tar", ref, "--", rel], cwd=ROOT, capture_output=True, check=True
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return False
-    with tempfile.TemporaryDirectory(prefix="policy-ref-") as tmp:
-        with tarfile.open(fileobj=io.BytesIO(done.stdout)) as tar:
-            tar.extractall(tmp, filter="data")
-        return compute_pack_hash(Path(tmp) / rel) == sha256
 
 
 def render(policy_dir: Path, manifest: dict, prose: dict, label: dict, builder_link: str) -> str:
@@ -359,40 +264,16 @@ def build(*, keep_pinned: bool = False) -> dict[Path, str]:
         if policy_id not in prose:
             raise SystemExit(f"docs/policy-prose.yaml has no entry for '{policy_id}'")
         page = DOCS / policy_id / "README.md"
-        sha256 = compute_pack_hash(policy_dir)
-        ref = catalog_ref(page, policy_dir, versions[policy_id], sha256, keep_pinned=keep_pinned)
-        link = f"{BUILDER}#s={selection_code(policy_id, versions[policy_id], sha256, ref)}"
+        link = builder_url(page, policy_dir, versions[policy_id], keep_pinned=keep_pinned)
         out[page] = render(policy_dir, manifest, prose[policy_id], lab[policy_id], link)
     return out
-
-
-def check_refs() -> int:
-    """List every page whose builder link pins a ref that does not hold its sha256."""
-    bad = []
-    for policy_dir in policy_dirs():
-        page = DOCS / policy_dir.name / "README.md"
-        match = LINK_RE.search(page.read_text(encoding="utf-8")) if page.exists() else None
-        entry = decode_code(match.group(1)) if match else None
-        if not entry or not ref_holds_pack(entry["catalog"]["ref"], policy_dir, entry["policies"][0]["sha256"]):
-            bad.append(page.relative_to(ROOT).as_posix())
-    if bad:
-        print("Builder links whose ref does not hold the page's pack (regenerate at the release):")
-        print("\n".join(f"  {b}" for b in bad))
-        return 1
-    print("Every builder link's ref holds its pack.")
-    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Generate per-policy documentation.")
     parser.add_argument("--check", action="store_true", help="Fail if any doc is out of date.")
-    parser.add_argument(
-        "--check-refs", action="store_true", help="Fail if a page's builder link pins a ref without its pack."
-    )
     args = parser.parse_args(argv)
 
-    if args.check_refs:
-        return check_refs()
     pages = build(keep_pinned=args.check)
     stale = [p for p, text in pages.items() if not p.exists() or p.read_text(encoding="utf-8") != text]
 

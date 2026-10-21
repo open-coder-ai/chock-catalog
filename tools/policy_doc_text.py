@@ -47,3 +47,10 @@ PRIMITIVE = {
         "reaches the agent's context and that is the entire mechanism."
     ),
 }
+
+WARN_ONLY_PRIMITIVE = (
+    "A **warn-only gate**. `recompile` writes it under `.chock/compiled/{id}/` for each surface its `on` "
+    "names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but "
+    "its exit never refuses a commit or a write."
+)
+WARN_ONLY_REACH = "`advisory` — the gate runs and prints its findings; it never refuses"

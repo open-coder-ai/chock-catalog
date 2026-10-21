@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import builder_link
 import gen_policy_docs
 import pytest
 from chock.install import selection
 from chock.lock import compute_pack_hash
 from trees import policy_dirs
 
-LINK = gen_policy_docs.LINK_RE
+LINK = builder_link.LINK_RE
 
 
 @pytest.fixture(scope="module")
@@ -30,7 +31,7 @@ def test_link_loads_to_the_policy_id(pages):
 
 def test_code_pins_the_pack_hash_of_its_folder(pages):
     for policy_dir in policy_dirs():
-        entry = gen_policy_docs.decode_code(LINK.search(pages[policy_dir.name]).group(1))["policies"][0]
+        entry = builder_link.decode_code(LINK.search(pages[policy_dir.name]).group(1))["policies"][0]
         assert entry["id"] == policy_dir.name
         assert entry["sha256"] == compute_pack_hash(policy_dir)
 
@@ -38,12 +39,12 @@ def test_code_pins_the_pack_hash_of_its_folder(pages):
 def test_ref_is_a_commit_that_holds_the_pack(pages):
     policy_dir = policy_dirs()[0]
     code = LINK.search(pages[policy_dir.name]).group(1)
-    pinned = gen_policy_docs.decode_code(code)
+    pinned = builder_link.decode_code(code)
     assert len(pinned["catalog"]["ref"]) == 40
-    assert gen_policy_docs.ref_holds_pack(pinned["catalog"]["ref"], policy_dir, pinned["policies"][0]["sha256"])
+    assert builder_link.ref_holds_pack(pinned["catalog"]["ref"], policy_dir, pinned["policies"][0]["sha256"])
 
 
 def test_a_ref_without_the_pack_is_flagged():
     policy_dir = policy_dirs()[0]
-    assert not gen_policy_docs.ref_holds_pack("0" * 40, policy_dir, compute_pack_hash(policy_dir))
-    assert not gen_policy_docs.ref_holds_pack("HEAD", policy_dir, "0" * 64)
+    assert not builder_link.ref_holds_pack("0" * 40, policy_dir, compute_pack_hash(policy_dir))
+    assert not builder_link.ref_holds_pack("HEAD", policy_dir, "0" * 64)
