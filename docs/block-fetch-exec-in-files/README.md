@@ -51,6 +51,8 @@ chock add block-fetch-exec-in-files
 chock sync --repo .
 ```
 
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stZmV0Y2gtZXhlYy1pbi1maWxlcyIsInZlcnNpb24iOiIwLjAuMiIsInNoYTI1NiI6ImU4Y2JkZTBhYmEwZDI2NjM0OWI4ZTZlNWY1MjM2ZjA4MTlmZTNlMzI1NzBiZWY0NTdhY2ZlMTAyNTY4YmQ4NjAifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+
 Or copy the folder — it does the same thing, byte for byte:
 
 ```bash
