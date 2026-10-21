@@ -47,7 +47,7 @@ chock add owasp-asi06-memory-context-poisoning
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoib3dhc3AtYXNpMDYtbWVtb3J5LWNvbnRleHQtcG9pc29uaW5nIiwidmVyc2lvbiI6IjAuMC4yIiwic2hhMjU2IjoiZDE1Y2RhYTRhZjc5YmQyYmJmMzY3YWEzMTM0OGQyNjJkNzhhNDNiMjA5YjRkMjEzNjVhOWIzODAzZjAwODY4ZiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoib3dhc3AtYXNpMDYtbWVtb3J5LWNvbnRleHQtcG9pc29uaW5nIiwidmVyc2lvbiI6IjAuMC4yIiwic2hhMjU2IjoiZDE1Y2RhYTRhZjc5YmQyYmJmMzY3YWEzMTM0OGQyNjJkNzhhNDNiMjA5YjRkMjEzNjVhOWIzODAzZjAwODY4ZiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

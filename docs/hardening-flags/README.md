@@ -48,7 +48,7 @@ chock add hardening-flags
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaGFyZGVuaW5nLWZsYWdzIiwidmVyc2lvbiI6IjAuMS4xIiwic2hhMjU2IjoiNDQ2ZTA3ODJiZDEyYmUwNWYyYjIwNjQ3YTliYTM1OGEzYzk1NGY4ZWY1YzIwOGY2ZmQ1MjIyYWI1YjNiMWNiNSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaGFyZGVuaW5nLWZsYWdzIiwidmVyc2lvbiI6IjAuMS4xIiwic2hhMjU2IjoiNDQ2ZTA3ODJiZDEyYmUwNWYyYjIwNjQ3YTliYTM1OGEzYzk1NGY4ZWY1YzIwOGY2ZmQ1MjIyYWI1YjNiMWNiNSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

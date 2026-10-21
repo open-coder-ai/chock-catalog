@@ -44,7 +44,7 @@ chock add scan-hidden-content
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1oaWRkZW4tY29udGVudCIsInZlcnNpb24iOiIwLjAuMiIsInNoYTI1NiI6ImU4YWE4YTkwNWMzMzViYjZjOTE3ZWY3MDU1NTU3MjQ1ZmIyYThhMGE0ZDI3ZjdkNTY4NWRhNmY5YTljMmRhNDgifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI5YjFlZjExY2I2YWY3ZmQ1ZjQ2MTU2YWEzNWFiNzYzNGU3YjE2ODllIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1oaWRkZW4tY29udGVudCIsInZlcnNpb24iOiIwLjAuMiIsInNoYTI1NiI6ImU4YWE4YTkwNWMzMzViYjZjOTE3ZWY3MDU1NTU3MjQ1ZmIyYThhMGE0ZDI3ZjdkNTY4NWRhNmY5YTljMmRhNDgifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

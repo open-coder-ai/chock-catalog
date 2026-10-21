@@ -48,7 +48,7 @@ chock add ci-github-actions-security
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlODg1ZjkxOGEzMzVlMjBkZmRkYjRmYWQwMzMxZDRkNWI0YzVlYjQzIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiY2ktZ2l0aHViLWFjdGlvbnMtc2VjdXJpdHkiLCJ2ZXJzaW9uIjoiMC4xLjAiLCJzaGEyNTYiOiJhNjQ1ZTJjMTIyMjE3OWJjZWNjMTYwY2ZmYmU3MjE2NjgxMDExNGZlZjUxNzFmOTMyYzJlYzExZGVjOWFhMzg2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3MDgwMTMyZWU3OGQ4N2Y1OWFiZTZkZDBkOTlkNzYzNDkzYzI3NjFhIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiY2ktZ2l0aHViLWFjdGlvbnMtc2VjdXJpdHkiLCJ2ZXJzaW9uIjoiMC4xLjAiLCJzaGEyNTYiOiJhNjQ1ZTJjMTIyMjE3OWJjZWNjMTYwY2ZmYmU3MjE2NjgxMDExNGZlZjUxNzFmOTMyYzJlYzExZGVjOWFhMzg2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
