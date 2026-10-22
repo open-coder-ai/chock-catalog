@@ -245,6 +245,11 @@ Then edit `base/<id>/manifest.yaml` and `evals/suite.yaml`, add a `<id>:` entry
 (`solves`, `customise`) to `docs/policy-prose.yaml` and a row for it in the README's
 table for its kind, and run `python tools/regen_all.py` until it ends `== CLEAN`.
 
+A new policy's builder link pins a commit that holds the policy's files, generated ones included, so
+the link can only be right after they are committed. Run `python tools/regen_all.py`, commit
+`base/<id>`, then run `python tools/gen_policy_docs.py` again; until then
+`python tools/builder_link.py` lists the page.
+
 ## What CI runs
 
 Two things, kept apart on purpose:
