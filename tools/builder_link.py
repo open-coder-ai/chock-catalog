@@ -75,13 +75,16 @@ def _decode_or_none(code: str) -> dict | None:
 
 
 def catalog_ref(page: Path, policy_dir: Path, version: str, sha256: str, *, keep_pinned: bool) -> str:
-    """A commit that holds the pack: the folder's last commit, else the page's pin, else the checkout's HEAD.
+    """A commit that holds the pack: the page's pin while it holds it, else the folder's last commit, else HEAD.
 
-    `keep_pinned` ranks the page's own pin first, so `--check` ignores the ref and a shallow clone cannot fail it.
+    A merge commit can be the folder's last commit without being the pin, so the pin wins while it holds the pack
+    and a regeneration changes nothing. `keep_pinned` takes the pin unchecked, so `--check` ignores the ref and a
+    shallow clone cannot fail it.
     """
     pinned = _pinned_ref(page, policy_dir.name, version, sha256)
-    candidates = [pinned, _folder_ref(policy_dir)] if keep_pinned else [_folder_ref(policy_dir), pinned]
-    ref = next((c for c in candidates if c), None) or _git("rev-parse", "HEAD")
+    if pinned and (keep_pinned or ref_holds_pack(pinned, policy_dir, sha256)):
+        return pinned
+    ref = _folder_ref(policy_dir) or pinned or _git("rev-parse", "HEAD")
     if not ref:
         msg = "builder_link: a link needs a git checkout (`git rev-parse HEAD` failed)"
         raise SystemExit(msg)
