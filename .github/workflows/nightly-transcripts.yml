@@ -72,6 +72,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       # The framework at the pinned ref, as ci.yml reads it: the release regenerates with the pin,
       # so drift against framework main would be false drift. The sweep above stays the canary.

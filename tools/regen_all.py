@@ -154,6 +154,11 @@ def lagging_checks(scratch: Path) -> list[tuple[str, Cmd, tuple[str, ...]]]:
         ("readme", [PY, "tools/check_readme.py"], ("README.md",)),
         ("policy docs --check", [PY, "tools/gen_policy_docs.py", "--check"], ("docs/<id>/README.md",)),
         (
+            "policy doc builder links hold their pack",
+            [PY, "tools/builder_link.py"],
+            ("docs/<id>/README.md",),
+        ),
+        (
             "coverage matrix --check",
             [PY, "tools/gen_coverage_matrix.py", "--check"],
             ("docs/assets/coverage-matrix.svg",),

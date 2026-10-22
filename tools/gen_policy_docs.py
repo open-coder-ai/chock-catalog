@@ -8,8 +8,9 @@ import sys
 from pathlib import Path
 
 import yaml
+from builder_link import builder_url
 
-from policy_doc_text import CEILING, PRIMITIVE, SURFACES, TOOL_USE_REACH
+from policy_doc_text import CEILING, PRIMITIVE, SURFACES, TOOL_USE_REACH, WARN_ONLY_PRIMITIVE, WARN_ONLY_REACH
 from mechanism import (
     EVENT_SCRIPT,
     GATE,
@@ -32,14 +33,6 @@ MARK_END = "<!-- generated:end -->"
 
 #: The one classifier (tools/mechanism.py), so this page and the registry cannot disagree.
 _KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard"}
-
-
-WARN_ONLY_PRIMITIVE = (
-    "A **warn-only gate**. `recompile` writes it under `.chock/compiled/{id}/` for each surface its `on` "
-    "names (the git hook, CI, the agent's write path) beside the ambient rule. It runs and prints, but "
-    "its exit never refuses a commit or a write."
-)
-WARN_ONLY_REACH = "`advisory` — the gate runs and prints its findings; it never refuses"
 
 
 def kind_of(policy_dir: Path, manifest: dict) -> str:
@@ -76,7 +69,8 @@ def load_cases(policy_dir: Path) -> list[dict]:
     return block.get("cases") or block.get("test_cases") or []
 
 
-def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict, label: dict) -> str:
+def render(policy_dir: Path, manifest: dict, prose: dict, label: dict, builder_link: str) -> str:
+    policy_id = manifest["id"]
     kind = kind_of(policy_dir, manifest)
     tree = policy_dir.parent.name
     gate = (manifest.get("hook") or {}).get("gate") or {}
@@ -216,6 +210,8 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict, label:
         "chock sync ." if kind != "text" else "chock sync --repo .",
         "```",
         "",
+        f"Or [Open in the chock.sh builder]({builder_link}): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.",
+        "",
         "Or copy the folder — it does the same thing, byte for byte:",
         "",
         "```bash",
@@ -256,17 +252,20 @@ def render(policy_id: str, policy_dir: Path, manifest: dict, prose: dict, label:
     return "\n".join(lines)
 
 
-def build() -> dict[Path, str]:
+def build(*, keep_pinned: bool = False) -> dict[Path, str]:
     prose = yaml.safe_load(PROSE.read_text(encoding="utf-8"))
     rows = yaml.safe_load((ROOT / "registry.yaml").read_text(encoding="utf-8"))["policies"]
     lab = {p["id"]: p["label"]["claude-code"] for p in rows}
+    versions = {p["id"]: str(p["version"]) for p in rows}
     out: dict[Path, str] = {}
     for policy_dir in policy_dirs():
         manifest = yaml.safe_load((policy_dir / "manifest.yaml").read_text(encoding="utf-8"))
         policy_id = manifest["id"]
         if policy_id not in prose:
             raise SystemExit(f"docs/policy-prose.yaml has no entry for '{policy_id}'")
-        out[DOCS / policy_id / "README.md"] = render(policy_id, policy_dir, manifest, prose[policy_id], lab[policy_id])
+        page = DOCS / policy_id / "README.md"
+        link = builder_url(page, policy_dir, versions[policy_id], keep_pinned=keep_pinned)
+        out[page] = render(policy_dir, manifest, prose[policy_id], lab[policy_id], link)
     return out
 
 
@@ -275,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="Fail if any doc is out of date.")
     args = parser.parse_args(argv)
 
-    pages = build()
+    pages = build(keep_pinned=args.check)
     stale = [p for p, text in pages.items() if not p.exists() or p.read_text(encoding="utf-8") != text]
 
     if args.check:
