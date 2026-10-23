@@ -80,3 +80,70 @@ def test_the_reason_says_what_was_refused() -> None:
     assert "script text the guard cannot read" in guard.BLIND
     assert "names a protected path" in guard.BLIND
     assert guard.check('eval "$x" # .mcp.json') == guard.BLIND
+
+
+HEREDOC = "python3 -I - <<'E'\nprint(1)\nE\n"
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        HEREDOC + "grep -n x AGENTS.md",
+        HEREDOC + "cat AGENTS.md\nls .claude",
+        HEREDOC + "grep -n x AGENTS.md; head .claude/settings.json | wc -l",
+        'python3 -I - <<< "print(1)"; grep -n x AGENTS.md',
+        "sudo python3 - <<'E'\nprint(1)\nE\ngrep -n x AGENTS.md",
+    ],
+)
+def test_an_interpreter_fed_a_here_document_that_names_nothing_is_not_blind_beside_a_read(line: str) -> None:
+    assert not opaque.refuses(line, guard.hit), line
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "python3 -I - <<'E'\nopen('AGENTS.md','w')\nE\ngrep -n x registry.yaml",
+        HEREDOC + "cat x > AGENTS.md",
+        HEREDOC + "touch .claude/settings.json",
+        HEREDOC + "AGENTS.md=1 cat AGENTS.md",
+        HEREDOC + "rm AGENTS.md",
+        HEREDOC + "grep x AGENTS.md > .claude/settings.json",
+        "python3 -I - <<E\nprint('$(rm AGENTS.md)')\nE",
+        "python3 -I - <<E\nprint(`rm AGENTS.md`)\nE",
+        "cat run.py | python3 -I -\ngrep -n x AGENTS.md",
+        "python3 -I - < run.py\ngrep -n x AGENTS.md",
+        "xargs python3 -I - <<'E'\nprint(1)\nE\ngrep -n x AGENTS.md",
+        "python3 -I - <<'E'\nprint(1)\nE\npython3 -c 1\ngrep -n x AGENTS.md",
+        "bash -c \"python3 -I - <<'E'\nopen('AGENTS.md','w')\nE\"",
+    ],
+)
+def test_the_other_blind_forms_and_a_write_beside_a_here_document_stay_refused(line: str) -> None:
+    assert opaque.refuses(line, guard.hit), line
+
+
+def test_a_here_document_is_judged_by_what_it_names_and_what_surrounds_it() -> None:
+    look = opaque._Look()
+    look.run(HEREDOC + "grep -n x AGENTS.md")
+    assert not look.found
+    assert len(look.fed) == 1
+    assert look.rest == []
+
+
+# IR-F10: a script that only reads registry.yaml, then greps instruction files by name, was refused as BLIND.
+PARSE_REGISTRY = (
+    "cd repo && python3 -I - <<'E'\nimport yaml,re\nr=yaml.safe_load(open('registry.yaml'))\n"
+    "rows=r if isinstance(r,list) else r.get('policies',r)\nprint(type(rows),len(rows))\nfor p in rows:\n"
+    "    d=' '.join(p.get('description','').split())\n    if re.search(r'enforc|block|refus|stops?\\b',d,re.I):\n"
+    "        print(p['id'],'|',d[:170])\nE\n"
+    'grep -rn "protect-main-branch" tests tools --include=*.py -l | head; grep -n -i "version" AGENTS.md CONTRIBUTING.md | head'
+)
+
+
+def test_the_script_that_only_reads_a_registry_is_allowed_beside_greps_of_instruction_files() -> None:
+    assert guard.check(PARSE_REGISTRY) is None
+
+
+@pytest.mark.parametrize("name", ["AGENTS.md", ".claude/settings.json"])
+def test_the_same_script_writing_a_protected_file_is_refused(name: str) -> None:
+    script = PARSE_REGISTRY.replace("open('registry.yaml')", f"open('{name}','w')")
+    assert guard.check(script) == guard.REASON

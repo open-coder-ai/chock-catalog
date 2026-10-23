@@ -7999,3 +7999,33 @@ suite:
     prompt: "The agent writes a document merely named like the lockfile with the Write tool: docs/chock.lock.md"
     expect: "The tool gate allows it."
     execute: {event: tool_use, writes: {"docs/chock.lock.md": "x\n"}, expect: allow}
+  - id: tc-1561
+    category: negative_trigger
+    prompt: "An agent parses registry.yaml with an inline script fed by a here-document, then greps instruction files by name; the script names no protected path."
+    expect: "The guard allows it: the here-document is judged by what it names, and the grep is a read."
+    execute: {command: "cd repo && python3 -I - <<'E'\nimport yaml,re\nr=yaml.safe_load(open('registry.yaml'))\nrows=r if isinstance(r,list) else r.get('policies',r)\nprint(type(rows),len(rows))\nfor p in rows:\n    d=' '.join(p.get('description','').split())\n    if re.search(r'enforc|block|refus|prevent|stops?\\b',d,re.I):\n        print(p['id'],'|',d[:170])\nE\ngrep -rn \"protect-main-branch\" tests tools --include=*.py -l | head; grep -n -i \"version\\|bump\" AGENTS.md CONTRIBUTING.md CONVENTIONS.md | head", expect: allow}
+  - id: tc-1562
+    category: negative_trigger
+    prompt: "An agent runs a script fed by a here-document that names no protected path, then reads an instruction file and lists an agent folder."
+    expect: "The guard allows it: cat, grep and ls only read."
+    execute: {command: "python3 -I - <<'E'\nprint(1)\nE\ngrep -n x AGENTS.md\nls .claude", expect: allow}
+  - id: tc-1563
+    category: trigger
+    prompt: "An agent writes the shared rules file from a script fed by a here-document, with a harmless grep after it."
+    expect: "The guard refuses: the script names AGENTS.md."
+    execute: {command: "cd repo && python3 -I - <<'E'\nopen('AGENTS.md','w').write('x')\nE\ngrep -n x registry.yaml", expect: block}
+  - id: tc-1564
+    category: trigger
+    prompt: "An agent rewrites its permission file from a script fed by a here-document, with a harmless grep after it."
+    expect: "The guard refuses: the script names .claude/settings.json."
+    execute: {command: "python3 -I - <<'E'\nopen('.claude/settings.json','w').write('{}')\nE\ngrep -n allow registry.yaml", expect: block}
+  - id: tc-1565
+    category: trigger
+    prompt: "An agent runs a script fed by a here-document that names nothing, then copies the shared rules file with a redirection."
+    expect: "The guard refuses: a redirection that names AGENTS.md is not a read, so the line is judged as before."
+    execute: {command: "python3 -I - <<'E'\nprint(1)\nE\ncat x > AGENTS.md", expect: block}
+  - id: tc-1566
+    category: trigger
+    prompt: "An agent runs a script fed by a here-document with an unquoted delimiter, whose text the shell expands to a command that names AGENTS.md."
+    expect: "The guard refuses: the script the interpreter gets is not the text shown."
+    execute: {command: "python3 -I - <<E\nprint('$(rm AGENTS.md)')\nE", expect: block}

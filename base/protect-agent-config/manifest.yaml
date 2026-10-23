@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.7.1"
+version: "0.7.2"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent
   folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...),
@@ -68,6 +68,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.2
+  date: '2026-10-23'
+  changes:
+  - "Fix, an interpreter fed a here-document that names no protected path is no longer refused for a read elsewhere on the line (IR-F10): `python3 -I - <<'E' ... E` followed by `grep -n x AGENTS.md` was refused as unreadable script text because the backstop tested the whole line for a protected name. It now tests the interpreter's own words and here-document, and every clause that is not a plain read (`cat`, `grep`, `ls`, `head`, `tail`, `wc`, `diff`, `cmp`, `stat`, `file`, with no redirection out). A here-document the shell expands (`$` or a backtick), a script from a pipe or a file, `-c` programs, `xargs`, and any clause that writes keep the whole-line test. A script that itself names a protected path is still refused. Eval cases tc-1561 to tc-1566; tests in test_protect_agent_config_opaque.py."
 - version: 0.7.1
   date: '2026-10-20'
   changes:
