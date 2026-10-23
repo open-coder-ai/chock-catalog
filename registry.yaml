@@ -847,7 +847,7 @@ policies:
     the person.'
 - id: protect-main-branch
   path: base/protect-main-branch
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   status: production
@@ -863,8 +863,9 @@ policies:
     copilot: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
     devin: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
     misses: null
-  description: Block direct commits and pushes to main or master. Enforced at commit time by reading
-    the current branch, and at push time by parsing the refs the agent is pushing.
+  description: 'Keeps agents off main and master: a git hook reads the current branch at commit time
+    and parses the refs being pushed at push time. The hook refuses a violation only where it is installed.
+    As skill text alone this is advice, and nothing stops one.'
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
   version: 0.3.0
