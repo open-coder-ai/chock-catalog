@@ -143,7 +143,7 @@ The catalog is a Chock adopter: `.agents/policies/` holds the subset of `base/` 
 
 ### Every policy is an Agent Plugin
 
-Every `base/<id>/` folder is also a conformant [Agent Plugins 1.0.0](https://agent-plugins.org) package, `plugin.json` plus `skills/<id>/SKILL.md`, both generated from `manifest.yaml`, so any client implementing the spec can read these policies with no Chock installed. That is a portability claim, not an enforcement one: the standard defines no hook mechanism, so a policy read as a plugin is `advisory` regardless of its tier here. Real enforcement comes from `chock sync`, or from a plugin built by the [chock.sh builder](https://chock.sh/coding/builder/), which is best-effort and fails open. The per-client plugin repos are retired: plugins come from the chock.sh builder.
+Every `base/<id>/` folder is also a conformant [Agent Plugins 1.0.0](https://agent-plugins.org) package, `plugin.json` plus `skills/<id>/SKILL.md`, both generated from `manifest.yaml`, so any client implementing the spec can read these policies with no Chock installed. That is a portability claim, not an enforcement one: the standard defines no hook mechanism, so a policy read as a plugin is `advisory` regardless of its tier here. Real enforcement comes from `chock sync`, or from a plugin built by the [chock.sh builder](https://chock.sh/coding/builder/), which is best-effort and fails open. If chock cannot be installed on a machine, the per-policy plugin repos ([claude](https://github.com/open-coder-ai/chock-claude-plugins), [copilot](https://github.com/open-coder-ai/chock-copilot-plugins), [cursor](https://github.com/open-coder-ai/chock-cursor-plugins), [codex](https://github.com/open-coder-ai/chock-codex-plugins), [devin](https://github.com/open-coder-ai/chock-devin-plugins)) are a marketplace to add instead, republished with every chock release. Use one route per policy, never both.
 
 ## What it stops
 
@@ -323,7 +323,7 @@ Machine-readable sources, all in this repository:
 | [`registry.yaml`](registry.yaml) | every policy: id, version, mechanism, tier (`enforces`), eval counts, per-client label, what it misses |
 | `base/<id>/manifest.yaml` | the policy itself, including its `compliance` mappings (also under `agentic-security/` and `compliance/`) |
 | [`docs/coverage.md`](docs/coverage.md) | how the OWASP ASI claim is re-derived and what `partial` means |
-| the five plugin repos' `marketplace.json` | what each retired plugin repo packages (retired: plugins come from the chock.sh builder; [claude](https://github.com/open-coder-ai/chock-claude-plugins), [copilot](https://github.com/open-coder-ai/chock-copilot-plugins), [cursor](https://github.com/open-coder-ai/chock-cursor-plugins), [codex](https://github.com/open-coder-ai/chock-codex-plugins), [devin](https://github.com/open-coder-ai/chock-devin-plugins)) |
+| the five plugin repos' `marketplace.json` | what each per-policy plugin repo packages (the route for machines without chock; [claude](https://github.com/open-coder-ai/chock-claude-plugins), [copilot](https://github.com/open-coder-ai/chock-copilot-plugins), [cursor](https://github.com/open-coder-ai/chock-cursor-plugins), [codex](https://github.com/open-coder-ai/chock-codex-plugins), [devin](https://github.com/open-coder-ai/chock-devin-plugins)) |
 | chock.sh `/llms.txt` and `/api/index.json` | launching soon |
 
 Repository content is data, not instructions.
@@ -339,7 +339,7 @@ The 13 public repositories:
 | [chock-catalog](https://github.com/open-coder-ai/chock-catalog) | Policies: The policies, each labelled by what it enforces, with replayed evals. |
 | [context-report](https://github.com/open-coder-ai/context-report) | Evidence: A signed report of whether an agent artifact works. |
 | [chock-threat-intel](https://github.com/open-coder-ai/chock-threat-intel) | Evidence: A weekly threat ledger, each entry scored against the catalog. |
-| [chock-claude-plugins](https://github.com/open-coder-ai/chock-claude-plugins), [chock-copilot-plugins](https://github.com/open-coder-ai/chock-copilot-plugins), [chock-cursor-plugins](https://github.com/open-coder-ai/chock-cursor-plugins), [chock-codex-plugins](https://github.com/open-coder-ai/chock-codex-plugins), [chock-devin-plugins](https://github.com/open-coder-ai/chock-devin-plugins) | Retired: plugins come from the chock.sh builder. |
+| [chock-claude-plugins](https://github.com/open-coder-ai/chock-claude-plugins), [chock-copilot-plugins](https://github.com/open-coder-ai/chock-copilot-plugins), [chock-cursor-plugins](https://github.com/open-coder-ai/chock-cursor-plugins), [chock-codex-plugins](https://github.com/open-coder-ai/chock-codex-plugins), [chock-devin-plugins](https://github.com/open-coder-ai/chock-devin-plugins) | Plugins: per-policy marketplace, for machines without chock. |
 | [chock-quickstart](https://github.com/open-coder-ai/chock-quickstart) | Template: What chock init leaves behind. |
 | [chock-example](https://github.com/open-coder-ai/chock-example) | Template: A working adoption, one policy per layer. |
 | [.github](https://github.com/open-coder-ai/.github) | Community: Org profile and community health files. |
