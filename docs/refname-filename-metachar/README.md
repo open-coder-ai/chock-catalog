@@ -48,7 +48,7 @@ chock add refname-filename-metachar
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlOGRkMjE3YWVlYTZlMmM4MjY2YTViNDY5NWNlZDE0NTBkODFiMzg0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicmVmbmFtZS1maWxlbmFtZS1tZXRhY2hhciIsInZlcnNpb24iOiIwLjEuMyIsInNoYTI1NiI6IjQ2Mjg3MmU3YTQ5ZWY2YzcxZGQwMGE3NWFkMWFlODE3NGNjMDk0ZDI5MTFiZmFkYjgyYzRiZTdlOTNmMzg1NTEifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlOGRkMjE3YWVlYTZlMmM4MjY2YTViNDY5NWNlZDE0NTBkODFiMzg0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicmVmbmFtZS1maWxlbmFtZS1tZXRhY2hhciIsInZlcnNpb24iOiIwLjEuMyIsInNoYTI1NiI6IjQ2Mjg3MmU3YTQ5ZWY2YzcxZGQwMGE3NWFkMWFlODE3NGNjMDk0ZDI5MTFiZmFkYjgyYzRiZTdlOTNmMzg1NTEifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
