@@ -19,7 +19,7 @@
 
 ## What it is about
 
-Block direct commits and pushes to main or master. Enforced at commit time by reading the current branch, and at push time by parsing the refs the agent is pushing.
+Refuses direct commits and pushes to main or master in a git hook: at commit time it reads the current branch, at push time it parses the refs being pushed. Where an agent loads this as skill text only, it is advice, and nothing stops a violation.
 
 ## What it solves
 
@@ -49,7 +49,7 @@ chock add protect-main-branch
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1ZTEyN2IwZTk1MzI0OTUxNGQ3NGI4YTBlNzNiNzMwMWVjZDIwZmFlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1tYWluLWJyYW5jaCIsInZlcnNpb24iOiIwLjAuMyIsInNoYTI1NiI6ImViYTE2NGQwOWMyMmI0NmY1YzJkMjY1NjYwN2Q3MzU5NmQzYjBjZTRjNzc4MTg3MzdlZmM1MjcyZDc4NzE5ZWUifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJjYjQ4YjYzMDVhY2FmOGNjNGQzMWFmNjY1Mjg4MTEwNjNlN2NmMjliIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1tYWluLWJyYW5jaCIsInZlcnNpb24iOiIwLjAuNCIsInNoYTI1NiI6IjNmYWRlZGRkNmY1NzMyOGZkZWZmNzQxMjc1NTBjZjE1ZjEyMDI5ZDQ3NzMzOTlhOWY5Zjk4OGFlMWRlOWQ3YTkifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
