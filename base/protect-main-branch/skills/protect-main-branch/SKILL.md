@@ -1,6 +1,6 @@
 ---
 name: protect-main-branch
-description: "Refuses direct commits and pushes to main or master in a git hook: at commit time it reads the current branch, at push time it parses the refs being pushed. Where an agent loads this as skill text only, it is advice, and nothing stops a violation."
+description: "Keeps agents off main and master: a git hook reads the current branch at commit time and parses the refs being pushed at push time. The hook refuses a violation only where it is installed; as skill text alone this is advice, and nothing stops one."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Protect Main Branch
 
-Refuses direct commits and pushes to main or master in a git hook: at commit time it reads the current branch, at push time it parses the refs being pushed. Where an agent loads this as skill text only, it is advice, and nothing stops a violation.
+Keeps agents off main and master: a git hook reads the current branch at commit time and parses the refs being pushed at push time. The hook refuses a violation only where it is installed; as skill text alone this is advice, and nothing stops one.
 
 ```
 on(commit|push): block(forbidden_ref) refs=main|master

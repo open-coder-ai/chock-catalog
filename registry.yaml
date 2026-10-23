@@ -863,9 +863,9 @@ policies:
     copilot: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
     devin: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
     misses: null
-  description: 'Refuses direct commits and pushes to main or master in a git hook: at commit time it
-    reads the current branch, at push time it parses the refs being pushed. Where an agent loads this
-    as skill text only, it is advice, and nothing stops a violation.'
+  description: 'Keeps agents off main and master: a git hook reads the current branch at commit time
+    and parses the refs being pushed at push time. The hook refuses a violation only where it is installed;
+    as skill text alone this is advice, and nothing stops one.'
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
   version: 0.3.0
