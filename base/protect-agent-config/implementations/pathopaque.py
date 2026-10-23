@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 
 from chock_shellparse.args import taken
-from chock_shellparse.parse import _ASSIGN, _WRAPPERS, _base, _crude, _Scan, script_at
+from chock_shellparse.parse import _ASSIGN, _WRAPPERS, _base, _Clause, _crude, _Scan, script_at
 from pathescape import decode
 from pathtext import scan
 from pathwrap import WRAPPERS
@@ -79,15 +79,34 @@ def _literal(args: list[str]) -> str:
     return args[_script_at(args, flag)] if flag is not None and _script_at(args, flag) < len(args) else ""
 
 
-def _interpreter(name: str, args: list[str]) -> bool:
-    """A language runtime given its program on the command line, or reading it from standard input."""
+def _runtime(name: str, args: list[str]) -> tuple[bool, bool]:
+    """Whether a language runtime has its program on the command line, and whether it reads it from standard input."""
     found = next(((short, long) for prefix, (short, long) in ONE_LINERS.items() if name.startswith(prefix)), None)
     if found is None:
-        return False
+        return False, False
     short, long = found
     flags = [a for a in args if a.startswith("-") and not a.startswith("--") and len(a) > 1]
     on_line = any(c in short for a in flags for c in a[1:]) or any(a.split("=")[0] in long for a in args)
-    return on_line or not [a for a in args if not a.startswith("-")]
+    return on_line, not on_line and not [a for a in args if not a.startswith("-")]
+
+
+# Commands that only read what they are given: a protected name in their words is read, not changed.
+READS = frozenset(("cat", "grep", "egrep", "fgrep", "ls", "head", "tail", "wc", "diff", "cmp", "stat", "file"))
+_EXPANDS = re.compile(r"[$`]")
+
+
+def _literal_doc(clause: _Clause, docs: dict[str, str]) -> str | None:
+    """The text of the here-document or here-string a clause reads, when it is the only input and the shell expands nothing in it."""
+    texts = [docs.get(r) for r in clause.reads]
+    if len(texts) != 1 or texts[0] is None or _EXPANDS.search(texts[0]):
+        return None
+    return texts[0]
+
+
+def _plain_read(clause: _Clause) -> bool:
+    """A command that only reads: a reader's own name, no output redirection, no assignment before it."""
+    words = clause.words
+    return bool(words) and not clause.writes and not _ASSIGN.match(words[0]) and _base(words[0]) in READS
 
 
 class _Look:
@@ -96,17 +115,25 @@ class _Look:
     def __init__(self) -> None:
         self.found = False
         self.texts: list[str] = []  # every piece of text the line shows, for the protected-path test
+        self.fed: list[str] = []  # each interpreter fed a literal here-document: its words, redirections and script
+        self.rest: list[str] = []  # each other clause that is not a plain read
+        self.judged = False  # the clause being read is an interpreter in `fed`
 
     def run(self, text: str, depth: int = 0) -> None:
         scanned = scan(text)
         self.texts += [scanned.outer, *scanned.docs.values()]
         for clause in _Scan(scanned.outer).run() or _crude(scanned.outer):
-            self.texts.append(" ".join([*clause.words, *clause.writes, *clause.reads, clause.doc]))
-            self.clause(list(clause.words), depth)
+            own = " ".join([*clause.words, *clause.writes, *clause.reads, clause.doc])
+            self.texts.append(own)
+            doc = _literal_doc(clause, scanned.docs)
+            self.judged = False
+            self.clause(list(clause.words), depth, None if doc is None else f"{own} {doc}")
+            if not self.judged and not _plain_read(clause):
+                self.rest.append(own)
         for body in scanned.bodies if depth < _DEPTH else []:
             self.run(body, depth + 1)
 
-    def clause(self, words: list[str], depth: int) -> None:
+    def clause(self, words: list[str], depth: int, shown: str | None = None) -> None:
         while words and (_ASSIGN.match(words[0]) or words[0] in _LEAD):
             words.pop(0)
         if not words:
@@ -123,9 +150,9 @@ class _Look:
             args = words[at + 1 :]
             fed |= inner in FEEDERS
             if at == 0 or inner in SHELLS | EVALS | SOURCES | ONE_LINERS.keys() or inner.startswith(tuple(ONE_LINERS)):
-                self.invoke(inner, args, fed=fed, depth=depth)
+                self.invoke(inner, args, fed=fed, depth=depth, shown=shown)
 
-    def invoke(self, name: str, args: list[str], *, fed: bool, depth: int) -> None:
+    def invoke(self, name: str, args: list[str], *, fed: bool, depth: int, shown: str | None = None) -> None:
         if name in SHELLS:
             self.found |= fed or _shell(args)
             if depth < _DEPTH and (script := _literal(args)):
@@ -141,14 +168,16 @@ class _Look:
             words = args[args[:1] == ["--"] :]  # `trap -p`, `trap -l` and `trap - SIGNAL` set no body
             self.found |= bool(words) and words[0] not in ("-", "-p", "-l")
         else:
-            self.found |= _interpreter(name, args)
+            on_line, stdin = _runtime(name, args)
+            if stdin and not fed and shown is not None:
+                self.fed.append(shown)  # the script is the here-document: it is read, and judged by what it names
+                self.judged = True
+            else:
+                self.found |= on_line or stdin
 
 
-def refuses(raw: str, hit: Callable[[str], bool]) -> bool:
-    """Whether a line runs script text the guard cannot read (eval of computed text, a shell fed from a variable, a pipe or a
-    here-document, a variable as the command, `trap`, `xargs sh`, an interpreter one-liner) and names a protected path anywhere.
-
-    The line is tested as written, with its backslash escapes decoded as bash decodes them, and as each part of it reads."""
+def _spellings(raw: str) -> list[str]:
+    """The text as written, with its backslash escapes decoded as bash decodes them, and with its quotes taken out."""
     spelled = [raw, *(decode(raw, mode).text for mode in ("b", "echo", "fmt", "ansi"))]
     fresh = spelled
     for _ in range(
@@ -160,12 +189,22 @@ def refuses(raw: str, hit: Callable[[str], bool]) -> bool:
             if new not in spelled
         ]
         spelled = [*spelled, *fresh]
-    decoded = [
-        *spelled,
-        *(text.translate(_BARE) for text in spelled),
-    ]  # a `$'\x2e'` that sits in a quoted script reads `.`
+    return [*spelled, *(text.translate(_BARE) for text in spelled)]  # a `$'\x2e'` in a quoted script reads `.`
+
+
+def refuses(raw: str, hit: Callable[[str], bool]) -> bool:
+    """Whether a line runs script text the guard cannot read (eval of computed text, a shell fed from a variable, a pipe or a
+    here-document, a variable as the command, `trap`, `xargs sh`, an interpreter one-liner) and names a protected path anywhere.
+
+    An interpreter fed a here-document that expands nothing is not blind to it: that clause and every clause that is not a
+    plain read (`cat`, `grep`, `ls` ...) are tested alone, so a read of a protected file elsewhere on the line does not count.
+
+    The line is tested as written, with its backslash escapes decoded as bash decodes them, and as each part of it reads."""
+    decoded = _spellings(raw)
     if not any(hit(text) for text in decoded):
         return False  # no path of the line is protected, as written, decoded or with its quotes taken out
     look = _Look()
     look.run(raw)
-    return look.found and any(hit(text) for text in [*decoded, *look.texts])
+    if look.found and any(hit(text) for text in [*decoded, *look.texts]):
+        return True
+    return bool(look.fed) and any(hit(text) for text in _spellings("\n".join([*look.fed, *look.rest])))
