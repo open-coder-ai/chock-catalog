@@ -131,3 +131,9 @@ def test_a_scaffolded_policy_holds_its_pack_once_committed(repo):
     ref = _ref(page, policy_dir, keep_pinned=False)
     assert ref == _git(repo, "rev-parse", "HEAD")
     assert builder_link.ref_holds_pack(ref, policy_dir, sha256)
+
+
+def test_no_page_quotes_the_selection_code(pages):
+    quoted = [pid for pid, text in pages.items() if "--selection '" in text or '--selection "' in text]
+    assert quoted == []
+    assert all("--selection <code> --apply" in text for text in pages.values())

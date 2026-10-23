@@ -55,8 +55,8 @@ pip install "chock @ git+https://github.com/open-coder-ai/chock@992711af4cf8d4fd
 | Route | For | What you get | How |
 | :--- | :--- | :--- | :--- |
 | In your repository | teams | every contributor and every agent covered, at the agent's own hook where the client has one, at commit and in CI; policies travel with clones | [Quick start](#quick-start) below |
-| In your coding agent, as a plugin | one person, no repo changes | the client's pre-tool hook: best-effort, fails open, does not run in CI | the [chock.sh builder](https://chock.sh/coding/builder/): one merged plugin per client from a selection, `chock install --selection '<code>' --apply` |
-| One Claude Code plugin from a selection | a chosen subset | `chock install --selection '…' --apply`, with the command written for you | the chock.sh builder (launching soon) |
+| In your coding agent, as a plugin | one person, no repo changes | the client's pre-tool hook: best-effort, fails open, does not run in CI | the [chock.sh builder](https://chock.sh/coding/builder/): one merged plugin per client from a selection, `chock install --selection <code> --apply` |
+| One Claude Code plugin from a selection | a chosen subset | `chock install --selection <code> --apply`, with the command written for you | the chock.sh builder (launching soon) |
 
 ## Quick start
 

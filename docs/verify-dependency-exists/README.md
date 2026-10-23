@@ -48,7 +48,7 @@ chock add verify-dependency-exists
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1N2NlOTU3ZWJlZmFmNGRhYjkyZjk1M2RjN2MwYTk2Mzc0OWVhMjVmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoidmVyaWZ5LWRlcGVuZGVuY3ktZXhpc3RzIiwidmVyc2lvbiI6IjAuMi4wIiwic2hhMjU2IjoiYTk4NjNmZjQ4ZTI0OWYwN2E2MGE1NmYyYjRjZWJhY2YyNGI3YzU0MTE3M2M5MDliZTg0ZjZmNjk5MTc4ODk1NSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1N2NlOTU3ZWJlZmFmNGRhYjkyZjk1M2RjN2MwYTk2Mzc0OWVhMjVmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoidmVyaWZ5LWRlcGVuZGVuY3ktZXhpc3RzIiwidmVyc2lvbiI6IjAuMi4wIiwic2hhMjU2IjoiYTk4NjNmZjQ4ZTI0OWYwN2E2MGE1NmYyYjRjZWJhY2YyNGI3YzU0MTE3M2M5MDliZTg0ZjZmNjk5MTc4ODk1NSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

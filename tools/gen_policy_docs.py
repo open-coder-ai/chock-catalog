@@ -210,7 +210,7 @@ def render(policy_dir: Path, manifest: dict, prose: dict, label: dict, builder_l
         "chock sync ." if kind != "text" else "chock sync --repo .",
         "```",
         "",
-        f"Or [Open in the chock.sh builder]({builder_link}): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection '<code>' --apply`.",
+        f"Or [Open in the chock.sh builder]({builder_link}): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.",
         "",
         "Or copy the folder — it does the same thing, byte for byte:",
         "",
