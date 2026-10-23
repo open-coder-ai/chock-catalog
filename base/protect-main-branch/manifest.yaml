@@ -1,9 +1,10 @@
 id: protect-main-branch
 name: "Protect Main Branch"
-version: "0.0.3"
+version: "0.0.4"
 description: >
-  Block direct commits and pushes to main or master. Enforced at commit time by reading
-  the current branch, and at push time by parsing the refs the agent is pushing.
+  Refuses direct commits and pushes to main or master in a git hook: at commit time it reads
+  the current branch, at push time it parses the refs being pushed. Where an agent loads this
+  as skill text only, it is advice, and nothing stops a violation.
 artifact: hook
 enforcement: block
 mandatory: true
@@ -45,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-23'
+  changes:
+  - "Description wording only (IR-F4): it said the policy is enforced, but on every agent client the plugin carries skill text only and an agent can commit on main. It now says what the git hook refuses and that skill text alone is advice. Behaviour unchanged."
 - version: 0.0.3
   date: '2026-10-07'
   changes:
