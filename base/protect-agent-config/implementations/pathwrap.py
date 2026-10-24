@@ -6,7 +6,9 @@ import shlex
 from typing import Any, NamedTuple
 
 from chock_shellparse import commands
-from chock_shellparse.parse import _ASSIGN, _WRAPPERS, Cmd, _base, _crude, _inner, _Scan, _strip
+from chock_shellparse.parse import _ASSIGN, Cmd, _base, _crude, _inner, _Scan
+from chock_shellparse.wrappers import WRAPPERS as _WRAPPERS
+from chock_shellparse.wrappers import strip as _strip
 from pathtext import scan
 
 _LEVELS = 8

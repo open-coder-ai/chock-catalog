@@ -6,7 +6,8 @@ import re
 from collections.abc import Callable
 
 from chock_shellparse.args import taken
-from chock_shellparse.parse import _ASSIGN, _WRAPPERS, _base, _Clause, _crude, _Scan, script_at
+from chock_shellparse.parse import _ASSIGN, _base, _Clause, _crude, _Scan, script_at
+from chock_shellparse.wrappers import WRAPPERS as _WRAPPERS
 from pathescape import decode
 from pathtext import scan
 from pathwrap import WRAPPERS

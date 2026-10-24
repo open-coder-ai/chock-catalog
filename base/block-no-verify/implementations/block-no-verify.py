@@ -11,7 +11,7 @@ import sys
 from itertools import pairwise
 
 from chock_shellparse import Cmd, commands, git_parts
-from chock_shellparse.parse import WIPED
+from chock_shellparse.wrappers import WIPED
 from hook_bypass import (
     DECLARERS,
     END,
