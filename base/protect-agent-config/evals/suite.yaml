@@ -8029,3 +8029,28 @@ suite:
     prompt: "An agent runs a script fed by a here-document with an unquoted delimiter, whose text the shell expands to a command that names AGENTS.md."
     expect: "The guard refuses: the script the interpreter gets is not the text shown."
     execute: {command: "python3 -I - <<E\nprint('$(rm AGENTS.md)')\nE", expect: block}
+  - id: tc-1567
+    category: trigger
+    prompt: "An agent sets the interpreter chock's hook launcher runs under, through git config."
+    expect: "The guard refuses: the key makes git hand a program to the launcher, as the other code-running keys do."
+    execute: {command: "git config chock.python /bin/true", expect: block}
+  - id: tc-1568
+    category: negative_trigger
+    prompt: "An agent reads the launcher interpreter setting."
+    expect: "The guard allows the read."
+    execute: {command: "git config --get chock.python", expect: allow}
+  - id: tc-1569
+    category: trigger
+    prompt: "An agent edits the chock config file from inside sh -c."
+    expect: "The guard reads the string and refuses: .chock/ is protected as a whole."
+    execute: {command: "sh -c 'echo x >> .chock/config.yaml'", expect: block}
+  - id: tc-1570
+    category: trigger
+    prompt: "An agent edits the chock config file from inside eval."
+    expect: "The guard refuses the eval'd write."
+    execute: {command: "eval 'echo x >> .chock/config.yaml'", expect: block}
+  - id: tc-1571
+    category: negative_trigger
+    prompt: "An agent reads the chock config file."
+    expect: "The guard allows the read."
+    execute: {command: "cat .chock/config.yaml", expect: allow}
