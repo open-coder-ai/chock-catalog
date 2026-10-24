@@ -11,6 +11,7 @@ GUARD = guardkit.load_guard("protect-agent-config")
 PATHSET = guardkit.load_guard("protect-agent-config", "pathset")
 PATHTEXT = guardkit.load_guard("protect-agent-config", "pathtext")
 PATHLINK = guardkit.load_guard("protect-agent-config", "pathlink")
+PATHWRAP = guardkit.load_guard("protect-agent-config", "pathwrap")
 BLOCK = PATHSET.BLOCK
 
 
@@ -151,3 +152,17 @@ def test_a_path_of_a_thousand_segments_is_refused_not_a_fault(tmp_path: Path, mo
 
 def test_an_ordinary_deep_path_is_still_followed(tmp_path: Path) -> None:
     assert PATHLINK.follow(str(tmp_path), "/".join("a" * 100)) == {str(tmp_path / "/".join("a" * 100))}
+
+
+@pytest.mark.parametrize(
+    ("raw", "scripts"),
+    [
+        ("env --split-string='cat a b'", ["cat a b"]),
+        ("env -S'cat a b'", ["cat a b"]),
+        ("env -S 'cat a' b", ["cat a b"]),
+        ("env -u HOME -S'ls'", ["ls"]),
+        ("env FOO=1 ls", []),
+    ],
+)
+def test_the_env_split_string_is_still_collected_for_the_loose_check(raw: str, scripts: list[str]) -> None:
+    assert PATHWRAP.env_scripts(raw) == scripts
