@@ -1,6 +1,6 @@
 id: opaque-blob-guard
 name: "Flag Opaque Blobs"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, fixtures/, testdata/,
   spec/, m4/, vendor/, gradle/wrapper/: a file whose first bytes are an archive, executable,
@@ -112,7 +112,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -125,6 +125,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-24'
+  changes:
+  - "Fix for Windows (SR-2d1; tests in test_opaque_blob_git_kill.py). Reading a git object past the hash cap kills the git process and keeps what was read; the check no longer names `signal.SIGKILL`, which Windows lacks, so the gate no longer faults on every in-scope change there. Behaviour elsewhere is unchanged."
 - version: 0.0.2
   date: '2026-10-02'
   changes:

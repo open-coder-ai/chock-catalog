@@ -1,6 +1,6 @@
 id: protect-ci-workflows
 name: "Protect CI Workflows"
-version: "0.2.6"
+version: "0.2.7"
 description: >
   Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to
   .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp
@@ -43,7 +43,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-10-05T00:00:00Z"
+  updated_at: "2026-10-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -57,6 +57,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.7
+  date: '2026-10-24'
+  changes:
+  - "Behaviour change, added coverage for equivalent spellings of the protected paths (SR-2d1; eval cases tc-056 to tc-062; tests in test_protect_ci_workflows_shell.py). The shell guard matches the folded path: `//` and `/./` collapsed, `..` resolved, trailing dots and spaces and stream suffixes dropped, case ignored. Relative paths are read from the directory a `cd`, `pushd` or `popd` before them left, and removing or moving the `.github` folder itself is refused. Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
 - version: 0.2.6
   date: '2026-10-13'
   changes:

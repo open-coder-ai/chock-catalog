@@ -11,6 +11,7 @@ import sys
 from itertools import pairwise
 
 from chock_shellparse import Cmd, commands, git_parts
+from chock_shellparse.parse import WIPED
 from hook_bypass import (
     DECLARERS,
     END,
@@ -44,7 +45,6 @@ DEPTH = 3  # aliases, rebase --exec and submodule foreach read this many levels 
 OVERRIDE = re.compile(r"CHOCK_(?:AGENT_COMMIT|DIFF_LIMIT|ROLLOUT|GATE_LOG|ALLOW\w*)|CLAUDECODE|AI_AGENT", re.IGNORECASE)
 REMOVAL = frozenset(("CLAUDECODE", "AI_AGENT", "CHOCK_AGENT_COMMIT"))  # hiding these makes an agent's commit a person's
 MARKERS = "(CLAUDECODE|AI_AGENT|CHOCK_AGENT_COMMIT)(?!\\w)"
-WIPED = "CHOCK_ENV_WIPED"
 ASSIGN = re.compile(r"([A-Za-z_]\w*)\+?=")
 # Spellings the lexer drops are rewritten to the plain NAME=v it knows; text inside quotes stays data either way.
 REWRITES = tuple(
@@ -56,10 +56,6 @@ REWRITES = tuple(
         ),  # $env:X = v, X+=v
         (rf"(?<![\w-])(?:-u\s*|--unset(?:\s+|=)){MARKERS}", r"\1="),  # env -u X, env --unset=X
         (rf"(?<![\w-])export\s+-[a-z]*n[a-z]*(?:\s+[a-z_]\w*)*?\s+{MARKERS}", r"\1="),  # export -n X
-        (
-            r"(?<![\w./-])env((?:\s+-\S*(?:\s+[^-\s]\S*)?)*?)\s+(?:-[a-z]*i[a-z]*|--ignore-environment|-)(?=\s|$)",
-            rf"env\1 {WIPED}=1",  # env -i wipes the markers
-        ),
     )
 )
 PS_REMOVERS = frozenset(("remove-item", "ri", "clear-item", "ci", "rm", "del", "erase"))

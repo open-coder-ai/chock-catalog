@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from pathhooks import in_hooks_folder
 from pathmatch import DEVICE
 from pathplugin import plugin_hooks
 
@@ -139,6 +140,7 @@ def verdict(path: str, base: str | None = None) -> str:
         or GUARD_SOURCES.search(normal)
         or _OUTSIDE.search(normal)
         or plugin_hooks(normal, base)
+        or in_hooks_folder(normal, base)
     ):
         return BLOCK
     parts = normal.split("/")

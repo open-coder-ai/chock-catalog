@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from .args import taken
+from .args import abbreviates, taken
 from .quoting import split_words
 
 
@@ -49,13 +49,15 @@ _POWERSHELL = re.compile(
 _SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash", "mksh", "yash"})
 _PS_SHELLS = frozenset({"pwsh", "powershell"})
 _DEPTH = 4
+_ARITH_AFTER = frozenset({"for", "if", "elif", "while", "until", "then", "do", "else", "!", "{"})
+WIPED = "CHOCK_ENV_WIPED"  # in the env of a command that `env -i` ran: the agent markers are gone
 _WRAPPERS = {
     name: (frozenset(flags.split()), skip)
     for name, flags, skip in (
         ("sudo", "-u -g -h -p -C -D -R -T -U -r -t --user --group --host --prompt --chdir", 0),
         ("doas", "-u -C", 0),
         ("pkexec", "--user", 0),
-        ("env", "-u -C -S --unset --chdir --split-string", 0),
+        ("env", "-u -C --unset --chdir", 0),
         ("exec", "-a", 0),
         ("nice", "-n --adjustment", 0),
         ("ionice", "-c -n -p -t", 0),
@@ -101,7 +103,7 @@ class _Scan:
 
     def __init__(self, text: str) -> None:
         self.text, self.pos, self.done, self.cur = text, 0, [], _Clause()
-        self.redir, self.docs = "", []
+        self.redir, self.docs, self.arith = "", [], 0
 
     def run(self) -> list[_Clause] | None:
         while self.pos < len(self.text):
@@ -113,13 +115,32 @@ class _Scan:
             if kind == "word":
                 self._word(_unquote(match.group()))
             elif kind == "redir":
-                self.redir = match.group().lstrip("0123456789")
+                if not self._shift(match.start()):
+                    self.redir = match.group().lstrip("0123456789")
             elif kind in ("end", "nl") and not (match.group() == "(" and self._elements()):
+                self._paren(match.group())
                 self._end()
                 if kind == "nl":
                     self._bodies()
         self._end()
         return self.done
+
+    def _paren(self, paren: str) -> None:
+        """Track `$(( ))` and `(( ))`: inside them `<<` shifts bits, it opens no here-document."""
+        if paren == "(":
+            if self.arith:
+                self.arith += 1
+            elif self.text[self.pos : self.pos + 1] == "(" and (
+                self.text[self.pos - 2 : self.pos - 1] == "$" or set(self.cur.words) <= _ARITH_AFTER
+            ):
+                self.arith = 1
+        elif paren == ")" and self.arith:
+            self.arith -= 1
+
+    def _shift(self, at: int) -> bool:
+        """Whether the redirection operator at `at` is arithmetic: inside `(( ))` or `$(( ))`, or after an open `$[` on its line."""
+        line = self.text[:at].rsplit("\n", 1)[-1]
+        return bool(self.arith) or ("$[" in line and "]" not in line[line.rfind("$[") :])
 
     def _elements(self) -> bool:
         """`name=(a b c)`: the elements join the assignment word, as one word, instead of the `(` ending the clause."""
@@ -194,15 +215,58 @@ def _base(word: str) -> str:
     return re.sub(r"\.exe$", "", word.replace("\\", "/").rsplit("/", 1)[-1].lower())
 
 
-def _strip(name: str, words: list[str]) -> list[str]:
+def _env_option(word: str, words: list[str], i: int) -> tuple[str, int] | None:
+    """For env's -S/--split-string at words[i]: (the string env splits and runs, the index after it); None for any other option."""
+    if word.startswith("--"):
+        flag, equals, value = word.partition("=")
+        if not abbreviates(flag, "--split-string", 4):
+            return None
+        return (value, i + 1) if equals else (words[i + 1] if i + 1 < len(words) else "", i + 2)
+    for at, char in enumerate(word[1:], 1):
+        if char in "uC":  # these take the rest of the cluster, or the next word, as a value
+            return None
+        if char == "S":
+            return (word[at + 1 :], i + 1) if word[at + 1 :] else (words[i + 1] if i + 1 < len(words) else "", i + 2)
+    return None
+
+
+def _env_wipes(word: str) -> bool:
+    """Whether an env option clears the environment: -i, --ignore-environment (or an unambiguous prefix), a lone -."""
+    if word.startswith("--"):
+        return abbreviates(word, "--ignore-environment", 10)
+    for char in word[1:]:
+        if char in "uCS":
+            return False
+        if char == "i":
+            return True
+    return word == "-"
+
+
+def _unwrap(name: str, words: list[str]) -> tuple[list[str], bool]:
+    """The words after wrapper `name` and its options (env's -S string is split into them), and whether env -i wiped the environment."""
     flags, skip = _WRAPPERS[name]
-    i = 0
-    while i < len(words) and words[i].startswith("-") and len(words[i]) > 1:
-        if words[i] == "--":
+    i, wiped = 0, False
+    while i < len(words) and words[i].startswith("-"):
+        word = words[i]
+        if word == "--":
             i += 1
             break
-        i += 2 if words[i] in flags else 1
-    return words[i + skip :]
+        if name == "env":
+            wiped = wiped or _env_wipes(word)
+            if split := _env_option(word, words, i) if len(word) > 1 else None:
+                words, i = [*split_words(split[0]), *words[split[1] :]], 0
+                continue
+        if len(word) == 1:
+            if name == "env":
+                i += 1
+                continue
+            break
+        i += 2 if word in flags else 1
+    return words[i + skip :], wiped
+
+
+def _strip(name: str, words: list[str]) -> list[str]:
+    return _unwrap(name, words)[0]
 
 
 def script_at(rest: list[str], *, options: bool = True, skip: int = 0) -> int:
@@ -239,7 +303,7 @@ def _assign(env: dict[str, str], key: str, value: str) -> None:
 
 
 def _resolve(clause: _Clause, env: dict[str, str], *, ps: bool, depth: int) -> tuple[list[Cmd], dict[str, str]]:
-    words, local = list(clause.words), dict(env)
+    words, local, marked = list(clause.words), dict(env), False
     while words:
         name = _base(words[0])
         if _ASSIGN.match(words[0]):
@@ -247,12 +311,15 @@ def _resolve(clause: _Clause, env: dict[str, str], *, ps: bool, depth: int) -> t
             _assign(local, key, value)
         elif name in _WRAPPERS:
             skip = name == "command" and words[1:2] in (["-v"], ["-V"])
-            words = [] if skip else _strip(name, words[1:])
+            words, wiped = ([], False) if skip else _unwrap(name, words[1:])
+            marked = marked or wiped
         else:
             break
     carry = [Cmd("", [], local, clause.writes, clause.reads, clause.doc)] if clause.writes or clause.reads else []
     if not words:
         return carry, local
+    if marked:
+        local = {**local, WIPED: "1"}
     script = _inner(name, words[1:])
     if script is not None and depth < _DEPTH:
         found, after = _parse(script, local, ps=ps or name in _PS_SHELLS, depth=depth + 1)

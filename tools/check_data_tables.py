@@ -77,8 +77,8 @@ LEGACY = {
 }
 
 
-#: Not shipped and not tables: version control, the framework checkout CI makes, test fixtures.
-SKIP = frozenset({".git", ".framework", "node_modules", "tests"})
+#: Not shipped and not tables: version control, the framework checkout CI makes, a virtualenv, test fixtures.
+SKIP = frozenset({".git", ".framework", ".venv", "node_modules", "tests", "venv"})
 
 
 def _fold(name: str) -> str:

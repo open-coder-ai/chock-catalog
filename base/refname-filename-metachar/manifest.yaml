@@ -1,6 +1,6 @@
 id: refname-filename-metachar
 name: "Refname Filename Metachar"
-version: "0.1.3"
+version: "0.1.4"
 description: >
   Refuses names a shell, CI step or git can misread. Paths a change adds or renames into (commit,
   agent writes), and branches and tags pushed (pre-push), with command substitution, an IFS
@@ -34,7 +34,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -47,6 +47,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.4
+  date: '2026-10-24'
+  changes:
+  - "Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
 - version: 0.1.3
   date: '2026-10-19'
   changes:
