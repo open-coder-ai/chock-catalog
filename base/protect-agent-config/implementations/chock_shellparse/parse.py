@@ -37,6 +37,7 @@ _TOKEN = re.compile(
     rf"|(?P<word>{_QUOTED}+)",
     re.DOTALL,
 )
+_QUOTES = re.compile(r"""'[^']*'|"(?:[^"\\]|\\.)*"|\\.""", re.DOTALL)
 _PIECE = re.compile(r"'([^']*)'|\"((?:[^\"\\]|\\.)*)\"|\\(.)|([^'\"\\]+)", re.DOTALL)
 _ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=")  # `x=`, `x+=`, `x[0]=`
 # What a variable holds when the line does not show it: an array, an element, text appended to one.
@@ -79,11 +80,15 @@ class _Scan:
             kind = match.lastgroup
             if kind == "word":
                 self._word(_unquote(match.group()))
-                if "$[" in match.group() or "]" in match.group():  # `$[ ]` is arithmetic too
-                    self.square = match.group().rfind("$[") > match.group().rfind("]")
+                bare = _QUOTES.sub("", match.group())  # a quoted `$[` is text, not arithmetic
+                if "$[" in bare or "]" in bare:
+                    self.square = bare.rfind("$[") > bare.rfind("]")
             elif kind == "redir":
-                if not (self.arith or self.square):  # in arithmetic `<<` shifts bits, it opens no here-document
-                    self.redir = match.group().lstrip("0123456789")
+                op = match.group().lstrip("0123456789")
+                if not (
+                    op in ("<<", "<<-") and (self.arith or self.square)
+                ):  # in arithmetic `<<` shifts bits; every other redirection is kept
+                    self.redir = op
             elif kind in ("end", "nl") and not (match.group() == "(" and self._elements()):
                 self._paren(match.group())
                 self._end()

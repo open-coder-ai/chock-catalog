@@ -133,3 +133,28 @@ def test_options_and_a_double_dash_before_a_script_are_skipped(sp, raw: str) -> 
 )
 def test_env_options_that_name_no_string_or_a_different_option(sp, raw: str, expected: list[str]) -> None:
     assert names(sp, raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "target"),
+    [
+        ("echo '$[' > target.txt", "target.txt"),
+        ('echo "$[" > target.txt', "target.txt"),
+        ("echo x$[ > target.txt", "target.txt"),
+        ("echo $(( 1 ) > target.txt", "target.txt"),
+        ("echo $((1<<2)) > target.txt", "target.txt"),
+        ("echo $[1<<2] >> target.txt", "target.txt"),
+        ("(( x > 1 )); echo y > target.txt", "target.txt"),
+        ("echo $((1<<2)) < target.txt", "target.txt"),
+        ("echo $((1<<2)) 2>&1 > target.txt", "target.txt"),
+    ],
+)
+def test_arithmetic_skips_only_the_here_document_openers(sp, raw: str, target: str) -> None:
+    written = [path for cmd in sp.commands(raw) for path in (*cmd.writes, *cmd.reads)]
+    assert target in written
+
+
+def test_a_here_document_after_arithmetic_keeps_its_body(sp) -> None:
+    found = names(sp, f"echo $((1<<2)); cat <<EOF\n{SEEN}\nEOF\nls")
+    assert found == ["echo", "cat", "ls"] or found[-2:] == ["cat", "ls"]
+    assert "rm" not in found

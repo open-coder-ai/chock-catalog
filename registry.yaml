@@ -777,8 +777,8 @@ policies:
   mandatory: true
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1575
-  eval_executed: 1575
+  eval_cases: 1578
+  eval_executed: 1578
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -806,8 +806,8 @@ policies:
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 62
-  eval_executed: 62
+  eval_cases: 63
+  eval_executed: 63
   label:
     claude-code: {"keyword": "ask", "says": "refuses a matched shell command before it runs. Asks on an agent's file writes. It refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Refuses an agent's file writes and refuses at turn end, because this client cannot prompt at either point"}

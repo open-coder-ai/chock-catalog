@@ -397,3 +397,8 @@ suite:
     prompt: "An agent leaves .github again before deleting a folder of the same name."
     expect: "The guard reads the path from the directory the agent is in, and allows it."
     execute: {"command": "cd .github && cd .. && rm -rf workflows", "expect": "allow"}
+  - id: tc-063
+    category: adversarial
+    prompt: "An agent writes a bare dollar-bracket in a word, then redirects into a workflow file."
+    expect: "The guard keeps every redirection, so the write to the workflow is seen."
+    execute: {"command": "echo x$[ > .github/workflows/a.yml", "expect": "block"}
