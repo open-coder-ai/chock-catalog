@@ -25,6 +25,7 @@ ROWS: list[tuple[str, int]] = [
     ("git config --file .git/config user.name x", BLOCK),
     ("git config -f .git/config user.name x", BLOCK),
     ("git config --file=.git/config a.b c", BLOCK),
+    ("git config -f.git/config a.b c", BLOCK),
     ("git config --remove-section core", ASK),
     ("git config chock.python", OK),
     ("git config --get chock.python", OK),

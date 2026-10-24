@@ -12,7 +12,7 @@
 | **Mechanism** | guard script `block-no-verify.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 107 total, 107 executable |
+| **Eval cases** | 112 total, 112 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -47,7 +47,7 @@ chock add block-no-verify
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0MDUzOTJhZDg2OWQ2Njc3M2RiNzA4MDk1MjExMGRiODgxZjMxM2Y4In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stbm8tdmVyaWZ5IiwidmVyc2lvbiI6IjAuNS4wIiwic2hhMjU2IjoiYTQwNmQ1MGU0Y2YzMGQ1NjQzMDg0MDgwYWQ0MjU5ZDM0MmYzZWRkMDcwMzY4ODhjNDdhODIxNGY2NjA5OTRjYyJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJkNjk2YzNiNTkwZjMwNGFiNGU4M2I4NDNjNWU1ZTA1ZDcwZTgxNjBhIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stbm8tdmVyaWZ5IiwidmVyc2lvbiI6IjAuNS4wIiwic2hhMjU2IjoiODBmYjgzYTRiMGVkNmJjMjhiOWMxNWY2MzA3Yjk2OTJjY2ViOTEzMjEzZjgzNDFjODUyYjNkN2ViZTFlZmUyMCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
