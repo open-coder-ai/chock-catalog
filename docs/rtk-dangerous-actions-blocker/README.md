@@ -47,7 +47,7 @@ chock add rtk-dangerous-actions-blocker
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI5NWZmNzIxNWQyOGUwZGMyNzg5YWJhNDJmZWM2ZjVjZmM0MjViYWVjIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicnRrLWRhbmdlcm91cy1hY3Rpb25zLWJsb2NrZXIiLCJ2ZXJzaW9uIjoiMC4zLjEiLCJzaGEyNTYiOiJhMWZjYzJmNjhjM2U1MTI0N2ZhZWZlYmQ4ZjQ2MTMyNTM1MDk5NGNiNWZiNzJmNjUzYmU3YjNiOTZlNGQyN2M2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhMzZkZDhiNWMzYzlmZTliZDBiM2Y4YmMxYjgzMWQxOTlhOWIwM2YwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicnRrLWRhbmdlcm91cy1hY3Rpb25zLWJsb2NrZXIiLCJ2ZXJzaW9uIjoiMC4zLjEiLCJzaGEyNTYiOiIzYjhkNzk2NTZmYTI4MjRkYmIwMzQ3NWY4NGM2NmM5YTFmMDRhYjYyMzZkZmEwODgxYTI1YTg0M2VjZjc3MGU0In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

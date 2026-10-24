@@ -47,7 +47,7 @@ chock add protect-ci-workflows
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI5NWZmNzIxNWQyOGUwZGMyNzg5YWJhNDJmZWM2ZjVjZmM0MjViYWVjIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1jaS13b3JrZmxvd3MiLCJ2ZXJzaW9uIjoiMC4yLjciLCJzaGEyNTYiOiJhMGQwNGJkNWMyNjMwOGI0NGY1ZmE1MmU0ZDg1ZDJhMTc2NTM0OTMxZDA1NWU3ZmMzYTgyOTljZWEzODAwZGM3In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhMzZkZDhiNWMzYzlmZTliZDBiM2Y4YmMxYjgzMWQxOTlhOWIwM2YwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1jaS13b3JrZmxvd3MiLCJ2ZXJzaW9uIjoiMC4yLjciLCJzaGEyNTYiOiJkZDZmNjU2YmE5NDc4OTdjYTQwNzZhYjI3NTAzMWRkYzkyMjA2MTE4MTYxNzdiZjA0NzFhYTE5OGYzNjk4NmNmIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

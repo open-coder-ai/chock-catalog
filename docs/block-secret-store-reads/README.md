@@ -51,7 +51,7 @@ chock add block-secret-store-reads
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI5NWZmNzIxNWQyOGUwZGMyNzg5YWJhNDJmZWM2ZjVjZmM0MjViYWVjIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stc2VjcmV0LXN0b3JlLXJlYWRzIiwidmVyc2lvbiI6IjAuMC42Iiwic2hhMjU2IjoiMzg0ZDgyMTk1NzQyZmZkNWQ2NGVmZTQxOGNhYmViZmY4YTA4YzYyNDc1YmY2YjRkYTExM2ZjNmUyN2NjNTNkYSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhMzZkZDhiNWMzYzlmZTliZDBiM2Y4YmMxYjgzMWQxOTlhOWIwM2YwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stc2VjcmV0LXN0b3JlLXJlYWRzIiwidmVyc2lvbiI6IjAuMC42Iiwic2hhMjU2IjoiNDM1ZmE3MGRiZjBmNGIxZTllZTBmM2U4NmFhZmMxZGVjNDlmNWQ1ZjIzNDllODBjMjkxZWE3NzFmNmM3MTFjOSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
