@@ -3,15 +3,13 @@
 from .flags import HOOK_SUBS, rebase_execs, skips_verify
 from .gitargs import (
     HOOKS_KEY,
-    LAUNCHER_KEY,
     aliases,
     asks_for,
     config_pairs,
+    config_refusals,
     config_writes,
     env_asks,
     submodule_scripts,
-    unsets_hooks_path,
-    writes_repo_config,
 )
 from .managers import (
     DECLARERS,
@@ -32,13 +30,13 @@ __all__ = [
     "END",
     "HOOKS_KEY",
     "HOOK_SUBS",
-    "LAUNCHER_KEY",
     "PS_PATH",
     "PS_SETTERS",
     "SHELLS",
     "aliases",
     "asks_for",
     "config_pairs",
+    "config_refusals",
     "config_writes",
     "declared",
     "env_asks",
@@ -49,7 +47,5 @@ __all__ = [
     "skips_verify",
     "submodule_scripts",
     "uninstalls",
-    "unsets_hooks_path",
     "without_bodies",
-    "writes_repo_config",
 ]

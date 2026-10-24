@@ -16,13 +16,13 @@ from hook_bypass import (
     END,
     HOOK_SUBS,
     HOOKS_KEY,
-    LAUNCHER_KEY,
     PS_PATH,
     PS_SETTERS,
     SHELLS,
     aliases,
     asks_for,
     config_pairs,
+    config_refusals,
     config_writes,
     declared,
     env_asks,
@@ -33,9 +33,7 @@ from hook_bypass import (
     skips_verify,
     submodule_scripts,
     uninstalls,
-    unsets_hooks_path,
     without_bodies,
-    writes_repo_config,
 )
 
 BLOCK, ASK = 1, 3
@@ -158,10 +156,6 @@ def config_verdicts(pairs: list[tuple[str, str]], env: dict[str, str], depth: in
         (BLOCK, f"setting core.hooksPath replaces the hooks git runs, so it can switch every one off. {FIX}")
     ]
     found = found if any(key == HOOKS_KEY for key, _ in pairs) else []
-    if any(key == LAUNCHER_KEY for key, _ in pairs):
-        found.append(
-            (BLOCK, f"setting {LAUNCHER_KEY} swaps the program hooks run under, so it can turn every one off. {FIX}")
-        )
     for name, texts in aliases(pairs, env).items():
         for text in texts:
             script = text[1:] if text.startswith("!") else f"git {text}"
@@ -179,12 +173,7 @@ def judge_git(cmd: Cmd, depth: int) -> Verdict:
     found += [run_alias(cmd, sub, rest, text, depth) for text in aliases(pairs, cmd.env).get(sub, [])]
     scripts = (rebase_execs(rest) if sub == "rebase" else []) + submodule_scripts(sub, rest)
     found += [via(f"git {sub}", script, check(script, depth + 1)) for script in scripts]
-    if sub == "config" and unsets_hooks_path(rest):
-        found.append(
-            (BLOCK, f"unsetting core.hooksPath removes the hooks git runs, as setting it elsewhere does. {FIX}")
-        )
-    if sub == "config" and writes_repo_config(rest):
-        found.append((BLOCK, f"writing the repository config directly can set core.hooksPath or {LAUNCHER_KEY}. {FIX}"))
+    found += [(BLOCK, f"{why} {FIX}") for why in config_refusals(sub, rest, pairs)]
     hooked, hits = sub in HOOK_SUBS, env_hits(cmd.env)
     if hooked and skips_verify(sub, rest):
         found.append((BLOCK, f"git {sub} --no-verify is not allowed. {FIX}"))
@@ -200,6 +189,7 @@ def judge_git(cmd: Cmd, depth: int) -> Verdict:
 def judge_env(env: dict[str, str], depth: int) -> Verdict:
     """What the line leaves set for the commands after it: a hook manager's off switch, git config, another repo."""
     found = config_verdicts(config_pairs([], env), env, depth)
+    found += [(BLOCK, f"{why} {FIX}") for why in config_refusals("", [], config_pairs([], env))]
     if hits := env_hits(env):
         found.append((BLOCK, f"setting {hits[0]} switches the hook manager off for the commands that follow. {FIX}"))
     if reason := env_asks(env):

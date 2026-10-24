@@ -82,6 +82,18 @@ def writes_repo_config(rest: list[str]) -> bool:
     return os.path.normpath(target).endswith(".git/config") and bool(operands[1:]) and not reading
 
 
+def config_refusals(sub: str, rest: list[str], pairs: list[tuple[str, str]]) -> list[str]:
+    """Why a command that sets the launcher key, unsets core.hooksPath or writes .git/config is refused ('' sub: env only)."""
+    reasons = []
+    if any(key == LAUNCHER_KEY for key, _ in pairs):
+        reasons.append(f"setting {LAUNCHER_KEY} swaps the program hooks run under, so it can turn every one off.")
+    if sub == "config" and unsets_hooks_path(rest):
+        reasons.append("unsetting core.hooksPath removes the hooks git runs, as setting it elsewhere does.")
+    if sub == "config" and writes_repo_config(rest):
+        reasons.append(f"writing the repository config directly can set core.hooksPath or {LAUNCHER_KEY}.")
+    return reasons
+
+
 def this_repo(path: str) -> bool:
     path = path.rstrip("/")
     return path in THIS_REPO or path == os.path.join(os.getcwd(), ".git")
