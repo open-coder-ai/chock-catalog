@@ -50,7 +50,7 @@ chock add block-unguarded-agent-spawn
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJkOTA4ZmFlYjA4MzljZTUzODliYjE3ODg2MWM3MTY5ZmZiMjk3NGE0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5ndWFyZGVkLWFnZW50LXNwYXduIiwidmVyc2lvbiI6IjAuMi4xIiwic2hhMjU2IjoiYTllMjcxMTdjNDgwYzE2Y2UzMWE1ZTc4NzQ3YzNkMjQ3MTgyZjM3NGJiZjYwMTQ5MTBhYjNhZTYzYWZjMDIwMCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhMjNhYzk0YmJkZWRmYThhN2QyMzJhYWI2ZmIyYWYyZjNlY2FhZTBlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5ndWFyZGVkLWFnZW50LXNwYXduIiwidmVyc2lvbiI6IjAuMi4xIiwic2hhMjU2IjoiY2RjNGQxOGEzY2I2MzU2ZjFhNjFlMjYxYmZiN2FjZTVjZjc4ODlkMmI5NjBkMTA5ZGJmZjU1YTFmMjRjOWQxYyJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
