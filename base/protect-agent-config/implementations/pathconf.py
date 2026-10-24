@@ -17,7 +17,7 @@ _CODE = re.compile(
     r"|include\.path|includeif\..+\.path|gpg\.program|gpg\..+\.program|uploadpack\.packobjectshook"
     r"|receive\.procreceiverefs|pager\..+|web\.browser|browser\..+\.cmd|man\..+\.cmd|sendemail\..+"
     r"|remote\..+\.(?:uploadpack|receivepack|vcs)|(?:difftool|mergetool)\..+\.(?:cmd|path)|trailer\..+\.cmd"
-    r"|submodule\..+\.update)"
+    r"|submodule\..+\.update|chock\.python)"
 )
 # Sections that hold such keys: removing or renaming one rewrites them.
 _SECTIONS = frozenset(
