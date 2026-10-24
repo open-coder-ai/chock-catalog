@@ -47,7 +47,7 @@ chock add block-unapproved-egress
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJiMmQ1MzAyM2Y1MmQzMDhhNTViMWM5YTY2MzY1ODZkMDQ0ODFiZmY2In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5hcHByb3ZlZC1lZ3Jlc3MiLCJ2ZXJzaW9uIjoiMC4yLjUiLCJzaGEyNTYiOiI3NTc2ODRlNzQxM2UyZTFiNWMzNGQ4ZTM2MDE1YTE1MzhjYjBkNTgzMTc0N2U4MWVmMDZhODY1NzRmNGRlNDA2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJkOTA4ZmFlYjA4MzljZTUzODliYjE3ODg2MWM3MTY5ZmZiMjk3NGE0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5hcHByb3ZlZC1lZ3Jlc3MiLCJ2ZXJzaW9uIjoiMC4yLjUiLCJzaGEyNTYiOiJlYmRmYmQ1ZjMzN2FhMWVmMjExODBiYWU5ZDI2ODE1NzdjYjIzZGMwNWY0Yjg3YTcwNGJlZjdmYjY3ZDdiZTRjIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
