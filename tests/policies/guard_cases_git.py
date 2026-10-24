@@ -37,7 +37,10 @@ CASES: dict[str, list[tuple[str, int]]] = {
         ("git status -- commit -c core.hooksPath=/tmp", OK),
         ("git config --get core.hooksPath", OK),
         ("git config core.hooksPath", OK),
-        ("git config --unset core.hooksPath", BLOCK),  # husky installs through hooksPath; an agent removing it skips every hook (0.5.1)
+        (
+            "git config --unset core.hooksPath",
+            BLOCK,
+        ),  # husky installs through hooksPath; an agent removing it skips every hook (0.5.1)
         ("git config user.name x", OK),
         ("git -c user.name=x commit -m y", OK),
         ("GIT_CONFIG_COUNT=abc git commit -m y", OK),
