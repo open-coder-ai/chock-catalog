@@ -1,7 +1,16 @@
 """block-no-verify's readers of the ways a command switches git hooks off (stdlib only)."""
 
 from .flags import HOOK_SUBS, rebase_execs, skips_verify
-from .gitargs import HOOKS_KEY, aliases, asks_for, config_pairs, config_writes, env_asks, submodule_scripts
+from .gitargs import (
+    HOOKS_KEY,
+    aliases,
+    asks_for,
+    config_pairs,
+    config_refusals,
+    config_writes,
+    env_asks,
+    submodule_scripts,
+)
 from .managers import (
     DECLARERS,
     END,
@@ -27,6 +36,7 @@ __all__ = [
     "aliases",
     "asks_for",
     "config_pairs",
+    "config_refusals",
     "config_writes",
     "declared",
     "env_asks",

@@ -7,6 +7,9 @@ from itertools import pairwise
 from .flags import HOOK_SUBS
 
 HOOKS_KEY = "core.hookspath"
+LAUNCHER_KEY = (
+    "chock.python"  # the interpreter chock's launcher runs hooks with: a program that exits 0 turns every hook off
+)
 GIT_VALUE = frozenset(
     ("-c", "-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix", "--config-env")
 )
@@ -52,6 +55,43 @@ def unsets_hooks(rest: list[str]) -> bool:
     lowered = [arg.lower() for arg in rest]
     removing = bool({"--remove-section", "remove-section"} & set(lowered)) and "core" in lowered
     return removing or (bool(UNSETTING & set(lowered)) and HOOKS_KEY in lowered)
+
+
+def unsets_hooks_path(rest: list[str]) -> bool:
+    """`git config --unset core.hooksPath` (or --unset-all, or the `unset` verb): the key a manager installs through."""
+    lowered = [arg.lower() for arg in rest]
+    return bool(UNSETTING & set(lowered)) and HOOKS_KEY in lowered
+
+
+def writes_repo_config(rest: list[str]) -> bool:
+    """`git config --file .git/config <key> <value>`: a write straight into the repository config, whatever the key."""
+    operands, target, i = [], "", 0
+    while i < len(rest):
+        word = rest[i]
+        if word in ("--file", "-f") and i + 1 < len(rest):
+            target, i = rest[i + 1], i + 2
+            continue
+        if word.startswith("--file="):
+            target = word[7:]
+        elif word.startswith("-f") and not word.startswith("--"):
+            target = word[2:]
+        elif not word.startswith("-"):
+            operands.append(word)
+        i += 1
+    reading = READING & set(rest) or (operands[:1] and operands[0] in READ_VERBS)
+    return os.path.normpath(target).endswith(".git/config") and bool(operands[1:]) and not reading
+
+
+def config_refusals(sub: str, rest: list[str], pairs: list[tuple[str, str]]) -> list[str]:
+    """Why a command that sets the launcher key, unsets core.hooksPath or writes .git/config is refused ('' sub: env only)."""
+    reasons = []
+    if any(key == LAUNCHER_KEY for key, _ in pairs):
+        reasons.append(f"setting {LAUNCHER_KEY} swaps the program hooks run under, so it can turn every one off.")
+    if sub == "config" and unsets_hooks_path(rest):
+        reasons.append("unsetting core.hooksPath removes the hooks git runs, as setting it elsewhere does.")
+    if sub == "config" and writes_repo_config(rest):
+        reasons.append(f"writing the repository config directly can set core.hooksPath or {LAUNCHER_KEY}.")
+    return reasons
 
 
 def this_repo(path: str) -> bool:

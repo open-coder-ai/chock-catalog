@@ -2,9 +2,11 @@
 
 import os
 import re
-import shlex
 from dataclasses import dataclass, field
 from typing import NamedTuple
+
+from .args import taken
+from .quoting import split_words
 
 
 class Cmd(NamedTuple):
@@ -35,14 +37,16 @@ _TOKEN = re.compile(
     re.DOTALL,
 )
 _PIECE = re.compile(r"'([^']*)'|\"((?:[^\"\\]|\\.)*)\"|\\(.)|([^'\"\\]+)", re.DOTALL)
-_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=")  # `x=`, `x+=`, `x[0]=`
+# What a variable holds when the line does not show it: an array, an element, text appended to one.
+_UNKNOWN = "$__subst__"
 _WINPATH = re.compile(r"(?<=[\w.:~$-])\\(?=[\w.~$-])")
 _POWERSHELL = re.compile(
     r"\b(?:get|set|add|out|new|remove|copy|move|rename|invoke|clear|write|select|start|import|export)-[a-z]{3,}"
     r"|\$env:|-(?:recurse|literalpath)\b",
     re.IGNORECASE,
 )
-_SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash"})
+_SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash", "mksh", "yash"})
 _PS_SHELLS = frozenset({"pwsh", "powershell"})
 _DEPTH = 4
 _WRAPPERS = {
@@ -73,6 +77,7 @@ _WRAPPERS = {
         "else",
         "elif",
         "if",
+        "{",
         "while",
         "until",
         "!",
@@ -109,12 +114,30 @@ class _Scan:
                 self._word(_unquote(match.group()))
             elif kind == "redir":
                 self.redir = match.group().lstrip("0123456789")
-            elif kind in ("end", "nl"):
+            elif kind in ("end", "nl") and not (match.group() == "(" and self._elements()):
                 self._end()
                 if kind == "nl":
                     self._bodies()
         self._end()
         return self.done
+
+    def _elements(self) -> bool:
+        """`name=(a b c)`: the elements join the assignment word, as one word, instead of the `(` ending the clause."""
+        words = self.cur.words
+        if not words or self.redir or self.text[self.pos - 2 : self.pos - 1] != "=" or not _ASSIGN.fullmatch(words[-1]):
+            return False
+        at, found = self.pos, []
+        while match := _TOKEN.match(self.text, at):
+            at, kind = match.end(), match.lastgroup
+            if kind == "word":
+                found.append(_unquote(match.group()))
+            elif match.group() == ")":
+                words[-1] += f"({' '.join(found)})"
+                self.pos = at
+                return True
+            elif kind not in ("ws", "nl", "note"):
+                return False
+        return False
 
     def _word(self, text: str) -> None:
         op, self.redir = self.redir, ""
@@ -146,22 +169,11 @@ class _Scan:
             self.pos += sum(len(line) + 1 for line in lines[:used])
 
 
-def _words(part: str) -> list[str]:
-    """Split one segment like a shell; a quote that is never closed makes the rest of the segment one word."""
-    positions = [m.start() for m in re.finditer(r"['\"]", part)]
-    for at in [len(part), *reversed(positions)]:
-        try:
-            return [*shlex.split(part[:at]), *([part[at + 1 :]] if at < len(part) else [])]
-        except ValueError:
-            continue
-    return part.split()
-
-
 def _crude(text: str) -> list[_Clause]:
     """Fallback when quoting does not balance: split on separators, then words; redirections are still seen."""
     found = []
     for part in re.split(r"&&|\|\||[;&|\n()`]", text):
-        clause, words = _Clause(), iter(_words(part))
+        clause, words = _Clause(), iter(split_words(part))
         for word in words:
             redirect = re.fullmatch(r"([^<>]*)(>>|>\||>|<)(.*)", word, re.DOTALL)
             if redirect is None:
@@ -193,16 +205,37 @@ def _strip(name: str, words: list[str]) -> list[str]:
     return words[i + skip :]
 
 
+def script_at(rest: list[str], *, options: bool = True, skip: int = 0) -> int:
+    """Where the script is among the words after `-c`: past the `-c` cluster's words, the options a shell still reads, and a `--`, `-` or `+` ending them."""
+    at = skip
+    while options and at < len(rest) and len(rest[at]) > 1 and rest[at][0] in "-+" and rest[at] != "--":
+        at += 1 + taken(rest[at])
+    ended = rest[at : at + 1] == ["--"] or (options and rest[at : at + 1] in (["-"], ["+"]) and at + 1 < len(rest))
+    return at + ended
+
+
 def _inner(name: str, args: list[str]) -> str | None:
     """The script a shell-like command runs (bash -c, pwsh -Command, cmd /c, eval), or None."""
     if name == "eval":
-        return " ".join(args)
+        return " ".join(args[script_at(args, options=False) :])
     for i, arg in enumerate(args):
         low = arg.lower()
         shell = name in _SHELLS and arg[:1] == "-" and arg[1:2] != "-" and "c" in arg
         if shell or (name in _PS_SHELLS and low in ("-command", "-c")) or (name == "cmd" and low in ("/c", "/k")):
-            return " ".join(args[i + 1 :])
+            rest = args[i + 1 :]
+            return " ".join(rest[script_at(rest, options=shell, skip=taken(arg) if shell else 0) :])
     return None
+
+
+def _assign(env: dict[str, str], key: str, value: str) -> None:
+    """Bind `key=value` in env: `x+=y` appends to a value the line shows; an array or an element makes the variable unknown."""
+    name = key.rstrip("+").split("[", 1)[0]
+    if value.startswith("(") or "[" in key:
+        env[name] = _UNKNOWN
+    elif key.endswith("+"):
+        env[name] = env[name] + value if name in env else _UNKNOWN
+    else:
+        env[name] = value
 
 
 def _resolve(clause: _Clause, env: dict[str, str], *, ps: bool, depth: int) -> tuple[list[Cmd], dict[str, str]]:
@@ -211,7 +244,7 @@ def _resolve(clause: _Clause, env: dict[str, str], *, ps: bool, depth: int) -> t
         name = _base(words[0])
         if _ASSIGN.match(words[0]):
             key, _, value = words.pop(0).partition("=")
-            local[key] = value
+            _assign(local, key, value)
         elif name in _WRAPPERS:
             skip = name == "command" and words[1:2] in (["-v"], ["-V"])
             words = [] if skip else _strip(name, words[1:])
