@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from functools import lru_cache
 
 from pathplugin import repo_root
 
@@ -45,11 +46,16 @@ def _read(config: str) -> list[str]:
     return found
 
 
-def hooks_folders(base: str | None = None) -> list[str]:
-    """The `core.hooksPath` values set for the repository at `base`, as lowercase slash paths, none that names the whole tree."""
-    values = (value for config in _configs(base or repo_root()) for value in _read(config))
+@lru_cache(maxsize=4)  # one hook process judges thousands of paths against the same config
+def _folders(base: str) -> tuple[str, ...]:
+    values = (value for config in _configs(base) for value in _read(config))
     folders = (value.replace("\\", "/").rstrip("/").lower() for value in values)
-    return [folder for folder in folders if folder not in ("", ".")]
+    return tuple(folder for folder in folders if folder not in ("", "."))
+
+
+def hooks_folders(base: str | None = None) -> tuple[str, ...]:
+    """The `core.hooksPath` values set for the repository at `base`, as lowercase slash paths, none that names the whole tree."""
+    return _folders(base or repo_root())
 
 
 def in_hooks_folder(normal: str, base: str | None = None) -> bool:

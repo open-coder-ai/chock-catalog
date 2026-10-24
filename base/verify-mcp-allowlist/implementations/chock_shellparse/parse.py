@@ -103,7 +103,7 @@ class _Scan:
 
     def __init__(self, text: str) -> None:
         self.text, self.pos, self.done, self.cur = text, 0, [], _Clause()
-        self.redir, self.docs, self.arith = "", [], 0
+        self.redir, self.docs, self.arith, self.square = "", [], 0, False
 
     def run(self) -> list[_Clause] | None:
         while self.pos < len(self.text):
@@ -114,13 +114,16 @@ class _Scan:
             kind = match.lastgroup
             if kind == "word":
                 self._word(_unquote(match.group()))
+                if "$[" in match.group() or "]" in match.group():  # `$[ ]` is arithmetic too
+                    self.square = match.group().rfind("$[") > match.group().rfind("]")
             elif kind == "redir":
-                if not self._shift(match.start()):
+                if not (self.arith or self.square):  # in arithmetic `<<` shifts bits, it opens no here-document
                     self.redir = match.group().lstrip("0123456789")
             elif kind in ("end", "nl") and not (match.group() == "(" and self._elements()):
                 self._paren(match.group())
                 self._end()
                 if kind == "nl":
+                    self.square = False
                     self._bodies()
         self._end()
         return self.done
@@ -136,11 +139,6 @@ class _Scan:
                 self.arith = 1
         elif paren == ")" and self.arith:
             self.arith -= 1
-
-    def _shift(self, at: int) -> bool:
-        """Whether the redirection operator at `at` is arithmetic: inside `(( ))` or `$(( ))`, or after an open `$[` on its line."""
-        line = self.text[:at].rsplit("\n", 1)[-1]
-        return bool(self.arith) or ("$[" in line and "]" not in line[line.rfind("$[") :])
 
     def _elements(self) -> bool:
         """`name=(a b c)`: the elements join the assignment word, as one word, instead of the `(` ending the clause."""

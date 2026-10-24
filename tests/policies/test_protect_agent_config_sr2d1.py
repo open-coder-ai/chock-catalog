@@ -14,10 +14,16 @@ PATHLINK = guardkit.load_guard("protect-agent-config", "pathlink")
 BLOCK = PATHSET.BLOCK
 
 
+def forget_configs() -> None:
+    """The guard reads each repository's git config once per process; a test that rewrites it starts over."""
+    PATHSET.in_hooks_folder.__globals__["_folders"].cache_clear()
+
+
 def repo(tmp_path: Path, config: str, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A repository folder whose .git/config holds `config`, with no global or system git config to read."""
     (tmp_path / ".git").mkdir()
     (tmp_path / ".git" / "config").write_text(config)
+    forget_configs()
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("CHOCK_HOOK_CWD", raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
@@ -78,9 +84,11 @@ def test_a_global_setting_counts_and_an_unreadable_config_does_not_fail(
     (tmp_path / "home").mkdir()
     (tmp_path / "home" / ".gitconfig").write_text("[core]\n\thooksPath = .globalhooks\n")
     assert PATHSET.verdict(".globalhooks/pre-commit", str(tmp_path)) == BLOCK
+    forget_configs()
     (tmp_path / "home" / ".gitconfig").unlink()
     (tmp_path / "home" / ".gitconfig").mkdir()  # a folder where a file is read: no setting, no fault
     assert PATHSET.verdict(".globalhooks/pre-commit", str(tmp_path)) == ""
+    forget_configs()
     (tmp_path / ".git" / "config").write_bytes(b"[core]\n\thooksPath = \xff\xfe\n")
     assert PATHSET.verdict(".globalhooks/pre-commit", str(tmp_path)) == ""
 
