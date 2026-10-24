@@ -89,7 +89,3 @@ def unwrap(name: str, words: list[str]) -> tuple[list[str], bool]:
             break
         i += 2 if word in flags else 1
     return words[i + skip :], wiped
-
-
-def strip(name: str, words: list[str]) -> list[str]:
-    return unwrap(name, words)[0]
