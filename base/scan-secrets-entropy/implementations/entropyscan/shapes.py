@@ -26,7 +26,7 @@ _OPENERS = "{[(!*&."
 #: A dotted, arrowed or scoped name, or a name followed by a call, index or type argument whose
 #: text holds only identifier punctuation; each name segment must read as code (see _readable).
 _CODE = re.compile(
-    r"(?P<name>[$@]?[A-Za-z_][\w$-]*(?:(?:\.|->|::|\?\.)[$@]?[A-Za-z_][\w$-]*)*)"
+    r"(?P<name>[$@]?[A-Za-z_](?:-(?!>)|[\w$])*(?:(?:\.|->|::|\?\.)[$@]?[A-Za-z_](?:-(?!>)|[\w$])*)*)"
     r"(?P<tail>[(\[<][\w$.,:'\"\[\]<>(){} -]*)?;?"
 )
 _SEGMENT = re.compile(r"\.|->|::|\?\.")

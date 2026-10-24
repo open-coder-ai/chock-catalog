@@ -18,6 +18,7 @@ _DUP = re.compile(r"&[ \t]*(?:\d+-?|-)(?![\w$])")
 _BACKTICKS = re.compile(r"`((?:[^`\\]|\\.)*)(?:`|$)")
 _RANGE = re.compile(r"(-?\d+)\.\.(-?\d+)|([A-Za-z])\.\.([A-Za-z])")
 _LIMIT = 128
+_CALLS = 8 * _LIMIT
 _HEAD = 4  # `let ` is the longest word the clause start is tested for
 # `mktemp` with only these options, and a template (if any) under $TMPDIR, names a fresh path.
 _MKTEMP = re.compile(
@@ -235,8 +236,15 @@ def _alternatives(inner: str) -> list[str]:
     return [*map(str, range(low, cut + 1)), *([SUBST] if cut < high else [])]
 
 
-def braces(word: str) -> list[str]:
-    """Brace expansion of one word: `.{cursor,x}/mcp.json` gives both paths (the word itself when it has no list)."""
+def braces(word: str, _spent: list[int] | None = None) -> list[str]:
+    """Brace expansion of one word: `.{cursor,x}/mcp.json` gives both paths (the word itself when it has no list).
+
+    Work is bounded as well as output: past `_CALLS` expansions the rest of the word is read as unknown text.
+    """
+    spent = _spent if _spent is not None else [0]
+    spent[0] += 1
+    if spent[0] > _CALLS:
+        return [SUBST]
     for start, char in enumerate(word):
         if char != "{" or word[start - 1 : start] == "$":
             continue
@@ -247,6 +255,6 @@ def braces(word: str) -> list[str]:
                 break
         if depth or not (items := _alternatives(word[start + 1 : end])):
             continue
-        found = [piece for item in items for piece in braces(word[:start] + item + word[end + 1 :])]
+        found = [piece for item in items for piece in braces(word[:start] + item + word[end + 1 :], spent)]
         return [*found[:_LIMIT], *([SUBST] if len(found) > _LIMIT else [])]
     return [word]

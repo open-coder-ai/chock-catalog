@@ -5,7 +5,8 @@ from __future__ import annotations
 import re
 
 from chock_shellparse import commands, is_powershell
-from chock_shellparse.parse import _ASSIGN, _WRAPPERS, _base, _crude, _inner, _parse, _Scan, _strip
+from chock_shellparse.parse import _ASSIGN, _base, _crude, _inner, _parse, _Scan
+from chock_shellparse.wrappers import WRAPPERS, unwrap
 from pathmatch import expand
 from pathtext import scan
 
@@ -48,8 +49,8 @@ def _unwrapped(words: list[str]) -> list[str]:
         name = _base(words[0])
         if _ASSIGN.match(words[0]):
             words = words[1:]
-        elif name in _WRAPPERS:
-            words = _strip(name, words[1:])
+        elif name in WRAPPERS:
+            words = unwrap(name, words[1:])[0]
         else:
             break
     return words

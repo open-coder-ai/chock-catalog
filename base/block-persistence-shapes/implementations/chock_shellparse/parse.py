@@ -7,6 +7,7 @@ from typing import NamedTuple
 
 from .args import taken
 from .quoting import split_words
+from .wrappers import WIPED, WRAPPERS, unwrap
 
 
 class Cmd(NamedTuple):
@@ -36,6 +37,7 @@ _TOKEN = re.compile(
     rf"|(?P<word>{_QUOTED}+)",
     re.DOTALL,
 )
+_QUOTES = re.compile(r"""'[^']*'|"(?:[^"\\]|\\.)*"|\\.""", re.DOTALL)
 _PIECE = re.compile(r"'([^']*)'|\"((?:[^\"\\]|\\.)*)\"|\\(.)|([^'\"\\]+)", re.DOTALL)
 _ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\[[^\]]*\])?\+?=")  # `x=`, `x+=`, `x[0]=`
 # What a variable holds when the line does not show it: an array, an element, text appended to one.
@@ -49,41 +51,7 @@ _POWERSHELL = re.compile(
 _SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash", "mksh", "yash"})
 _PS_SHELLS = frozenset({"pwsh", "powershell"})
 _DEPTH = 4
-_WRAPPERS = {
-    name: (frozenset(flags.split()), skip)
-    for name, flags, skip in (
-        ("sudo", "-u -g -h -p -C -D -R -T -U -r -t --user --group --host --prompt --chdir", 0),
-        ("doas", "-u -C", 0),
-        ("pkexec", "--user", 0),
-        ("env", "-u -C -S --unset --chdir --split-string", 0),
-        ("exec", "-a", 0),
-        ("nice", "-n --adjustment", 0),
-        ("ionice", "-c -n -p -t", 0),
-        ("time", "-f -o --format --output", 0),
-        ("timeout", "-s -k --signal --kill-after", 1),
-        ("xargs", "-a -d -E -I -L -n -P -s --arg-file --delimiter --max-args --max-procs --replace", 0),
-        ("stdbuf", "-i -o -e", 0),
-    )
-} | dict.fromkeys(
-    (
-        "command",
-        "builtin",
-        "nohup",
-        "setsid",
-        "rtk",
-        "export",
-        "do",
-        "then",
-        "else",
-        "elif",
-        "if",
-        "{",
-        "while",
-        "until",
-        "!",
-    ),
-    (frozenset(), 0),
-)
+_ARITH_AFTER = frozenset({"for", "if", "elif", "while", "until", "then", "do", "else", "!", "{"})
 _GIT_VALUE = frozenset(
     {"-c", "-C", "--git-dir", "--work-tree", "--namespace", "--exec-path", "--super-prefix", "--config-env"}
 )
@@ -101,7 +69,7 @@ class _Scan:
 
     def __init__(self, text: str) -> None:
         self.text, self.pos, self.done, self.cur = text, 0, [], _Clause()
-        self.redir, self.docs = "", []
+        self.redir, self.docs, self.arith, self.square = "", [], 0, False
 
     def run(self) -> list[_Clause] | None:
         while self.pos < len(self.text):
@@ -112,14 +80,35 @@ class _Scan:
             kind = match.lastgroup
             if kind == "word":
                 self._word(_unquote(match.group()))
+                bare = _QUOTES.sub("", match.group())  # a quoted `$[` is text, not arithmetic
+                if "$[" in bare or "]" in bare:
+                    self.square = bare.rfind("$[") > bare.rfind("]")
             elif kind == "redir":
-                self.redir = match.group().lstrip("0123456789")
+                op = match.group().lstrip("0123456789")
+                if not (
+                    op in ("<<", "<<-") and (self.arith or self.square)
+                ):  # in arithmetic `<<` shifts bits; every other redirection is kept
+                    self.redir = op
             elif kind in ("end", "nl") and not (match.group() == "(" and self._elements()):
+                self._paren(match.group())
                 self._end()
                 if kind == "nl":
+                    self.square = False
                     self._bodies()
         self._end()
         return self.done
+
+    def _paren(self, paren: str) -> None:
+        """Track `$(( ))` and `(( ))`: inside them `<<` shifts bits, it opens no here-document."""
+        if paren == "(":
+            if self.arith:
+                self.arith += 1
+            elif self.text[self.pos : self.pos + 1] == "(" and (
+                self.text[self.pos - 2 : self.pos - 1] == "$" or set(self.cur.words) <= _ARITH_AFTER
+            ):
+                self.arith = 1
+        elif paren == ")" and self.arith:
+            self.arith -= 1
 
     def _elements(self) -> bool:
         """`name=(a b c)`: the elements join the assignment word, as one word, instead of the `(` ending the clause."""
@@ -194,17 +183,6 @@ def _base(word: str) -> str:
     return re.sub(r"\.exe$", "", word.replace("\\", "/").rsplit("/", 1)[-1].lower())
 
 
-def _strip(name: str, words: list[str]) -> list[str]:
-    flags, skip = _WRAPPERS[name]
-    i = 0
-    while i < len(words) and words[i].startswith("-") and len(words[i]) > 1:
-        if words[i] == "--":
-            i += 1
-            break
-        i += 2 if words[i] in flags else 1
-    return words[i + skip :]
-
-
 def script_at(rest: list[str], *, options: bool = True, skip: int = 0) -> int:
     """Where the script is among the words after `-c`: past the `-c` cluster's words, the options a shell still reads, and a `--`, `-` or `+` ending them."""
     at = skip
@@ -239,20 +217,23 @@ def _assign(env: dict[str, str], key: str, value: str) -> None:
 
 
 def _resolve(clause: _Clause, env: dict[str, str], *, ps: bool, depth: int) -> tuple[list[Cmd], dict[str, str]]:
-    words, local = list(clause.words), dict(env)
+    words, local, marked = list(clause.words), dict(env), False
     while words:
         name = _base(words[0])
         if _ASSIGN.match(words[0]):
             key, _, value = words.pop(0).partition("=")
             _assign(local, key, value)
-        elif name in _WRAPPERS:
+        elif name in WRAPPERS:
             skip = name == "command" and words[1:2] in (["-v"], ["-V"])
-            words = [] if skip else _strip(name, words[1:])
+            words, wiped = ([], False) if skip else unwrap(name, words[1:])
+            marked = marked or wiped
         else:
             break
     carry = [Cmd("", [], local, clause.writes, clause.reads, clause.doc)] if clause.writes or clause.reads else []
     if not words:
         return carry, local
+    if marked:
+        local = {**local, WIPED: "1"}
     script = _inner(name, words[1:])
     if script is not None and depth < _DEPTH:
         found, after = _parse(script, local, ps=ps or name in _PS_SHELLS, depth=depth + 1)

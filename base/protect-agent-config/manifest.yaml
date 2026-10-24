@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.7.3"
+version: "0.7.4"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent
   folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...),
@@ -68,6 +68,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.4
+  date: '2026-10-24'
+  changes:
+  - "Behaviour change, added coverage (SR-2d1; eval cases tc-1572 to tc-1578; tests in test_protect_agent_config_sr2d1.py). The folder `core.hooksPath` names, read from the repository, user and system git config files, is protected like `.git/hooks`, for the shell guard and the Edit/Write gate, because chock installs its git hook dispatchers there. Brace expansion is bounded in work as well as in output, and a path of more than 256 segments, or a chain of links nested deeper than the stack allows, is refused instead of ending the guard in a fault. Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
 - version: 0.7.3
   date: '2026-10-24'
   changes:

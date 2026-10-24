@@ -150,8 +150,8 @@ def test_a_table_in_any_top_level_folder_is_judged(cat: Path) -> None:
     assert found.startswith("measurements/data/a.json: as_of 2020-01-01 is")
 
 
-def test_test_fixtures_and_the_framework_checkout_are_not_tables(cat: Path) -> None:
-    for top in ("tests", ".framework", ".git", "node_modules"):
+def test_test_fixtures_the_framework_checkout_and_a_virtualenv_are_not_tables(cat: Path) -> None:
+    for top in ("tests", ".framework", ".git", "node_modules", ".venv", "venv"):
         _put(cat, f"{top}/data/a.json", "{}")
     assert cdt.problems(DAY, cat) == []
 
