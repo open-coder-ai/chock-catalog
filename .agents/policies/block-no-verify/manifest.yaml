@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.5.0"
+version: "0.5.1"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
@@ -22,7 +22,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-10-19T00:00:00Z"
+  updated_at: "2026-10-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -36,6 +36,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.1
+  date: '2026-10-24'
+  changes:
+  - "Behaviour change, added coverage for three more ways to switch the hooks chock installs off (SR-1c; eval cases tc-109 to tc-113; tests in test_block_no_verify_launcher.py). Refused: writing the `chock.python` git key (the interpreter chock's launcher runs hooks under), as `git config`, `-c` or the GIT_CONFIG_* variables; `git config --unset core.hooksPath` and `--unset-all`, which asked a person and now refuse as setting the key does (`--remove-section core` still asks); `git config --file <repo>/.git/config <key> <value>`, a direct write to the repository config. Reads (`--get`, `--list`, a key alone) and other `--file` targets pass."
 - version: 0.5.0
   date: '2026-10-19'
   changes:

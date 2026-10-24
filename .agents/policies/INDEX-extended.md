@@ -10,7 +10,7 @@ budget focused on block and verify enforcement. Read them when the task matches.
   docs/**/<instruction>: ask; no waiver
 
 - **protect-ci-workflows**:
-  ci_config(.github/workflows|.github/actions|.github/dependabot.yml|yaml): never(shell_edit|delete); ask_person
+  ci_config(.github/{workflows,actions,dependabot.y*ml}): never(shell_edit|delete); edit_or_write(those|CODEOWNERS|.gitlab-ci.yml|.gitlab/|Jenkinsfile*|.circleci/|azure-pipelines*|bitbucket-pipelines.yml|.buildkite/|.drone.yml|cloudbuild*|renovate|.pre-commit-config.yaml|.husky/|lefthook|.githooks/|.travis.yml|action.yml|more): ask_person
   if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
 
 - **protect-commit-privacy**:
@@ -29,5 +29,5 @@ budget focused on block and verify enforcement. Read them when the task matches.
   if(check_fails): fix_the_source; never(edit_the_check_to_pass)
 
 - **verify-mcp-allowlist**:
-  mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-  allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; no agent-typed marker passes, a person edits it; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex added-only at commit+tool_use
+  mcp_server(any client config): must(name+launcher+exact_args|url_host in .chock/mcp-allowlist.json); block(unlisted|command_args_url_differ); warn(unpinned|shell_launcher|http|literal_credential|below_floor|enable_all)
+  allowlist: file, empty by default; an agent is judged by HEAD's copy and cannot grow it, a person edits it; guard: `<agent> mcp add`, shell writes; gate: commit|tool_use|stop

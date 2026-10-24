@@ -1,9 +1,9 @@
 [
   {
     "type": "pre_tool",
-    "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/mistral_vibe.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+    "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/mistral_vibe.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.py\"",
     "match": "bash|powershell|git_bash",
-    "name": "agentseam-pre_tool-2df10328",
+    "name": "agentseam-pre_tool-7c6e9e61",
     "timeout": 45
   }
 ]

@@ -1,9 +1,10 @@
 id: protect-main-branch
 name: "Protect Main Branch"
-version: "0.0.2"
+version: "0.0.4"
 description: >
-  Block direct commits and pushes to main or master. Enforced at commit time by reading
-  the current branch, and at push time by parsing the refs the agent is pushing.
+  Keeps agents off main and master: a git hook reads the current branch at commit time and
+  parses the refs being pushed at push time. The hook refuses a violation only where it is
+  installed. As skill text alone this is advice, and nothing stops one.
 artifact: hook
 enforcement: block
 mandatory: true
@@ -37,7 +38,7 @@ provenance:
   trust_tier: "community"
 
 lifecycle:
-  status: draft
+  status: production
   reviewed_by:
     - "chock-core"
 
@@ -45,6 +46,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-23'
+  changes:
+  - "Description wording only (IR-F4): it said the policy is enforced, but on every agent client the plugin carries skill text only and an agent can commit on main. It now says what the git hook checks and that skill text alone is advice. Behaviour unchanged."
+- version: 0.0.3
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:

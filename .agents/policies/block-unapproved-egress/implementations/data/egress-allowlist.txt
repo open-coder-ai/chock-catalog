@@ -1,0 +1,33 @@
+# Hosts a command may send data to: package registries, container registries and localhost.
+# One host per line, '#' starts a comment. `example.com` is that host only; `*.example.com` is its
+# subdomains only (list both for both). This is the built-in default: a project file
+# `.chock/egress-allowlist.txt`, when present, replaces it whole.
+# github.com is absent on purpose (an attacker's repository or gist lives there); api.github.com is listed.
+api.github.com
+githubusercontent.com
+*.githubusercontent.com
+pypi.org
+*.pypi.org
+pythonhosted.org
+*.pythonhosted.org
+npmjs.org
+*.npmjs.org
+yarnpkg.com
+*.yarnpkg.com
+crates.io
+*.crates.io
+rubygems.org
+*.rubygems.org
+golang.org
+*.golang.org
+pkg.go.dev
+ghcr.io
+*.ghcr.io
+docker.io
+*.docker.io
+hub.docker.com
+quay.io
+*.quay.io
+dl.google.com
+localhost
+127.0.0.1

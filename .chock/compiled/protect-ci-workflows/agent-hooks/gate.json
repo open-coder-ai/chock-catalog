@@ -1,0 +1,13 @@
+{
+  "kind": "content_regex",
+  "on": [
+    "tool_use"
+  ],
+  "action": "ask",
+  "message": "This path is CI, release, hook or dependency-bot configuration: the checks that review an agent's own work. An agent's change to it needs a person's decision. Say which file should change, what and why, and let the person approve the edit or make it from their own shell. Where a person cannot be asked, the write is refused: propose the change instead. At the turn's end this is a reminder that such a file is still changed and uncommitted.",
+  "params": {
+    "scan": "added_lines",
+    "forbidden_path_regex": "(?i)(?:^|[/\\\\])(?:(?:\\.github[. ]*(?::[^/\\\\:]*){0,2}[/\\\\](?:\\.?[/\\\\])*(?:workflows|actions|workflow-templates)|\\.gitlab(?:-ci)?|\\.circleci|\\.azure-pipelines|\\.buildkite|\\.husky|\\.githooks|\\.lefthook(?:-local)?|\\.woodpecker|\\.semaphore|\\.tekton)[. ]*(?::[^/\\\\:]*){0,2}(?:[/\\\\]|$)|(?:\\.github[. ]*(?::[^/\\\\:]*){0,2}[/\\\\](?:\\.?[/\\\\])*dependabot\\.ya?ml|CODEOWNERS|[^/\\\\]*\\.gitlab-ci\\.ya?ml|azure-pipelines[^/\\\\]*\\.ya?ml|bitbucket-pipelines\\.ya?ml|buildkite\\.ya?ml|\\.drone\\.(?:ya?ml|jsonnet|star)|cloudbuild[^/\\\\]*\\.(?:ya?ml|json)|renovate\\.json5?|\\.renovaterc(?:\\.json5?)?|\\.pre-commit-config\\.ya?ml|\\.?lefthook(?:-local)?\\.(?:ya?ml|json|toml)|\\.travis\\.ya?ml|action\\.ya?ml|\\.woodpecker\\.ya?ml|\\.?appveyor\\.ya?ml|\\.cirrus\\.ya?ml|buildspec[^/\\\\]*\\.ya?ml|bitrise\\.ya?ml|codemagic\\.ya?ml)[. ]*(?::[^/\\\\:]*){0,2}$|Jenkinsfile[^/\\\\]*(?<!\\.md)(?<!\\.txt)(?<!\\.rst)(?<!\\.adoc)(?<!\\.py)(?<!\\.java)(?<!\\.kt)(?<!\\.js)(?<!\\.ts)(?<!\\.go)$)",
+    "content_pattern": "(?!)"
+  }
+}
