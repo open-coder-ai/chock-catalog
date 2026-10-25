@@ -10,8 +10,8 @@ from dataclasses import dataclass
 #: Past this many lines in either revision, difflib is too slow; the whole file is one hunk by line counts.
 DIFFLIB_LINES = 4000
 HEADER = re.compile(r"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
-ESCAPES = {"t": "\t", "n": "\n", "\\": "\\", '"': '"'}
-ESCAPE = re.compile(r"\\([tn\\\"]|[0-7]{3})")
+ESCAPES = {"a": 7, "b": 8, "f": 12, "n": 10, "r": 13, "t": 9, "v": 11, "\\": 92, '"': 34}
+ESCAPE = re.compile(r"\\([abfnrtv\\\"]|[0-7]{1,3})")
 
 
 @dataclass(frozen=True)
@@ -44,13 +44,22 @@ def from_texts(path: str, old: str, new: str) -> list[Hunk]:
     ]
 
 
+def _unquote(name: str) -> str:
+    """A git C-quoted name ("...", with \\a \\b \\f \\n \\r \\t \\v \\\\ \\" and octal bytes) as the real name."""
+    if not (len(name) > 1 and name.startswith('"') and name.endswith('"')):
+        return name
+    out, at = b"", 0
+    for m in ESCAPE.finditer(name[1:-1]):
+        out += name[1:-1][at : m.start()].encode() + bytes([ESCAPES[m[1]] if m[1] in ESCAPES else int(m[1], 8) & 255])
+        at = m.end()
+    return (out + name[1:-1][at:].encode()).decode("utf-8", "replace")
+
+
 def _name(header: str, prefix: str) -> str | None:
     name = header.split("\t", 1)[0]
     if name == "/dev/null":
         return None
-    if len(name) > 1 and name.startswith('"') and name.endswith('"'):
-        name = ESCAPE.sub(lambda m: ESCAPES.get(m[1]) or chr(int(m[1], 8)), name[1:-1])
-    return name.removeprefix(prefix)
+    return _unquote(name).removeprefix(prefix)
 
 
 class _Reader:
@@ -81,10 +90,10 @@ class _Reader:
         """One line outside a hunk: a file header, a rename note or a hunk header."""
         if raw.startswith("diff --git "):
             self.old = self.new = None
-        elif raw.startswith("rename from "):
-            self.moved = raw[len("rename from ") :]
-        elif raw.startswith("rename to ") and self.moved:
-            self.hunks.append(Hunk(raw[len("rename to ") :], 1, (), (), self.moved))
+        elif raw.startswith(("rename from ", "copy from ")):
+            self.moved = _unquote(raw.split(" from ", 1)[1])
+        elif raw.startswith(("rename to ", "copy to ")) and self.moved:
+            self.hunks.append(Hunk(_unquote(raw.split(" to ", 1)[1]), 1, (), (), self.moved))
             self.moved = ""
         elif raw.startswith("--- "):
             self.old = _name(raw[4:], "a/")

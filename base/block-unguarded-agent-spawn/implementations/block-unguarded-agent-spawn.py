@@ -43,7 +43,11 @@ GENERIC_FLAGS = (
 )
 EXECUTABLE = re.compile(r"\.(?:exe|cmd|bat|ps1|com)$", re.IGNORECASE)
 TOOL_FLAGS = frozenset(("--allowedTools", "--allowed-tools"))
-WILDCARD_TOOL = re.compile(r"\*|[A-Za-z_][A-Za-z0-9_]*\(:?\*\)")
+#: A bare name of a command-running, writing or network tool (or any mcp__ tool) grants every use of it, like `Tool(*)`.
+WILDCARD_TOOL = re.compile(
+    r"\*|[A-Za-z_][A-Za-z0-9_]*\(:?\*\)|(?:Bash|Edit|Write|MultiEdit|NotebookEdit|WebFetch|mcp__[^()\s]*)",
+    re.IGNORECASE,
+)
 Check = Callable[[Cmd, list[str]], str]
 #: Shell HTTP clients; the request's URL and body are read from their arguments and heredoc.
 HTTP_CLIENTS = frozenset(

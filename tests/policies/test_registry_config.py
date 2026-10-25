@@ -73,7 +73,7 @@ A_CONF, A_REDIR, A_COOL, A_VCS, A_IND = (
         (".npmrc", "registry=https://verdaccio.localhost/\n" + NPM_OK, []),
         (".npmrc", "registry=https:\\\\evil.example\n" + NPM_OK, [B_UNREAD]),
         (".npmrc", "registry=./local-dir\n" + NPM_OK, []),
-        (".npmrc", "registry=file://tmp/r\n" + NPM_OK, []),
+        (".npmrc", "registry=file://tmp/r\n" + NPM_OK, [B_HOST]),
         (".npmrc", "registry=https://user@registry.npmjs.org/\n" + NPM_OK, []),
         (".npmrc", "registry=https://u:${PW}@registry.npmjs.org/\n" + NPM_OK, []),
         (".npmrc", "strict-ssl\n" + NPM_OK, []),

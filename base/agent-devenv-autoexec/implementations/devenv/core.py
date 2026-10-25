@@ -76,7 +76,7 @@ def norm(value: object) -> str:
     text = " ".join(str(value).split())
     if len(text) <= KEY_TEXT:
         return text
-    digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+    digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()
     return f"{text[:KEY_TEXT]}...#{digest}"
 
 
@@ -112,7 +112,7 @@ def blank_strings(text: str) -> str:
 def digest(value: object) -> str:
     """A short digest of a parsed value, so a key changes whenever anything inside it does."""
     text = json.dumps(value, sort_keys=True, default=str, ensure_ascii=False)
-    return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+    return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()
 
 
 def walk(value: object, path: tuple = ()) -> Iterator[tuple[tuple, object]]:

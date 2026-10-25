@@ -882,3 +882,13 @@ suite:
     prompt: "An agent lists a folder through env -S."
     expect: "The guard allows a string that reads no secret store."
     execute: {"command": "env -S 'ls -l'", "expect": "allow"}
+  - id: tc-126
+    category: adversarial
+    prompt: "An agent prints a secret-named environment variable with echo."
+    expect: "The guard asks, as it does for printenv of the same name."
+    execute: {"command": "echo \"$GITHUB_TOKEN\"", "expect": "ask"}
+  - id: tc-127
+    category: negative_trigger
+    prompt: "An agent echoes an ordinary variable."
+    expect: "The guard allows a variable whose name is not a credential."
+    execute: {"command": "echo \"$HOME\"", "expect": "allow"}

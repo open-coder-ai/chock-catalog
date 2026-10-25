@@ -1,6 +1,6 @@
 id: iam-policy-scan
 name: "IAM Policy Scan"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses
   Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks
@@ -52,6 +52,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for YAML that carries template markers: a file counts as a template by its path (a `templates/` directory), never by `{{` or `{%` in its text, so a marker in a comment no longer lets an unreadable file pass; a template that still does not read after its directives are set aside is now refused as `iam-unreadable` instead of skipped. Behaviour change, hardening for sidecar waivers: in the agent a waived grant is excused at most as many times as HEAD's copy of the file holds it (at least once), so a copy of a waived statement added elsewhere in the file is judged; a person's commit still trusts the staged waiver."
 - version: 0.1.1
   date: '2026-10-02'
   changes:

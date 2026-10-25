@@ -18,11 +18,11 @@ class SidecarError(ValueError):
     """The sidecar is not the closed schema, so none of it is honoured."""
 
 
-def committed(root: Path, path: str) -> str | None:
-    """The text of `path` at HEAD, or None when HEAD has no such file or git cannot say."""
+def committed(root: Path, path: str, rev: str = "HEAD") -> str | None:
+    """The text of `path` at `rev` (HEAD unless given), or None when it has no such file or git cannot say."""
     try:
         proc = subprocess.run(  # noqa: S603 -- a fixed git argv; the path is an argument, never a shell word
-            ["git", "show", f"HEAD:./{path}"],  # noqa: S607 -- git from PATH, as the runner's own
+            ["git", "show", f"{rev}:./{path}"],  # noqa: S607 -- git from PATH, as the runner's own
             cwd=root,
             capture_output=True,
             check=False,
@@ -55,11 +55,11 @@ def waivers(text: str) -> frozenset[Waiver]:
     return frozenset(out)
 
 
-def committed_all(root: Path, path: str) -> list[str]:
-    """The HEAD text of every tracked file whose path equals `path` ignoring case (file systems may fold it)."""
+def committed_all(root: Path, path: str, rev: str = "HEAD") -> list[str]:
+    """The text at `rev` of every tracked file whose path equals `path` ignoring case (file systems may fold it)."""
     try:
-        proc = subprocess.run(
-            ["git", "ls-tree", "-r", "--name-only", "-z", "HEAD"],  # noqa: S607 -- git from PATH, as the runner's own
+        proc = subprocess.run(  # noqa: S603 -- a fixed git argv; `rev` is a resolved commit id or HEAD
+            ["git", "ls-tree", "-r", "--name-only", "-z", rev],  # noqa: S607 -- git from PATH, as the runner's own
             cwd=root,
             capture_output=True,
             check=False,
@@ -68,4 +68,4 @@ def committed_all(root: Path, path: str) -> list[str]:
         return []
     names = proc.stdout.decode("utf-8", "surrogateescape").split("\0") if proc.returncode == 0 else []
     wanted = path.casefold()
-    return [text for name in names if name.casefold() == wanted and (text := committed(root, name)) is not None]
+    return [text for name in names if name.casefold() == wanted and (text := committed(root, name, rev)) is not None]

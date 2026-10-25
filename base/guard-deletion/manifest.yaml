@@ -1,6 +1,6 @@
 id: guard-deletion
 name: "Guard Deletion and Mitigation Removal"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   trigger: a change that removes a check, auth decorator, middleware registration, sanitizer call or path check
   with none of its kind in the same hunk (ask), or removes a hardening flag, security header, cookie attribute,
@@ -43,6 +43,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for quoted file names. The rename and copy header names are now unquoted the way git quotes them (\\a \\b \\f \\n \\r \\t \\v \\\\ \\\" and octal bytes), so a move into or out of a judged scope is recognised for a name that holds a quote, backslash or control character."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

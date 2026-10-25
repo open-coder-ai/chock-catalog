@@ -1,6 +1,6 @@
 id: block-unguarded-agent-spawn
 name: "Block Unguarded Agent Spawn"
-version: "0.2.1"
+version: "0.2.2"
 description: >
   Best effort. Refuses agents with safety off: claude --dangerously-skip-permissions, bypassPermissions,
   wildcard --allowedTools; codex --full-auto, --yolo, -a never, danger-full-access; gemini --yolo; cursor-agent --force;
@@ -41,6 +41,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.2
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for claude --allowedTools. A bare Bash, Edit, Write, MultiEdit, NotebookEdit, WebFetch or mcp__ tool name now counts as a wildcard grant of that tool, like Tool(*), and is refused."
 - version: 0.2.1
   date: '2026-10-24'
   changes:

@@ -65,7 +65,7 @@ def judge_file(path: str, text: str) -> Collector | None:
         try:
             handler(c)
         except UnreadableError as exc:
-            digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+            digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()
             c.found = [
                 Finding("dev-unparseable", 1, f"unreadable#{digest}", f"cannot be read, so it is refused: {exc}", BLOCK)
             ]

@@ -1,6 +1,6 @@
 id: registry-config
 name: "Registry Config"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Refuses package-manager config that redirects installs or weakens them: literal tokens, http or
   unlisted registry hosts (parsed, so lookalike and userinfo spellings fail), TLS or checksum checks
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for long registry URLs, remote file: sources and UNC values. The whole URL value is now read (it was cut to 200 characters before the host was parsed), so a second '@' placed late in a long URL is refused. A file: URL (and a file: GOPROXY element) is local only with an empty host or localhost; any other host is judged against the allowlist like an https one. A scheme-less value written as a UNC path (\\\\host\\share or //host/share) is judged the same way."
 - version: 0.0.2
   date: '2026-10-07'
   changes:

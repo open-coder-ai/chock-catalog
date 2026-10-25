@@ -826,3 +826,43 @@ suite:
           FROM golang:1.23
           ENV GOSUMDB=${UNSET}off
       expect: ask
+  - id: tc-058
+    category: trigger
+    prompt: 'Hardening: a requirements file names an index whose URL is over 200 characters and holds a second at-sign after an allowed host.'
+    expect: 'The commit is blocked: the whole URL is read, so the second at-sign makes the host ambiguous.'
+    execute:
+      event: commit
+      files:
+        requirements.txt: "--index-url https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@pypi.org@mirror.example/simple\n"
+      expect: block
+  - id: tc-059
+    category: trigger
+    prompt: 'Hardening: a package source is a file: URL that names a remote host.'
+    expect: 'The commit is blocked: only a file: URL with no host or localhost is a local path; any other host is judged against the allowlist.'
+    execute:
+      event: commit
+      files:
+        requirements.txt: |
+          --index-url file://pkgs.mirror.example/simple
+      expect: block
+  - id: tc-060
+    category: trigger
+    prompt: 'Hardening: a package source is a scheme-less UNC path naming a remote host.'
+    expect: 'The commit is blocked: the host of a UNC value is judged against the allowlist like an https one.'
+    execute:
+      event: commit
+      files:
+        .npmrc: |
+          registry=//pkgs.mirror.example/feed
+          min-release-age=3
+      expect: block
+  - id: tc-061
+    category: trigger
+    prompt: 'A package source is a file: URL with no host, a path on the local disk.'
+    expect: 'The commit is allowed.'
+    execute:
+      event: commit
+      files:
+        requirements.txt: |
+          --index-url file:///srv/simple
+      expect: allow

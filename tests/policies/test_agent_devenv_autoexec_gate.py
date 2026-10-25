@@ -195,7 +195,7 @@ def test_core_helpers() -> None:
     assert core.into_repo("'./x'") == B
     assert core.into_repo("${workspaceFolder}/node_modules/.bin/x") == A
     long = core.norm("x" * 400)
-    assert len(long) < 200
+    assert len(long) < 240
     assert long != core.norm("x" * 401)
     assert core.dotted(()) == "<root>"
     assert core.strings(5) == []

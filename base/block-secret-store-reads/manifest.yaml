@@ -1,6 +1,6 @@
 id: block-secret-store-reads
 name: "Block Secret Store Reads"
-version: "0.0.6"
+version: "0.0.7"
 description: >
   Best-effort guard against an agent reading credentials from the shell: cat, cp, tar, source or
   < on ~/.ssh (not .pub), ~/.aws, ~/.npmrc, agent CLI dirs, browser DBs, wallets, .env, *.tfstate;
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.7
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for printing a secret-named variable. echo, printf, print and Write-Output (and Write-Host) of an argument that expands a variable whose name looks like a credential ($NAME, ${NAME}, $env:NAME) now ask, as printenv NAME already did."
 - version: 0.0.6
   date: '2026-10-24'
   changes:
