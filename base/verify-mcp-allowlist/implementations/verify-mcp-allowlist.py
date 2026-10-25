@@ -54,6 +54,9 @@ PACKAGE_AGENT = re.compile(r"(?:^|/)(claude-code|codex|gemini-cli)(?:@[^/@]*)?$"
 PACKAGE_NAMES = {"claude-code": "claude", "codex": "codex", "gemini-cli": "gemini"}
 LIST_FLAGS = {"-e": "env", "--env": "env", "-H": "header", "--header": "header"}
 ENV_WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
+ECHO_FLAG = re.compile(r"-[neE]+")
+#: The format `%s\n` also reads as `%s/n`: the shared reader emits a second, Windows-path reading of the same line.
+PRINTF_WHOLE = re.compile(r"%[sb](?:[\\/]n)?\n?")
 REMOTE = frozenset({"http", "sse", "streamable-http"})
 GIT = shutil.which("git") or "git"
 NO_ENTRY = (
@@ -87,15 +90,42 @@ def json_objects(text: str) -> list[dict]:
     return found
 
 
-def inline_servers(cmds: list[Cmd]) -> list[tuple[str, object]]:
-    """(name, entry) for every server any command in the line carries as JSON under a servers key."""
+def own_text(cmd: Cmd) -> str | None:
+    """The whole text an echo, printf or `cat <<EOF` writes, when its own argument or here-document is all of it."""
+    args = list(cmd.args)
+    if cmd.name == "echo":
+        while args and ECHO_FLAG.fullmatch(args[0]):
+            args.pop(0)
+        return " ".join(args) if args and not cmd.doc else None
+    if cmd.name == "printf" and not cmd.doc and args:
+        if "%" not in args[0]:
+            return args[0] if len(args) == 1 else None
+        return args[1] if len(args) == 2 and PRINTF_WHOLE.fullmatch(args[0]) else None
+    if cmd.name == "cat" and cmd.doc and all(arg == "-" for arg in args):
+        return cmd.doc
+    return None
+
+
+def written_servers(cmds: list[Cmd]) -> list[tuple[str, object]] | None:
+    """(name, entry) for the servers the commands that write a config carry as their whole text; None when one writes bytes the line does not show."""
     found: list[tuple[str, object]] = []
     for cmd in cmds:
-        for text in (cmd.doc, *cmd.args):
-            for obj in json_objects(text):
-                for key in configs.COMMON:
-                    block = obj.get(key)
-                    found += [(str(name), config) for name, config in block.items()] if isinstance(block, dict) else []
+        if not (writes_files(cmd, configs.is_dedicated) or code_names(cmd, configs.DEDICATED)):
+            continue
+        text = own_text(cmd)
+        try:
+            value = json.loads(text) if text is not None else None
+        except (ValueError, RecursionError):
+            value = None
+        servers = [
+            (str(name), config)
+            for key in configs.COMMON
+            if isinstance(value, dict) and isinstance(block := value.get(key), dict)
+            for name, config in block.items()
+        ]
+        if not servers:
+            return None
+        found += servers
     return found
 
 
@@ -156,7 +186,10 @@ def added_server(cmd: Cmd) -> tuple[str, object] | None:
         objs = json_objects(words[1]) if len(words) > 1 else []
         return words[0], objs[0] if objs else None
     config: dict = {}
-    if "--url" in flags or flags.get("--transport", flags.get("-t", "")).lower() in REMOTE:
+    transport = flags.get("--transport", flags.get("-t", "")).lower()
+    if transport:
+        config["type"] = transport
+    if "--url" in flags or transport in REMOTE:
         config["url"] = flags.get("--url") or (words[1] if len(words) > 1 else "")
     else:
         command = launch or words[1:]
@@ -229,9 +262,8 @@ def check(raw: str) -> str | None:
             "protect-agent-config protects every policy's guard source. Ask the person to make the change."
         )
     adds = [added for cmd in cmds if (added := added_server(cmd)) is not None]
-    writing = any(writes_files(cmd, configs.is_dedicated) or code_names(cmd, configs.DEDICATED) for cmd in cmds)
-    written = inline_servers(cmds) if writing else []
-    if writing and not written:
+    written = written_servers(cmds)
+    if written is None:
         return NO_ENTRY
     if not adds and not written:
         return None

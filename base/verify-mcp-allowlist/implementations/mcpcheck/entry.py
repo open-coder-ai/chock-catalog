@@ -11,6 +11,7 @@ from dataclasses import dataclass
 URL_KEYS = ("url", "httpUrl", "serverUrl")
 ENV_KEYS = ("env", "environment")
 HEADER_KEYS = ("headers", "http_headers")
+TYPE_KEYS = ("type", "transport")
 #: Entry-level scalar keys that hold a credential themselves (compared lowercase, without `_` or `-`).
 SECRET_KEYS = frozenset(
     {"bearertoken", "token", "apikey", "password", "secret", "authorization", "accesstoken", "clientsecret"}
@@ -40,10 +41,12 @@ class Server:
     headers: tuple[tuple[str, str], ...]
     secrets: tuple[tuple[str, str], ...]
     raw: str = ""
+    cwd: str = ""
+    type: str = ""
 
     def digest(self) -> str:
         """A short fingerprint of everything the entry says, so any change to it is a different key."""
-        parts = [self.launcher, self.args, self.urls, self.env, self.headers, self.secrets, self.raw]
+        parts = [self.launcher, self.args, self.urls, self.env, self.headers, self.secrets, self.raw, self.cwd, self.type]
         return hashlib.sha256(json.dumps(parts, sort_keys=True).encode("utf-8", errors="replace")).hexdigest()[:16]
 
 
@@ -126,4 +129,6 @@ def from_config(name: str, config: object) -> Server:
         headers=_pairs(config, HEADER_KEYS),
         secrets=scalars,
         raw=json.dumps(config, sort_keys=True, default=str),
+        cwd=_text(config.get("cwd")),
+        type=_text(next((config[key] for key in TYPE_KEYS if key in config), None)).lower(),
     )

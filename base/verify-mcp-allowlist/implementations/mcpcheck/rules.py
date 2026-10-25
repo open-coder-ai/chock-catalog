@@ -140,7 +140,8 @@ def _listed(server: Server, allowed: tuple[Allowed, ...]) -> list[Finding]:
         return [
             (
                 "allowlist",
-                "it is on the allowlist, but its command, arguments or url host differ from the approved entry",
+                "it is on the allowlist, but its command, arguments, url host, environment, headers, cwd or type "
+                "differ from the approved entry",
             )
         ]
     return []
