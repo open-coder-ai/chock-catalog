@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "block-invisible-unicode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Blocks hidden Unicode in added lines: bidi, tag and plane-14 chars, word joiner, chained invisibles, zero-width/joiners/fillers by ASCII, mid-line BOM, LRM/RLM outside RTL text, selectors after ASCII, private-use runs of 16+. Allows emoji, RTL/Indic/Thai/CJK text, line-start BOM. Not caught: homoglyphs, a joiner between non-ASCII, binary files and text after U+2028 at commit. Runs: commit, agent write, turn's end. Waiver: 'pragma: allowlist invisible-unicode' same line; agent: HEAD only.",
   "author": {
     "name": "chock-core"

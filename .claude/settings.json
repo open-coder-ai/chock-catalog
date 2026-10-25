@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/claude_code.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.sh\"",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/claude_code.py --guard \".agents/policies/block-curl-pipe-sh/implementations/block-curl-pipe-sh.py\"",
             "timeout": 45
           }
         ]
@@ -96,6 +96,16 @@
           {
             "type": "command",
             "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/claude_code.py --guard \".agents/policies/protect-agent-config/implementations/protect-agent-config.py\"",
+            "timeout": 45
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/claude_code.py --gate \".chock/compiled/protect-ci-workflows/pre-tool-use/gate.json\"",
             "timeout": 45
           }
         ]
@@ -213,6 +223,15 @@
           {
             "type": "command",
             "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/claude_code.py --gate \".chock/compiled/protect-agent-config/stop/gate.json\"",
+            "timeout": 45
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/claude_code.py --gate \".chock/compiled/protect-ci-workflows/stop/gate.json\"",
             "timeout": 45
           }
         ]

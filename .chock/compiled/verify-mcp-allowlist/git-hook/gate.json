@@ -5,7 +5,7 @@
     "tool_use"
   ],
   "action": "block",
-  "message": "An MCP server that is not on the allowlist is configured, or an MCP config cannot be parsed. Only servers listed, by name and exact command/args/url, in implementations/verify-mcp-allowlist.py may be added. Ask a person to review the server and add it to that list; do not edit the allowlist yourself. Make the config valid JSON (TOML for .codex) before writing it.",
+  "message": "An MCP server is not on the allowlist, differs from its allowlisted entry, or its config cannot be parsed. Only servers listed in .chock/mcp-allowlist.json (name with launcher and exact arguments, or url host) may be configured. Pin it to an exact version or image digest, run no shell command line, use https and carry credentials only as references (these rules warn for now). Ask a person to review the server and edit the allowlist from their own shell; do not edit the allowlist yourself.",
   "params": {
     "script": ".agents/policies/verify-mcp-allowlist/implementations/verify-mcp-allowlist_gate.py"
   }

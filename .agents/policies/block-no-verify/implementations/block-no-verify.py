@@ -22,6 +22,7 @@ from hook_bypass import (
     aliases,
     asks_for,
     config_pairs,
+    config_refusals,
     config_writes,
     declared,
     env_asks,
@@ -172,6 +173,7 @@ def judge_git(cmd: Cmd, depth: int) -> Verdict:
     found += [run_alias(cmd, sub, rest, text, depth) for text in aliases(pairs, cmd.env).get(sub, [])]
     scripts = (rebase_execs(rest) if sub == "rebase" else []) + submodule_scripts(sub, rest)
     found += [via(f"git {sub}", script, check(script, depth + 1)) for script in scripts]
+    found += [(BLOCK, f"{why} {FIX}") for why in config_refusals(sub, rest, pairs)]
     hooked, hits = sub in HOOK_SUBS, env_hits(cmd.env)
     if hooked and skips_verify(sub, rest):
         found.append((BLOCK, f"git {sub} --no-verify is not allowed. {FIX}"))
@@ -187,6 +189,7 @@ def judge_git(cmd: Cmd, depth: int) -> Verdict:
 def judge_env(env: dict[str, str], depth: int) -> Verdict:
     """What the line leaves set for the commands after it: a hook manager's off switch, git config, another repo."""
     found = config_verdicts(config_pairs([], env), env, depth)
+    found += [(BLOCK, f"{why} {FIX}") for why in config_refusals("", [], config_pairs([], env))]
     if hits := env_hits(env):
         found.append((BLOCK, f"setting {hits[0]} switches the hook manager off for the commands that follow. {FIX}"))
     if reason := env_asks(env):
