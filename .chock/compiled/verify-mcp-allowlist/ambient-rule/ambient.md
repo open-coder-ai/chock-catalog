@@ -1,6 +1,6 @@
 <!-- chock:hooks:start (compiled by chock -- edit .agents/policies/verify-mcp-allowlist/) -->
 ```
-mcp_config(.mcp.json): server(name,source=cmd+args|url) must(match: allowlist(this_guard_source)); block(unlisted|source_mismatch); allow(exact_match)
-allowlist: lives in implementations/verify-mcp-allowlist.py; also gates `claude mcp add|add-json`; no agent-typed marker passes, a person edits it; also gates written configs: .mcp.json|.cursor|.vscode|claude_desktop|.gemini|.codex added-only at commit+tool_use
+mcp_server(any client config): must(name+launcher+exact_args|url_host in .chock/mcp-allowlist.json); block(unlisted|command_args_url_differ); warn(unpinned|shell_launcher|http|literal_credential|below_floor|enable_all)
+allowlist: file, empty by default; an agent is judged by HEAD's copy and cannot grow it, a person edits it; guard: `<agent> mcp add`, shell writes; gate: commit|tool_use|stop
 ```
 <!-- chock:hooks:end -->
