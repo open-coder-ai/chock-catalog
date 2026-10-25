@@ -457,3 +457,8 @@ suite:
     prompt: "The agent writes a config that reads its password from os.environ and from process.env."
     expect: "The write is allowed: an environment lookup is not a secret."
     execute: {event: tool_use, writes: {"config.py": "password = os.environ.get(\"DB_PASSWORD\")\n", "config.js": "const password = process.env.DB_PASSWORD;\n"}, expect: allow}
+  - id: tc-059
+    category: negative_trigger
+    prompt: "A commit adds a backup script that pipes a dump through ssh -p with a port and makes directories with -p."
+    expect: "The hook allows it: -p is a password only for the mysql and mariadb clients and sshpass, and only within their own command."
+    execute: {event: commit, files: {"backup.sh": "mkdir -p /srv/backup\nmysqldump app | ssh -p2222 backup.internal 'cat > app.sql'\ntar -pxzf app.tar.gz\n"}, expect: allow}
