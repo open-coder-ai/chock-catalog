@@ -75,10 +75,10 @@ def test_a_changed_entry_of_an_approved_server_is_a_new_finding(tmp_path: Path, 
 
 
 @pytest.mark.parametrize("event", EVENTS)
-def test_a_changed_environment_of_an_approved_server_is_observed(tmp_path: Path, event: str) -> None:
+def test_a_changed_environment_of_an_approved_server_is_refused(tmp_path: Path, event: str) -> None:
     repo = held(tmp_path, {"filesystem": FS})
     for env in ({"NODE_OPTIONS": "--require ./x.js"}, {"API_TOKEN": "literal"}):
-        assert word(repo, {".mcp.json": mcpkit.mcp({"filesystem": {**FS, "env": env}})}, event) == "warn", env
+        assert word(repo, {".mcp.json": mcpkit.mcp({"filesystem": {**FS, "env": env}})}, event) == "block", env
 
 
 def test_a_changed_unlisted_legacy_server_is_new_but_a_reformat_is_not(tmp_path: Path) -> None:
