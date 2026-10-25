@@ -72,18 +72,18 @@ def load_allowlist(root: Path, event: str = "commit") -> list[str] | None:
     """Allowlist entries; an agent's event reads HEAD's file, a person's (commit, push, ci) the file on disk.
 
     None when the path holds nothing: a repository that has not seeded one, which a plugin-only install cannot do.
-    At an agent's event that means nothing at HEAD (a file created since is the agent's), and a file HEAD holds that is
-    gone from disk is an empty list. A file that is there but cannot be read is an empty list, so every name is unlisted.
+    At an agent's event that means nothing at HEAD, no HEAD (no commit yet) or no git: a file on disk is the agent's and
+    is never read. A file HEAD holds that is gone from disk is an empty list. A file that is there but cannot be read is
+    an empty list, so every name is unlisted.
     """
     path = root / ALLOWLIST
-    if event not in PERSON_EVENTS and (head := git_show(root, "rev-parse", "--verify", "-q", "HEAD")):
-        if head.returncode == 0:
-            shown = git_show(root, "show", f"HEAD:./{ALLOWLIST}")
-            if shown is None or shown.returncode != 0:
-                return None
-            if not os.path.lexists(path) or len(shown.stdout) > MAX_CHARS:
-                return []
-            return entries_of(shown.stdout.decode("utf-8", errors="replace"))
+    if event not in PERSON_EVENTS:
+        shown = git_show(root, "show", f"HEAD:./{ALLOWLIST}")
+        if shown is None or shown.returncode != 0:
+            return None
+        if not os.path.lexists(path) or len(shown.stdout) > MAX_CHARS:
+            return []
+        return entries_of(shown.stdout.decode("utf-8", errors="replace"))
     if not os.path.lexists(path):
         return None
     try:

@@ -6,8 +6,9 @@ import json
 from pathlib import Path
 
 import pytest
-from policies import scriptkit
+from policies import depkit, scriptkit
 
+mod, _ = depkit.load()
 POLICY = "verify-dependency-exists"
 NAME = "dependency-manifests.py"
 ALLOWLIST = ".chock/dependency-allowlist.txt"
@@ -59,11 +60,28 @@ def test_an_allowlist_created_after_head_does_not_approve(tmp_path: Path) -> Non
     assert run(bare, "tool_use", {"requirements.txt": "evil-pkg\n"})[0] == 4
 
 
-def test_without_any_commit_the_allowlist_on_disk_decides(tmp_path: Path) -> None:
+@pytest.mark.parametrize("event", AGENT_EVENTS)
+def test_without_any_commit_an_agent_s_allowlist_on_disk_is_not_read(tmp_path: Path, event: str) -> None:
+    fresh = scriptkit.init_repo(tmp_path / "fresh")
+    scriptkit.write(fresh, {ALLOWLIST: "evil-pkg\n"})
+    assert mod.load_allowlist(fresh, event) is None
+    assert run(fresh, event, {"requirements.txt": "evil-pkg\n"})[0] == 4
+    assert run(fresh, event, {ALLOWLIST: "evil-pkg\n"})[:2] == (1, ["allowlist|evil-pkg"])
+
+
+def test_without_any_commit_a_person_s_commit_still_reads_the_disk(tmp_path: Path) -> None:
     fresh = scriptkit.init_repo(tmp_path / "fresh")
     scriptkit.write(fresh, {ALLOWLIST: "requests\n"})
-    assert run(fresh, "tool_use", {"requirements.txt": "requests\n"})[:2] == (0, [])
-    assert run(fresh, "tool_use", {"requirements.txt": "requests\nother\n"})[:2] == (1, ["py|other"])
+    assert run(fresh, "commit", {"requirements.txt": "requests\nother\n"})[:2] == (1, ["py|other"])
+
+
+@pytest.mark.parametrize("event", AGENT_EVENTS)
+def test_without_git_an_agent_s_allowlist_on_disk_is_not_read(
+    repo: Path, event: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(mod, "GIT", str(repo / "no-such-git"))
+    assert mod.load_allowlist(repo, event) is None
+    assert mod.load_allowlist(repo, "commit") == ["requests"]
 
 
 @pytest.mark.parametrize("event", AGENT_EVENTS)

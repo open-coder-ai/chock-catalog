@@ -1,6 +1,6 @@
 id: verify-dependency-exists
 name: "Dependency Allowlist"
-version: "0.2.1"
+version: "0.2.2"
 description: >
   Allowlist gate for new dependencies; no registry lookup. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go,
   Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.2
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d): at an agent's event with no usable HEAD (a repository with no commit yet, or no git) the allowlist is treated as not seeded (warn-only) and the file on disk is never read, so an agent cannot approve its own dependencies with a freshly written allowlist; a write that adds an allowlist entry is still refused against the empty base. A person's commit, push and CI still read the file on disk. Replaces the 0.2.1 rule that read the disk when there was no commit. Tests: test_verify_dependency_exists_sr2d2.py."
 - version: 0.2.1
   date: '2026-10-25'
   changes:
