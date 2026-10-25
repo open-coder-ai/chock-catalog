@@ -11,17 +11,17 @@ PATTERN = re.compile(scriptkit.manifest("scan-secrets")["hook"]["gate"]["params"
 
 # fmt: off
 PASSWORDS = [
-    "mariadb -u root -pS3cretPa55 db",
-    "mariadb-dump -uroot -pS3cretPa55 db",
-    "mariadb-admin -pS3cretPa55 status",
-    "mysqlpump -pS3cretPa55 db",
-    "mysqlimport -u root -pS3cretPa55 db f.txt",
-    "mysqlcheck -pS3cretPa55 db",
-    "mysqlshow -pS3cretPa55",
+    "mariadb -u root -pS3cretPa55 db",  # pragma: allowlist secret
+    "mariadb-dump -uroot -pS3cretPa55 db",  # pragma: allowlist secret
+    "mariadb-admin -pS3cretPa55 status",  # pragma: allowlist secret
+    "mysqlpump -pS3cretPa55 db",  # pragma: allowlist secret
+    "mysqlimport -u root -pS3cretPa55 db f.txt",  # pragma: allowlist secret
+    "mysqlcheck -pS3cretPa55 db",  # pragma: allowlist secret
+    "mysqlshow -pS3cretPa55",  # pragma: allowlist secret
     "mariadb -u root -p'S3cretPa55' db",
-    "echo start; mysqldump -uroot -pS3cretPa55 db > out.sql",
+    "echo start; mysqldump -uroot -pS3cretPa55 db > out.sql",  # pragma: allowlist secret
     "sshpass -p S3cretPa55 ssh host",
-    "sshpass -pS3cretPa55 ssh host",
+    "sshpass -pS3cretPa55 ssh host",  # pragma: allowlist secret
 ]
 SILENT = [
     "mkdir -p /srv/app/data",
