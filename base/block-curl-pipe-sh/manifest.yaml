@@ -1,6 +1,6 @@
 id: block-curl-pipe-sh
 name: "Block Curl-Pipe-Shell"
-version: "0.1.5"
+version: "0.1.6"
 description: >
   Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws s3 cp to
   stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh,
@@ -25,7 +25,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-25T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -39,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.6
+  date: '2026-10-25'
+  changes:
+  - "Hardening, added coverage (SR-2d2c; eval cases tc-082 to tc-088; tests in test_block_curl_pipe_sh_sr2c.py, 24 red then green). Interpreter code given as a here-document or one-liner counts as a network read only when it calls a network API (urllib, urlopen, requests, http.client, httpx, ftplib, asyncio.open_connection, fetch, Net::HTTP, LWP, file_get_contents, `import socket`, `socket.`), or holds a URL literal beside a downloader (curl, wget, nc, socat) or a dynamic way to reach one (`__import__`, `importlib`, `getattr(`). A URL string or the word socket alone no longer asks for confirmation when the code also calls exec, eval or subprocess. Every shape that fetches and runs still asks, and ftplib and asyncio.open_connection are newly read as network calls."
 - version: 0.1.5
   date: '2026-10-24'
   changes:
