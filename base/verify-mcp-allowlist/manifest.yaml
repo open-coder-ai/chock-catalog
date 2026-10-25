@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.5.4"
+version: "0.5.5"
 description: >
   Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host).
   Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate
@@ -44,7 +44,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-07T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-25T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -58,6 +58,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.5
+  date: '2026-10-25'
+  changes:
+  - "Added coverage, green at baseline: the guard's logic is unchanged (SR-2d2c; eval cases tc-109 to tc-113; tests in test_verify_mcp_allowlist_sr2c.py, 23 passed on the 0.5.4 sources). Pinned: a here-document or redirect is judged by the file it writes, so a test file whose body names .mcp.json, .cursor/mcp.json or the allowlist, or holds a servers block or an `mcp add` line, is allowed; a here-document written to an MCP config with no visible server entry, or to the allowlist, is refused. Unchanged on purpose: an interpreter given its code in a here-document or `-c` that names a config file is still refused."
 - version: 0.5.4
   date: '2026-10-24'
   changes:
