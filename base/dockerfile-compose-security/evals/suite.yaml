@@ -346,3 +346,30 @@ suite:
       files:
         Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN ch\\\nmod 777 /srv\nUSER 1000\n"
       expect: ask
+  - id: tc-035
+    category: adversarial
+    prompt: A compose file anchors a database password on one line and reads it back through an alias.
+    expect: Blocked (cm-literal-secrets); the literal is not on the key's own line, so scan-secrets never sees it there and this bundle does not leave it to it.
+    provenance: authored
+    execute:
+      files:
+        docker-compose.yml: "x-db: &pw Sup3rS3cretValue99\nservices:\n  db:\n    image: pg:1@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    environment:\n      POSTGRES_PASSWORD: *pw\n"
+      expect: block
+  - id: tc-036
+    category: adversarial
+    prompt: A compose file writes a database password as a folded block scalar on the line after its key.
+    expect: Blocked (cm-literal-secrets); the value sits on a line with no key, which scan-secrets does not read as a credential.
+    provenance: authored
+    execute:
+      files:
+        docker-compose.yml: "services:\n  db:\n    image: pg:1@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    environment:\n      POSTGRES_PASSWORD: >-\n        Sup3rS3cretValue99\n"
+      expect: block
+  - id: tc-037
+    category: adversarial
+    prompt: A Dockerfile ENV password is split by a line continuation so no physical line holds the whole value.
+    expect: Blocked (dk-secret-arg-env); the value is rebuilt only by BuildKit's join, which scan-secrets does not do.
+    provenance: authored
+    execute:
+      files:
+        Dockerfile: "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nENV POSTGRES_PASSWORD=Sup3rS3c\\\nretValue99\nUSER 1000\n"
+      expect: block

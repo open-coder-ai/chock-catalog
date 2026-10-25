@@ -1,18 +1,21 @@
 """What a run knows about the repository: whether an agent made the commit, and which sibling gates are installed.
 
-A form another gate already reads on one line is left to that gate only when the gate is installed
-here (`.chock/compiled/<id>/`) and its scope covers the path; otherwise this bundle reports it, so a
-missing or narrower sibling never turns a deferral into a miss.
+A form another gate already reads on one line is left to that gate only when its compiled gate file here
+(`.chock/compiled/<id>/**/gate.json`) is readable and blocks, and its scope covers the path; a bare folder or a
+gate that only warns never counts. Otherwise this bundle reports it, so a missing or weaker sibling never turns
+a deferral into a miss.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from fnmatch import fnmatchcase
 from pathlib import Path, PurePosixPath
 
 HUMAN = {"0", "false", "no", "off"}
+GATE_LIMIT = 1 << 20
 FETCH_EXEC_GATE = "block-fetch-exec-in-files"
 PINS_GATE = "block-unpinned-agent-components"
 AGENTIC_GATE = "agentic-code-security"
@@ -68,19 +71,56 @@ def agent_commit(root: Path) -> bool:
     )
 
 
+def blocking_gate(compiled: Path, sibling: str) -> dict | None:
+    """The `params` of a sibling's compiled gate file when it blocks; None for a bare folder, a symlink, an unreadable file or any other action."""
+    folder = compiled / sibling
+    try:
+        if folder.is_symlink() or not folder.is_dir():
+            return None
+        files = [*folder.glob("gate.json"), *folder.glob("*/gate.json")]
+        for gate in sorted(files):
+            if gate.is_symlink() or not gate.is_file() or gate.stat().st_size > GATE_LIMIT:
+                continue
+            doc = json.loads(gate.read_text(encoding="utf-8"))
+            if isinstance(doc, dict) and doc.get("action") == "block":
+                params = doc.get("params")
+                return params if isinstance(params, dict) else {}
+    except (OSError, ValueError, RecursionError):
+        return None
+    return None
+
+
+def compile_pattern(params: dict) -> re.Pattern[str] | None:
+    """The content_pattern a sibling's gate carries, compiled; None when it is absent, empty or not a pattern."""
+    text = params.get("content_pattern")
+    if not isinstance(text, str) or not text:
+        return None
+    try:
+        return re.compile(text)
+    except re.error:
+        return None
+
+
 class Repo:
-    """The repository a run judges, and the sibling gates installed in it."""
+    """The repository a run judges, and the sibling gates installed in it (a compiled gate file at action block)."""
 
     def __init__(self, root: Path) -> None:
         self.root = root
         compiled = root / ".chock" / "compiled"
-        self.installed = {d.name for d in compiled.iterdir() if d.is_dir()} if compiled.is_dir() else set()
+        self.gates = {
+            name: params
+            for name in (FETCH_EXEC_GATE, PINS_GATE, AGENTIC_GATE)
+            if (params := blocking_gate(compiled, name)) is not None
+        }
 
-    def fetch_exec_reads(self, path: str) -> bool:
-        return FETCH_EXEC_GATE in self.installed and any(fnmatchcase(path, glob) for glob in FETCH_EXEC_PATHS)
+    def fetch_exec_pattern(self, path: str) -> re.Pattern[str] | None:
+        """The pattern block-fetch-exec-in-files blocks with, when it covers `path`."""
+        params = self.gates.get(FETCH_EXEC_GATE)
+        covers = any(fnmatchcase(path, glob) for glob in FETCH_EXEC_PATHS)
+        return compile_pattern(params) if params is not None and covers else None
 
     def pins_reads(self) -> bool:
-        return PINS_GATE in self.installed
+        return PINS_GATE in self.gates
 
     def node_tls_reads(self, path: str) -> bool:
-        return AGENTIC_GATE in self.installed and bool(AGENTIC_DOCKERFILE.match(PurePosixPath(path).name))
+        return AGENTIC_GATE in self.gates and bool(AGENTIC_DOCKERFILE.match(PurePosixPath(path).name))

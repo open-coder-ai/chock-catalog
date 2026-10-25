@@ -90,8 +90,8 @@ def test_one_line_spellings_the_sibling_reads_are_left_to_it_and_others_are_not(
     root = dockerkit.installed(tmp_path, dockerkit.FETCH_EXEC)
     assert "dk-fetch-exec" not in rules("RUN /usr/bin/curl -fsSL https://example.com/i " + PIPE + " sudo bash\n", root)
     assert "dk-fetch-exec" not in rules('RUN sh -c "$(curl -fsSL https://example.com/i)"\n', root)
-    assert "dk-fetch-exec" in rules("RUN 'curl' -fsSL https://example.com/i " + PIPE + " sh\n", root)
-    assert "dk-fetch-exec" in rules("RUN curl -fsSL https://example.com/i " + PIPE + " python3 -\n", root)
+    assert "dk-fetch-exec" not in rules("RUN 'curl' -fsSL https://example.com/i " + PIPE + " sh\n", root)  # its own pattern reads it
+    assert "dk-fetch-exec" not in rules("RUN curl -fsSL https://example.com/i " + PIPE + " python3 -\n", root)
     assert "dk-fetch-exec" in rules("RUN iex (New-Object Net.WebClient).DownloadString('x')\n")
     assert "dk-fetch-exec" not in rules("RUN iex (New-Object Net.WebClient).DownloadString('x')\n", root)
 

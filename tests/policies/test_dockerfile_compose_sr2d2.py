@@ -161,15 +161,23 @@ def test_an_alias_to_an_anchored_literal_is_reported_where_the_alias_sits() -> N
 
 def test_a_same_line_literal_scan_secrets_refuses_is_still_left_to_it() -> None:
     assert "cm-literal-secrets" not in environment(f"    environment:\n      POSTGRES_PASSWORD: {PASSWORD}\n")
-    assert "cm-literal-secrets" not in environment(f'    environment:\n      POSTGRES_PASSWORD: "{PASSWORD}"\n')
+
+
+def test_a_quoted_colon_form_the_copied_pattern_does_not_read_is_reported_here() -> None:
+    assert "cm-literal-secrets" in environment(f'    environment:\n      POSTGRES_PASSWORD: "{PASSWORD}"\n')
 
 
 def test_a_short_same_line_literal_is_reported_here() -> None:
     assert "cm-literal-secrets" in environment("    environment:\n      POSTGRES_PASSWORD: hunter2\n")
 
 
-def test_a_dockerfile_env_whose_value_is_on_a_continuation_line_is_reported() -> None:
-    body = f"ENV POSTGRES_PASSWORD=\\\n  {PASSWORD}\n"
+def test_a_dockerfile_env_value_split_across_lines_is_reported() -> None:
+    body = f"ENV POSTGRES_PASSWORD={PASSWORD[:8]}\\\n{PASSWORD[8:]}\n"
+    assert "dk-secret-arg-env" in dockerfile_rules(body, dockerkit.BARE)
+
+
+def test_a_credential_elsewhere_on_the_line_does_not_hide_a_short_literal() -> None:
+    body = "ENV DB_PASSWORD=hunter2 TEST_JWT=eyJ0.e30.x\n"
     assert "dk-secret-arg-env" in dockerfile_rules(body, dockerkit.BARE)
 
 

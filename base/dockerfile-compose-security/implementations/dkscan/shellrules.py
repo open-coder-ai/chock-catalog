@@ -8,6 +8,7 @@ nested deeper than the lexer follows, is reported as too large to judge and not 
 
 from __future__ import annotations
 
+import bisect
 import re
 from collections.abc import Iterator
 
@@ -31,13 +32,6 @@ SIGNATURE = re.compile(
     r"|\btrusted=yes\b|(?i:\bgpgcheck\s*=\s*0\b)"
 )
 PS_WEBCLIENT = re.compile(r"(?i)\b(?:iex|invoke-expression)\s*\(*\s*new-object\s+(?:system\.)?net\.webclient")
-#: The spellings block-fetch-exec-in-files (HP03) reads on one line; only these are left to it.
-HP03_PIPE = re.compile(
-    r"(?:\S*/)?(?<![\w.-])(?:curl|wget2?|aria2c|lynx)(?![\w-])[^;&|\n#]*\|\s*(?:(?:sudo|env)\s+)?(?:\S*/)?(?:ba|z|da|k|a)?sh(?![\w.-])"
-)
-HP03_SUBST = re.compile(
-    r"(?<![\w.-])(?:eval|source|(?:ba|z|da|k|a)?sh)(?:\s+-\w+)?\s+[\"']?(?:\$\(|<\()\s*(?:curl|wget2?)(?![\w-])"
-)
 DEEP = "too large to judge: nesting deeper than the gate follows"
 
 
@@ -112,26 +106,23 @@ def run_hits(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
 
 def _fetch_exec(instr: Instr, cmds: list[shell.Cmd], ctx: Ctx) -> Iterator[Hit]:
     for fetch, runner in cmdrules.fetch_exec(cmds):
-        if not (ctx.fetch_exec_elsewhere and _one_line_hp03(instr, fetch, runner)):
+        if not _one_line_sibling(instr, fetch, runner, ctx):
             yield _hit("dk-fetch-exec", instr, min(fetch.start, runner.start), "a download piped into an interpreter")
-    if (found := PS_WEBCLIENT.search(instr.text)) and not ctx.fetch_exec_elsewhere:
+    if (found := PS_WEBCLIENT.search(instr.text)) and not ctx.fetch_exec_reads(physical(instr, found.start())):
         yield _hit("dk-fetch-exec", instr, found.start(), "a download run by iex")
 
 
-def _one_line_hp03(instr: Instr, fetch: shell.Cmd, runner: shell.Cmd) -> bool:
-    """Whether the pair sits on one physical line in a spelling block-fetch-exec-in-files reads.
+def physical(instr: Instr, offset: int) -> str:
+    """The raw physical line holding `offset` of the instruction's text, as a line-by-line gate reads it."""
+    at = bisect.bisect_right(instr.starts, offset) - 1
+    return instr.raw[at] if 0 <= at < len(instr.raw) else ""
 
-    Each pattern is tried once, at the fetch (or the substituting runner) program word, so the check is linear.
-    """
-    if instr.line_at(fetch.start) != instr.line_at(runner.start):
+
+def _one_line_sibling(instr: Instr, fetch: shell.Cmd, runner: shell.Cmd, ctx: Ctx) -> bool:
+    """Whether the pair sits on one physical line that the installed block-fetch-exec-in-files matches itself."""
+    if ctx.fetch_exec is None or instr.line_at(fetch.start) != instr.line_at(runner.start):
         return False
-    pipe_at, subst_at = _word_at(fetch), _word_at(runner)
-    return bool(HP03_PIPE.match(instr.text, pipe_at) or HP03_SUBST.match(instr.text, subst_at))
-
-
-def _word_at(cmd: shell.Cmd) -> int:
-    at = resolve.resolve(cmd.words)[0]
-    return cmd.offsets[at] if 0 <= at < len(cmd.offsets) else cmd.start
+    return ctx.fetch_exec_reads(physical(instr, fetch.start))
 
 
 def tls_hits(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
