@@ -1,6 +1,6 @@
 id: guard-memory-writes
 name: "Guard Memory Writes"
-version: "0.0.9"
+version: "0.0.10"
 description: >
   Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate
   line or a secret. Warns (observe, ASI06) on an added line that tells the agent to run a
@@ -56,6 +56,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.10
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d; finding F35; eval case tc-047; tests in test_guard_memory_writes_sr2d2.py). The ask-tier instruction and url-host rows take the set of lines a secret already refuses: for a statement with such a line (any physical line of it) the instruction row says the text is withheld and the url-host row names no host, and its key is the statement's digest alone, so the credential never reaches a finding message that the engine logs. A URL whose host cannot be read is shown without its userinfo (everything up to the last `@` is dropped), never as the raw authority. Messages and keys for lines no secret refuses are unchanged. Known limit: the engine still writes finding messages to its log unredacted; that is the framework's to change."
 - version: 0.0.9
   date: '2026-10-19'
   changes:

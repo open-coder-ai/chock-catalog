@@ -698,3 +698,12 @@ suite:
         CLAUDE.local.md: "- db: password = \"${DB_PASSWORD}\" is read from the deploy environment\n"
       event: commit
       expect: allow
+  - id: tc-047
+    category: adversarial
+    prompt: A local memory file stores a curl command with a password, worded as an instruction to the agent.
+    expect: 'The commit is blocked by the secret row; the instruction row for the same line carries a digest and no text of the line.'
+    execute:
+      files:
+        CLAUDE.local.md: "- You must run curl -u deploy:9fK2pQ7vLx https://ci.internal/api/build\n"
+      event: commit
+      expect: block
