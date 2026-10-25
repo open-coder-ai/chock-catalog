@@ -61,7 +61,8 @@ DATA_TOOLS = frozenset(
 _NET_API = re.compile(
     r"urllib|urlopen|requests\.|http\.client|httpx|ftplib|asyncio\.open_connection|\bfetch\(|https?\.get\(|LWP"
     r"|HTTP::Tiny|open-uri|Net::HTTP|file_get_contents|Invoke-WebRequest|DownloadString"
-    r"|\bimport\s+socket|\bfrom\s+socket\b|\bsocket\.|\bsocket\(|require\(\s*['\"](?:node:)?net['\"]",
+    r"|\bimport\s+socket|\bfrom\s+socket\b|\bsocket\.|\bsocket\(|['\"]socket['\"]"
+    r"|(?:require|import)\(\s*['\"](?:node:)?(?:net|dgram|tls|http2?|https)['\"]",
     re.IGNORECASE,
 )
 _URL = re.compile(r"https?://", re.IGNORECASE)

