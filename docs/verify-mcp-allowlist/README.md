@@ -48,7 +48,7 @@ chock add verify-mcp-allowlist
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhYzg1YzMwMDI2NjcxZWY3MDJhYjcxNGJkYWE3MTc1ZWJkZWYyNmZiIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoidmVyaWZ5LW1jcC1hbGxvd2xpc3QiLCJ2ZXJzaW9uIjoiMC41LjMiLCJzaGEyNTYiOiIwNDIxNjg4OWE2MDEyYjJlNTgyMmRhYjgxZGY1ODYzNmEwN2I0ODdjMjBkMWZmYjgwMjNiNzBlMThiNGNlMWE0In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhMjNhYzk0YmJkZWRmYThhN2QyMzJhYWI2ZmIyYWYyZjNlY2FhZTBlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoidmVyaWZ5LW1jcC1hbGxvd2xpc3QiLCJ2ZXJzaW9uIjoiMC41LjQiLCJzaGEyNTYiOiI5OGU0ZTMyMDYyZThkMzI3MTcyZGU3Yjg1MjIzYTBiNmRjNmI2NWEyOTViY2Q2ZGJmODEyNGQyNDYyZmZmMWFiIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

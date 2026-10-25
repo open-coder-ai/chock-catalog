@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
-import signal
 import stat
 import subprocess
 from collections.abc import Callable
@@ -112,7 +111,8 @@ def read_git(root: str, spec: str) -> Blob | None:
         return None
     assert proc.stdout is not None  # noqa: S101 -- PIPE was requested above
     blob = _digest(proc.stdout.read, None)
-    if blob.sha is None:
+    killed = blob.sha is None  # past the hash cap git is killed; its exit code then differs by platform (-9, or 1 on Windows)
+    if killed:
         proc.kill()
     proc.communicate()
-    return blob if proc.returncode in (0, -signal.SIGKILL) else None
+    return blob if killed or proc.returncode == 0 else None

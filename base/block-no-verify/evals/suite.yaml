@@ -237,3 +237,23 @@ suite:
      expect: "The guard allows reads.", execute: {command: "git config --file .git/config user.name", expect: allow}}
   - {id: tc-113, category: negative_trigger, prompt: "An agent reads the launcher interpreter setting.",
      expect: "The guard allows the read.", execute: {command: "git config --get chock.python", expect: allow}}
+  - id: tc-114
+    category: adversarial
+    prompt: "An agent wipes the environment with env -i through the program's full path."
+    expect: "The guard reads the wipe from the parsed command, so the path does not hide it."
+    execute: {"command": "/usr/bin/env -i PATH=/usr/bin git commit -m wip", "expect": "block"}
+  - id: tc-115
+    category: adversarial
+    prompt: "An agent hands env -S a string that begins with -i."
+    expect: "The guard reads the string env splits and runs, and refuses the wipe in it."
+    execute: {"command": "env -S '-i git commit -m wip'", "expect": "block"}
+  - id: tc-116
+    category: adversarial
+    prompt: "An agent wipes the environment with the long option, abbreviated."
+    expect: "The guard refuses an unambiguous prefix of --ignore-environment."
+    execute: {"command": "env --ignore-env git commit -m wip", "expect": "block"}
+  - id: tc-117
+    category: negative_trigger
+    prompt: "A test runs under env -i by its full path with an explicit variable."
+    expect: "The guard allows it; the wipe only matters in front of a hook-running git command."
+    execute: {"command": "/usr/bin/env -i FOO=1 python x.py", "expect": "allow"}

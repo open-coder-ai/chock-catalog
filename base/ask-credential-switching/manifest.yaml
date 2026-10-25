@@ -1,6 +1,6 @@
 id: ask-credential-switching
 name: "Ask Credential Switching"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   Best effort, ask only. Asks a person before a shell command switches the identity later commands act
   as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure set of a key; gcloud
@@ -31,7 +31,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-11T00:00:00Z"
-  updated_at: "2026-10-11T00:00:00Z"
+  updated_at: "2026-10-24T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-24'
+  changes:
+  - "Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
 - version: 0.0.3
   date: '2026-10-14'
   changes:
