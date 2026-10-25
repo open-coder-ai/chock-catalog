@@ -1,6 +1,6 @@
 id: block-unapproved-egress
 name: "Block Unapproved Egress"
-version: "0.2.5"
+version: "0.2.6"
 description: "Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet, scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:. Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation."
 artifact: rule
 enforcement: advise
@@ -40,6 +40,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.6
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d): the project allowlist search stops at the first directory holding `.git` and never reads a file above it; with no `.git` above the working directory only the working directory is searched. A project allowlist that is not owned by the current user, or is group or world writable, is refused like an unusable file (nothing is allowed until it is fixed). Tests: test_egress_allowlist_sr2d2.py. No eval case can drive this: replay has no repository layout or file ownership to set."
 - version: 0.2.5
   date: '2026-10-24'
   changes:
