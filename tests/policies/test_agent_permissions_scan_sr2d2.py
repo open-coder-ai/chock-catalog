@@ -115,3 +115,11 @@ def test_a_long_value_key_carries_the_full_digest() -> None:
 
 def test_the_gate_digest_is_the_full_digest() -> None:
     assert re.fullmatch(r"[0-9a-f]{64}", mod.digest("x"))
+
+
+def test_a_missing_git_leaves_the_base_unnamed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def no_git(*_a: object, **_k: object) -> None:
+        raise OSError
+
+    monkeypatch.setattr(mod.base.subprocess, "run", no_git)
+    assert mod.base.ci_base(tmp_path, {"base": "main"}) is None

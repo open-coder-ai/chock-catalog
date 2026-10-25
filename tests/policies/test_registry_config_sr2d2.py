@@ -12,25 +12,29 @@ LONG_PAD = "a" * 183
     ("path", "text", "want"),
     [
         # A second '@' after an allowed host, past the 200th character, is still read.
-        ("requirements.txt", f"--index-url https://{LONG_PAD}@pypi.org@evil.example/simple\n", [B_UNREAD]),
-        (".npmrc", f"registry=https://{'a' * 173}@registry.npmjs.org@evil.example/\n" + NPM_OK, [B_UNREAD]),
+        ("requirements.txt", f"--index-url https://{LONG_PAD}@pypi.org@other.example/simple\n", [B_UNREAD]),
+        (".npmrc", f"registry=https://{'a' * 173}@registry.npmjs.org@other.example/\n" + NPM_OK, [B_UNREAD]),
         (".npmrc", f"registry=https://registry.npmjs.org/{'a' * 300}\n" + NPM_OK, []),
         (".npmrc", f"registry=https://{'a' * 300}.example/\n" + NPM_OK, [B_UNREAD]),
         # file: is local only with an empty host or localhost.
         (".npmrc", "registry=file://tmp/r\n" + NPM_OK, [B_HOST]),
-        (".npmrc", "registry=file://pkgs.attacker.example/feed\n" + NPM_OK, [B_HOST]),
+        (".npmrc", "registry=file://pkgs.remote.example/feed\n" + NPM_OK, [B_HOST]),
         (".npmrc", "registry=file:///srv/r\n" + NPM_OK, []),
         (".npmrc", "registry=file://localhost/srv/r\n" + NPM_OK, []),
-        ("requirements.txt", "--index-url file://pkgs.attacker.example/simple\n", [B_HOST]),
+        ("requirements.txt", "--index-url file://pkgs.remote.example/simple\n", [B_HOST]),
         ("requirements.txt", "--index-url file:///srv/simple\n", []),
-        ("nuget.config", '<configuration><packageSources><clear />\n<add key="c" value="file://pkgs.attacker.example/feed"/>\n</packageSources></configuration>\n', [B_HOST]),
+        (
+            "nuget.config",
+            '<configuration><packageSources><clear />\n<add key="c" value="file://pkgs.remote.example/feed"/>\n</packageSources></configuration>\n',
+            [B_HOST],
+        ),
         # Scheme-less UNC values name a remote host too.
-        ("requirements.txt", "--index-url '\\\\pkgs.attacker.example\\feed'\n", [B_HOST]),
-        (".npmrc", "registry=//pkgs.attacker.example/feed\n" + NPM_OK, [B_HOST]),
+        ("requirements.txt", "--index-url '\\\\pkgs.remote.example\\feed'\n", [B_HOST]),
+        (".npmrc", "registry=//pkgs.remote.example/feed\n" + NPM_OK, [B_HOST]),
         (".npmrc", "registry=\\\\registry.npmjs.org\\feed\n" + NPM_OK, []),
         (".npmrc", "registry=./local-dir\n" + NPM_OK, []),
         # Go proxy list
-        ("a.sh", "export GOPROXY=file://pkgs.attacker.example/p,direct\n", [B_HOST]),
+        ("a.sh", "export GOPROXY=file://pkgs.remote.example/p,direct\n", [B_HOST]),
         ("a.sh", "export GOPROXY=file:///srv/goproxy\n", []),
     ],
 )
