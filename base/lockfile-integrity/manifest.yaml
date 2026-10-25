@@ -1,6 +1,6 @@
 id: lockfile-integrity
 name: "Lockfile Integrity"
-version: "0.0.2"
+version: "0.0.3"
 description: >
   Script gate (commit, agent write, CI) over npm, yarn, pnpm, bun, poetry, uv, Pipfile, Cargo, go.sum,
   Gemfile, composer and NuGet locks. Blocks: source off the registry list or not https, missing hash, hash
@@ -117,6 +117,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d): at push and ci the registry host allowlist is the one at the range base, not the one the change under judgement carries: the pull request's base branch (GITHUB_BASE_REF read as origin/<name>), else the `before` commit of the push event, else the first parent; a root commit has no base, so only the default registries count. A named base that does not resolve, or a shallow checkout with no parent, is a fault (exit 2), never an allow. ci now raises lock-allowlist-edited for a change that carries the allowlist, as tool use and agent-commit do; push does not. The finding message now reads for both writers. Tests: test_lockfile_integrity_sr2d2.py. No eval case can drive this: replay has no range base to name."
 - version: 0.0.2
   date: '2026-10-07'
   changes:
