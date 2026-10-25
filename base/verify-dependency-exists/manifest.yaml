@@ -1,6 +1,6 @@
 id: verify-dependency-exists
 name: "Dependency Allowlist"
-version: "0.2.0"
+version: "0.2.1"
 description: >
   Allowlist gate for new dependencies; no registry lookup. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go,
   Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.1
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d): at an agent's event (tool_use, stop, agent-commit, or any event that is not commit, push or ci) the allowlist is the one HEAD holds (`git show HEAD:./.chock/dependency-allowlist.txt`), not the file on disk, so an agent cannot approve its own dependency by moving or editing the file. A file HEAD holds that is gone from disk is an empty list; missing at HEAD and on disk keeps the warn-only note, and a file created after HEAD does not approve anything. With no commit yet the file on disk is read as before. A write that adds an entry to the allowlist at an agent's event is refused (finding key `allowlist|<entry>`). A person's commit, push and CI still read the file on disk. Tests: test_verify_dependency_exists_sr2d2.py; eval cases tc-062, tc-063; the agent-event cases tc-006 to tc-009, tc-027 and tc-061 now commit the allowlist as HEAD."
 - version: 0.2.0
   date: '2026-10-19'
   changes:
