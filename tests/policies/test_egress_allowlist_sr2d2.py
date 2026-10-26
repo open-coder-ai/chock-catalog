@@ -90,3 +90,8 @@ def test_a_file_owned_by_someone_else_is_refused(
     assert code == BLOCK
     assert "owned" in err
     assert core.project_file(tmp_path) == tmp_path / ".chock" / "egress-allowlist.txt"
+
+
+def test_a_platform_without_geteuid_trusts_the_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delattr(os, "geteuid")
+    assert core.untrusted(put(tmp_path, "evil.example\n", 0o666)) == ""

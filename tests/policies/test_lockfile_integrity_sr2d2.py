@@ -114,3 +114,13 @@ def test_ci_raises_the_allowlist_edit_but_a_person_s_push_does_not(
     edit = {ALLOWLIST: "npm.evil.example\n"}
     assert found(widened, edit, "ci") == [model.ALLOWLIST_EDIT]
     assert found(widened, edit, "push") == []
+
+
+def test_a_before_commit_equal_to_head_falls_back_to_the_first_parent(
+    widened: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    event = tmp_path / "event.json"
+    event.write_text(json.dumps({"before": rev(widened)}))
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event))
+    assert gate.range_base(widened) == "HEAD^1"
+    assert model.SOURCE in found(widened, {"package-lock.json": SWAPPED}, "push")

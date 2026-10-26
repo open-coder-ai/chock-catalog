@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -185,3 +186,9 @@ def test_a_credential_elsewhere_on_the_line_does_not_hide_a_short_literal() -> N
 def test_a_dockerfile_env_with_the_value_on_its_own_line_is_still_left_to_scan_secrets() -> None:
     assert "dk-secret-arg-env" not in dockerfile_rules(f"ENV POSTGRES_PASSWORD={PASSWORD}\n", dockerkit.BARE)
     assert "dk-secret-arg-env" not in dockerfile_rules(f"ARG POSTGRES_PASSWORD={PASSWORD}\n", dockerkit.BARE)
+
+
+@pytest.mark.parametrize("literal", ["", "  ", '""', "''", " ' ' "])
+def test_an_empty_or_quote_only_literal_is_never_left_to_scan_secrets(literal: str) -> None:
+    secrets = sys.modules["dkscan.secrets"]
+    assert not secrets.left_to_scan_secrets(literal, secrets.scanned([f"ENV TOKEN={PASSWORD}"]))

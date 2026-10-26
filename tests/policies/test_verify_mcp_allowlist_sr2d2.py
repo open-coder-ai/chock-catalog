@@ -240,3 +240,9 @@ def test_an_allowlist_entry_key_covers_env_headers_cwd_and_type(tmp_path: Path) 
         payload = {"event": "tool_use", "repo_root": str(repo), "writes": {ALLOW: mcpkit.allowlist_text(entry)}}
         keys |= {i["key"] for i in gate.findings(payload) if i["key"].startswith("allowlist-entry|")}
     assert len(keys) == 4
+
+
+def test_a_printf_without_a_format_directive_is_its_own_text_only_with_one_argument() -> None:
+    printf = guard.Cmd("printf", [FS_JSON], {}, [], [], "")
+    assert guard.own_text(printf) == FS_JSON
+    assert guard.own_text(printf._replace(args=[FS_JSON, "extra"])) is None

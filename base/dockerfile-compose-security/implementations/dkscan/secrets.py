@@ -95,11 +95,6 @@ def is_literal(value: str) -> bool:
     return stripped.lower() not in NOT_LITERAL and not REFERENCE.search(stripped)
 
 
-def scan_secrets_reads(line: str) -> bool:
-    """Whether scan-secrets refuses this physical line on its own."""
-    return bool(SCAN_SECRETS.search(line))
-
-
 Scanned = list[tuple[str, list[tuple[int, int]]]]
 
 
