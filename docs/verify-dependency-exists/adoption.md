@@ -162,9 +162,11 @@ verify-dependency-exists  [deterministic]
   PASS  tc-059                             authored  gate: warning: dependency-manifests: .chock/dependency-allowlist.tx…
   PASS  tc-060                             authored  gate exit 0
   PASS  tc-061                             authored  requirements.txt:2: reqeusts is added to requirements and is not in…
+  PASS  tc-062                             authored  .chock/dependency-allowlist.txt:2: evil-pkg is added to .chock/depe…
+  PASS  tc-063                             authored  gate exit 0
   score 1.00
 
-5 policies: 59 pass, 44 skipped
+5 policies: 61 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

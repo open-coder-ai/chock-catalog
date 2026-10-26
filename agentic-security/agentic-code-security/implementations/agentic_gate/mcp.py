@@ -7,13 +7,14 @@ finding is placed on the line where the server's name or the offending value sit
 
 from __future__ import annotations
 
-import json
 import re
 import shlex
 import tomllib
+from collections.abc import Iterator
 from typing import Any, NamedTuple
 
-from agentic_gate.model import FileText
+from agentic_gate import jsonc
+from agentic_gate.model import FileText, Hit
 
 _SERVER_TABLES = ("mcpServers", "mcp_servers", "servers")
 _NPX_VALUES = frozenset({"--registry", "--cache", "--userconfig", "--prefix", "-w", "--workspace"})
@@ -47,13 +48,25 @@ class Launch(NamedTuple):
 
 
 def _document(text: FileText) -> Any:
+    """The parsed config, read from its original text; ValueError or RecursionError when it does not parse."""
+    return tomllib.loads(text.text) if text.kind == "toml" else jsonc.loads(text.text)
+
+
+def unreadable(text: FileText) -> bool:
+    """Whether a config file that is not blank cannot be parsed, so no server in it can be judged."""
+    if not text.is_mcp_config or not text.text.strip():
+        return False
     try:
-        if text.kind == "toml":
-            return tomllib.loads(text.text)
-        body = "\n".join(line for line in text.lines if not line.lstrip().startswith("//"))
-        return json.loads(body)
+        _document(text)
     except (ValueError, RecursionError):
-        return None
+        return True
+    return False
+
+
+def unreadable_hits(text: FileText) -> Iterator[Hit]:
+    """The one refusing hit for a config that does not parse; the finding is a comparison with no baseline."""
+    if unreadable(text):
+        yield Hit(1, "the MCP config cannot be parsed, so its servers cannot be judged.", by_diff=True)
 
 
 def _tables(node: Any) -> list[dict[str, Any]]:
@@ -72,13 +85,14 @@ def _tables(node: Any) -> list[dict[str, Any]]:
 
 def servers(text: FileText) -> list[Server]:
     """The servers a config declares, in document order. Empty for a file that does not parse."""
-    if not text.is_mcp_config:
+    if not text.is_mcp_config or not text.text.strip():
+        return []
+    try:
+        document = _document(text)
+    except (ValueError, RecursionError):
         return []
     return [
-        Server(str(name), body)
-        for table in _tables(_document(text))
-        for name, body in table.items()
-        if isinstance(body, dict)
+        Server(str(name), body) for table in _tables(document) for name, body in table.items() if isinstance(body, dict)
     ]
 
 

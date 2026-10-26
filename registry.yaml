@@ -34,15 +34,15 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.1.5
+  version: 0.1.7
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 81
-  eval_executed: 81
+  eval_cases: 91
+  eval_executed: 91
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks"}
@@ -128,7 +128,7 @@ policies:
     $VARs.'
 - id: block-unapproved-egress
   path: base/block-unapproved-egress
-  version: 0.2.5
+  version: 0.2.6
   artifact: rule
   enforcement: advise
   status: production
@@ -770,15 +770,15 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.7.4
+  version: 0.7.5
   artifact: rule
   enforcement: advise
   status: production
   mandatory: true
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1578
-  eval_executed: 1578
+  eval_cases: 1587
+  eval_executed: 1587
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -893,15 +893,15 @@ policies:
     Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.1.2
+  version: 0.1.3
   artifact: hook
   enforcement: block
   status: production
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 58
-  eval_executed: 58
+  eval_cases: 59
+  eval_executed: 59
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}
@@ -916,7 +916,7 @@ policies:
     Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.'
 - id: token-efficiency
   path: base/token-efficiency
-  version: 0.1.1
+  version: 0.1.2
   artifact: rule
   enforcement: advise
   status: draft
@@ -936,15 +936,15 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.2.0
+  version: 0.2.2
   artifact: hook
   enforcement: block
   status: production
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 59
-  eval_executed: 59
+  eval_cases: 61
+  eval_executed: 61
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -960,15 +960,15 @@ policies:
     end.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.5.4
+  version: 0.6.1
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 108
-  eval_executed: 108
+  eval_cases: 116
+  eval_executed: 116
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. Blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Blocks on an agent's file writes and at turn end"}
@@ -1008,15 +1008,15 @@ policies:
     computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.9
+  version: 0.0.10
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 46
-  eval_executed: 45
+  eval_cases: 47
+  eval_executed: 46
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}
@@ -1076,15 +1076,15 @@ policies:
     asks a person.'
 - id: agentic-code-security
   path: agentic-security/agentic-code-security
-  version: 0.3.0
+  version: 0.4.1
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 141
-  eval_executed: 136
+  eval_cases: 146
+  eval_executed: 141
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}
@@ -1103,15 +1103,15 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.2.1
+  version: 0.2.2
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 58
-  eval_executed: 58
+  eval_cases: 60
+  eval_executed: 60
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs"}
@@ -1195,7 +1195,7 @@ policies:
     justfile, .envrc, *.sh. Blocks. Misses: split lines, -n.'
 - id: agent-devenv-autoexec
   path: base/agent-devenv-autoexec
-  version: 0.0.1
+  version: 0.0.2
   artifact: rule
   enforcement: advise
   status: draft
@@ -1241,15 +1241,15 @@ policies:
     agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.'
 - id: dockerfile-compose-security
   path: base/dockerfile-compose-security
-  version: 0.1.1
+  version: 0.2.0
   artifact: rule
   enforcement: block
   status: production
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 34
-  eval_executed: 34
+  eval_cases: 37
+  eval_executed: 37
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -1270,7 +1270,7 @@ policies:
     not a boundary.'
 - id: lockfile-integrity
   path: base/lockfile-integrity
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   status: draft
@@ -1365,7 +1365,7 @@ policies:
     unlisted secret names, values split or encoded.'
 - id: agent-permissions-scan
   path: base/agent-permissions-scan
-  version: 0.2.0
+  version: 0.2.1
   artifact: rule
   enforcement: block
   status: production
@@ -1411,15 +1411,15 @@ policies:
     add, git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.'
 - id: block-secret-store-reads
   path: base/block-secret-store-reads
-  version: 0.0.6
+  version: 0.0.7
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 125
-  eval_executed: 125
+  eval_cases: 127
+  eval_executed: 127
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks"}
@@ -1435,7 +1435,7 @@ policies:
     proxy or SDK.'
 - id: guard-deletion
   path: base/guard-deletion
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   status: draft
@@ -1575,15 +1575,15 @@ policies:
     encoded payloads. Added text only; English phrases; friction, not a boundary.'
 - id: iam-policy-scan
   path: agentic-security/iam-policy-scan
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 48
-  eval_executed: 48
+  eval_cases: 51
+  eval_executed: 51
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -1647,15 +1647,15 @@ policies:
     in a call, parens or concatenation, in XML, or padded with control characters.'
 - id: registry-config
   path: base/registry-config
-  version: 0.0.2
+  version: 0.0.3
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 57
-  eval_executed: 57
+  eval_cases: 61
+  eval_executed: 61
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}

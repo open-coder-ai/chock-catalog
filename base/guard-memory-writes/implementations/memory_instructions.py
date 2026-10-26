@@ -208,7 +208,7 @@ def hosts(statement: str) -> list[tuple[str, bool]]:
         try:
             out.append((urls.parse_url(text).host.name, False))
         except (urls.UnparseableError, ValueError):
-            out.append((text.split("/", 3)[2][:80], True))
+            out.append((text.split("/", 3)[2].rpartition("@")[2][:80], True))
     return out[:MAX_URLS]
 
 
@@ -222,18 +222,19 @@ def off_list(name: str, entries: tuple[hostmatch.Entry, ...]) -> bool:
 def ask_rows(path: str, text: str, entries: tuple[hostmatch.Entry, ...] | None, skip: set[int]) -> list[dict]:
     """Every ask-tier finding in one memory file, in line order; `skip` holds the lines a secret already refuses."""
     out = []
-    for number, statement in statements(text):
+    found = statements(text)
+    ends = [first - 1 for first, _ in found[1:]] + [len(text.splitlines())]
+    for (number, statement), end in zip(found, ends, strict=True):
         digest = _digest(fold(statement))
+        withheld = any(line in skip for line in range(number, end + 1))
         if instructs(statement):
-            out.append(
-                _row("instruction", path, number, digest, f"reads as an instruction to the agent: {_shown(statement)}")
-            )
+            said = "(text withheld: a line of it holds a secret)" if withheld else _shown(statement)
+            out.append(_row("instruction", path, number, digest, f"reads as an instruction to the agent: {said}"))
         for name, unreadable in hosts(statement) if entries else ():
             if unreadable or off_list(name, entries):
                 kind = "URL host that cannot be read one way" if unreadable else "URL host"
-                out.append(
-                    _row("url-host", path, number, f"{name}|{digest}", f"{kind} {name!r}: not on the repo's allowlist")
-                )
+                key, named = (digest, "(withheld)") if withheld else (f"{name}|{digest}", repr(name))
+                out.append(_row("url-host", path, number, key, f"{kind} {named}: not on the repo's allowlist"))
     for number, line in enumerate(text.splitlines(), 1):
         out += [
             _row("blob", path, number, _digest(run), f"an encoded blob of {len(run)} characters")

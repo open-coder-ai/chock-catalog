@@ -8,6 +8,7 @@ still import as before.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -35,10 +36,35 @@ BARE = str(Path(__file__).resolve().parent)
 FETCH_EXEC, PINS, AGENTIC = "block-fetch-exec-in-files", "block-unpinned-agent-components", "agentic-code-security"
 
 
-def installed(root: Path, *policies: str) -> str:
-    """`root` as a repository where `policies` are installed (their .chock/compiled folders exist)."""
+def sibling_pattern() -> str:
+    """The content_pattern block-fetch-exec-in-files ships, as its compiled gate carries it."""
+    manifest = scriptkit.manifest("block-fetch-exec-in-files")
+    return manifest["hook"]["gate"]["params"]["content_pattern"]
+
+
+def planted(root: Path, *policies: str) -> str:
+    """`root` with an empty .chock/compiled/<policy> folder for each policy: what a bare `mkdir` leaves."""
     for policy in policies:
-        (root / ".chock" / "compiled" / policy).mkdir(parents=True, exist_ok=True)
+        (root / ".chock" / "compiled" / policy / "pre-tool-use").mkdir(parents=True, exist_ok=True)
+    return str(root)
+
+
+def installed(root: Path, *policies: str, action: str = "block", pattern: str | None = None) -> str:
+    """`root` as a repository where `policies` are installed: each has a compiled gate file with this action."""
+    planted(root, *policies)
+    for policy in policies:
+        params = {"scan": "added_lines"}
+        if policy == FETCH_EXEC:
+            params["content_pattern"] = sibling_pattern() if pattern is None else pattern
+        gate = {
+            "kind": "content_regex",
+            "on": ["commit", "tool_use"],
+            "action": action,
+            "message": "m",
+            "params": params,
+        }
+        path = root / ".chock" / "compiled" / policy / "pre-tool-use" / "gate.json"
+        path.write_text(json.dumps(gate), encoding="utf-8")
     return str(root)
 
 

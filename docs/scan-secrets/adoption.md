@@ -161,9 +161,10 @@ scan-secrets  [deterministic]
   PASS  tc-056                             authored  gate exit 0
   PASS  tc-057                             authored  gate exit 0
   PASS  tc-058                             authored  gate exit 0
+  PASS  tc-059                             authored  gate exit 0
   score 1.00
 
-5 policies: 58 pass, 44 skipped
+5 policies: 59 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

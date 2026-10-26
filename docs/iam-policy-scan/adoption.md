@@ -152,9 +152,12 @@ iam-policy-scan  [deterministic]
   PASS  tc-046                             authored  policies.tf:2: [iam-admin-grant] (block; id 1676d2f7e7bc) Allow wit…
   PASS  tc-047                             authored  gate exit 0
   PASS  tc-048                             authored  bucket.tf:2: [iam-service-wildcard] (ask; id b6ee9055bc1a) Allow wi…
+  PASS  tc-049                             authored  k8s/clusterrole.yaml:7: [iam-unreadable] (block; id 3f942a6469d3) C…
+  PASS  tc-050                             authored  chart/templates/role.yaml:1: [iam-unreadable] (block; id ba11fa5131…
+  PASS  tc-051                             authored  gate exit 0
   score 1.00
 
-5 policies: 48 pass, 44 skipped
+5 policies: 51 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

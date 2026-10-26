@@ -17,7 +17,11 @@ from mcpcheck.entry import Server
 PATH = ".chock/mcp-allowlist.json"
 #: Events a person's commit reaches. Any other event, a name never seen included, is an agent's: it reads HEAD's allowlist.
 PERSON_EVENTS = frozenset({"commit", "push", "ci"})
-KEYS = frozenset({"name", "launcher", "spec", "url_host"})
+TABLES = ("env", "headers")
+KEYS = frozenset({"name", "launcher", "spec", "url_host", "cwd", "type", *TABLES})
+#: What a server's `type` may be when its allowlist entry does not list one: the plain form of its kind.
+STDIO_TYPES = frozenset({"", "stdio", "local"})
+REMOTE_TYPES = frozenset({"", "http", "sse", "streamable-http", "streamable_http", "remote"})
 LIMIT = 1 << 20
 MAX_ENTRIES = 500
 GIT = shutil.which("git") or "git"
@@ -36,18 +40,48 @@ class Allowed:
     spec: str
     host: hostmatch.Entry | None
     host_text: str = ""
+    env: tuple[tuple[str, str], ...] = ()
+    headers: tuple[tuple[str, str], ...] = ()
+    cwd: str = ""
+    type: str = ""
+
+    def identity(self) -> list:
+        """Everything an entry approves, as the key of an edited entry."""
+        return [self.name, self.launcher, self.spec, self.host_text, self.env, self.headers, self.cwd, self.type]
+
+
+def _table(item: dict, key: str) -> tuple[tuple[str, str], ...]:
+    table = item.get(key, {})
+    if not isinstance(table, dict) or not all(isinstance(v, str) for v in table.values()):
+        msg = f"{key} must be an object of text"
+        raise AllowlistError(msg)
+    return tuple(sorted((str(name), value) for name, value in table.items()))
 
 
 def _entry(item: object) -> Allowed:
-    if not isinstance(item, dict) or not item.keys() <= KEYS or not all(isinstance(v, str) for v in item.values()):
-        msg = "each server must be an object of text with only name, launcher, spec and url_host"
+    if (
+        not isinstance(item, dict)
+        or not item.keys() <= KEYS
+        or not all(isinstance(v, str) for key, v in item.items() if key not in TABLES)
+    ):
+        msg = "each server must be an object with only name, launcher, spec, url_host, cwd, type, env and headers"
         raise AllowlistError(msg)
     name, launcher, spec, host = (item.get(key, "") for key in ("name", "launcher", "spec", "url_host"))
     if not name or bool(host) == bool(launcher) or ("spec" in item and not launcher):
         msg = "each server needs a name and either launcher with spec, or url_host"
         raise AllowlistError(msg)
     try:
-        return Allowed(name, launcher, spec, hostmatch.parse_entry(host) if host else None, host)
+        return Allowed(
+            name,
+            launcher,
+            spec,
+            hostmatch.parse_entry(host) if host else None,
+            host,
+            _table(item, "env"),
+            _table(item, "headers"),
+            item.get("cwd", ""),
+            item.get("type", "").lower(),
+        )
     except UnparseableError as exc:
         msg = f"url_host {host!r}: {exc}"
         raise AllowlistError(msg) from None
@@ -107,8 +141,21 @@ def load(repo_root: Path, event: str) -> tuple[tuple[Allowed, ...], str | None]:
     return (parse(text), text) if text is not None else ((), None)
 
 
+def bound(server: Server, allowed: Allowed) -> bool:
+    """Whether the parts that decide what runs, env, headers, cwd and type, are exactly those the entry approves."""
+    kind = STDIO_TYPES if allowed.host is None else REMOTE_TYPES
+    return (
+        server.env == allowed.env
+        and server.headers == allowed.headers
+        and server.cwd == allowed.cwd
+        and (server.type == allowed.type if allowed.type else server.type in kind)
+    )
+
+
 def matches(server: Server, allowed: Allowed) -> bool:
-    """Whether a server (already named like `allowed`) is the approved one: same launcher and arguments, or an approved url host."""
+    """Whether a server (already named like `allowed`) is the approved one: same launcher, arguments and bound parts, or an approved url host."""
+    if not bound(server, allowed):
+        return False
     if allowed.host is None:
         return not server.urls and server.launcher == allowed.launcher and " ".join(server.args) == allowed.spec
     if server.launcher or not server.urls:

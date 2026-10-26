@@ -29,6 +29,7 @@ _LOCAL_PREFIXES = (".", "/", "~")
 
 
 def _unpinned(text: FileText) -> Iterator[Hit]:
+    yield from mcp.unreadable_hits(text)
     for server in mcp.servers(text):
         found = mcp.launch(mcp.argv(server))
         if found and mcp.is_fetched_by_name(found) and not found.spec.endswith("@latest") and not mcp.is_pinned(found):
@@ -61,6 +62,7 @@ def _is_remote_http(url: str) -> bool:
 
 
 def _remote_http(text: FileText) -> Iterator[Hit]:
+    yield from mcp.unreadable_hits(text)
     for server in mcp.servers(text):
         for key in _URL_KEYS:
             url = server.body.get(key)

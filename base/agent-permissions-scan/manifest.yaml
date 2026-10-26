@@ -1,6 +1,6 @@
 id: agent-permissions-scan
 name: "Agent Permissions Scan"
-version: "0.2.0"
+version: "0.2.1"
 description: >
   Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve, Claude project env API-endpoint overrides and enableAllProjectMcpServers. Misses: other MCP configs, user-level settings, scripts, Read.
 artifact: rule
@@ -66,6 +66,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.1
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for CI runs: at event ci the deny entries and waivers a change is compared with are read from the base revision (the payload's base, the pull request base GITHUB_BASE_REF as origin/<name>, or the push's before commit), not from HEAD, which in CI is the change itself. Now also refuses (ap-no-base) a permission config or .chock/devenv.json written at ci when no base can be named, instead of passing it. Keys for long values and for unreadable files now carry the full SHA-256 digest instead of its first 16 hex digits; a waiver or baseline entry for a value over 160 characters must be re-keyed."
 - version: 0.2.0
   date: '2026-10-10'
   changes:

@@ -136,8 +136,8 @@ def _goproxy(ctx: Ctx, number: int, items: list[str]) -> None:
     for element in items:
         # Read inside a command string (sh -c "GOPROXY=a,direct go build"): an element ends at whitespace or ';'.
         item = re.split(r"[\s;]", element, maxsplit=1)[0]
-        if not item or item.lower() in ("direct", "off") or item.lower().startswith("file:"):
-            continue  # file: is a proxy on the local disk
+        if not item or item.lower() in ("direct", "off"):
+            continue
         # Go puts https:// before an element with '.', ':' or '/' but no ':/' (modfetch/proxy.go).
         bare = ":/" not in item and any(c in item for c in ".:/")
         url(ctx, number, "GOPROXY", "https://" + item if bare else item)

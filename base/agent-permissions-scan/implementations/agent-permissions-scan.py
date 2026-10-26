@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from chock_scan import safe_read
-from perms import load, rules, sidecar, walk
+from perms import base, load, rules, sidecar, walk
 
 ALLOW, REFUSE, FAULT = 0, 1, 2
 #: Where a person reviews what is committed or pushed; anywhere else a waiver counts only once committed.
@@ -46,7 +46,7 @@ def line_of(text: str, *needles: str) -> int:
 
 
 def digest(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+    return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()
 
 
 def repo_path(root: Path, path: str) -> str:
@@ -58,19 +58,20 @@ def repo_path(root: Path, path: str) -> str:
     return name
 
 
-def current_waivers(root: Path, writes: dict[str, str], *, person: bool) -> frozenset:
-    """Waivers from HEAD; a person's own change to the sidecar counts too. A sidecar that breaks the schema gives none."""
+def current_waivers(root: Path, writes: dict[str, str], *, person: bool, rev: str = "HEAD") -> frozenset:
+    """Waivers from the base (HEAD); a person's own change to the sidecar counts too. A broken sidecar gives none."""
     staged = writes.get(sidecar.PATH)
-    text = staged if person and staged is not None else sidecar.committed(root, sidecar.PATH)
+    text = staged if person and staged is not None else sidecar.committed(root, sidecar.PATH, rev)
     try:
         return sidecar.waivers(text) if text is not None else frozenset()
     except sidecar.SidecarError:
         return frozenset()
 
 
-def before_denies(root: Path, path: str, kind: str, surface: str, event: str) -> Counter:
-    """Deny entries the file held at HEAD, and on disk before a tool-use write; unreadable text adds none."""
-    texts: list[str | None] = [*sidecar.committed_all(root, path)]
+def before_denies(root: Path, path: str, event: str, rev: str) -> Counter:
+    """Deny entries the file held at the base, and on disk before a tool-use write; unreadable text adds none."""
+    kind, surface = load.classify(path)
+    texts: list[str | None] = [*sidecar.committed_all(root, path, rev)]
     if event == "tool_use" and ".." not in path.split("/"):
         with contextlib.suppress(safe_read.UnreadableError, ValueError):
             texts.append(safe_read.read_text(root / path))
@@ -83,8 +84,11 @@ def before_denies(root: Path, path: str, kind: str, surface: str, event: str) ->
     return held
 
 
-def file_findings(path: str, text: str, root: Path, event: str, *, baseline: bool) -> list[tuple[walk.Hit, int, bool]]:
-    """(hit, line, always new) for one config; an unreadable one is a single hit keyed by a digest of its text."""
+def file_findings(path: str, text: str, root: Path, event: str, rev: str | None) -> list[tuple[walk.Hit, int, bool]]:
+    """(hit, line, always new) for one config, deny removals judged against `rev` (None on a baseline run).
+
+    An unreadable config is a single hit keyed by a digest of its text.
+    """
     kind, surface = load.classify(path)
     try:
         parsed = load.parse(kind, text)
@@ -95,8 +99,8 @@ def file_findings(path: str, text: str, root: Path, event: str, *, baseline: boo
         (hit, line_of(text, hit.value, hit.path.rsplit(".", 1)[-1]), False)
         for hit in walk.hits(*_args(parsed, surface))
     ]
-    if not baseline:
-        gone = before_denies(root, path, kind, surface, event) - walk.denies(parsed.tree, surface)
+    if rev is not None:
+        gone = before_denies(root, path, event, rev) - walk.denies(parsed.tree, surface)
         found += [
             (walk.Hit(walk.DENY, where, entry, "a deny entry the base held is gone"), 1, True) for where, entry in gone
         ]
@@ -116,16 +120,22 @@ def findings(payload: dict) -> list[dict]:
         repo_path(root, path): text for path, text in (payload.get("writes") or {}).items() if isinstance(text, str)
     }
     person = by_person(event)
-    waived = current_waivers(root, writes, person=person)
+    rev = "HEAD"
+    if event == "ci":
+        rev = base.ci_base(root, payload)
+        if rev is None and not baseline:
+            return _no_base(writes)
+        rev = rev or "HEAD"
+    waived = current_waivers(root, writes, person=person, rev=rev)
     found = []
     for name, text in sorted(writes.items()):
         if name.casefold() == sidecar.PATH:
-            found += _sidecar_finding(name, text, root, person=person or baseline)
+            found += _sidecar_finding(name, text, root, person=person or baseline, rev=rev)
         if load.classify(name) is None:
             continue
         if name.startswith(("/", "../")) or name == "..":
             found.append(_unmapped(name))
-        for hit, line, new in file_findings(name, text, root, event, baseline=baseline):
+        for hit, line, new in file_findings(name, text, root, event, None if baseline else rev):
             if (name, hit.path, hit.value) in waived:
                 continue
             item = {"key": f"{hit.rule}|{hit.path}|{hit.value}", "path": name, "line": line}
@@ -133,12 +143,22 @@ def findings(payload: dict) -> list[dict]:
     return found
 
 
+def _no_base(writes: dict[str, str]) -> list[dict]:
+    """In CI with no base to compare against, each permission config or waiver sidecar written is refused."""
+    message = "[ap-no-base] CI names no base revision (set GITHUB_BASE_REF or fetch the base branch), so this change cannot be compared"
+    return [
+        {"key": f"ap-no-base|{name}", "path": name, "line": 1, "message": message, "new": True}
+        for name in sorted(writes)
+        if name.casefold() == sidecar.PATH or load.classify(name) is not None
+    ]
+
+
 def _unmapped(name: str) -> dict:
     message = f"[ap-unmapped] {name} is outside the repository, so its HEAD copy cannot be compared"
     return {"key": f"ap-unmapped|{digest(name)}", "path": name, "line": 1, "message": message}
 
 
-def _sidecar_finding(name: str, text: str, root: Path, *, person: bool) -> list[dict]:
+def _sidecar_finding(name: str, text: str, root: Path, *, person: bool, rev: str = "HEAD") -> list[dict]:
     """The sidecar's own findings: a schema break, and (unless a person writes it) each waiver the change adds."""
     try:
         added = sidecar.waivers(text)
@@ -148,7 +168,7 @@ def _sidecar_finding(name: str, text: str, root: Path, *, person: bool) -> list[
     if person:
         return []
     with contextlib.suppress(sidecar.SidecarError):
-        added -= sidecar.waivers(sidecar.committed(root, sidecar.PATH) or "")
+        added -= sidecar.waivers(sidecar.committed(root, sidecar.PATH, rev) or "")
     return [
         {
             "key": f"ap-agent-waiver|{'|'.join(waiver)}",

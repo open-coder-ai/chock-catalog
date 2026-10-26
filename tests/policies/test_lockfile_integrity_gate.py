@@ -29,6 +29,13 @@ SWAPPED = npm_lock({"left-pad": pkg("left-pad", "1.3.0", resolved=EVIL)})
 BUMP = manifest({"left-pad": "^1.3.0", "is-odd": "^3.0.1"})
 
 
+@pytest.fixture(autouse=True)
+def no_ci_variables(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Push and ci events read the CI's base from these; a test repository has none."""
+    monkeypatch.delenv("GITHUB_BASE_REF", raising=False)
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)
+
+
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
     return scriptkit.init_repo(tmp_path / "r", {"package.json": BASE_MANIFEST, "package-lock.json": BASE_LOCK})

@@ -42,6 +42,10 @@ CLEAR = frozenset({"http", "ws", "ftp", "git", "svn"})
 #: 'https:h' as https://h, so those are URLs that parse_url then refuses as ambiguous).
 SCHEME = re.compile(r"^(?:[A-Za-z][A-Za-z0-9+.-]*://|(?:https?|wss?|ftp|file):)", re.IGNORECASE)
 AUTHORITY_END = re.compile(r"[/?#]")
+#: A file: URL with no host (file:///x, file:/x): a path on the local disk.
+LOCAL_FILE = re.compile(r"^file:(?:///|/(?!/))", re.IGNORECASE)
+#: A value written as a UNC path (\\host\share or //host/share), which Windows clients fetch from the host.
+UNC = re.compile(r"^[\\/]{2}(?![\\/?.])")
 QUOTES = "\"'"
 
 
@@ -88,9 +92,9 @@ def digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
 
 
-def norm(text: object) -> str:
-    """A value as a key part: stripped, quotes removed, inner whitespace collapsed, cut to 200 characters."""
-    return " ".join(str(text).strip().strip(QUOTES).split())[:200]
+def norm(text: object, limit: int | None = 200) -> str:
+    """A value as a key part: stripped, quotes removed, inner whitespace collapsed, cut to `limit` characters."""
+    return " ".join(str(text).strip().strip(QUOTES).split())[:limit]
 
 
 def add(ctx: Ctx, rule: str, line: int, key: tuple[str, str], message: str) -> None:
@@ -146,10 +150,13 @@ def allowed(ctx: Ctx, host: Host) -> bool:
 
 def url(ctx: Ctx, line: int, setting: str, value: object, *, registry: bool = True) -> None:
     """Judge a URL a setting points packages at: clear text, an unparseable spelling, embedded
-    credentials and, when `registry`, a host outside the allowlist. A path without a scheme is local."""
-    text = norm(value)
+    credentials and, when `registry`, a host outside the allowlist. A path without a scheme is local, as is a
+    file: URL without a host; a UNC path or file: URL naming another host is judged like an https one."""
+    text = norm(value, None)
     bare = PREFIX.sub("", text)
-    if not SCHEME.match(bare):
+    if UNC.match(bare):
+        bare = "file:" + bare.replace("\\", "/")
+    if not SCHEME.match(bare) or LOCAL_FILE.match(bare):
         return
     try:
         parsed = parse_url(bare)
@@ -161,7 +168,7 @@ def url(ctx: Ctx, line: int, setting: str, value: object, *, registry: bool = Tr
         _userinfo(ctx, line, setting, bare)
     if parsed.scheme in CLEAR and not loopback(parsed.host):
         add(ctx, HTTP, line, (setting, shown), f"{setting} fetches over clear text ({shown}); use https")
-    elif registry and parsed.scheme != "file" and not allowed(ctx, parsed.host):
+    elif registry and not allowed(ctx, parsed.host):
         add(
             ctx,
             HOST,

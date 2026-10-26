@@ -1,6 +1,6 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.1.2"
+version: "0.1.3"
 description: >
   Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key
   and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds,
@@ -86,7 +86,7 @@ hook:
         # passwords passed on a command line
         |\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
         |\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-        |\bmysql(?:dump|admin|sh)?\b.{0,200}\s(?-i:-p)["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+        |\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b[^|;&\n]{0,200}\s(?-i:-p)["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
         |\bsshpass\s+(?-i:-p)\s*["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
         # vendor token shapes (case-sensitive)
         |(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})
@@ -137,6 +137,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.3
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d): a `-p<password>` argument is now refused for the whole mysql and mariadb client family (mysql, mysqldump, mysqladmin, mysqlsh, mysqlpump, mysqlimport, mysqlcheck, mysqlshow, mysqlslap, mysqlbinlog, mariadb and mariadb-dump, -admin, -import, -check, -show, -slap, -binlog), and sshpass keeps its `-p <password>` and `-p<password>` forms. The match stays inside the tool's own command: a pipe, `;` or `&` ends it, so `mysqldump db | ssh -p2222 host` and `mysqldump db && tar -pxzf a.tar` no longer read the next command's -p as a password. -p on mkdir, ssh, tar and cp was never matched. A mysql-family `-p` followed by a separate word is a prompt plus a database name, so it stays allowed. Tests: test_scan_secrets_sr2d2.py; eval case tc-059."
 - version: 0.1.2
   date: '2026-10-19'
   changes:

@@ -91,12 +91,12 @@ def test_helm_directives_are_set_aside_before_the_yaml_is_read() -> None:
 
 def test_jinja_blocks_are_set_aside_too() -> None:
     text = "kind: Role\nrules:\n{% if x %}\n  - resources: ['*']\n    verbs: [get]\n{% endif %}\n"
-    assert rules("role.yml", text) == [("k8s-rbac-wildcard", BLOCK)]
+    assert rules("chart/templates/role.yml", text) == [("k8s-rbac-wildcard", BLOCK)]
 
 
-def test_a_template_that_is_still_not_yaml_is_not_judged() -> None:
+def test_a_template_that_is_still_not_yaml_is_refused() -> None:
     text = "kind: Role\nrules:\n  - resources: ['*']\n    verbs: {{ .Values.verbs | toJson }}: [\n"
-    assert rules("role.yaml", text) == []
+    assert rules("templates/role.yaml", text) == [("iam-unreadable", BLOCK)]
 
 
 def test_a_yaml_manifest_that_cannot_be_read_and_is_not_a_template_is_refused() -> None:

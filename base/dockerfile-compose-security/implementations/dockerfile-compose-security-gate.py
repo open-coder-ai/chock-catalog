@@ -50,7 +50,7 @@ def has_dockerignore(path: str, payload: dict, repo: Repo) -> bool:
 def dockerfile_hits(path: str, instrs: list[dockerfile.Instr], payload: dict, repo: Repo) -> list[Hit]:
     ctx = Ctx(
         ignored=has_dockerignore(path, payload, repo),
-        fetch_exec_elsewhere=repo.fetch_exec_reads(path),
+        fetch_exec=repo.fetch_exec_pattern(path),
         pins_elsewhere=repo.pins_reads(),
         node_tls_elsewhere=repo.node_tls_reads(path),
     )

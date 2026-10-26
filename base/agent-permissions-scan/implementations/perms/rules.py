@@ -76,7 +76,7 @@ def norm(value: object) -> str:
     text = " ".join(str(value).split())
     if len(text) <= KEY_TEXT:
         return text
-    digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()[:16]
+    digest = hashlib.sha256(text.encode("utf-8", "surrogatepass")).hexdigest()
     return f"{text[:KEY_TEXT]}...#{digest}"
 
 

@@ -5,13 +5,17 @@ Runs as the policy's script gate: stdin is {"event", "repo_root", "writes": {pat
 the engine's second run); exit 0 allows, 1 refuses, 3 asks, 2 is a fault in this check. At a commit and at agent
 tool use the gate reads the baseline itself (HEAD at a commit; at tool use the file on disk, or HEAD when the disk
 already holds the write) so it can compare a package@version across both, and it marks every finding new. At push
-and in CI it cannot name the range base, so it reports per-file findings keyed for the engine's baseline run.
+and in CI it cannot name the range base, so it reports per-file findings keyed for the engine's baseline run. At push
+and in CI the host allowlist is the one at the range base (the pull request's base branch, the commit a push started
+from, else the first parent), never the one the change under judgement carries; a base that cannot be named is a fault.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import posixpath
+import re
 import shutil
 import subprocess
 import sys
@@ -34,7 +38,18 @@ CHANGE_EVENTS = frozenset({"commit", "agent-commit", "push", "ci"})
 COMMIT_EVENTS = frozenset({"commit", "agent-commit"})
 #: Events where the agent is the writer: it may not widen the host allowlist that judges its own locks.
 AGENT_EVENTS = frozenset({"agent-commit", "tool_use"})
+#: Events where the allowlist is not the change's to edit: an agent's, and CI, which judges a change of any author.
+EDIT_EVENTS = AGENT_EVENTS | {"ci"}
+#: Events judged against a range: the allowlist is read at its base.
+RANGE_EVENTS = frozenset({"push", "ci"})
+EVENT_LIMIT = 1 << 20
+SHA = re.compile(r"[0-9a-f]{40}")
+BASE_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
 ALLOW, REFUSE, FAULT, ASK = 0, 1, 2, 3
+
+
+class BaseError(RuntimeError):
+    """The base of the range under judgement cannot be named, so the allowlist that judges it cannot be read."""
 
 
 def git(root: Path, *args: str) -> str | None:
@@ -50,6 +65,59 @@ def git(root: Path, *args: str) -> str | None:
 def committed(root: Path, path: str) -> str | None:
     """The file as HEAD has it; None for a path outside the repository or not in HEAD."""
     return None if PurePosixPath(path).is_absolute() else git(root, "show", f"HEAD:./{path}")
+
+
+def resolves(root: Path, ref: str) -> bool:
+    return git(root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}") is not None
+
+
+def parent_exists(root: Path) -> bool:
+    return resolves(root, "HEAD^1")
+
+
+def is_shallow(root: Path) -> bool:
+    return (git(root, "rev-parse", "--is-shallow-repository") or "").strip() == "true"
+
+
+def pushed_before() -> str:
+    """The commit a push started from, read from the CI's event file; empty when there is none."""
+    try:
+        with Path(os.environ.get("GITHUB_EVENT_PATH", "")).open(encoding="utf-8") as handle:
+            before = json.loads(handle.read(EVENT_LIMIT)).get("before")
+    except (OSError, ValueError, AttributeError):
+        return ""
+    return before if isinstance(before, str) and SHA.fullmatch(before) and set(before) != {"0"} else ""
+
+
+def range_base(root: Path) -> str | None:
+    """The ref the change under judgement started from: the pull request's base, the pushed `before`, else the first
+    parent. None for a root commit; BaseError when the CI names a base git cannot resolve or the history is cut."""
+    name = os.environ.get("GITHUB_BASE_REF", "").strip()
+    if name:
+        ref = f"origin/{name}"
+        if not BASE_REF.fullmatch(name) or not resolves(root, ref):
+            msg = f"base ref {ref!r} does not resolve; fetch it (actions/checkout fetch-depth: 0)"
+            raise BaseError(msg)
+        return ref
+    before = pushed_before()
+    if before and resolves(root, before):
+        head = (git(root, "rev-parse", "HEAD") or "").strip()
+        if (git(root, "rev-parse", before) or "").strip() != head:
+            return before
+    if parent_exists(root):
+        return "HEAD^1"
+    if is_shallow(root):
+        msg = "a shallow checkout has no parent to compare with; fetch more history (actions/checkout fetch-depth: 0)"
+        raise BaseError(msg)
+    return None
+
+
+def registry_allowlist(root: Path, event: str) -> str | None:
+    """The allowlist text that judges this event: at the range base for push and CI, else as HEAD holds it."""
+    if event not in RANGE_EVENTS:
+        return committed(root, ALLOWLIST)
+    base = range_base(root)
+    return None if base is None else git(root, "show", f"{base}:./{ALLOWLIST}")
 
 
 def baseline_text(root: Path, event: str, path: str, written: str) -> str | None:
@@ -86,7 +154,7 @@ class Judge:
                 found += state_findings(path, entries, self.allow, self.note)
         if self.event in CHANGE_EVENTS:
             found += sync_findings(files, self.root)
-        if self.event in AGENT_EVENTS:
+        if self.event in EDIT_EVENTS:
             found += [allowlist_edit(path, text) for path, text in files.items() if is_allowlist(path)]
         return found + ignore_findings(files, self.root), parsed
 
@@ -98,7 +166,7 @@ def is_allowlist(path: str) -> bool:
 
 
 def allowlist_edit(path: str, text: str) -> Finding:
-    message = f"an agent may not edit {ALLOWLIST}: a person reviews a registry host and commits it"
+    message = f"{ALLOWLIST} may not be edited by an agent or in the change under review: a person reviews a registry host and commits it on its own"
     return Finding(ALLOWLIST_EDIT, f"{ALLOWLIST_EDIT}|{digest(text)}", path, 1, message)
 
 
@@ -125,7 +193,7 @@ def judge(payload: dict) -> tuple[list[Finding], bool]:
     event = str(payload.get("event", ""))
     if payload.get("baseline") is True and event in SELF_BASELINE:
         return [], False  # the change-run already compared with the baseline and marked its findings new
-    allow, note = load_allowlist(committed(root, ALLOWLIST))
+    allow, note = load_allowlist(registry_allowlist(root, event))
     rules = Judge(root, event, allow, note)
     found, parsed = rules.world(writes)
     if payload.get("baseline") is True or event not in SELF_BASELINE:

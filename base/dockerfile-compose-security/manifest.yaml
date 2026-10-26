@@ -1,6 +1,6 @@
 id: dockerfile-compose-security
 name: "Dockerfile and Compose Security"
-version: "0.1.1"
+version: "0.2.0"
 description: >
   Blocks (some rules ask) when a change to a Dockerfile, Containerfile or compose
   file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware: FROM
@@ -67,6 +67,11 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.0
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d; findings F24, F26, F33; eval cases tc-035 to tc-037; tests in test_dockerfile_compose_sr2d2.py). Behaviour change: a sibling gate (block-fetch-exec-in-files, block-unpinned-agent-components, agentic-code-security) counts as installed only when a readable regular `gate.json` (not a symlink, at most 1 MiB) under its compiled folder, directly or one folder down, has `action: block`; a bare folder, such as one a plain `mkdir` leaves, an unreadable file or a gate that only warns no longer hides this bundle's deny findings. Behaviour change: the fetch-exec and remote-ADD deferral applies the installed sibling's own `content_pattern` from its compiled gate to the physical line, and defers nothing when the pattern is missing or does not compile; the HP03 regex copies are gone, so forms the sibling's pattern reads (a quoted `'curl'`, a pipe into `python3 -`) are now left to it and a line it does not read (a space-preceded `#` in quotes before the fetch) is reported here. Behaviour change: a secret-named literal is left to scan-secrets only when scan-secrets' pattern matches a span of one raw physical line that holds the literal, not a `name: value` string rebuilt from the parsed value, so an alias, anchor, tag, block or wrapped scalar, or a Dockerfile value split by a continuation, is reported here. Known limits: the copied scan-secrets pattern is still the 0.0.9 one (it reads fewer quoted-colon forms than the shipped 0.1.2, which only means a double report); the pins and node-tls deferrals still use this bundle's own line patterns, gated by the same block-action check. protect-agent-config's `mkdir` of compiled folders is not changed here."
+  - "The unused helper scan_secrets_reads is removed (no caller was left after SR-2d2d); behaviour unchanged."
 - version: 0.1.1
   date: '2026-10-07'
   changes:

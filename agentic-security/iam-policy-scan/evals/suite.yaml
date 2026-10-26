@@ -968,3 +968,68 @@ suite:
             policy = "{\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"s3:*\",\"Resource\":\"${var.arn}\"}]}"
           }
       expect: ask
+  - id: tc-049
+    category: trigger
+    prompt: A YAML role with an explicit-key label and a template marker in a leading comment is written outside any template directory.
+    expect: 'The commit is refused: a marker in a comment does not make an unreadable file a template, so the file is refused as unreadable.'
+    execute:
+      event: commit
+      files:
+        k8s/clusterrole.yaml: |
+          # {{ rendered in CI }}
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: ops
+            labels:
+              ? app
+              : ops
+          rules:
+          - apiGroups:
+            - "*"
+            resources:
+            - "*"
+            verbs:
+            - "*"
+      expect: block
+  - id: tc-050
+    category: trigger
+    prompt: A chart template opens a multi-line directive comment that is never closed, then declares a wildcard cluster role.
+    expect: 'The commit is refused: the template still does not read after its directives are set aside, so it is refused as unreadable.'
+    execute:
+      event: commit
+      files:
+        chart/templates/role.yaml: |
+          {{- /*
+          note
+          */ -}}
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            name: ops
+            labels:
+              ? app
+              : ops
+          rules:
+          - apiGroups:
+            - "*"
+            resources:
+            - "*"
+            verbs:
+            - "*"
+      expect: block
+  - id: tc-051
+    category: negative_trigger
+    prompt: A chart template wraps a narrow role rule in a conditional directive.
+    expect: 'The commit is allowed: the directive lines are set aside and the rule is read.'
+    execute:
+      event: commit
+      files:
+        chart/templates/role.yaml: |
+          kind: Role
+          rules:
+          {{- if .Values.rbac }}
+            - resources: ['pods']
+              verbs: [get]
+          {{- end }}
+      expect: allow

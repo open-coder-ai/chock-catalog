@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import posixpath
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,9 @@ from depnames.norm import normalize
 from depnames.pyreq import includes
 
 ALLOWLIST = ".chock/dependency-allowlist.txt"
+#: Events a person's commit reaches. Any other event, a name never seen included, is an agent's: it reads HEAD's allowlist.
+PERSON_EVENTS = frozenset({"commit", "push", "ci"})
+GIT = shutil.which("git") or "git"
 MAX_CHARS = 16_000_000
 ALLOW, ASK, BLOCK, WARN = 0, 3, 1, 4
 MAX_LINE_LOOKUPS = 500
@@ -44,21 +48,62 @@ UNSEEDED = (
 )
 
 
-def load_allowlist(root: Path) -> list[str] | None:
-    """Allowlist entries as written; blank lines and `#` comments are dropped.
+def entries_of(text: str) -> list[str]:
+    """Allowlist entries as written; blank lines and `#` comments are dropped."""
+    lines = (line.split(" #", 1)[0].strip() for line in text.splitlines())
+    return [line for line in lines if line and not line.startswith("#")]
 
-    None when nothing exists at the allowlist path at all: a repository that has not seeded one, which a plugin-only
-    install cannot do. A file that is there but cannot be read is an empty list, so every name is unlisted.
+
+def git_show(root: Path, *args: str) -> subprocess.CompletedProcess[bytes] | None:
+    try:
+        return subprocess.run(  # noqa: S603 -- read-only git with a fixed argument list
+            [GIT, "--no-replace-objects", *args],
+            cwd=root,
+            capture_output=True,
+            timeout=20,
+            check=False,
+            env={**os.environ, "GIT_NO_REPLACE_OBJECTS": "1"},
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def load_allowlist(root: Path, event: str = "commit") -> list[str] | None:
+    """Allowlist entries; an agent's event reads HEAD's file, a person's (commit, push, ci) the file on disk.
+
+    None when the path holds nothing: a repository that has not seeded one, which a plugin-only install cannot do.
+    At an agent's event that means nothing at HEAD, no HEAD (no commit yet) or no git: a file on disk is the agent's and
+    is never read. A file HEAD holds that is gone from disk is an empty list. A file that is there but cannot be read is
+    an empty list, so every name is unlisted.
     """
     path = root / ALLOWLIST
+    if event not in PERSON_EVENTS:
+        shown = git_show(root, "show", f"HEAD:./{ALLOWLIST}")
+        if shown is None or shown.returncode != 0:
+            return None
+        if not os.path.lexists(path) or len(shown.stdout) > MAX_CHARS:
+            return []
+        return entries_of(shown.stdout.decode("utf-8", errors="replace"))
     if not os.path.lexists(path):
         return None
     try:
-        text = safe_read.read_text(path)
+        return entries_of(safe_read.read_text(path))
     except safe_read.UnreadableError:
         return []
-    lines = (line.split(" #", 1)[0].strip() for line in text.splitlines())
-    return [line for line in lines if line and not line.startswith("#")]
+
+
+def allowlist_additions(payload: dict, base: list[str] | None) -> list[dict]:
+    """One finding per entry an agent's write puts in the allowlist that the list in force does not hold."""
+    text = written(payload).get(ALLOWLIST)
+    known = {entry.lower() for entry in base or []}
+    found: dict[str, dict] = {}
+    for number, line in enumerate((text or "").splitlines(), 1):
+        name = next(iter(entries_of(line)), "")
+        if name and name.lower() not in known:
+            message = f"{name} is added to {ALLOWLIST} by a write; only a person extends the allowlist"
+            key = f"allowlist|{name.lower()}"
+            found.setdefault(key, {"key": key, "path": ALLOWLIST, "line": number, "message": message})
+    return list(found.values())
 
 
 class Allowed:
@@ -199,10 +244,13 @@ def main() -> int:
         return seed(Path.cwd())
     try:
         payload = json.load(sys.stdin)
-        entries = load_allowlist(Path(payload["repo_root"]))
-        if entries is None:
+        event = payload.get("event", "")
+        entries = load_allowlist(Path(payload["repo_root"]), event)
+        added = [] if event in PERSON_EVENTS else allowlist_additions(payload, entries)
+        if entries is None and not added:
             return unseeded(payload)
-        manifest, locks = judge(payload, Allowed(entries))
+        manifest, locks = judge(payload, Allowed(entries)) if entries is not None else ([], [])
+        manifest = added + manifest
     except Exception as exc:  # noqa: BLE001 -- a fault must not read as a verdict
         print(f"dependency-manifests: internal error ({type(exc).__name__}); manifests not checked", file=sys.stderr)
         return 2

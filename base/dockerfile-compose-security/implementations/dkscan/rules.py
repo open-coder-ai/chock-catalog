@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import NamedTuple
 
 DENY = "deny"
@@ -21,9 +22,13 @@ class Ctx(NamedTuple):
     """Per-file facts: which installed sibling gate already reads a one-line form here, and whether a .dockerignore exists."""
 
     ignored: bool = False
-    fetch_exec_elsewhere: bool = False
+    fetch_exec: re.Pattern[str] | None = None
     pins_elsewhere: bool = False
     node_tls_elsewhere: bool = False
+
+    def fetch_exec_reads(self, line: str) -> bool:
+        """Whether the installed block-fetch-exec-in-files matches this physical line with its own pattern."""
+        return self.fetch_exec is not None and self.fetch_exec.search(line) is not None
 
 
 class Hit(NamedTuple):

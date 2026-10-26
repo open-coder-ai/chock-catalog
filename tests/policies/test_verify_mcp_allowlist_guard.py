@@ -32,8 +32,7 @@ def reason(command: str) -> str | None:
     [
         f"claude mcp add filesystem -- {FS_LINE}",
         f"claude mcp add --scope user filesystem -- {FS_LINE}",
-        f"claude mcp add -s project -e LOG=1 filesystem -- {FS_LINE}",
-        f"claude mcp add --env A=1 B=2 filesystem -- {FS_LINE}",
+        f"claude mcp add -s project filesystem -- {FS_LINE}",
         f"claude mcp add filesystem {FS_LINE}",
         f"codex mcp add filesystem -- {FS_LINE}",
         f"gemini mcp add filesystem {FS_LINE}",
@@ -41,7 +40,6 @@ def reason(command: str) -> str | None:
         f"cd repo && claude mcp add filesystem -- {FS_LINE}",
         "claude mcp add --transport http docs https://mcp.example.invalid/mcp",
         "claude mcp add -t sse docs https://mcp.example.invalid/sse",
-        "claude mcp add --transport http docs https://mcp.example.invalid/mcp -H 'Authorization: Bearer ${DOCS_TOKEN}'",
         "codex mcp add docs --url https://mcp.example.invalid/mcp",
         "gemini mcp add --transport http docs https://mcp.example.invalid/mcp",
         'claude mcp add-json filesystem \'{"command":"npx","args":["-y","@modelcontextprotocol/server-filesystem@2025.8.21","/work"]}\'',
@@ -106,28 +104,37 @@ def test_a_server_that_is_not_the_approved_one_is_refused(command: str, why: str
 
 
 @pytest.mark.parametrize(
-    "command",
+    ("command", "fs_env", "docs_headers"),
     [
-        f"claude mcp add -e API_TOKEN=lit filesystem -- {FS_LINE}",
-        f"claude mcp add --env A=1 API_KEY=lit filesystem -- {FS_LINE}",
-        f"claude mcp add -e NODE_OPTIONS=--require=x filesystem -- {FS_LINE}",
-        "claude mcp add --transport http docs http://mcp.example.invalid/mcp",
-        "codex mcp add docs --url=http://mcp.example.invalid/mcp",
-        "claude mcp add --transport http docs https://mcp.example.invalid/mcp -H 'Authorization: Bearer lit'",
-        "claude mcp add --transport http docs https://mcp.example.invalid/mcp --header Authorization:lit",
-        "claude mcp add loose -- npx -y loose-mcp",
-        "claude mcp add sh -- bash -c 'echo hi'",
-        'echo \'{"mcpServers":{"docs":{"url":"http://mcp.example.invalid/"}}}\' | tee claude_desktop_config.json',
+        (f"claude mcp add -e API_TOKEN=lit filesystem -- {FS_LINE}", {"API_TOKEN": "lit"}, {}),
+        (f"claude mcp add --env A=1 API_KEY=lit filesystem -- {FS_LINE}", {"A": "1", "API_KEY": "lit"}, {}),
+        (f"claude mcp add -e NODE_OPTIONS=--require=x filesystem -- {FS_LINE}", {"NODE_OPTIONS": "--require=x"}, {}),
+        ("claude mcp add --transport http docs http://mcp.example.invalid/mcp", {}, {}),
+        ("codex mcp add docs --url=http://mcp.example.invalid/mcp", {}, {}),
+        (
+            "claude mcp add --transport http docs https://mcp.example.invalid/mcp -H 'Authorization: Bearer lit'",
+            {},
+            {"Authorization": "Bearer lit"},
+        ),
+        (
+            "claude mcp add --transport http docs https://mcp.example.invalid/mcp --header Authorization:lit",
+            {},
+            {"Authorization": "lit"},
+        ),
+        ("claude mcp add loose -- npx -y loose-mcp", {}, {}),
+        ("claude mcp add sh -- bash -c 'echo hi'", {}, {}),
     ],
 )
 def test_a_listed_server_with_a_new_rule_finding_is_observed_not_refused(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str, fs_env: dict, docs_headers: dict
 ) -> None:
     loose = [
         {"name": "loose", "launcher": "npx", "spec": "-y loose-mcp"},
         {"name": "sh", "launcher": "bash", "spec": "-c echo hi"},
     ]
-    listed = mcpkit.allowlist_text(mcpkit.FS_ALLOWED, mcpkit.REMOTE_ALLOWED, *loose)
+    fs = {**mcpkit.FS_ALLOWED, "env": fs_env}
+    docs = {**mcpkit.REMOTE_ALLOWED, "headers": docs_headers}
+    listed = mcpkit.allowlist_text(fs, docs, *loose)
     monkeypatch.chdir(mcpkit.repo_with(tmp_path, head={ALLOW: listed}))
     assert reason(command) is None
 
@@ -157,7 +164,7 @@ def test_a_shell_write_of_a_dedicated_config_must_show_servers_that_pass(command
 def test_a_shell_write_of_an_approved_server_passes() -> None:
     ok = {"mcpServers": {"filesystem": mcpkit.FS}}
     assert reason(f"echo {shlex.quote(json.dumps(ok))} > .mcp.json") is None
-    assert reason(f"echo 'note: '{shlex.quote(json.dumps(ok))} > .kiro/settings/mcp.json") is None
+    assert reason(f"echo 'note: '{shlex.quote(json.dumps(ok))} > .kiro/settings/mcp.json") is not None
     servers = {"servers": {"docs": {"url": "https://mcp.example.invalid/mcp"}}}
     assert reason(f"echo {shlex.quote(json.dumps(servers))} > .vscode/mcp.json") is None
 
@@ -236,7 +243,7 @@ def test_a_missing_git_falls_back_to_the_current_directory(tmp_path: Path, monke
 
 
 def test_the_flags_of_an_add_are_read_in_every_shape() -> None:
-    words, launch, lists, flags = guard.parse_add(
+    words, launch, lists, flags = guard.mcpadd.parse_add(
         [
             "-s",
             "user",
@@ -258,15 +265,15 @@ def test_the_flags_of_an_add_are_read_in_every_shape() -> None:
     assert (words, launch) == (["name"], ["cmd", "-x"])
     assert lists == {"env": ["A=1", "B=2"], "header": ["X: y", "Z: w"]}
     assert flags == {"-s": "user", "--transport": "http", "--url": "u"}
-    assert guard.parse_add(["--env=A=1", "--scope"])[2:] == ({"env": ["A=1"], "header": []}, {"--scope": ""})
-    assert guard.parse_add(["-e"])[2] == {"env": [], "header": []}
+    assert guard.mcpadd.parse_add(["--env=A=1", "--scope"])[2:] == ({"env": ["A=1"], "header": []}, {"--scope": ""})
+    assert guard.mcpadd.parse_add(["-e"])[2] == {"env": [], "header": []}
 
 
 def test_the_guard_passes_an_unrelated_inline_json_and_ignores_text_that_is_not_json() -> None:
     cmds = guard.commands("echo '{\"other\": 1}' > a.json; echo not-json; echo '[1]'")
-    assert guard.inline_servers(cmds) == []
+    assert guard.written_servers(cmds) == []
 
 
 def test_a_flag_before_the_name_is_skipped_and_a_flag_after_it_is_part_of_the_command() -> None:
-    assert guard.parse_add(["--unknown", "evil", "--", "x"])[:2] == (["evil"], ["x"])
-    assert guard.parse_add(["evil", "npx", "-y", "pkg"])[0] == ["evil", "npx", "-y", "pkg"]
+    assert guard.mcpadd.parse_add(["--unknown", "evil", "--", "x"])[:2] == (["evil"], ["x"])
+    assert guard.mcpadd.parse_add(["evil", "npx", "-y", "pkg"])[0] == ["evil", "npx", "-y", "pkg"]

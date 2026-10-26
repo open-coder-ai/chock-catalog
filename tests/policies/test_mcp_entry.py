@@ -38,7 +38,7 @@ REMOTE = mcpkit.REMOTE_ALLOWED
         (mcpkit.FS, "Filesystem", ["allowlist"]),
         ({"command": "npx", "args": [*mcpkit.FS_ARGS, "/"]}, "filesystem", ["allowlist"]),
         ({"command": "npx", "args": mcpkit.FS_ARGS[:2]}, "filesystem", ["allowlist"]),
-        ({"command": "npx", "args": mcpkit.FS_ARGS, "env": {"LOG": "1"}}, "filesystem", []),
+        ({"command": "npx", "args": mcpkit.FS_ARGS, "env": {"LOG": "1"}}, "filesystem", ["allowlist"]),
         ({"command": "./npx", "args": mcpkit.FS_ARGS}, "filesystem", ["allowlist"]),
         ({"command": "/opt/evil/npx", "args": mcpkit.FS_ARGS}, "filesystem", ["allowlist"]),
         ({"command": "NPX", "args": mcpkit.FS_ARGS}, "filesystem", ["allowlist"]),

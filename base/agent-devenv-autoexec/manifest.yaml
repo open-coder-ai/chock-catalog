@@ -1,6 +1,6 @@
 id: agent-devenv-autoexec
 name: "Agent Devenv Autoexec"
-version: "0.0.1"
+version: "0.0.2"
 description: >
   Warns only (observe): flags files that make a dev tool run code on open, clone or shell entry -- agent
   hooks, helpers, env/BASE_URL overrides, auto-approve; VS Code folderOpen tasks, trust off, repo
@@ -59,6 +59,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.2
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for key identity: keys for long values, parsed-value digests and unreadable files now carry the full SHA-256 digest instead of its first 16 hex digits, so two different values cannot share a key; a waiver or baseline entry for a value over 160 characters must be re-keyed."
 - version: 0.0.1
   date: '2026-10-02'
   changes:

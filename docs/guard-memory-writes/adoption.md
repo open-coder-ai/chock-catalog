@@ -148,9 +148,10 @@ guard-memory-writes  [deterministic]
   PASS  tc-044                             authored  gate exit 0
   PASS  tc-045                             authored  gate: warning: MEMORY.md:1: URL host 'github.com': not on the repo'…
   PASS  tc-046                             authored  gate exit 0
+  PASS  tc-047                             authored  CLAUDE.local.md:1: secret CLAUDE.local.md:1: reads as an instructio…
   score 1.00
 
-5 policies: 45 pass, 45 skipped
+5 policies: 46 pass, 45 skipped
 45 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block No-Verify"
-version: "0.5.1"
+version: "0.5.2"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
@@ -36,6 +36,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.2
+  date: '2026-10-24'
+  changes:
+  - "Behaviour change, added coverage for the environment wipe (SR-2d1; eval cases tc-114 to tc-117; tests in test_block_no_verify_env_wipe.py). `env -i` is now read from the parsed command instead of raw text, so a wipe through the program's full path, a quoted `env`, an abbreviated `--ignore-environment`, a lone `-` or an `env -S` string is refused in front of a hook-running git command, as the bare form was. Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
 - version: 0.5.1
   date: '2026-10-24'
   changes:

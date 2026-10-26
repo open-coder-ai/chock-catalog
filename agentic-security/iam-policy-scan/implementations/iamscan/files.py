@@ -25,7 +25,7 @@ MAX_FINDINGS = 1000  # past this, judging and placing each one is itself a way t
 LOCKFILE = re.compile(r"(?i)(?:^|/)[^/]*(?:-lock\.(?:json|ya?ml)|\.lock|\.lockb)$")
 STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
 COLON = re.compile(r"\s*:")
-TEMPLATE = re.compile(r"\{\{|\{%")
+TEMPLATE_DIR = "templates"
 DIRECTIVE_LINE = re.compile(r"\s*(?:\{\{.*\}\}|\{%.*%\})\s*")
 HCL = frozenset({".tf", ".tfvars", ".hcl", ".tofu"})
 YAML = frozenset({".yaml", ".yml"})
@@ -99,17 +99,19 @@ def _tfjson(text: str, scan: Scan) -> None:
         _json(text, scan)
 
 
+def is_template(path: str) -> bool:
+    """Whether the path, never the text, says the file is a chart or template source."""
+    return TEMPLATE_DIR in PurePosixPath(path.replace("\\", "/").lower()).parts[:-1]
+
+
 def _yaml(text: str, scan: Scan) -> None:
     try:
         trees, repeats = tree.docs(text)
     except yamlpath.ParseError:
-        if not TEMPLATE.search(text):
+        if not is_template(scan.path):
             raise
-        # Helm and Jinja text is not YAML until its directives are gone; what still does not read is not judged.
-        try:
-            trees, repeats = tree.docs(neutralize(text))
-        except yamlpath.ParseError:
-            return
+        # Helm and Jinja text is not YAML until its directives are gone; what still does not read is refused.
+        trees, repeats = tree.docs(neutralize(text))
     for name, line in repeats:
         scan.duplicate(name, line)
     for document in trees:

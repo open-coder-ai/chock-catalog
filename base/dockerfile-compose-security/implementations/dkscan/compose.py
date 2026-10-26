@@ -162,12 +162,11 @@ class Service:
             return
         listed = not isinstance(rest[0], str)
         name, eq, literal = value.partition("=") if listed else (str(rest[0]), ":", value)
-        written = f"{name}={literal}" if listed else f"{name}: {literal}"
         if (
             eq
             and secrets.is_secret_name(name)
             and secrets.is_literal(literal)
-            and not secrets.scan_secrets_reads(written)
+            and not secrets.left_to_scan_secrets(literal, secrets.scanned([self.line_text(row)]))
         ):
             yield self.hit("cm-literal-secrets", row._replace(value=name), f"{row.path[0]} {name} holds a literal")
 

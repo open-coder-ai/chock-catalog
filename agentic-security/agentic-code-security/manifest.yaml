@@ -1,6 +1,6 @@
 id: agentic-code-security
 name: "Agentic Code Security"
-version: "0.3.0"
+version: "0.4.1"
 description: >
   trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
   LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client
@@ -74,6 +74,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.1
+  date: '2026-10-26'
+  changes:
+  - "Lint, no behaviour change: the JSONC reader's line-end characters U+2028 and U+2029 are written as escapes (same value)."
+- version: 0.4.0
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d; findings F11, F13, F14; eval cases tc-142 to tc-146; tests in test_hardening_sr2d2.py). Behaviour change: an MCP config is parsed from its original text with a JSONC reader (agentic_gate/jsonc.py: `//` and `/* */` comments outside strings, trailing commas) instead of being split into lines and joined again, so a raw U+2028, U+2029 or U+0085 inside a string, a trailing comma or a comment no longer hides every MCP rule. A `//` comment ends at any character a client may take for a line end, so text a client could read as live is judged or fails to parse. Behaviour change: a config file (JSON or TOML) that is not blank and does not parse is refused: supply-mcp-unpinned-package and supply-mcp-remote-http each report `the MCP config cannot be parsed`, as a finding that always counts (no baseline); a blank file and a parsed document with no server stay silent. Behaviour change: where only a human's committed waiver counts (the agent as it writes, the turn's end, an agent commit), a comment-only waiver is honoured only when the line beneath it is also unchanged from HEAD, as many times as HEAD holds that pair; an inline waiver is judged as before. Known limit: an inline waiver on one line of a multi-line statement still covers the other lines of that statement."
 - version: 0.3.0
   date: '2026-09-30'
   changes:

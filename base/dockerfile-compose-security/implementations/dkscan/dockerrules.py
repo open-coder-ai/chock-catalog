@@ -10,9 +10,6 @@ from dkscan import cmdrules, secrets, shellrules, stages
 from dkscan.dockerfile import Instr, split_flags
 from dkscan.rules import Ctx, Hit
 
-#: block-fetch-exec-in-files (HP03) reads `ADD <url>` with no --checksum on one line; where it is installed,
-#: that line is its to report.
-HP03_ADD = re.compile(r"^\s*(?i:add)\s+(?:--(?!checksum)[\w-]+(?:=\S+)?\s+)*[\"']?https?://")
 HTTP = re.compile(r"^https?://", re.IGNORECASE)
 REMOTE = re.compile(r"^(?:https?://|git@|git://|ssh://)", re.IGNORECASE)
 GIT_SOURCE = re.compile(r"^(?:git@|git://|ssh://)|\.git(?:#|$)", re.IGNORECASE)
@@ -44,15 +41,18 @@ def _secret_path(source: str) -> bool:
 
 def env_arg(instr: Instr) -> Iterator[Hit]:
     found = stages.words(instr.args)
-    legacy = instr.keyword == "ENV" and bool(found) and "=" not in found[0]
     pairs = (
         stages.env_pairs(instr.args)
         if instr.keyword == "ENV"
         else [(name, value) for name, eq, value in (w.partition("=") for w in found) if eq]
     )
+    seen = secrets.scanned(instr.raw)
     for name, value in pairs:
-        written = f"{name} {value}" if legacy else f"{name}={value}"
-        if secrets.is_secret_name(name) and secrets.is_literal(value) and not secrets.scan_secrets_reads(written):
+        if (
+            secrets.is_secret_name(name)
+            and secrets.is_literal(value)
+            and not secrets.left_to_scan_secrets(value, seen)
+        ):
             yield Hit(
                 "dk-secret-arg-env", instr.line, f"{instr.keyword} {name}", f"{instr.keyword} {name} holds a literal"
             )
@@ -84,7 +84,7 @@ def copy_add(instr: Instr, ctx: Ctx) -> Iterator[Hit]:
 def _add_remote(instr: Instr, sources: list[str], ctx: Ctx) -> Iterator[Hit]:
     if "checksum" in instr.flags:
         return
-    covered = ctx.fetch_exec_elsewhere and bool(HP03_ADD.match(instr.raw[0]))
+    covered = ctx.fetch_exec_reads(instr.raw[0])
     for source in sources:
         if not REMOTE.match(source) or (covered and HTTP.match(source)):
             continue

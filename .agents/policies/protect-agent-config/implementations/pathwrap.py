@@ -6,7 +6,9 @@ import shlex
 from typing import Any, NamedTuple
 
 from chock_shellparse import commands
-from chock_shellparse.parse import _ASSIGN, _WRAPPERS, Cmd, _base, _crude, _inner, _Scan, _strip
+from chock_shellparse.parse import _ASSIGN, Cmd, _base, _crude, _inner, _Scan
+from chock_shellparse.wrappers import WRAPPERS as _WRAPPERS
+from chock_shellparse.wrappers import unwrap as shared_unwrap
 from pathtext import scan
 
 _LEVELS = 8
@@ -152,7 +154,7 @@ def env_scripts(text: str, level: int = 0) -> list[str]:
     for clause in _Scan(text).run() or _crude(text):
         words = list(clause.words)
         while words and (_ASSIGN.match(words[0]) or (_base(words[0]) in _WRAPPERS and _base(words[0]) != "env")):
-            words = words[1:] if _ASSIGN.match(words[0]) else _strip(_base(words[0]), words[1:])
+            words = words[1:] if _ASSIGN.match(words[0]) else shared_unwrap(_base(words[0]), words[1:])[0]
         if not words:
             continue
         name = _base(words[0])

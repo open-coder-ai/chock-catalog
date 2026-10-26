@@ -227,9 +227,14 @@ block-secret-store-reads  [deterministic]
   PASS  tc-120                             authored  guard exit 0
   PASS  tc-121                             authored  guard exit 0
   PASS  tc-122                             authored  BLOCKED: reading SSH keys and config (~/.ssh) would put a credentia…
+  PASS  tc-123                             authored  BLOCKED: reading an environment file (.env) would put a credential …
+  PASS  tc-124                             authored  BLOCKED: reading AWS credentials (~/.aws) would put a credential in…
+  PASS  tc-125                             authored  guard exit 0
+  PASS  tc-126                             authored  CONFIRM: an environment dump (env, printenv, set, export -p) prints…
+  PASS  tc-127                             authored  guard exit 0
   score 1.00
 
-5 policies: 122 pass, 44 skipped
+5 policies: 127 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

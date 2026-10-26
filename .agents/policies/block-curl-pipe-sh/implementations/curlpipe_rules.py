@@ -57,9 +57,18 @@ DATA_TOOLS = frozenset(
         *("install", "curl", "wget", "scp", "rsync", "xargs", "parallel", "docker", "podman", "kubectl"),
     )
 )
-_NET = re.compile(
-    r"https?://|urllib|urlopen|requests\.|http\.client|httpx|\bfetch\(|https?\.get\(|LWP|HTTP::Tiny|open-uri"
-    r"|Net::HTTP|file_get_contents|Invoke-WebRequest|DownloadString|socket",
+#: Code that calls a network API. A URL string or the word "socket" alone is not a call.
+_NET_API = re.compile(
+    r"urllib|urlopen|requests\.|http\.client|httpx|ftplib|asyncio\.open_connection|\bfetch\(|https?\.get\(|LWP"
+    r"|HTTP::Tiny|open-uri|Net::HTTP|file_get_contents|Invoke-WebRequest|DownloadString"
+    r"|\bimport\s+socket|\bfrom\s+socket\b|\bsocket\.|\bsocket\(|['\"]socket['\"]"
+    r"|(?:require|import)\(\s*['\"](?:node:)?(?:net|dgram|tls|http2?|https)['\"]",
+    re.IGNORECASE,
+)
+_URL = re.compile(r"https?://", re.IGNORECASE)
+#: A URL literal is a fetch when a downloader program is named beside it, or the code can reach a network API it does not name.
+_NET_REACH = re.compile(
+    r"(?<![\w-])(?:curl|wget2?|aria2c|lynx|nc|ncat|netcat|socat|iwr|irm)(?![\w-])|__import__|importlib|getattr\s*\(",
     re.IGNORECASE,
 )
 _EXEC = re.compile(
@@ -174,11 +183,16 @@ def net_one_liner(cmd: Cmd) -> bool:
     if not is_interpreter(cmd.name) or cmd.name in SHELLS:
         return False
     kind, body = program(cmd)
-    return kind == "code" and _NET.search(body) is not None
+    return kind == "code" and reaches_network(body)
+
+
+def reaches_network(code: str) -> bool:
+    """Whether interpreter code calls a network API, or holds a URL beside a downloader or a dynamic way to reach one."""
+    return _NET_API.search(code) is not None or (_URL.search(code) is not None and _NET_REACH.search(code) is not None)
 
 
 def code_fetches_and_runs(code: str) -> bool:
-    return _NET.search(code) is not None and _EXEC.search(code) is not None
+    return reaches_network(code) and _EXEC.search(code) is not None
 
 
 def fetch_and_exec(cmd: Cmd) -> bool:

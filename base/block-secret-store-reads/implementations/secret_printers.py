@@ -14,6 +14,8 @@ SEPARATORS = frozenset(";&|()")
 REDIRECTS = frozenset("<>&|;()")
 ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 SECRET_NAME = re.compile(r"api[_-]?key|secret|token|passw(?:or)?d|private[_-]?key|access[_-]?key|credential", re.I)
+EXPANSION = re.compile(r"\$\{?(?:env:)?([A-Za-z_][A-Za-z0-9_]*)")
+PRINTS = frozenset(("echo", "printf", "print", "write-output", "write-host"))
 SHELLS = frozenset(("sh", "bash", "zsh", "dash", "ksh", "ash"))
 SUDO_VALUES = frozenset(("-u", "-g", "-h", "-p", "-C", "-D", "-R", "-T", "-U", "-r", "-t"))
 PREFIXES = {
@@ -100,10 +102,17 @@ def _env_command(rest: list[str]) -> list[str]:
     return rest[i:]
 
 
+def _prints_secret(rest: list[str]) -> bool:
+    """Whether an argument expands a variable whose name looks like a credential."""
+    return any(SECRET_NAME.search(found) for word in rest for found in EXPANSION.findall(word))
+
+
 def _dumps(name: str, rest: list[str]) -> bool:
     flags = "".join(word.lstrip("-") for word in rest if word.startswith("-"))
     names = [word for word in rest if not word.startswith("-")]
     bare = not names
+    if name.lower() in PRINTS:
+        return _prints_secret(rest)
     return {
         "env": lambda: not _env_command(rest),
         "printenv": lambda: bare or any(SECRET_NAME.search(word) for word in names),

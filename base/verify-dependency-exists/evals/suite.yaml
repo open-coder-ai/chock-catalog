@@ -72,22 +72,22 @@ suite:
     category: trigger
     prompt: "The agent writes an unlisted package into requirements.txt."
     expect: "The write is refused: the package is not in the allowlist."
-    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: block, repo_files: {".chock/dependency-allowlist.txt": "requests\n"}}
+    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n", ".chock/dependency-allowlist.txt": "requests\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: block}
   - id: tc-007
     category: negative_trigger
     prompt: "The agent writes a listed package into requirements.txt."
     expect: "The write is allowed."
-    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n"}, writes: {"requirements.txt": "requests==2.32.0\n"}, expect: allow, repo_files: {".chock/dependency-allowlist.txt": "requests\n"}}
+    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n", ".chock/dependency-allowlist.txt": "requests\n"}, writes: {"requirements.txt": "requests==2.32.0\n"}, expect: allow}
   - id: tc-008
     category: trigger
     prompt: "At the turn's end requirements.txt on disk names an unlisted package HEAD lacks."
     expect: "The turn is blocked."
-    execute: {event: stop, head_files: {"requirements.txt": "requests==2.31.0\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: block, repo_files: {".chock/dependency-allowlist.txt": "requests\n"}}
+    execute: {event: stop, head_files: {"requirements.txt": "requests==2.31.0\n", ".chock/dependency-allowlist.txt": "requests\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: block}
   - id: tc-009
     category: negative_trigger
     prompt: "At the turn's end requirements.txt differs from HEAD by a listed package; an old unlisted one is in HEAD."
     expect: "The turn is allowed: only dependencies the turn adds are judged."
-    execute: {event: stop, head_files: {"requirements.txt": "legacy-unlisted==1.0.0\n"}, writes: {"requirements.txt": "legacy-unlisted==1.0.0\nrequests==2.31.0\n"}, expect: allow, repo_files: {".chock/dependency-allowlist.txt": "requests\n"}}
+    execute: {event: stop, head_files: {"requirements.txt": "legacy-unlisted==1.0.0\n", ".chock/dependency-allowlist.txt": "requests\n"}, writes: {"requirements.txt": "legacy-unlisted==1.0.0\nrequests==2.31.0\n"}, expect: allow}
   - id: tc-010
     category: trigger
     prompt: "A new name is added to a [dependency-groups] table of pyproject.toml."
@@ -177,7 +177,7 @@ suite:
     category: adversarial
     prompt: "The agent writes an unlisted package into a Pipfile."
     expect: "The write is refused."
-    execute: {"event": "tool_use", "head_files": {"Pipfile": "[packages]\nrequests = \"*\"\n"}, "writes": {"Pipfile": "[packages]\nrequests = \"*\"\nreqeusts = \"*\"\n"}, "expect": "block", "repo_files": {".chock/dependency-allowlist.txt": "requests\n"}}
+    execute: {"event": "tool_use", "head_files": {"Pipfile": "[packages]\nrequests = \"*\"\n", ".chock/dependency-allowlist.txt": "requests\n"}, "writes": {"Pipfile": "[packages]\nrequests = \"*\"\nreqeusts = \"*\"\n"}, "expect": "block"}
   - id: tc-028
     category: adversarial
     prompt: "package.json adds an unlisted package through a nested yarn resolution."
@@ -337,4 +337,14 @@ suite:
     category: adversarial
     prompt: "An allowlist file exists but holds only a comment, and the agent adds an unlisted package."
     expect: "The write is refused: an allowlist that exists is the allowlist, however short; only a file that does not exist is an unseeded repository."
-    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: block, repo_files: {".chock/dependency-allowlist.txt": "# nothing approved yet\n"}}
+    execute: {event: tool_use, head_files: {"requirements.txt": "requests==2.31.0\n", ".chock/dependency-allowlist.txt": "# nothing approved yet\n"}, writes: {"requirements.txt": "requests==2.31.0\nreqeusts==2.31.0\n"}, expect: block}
+  - id: tc-062
+    category: adversarial
+    prompt: "The agent writes the allowlist itself, adding an unlisted package."
+    expect: "The write is refused: only a person extends the allowlist, and an agent's event reads the list HEAD holds."
+    execute: {event: tool_use, head_files: {".chock/dependency-allowlist.txt": "requests\n"}, writes: {".chock/dependency-allowlist.txt": "requests\nevil-pkg\n"}, expect: block}
+  - id: tc-063
+    category: negative_trigger
+    prompt: "A person commits an allowlist that adds a package, with the manifest that uses it."
+    expect: "The commit is allowed: a person's commit reads the allowlist it contains."
+    execute: {event: commit, files: {".chock/dependency-allowlist.txt": "requests\nnew-pkg\n", "requirements.txt": "new-pkg\n"}, repo_files: {".chock/dependency-allowlist.txt": "requests\nnew-pkg\n"}, expect: allow}

@@ -80,13 +80,14 @@ def test_a_line_comment_in_a_jsonc_config_is_tolerated() -> None:
     assert [rule for rule, _ in judged(".vscode/mcp.json", body)] == ["supply-mcp-unpinned-package"]
 
 
-@pytest.mark.parametrize("body", ["{not json", "[1, 2]", '{"mcpServers": []}', '{"mcpServers": {"a": 3}}', ""])
-def test_a_config_that_does_not_parse_or_has_no_servers_is_silent(body: str) -> None:
+@pytest.mark.parametrize("body", ["[1, 2]", '{"mcpServers": []}', '{"mcpServers": {"a": 3}}', ""])
+def test_a_config_that_has_no_servers_is_silent(body: str) -> None:
     assert judged(".mcp.json", body) == []
 
 
-def test_a_toml_config_that_does_not_parse_is_silent() -> None:
-    assert judged(".codex/config.toml", "[mcp_servers\n") == []
+def test_a_config_that_does_not_parse_is_refused() -> None:
+    assert judged(".mcp.json", "{not json") != []
+    assert judged(".codex/config.toml", "[mcp_servers\n") != []
 
 
 @pytest.mark.parametrize(

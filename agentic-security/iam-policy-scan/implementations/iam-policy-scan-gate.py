@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import sys
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 # The scanners ship beside this script. A missing or broken copy raises here, and the runner
@@ -42,6 +43,7 @@ def judged(payload: dict) -> list[Finding]:
     writes = {str(p).replace("\\", "/"): t for p, t in (payload.get("writes") or {}).items() if isinstance(t, str)}
     head = committed(root)
     spent: dict[str, Counter] = {}
+    room: dict[str, dict[str, int]] = {}
     found = []
     for path in sorted(writes):
         lines = split_lines(writes[path])
@@ -50,7 +52,23 @@ def judged(payload: dict) -> list[Finding]:
         return []
     # The sidecar is read only when something needs it, so a broken one cannot refuse a write that holds no grant.
     waived = sidecar_waivers(event, writes, head)
-    return [f for f in found if (f.path, f.rule, f.sig) not in waived]
+    return [f for f in found if not _excused(f, waived, event, head, room)]
+
+
+def _excused(f: Finding, waived: set, event: str, head: Callable, room: dict[str, dict[str, int]]) -> bool:
+    """A sidecar entry excuses a person's commit whole; in the agent, as many copies as HEAD's file holds (at least one)."""
+    if (f.path, f.rule, f.sig) not in waived:
+        return False
+    if event in HUMAN_EVENTS:
+        return True
+    if f.key not in room.setdefault(f.path, {}):
+        before = head(f.path)
+        copies = sum(g.key == f.key for g in scan_file(f.path, before)) if before is not None else 0
+        room[f.path][f.key] = max(copies, 1)
+    if room[f.path][f.key] <= 0:
+        return False
+    room[f.path][f.key] -= 1
+    return True
 
 
 def main() -> int:

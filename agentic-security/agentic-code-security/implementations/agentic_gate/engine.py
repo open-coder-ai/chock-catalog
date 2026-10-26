@@ -23,18 +23,27 @@ def _waived_ids(line: str) -> set[str]:
     return {part.strip() for part in found.group(1).split(",")} if found else set()
 
 
+def _waivers(lines: list[str]) -> Iterable[tuple[int, tuple[str, str | None]]]:
+    """(line number, (the waiver line, the line beneath it)) for every waiver; an inline waiver has no beneath."""
+    for line_no, line in enumerate(lines, 1):
+        if PRAGMA in line:
+            comment_only = _COMMENT_ONLY.match(line) is not None
+            beneath = lines[line_no].strip() if comment_only and line_no < len(lines) else "" if comment_only else None
+            yield line_no, (line.strip(), beneath)
+
+
 def reviewed_lines(text: FileText, reviewed: str | None) -> set[int]:
     """The lines of `text` whose waiver a human put there: the same line in the committed text.
 
     Each waived line counts only while the committed text holds it, as many times as it holds it,
-    so a waiver the agent wrote, or a committed one pasted somewhere new, is not among them.
+    so a waiver the agent wrote, or a committed one pasted somewhere new, is not among them. A
+    comment-only waiver covers the line beneath it, so it counts only with that line unchanged too.
     """
-    left = Counter(line.strip() for line in (reviewed or "").splitlines() if PRAGMA in line)
+    left = Counter(pair for _, pair in _waivers((reviewed or "").splitlines()))
     honoured: set[int] = set()
-    for line_no, line in enumerate(text.lines, 1):
-        key = line.strip()
-        if PRAGMA in line and left[key] > 0:
-            left[key] -= 1
+    for line_no, pair in _waivers(text.lines):
+        if left[pair] > 0:
+            left[pair] -= 1
             honoured.add(line_no)
     return honoured
 

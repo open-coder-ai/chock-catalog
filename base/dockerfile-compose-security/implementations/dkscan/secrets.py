@@ -95,6 +95,23 @@ def is_literal(value: str) -> bool:
     return stripped.lower() not in NOT_LITERAL and not REFERENCE.search(stripped)
 
 
-def scan_secrets_reads(line: str) -> bool:
-    """Whether scan-secrets refuses this physical line on its own."""
-    return bool(SCAN_SECRETS.search(line))
+Scanned = list[tuple[str, list[tuple[int, int]]]]
+
+
+def scanned(lines: tuple[str, ...] | list[str]) -> Scanned:
+    """Each raw physical line with the spans scan-secrets refuses in it; the scan is done once per instruction."""
+    return [(line, [found.span() for found in SCAN_SECRETS.finditer(line)]) for line in lines]
+
+
+def left_to_scan_secrets(literal: str, lines: Scanned) -> bool:
+    """Whether scan-secrets refuses a span of one raw physical line that holds this literal; a value written elsewhere is not seen."""
+    value = literal.strip().strip("\"'")
+    if not value:
+        return False
+    for line, spans in lines:
+        at = line.find(value) if spans else -1
+        while at >= 0:
+            if any(start < at + len(value) and end > at for start, end in spans):
+                return True
+            at = line.find(value, at + 1)
+    return False
