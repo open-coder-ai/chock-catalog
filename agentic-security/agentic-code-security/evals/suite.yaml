@@ -1851,7 +1851,7 @@ suite:
     category: adversarial
     prompt: "A commit adds an .mcp.json with an unpinned npx server and a raw U+2028 line separator inside an env string."
     expect: "The commit is blocked and names supply-mcp-unpinned-package: the config is parsed from its original text, so the separator does not hide the server."
-    execute: {event: commit, files: {".mcp.json": "{\"mcpServers\": {\"helper\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp\"], \"env\": {\"NOTE\": \"a b\"}}}}"}, expect: block}
+    execute: {event: commit, files: {".mcp.json": "{\"mcpServers\": {\"helper\": {\"command\": \"npx\", \"args\": [\"-y\", \"evil-mcp\"], \"env\": {\"NOTE\": \"a\u2028b\"}}}}"}, expect: block}
   - id: tc-143
     category: adversarial
     prompt: "A commit adds a .vscode/mcp.json with an unpinned npx server, a block comment and a trailing comma."
