@@ -46,7 +46,17 @@ class Server:
 
     def digest(self) -> str:
         """A short fingerprint of everything the entry says, so any change to it is a different key."""
-        parts = [self.launcher, self.args, self.urls, self.env, self.headers, self.secrets, self.raw, self.cwd, self.type]
+        parts = [
+            self.launcher,
+            self.args,
+            self.urls,
+            self.env,
+            self.headers,
+            self.secrets,
+            self.raw,
+            self.cwd,
+            self.type,
+        ]
         return hashlib.sha256(json.dumps(parts, sort_keys=True).encode("utf-8", errors="replace")).hexdigest()[:16]
 
 
