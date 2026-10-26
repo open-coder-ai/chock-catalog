@@ -163,9 +163,11 @@ block-unguarded-agent-spawn  [deterministic]
   PASS  tc-056                             authored  guard exit 0
   PASS  tc-057                             authored  guard exit 0
   PASS  tc-058                             authored  guard exit 0
+  PASS  tc-059                             authored  BLOCKED: claude --allowedTools with a wildcard starts a coding agen…
+  PASS  tc-060                             authored  guard exit 0
   score 1.00
 
-5 policies: 58 pass, 44 skipped
+5 policies: 60 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

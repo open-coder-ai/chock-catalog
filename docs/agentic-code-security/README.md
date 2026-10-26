@@ -12,7 +12,7 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 141 total, 136 executable |
+| **Eval cases** | 146 total, 141 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -56,7 +56,7 @@ chock add agentic-code-security
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnRpYy1jb2RlLXNlY3VyaXR5IiwidmVyc2lvbiI6IjAuMy4wIiwic2hhMjU2IjoiMjYyNDdhMGE4NDg0ODY5ZGI2ZWVmZDQzYTMzNzExY2Y0MTQwZjJlMWUyMTVlYzlmYzA2ZTI3ZTExMTA3Y2NmYiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1MWQyNDBhOTI5ODQ4N2QzYjJiZWVjMjdjMjJiYzAyMjEyZDBmNDA2In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnRpYy1jb2RlLXNlY3VyaXR5IiwidmVyc2lvbiI6IjAuNC4wIiwic2hhMjU2IjoiNmZjYjljYWM0OGM2ZmNlNzM1ZjMxMzQwOTFkYzFhZThkMTVjYjhlNmVjZTU3YjdjODFhNDFjMmVhYWYzMjA4MSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
