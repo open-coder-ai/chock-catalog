@@ -64,11 +64,12 @@ def test_a_sibling_that_only_warns_does_not_take_the_line(
     assert rule in dockerfile_rules(body, root, head=head)
 
 
-@pytest.mark.parametrize(("sibling", "body", "rule", "head"), SIBLING_CASES)
+@pytest.mark.parametrize("case", SIBLING_CASES)
 @pytest.mark.parametrize("damage", ["not json", "[]", '{"action": ["block"]}', '{"kind": "script"}', ""])
 def test_an_unreadable_or_actionless_gate_file_is_not_an_installed_sibling(
-    tmp_path: Path, sibling: str, body: str, rule: str, head: str, damage: str
+    tmp_path: Path, case: tuple[str, str, str, str], damage: str
 ) -> None:
+    sibling, body, rule, head = case
     root = dockerkit.planted(tmp_path, sibling)
     (tmp_path / ".chock" / "compiled" / sibling / "pre-tool-use" / "gate.json").write_text(damage, encoding="utf-8")
     assert rule in dockerfile_rules(body, root, head=head)
@@ -143,7 +144,7 @@ def environment(body: str) -> set[str]:
         f"    environment:\n      POSTGRES_PASSWORD: >-\n        {PASSWORD}\n",
         f"    environment:\n      POSTGRES_PASSWORD: |\n        {PASSWORD}\n",
         f"    environment:\n      POSTGRES_PASSWORD:\n        {PASSWORD}\n",
-        f"    environment:\n      POSTGRES_PASSWORD: \"{PASSWORD[:9]}\n        {PASSWORD[9:]}\"\n",
+        f'    environment:\n      POSTGRES_PASSWORD: "{PASSWORD[:9]}\n        {PASSWORD[9:]}"\n',
     ],
 )
 def test_a_literal_scan_secrets_cannot_see_on_the_key_line_is_reported_here(body: str) -> None:

@@ -1,6 +1,6 @@
 id: agentic-code-security
 name: "Agentic Code Security"
-version: "0.4.0"
+version: "0.4.1"
 description: >
   trigger: writing agent code or agent config -- Python or TypeScript using AutoGen, CrewAI,
   LangChain, LangGraph, mem0, the OpenAI Agents or Claude Agent SDK, an MCP server or client
@@ -74,6 +74,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.4.1
+  date: '2026-10-26'
+  changes:
+  - "Lint, no behaviour change: the JSONC reader's line-end characters U+2028 and U+2029 are written as escapes (same value)."
 - version: 0.4.0
   date: '2026-10-25'
   changes:

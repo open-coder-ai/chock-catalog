@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-_LINE_ENDS = "\n\r  \x85"
+_LINE_ENDS = "\n\r\u2028\u2029\x85"
 
 
 def _strip(text: str) -> str:

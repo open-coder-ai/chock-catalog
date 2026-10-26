@@ -57,6 +57,7 @@ ENV_WORD = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 ECHO_FLAG = re.compile(r"-[neE]+")
 #: The format `%s\n` also reads as `%s/n`: the shared reader emits a second, Windows-path reading of the same line.
 PRINTF_WHOLE = re.compile(r"%[sb](?:[\\/]n)?\n?")
+PRINTF_FORMAT_AND_TEXT = 2
 REMOTE = frozenset({"http", "sse", "streamable-http"})
 GIT = shutil.which("git") or "git"
 NO_ENTRY = (
@@ -100,7 +101,7 @@ def own_text(cmd: Cmd) -> str | None:
     if cmd.name == "printf" and not cmd.doc and args:
         if "%" not in args[0]:
             return args[0] if len(args) == 1 else None
-        return args[1] if len(args) == 2 and PRINTF_WHOLE.fullmatch(args[0]) else None
+        return args[1] if len(args) == PRINTF_FORMAT_AND_TEXT and PRINTF_WHOLE.fullmatch(args[0]) else None
     if cmd.name == "cat" and cmd.doc and all(arg == "-" for arg in args):
         return cmd.doc
     return None

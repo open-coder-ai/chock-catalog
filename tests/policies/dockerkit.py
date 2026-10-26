@@ -56,7 +56,13 @@ def installed(root: Path, *policies: str, action: str = "block", pattern: str | 
         params = {"scan": "added_lines"}
         if policy == FETCH_EXEC:
             params["content_pattern"] = sibling_pattern() if pattern is None else pattern
-        gate = {"kind": "content_regex", "on": ["commit", "tool_use"], "action": action, "message": "m", "params": params}
+        gate = {
+            "kind": "content_regex",
+            "on": ["commit", "tool_use"],
+            "action": action,
+            "message": "m",
+            "params": params,
+        }
         path = root / ".chock" / "compiled" / policy / "pre-tool-use" / "gate.json"
         path.write_text(json.dumps(gate), encoding="utf-8")
     return str(root)

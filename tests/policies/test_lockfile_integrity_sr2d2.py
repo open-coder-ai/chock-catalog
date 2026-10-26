@@ -58,7 +58,7 @@ def test_push_uses_the_before_commit_of_the_event(
     assert model.SOURCE in found(widened, {"package-lock.json": SWAPPED}, "push")
 
 
-def test_without_a_named_base_the_first_parent_is_the_base(widened: Path, tmp_path: Path) -> None:
+def test_without_a_named_base_the_first_parent_is_the_base(widened: Path) -> None:
     assert model.SOURCE in found(widened, {"package-lock.json": SWAPPED}, "ci")
     assert model.SOURCE in found(widened, {"package-lock.json": SWAPPED}, "push")
 

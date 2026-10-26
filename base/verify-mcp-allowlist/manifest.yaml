@@ -1,6 +1,6 @@
 id: verify-mcp-allowlist
 name: "Verify MCP Allowlist"
-version: "0.6.0"
+version: "0.6.1"
 description: >
   Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host).
   Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate
@@ -58,6 +58,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.6.1
+  date: '2026-10-26'
+  changes:
+  - "Lint, no behaviour change: the printf argument count of the whole-text form is a named constant."
 - version: 0.6.0
   date: '2026-10-25'
   changes:

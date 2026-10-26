@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from agentic_code_security.conftest import ALL_DENY, commit, run_gate
-from agentic_gate import mcp
+from agentic_gate import jsonc, mcp
 from agentic_gate.engine import evaluate
 from agentic_gate.model import FileText
 
@@ -23,10 +23,15 @@ def rules(path: str, text: str, *, human: bool = True) -> list[str]:
     return [f.rule_id for f in evaluate({path: text}, ALL_DENY, lambda _p: None, human=human)]
 
 
-@pytest.mark.parametrize("separator", [" ", " ", "\x85", "\x0b", "\x0c", "\x1c"])
+@pytest.mark.parametrize("separator", ["\u2028", "\u2029", "\x85", "\x0b", "\x0c", "\x1c"])
 def test_a_raw_line_separator_inside_a_string_does_not_hide_the_servers(separator: str) -> None:
     body = f'{{"mcpServers": {{"helper": {{"command": "npx", "args": ["-y", "evil-mcp"], "env": {{"NOTE": "a{separator}b"}}}}}}}}'
     assert UNPINNED in rules(".mcp.json", body)
+
+
+def test_a_comment_ends_at_both_unicode_line_separators() -> None:
+    assert "\u2028" in jsonc._LINE_ENDS
+    assert "\u2029" in jsonc._LINE_ENDS
 
 
 @pytest.mark.parametrize("path", [".vscode/mcp.json", ".gemini/settings.json", ".mcp.json", ".cursor/mcp.json"])
@@ -38,7 +43,7 @@ def test_a_raw_line_separator_inside_a_string_does_not_hide_the_servers(separato
         f'{{"mcpServers": {{/* why */ "a": {SERVER}}}}}',
         f'{{\n  // a note\n  "mcpServers": {{\n    "a": {SERVER}, // pinned later\n  }}\n}}\n',
         f'{{"mcpServers": {{"a": {SERVER}}}, /* end */ }}',
-        f'{{"mcpServers": {{"a": {{"command": "npx", "args": ["-y", "evil-mcp",],}}}}}}',
+        '{"mcpServers": {"a": {"command": "npx", "args": ["-y", "evil-mcp",],}}}',
     ],
 )
 def test_jsonc_that_clients_accept_is_read_and_judged(path: str, body: str) -> None:
@@ -51,7 +56,9 @@ def test_a_comment_marker_inside_a_string_is_not_a_comment() -> None:
     assert [s.name for s in mcp.servers(FileText(".mcp.json", body))] == ["a"]
 
 
-@pytest.mark.parametrize("body", ["{not json", '{"mcpServers": {"a": ', '{"mcpServers": {"a": {"command": "x"}}} trailing', "/* open"])
+@pytest.mark.parametrize(
+    "body", ["{not json", '{"mcpServers": {"a": ', '{"mcpServers": {"a": {"command": "x"}}} trailing', "/* open"]
+)
 def test_an_unparsable_non_blank_json_config_is_refused(body: str) -> None:
     found = rules(".mcp.json", body)
     assert found
@@ -62,7 +69,7 @@ def test_an_unparsable_toml_config_is_refused() -> None:
     assert rules(".codex/config.toml", "[mcp_servers\n")
 
 
-@pytest.mark.parametrize("body", ["", "\n", "  \t\n\n", "﻿"])
+@pytest.mark.parametrize("body", ["", "\n", "  \t\n\n", "\ufeff"])
 def test_a_blank_config_is_not_refused(body: str) -> None:
     assert rules(".mcp.json", body) == []
 
@@ -86,17 +93,13 @@ def test_a_trailing_comma_and_comment_pass_through_the_shipped_gate_judged(tmp_p
 
 
 def test_the_reader_keeps_strings_and_drops_comments_and_trailing_commas() -> None:
-    from agentic_gate import jsonc
-
     assert jsonc.loads('{"a": "x // y /* z */", /* c */ "b": [1, 2,], // d\n}') == {"a": "x // y /* z */", "b": [1, 2]}
     assert jsonc.loads('{"a": "q\\"//"}') == {"a": 'q"//'}
-    assert jsonc.loads('{"a": "x y"}') == {"a": "x y"}
+    assert jsonc.loads('{"a": "x\u2028y"}') == {"a": "x\u2028y"}
 
 
 @pytest.mark.parametrize("text", ["{", '{"a": 1 /* x', "{'a': 1}", '{"a": 1,, }', '{"a": "line\nbreak"}'])
 def test_the_reader_refuses_what_is_not_jsonc(text: str) -> None:
-    from agentic_gate import jsonc
-
     with pytest.raises(ValueError):
         jsonc.loads(text)
 
@@ -116,7 +119,9 @@ def test_a_comment_only_waiver_does_not_cover_a_line_the_agent_changed(tmp_path:
 @pytest.mark.parametrize("event", ["tool_use", "stop"])
 def test_a_comment_only_waiver_does_not_follow_a_line_inserted_beneath_it(tmp_path: Path, event: str) -> None:
     commit(tmp_path, {PATH: HEAD})
-    inserted = f"import requests\n\n# chock: allow {TLS}\nrequests.post(u, verify=False)\nrequests.get(u, verify=False)\n"
+    inserted = (
+        f"import requests\n\n# chock: allow {TLS}\nrequests.post(u, verify=False)\nrequests.get(u, verify=False)\n"
+    )
     assert run_gate(tmp_path, {PATH: inserted}, event=event)[0] == REFUSE
 
 
