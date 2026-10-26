@@ -16,8 +16,7 @@ import sys
 from pathlib import Path
 
 from chock_shellparse import Cmd, commands, writes_files
-from mcpcheck import allowlist, configs, entry, rules
-from mcpcheck.mcpadd import added_server, parse_add  # noqa: F401 -- parse_add is the tested surface of the guard
+from mcpcheck import allowlist, configs, entry, mcpadd, rules
 
 GUARD_SOURCE = re.compile(r"verify-mcp-allowlist(/implementations|\.(sh|py))")
 SHELL_NAMES = frozenset({"sh", "bash", "zsh", "dash", "ksh", "ash"})
@@ -147,7 +146,7 @@ def check(raw: str) -> str | None:
             "shell write to the MCP server allowlist is refused -- it is protected content, the same way "
             "protect-agent-config protects every policy's guard source. Ask the person to make the change."
         )
-    adds = [added for cmd in cmds if (added := added_server(cmd)) is not None]
+    adds = [added for cmd in cmds if (added := mcpadd.added_server(cmd)) is not None]
     written = written_servers(cmds)
     if written is None:
         return NO_ENTRY

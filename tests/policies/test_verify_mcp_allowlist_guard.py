@@ -243,7 +243,7 @@ def test_a_missing_git_falls_back_to_the_current_directory(tmp_path: Path, monke
 
 
 def test_the_flags_of_an_add_are_read_in_every_shape() -> None:
-    words, launch, lists, flags = guard.parse_add(
+    words, launch, lists, flags = guard.mcpadd.parse_add(
         [
             "-s",
             "user",
@@ -265,8 +265,8 @@ def test_the_flags_of_an_add_are_read_in_every_shape() -> None:
     assert (words, launch) == (["name"], ["cmd", "-x"])
     assert lists == {"env": ["A=1", "B=2"], "header": ["X: y", "Z: w"]}
     assert flags == {"-s": "user", "--transport": "http", "--url": "u"}
-    assert guard.parse_add(["--env=A=1", "--scope"])[2:] == ({"env": ["A=1"], "header": []}, {"--scope": ""})
-    assert guard.parse_add(["-e"])[2] == {"env": [], "header": []}
+    assert guard.mcpadd.parse_add(["--env=A=1", "--scope"])[2:] == ({"env": ["A=1"], "header": []}, {"--scope": ""})
+    assert guard.mcpadd.parse_add(["-e"])[2] == {"env": [], "header": []}
 
 
 def test_the_guard_passes_an_unrelated_inline_json_and_ignores_text_that_is_not_json() -> None:
@@ -275,5 +275,5 @@ def test_the_guard_passes_an_unrelated_inline_json_and_ignores_text_that_is_not_
 
 
 def test_a_flag_before_the_name_is_skipped_and_a_flag_after_it_is_part_of_the_command() -> None:
-    assert guard.parse_add(["--unknown", "evil", "--", "x"])[:2] == (["evil"], ["x"])
-    assert guard.parse_add(["evil", "npx", "-y", "pkg"])[0] == ["evil", "npx", "-y", "pkg"]
+    assert guard.mcpadd.parse_add(["--unknown", "evil", "--", "x"])[:2] == (["evil"], ["x"])
+    assert guard.mcpadd.parse_add(["evil", "npx", "-y", "pkg"])[0] == ["evil", "npx", "-y", "pkg"]
