@@ -48,7 +48,7 @@ chock add guard-memory-writes
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0NjU2ZGVhYzQ4NWFjMmJjNjdiMDYxMGMxYTNjNzlkNmFkYzJlZTRjIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZ3VhcmQtbWVtb3J5LXdyaXRlcyIsInZlcnNpb24iOiIwLjAuMTAiLCJzaGEyNTYiOiJjNjRiMTM2YThkZGViODAzODRmNDg2OWY2NThhYTYzNDI1NjllOWU3Nzc1MmNlZDk5ZmNhZDM3N2FhZWFmNWY5In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzNDMzNzAyZWU3OTAzNGJlY2ZiNTg0NzJjMTdmZjhhNTY1ZTY5MGY0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZ3VhcmQtbWVtb3J5LXdyaXRlcyIsInZlcnNpb24iOiIwLjAuMTAiLCJzaGEyNTYiOiJmYzkwNzA5NDI0MmI5NThiYWE0NTQ2OTE2MzhjYzg3N2RhODFjY2M2MTIwMmNhZjM4NzA5NWZkMTZmYWEyYzg5In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
