@@ -95,7 +95,7 @@ def allowlist_findings(path: str, text: str) -> list[dict]:
             path,
             text,
             f'"{one.name}"',
-            "allowlist-entry|" + json.dumps([one.name, one.launcher, one.spec, one.host_text]),
+            "allowlist-entry|" + json.dumps(one.identity()),
             f"the allowlist entry {one.name!r} was added or changed; only a person approves an MCP server",
         )
         for one in entries

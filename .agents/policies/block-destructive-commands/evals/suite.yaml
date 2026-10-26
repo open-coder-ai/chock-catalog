@@ -1341,3 +1341,13 @@ suite:
     execute:
       command: "git switch main"
       expect: allow
+  - id: tc-190
+    category: adversarial
+    prompt: "An agent puts an arithmetic shift on one line and a recursive delete of home on the next."
+    expect: "The guard reads the shift as arithmetic, not a here-document, and judges the next line."
+    execute: {"command": "echo $((1<<2))\nrm -rf ~", "expect": "block"}
+  - id: tc-191
+    category: negative_trigger
+    prompt: "An agent prints an arithmetic shift."
+    expect: "The guard allows it."
+    execute: {"command": "echo $((1<<2))", "expect": "allow"}

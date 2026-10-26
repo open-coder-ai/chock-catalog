@@ -20,7 +20,7 @@
       {
         "id": "block-curl-pipe-sh",
         "artifact": "rule",
-        "version": "0.1.4",
+        "version": "0.1.7",
         "name": "Block Curl-Pipe-Shell",
         "description": "Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws s3 cp to stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, su, source, eval, iex) by pipe, substitution or here-string, also inside bash -c/ssh/docker exec bodies, or downloaded then run with no checksum or signature step. nc/socat/one-liner reads ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction only.",
         "path": ".agents/policies/block-curl-pipe-sh",
@@ -35,7 +35,7 @@
       {
         "id": "block-destructive-commands",
         "artifact": "rule",
-        "version": "0.3.0",
+        "version": "0.3.1",
         "name": "Block Destructive Commands",
         "description": "Best-effort, on parsed commands (echo ignored); one verdict table shared with rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home, abs paths or .git; mv/chmod/chown -R of system dirs; dd to devices, mkfs; lockouts; force, delete, mirror pushes; history rewrites; switch --discard; IaC destroy; cloud deletes; DB drops. Asks: rm -rf off a safe list, one named kubectl delete, bare lease, stash drop, -auto-approve, drain, prunes, API deletes. Dry runs pass. Pre-push: no non-ff.",
         "path": ".agents/policies/block-destructive-commands",
@@ -54,9 +54,10 @@
           "chock_destructive/vcs.py": "8c648b13751b1386290b1c3cc43aa009b03b00655931feeae32016c818f54bec",
           "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
           "chock_shellparse/args.py": "269500b30cac358c5b98594a87f325200184111d9c9f82a7ab2df62d343d8a74",
-          "chock_shellparse/parse.py": "d259499ed0e4ac08f95679f605bbd478a5fd8d378bf2a7ad34ae7a51256a3e66",
+          "chock_shellparse/parse.py": "cd6afc73613f3a40e2b4f19804b965f918eb590078c60bc59d4f59a50b49a830",
           "chock_shellparse/quoting.py": "ee091d5620c8746ade5052049d92897e2fd859fa2d4c0e6043188b812a23e65c",
           "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/wrappers.py": "545ccbbe00e42a953f8f51d0e8f47284da4c5a9e6393418f25850e3dc618e3c8",
           "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83"
         }
       }
@@ -80,7 +81,7 @@
       {
         "id": "block-no-verify",
         "artifact": "rule",
-        "version": "0.5.1",
+        "version": "0.5.2",
         "name": "Block No-Verify",
         "description": "Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c, git config or GIT_CONFIG_*; HUSKY=0, SKIP=, LEFTHOOK=0 and kin; hook manager uninstall; aliases and rebase --exec defined in the command. Asks on plumbing, unset hooksPath, another GIT_DIR and config files. Refuses person-only CHOCK_*/marker changes. Mandatory. Misses: older aliases, scripts, $VARs.",
         "path": ".agents/policies/block-no-verify",
@@ -95,7 +96,7 @@
       {
         "id": "block-unapproved-egress",
         "artifact": "rule",
-        "version": "0.2.4",
+        "version": "0.2.6",
         "name": "Block Unapproved Egress",
         "description": "Best-effort guard on the tool channel: blocks sending data to a host outside the allowlist (.chock/egress-allowlist.txt, else a built-in registry list): curl/wget/iwr uploads, nc/socat/telnet, scp/rsync/sftp, ssh commands, aws/gsutil/az uploads, git push|remote add URLs, $(..)/$VAR in a URL or host. Asks on interpreter HTTP one-liners, gh gist/--body-file, curl --proxy/--resolve/Host:. Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation.",
         "path": ".agents/policies/block-unapproved-egress",
@@ -277,7 +278,7 @@
       {
         "id": "protect-agent-config",
         "artifact": "rule",
-        "version": "0.7.3",
+        "version": "0.7.5",
         "name": "Protect Agent Config",
         "description": "Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...), guardrails toggles, plugin install markers, chock.lock, hook files of Cline, Kiro, Augment, Windsurf and Devin (user and machine level), ~/.claude.json, Claude Code plugin roots, project config of Kilo Code, opencode, Factory, Amp, Continue and Goose, .git/{hooks,config}, policy implementations/: redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, a write through a symlink; CLAUDE_CODE_PLUGIN_DIRS, claude --plugin-dir, chock resume (best effort). Any case. An instruction file under docs/ asks a person. Coarse: also eval or sh -c of computed text, shells fed by pipe/variable, interpreter one-liners naming such a path. Reads, `chock sync` pass. Edit/Write: tool gate, same set and verdicts. Misses: user config under ~/.config/, writes a script makes, an existing hard link.",
         "path": ".agents/policies/protect-agent-config",
@@ -288,29 +289,31 @@
         "script_hashes": {
           "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
           "chock_shellparse/args.py": "269500b30cac358c5b98594a87f325200184111d9c9f82a7ab2df62d343d8a74",
-          "chock_shellparse/parse.py": "d259499ed0e4ac08f95679f605bbd478a5fd8d378bf2a7ad34ae7a51256a3e66",
+          "chock_shellparse/parse.py": "cd6afc73613f3a40e2b4f19804b965f918eb590078c60bc59d4f59a50b49a830",
           "chock_shellparse/quoting.py": "ee091d5620c8746ade5052049d92897e2fd859fa2d4c0e6043188b812a23e65c",
           "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/wrappers.py": "545ccbbe00e42a953f8f51d0e8f47284da4c5a9e6393418f25850e3dc618e3c8",
           "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
           "pathconf.py": "e39c4b374c653823349b110859f9201e358d330e0249e2b3cfb71b1f91ea0013",
           "pathescape.py": "200bbee512f3450a3259b894053143f5f2617edafffce314b803862ec2b46529",
           "pathfeed.py": "a57e5615f5d622eb3271b7962f81079fa76a6c8046d470266ecb87d12ef47114",
           "pathgit.py": "ad69ef2a00e9853840ceea4759887e227a1d2785644df55b2ca313286ad61d0e",
           "pathguard.py": "846cff15ee0baa90028b413ef9393577ed73aed8362a50697a797daf957b4883",
-          "pathlink.py": "8de5225e47a5bac81422bcfafe9949212be736be753cdc80a925e51fe6db0a3d",
-          "pathload.py": "aaeb6c6f4667916047fe4f63acb0faa1655866a132fe3d3d0ff93f6ce990c571",
+          "pathhooks.py": "1fe6f210d6d7ce20aee7075fac93b5d39dc24a94f39fa7caf757c279c5ec1e1c",
+          "pathlink.py": "c206c3300fe60c34510005492c439dd9eb402af236682b1f532df39a07323edb",
+          "pathload.py": "7488b1208aa57195a9d5ef3d1f87ba8f09ec1b6ae79c0dd4b958a771889faecd",
           "pathmatch.py": "c0400ca93e6783b50666a3b49e9d5b0844f8a2a1fd7e51df615bdc2ce7b19d24",
-          "pathopaque.py": "d504213997799c275b13dd47cb803db649cbb69b9902179bce09b5bc9bc31017",
+          "pathopaque.py": "4768141cc2e451fa5e7cf7f2b2ee6ccc46f771d09b019afd55c71fc768a0a345",
           "pathplugin.py": "08e9c42b934dc923c15979e8bd6037ba01ce0487950a4111d64fb181c1fa54de",
           "pathreach.py": "a48b125b13ad066002855757ddd08dafaab79d3318fa2413f16df5f96478733a",
           "pathscript.py": "f0217034e335d8b80df71dfbeebfd18f836b0b3ac067d9b4efa627c3e368c665",
-          "pathset.py": "f66ef5d041c144e68261e87e65b6766779c6b2f0e03632bd3aa3fcc0144b0ced",
+          "pathset.py": "e89ce8c026d886bc7edf5004768ace337bceb8deb0d1934aabaab3de94b01ee8",
           "pathsubst.py": "54347a43093cb301f7d64f974c2151f218af929bacc286f3375a82304f78edf1",
-          "pathtext.py": "3da6cdb3f868c2baaf2eb17b7002840aaf4ebb10cc118499afa29d2a7f2d8873",
+          "pathtext.py": "f90d0834ec69c23842d3682fae06e89f4c53dbec86a3b404437f109f7c8d6824",
           "pathwin.py": "c817b72dc8d4401b286023e433cb1388ccdd6246d0ac79899ac3f419101ce274",
           "pathwords.py": "7cc266f5b5208f3eca630d03b1d4566b79a3d0b217f507a1952684cdb196283e",
-          "pathwrap.py": "45e367758e96fe68eaebd49cce4d6a0051070a3f742c303aad10bfc2b3b2a937",
-          "pathwriters.py": "4a05647a11b9e4022bb560df04a7bd225436af1281158f1cfa10c48a94303854",
+          "pathwrap.py": "f2b1beb2a9c36ca4b44e4cfa201db9eecdc796b4104bff173ac53e9f53656e8e",
+          "pathwriters.py": "98ba56bbb9b7b928b9af43bd040479902fe0765f964afb53b39b386f511a419c",
           "protect-agent-config-gate.py": "dd2a6acfc481cbffff1f7797dcddaa58e75102ff070121a57f3e2926539e9411",
           "protect-agent-config.py": "d9a84792ab1fd30a9ac696c79c228f001cc7c17665fbbfbd49c3330765fb4653"
         }
@@ -320,7 +323,7 @@
       {
         "id": "protect-ci-workflows",
         "artifact": "rule",
-        "version": "0.2.6",
+        "version": "0.2.7",
         "name": "Protect CI Workflows",
         "description": "Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs ship no gate.",
         "path": ".agents/policies/protect-ci-workflows",
@@ -331,11 +334,12 @@
         "script_hashes": {
           "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
           "chock_shellparse/args.py": "269500b30cac358c5b98594a87f325200184111d9c9f82a7ab2df62d343d8a74",
-          "chock_shellparse/parse.py": "d259499ed0e4ac08f95679f605bbd478a5fd8d378bf2a7ad34ae7a51256a3e66",
+          "chock_shellparse/parse.py": "cd6afc73613f3a40e2b4f19804b965f918eb590078c60bc59d4f59a50b49a830",
           "chock_shellparse/quoting.py": "ee091d5620c8746ade5052049d92897e2fd859fa2d4c0e6043188b812a23e65c",
           "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/wrappers.py": "545ccbbe00e42a953f8f51d0e8f47284da4c5a9e6393418f25850e3dc618e3c8",
           "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
-          "protect-ci-workflows.py": "ed240de6ee107a2da4781e9febe3535fac81dbdaaf41c022894eb44ac5032c2b"
+          "protect-ci-workflows.py": "09c2e72ad62a5a58c80c16c7c7ebea03c40170d9fe8411f3d4a93c39c3b2085b"
         }
       }
     ],
@@ -343,7 +347,7 @@
       {
         "id": "protect-commit-privacy",
         "artifact": "rule",
-        "version": "0.2.5",
+        "version": "0.2.6",
         "name": "Protect Commit Privacy",
         "description": "Keeps the development conversation out of git history. Guard refuses `git commit` and `gh pr create|edit` whose message or body (inline -m/-b, -F/--file/--body-file, heredoc on -F -) holds a process-leak marker (session link, 'user asked', ...); commands behind cd, sh -c, sudo, env are read. A commit-msg hook applies the same markers to the recorded message. Narrow deny-list. No waiver: a legitimate phrase needs a person to remove it from MARKERS in the guard; an agent asks the person.",
         "path": ".agents/policies/protect-commit-privacy",
@@ -354,9 +358,10 @@
         "script_hashes": {
           "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
           "chock_shellparse/args.py": "269500b30cac358c5b98594a87f325200184111d9c9f82a7ab2df62d343d8a74",
-          "chock_shellparse/parse.py": "d259499ed0e4ac08f95679f605bbd478a5fd8d378bf2a7ad34ae7a51256a3e66",
+          "chock_shellparse/parse.py": "cd6afc73613f3a40e2b4f19804b965f918eb590078c60bc59d4f59a50b49a830",
           "chock_shellparse/quoting.py": "ee091d5620c8746ade5052049d92897e2fd859fa2d4c0e6043188b812a23e65c",
           "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/wrappers.py": "545ccbbe00e42a953f8f51d0e8f47284da4c5a9e6393418f25850e3dc618e3c8",
           "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
           "protect-commit-privacy-commit-msg.py": "bf05b40a321ec7e0739bf053a8363f928f2cec45791d9adf9f949c13f1a91cbb",
           "protect-commit-privacy.py": "032f7bb55e524cc42e8a68af7c474f702e168bfdecc943384b9a0204c591ebb4"
@@ -382,7 +387,7 @@
       {
         "id": "scan-secrets",
         "artifact": "hook",
-        "version": "0.1.2",
+        "version": "0.1.3",
         "name": "Scan Secrets",
         "description": "Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values. Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.",
         "path": ".agents/policies/scan-secrets",
@@ -397,7 +402,7 @@
       {
         "id": "token-efficiency",
         "artifact": "rule",
-        "version": "0.1.1",
+        "version": "0.1.2",
         "name": "Token Efficiency Rule",
         "description": "trigger: large command output, broad searches, re-reading unchanged files, front-loading references. avoid: wasting context window on low-signal content.",
         "path": ".agents/policies/token-efficiency",
@@ -406,7 +411,7 @@
         "lifecycle_status": "draft",
         "dependencies": [],
         "script_hashes": {
-          "token-efficiency-gate.py": "340247776932bc92b9bd62fdd03d24c020f66dfab0dba9d3da3ece11641b11a6"
+          "token-efficiency-gate.py": "c4ba853c7475027e6f68d7274ff8ddc65c68089eaf71ee51ec8d494b9714668d"
         }
       }
     ],
@@ -444,7 +449,7 @@
       {
         "id": "verify-dependency-exists",
         "artifact": "hook",
-        "version": "0.2.0",
+        "version": "0.2.2",
         "name": "Dependency Allowlist",
         "description": "Allowlist gate for new dependencies; no registry lookup. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go, Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from .chock/dependency-allowlist.txt, asks on a lockfile-only one. Not read: computed lists, sources, versions, some forms (see docs). No allowlist file (plugin-only installs): a manifest change warns, never blocks. Repo form is opt-in: seed, observe, `chock enable`. Runs: commit, agent write, turn's end.",
         "path": ".agents/policies/verify-dependency-exists",
@@ -461,7 +466,7 @@
           "chock_scan/yamlpath_cursor.py": "87218fc40e3e35460b233a8ae3ab6a6e7a1c6ef433229e2e3c7f4dc5c9737a5c",
           "chock_scan/yamlpath_flow.py": "b4fe4b51b62270fab6d81cac78e2fd9ed7de7096df4cf72b751f44f4411f97ae",
           "chock_scan/yamlpath_scalar.py": "eb688c83caa188fa6cb5a92393ffbfe56ea89ea1691d1115107a5bcf3f0647ff",
-          "dependency-manifests.py": "e8f0b9e1fca69481569bd9b5e92bf7b690eb2db6e2e64c0ac957a30125829ffe",
+          "dependency-manifests.py": "47511abaea0fc7975bca95f269a9f0e70ef7f01db96b711ff564fad8c2c133b7",
           "depnames/__init__.py": "a70c72d0639874c50f76467ea89b85be99b10c628a5fdd7c2bda63934706d925",
           "depnames/dart.py": "e56740f1fc5e83aff404934e37124b4b6157a210f1582f9a938b162edc881fcd",
           "depnames/dotnet.py": "ea4fc10bdc40aabb8b3484df9a304bb4bf2df608f39101ea78a85e3d7f271823",
@@ -487,7 +492,7 @@
       {
         "id": "verify-mcp-allowlist",
         "artifact": "rule",
-        "version": "0.5.3",
+        "version": "0.6.1",
         "name": "Verify MCP Allowlist",
         "description": "Gates MCP servers against .chock/mcp-allowlist.json, empty by default (name, launcher with exact args, or url host). Shell guard refuses `<agent> mcp add` and shell writes of MCP configs or the allowlist unless listed. Script gate (commit, tool use, turn end) reads 13 client configs: a server off the list, or with other command, args or url host, refuses; unpinned or shell launchers, http, literal credentials, old versions only warn. Misses: aliases, scripts, gitignored files, other clients.",
         "path": ".agents/policies/verify-mcp-allowlist",
@@ -506,21 +511,23 @@
           "chock_scan/urls.py": "90735d9bbb266678eb7bcd9df1d585ae0803fd4fc2a39648b2a3e5eebbb0c9f1",
           "chock_shellparse/__init__.py": "6b82117d05d291181f686c89e20b52dfa98db376b3c66e135156b304fa8c1967",
           "chock_shellparse/args.py": "269500b30cac358c5b98594a87f325200184111d9c9f82a7ab2df62d343d8a74",
-          "chock_shellparse/parse.py": "d259499ed0e4ac08f95679f605bbd478a5fd8d378bf2a7ad34ae7a51256a3e66",
+          "chock_shellparse/parse.py": "cd6afc73613f3a40e2b4f19804b965f918eb590078c60bc59d4f59a50b49a830",
           "chock_shellparse/quoting.py": "ee091d5620c8746ade5052049d92897e2fd859fa2d4c0e6043188b812a23e65c",
           "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
+          "chock_shellparse/wrappers.py": "545ccbbe00e42a953f8f51d0e8f47284da4c5a9e6393418f25850e3dc618e3c8",
           "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
           "data/mcp-option-denylist.json": "ba47127b3bfff66ab058aa92665a7f3497eeb8332ec10c23db3d443c44e49ad9",
           "data/mcp-version-floors.json": "8cba83a80bfaf80dd82d41561c98f43f8d08ef8328c1d39af9cc2bb1419a1129",
           "mcpcheck/__init__.py": "29367cc8ab5669306b872e1c769cf98e2fc3edf029e7fab55ddd5fc93a53e6c2",
-          "mcpcheck/allowlist.py": "95e737e7e6c5aac43c503b32bcd482b55f9d4be3a5a94635ad810e245339ce06",
+          "mcpcheck/allowlist.py": "116e4d58ff70e691b82830070f68f1ebf3fd8a5583f2115c53f085e632ada251",
           "mcpcheck/configs.py": "3c5f5d14200ce1e74a70a33725ddf2e7cab3f7132ad90e5199fcef10bba5de4d",
-          "mcpcheck/entry.py": "1a412eb3d0e0a8aa91b5f339d2383c6cccaf7cef9e510f31d3baa34310a6ae4c",
+          "mcpcheck/entry.py": "ecdd5b8fb3be8f155b7e1c2f13fd2fe1e4fad95ef8531ac973daa665dead1ef9",
           "mcpcheck/launchers.py": "a5ecd36092f992140900a9e50be6dbae6651083ee995782a160fe484da81ae68",
-          "mcpcheck/rules.py": "7dddc665103db8dcb50bd5fb93f096eadbd80546d19edf8014c59417ae720c10",
+          "mcpcheck/mcpadd.py": "4194e5f723b5be6c982759f7e3433af117ddf72b9551e47b69b906b195af7fc6",
+          "mcpcheck/rules.py": "a422182abc93d43e7bd4d7e63112a4276a056f492e354764c05c60a2f56904a0",
           "mcpcheck/tables.py": "db11cd09da73e33f03ec8a6d0cebb489a03ab4219cfc15601930ed343c9a3c63",
-          "verify-mcp-allowlist.py": "e4b443046e541bbf112005bb6f218c1afea94fcbb817535a976c194a21988b66",
-          "verify-mcp-allowlist_gate.py": "25b546495a0c08e25e40747454f716df84ea56c773babfcbe2843484deaa135d"
+          "verify-mcp-allowlist.py": "52c6bdd5ac4a7d5c6fcc415686cc1f2610a22eabdc1c6fb9356db2288d24a250",
+          "verify-mcp-allowlist_gate.py": "25e4d090bed8a201c9e8e389701e3bf496caf07cd0951b81042fce6c9201212d"
         }
       }
     ]

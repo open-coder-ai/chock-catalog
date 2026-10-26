@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import re
 import sys
 
 READ_REPEAT = 3
@@ -12,6 +13,12 @@ RETRY_CAP = 3
 EDITS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 PATH_KEYS = ("file_path", "filePath", "path", "notebook_path", "target_file", "TargetFile")
 FIELD_CAP = 300
+REDACTED = "[redacted]"
+#: The session log's redaction (the scan-secrets shapes chock's log_redact replaces), so a command holding one is
+#: compared as stored. Kept in step with chock's runtime; a log that stored the command unredacted is matched too.
+SECRET = re.compile(
+    r"""(?i)((AKIA|ASIA)[0-9A-Z]{16}|gh[oprsu]_[0-9A-Za-z]{36}|github_pat_[0-9A-Za-z_]{22,}|xox[bpas]-[0-9A-Za-z-]{10,}|(sk|rk)_live_[0-9A-Za-z]{16,}|sk-proj-[0-9A-Za-z_-]{20,}|sk-ant-[0-9A-Za-z_-]{20,}|sk-[0-9A-Za-z]{20,}|AIza[0-9A-Za-z_-]{35}|npm_[0-9A-Za-z]{36}|SG\.[0-9A-Za-z_-]{16,}\.[0-9A-Za-z_-]{16,}|eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*|-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']|password\s*=\s*["'][^"'\s]{12,}["']|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}|password\s*[=:]\s*[^\s"'${}]{12,})"""
+)
 
 
 def load_log(root: str):
@@ -23,13 +30,23 @@ def load_log(root: str):
         return None
 
 
-def logged_command(command: str) -> str:
-    """The command as the session log stores it: first line, NAME=value words masked, capped."""
+def masked_command(command: str) -> str:
+    """First line with the value of every NAME=value word masked."""
     words = []
     for word in command.splitlines()[0].split(" "):
         name, eq, _ = word.partition("=")
         words.append(name + eq + "***" if eq and name.isidentifier() else word)
-    return " ".join(words)[:FIELD_CAP]
+    return " ".join(words)
+
+
+def logged_command(command: str) -> str:
+    """The command as the session log stores it: first line, NAME=value words masked, secrets redacted, capped."""
+    return SECRET.sub(REDACTED, masked_command(command))[:FIELD_CAP]
+
+
+def logged_forms(command: str) -> list[str]:
+    """The stored form, and the form a log written before redaction holds when it differs."""
+    return list(dict.fromkeys([logged_command(command), masked_command(command)[:FIELD_CAP]]))
 
 
 def reads_since_edit(log, records, path: str) -> int:
@@ -66,7 +83,7 @@ def judge(log, payload: dict) -> str:
             )
     command = tool_input.get("command")
     if payload.get("tool") == "Bash" and isinstance(command, str) and len(command.strip().splitlines()) == 1:
-        failed = failures_since_success(log, records, logged_command(command))
+        failed = max(failures_since_success(log, records, form) for form in logged_forms(command))
         if failed >= RETRY_CAP:
             return f"this exact command has failed {failed} times (retry cap {RETRY_CAP}); read the error and change approach."
     return ""

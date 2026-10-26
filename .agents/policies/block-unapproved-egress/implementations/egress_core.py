@@ -38,11 +38,30 @@ def confirm(text: str) -> Verdict:
     return ASK, f"CONFIRM: {text}"
 
 
+def search_dirs(start: Path) -> tuple[Path, ...]:
+    """`start` up to the first directory holding `.git`; with no `.git` above it, `start` alone."""
+    chain = (start, *start.parents)
+    for index, directory in enumerate(chain):
+        if os.path.lexists(directory / ".git"):
+            return chain[: index + 1]
+    return (start,)
+
+
 def project_file(start: Path) -> Path | None:
-    """The outermost `.chock/egress-allowlist.txt` at or above `start` (a nested one an agent made cannot replace it)."""
-    return next(
-        (d / PROJECT_FILE for d in reversed((start, *start.parents)) if os.path.lexists(d / PROJECT_FILE)), None
-    )
+    """The outermost `.chock/egress-allowlist.txt` inside the repository (a nested one an agent made cannot replace it)."""
+    return next((d / PROJECT_FILE for d in reversed(search_dirs(start)) if os.path.lexists(d / PROJECT_FILE)), None)
+
+
+def untrusted(path: Path) -> str:
+    """Why the file cannot be trusted (not the user's, or group/world-writable); empty when it can."""
+    if not hasattr(os, "geteuid"):
+        return ""
+    info = os.stat(path)
+    if info.st_uid != os.geteuid():
+        return "it is not owned by the current user"
+    if info.st_mode & 0o022:
+        return "it is group or world writable"
+    return ""
 
 
 def load_allowlist(start: Path) -> Allowlist:
@@ -51,8 +70,10 @@ def load_allowlist(start: Path) -> Allowlist:
     if path is None:
         return Allowlist(parse_allowlist(read_text(DEFAULT_FILE)))
     try:
+        if why := untrusted(path):
+            return Allowlist((), f"{PROJECT_FILE} is not trusted ({why})")
         entries = parse_allowlist(read_text(path))
-    except (UnreadableError, UnparseableError) as exc:
+    except (UnreadableError, UnparseableError, OSError) as exc:
         return Allowlist((), f"{PROJECT_FILE} is unusable ({exc})")
     return Allowlist(entries, "" if entries else f"{PROJECT_FILE} lists no host")
 

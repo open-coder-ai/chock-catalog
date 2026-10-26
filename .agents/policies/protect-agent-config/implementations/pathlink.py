@@ -10,6 +10,7 @@ from pathmatch import DYNAMIC, PIECE
 
 _path = os.path  # the host's path rules; a test binds ntpath here to read Windows paths on any host
 _HOPS = 40  # the kernel's own limit on links followed for one path
+_SEGMENTS = 256  # `_go` recurses once per segment; a longer path is refused, never walked
 # Folder entries a glob may read for one path: a wildcard over a larger tree is refused, never guessed at.
 _BUDGET = 50000
 _SEPARATORS = re.compile(r"[\\/]")
@@ -88,8 +89,10 @@ def follow(base: str, path: str) -> set[str] | None:
     """
     try:
         root, parts = _split(path)
+        if len(parts) > _SEGMENTS:
+            return None
         return _go(root or base, parts, [0], 0)
-    except _SpentError:
+    except (_SpentError, RecursionError):  # a chain of links can nest deeper than its first path does
         return None
 
 

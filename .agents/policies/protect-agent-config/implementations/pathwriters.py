@@ -10,7 +10,8 @@ from itertools import pairwise, takewhile
 from typing import Any
 
 from chock_shellparse import abbreviates, flags_of
-from chock_shellparse.parse import _SHELLS, _WRAPPERS
+from chock_shellparse.parse import _SHELLS
+from chock_shellparse.wrappers import WRAPPERS
 from pathmatch import DYNAMIC, literals
 from pathwords import is_interpreter
 from pathwrap import WRAP
@@ -225,6 +226,6 @@ def find(w: Any, args: list[str], env: dict[str, str]) -> bool:
 def _known(w: Any, program: str) -> bool:
     """Whether a program run by `find -exec` is one the guard judges by name (a writer, shell or wrapper); an interpreter is not."""
     return "$" not in program and (
-        (program in w.handlers or program in _SHELLS or program in _WRAPPERS or program in WRAP)
+        (program in w.handlers or program in _SHELLS or program in WRAPPERS or program in WRAP)
         and not is_interpreter(program)
     )
