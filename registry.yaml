@@ -960,7 +960,7 @@ policies:
     end.'
 - id: verify-mcp-allowlist
   path: base/verify-mcp-allowlist
-  version: 0.6.0
+  version: 0.6.1
   artifact: rule
   enforcement: advise
   status: production
@@ -1076,7 +1076,7 @@ policies:
     asks a person.'
 - id: agentic-code-security
   path: agentic-security/agentic-code-security
-  version: 0.4.0
+  version: 0.4.1
   artifact: hook
   enforcement: block
   status: draft
