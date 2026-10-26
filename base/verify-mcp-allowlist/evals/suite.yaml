@@ -217,7 +217,7 @@ suite:
     category: negative_trigger
     prompt: "The agent writes an allowlisted remote server on an approved https host."
     expect: "The write is allowed."
-    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\"}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"docs\": {\"url\": \"https://mcp.example.invalid/mcp\", \"headers\": {\"Authorization\": \"Bearer ${DOCS_TOKEN}\"}}}}\n"}, "expect": "allow"}
+    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\"}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\", \"headers\": {\"Authorization\": \"Bearer ${DOCS_TOKEN}\"}}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"docs\": {\"url\": \"https://mcp.example.invalid/mcp\", \"headers\": {\"Authorization\": \"Bearer ${DOCS_TOKEN}\"}}}}\n"}, "expect": "allow"}
   - id: tc-042
     category: negative_trigger
     prompt: "The allowlisted server is written with comments and a trailing comma."
@@ -262,7 +262,7 @@ suite:
     category: negative_trigger
     prompt: "The same environment value written as a reference."
     expect: "The write is allowed."
-    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\"}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"], \"env\": {\"API_TOKEN\": \"${API_TOKEN}\"}}}}\n"}, "expect": "allow"}
+    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\", \"env\": {\"API_TOKEN\": \"${API_TOKEN}\"}}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"], \"env\": {\"API_TOKEN\": \"${API_TOKEN}\"}}}}\n"}, "expect": "allow"}
   - id: tc-051
     category: negative_trigger
     prompt: "mcp-remote at the floor, listed and pinned."
@@ -347,17 +347,17 @@ suite:
     category: trigger
     prompt: "At the turn's end an approved server's environment gains a preload option."
     expect: "The turn is let through with a warning (observed); a denied environment variable is a finding."
-    execute: {"event": "stop", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\"}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n", ".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"]}}}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"], \"env\": {\"NODE_OPTIONS\": \"--require ./x.js\"}}}}\n"}, "expect": "warn"}
+    execute: {"event": "stop", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\", \"env\": {\"NODE_OPTIONS\": \"--require ./x.js\"}}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n", ".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"]}}}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"], \"env\": {\"NODE_OPTIONS\": \"--require ./x.js\"}}}}\n"}, "expect": "warn"}
   - id: tc-068
     category: trigger
     prompt: "The agent writes a literal credential into an approved server's environment."
     expect: "The write is let through with a warning (observed); credentials must be references."
-    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\"}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"], \"env\": {\"API_TOKEN\": \"not-a-real-token\"}}}}\n"}, "expect": "warn"}
+    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\", \"env\": {\"API_TOKEN\": \"not-a-real-token\"}}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"filesystem\": {\"command\": \"npx\", \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem@2025.8.21\", \"/work\"], \"env\": {\"API_TOKEN\": \"not-a-real-token\"}}}}\n"}, "expect": "warn"}
   - id: tc-069
     category: adversarial
     prompt: "A header carries a bearer token as a literal."
     expect: "The write is let through with a warning (observed)."
-    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\"}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\"}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"docs\": {\"url\": \"https://mcp.example.invalid/mcp\", \"headers\": {\"Authorization\": \"Bearer not-a-real-token\"}}}}\n"}, "expect": "warn"}
+    execute: {"event": "tool_use", "head_files": {".chock/mcp-allowlist.json": "{\"servers\": [{\"name\": \"filesystem\", \"launcher\": \"npx\", \"spec\": \"-y @modelcontextprotocol/server-filesystem@2025.8.21 /work\"}, {\"name\": \"docs\", \"url_host\": \"mcp.example.invalid\", \"headers\": {\"Authorization\": \"Bearer not-a-real-token\"}}]}\n"}, "writes": {".mcp.json": "{\"mcpServers\": {\"docs\": {\"url\": \"https://mcp.example.invalid/mcp\", \"headers\": {\"Authorization\": \"Bearer not-a-real-token\"}}}}\n"}, "expect": "warn"}
   - id: tc-070
     category: adversarial
     prompt: "A container argument passes a credential as a literal."
