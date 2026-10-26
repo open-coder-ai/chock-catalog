@@ -75,7 +75,7 @@ def test_a_url_host_row_for_a_line_a_secret_refuses_names_no_host() -> None:
 
 def test_a_url_host_row_for_a_clean_line_still_names_the_host() -> None:
     (row,) = mi.ask_rows("MEMORY.md", "- see https://github.com/org/repo\n", ENTRIES, set())
-    assert "github.com" in row["message"]
+    assert row["message"] == "URL host 'github.com': not on the repo's allowlist"
 
 
 def test_a_row_for_a_withheld_line_keeps_its_line_and_a_stable_key() -> None:
