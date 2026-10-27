@@ -1,6 +1,6 @@
 id: registry-config
-name: "Registry Config"
-version: "0.0.3"
+name: "Block Unsafe Package Registry Settings"
+version: "0.0.4"
 description: >
   Refuses package-manager config that redirects installs or weakens them: literal tokens, http or
   unlisted registry hosts (parsed, so lookalike and userinfo spellings fail), TLS or checksum checks
@@ -54,7 +54,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -67,6 +67,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Registry Config\" is now \"Block Unsafe Package Registry Settings\". The id, guard and tests are unchanged."
 - version: 0.0.3
   date: '2026-10-25'
   changes:

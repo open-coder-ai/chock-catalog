@@ -1,6 +1,6 @@
 id: scan-secrets-entropy
-name: "Scan Secrets Entropy"
-version: "0.1.3"
+name: "Review Values That Look Like Secrets"
+version: "0.1.4"
 description: >
   Friction, not a security boundary: asks a person before a write adds secrets scan-secrets misses -- high-entropy values
   (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test
@@ -33,7 +33,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.4
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Scan Secrets Entropy\" is now \"Review Values That Look Like Secrets\". The id, guard and tests are unchanged."
 - version: 0.1.3
   date: '2026-10-24'
   changes:

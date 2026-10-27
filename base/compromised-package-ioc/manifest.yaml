@@ -1,6 +1,6 @@
 id: compromised-package-ioc
-name: "Compromised Package IOC"
-version: "0.1.0"
+name: "Block Known-Malicious Packages"
+version: "0.1.1"
 description: >
   Blocks adding a known-malicious package version (npm, PyPI, crates, Go, RubyGems, Packagist manifests and
   lockfiles), a re-pointed action ref, or an IOC file name, from a dated, sourced list (data/ioc.json, CI
@@ -30,7 +30,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -43,6 +43,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.1
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Compromised Package IOC\" is now \"Block Known-Malicious Packages\". The id, guard and tests are unchanged."
 - version: 0.1.0
   date: '2026-10-02'
   changes:

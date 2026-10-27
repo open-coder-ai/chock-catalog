@@ -1,6 +1,6 @@
 id: block-hook-bypass-in-files
-name: "Block Hook Bypass In Files"
-version: "0.1.1"
+name: "Block Files That Skip Git Hooks"
+version: "0.1.2"
 description: >
   Friction, not a security boundary: flags lines added to hook launchers and scripts that switch
   git hooks off -- the hook-skip option on a git commit/push/merge/am/rebase/pull, core.hooksPath
@@ -80,7 +80,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-04T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -93,6 +93,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Block Hook Bypass In Files\" is now \"Block Files That Skip Git Hooks\". The id, guard and tests are unchanged."
 - version: 0.1.1
   date: '2026-10-07'
   changes:

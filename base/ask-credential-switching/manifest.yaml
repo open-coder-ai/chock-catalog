@@ -1,6 +1,6 @@
 id: ask-credential-switching
-name: "Ask Credential Switching"
-version: "0.0.4"
+name: "Review Cloud Identity Switches"
+version: "0.0.5"
 description: >
   Best effort, ask only. Asks a person before a shell command switches the identity later commands act
   as: aws --profile, AWS_PROFILE= or AWS keys (also $env:), sts assume-role, configure set of a key; gcloud
@@ -31,7 +31,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-11T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Ask Credential Switching\" is now \"Review Cloud Identity Switches\". The id, guard and tests are unchanged."
 - version: 0.0.4
   date: '2026-10-24'
   changes:

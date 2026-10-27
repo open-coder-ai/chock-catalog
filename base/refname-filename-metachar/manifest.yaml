@@ -1,6 +1,6 @@
 id: refname-filename-metachar
-name: "Refname Filename Metachar"
-version: "0.1.4"
+name: "Block Risky Characters in File and Branch Names"
+version: "0.1.5"
 description: >
   Refuses names a shell, CI step or git can misread. Paths a change adds or renames into (commit,
   agent writes), and branches and tags pushed (pre-push), with command substitution, an IFS
@@ -34,7 +34,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -47,6 +47,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.5
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Refname Filename Metachar\" is now \"Block Risky Characters in File and Branch Names\". The id, guard and tests are unchanged."
 - version: 0.1.4
   date: '2026-10-24'
   changes:

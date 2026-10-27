@@ -1,6 +1,6 @@
 id: hardening-flags
-name: "Hardening Flags"
-version: "0.1.1"
+name: "Block Weakened Build Hardening"
+version: "0.1.2"
 description: >
   Blocks added settings that weaken compiler, linker, Rust or kernel hardening, in CMake, Make, meson, configure.ac,
   Cargo, build.rs, Go release scripts, Dockerfiles and kernel config: no stack protector, FORTIFY_SOURCE off, non-PIE,
@@ -38,7 +38,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -51,6 +51,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Hardening Flags\" is now \"Block Weakened Build Hardening\". The id, guard and tests are unchanged."
 - version: 0.1.0
   date: '2026-10-02'
   changes:

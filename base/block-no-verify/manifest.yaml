@@ -1,6 +1,6 @@
 id: block-no-verify
-name: "Block No-Verify"
-version: "0.5.2"
+name: "Block Skipping Git Hooks"
+version: "0.5.3"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
@@ -22,7 +22,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -36,6 +36,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Block No-Verify\" is now \"Block Skipping Git Hooks\". The id, guard and tests are unchanged."
 - version: 0.5.2
   date: '2026-10-24'
   changes:

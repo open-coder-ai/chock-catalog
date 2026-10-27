@@ -1,6 +1,6 @@
 id: chock-mise
-name: "chock-mise Rule"
-version: "0.0.3"
+name: "Match the Owner's Coding Style"
+version: "0.0.4"
 description: >
   trigger: personalize the coding agent to its owner -- adopt the owner's dialect, taste, habits
   and demeanor so it works like a trained twin of that developer. apply: the owner's chock-mise
@@ -16,7 +16,7 @@ rule:
 provenance:
   author: "chock-core"
   created_at: "2026-08-27T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -30,6 +30,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"chock-mise Rule\" is now \"Match the Owner's Coding Style\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-08-27'
   changes:

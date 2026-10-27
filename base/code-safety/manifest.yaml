@@ -1,6 +1,6 @@
 id: code-safety
-name: "Code Safety Rule"
-version: "0.0.4"
+name: "Code Safety"
+version: "0.0.5"
 description: >
   trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing
   credentials, adding unverified packages, executing dynamic code. Install scan-secrets (commit,
@@ -19,7 +19,7 @@ rule:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -33,6 +33,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Code Safety Rule\" is now \"Code Safety\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:
