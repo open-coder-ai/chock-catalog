@@ -1,4 +1,4 @@
-# Agent Discipline Rule
+# Agent Discipline
 
 `agent-discipline` · rule · advises
 
@@ -47,7 +47,7 @@ chock add agent-discipline
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnQtZGlzY2lwbGluZSIsInZlcnNpb24iOiIwLjAuMyIsInNoYTI1NiI6IjAzOGIxOWQ3MjZlZmMxMjVlZWFmMTMyMWFjNGZlYjcwYzdmZDFhMjA3ZGE4ZTg5NTNiZWQ2NWQ0YWNkZDg0NzIifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnQtZGlzY2lwbGluZSIsInZlcnNpb24iOiIwLjAuNCIsInNoYTI1NiI6IjZiMGU4ZTI1NjBkMDBjNjI0Nzk5MWI3Y2UzZjIyN2EyMjBiOGQ2MjI4ZmMyOWFkZjBmNmY2Zjc2YWRkNDRiMTAifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

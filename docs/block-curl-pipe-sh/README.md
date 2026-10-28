@@ -1,4 +1,4 @@
-# Block Curl-Pipe-Shell
+# Block Curl Piped to Shell
 
 `block-curl-pipe-sh` · rule · enforces
 
@@ -47,7 +47,7 @@ chock add block-curl-pipe-sh
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJiMDg1ZGY4YmFiMWYyODFmODc2MjkxODJkMjhlYjFlOGNmNWRkZWE1In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stY3VybC1waXBlLXNoIiwidmVyc2lvbiI6IjAuMS43Iiwic2hhMjU2IjoiMGFkNGFkNzE3NzIzODc2NWU3YzEzMDQzYWM2OGQ0MWEyYTNjNTJhODA2MmMwYWU5NzFkM2EwN2YzOTdhZTk4ZiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stY3VybC1waXBlLXNoIiwidmVyc2lvbiI6IjAuMS44Iiwic2hhMjU2IjoiYTY2NTlhNWUwMWQ4NzcwMDQ2MTI0MGFkZTQ5NDRhMTEwNTM1MDMwYTFjNzJmMDIzZmUxMGRlZWEyMTM4ZjI1YSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

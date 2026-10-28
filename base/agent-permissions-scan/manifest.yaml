@@ -1,6 +1,6 @@
 id: agent-permissions-scan
-name: "Agent Permissions Scan"
-version: "0.2.1"
+name: "Scan Agent Permission Settings"
+version: "0.2.2"
 description: >
   Blocks: parses agent permission configs (.claude/settings*, .codex, .gemini, .vscode, .cursor/cli.json, opencode, .aider, .continue) and flags added bare or wildcard allows (Bash, curl/rm/sudo/git push, WebFetch, Write/Edit globs, mcp__*), removed deny entries, bypass/auto modes, codex never+danger, yolo, autoAccept, yes-always, regex-all VS Code approve, Claude project env API-endpoint overrides and enableAllProjectMcpServers. Misses: other MCP configs, user-level settings, scripts, Read.
 artifact: rule
@@ -53,7 +53,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-10T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -66,6 +66,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.2
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Agent Permissions Scan\" is now \"Scan Agent Permission Settings\". The id, guard and tests are unchanged."
 - version: 0.2.1
   date: '2026-10-25'
   changes:

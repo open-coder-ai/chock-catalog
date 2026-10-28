@@ -1,6 +1,6 @@
 id: block-unguarded-agent-spawn
-name: "Block Unguarded Agent Spawn"
-version: "0.2.2"
+name: "Block Agents Started With Safety Off"
+version: "0.2.3"
 description: >
   Best effort. Refuses agents with safety off: claude --dangerously-skip-permissions, bypassPermissions,
   wildcard --allowedTools; codex --full-auto, --yolo, -a never, danger-full-access; gemini --yolo; cursor-agent --force;
@@ -27,7 +27,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -41,6 +41,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Block Unguarded Agent Spawn\" is now \"Block Agents Started With Safety Off\". The id, guard and tests are unchanged."
 - version: 0.2.2
   date: '2026-10-25'
   changes:

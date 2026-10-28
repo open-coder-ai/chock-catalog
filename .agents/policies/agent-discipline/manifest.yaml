@@ -1,6 +1,6 @@
 id: agent-discipline
-name: "Agent Discipline Rule"
-version: "0.0.3"
+name: "Agent Discipline"
+version: "0.0.4"
 description: >
   trigger: edits without reading, unverified completion claims, weakened tests, dead code.
   avoid: skipping verification, deleting assertions, leaving unused code.
@@ -13,7 +13,7 @@ rule:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -27,6 +27,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Agent Discipline Rule\" is now \"Agent Discipline\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:

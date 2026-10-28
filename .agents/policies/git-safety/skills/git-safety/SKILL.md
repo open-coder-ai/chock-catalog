@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# Git Safety Rule
+# Git Safety
 
 trigger: force push, hard reset, destructive branch delete, hook bypass, direct main commits. avoid: rewriting remote history, discarding uncommitted work, skipping pre-commit checks. Enforced counterparts: block-destructive-commands (command guard plus pre-push hook), block-no-verify (command guard), protect-main-branch (commit and push gate), limit-diff-size (asks at commit). This rule is the advisory layer over them plus atomic-commit guidance no gate can decide.
 

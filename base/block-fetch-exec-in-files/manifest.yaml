@@ -1,6 +1,6 @@
 id: block-fetch-exec-in-files
-name: "Flag Fetch-Exec in Files"
-version: "0.0.2"
+name: "Flag Downloads Run as Code in Files"
+version: "0.0.3"
 description: >
   Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow or
   package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a shell,
@@ -129,7 +129,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -143,6 +143,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Flag Fetch-Exec in Files\" is now \"Flag Downloads Run as Code in Files\". The id, guard and tests are unchanged."
 - version: 0.0.2
   date: '2026-10-02'
   changes:

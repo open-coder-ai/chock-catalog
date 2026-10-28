@@ -1,6 +1,6 @@
 id: rtk-dangerous-actions-blocker
-name: "rtk Dangerous Actions Blocker"
-version: "0.3.1"
+name: "Block Dangerous Commands (Deprecated)"
+version: "0.3.2"
 description: >
   Deprecated: use block-destructive-commands, which shares this policy's destructive-command table.
   rtk#1007. Same table as block-destructive-commands: blocks root/home/.git deletes,
@@ -29,7 +29,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-09-13T00:00:00Z"
-  updated_at: "2026-10-24T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -50,6 +50,10 @@ tags:
 - requested-by:rtk-ai/rtk#1007
 
 changelog:
+- version: 0.3.2
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"rtk Dangerous Actions Blocker\" is now \"Block Dangerous Commands (Deprecated)\". The id, guard and tests are unchanged."
 - version: 0.3.1
   date: '2026-10-24'
   changes:

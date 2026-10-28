@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "context-hygiene",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "trigger: context bloat, stale observations, resolved content inlined, noisy exploration. avoid: context rot and lost-in-the-middle failures.",
   "author": {
     "name": "chock-core"

@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# Block Persistence Shapes
+# Block Persistence and Publishing Commands
 
 Best-effort guard against shell commands that publish or keep access after the session: npm/pnpm/yarn/twine/ poetry/uv/cargo/gem publish, docker/podman push and login, npm token and registry edits, repos made public; user services, launch agents, cron/at/schtasks, Run keys, authorized_keys, runner registration, sudoers, setuid bits, detached downloads. Asks on gh release create, git remote add, git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.
 

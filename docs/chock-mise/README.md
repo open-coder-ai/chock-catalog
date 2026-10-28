@@ -1,4 +1,4 @@
-# chock-mise Rule
+# Match the Owner's Coding Style
 
 `chock-mise` · rule · advises
 
@@ -47,7 +47,7 @@ chock add chock-mise
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiY2hvY2stbWlzZSIsInZlcnNpb24iOiIwLjAuMyIsInNoYTI1NiI6IjFiMDcyYmQ1MTc0YWM4YTc1YmQ0NDRlZDEwMGQ0MWNkYjc2Y2MzOWYxZDY2Yzg2NmE3YzJkOWE3M2VlY2Y1MWYifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiY2hvY2stbWlzZSIsInZlcnNpb24iOiIwLjAuNCIsInNoYTI1NiI6ImEzOWYxNjc2YjAxMWUzYjIzMzJlMGQzNWQxODI4MWQ0MTA2ZDJjYTQ5NmNiZTBmM2FkNzJjNTQ1ZmFhMDU2OTYifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

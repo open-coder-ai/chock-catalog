@@ -1,6 +1,6 @@
 id: agent-devenv-autoexec
-name: "Agent Devenv Autoexec"
-version: "0.0.2"
+name: "Flag Dev Tools That Run Code on Open"
+version: "0.0.3"
 description: >
   Warns only (observe): flags files that make a dev tool run code on open, clone or shell entry -- agent
   hooks, helpers, env/BASE_URL overrides, auto-approve; VS Code folderOpen tasks, trust off, repo
@@ -46,7 +46,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -59,6 +59,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Agent Devenv Autoexec\" is now \"Flag Dev Tools That Run Code on Open\". The id, guard and tests are unchanged."
 - version: 0.0.2
   date: '2026-10-25'
   changes:

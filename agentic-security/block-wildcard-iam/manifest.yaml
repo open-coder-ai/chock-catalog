@@ -1,6 +1,6 @@
 id: block-wildcard-iam
-name: "Block Wildcard IAM"
-version: "0.1.2"
+name: "Block Wildcard IAM Grants"
+version: "0.1.3"
 description: >
   Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a
   wildcard action, resource or principal in string or list form, any quote style
@@ -107,7 +107,7 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-13T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -120,6 +120,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Block Wildcard IAM\" is now \"Block Wildcard IAM Grants\". The id, guard and tests are unchanged."
 - version: 0.1.2
   date: '2026-10-07'
   changes:

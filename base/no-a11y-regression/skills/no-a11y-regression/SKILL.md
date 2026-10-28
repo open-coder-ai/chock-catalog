@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# No Accessibility Regression Rule
+# Keep Accessibility From Regressing
 
 trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label, label or lang that an element already had, deleting a flagged element. avoid: breaking a requirement the previous revision met; interrupting a correct fix.
 

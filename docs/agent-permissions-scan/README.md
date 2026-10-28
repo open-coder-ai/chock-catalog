@@ -1,4 +1,4 @@
-# Agent Permissions Scan
+# Scan Agent Permission Settings
 
 `agent-permissions-scan` · hook · enforces
 
@@ -48,7 +48,7 @@ chock add agent-permissions-scan
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJjMDVmOGQ5MGQ1NGM4NGI2N2M2ZjVhODhkNDI4ZTk0MjgyN2QyNWFkIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnQtcGVybWlzc2lvbnMtc2NhbiIsInZlcnNpb24iOiIwLjIuMSIsInNoYTI1NiI6IjIwODgzYzMzOTAwZTczYTgwOTFlNTg1NGE5N2VlNDdjNWU0ODJmNzI3YzUwYmU2YjVlMmU4NWI5OTIxMWNhOTgifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnQtcGVybWlzc2lvbnMtc2NhbiIsInZlcnNpb24iOiIwLjIuMiIsInNoYTI1NiI6IjIzMTU2NDFkZDg1ZjEzYTM1ZDYzZDNiZjk0MmQ3NDc2NGY5MzdiZjY3Nzc0MDE3ODQ3NzYxZjIxNjdjMGFlYzMifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

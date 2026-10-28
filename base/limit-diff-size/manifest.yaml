@@ -1,6 +1,6 @@
 id: limit-diff-size
-name: "Limit Diff Size Rule"
-version: "0.0.3"
+name: "Keep Changes Small Enough to Review"
+version: "0.0.4"
 description: >
   trigger: staging a large change, committing more than a reviewer can read at once.
   avoid: one commit carrying hundreds of hand-written lines; lockfile and generated churn is not counted.
@@ -17,7 +17,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -30,6 +30,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Limit Diff Size Rule\" is now \"Keep Changes Small Enough to Review\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-09-29'
   changes:

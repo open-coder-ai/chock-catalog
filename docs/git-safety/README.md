@@ -1,4 +1,4 @@
-# Git Safety Rule
+# Git Safety
 
 `git-safety` · rule · advises
 
@@ -47,7 +47,7 @@ chock add git-safety
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZ2l0LXNhZmV0eSIsInZlcnNpb24iOiIwLjAuNCIsInNoYTI1NiI6Ijc4NGMzYTE4OGM1YzQyYTg4NjA3MDMwMTk5ZGU0YjVhY2E5ZjNjMmY0NjI3OThlYjk2NjkxYzcxMzA3Y2E4NTgifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZ2l0LXNhZmV0eSIsInZlcnNpb24iOiIwLjAuNSIsInNoYTI1NiI6IjNlM2VjNjc0MDU1Mjg4Y2I4OTRmYzE4M2VlZGYzNzBiNDI2MWMyMmZkNDk5ZjA1ODI1MWM2OTk2YzgxZmRiMDEifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

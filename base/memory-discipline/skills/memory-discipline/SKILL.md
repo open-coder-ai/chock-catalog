@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# Memory Discipline Rule
+# Memory Discipline
 
 trigger: repeated mistakes, rediscovered patterns, preferences, non-derivable facts. avoid: persisting file contents, git history, or task intermediates as memory.
 

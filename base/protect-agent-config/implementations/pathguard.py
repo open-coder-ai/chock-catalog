@@ -16,6 +16,7 @@ from pathmatch import DRIVE, DYNAMIC, FRESH, expand, values
 from pathplugin import MANIFEST
 from pathreach import Reach
 from pathscript import Scripts
+from pathset import PRESENCE
 from pathsubst import PWD, bindings, resolver
 from pathtext import SUBST, braces, scan
 from pathwin import mklink, windows
@@ -139,8 +140,18 @@ class _Walk(Reach, Scripts):
         return any(self.reaches(t, cmd.env, parents=True, whole=whole) for t in values(cmd.args))
 
     def _mkdir(self, cmd: Cmd) -> bool:
-        """`mkdir` of a plugin's `.claude-plugin` folder makes a plugin root; any other protected folder may still be made."""
-        return any(MANIFEST in self._path(b, cmd.env)[0].split("/") for t in values(cmd.args) for b in braces(t))
+        """`mkdir` of a plugin's `.claude-plugin` folder, or of a folder at or under a path whose existence a gate reads (PRESENCE)."""
+        return any(
+            MANIFEST in self._path(b, cmd.env)[0].split("/") or self._planted(b, cmd.env)
+            for t in values(cmd.args)
+            for b in braces(t)
+        )
+
+    def _planted(self, token: str, env: dict[str, str]) -> bool:
+        path, loose = self._path(token, env)
+        if loose or "$" in path or DYNAMIC.search(path):  # unresolved: refused when it is protected and names a presence folder
+            return self.reaches(token, env) and any(e.rsplit("/", 1)[-1] in path for e in PRESENCE)
+        return any(f"/{e}/" in f"/{path}/" for e in PRESENCE)
 
     def _dd(self, cmd: Cmd) -> bool:
         return any(a.startswith("of=") and self.reaches(a[3:], cmd.env) for a in cmd.args)

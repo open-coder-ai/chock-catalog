@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# Scan Secrets Entropy
+# Review Values That Look Like Secrets
 
 Friction, not a security boundary: asks a person before a write adds secrets scan-secrets misses -- high-entropy values (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test keys, Slack/AWS key-id shapes, Luhn-valid cards. Asks a person (HP01 entropy is a heuristic, so it asks rather than blocks). Misses: values split across lines, over 150 chars, cut by # or & when unquoted, under other key names, written like code (a.b(), ALL_CAPS, words, URLs, paths), wrapped in a call, parens or concatenation, in XML, or padded with control characters.
 

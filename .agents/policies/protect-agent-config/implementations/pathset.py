@@ -97,6 +97,8 @@ PROTECTED = (
     ".amp/",  # Amp: settings.json (permissions, MCP servers), skills
     ".continue/",  # Continue: rules, mcpServers, models
 )
+# Protected paths whose bare existence a gate reads as evidence (dkscan/context.py reads `.chock/compiled/<id>` as an installed sibling), so `mkdir` there is refused.
+PRESENCE = (".chock/compiled",)
 # Files outside the repository, which no entry above names. A user's Cline folder (`~/Documents/Cline/Hooks`, as a segment whatever
 # precedes it), `~/.claude.json` (user-scope MCP servers and trust flags: the exact name, as a segment, so `.claude.json5` is not
 # one) and a chock-built plugin's install marker `chock.selection.json` (the custom-policy hashes a person accepted) match anywhere; the machine-wide hook and settings files match from the start of the path, so `src/etc/` is not one.
