@@ -115,7 +115,7 @@ python tools/gen_coverage_matrix.py                 # docs/assets/coverage-matri
 python tools/gen_java_security_contract.py          # the java-security setup page and reference
 python tools/gen_quickstart_sh.py                   # docs/quickstart.sh
 (cd docs/figures && for g in make_*.py; do python "$g"; done)
-(cd docs/assets && python gen_brand_assets.py)      # needs cairosvg==2.9.0; skipped with a note if absent
+(cd docs/assets && python gen_brand_assets.py)      # needs cairosvg==2.9.1; skipped with a note if absent
 python tools/gen_adoption_transcript.py --policy <id>   # each policy changed vs --base, uncommitted work included
 ```
 
