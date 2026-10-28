@@ -126,7 +126,7 @@ def regenerate(base: str, *, adopt: bool = False, transcripts: bool = True) -> i
     if find_spec("cairosvg"):
         steps.append(("brand card", [PY, "docs/assets/gen_brand_assets.py"]))
     else:
-        print("  skip          brand card: pip install cairosvg==2.9.0 to regenerate (CI checks the SVG)")
+        print("  skip          brand card: pip install cairosvg==2.9.1 to regenerate (CI checks the SVG)")
     rc = max([rc] + [report(run(label, cmd)) for label, cmd in steps])
     if adopt:
         if transcripts:
