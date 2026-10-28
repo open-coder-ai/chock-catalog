@@ -1,4 +1,4 @@
-# Scan Suppression Markers
+# Review Added Scanner Suppressions
 
 `scan-suppression-markers` · hook · enforces
 
@@ -48,7 +48,7 @@ chock add scan-suppression-markers
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zdXBwcmVzc2lvbi1tYXJrZXJzIiwidmVyc2lvbiI6IjAuMC4xIiwic2hhMjU2IjoiOGY5MGU5ZDg1NTM0MGY2ZmE3ZWNkODUwOTJiYzU5OWUzYWJlNzY2ODFmZmIxMTI1ZmRiOWI0ZmU1MGQ0YTE2NCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zdXBwcmVzc2lvbi1tYXJrZXJzIiwidmVyc2lvbiI6IjAuMC4yIiwic2hhMjU2IjoiMWNhNGYzZTQ0ZTY5YjU2MDJkMmY4NjAxNjczOWY3ZmE4NWY3MzQ1ZDVmODM3MmIyYWQ2NzliZGQ1MGZjNWNkYiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# Hardening Flags
+# Block Weakened Build Hardening
 
 Blocks added settings that weaken compiler, linker, Rust or kernel hardening, in CMake, Make, meson, configure.ac, Cargo, build.rs, Go release scripts, Dockerfiles and kernel config: no stack protector, FORTIFY_SOURCE off, non-PIE, execstack, norelro, CET off, kernel KASLR/RWX off. Asks on Rust release overflow-checks off, /dev/mem. Not MSVC, sysctl or container settings; misses environment flags, generated files. Runs: commit, agent write, turn's end, CI. Waiver: 'pragma: allowlist hardening-flag'.
 

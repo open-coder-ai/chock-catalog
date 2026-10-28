@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# chock-mise Rule
+# Match the Owner's Coding Style
 
 trigger: personalize the coding agent to its owner -- adopt the owner's dialect, taste, habits and demeanor so it works like a trained twin of that developer. apply: the owner's chock-mise profile where present; defer to committed project standards where it is silent or conflicts. avoid: inferring personal identity or employer-confidential data, and overriding the project's own committed rules.
 

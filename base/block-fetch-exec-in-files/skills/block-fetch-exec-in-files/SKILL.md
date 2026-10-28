@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# Flag Fetch-Exec in Files
+# Flag Downloads Run as Code in Files
 
 Warns (observe rollout) when a line added to a script, Dockerfile, Makefile, CI workflow or package.json wires a download into a code runner: curl/wget/aria2c/lynx/iwr/irm piped into a shell, python/perl/ruby/node/php/lua on stdin, pwsh or iex; bash -c, eval, source or a here-string of a $(...) or <(...) download; Dockerfile ADD of a URL without --checksum. One line at a time: continuation lines, variables, unicode-escaped JSON, split or quoted command names, a download saved to a file and run on a later step, and interpreters or fetchers outside the lists are missed. Never refuses. Friction only.
 

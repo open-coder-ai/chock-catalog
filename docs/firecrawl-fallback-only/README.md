@@ -1,4 +1,4 @@
-# Firecrawl Fallback Only
+# Use Firecrawl Only as a Fallback
 
 `firecrawl-fallback-only` · rule · enforces
 
@@ -47,7 +47,7 @@ chock add firecrawl-fallback-only
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZmlyZWNyYXdsLWZhbGxiYWNrLW9ubHkiLCJ2ZXJzaW9uIjoiMC4xLjEiLCJzaGEyNTYiOiJjMWZiM2Y0Y2QyNGRmYjA3MGJjMWRjZmEwZDU3ZDdlOTAxNzQ4MTkwOGJiNTQ4NTBjNTZkNTZkZmNjMDc5MDY0In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZmlyZWNyYXdsLWZhbGxiYWNrLW9ubHkiLCJ2ZXJzaW9uIjoiMC4xLjIiLCJzaGEyNTYiOiIzZWZmN2NmYzNlOWE0M2RjZDY2ODEzNjQ2NTY5YmM5NzAyNjM2OWU5N2NhNDkwOWVjYWJmOTY3MTA1Y2ExOTk2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

@@ -1,4 +1,4 @@
-# Registry Config
+# Block Unsafe Package Registry Settings
 
 `registry-config` · hook · enforces
 
@@ -56,7 +56,7 @@ chock add registry-config
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJjMDVmOGQ5MGQ1NGM4NGI2N2M2ZjVhODhkNDI4ZTk0MjgyN2QyNWFkIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicmVnaXN0cnktY29uZmlnIiwidmVyc2lvbiI6IjAuMC4zIiwic2hhMjU2IjoiMTEwNmEyNGU2ZmFjZTZiN2Y2OWYzYTVjNGIzNjBhMjkxYzNlMDgwNzdmOTQ2OGZmYTE1MzY4NzVlZDNhYzYzZCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicmVnaXN0cnktY29uZmlnIiwidmVyc2lvbiI6IjAuMC40Iiwic2hhMjU2IjoiNDhiNTE3ZjA0MDdjYTA2ODM2NTg2MzJkZjJkYjkyODA5YWFiYmQ3MzQyNjQzNDBjNzc2MjZiOTMzYmMzNWI4NiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

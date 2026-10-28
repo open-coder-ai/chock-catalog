@@ -1,4 +1,4 @@
-# Agent Devenv Autoexec
+# Flag Dev Tools That Run Code on Open
 
 `agent-devenv-autoexec` · rule · advises
 
@@ -51,7 +51,7 @@ chock add agent-devenv-autoexec
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJjMDVmOGQ5MGQ1NGM4NGI2N2M2ZjVhODhkNDI4ZTk0MjgyN2QyNWFkIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnQtZGV2ZW52LWF1dG9leGVjIiwidmVyc2lvbiI6IjAuMC4yIiwic2hhMjU2IjoiZDdlMGFhNWQ5MzM0ZGRlMDJiNzA0YjZmZjdjZDEyYzhhZTkxNjVjNzgwZjgxOTQ1ODQ0MGE1MzAzYjZkMjQ5ZiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYWdlbnQtZGV2ZW52LWF1dG9leGVjIiwidmVyc2lvbiI6IjAuMC4zIiwic2hhMjU2IjoiNjk2YzFhYTc5ZjA4Y2ZkM2JlN2JmNTYzNTViYzJhNzRhNmRiOGU0MzFhYTk4NmZjMjEzM2JmNjZmMWNiNjcyNCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

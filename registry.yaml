@@ -14,7 +14,7 @@ source: https://github.com/open-coder-ai/chock-catalog
 policies:
 - id: agent-discipline
   path: base/agent-discipline
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   status: draft
@@ -34,7 +34,7 @@ policies:
     code. avoid: skipping verification, deleting assertions, leaving unused code.'
 - id: block-curl-pipe-sh
   path: base/block-curl-pipe-sh
-  version: 0.1.7
+  version: 0.1.8
   artifact: rule
   enforcement: advise
   status: production
@@ -104,7 +104,7 @@ policies:
     HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.5.2
+  version: 0.5.3
   artifact: rule
   enforcement: advise
   status: production
@@ -198,7 +198,7 @@ policies:
     in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.1.2
+  version: 0.1.3
   artifact: hook
   enforcement: block
   status: production
@@ -226,7 +226,7 @@ policies:
     only when that exact line is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   status: draft
@@ -249,7 +249,7 @@ policies:
     pack: Python eval/exec, SQL built from strings in Python and JS).'
 - id: context-hygiene
   path: base/context-hygiene
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   status: draft
@@ -269,7 +269,7 @@ policies:
     avoid: context rot and lost-in-the-middle failures.'
 - id: chock-mise
   path: base/chock-mise
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   status: draft
@@ -363,7 +363,7 @@ policies:
     alter the input, or for internal batch jobs with no human recipient.'
 - id: firecrawl-fallback-only
   path: base/firecrawl-fallback-only
-  version: 0.1.1
+  version: 0.1.2
   artifact: rule
   enforcement: advise
   status: draft
@@ -383,7 +383,7 @@ policies:
     avoid: reaching for the Firecrawl connector as the default fetch path.'
 - id: git-safety
   path: base/git-safety
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   status: draft
@@ -451,7 +451,7 @@ policies:
     by the operator.
 - id: memory-discipline
   path: base/memory-discipline
-  version: 0.0.5
+  version: 0.0.6
   artifact: rule
   enforcement: advise
   status: draft
@@ -471,7 +471,7 @@ policies:
     avoid: persisting file contents, git history, or task intermediates as memory.'
 - id: no-a11y-regression
   path: base/no-a11y-regression
-  version: 1.1.2
+  version: 1.1.3
   artifact: rule
   enforcement: block
   status: production
@@ -770,15 +770,15 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.7.5
+  version: 0.7.6
   artifact: rule
   enforcement: advise
   status: production
   mandatory: true
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1587
-  eval_executed: 1587
+  eval_cases: 1593
+  eval_executed: 1593
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -868,7 +868,7 @@ policies:
     As skill text alone this is advice, and nothing stops one.'
 - id: rtk-dangerous-actions-blocker
   path: base/rtk-dangerous-actions-blocker
-  version: 0.3.1
+  version: 0.3.2
   artifact: rule
   enforcement: advise
   status: deprecated
@@ -916,7 +916,7 @@ policies:
     Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.'
 - id: token-efficiency
   path: base/token-efficiency
-  version: 0.1.2
+  version: 0.1.3
   artifact: rule
   enforcement: advise
   status: draft
@@ -1032,7 +1032,7 @@ policies:
     seen.
 - id: limit-diff-size
   path: base/limit-diff-size
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: block
   status: draft
@@ -1103,7 +1103,7 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.2.2
+  version: 0.2.3
   artifact: rule
   enforcement: advise
   status: production
@@ -1127,7 +1127,7 @@ policies:
     dsh ports, file bodies.'
 - id: scan-suppression-markers
   path: base/scan-suppression-markers
-  version: 0.0.1
+  version: 0.0.2
   artifact: hook
   enforcement: block
   status: draft
@@ -1172,7 +1172,7 @@ policies:
     as findings with exploit scenarios. Advisory: refuses nothing, writes no waiver, lowers no gate.'
 - id: block-hook-bypass-in-files
   path: base/block-hook-bypass-in-files
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: production
@@ -1195,7 +1195,7 @@ policies:
     justfile, .envrc, *.sh. Blocks. Misses: split lines, -n.'
 - id: agent-devenv-autoexec
   path: base/agent-devenv-autoexec
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   status: draft
@@ -1293,7 +1293,7 @@ policies:
     or deleted. Judges what a change adds. Friction, not a security boundary.'
 - id: package-lifecycle-scripts
   path: base/package-lifecycle-scripts
-  version: 0.1.1
+  version: 0.1.2
   artifact: rule
   enforcement: block
   status: draft
@@ -1317,7 +1317,7 @@ policies:
     boundary.'
 - id: compromised-package-ioc
   path: base/compromised-package-ioc
-  version: 0.1.0
+  version: 0.1.1
   artifact: hook
   enforcement: block
   status: draft
@@ -1365,7 +1365,7 @@ policies:
     unlisted secret names, values split or encoded.'
 - id: agent-permissions-scan
   path: base/agent-permissions-scan
-  version: 0.2.1
+  version: 0.2.2
   artifact: rule
   enforcement: block
   status: production
@@ -1388,7 +1388,7 @@ policies:
     and enableAllProjectMcpServers. Misses: other MCP configs, user-level settings, scripts, Read.'
 - id: block-persistence-shapes
   path: base/block-persistence-shapes
-  version: 0.0.5
+  version: 0.0.6
   artifact: rule
   enforcement: advise
   status: production
@@ -1411,7 +1411,7 @@ policies:
     add, git push to a URL. Misses: scripts, aliases, system units, shell rc files, ssh-run commands.'
 - id: block-secret-store-reads
   path: base/block-secret-store-reads
-  version: 0.0.7
+  version: 0.0.8
   artifact: rule
   enforcement: advise
   status: production
@@ -1458,7 +1458,7 @@ policies:
     in place, added insecure settings, a deletion-only commit.'
 - id: hardening-flags
   path: base/hardening-flags
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: draft
@@ -1482,7 +1482,7 @@ policies:
     allowlist hardening-flag''.'
 - id: opaque-blob-guard
   path: base/opaque-blob-guard
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   status: draft
@@ -1505,7 +1505,7 @@ policies:
     with no new distributionSha256Sum. Misses text-encoded or prefixed payloads, other folders.'
 - id: refname-filename-metachar
   path: base/refname-filename-metachar
-  version: 0.1.4
+  version: 0.1.5
   artifact: hook
   enforcement: block
   status: draft
@@ -1598,7 +1598,7 @@ policies:
     unlisted extensions. Waiver: pragma or sidecar.'
 - id: block-fetch-exec-in-files
   path: base/block-fetch-exec-in-files
-  version: 0.0.2
+  version: 0.0.3
   artifact: rule
   enforcement: advise
   status: draft
@@ -1623,7 +1623,7 @@ policies:
     refuses. Friction only.'
 - id: scan-secrets-entropy
   path: base/scan-secrets-entropy
-  version: 0.1.3
+  version: 0.1.4
   artifact: hook
   enforcement: block
   status: production
@@ -1647,7 +1647,7 @@ policies:
     in a call, parens or concatenation, in XML, or padded with control characters.'
 - id: registry-config
   path: base/registry-config
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   status: draft
@@ -1670,7 +1670,7 @@ policies:
     only. Ship observe first. Friction, not a boundary.'
 - id: ask-credential-switching
   path: base/ask-credential-switching
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   status: production
