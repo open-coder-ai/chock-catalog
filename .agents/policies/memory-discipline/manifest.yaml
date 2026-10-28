@@ -1,6 +1,6 @@
 id: memory-discipline
-name: "Memory Discipline Rule"
-version: "0.0.5"
+name: "Memory Discipline"
+version: "0.0.6"
 description: >
   trigger: repeated mistakes, rediscovered patterns, preferences, non-derivable facts.
   avoid: persisting file contents, git history, or task intermediates as memory.
@@ -19,7 +19,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -33,6 +33,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.6
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Memory Discipline Rule\" is now \"Memory Discipline\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:

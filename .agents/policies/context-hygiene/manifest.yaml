@@ -1,6 +1,6 @@
 id: context-hygiene
-name: "Context Hygiene Rule"
-version: "0.0.2"
+name: "Context Hygiene"
+version: "0.0.3"
 description: >
   trigger: context bloat, stale observations, resolved content inlined, noisy exploration.
   avoid: context rot and lost-in-the-middle failures.
@@ -13,7 +13,7 @@ rule:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-09-30T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -27,6 +27,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Context Hygiene Rule\" is now \"Context Hygiene\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:

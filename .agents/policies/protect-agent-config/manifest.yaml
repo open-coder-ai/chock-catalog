@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.7.5"
+version: "0.7.6"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent
   folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...),
@@ -68,6 +68,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.6
+  date: '2026-10-27'
+  changes:
+  - "Behaviour change (SR-2d2e, Claude Security finding F24; eval cases tc-1588 to tc-1593; tests in test_protect_agent_config_sr2e.py). `mkdir`, `mkdir -p`, `md`, and each spelling the guard already reads for other verbs (braces, variables, `cd` then a relative path, `bash -c`, quoting, `\\\\` separators, capitals), is refused when it makes a folder at or under `.chock/compiled`, the one protected path whose bare existence a gate reads (the constant `PRESENCE` in pathset.py, checked against the protected paths in a test; dockerfile-compose-security reads `.chock/compiled/<id>` as an installed sibling). An empty folder planted there misled it. A `mkdir` anywhere else stays open: `build/out`, `.claude/commands`, `.cursor`, `.agents/policies/<id>` (no gate reads a bare folder there; writes inside are still refused)."
 - version: 0.7.5
   date: '2026-10-25'
   changes:

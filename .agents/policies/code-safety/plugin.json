@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "code-safety",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets (commit, agent write) for secrets and verify-dependency-exists (opt-in; needs an allowlist) for dependencies. Advisory: eval/exec and SQL guidance; a gate decides only the non-literal slice (agentic-code-security code pack: Python eval/exec, SQL built from strings in Python and JS).",
   "author": {
     "name": "chock-core"

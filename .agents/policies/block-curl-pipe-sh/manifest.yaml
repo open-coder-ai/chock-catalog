@@ -1,6 +1,6 @@
 id: block-curl-pipe-sh
-name: "Block Curl-Pipe-Shell"
-version: "0.1.7"
+name: "Block Curl Piped to Shell"
+version: "0.1.8"
 description: >
   Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws s3 cp to
   stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh,
@@ -25,7 +25,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-10-25T00:00:00Z"
+  updated_at: "2026-10-27T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -39,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.8
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Block Curl-Pipe-Shell\" is now \"Block Curl Piped to Shell\". The id, guard and tests are unchanged."
 - version: 0.1.7
   date: '2026-10-25'
   changes:

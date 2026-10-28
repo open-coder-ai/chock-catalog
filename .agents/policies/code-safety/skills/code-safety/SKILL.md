@@ -7,7 +7,7 @@ metadata:
   chock.coverage_without_chock: advisory
 ---
 
-# Code Safety Rule
+# Code Safety
 
 trigger: secrets, eval/exec, unsanitized SQL, hallucinated dependencies. avoid: committing credentials, adding unverified packages, executing dynamic code. Install scan-secrets (commit, agent write) for secrets and verify-dependency-exists (opt-in; needs an allowlist) for dependencies. Advisory: eval/exec and SQL guidance; a gate decides only the non-literal slice (agentic-code-security code pack: Python eval/exec, SQL built from strings in Python and JS).
 
