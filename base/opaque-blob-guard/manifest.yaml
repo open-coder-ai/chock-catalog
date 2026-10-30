@@ -1,6 +1,6 @@
 id: opaque-blob-guard
 name: "Flag Hidden Binary Files in Tests"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   Warns (observe rollout; never refuses yet) when a change adds or edits, in tests/, fixtures/, testdata/,
   spec/, m4/, vendor/, gradle/wrapper/: a file whose first bytes are an archive, executable,
@@ -125,6 +125,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.5
+  date: '2026-10-30'
+  changes:
+  - "Fix for Windows (IR-F45; tests in test_opaque_blob_nofollow.py). Reading a working-tree file no longer names `os.O_NOFOLLOW`, which Windows lacks, so the gate no longer faults on every in-scope change there. Where the flag is missing a symlink is still refused: the check before the open stops it. Behaviour elsewhere is unchanged."
 - version: 0.0.4
   date: '2026-10-27'
   changes:
