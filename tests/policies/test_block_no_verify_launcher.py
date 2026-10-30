@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ntpath
+import os
 from pathlib import Path
 
 import pytest
@@ -41,6 +43,16 @@ ROWS: list[tuple[str, int]] = [
 def test_block_no_verify_judges_the_launcher_key_and_repository_config(
     raw: str, code: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("CHOCK_RAW_COMMAND", raw)
+    assert NO_VERIFY.run([]) == code, raw
+
+
+@pytest.mark.parametrize(("raw", "code"), [row for row in ROWS if ".git/config" in row[0]])
+def test_block_no_verify_judges_repository_config_with_windows_path_normalising(
+    raw: str, code: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Windows' normpath returns backslashes, so `.git/config` became `.git\\config` and a direct write got through."""
+    monkeypatch.setattr(os.path, "normpath", ntpath.normpath)
     monkeypatch.setenv("CHOCK_RAW_COMMAND", raw)
     assert NO_VERIFY.run([]) == code, raw
 

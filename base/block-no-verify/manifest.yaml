@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block Skipping Git Hooks"
-version: "0.5.3"
+version: "0.5.4"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
@@ -36,6 +36,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.5.4
+  date: '2026-10-30'
+  changes:
+  - "Fix for Windows (IR-F45; tests in test_block_no_verify_launcher.py). A direct write to the repository config with `--file .git/config` was allowed there because the path check compared a backslash-separated path with `.git/config`; it now compares with `/` separators, so the write is refused on Windows as elsewhere."
 - version: 0.5.3
   date: '2026-10-27'
   changes:

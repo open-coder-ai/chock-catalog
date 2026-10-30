@@ -79,7 +79,7 @@ def writes_repo_config(rest: list[str]) -> bool:
             operands.append(word)
         i += 1
     reading = READING & set(rest) or (operands[:1] and operands[0] in READ_VERBS)
-    return os.path.normpath(target).endswith(".git/config") and bool(operands[1:]) and not reading
+    return os.path.normpath(target).replace("\\", "/").endswith(".git/config") and bool(operands[1:]) and not reading
 
 
 def config_refusals(sub: str, rest: list[str], pairs: list[tuple[str, str]]) -> list[str]:
