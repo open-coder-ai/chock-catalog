@@ -64,7 +64,7 @@ def read_disk(root: str, rel: str) -> Blob | None:
     """The working-tree file at root/rel; None when absent or a symlink that stays inside the repository.
 
     A symlink that leaves the repository (as the final name or through a folder) raises Link; any other
-    refusal raises Unreadable. The open uses O_NOFOLLOW, so a name swapped for a link is never followed.
+    refusal raises Unreadable. The open adds O_NOFOLLOW where the OS has it (Windows does not); the lstat before it refuses a link either way.
     """
     if "\0" in rel or not _encodable(rel):
         msg = "the path is not a valid file name"
@@ -80,7 +80,7 @@ def read_disk(root: str, rel: str) -> Blob | None:
                 msg = f"symlink to {os.readlink(full)[:120]!r}, outside the repository"
                 raise Link(msg)
             return None
-        fd = os.open(full, FLAGS | os.O_NOFOLLOW)
+        fd = os.open(full, FLAGS | getattr(os, "O_NOFOLLOW", 0))
     except FileNotFoundError:
         return None
     except OSError as exc:

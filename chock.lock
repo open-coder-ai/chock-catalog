@@ -38,7 +38,7 @@
       "id": "block-no-verify",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "9aed4b0ba96beedcbe69bd750d6e7b3786bbde1baa2dd436817bbd9421a4f987",
+      "sha256": "480069830701ed22c149b956dbc6afdda664e587795eb702b11d028bf5c68887",
       "source": "local",
       "artifacts_sha256": "306e9275ed3a0cc0b086d6b91a027cc8b0dba8250559449353aca934ee4651dd"
     },
