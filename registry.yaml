@@ -104,7 +104,7 @@ policies:
     HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.5.3
+  version: 0.5.4
   artifact: rule
   enforcement: advise
   status: production
@@ -1482,7 +1482,7 @@ policies:
     allowlist hardening-flag''.'
 - id: opaque-blob-guard
   path: base/opaque-blob-guard
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   status: draft

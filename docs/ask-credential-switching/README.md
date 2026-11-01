@@ -52,7 +52,7 @@ chock add ask-credential-switching
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YjU5NDhhNjFiYmE4MjQ3ZDdiYmFkZDI4OWEzYWNlNjAwNThhM2EwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYXNrLWNyZWRlbnRpYWwtc3dpdGNoaW5nIiwidmVyc2lvbiI6IjAuMC41Iiwic2hhMjU2IjoiMGE4MTEzYTljOGY4YjNjMmZmZTY0YzRlYzgwYWE4M2FjY2E4NmVhMjk2NmE2Nzc2NjA2MTUwOWQxOGU1ZjNmNiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJmODhiZjIyOTBiM2UzNjljYTYxZTJjZWEyMmFlNTE4ZDEyNjgzZGYyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYXNrLWNyZWRlbnRpYWwtc3dpdGNoaW5nIiwidmVyc2lvbiI6IjAuMC41Iiwic2hhMjU2IjoiMGE4MTEzYTljOGY4YjNjMmZmZTY0YzRlYzgwYWE4M2FjY2E4NmVhMjk2NmE2Nzc2NjA2MTUwOWQxOGU1ZjNmNiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
