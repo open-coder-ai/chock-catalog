@@ -47,7 +47,7 @@ chock add review-like-a-red-team
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YmUxM2MzZjViOWE1ZDE5NGI1YmFiYjlhZTc3YWI1MTA3MGNlMjAxIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicmV2aWV3LWxpa2UtYS1yZWQtdGVhbSIsInZlcnNpb24iOiIwLjAuMSIsInNoYTI1NiI6ImE4NGYzM2ZkYWFiZTA5ZGE3NzFmODc4OWQ3MGJkMjYxMGViMzNkODZhMjk2ZGUxNmY4YTk1NWY1YTRkODU0MjIifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2YzU2OTMxNGY2N2RjOTE3MmI3MGE0NDQ4MDg1ODliOTU0OWZhZTlhIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicmV2aWV3LWxpa2UtYS1yZWQtdGVhbSIsInZlcnNpb24iOiIwLjAuMSIsInNoYTI1NiI6IjI3OWE4Yzc2Y2M1ODI2MzBmM2E3NjY3MDg0NGZhYWYwNmRhMTdiMGYxODk2YmE2YWQyMWIwODZkY2MxNzdiZjcifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
