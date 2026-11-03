@@ -29,11 +29,24 @@ from typing import Any
 ENGINE_BUDGET_SECONDS = 30
 
 
+BYTECODE_OFF = {"PYTHONDONTWRITEBYTECODE": "1"}
+
+
 PATTERN_SECONDS = 10
+
+
+PATTERN_START_SECONDS = 10
+
+
+PATTERN_JUDGE_EXITED = "the pattern judge exited early ("
+
+
+PATTERN_JUDGE_READY = "ready"
 
 
 PATTERN_JUDGE_SOURCE = (
     "import json, re, sys\n"
+    "print('ready', flush=True)\n"
     "for line in sys.stdin:\n"
     "    out = []\n"
     "    for pattern, texts in json.loads(line):\n"
@@ -89,6 +102,14 @@ def _start_judge(judge):
     lines = queue.Queue()
     threading.Thread(target=_pump_lines, args=(proc, lines), daemon=True).start()
     judge["proc"], judge["lines"] = proc, lines
+    try:
+        ready = lines.get(timeout=PATTERN_START_SECONDS)
+    except queue.Empty:
+        close_judge(judge)
+        return f"the pattern judge did not start within {PATTERN_START_SECONDS}s"
+    if ready is None or ready.strip() != PATTERN_JUDGE_READY:
+        return f"{PATTERN_JUDGE_EXITED}{close_judge(judge)})"
+    return None
 
 
 def close_judge(judge):
@@ -110,6 +131,16 @@ def close_judge(judge):
     return (spoken.strip().splitlines() or [""])[-1]
 
 
+def _ensure_judge(judge):
+    """None when the judge's child runs (started now if need be); otherwise why it could not."""
+    if judge["proc"] is not None:
+        return None
+    try:
+        return _start_judge(judge)
+    except OSError as exc:
+        return f"the pattern judge could not start ({exc})"
+
+
 def judge_patterns(judge, jobs, seconds):
     """(hits, None) or (None, why): per job of (pattern, texts), the indices of the texts the pattern matches.
 
@@ -118,24 +149,22 @@ def judge_patterns(judge, jobs, seconds):
     """
     if not any(texts for _, texts in jobs):
         return [[] for _ in jobs], None
-    if judge["proc"] is None:
-        try:
-            _start_judge(judge)
-        except OSError as exc:
-            return None, f"the pattern judge could not start ({exc})"
+    failed = _ensure_judge(judge)
+    if failed:
+        return None, failed
     proc, lines = judge["proc"], judge["lines"]
     try:
         proc.stdin.write(json.dumps(jobs) + "\n")
         proc.stdin.flush()
     except (OSError, ValueError):
-        return None, f"the pattern judge exited early ({close_judge(judge)})"
+        return None, f"{PATTERN_JUDGE_EXITED}{close_judge(judge)})"
     try:
         line = lines.get(timeout=seconds)
     except queue.Empty:
         close_judge(judge)
         return None, f"the patterns gave no verdict within {seconds:g}s (a catastrophic pattern?)"
     if line is None:
-        return None, f"the pattern judge exited early ({close_judge(judge)})"
+        return None, f"{PATTERN_JUDGE_EXITED}{close_judge(judge)})"
     return json.loads(line), None
 
 
@@ -175,8 +204,12 @@ class GateContext:
         scope: Sequence[str] | None = None,
         own: Sequence[str] = (),
         session: Mapping[str, object] | None = None,
+        *,
+        case_blind: bool | None = None,
     ) -> None:
         self.repo_root = Path(repo_root)
+        #: Whether paths and scope globs compare without regard to case; the platform's default unless told.
+        self.case_blind = sys.platform in CASE_BLIND_PLATFORMS if case_blind is None else case_blind
         #: The session-log handle a script gate receives; None when the hook named no session.
         self.session = dict(session) if session else None
         self._push_stdin = push_stdin or ""
@@ -187,17 +220,23 @@ class GateContext:
         #: Path prefixes this gate never judges: its own policy's source and compiled folders.
         self.own = tuple(own)
 
-    def in_scope(self, path: str) -> bool:
+    def is_own(self, path: str) -> bool:
+        """Whether `path` is in this policy's own source or compiled folder."""
+        return bool(self.own) and path.startswith(self.own)
+
+    def in_scope(self, path: str, *, judge_own: bool = False) -> bool:
         """Whether this policy may judge this file at all.
 
         fnmatch semantics, so `*` crosses `/` and `.github/workflows/*` covers nested files.
         A gate with no scope sees every changed file, which is what every gate did before
         applies_to.paths was read.
         """
-        if path.startswith(self.own):
+        if not judge_own and self.is_own(path):
             return False
         if _is_outside(path):
             return True
+        if self.case_blind:
+            return not self.scope or any(fnmatch.fnmatchcase(path.casefold(), g.casefold()) for g in self.scope)
         return not self.scope or any(fnmatch.fnmatchcase(path, g) for g in self.scope)
 
     def _range(self) -> list[str]:
@@ -242,9 +281,9 @@ class GateContext:
         """True when `ref` resolves to a commit. Used to fail CI closed on a missing base."""
         return bool(self._git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").strip())
 
-    def staged_paths(self, diff_filter: str = "ACMRT") -> list[str]:
+    def staged_paths(self, diff_filter: str = "ACMRT", *, judge_own: bool = False) -> list[str]:
         paths = self._listing("diff", *self._range(), "--name-only", f"--diff-filter={diff_filter}")
-        return [path for path in paths if self.in_scope(path)]
+        return [path for path in paths if self.in_scope(path, judge_own=judge_own)]
 
     def _diff_text(self, path: str) -> str:
         """`path`'s `-U0` diff as git writes it, unconverted; raises DiffError when git fails."""
@@ -340,17 +379,18 @@ class WriteContext(GateContext):
         *,
         stop: bool = False,
         session: Mapping[str, object] | None = None,
+        case_blind: bool | None = None,
     ) -> None:
-        super().__init__(repo_root=repo_root, scope=scope, own=own, session=session)
+        super().__init__(repo_root=repo_root, scope=scope, own=own, session=session, case_blind=case_blind)
         self._writes = dict(writes)
         self._added = dict(added or {})
         self._stop = stop
 
-    def staged_paths(self, diff_filter: str = "ACMRT") -> list[str]:
+    def staged_paths(self, diff_filter: str = "ACMRT", *, judge_own: bool = False) -> list[str]:
         """Every write is a present file, so a filter asking only for deletions finds none."""
         if not set(diff_filter) & set("ACMRT"):
             return []
-        return [path for path in self._writes if self.in_scope(path)]
+        return [path for path in self._writes if self.in_scope(path, judge_own=judge_own)]
 
     def staged_blob(self, path: str) -> str:
         return self._writes.get(path, "")
@@ -383,6 +423,8 @@ class WriteContext(GateContext):
             return ""
 
 
+#: Platforms whose default filesystem ignores case: a path typed in another case names the same file.
+CASE_BLIND_PLATFORMS = ("darwin", "win32", "cygwin")
 #: Kinds whose question a write can answer. A branch name is not in a tool call, so
 #: forbidden_ref has nothing to read here; saying so beats passing it empty and calling
 #: that an allow.
@@ -446,15 +488,22 @@ _AGENT_COMMIT_NOTE = (
 
 
 def _config_agent_env(repo_root: Path) -> list[str]:
-    """Names under `agent_commit_env:` in `.chock/config.yaml`, read without a YAML parser.
+    """Names under `agent_commit_env:` in `.chock/config.yaml`, in the working tree and as committed at HEAD.
 
-    Only an inline list (`[A, B]`), one scalar, or a block list of `- NAME` lines is read; the
-    runner is stdlib-only, and anything else yields no names rather than a guess.
+    Both, so an uncommitted edit that drops a name never hides the agent it named. Read without a YAML parser:
+    only an inline list (`[A, B]`), one scalar, or a block list of `- NAME` lines is read; the runner is
+    stdlib-only, and anything else yields no names rather than a guess.
     """
     try:
-        lines = repo_root.joinpath(*_CONFIG_PATH).read_text(encoding="utf-8").splitlines()
+        working = repo_root.joinpath(*_CONFIG_PATH).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
-        return []
+        working = ""
+    names = _env_names(working)
+    return names + [name for name in _env_names(_committed_config(repo_root, "HEAD") or "") if name not in names]
+
+
+def _env_names(text: str) -> list[str]:
+    lines = text.splitlines()
     raw: list[str] = []
     block = False
     for line in lines:
@@ -540,8 +589,8 @@ def _config_rollout(repo_root: Path) -> str:
         return ROLLOUT_ENFORCE
 
 
-def committed_rollout(repo_root: Path, ref: str) -> str:
-    """`rollout:` as committed at `ref`; a ref or file git cannot show is enforce."""
+def _committed_config(repo_root: Path, ref: str) -> str | None:
+    """`.chock/config.yaml` as committed at `ref`; None when git cannot show it."""
     try:
         shown = subprocess.run(  # noqa: S603 -- reading one committed file
             ["git", "-C", str(repo_root), "show", f"{ref}:{'/'.join(_CONFIG_PATH)}"],  # noqa: S607
@@ -552,8 +601,14 @@ def committed_rollout(repo_root: Path, ref: str) -> str:
             check=False,
         )
     except (OSError, subprocess.SubprocessError, UnicodeDecodeError):
-        return ROLLOUT_ENFORCE
-    return rollout_from_text(shown.stdout) if shown.returncode == 0 else ROLLOUT_ENFORCE
+        return None
+    return shown.stdout if shown.returncode == 0 else None
+
+
+def committed_rollout(repo_root: Path, ref: str) -> str:
+    """`rollout:` as committed at `ref`; a ref or file git cannot show is enforce."""
+    text = _committed_config(repo_root, ref)
+    return ROLLOUT_ENFORCE if text is None else rollout_from_text(text)
 
 
 def _stricter(*levels: str) -> str:
@@ -617,18 +672,25 @@ def _waived(index: int, line: str, waivers: set[int], head: frozenset[str] | Non
     return index in waivers and (head is None or line in head)
 
 
+def _path_pattern(params: dict, ctx: GateContext) -> str | None:
+    """The gate's forbidden-path regex, matching without case where the filesystem ignores it."""
+    pattern = params.get("forbidden_path_regex")
+    return f"(?i){pattern}" if pattern and ctx.case_blind else pattern
+
+
 def _kind_content_regex(ctx: GateContext, params: dict, event: str) -> GateResult:
     pragma = _waiver_pattern(params, event)
     agent = event in HEAD_WAIVER_EVENTS
     whole = params.get("scan", "added_lines") == "staged_blob"
-    paths = ctx.staged_paths(params.get("diff_filter", "ACMRT"))
+    paths = ctx.staged_paths(params.get("diff_filter", "ACMRT"), judge_own=True)
     judge = pattern_judge()
     try:
-        forbidden = sorted(_hits(judge, [(params.get("forbidden_path_regex"), paths)])[0])
+        forbidden = sorted(_hits(judge, [(_path_pattern(params, ctx), paths)])[0])
         heads = {path: ctx.committed_blob(path) if agent else "" for path in paths}
         blobs = [heads[paths[index]] if agent else ctx.staged_blob(paths[index]) for index in forbidden]
         spans, texts = _lines(
-            paths, lambda path: ctx.staged_blob(path).splitlines() if whole else ctx.added_lines(path)
+            [path for path in paths if not ctx.is_own(path)],
+            lambda path: ctx.staged_blob(path).splitlines() if whole else ctx.added_lines(path),
         )
         jobs = [(pragma, blobs), (pragma, texts), (params["content_pattern"], texts)]
         blob_waivers, line_waivers, hits = _hits(judge, jobs)
@@ -639,7 +701,7 @@ def _kind_content_regex(ctx: GateContext, params: dict, event: str) -> GateResul
         if index in forbidden and forbidden.index(index) not in blob_waivers:
             matches.append(f"{path}: forbidden path")
         head = frozenset(heads[path].splitlines()) if agent else None
-        if any(n in hits and not _waived(n, texts[n], line_waivers, head) for n in spans[path]):
+        if any(n in hits and not _waived(n, texts[n], line_waivers, head) for n in spans.get(path, ())):
             matches.append(f"{path}: content pattern")
     return GateResult(allowed=not matches, matches=matches)
 
@@ -803,6 +865,9 @@ _SCRIPT_ALLOW, _SCRIPT_BLOCK, _SCRIPT_ASK, _SCRIPT_WARN = 0, 1, 3, 4
 #: is a script that failed, not one that refused.
 _CRASH_MARKERS = ("traceback (most recent call last)", "syntax error", "syntaxerror", "unexpected eof")
 
+#: Running a gate never writes bytecode into the pack it judges.
+_BYTECODE_OFF = {"PYTHONDONTWRITEBYTECODE": "1"}
+
 _UNDECIDED = " -- refusing rather than allowing what it never judged"
 
 _FINDINGS_KEY = "findings"
@@ -817,6 +882,7 @@ def _spawn(script: Path, ctx: GateContext, payload: dict, timeout: float) -> sub
         encoding="utf-8",
         errors="replace",
         cwd=ctx.repo_root,
+        env={**os.environ, **_BYTECODE_OFF},
         timeout=timeout,
         check=False,
     )
@@ -1080,6 +1146,8 @@ def _context(
     added: Mapping[str, str] | None = None,
     own: Sequence[str] = (),
     session: Mapping[str, object] | None = None,
+    *,
+    case_blind: bool | None = None,
 ) -> GateContext | None:
     """The material this event puts under judgement, or None when the kind cannot read it."""
     if event not in AGENT_EVENTS:
@@ -1102,6 +1170,7 @@ def _context(
         own=own,
         stop=event == STOP_EVENT,
         session=session,
+        case_blind=case_blind,
     )
 
 
@@ -1554,6 +1623,8 @@ def evaluate(
     writes: Mapping[str, str] | None = None,
     added: Mapping[str, str] | None = None,
     session: Mapping[str, object] | None = None,
+    *,
+    case_blind: bool | None = None,
 ) -> Evaluation | tuple[int, str]:
     """Run a compiled gate's kind without reporting or logging: an Evaluation, or (exit code, verdict) when it ends early."""
     gate_path = Path(gate_path)
@@ -1584,7 +1655,10 @@ def evaluate(
     if declared not in _ACTION_RANK:
         print(f"gate: unknown action {declared!r} (block, ask or warn)", file=sys.stderr)
         return 2, VERDICT_ERROR
-    ctx = _context(event, spec, repo_root, push_stdin, base, head_ref, writes, added, own_paths(gate_path), session)
+    own = own_paths(gate_path)
+    ctx = _context(
+        event, spec, repo_root, push_stdin, base, head_ref, writes, added, own, session, case_blind=case_blind
+    )
     if ctx is None:
         return 2, VERDICT_ERROR
     if event == "ci" and base and not ctx.rev_exists(base):
@@ -1626,6 +1700,8 @@ def judge(
     added: Mapping[str, str] | None = None,
     session: Mapping[str, object] | None = None,
     fields: Mapping[str, object] | None = None,
+    *,
+    case_blind: bool | None = None,
 ) -> tuple[int, str]:
     """Run a compiled gate: (exit code, verdict), the verdict being allow, block, ask, warn or error.
 
@@ -1634,7 +1710,9 @@ def judge(
     halted = halt_git(Path(repo_root), event, _policy_id(Path(gate_path))) if event in _GIT_EVENTS else None
     if halted is not None:
         return halted
-    outcome = evaluate(gate_path, event, push_stdin, repo_root, base, head_ref, writes, added, session)
+    outcome = evaluate(
+        gate_path, event, push_stdin, repo_root, base, head_ref, writes, added, session, case_blind=case_blind
+    )
     if isinstance(outcome, tuple):
         return outcome
     if event == "ci":
@@ -1753,7 +1831,8 @@ def log_settings_read(path):
         problems.append(f"{path}: max_bytes must be {_LOG_BYTES_RANGE}, not {size!r}; using the next scope or 1048576")
     unknown = sorted(set(doc) - set(LOG_SETTINGS_KEYS))
     if unknown:
-        problems.append(f"{path}: unknown key(s) {', '.join(map(str, unknown))}; only level and max_bytes are read")
+        names = ", ".join(map(str, unknown))
+        problems.append(f"{path}: unknown key(s) {names}; only level and max_bytes are read")
     return found, problems
 
 
@@ -1919,16 +1998,19 @@ def log_append(path, record, max_bytes=LOG_DEFAULT_MAX_BYTES):
     rotation names the rotated file's last. A writer that cannot take the lock writes its line `unchained`.
     """
     path = Path(path)
+    log_require_safe(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     stamped = {"ts": log_now(), **{k: v for k, v in record.items() if k not in LOG_CHAIN_KEYS}}
-    lock = os.open(str(path) + ".lock", os.O_RDWR | os.O_CREAT, 0o600)
+    lock = os.open(str(path) + ".lock", os.O_RDWR | os.O_CREAT | LOG_OPEN_FLAGS, 0o600)
     try:
         held = _log_lock_wait(lock)
         try:
             if held:
                 _log_rotate_held(path, max_bytes)
             line = _log_line(path, stamped, held=held)
-            fd = os.open(str(path), os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0), 0o600)
+            fd = os.open(
+                str(path), os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_BINARY", 0) | LOG_OPEN_FLAGS, 0o600
+            )
             try:
                 os.write(fd, line)
             finally:
@@ -2002,8 +2084,6 @@ _HALT_GITDIR = "gitdir:"
 _HALT_REASON_CAP = 200
 _HALT_UNREADABLE = ".chock/stop.json exists but cannot be read, so every agent is refused"
 _HALT_NO_REASON = "no reason given"
-#: Platforms whose default filesystem ignores case: a path typed in another case names the same repository.
-_HALT_CASELESS = ("darwin", "win32", "cygwin")
 
 
 def _halt_read_file(path, unreadable):
@@ -2038,7 +2118,7 @@ def halt_registry_dir():
 def halt_norm(path):
     """`path`'s realpath, casefolded where the filesystem ignores case (realpath keeps the case it was typed in)."""
     real = os.path.realpath(str(path))
-    return real.casefold() if sys.platform in _HALT_CASELESS else real
+    return real.casefold() if sys.platform in CASE_BLIND_PLATFORMS else real
 
 
 def halt_registry_entry(repo_root):
@@ -2286,6 +2366,12 @@ LOG_CHAIN_GENESIS = "0" * 64
 #: How far back from a log's end its last line is looked for before the whole file is read.
 _LOG_TAIL_BYTES = 65_536
 
+#: `st_mode`'s file-type bits and the two types a log's files and directories may be (`stat.S_IFMT`, `S_IFREG`, `S_IFDIR`).
+LOG_MODE_MASK, LOG_MODE_FILE, LOG_MODE_DIR = 0o170000, 0o100000, 0o040000
+LOG_UNSAFE = "not a regular file in real directories; refusing to open it"
+#: Opening a log never follows a symlink and never waits on a FIFO.
+LOG_OPEN_FLAGS = getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+
 
 def log_rotated(path):
     """Where `log_append` moves a full log: `<stem>.1<suffix>` beside it."""
@@ -2335,6 +2421,38 @@ def log_chain_after(last):
     return {LOG_CHAIN_SEQ: log_line_seq(last) + 1, LOG_CHAIN_PREV: log_line_hash(last)}
 
 
+def log_path_safe(path):
+    """Whether the log, its lock and rotated file are regular files or absent, and its two directories real directories.
+
+    lstat, so a symlink, FIFO, socket or device is refused before anything opens it: opening a FIFO blocks the hook
+    until its timeout, which a client may read as an allow.
+    """
+    path = Path(path)
+    checks = (
+        (path, LOG_MODE_FILE),
+        (Path(str(path) + ".lock"), LOG_MODE_FILE),
+        (log_rotated(path), LOG_MODE_FILE),
+        (path.parent, LOG_MODE_DIR),
+        (path.parent.parent, LOG_MODE_DIR),
+    )
+    for target, kind in checks:
+        try:
+            mode = os.lstat(target).st_mode
+        except FileNotFoundError:
+            continue
+        except OSError:
+            return False
+        if mode & LOG_MODE_MASK != kind:
+            return False
+    return True
+
+
+def log_require_safe(path):
+    """Raise OSError unless `log_path_safe(path)`."""
+    if not log_path_safe(path):
+        raise OSError(LOG_UNSAFE)
+
+
 #: The git hook a merge's own commit runs: judged as a commit.
 _MERGE_COMMIT = "pre-merge-commit"
 
@@ -2381,9 +2499,31 @@ def _log_fields(raw: str) -> dict | None:
     return fields if isinstance(fields, dict) else None
 
 
+def _case_blind(raw: str) -> bool | None:
+    """The hook handler's word on whether paths compare without case, if it gave one."""
+    try:
+        payload = json.loads(raw or "{}")
+    except json.JSONDecodeError:
+        return None
+    flag = payload.get("case_blind") if isinstance(payload, dict) else None
+    return flag if isinstance(flag, bool) else None
+
+
 def _writes(raw: str) -> dict[str, str]:
     """The files this event puts under judgement, whole."""
     return _texts(raw, "writes")
+
+
+#: An agent event whose stdin is not UTF-8 is refused, never read with replacement characters in its place.
+_EXIT_UNDECODABLE = 2
+
+
+def _agent_stdin() -> str | None:
+    """The agent event's stdin as UTF-8 text, or None when its bytes do not decode."""
+    try:
+        return sys.stdin.buffer.read().decode("utf-8")
+    except UnicodeDecodeError:
+        return None
 
 
 def _utf8_streams() -> None:
@@ -2425,7 +2565,12 @@ def main(argv: list[str] | None = None) -> int:
         # cannot be read back from it. {"writes": {"<path>": "<text>"}, "added": {"<path>": "<text>"}},
         # `added` present only for an edit, carrying the text it introduces.
         # Paths are named from the directory the runtime works in, which may sit below the git top-level.
-        raw = sys.stdin.read()
+        raw = _agent_stdin()
+        if raw is None:
+            print(
+                "chock: the hook payload on stdin is not UTF-8; refusing rather than judging a guess", file=sys.stderr
+            )
+            return _EXIT_UNDECODABLE
         return run(
             Path(args.gate),
             args.event,
@@ -2435,6 +2580,7 @@ def main(argv: list[str] | None = None) -> int:
             added=_texts(raw, "added"),
             session=_session(raw),
             fields=_log_fields(raw),
+            case_blind=_case_blind(raw),
         )
 
     push_stdin = sys.stdin.read() if args.event == "pre-push" and not sys.stdin.isatty() else None

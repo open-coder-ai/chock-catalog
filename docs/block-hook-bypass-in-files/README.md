@@ -50,7 +50,7 @@ chock add block-hook-bypass-in-files
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJmODhiZjIyOTBiM2UzNjljYTYxZTJjZWEyMmFlNTE4ZDEyNjgzZGYyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2staG9vay1ieXBhc3MtaW4tZmlsZXMiLCJ2ZXJzaW9uIjoiMC4xLjIiLCJzaGEyNTYiOiJkZTdjODM5ZGI0OTE4NGRkOTdkYWM0MjcyM2QwM2YyZjUxYTQ4NzJjZTg2NWM5MDVkMDNmMGMxNGZhMjFmNTIwIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJmODhiZjIyOTBiM2UzNjljYTYxZTJjZWEyMmFlNTE4ZDEyNjgzZGYyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2staG9vay1ieXBhc3MtaW4tZmlsZXMiLCJ2ZXJzaW9uIjoiMC4xLjIiLCJzaGEyNTYiOiI2YTY0ODI5YmNlNWNkOTI2Y2Y2NjI4ODY5ZjY0YmMwYjY2M2VjYTRiODQ5YmI2OGZkNWFkYTA3OWY1YTIwODk2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

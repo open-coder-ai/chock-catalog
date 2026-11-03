@@ -1692,9 +1692,15 @@ protect-agent-config  [deterministic]
   PASS  tc-1585                            authored  guard exit 0
   PASS  tc-1586                            authored  guard exit 0
   PASS  tc-1587                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1588                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1589                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1590                            authored  BLOCKED: shell write touching agent config is refused -- an agent m…
+  PASS  tc-1591                            authored  guard exit 0
+  PASS  tc-1592                            authored  guard exit 0
+  PASS  tc-1593                            authored  guard exit 0
   score 1.00
 
-5 policies: 1587 pass, 44 skipped
+5 policies: 1593 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
