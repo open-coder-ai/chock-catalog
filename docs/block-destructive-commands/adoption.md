@@ -294,9 +294,11 @@ block-destructive-commands  [deterministic]
   PASS  tc-187                             authored  BLOCKED: rm -rf targeting '/tmp' (absolute path, home, '.', '..' or…
   PASS  tc-188                             authored  BLOCKED: rm -rf targeting '~/.cache' (absolute path, home, '.', '..…
   PASS  tc-189                             authored  guard exit 0
+  PASS  tc-190                             authored  BLOCKED: rm -rf targeting '~' (absolute path, home, '.', '..' or th…
+  PASS  tc-191                             authored  guard exit 0
   score 1.00
 
-5 policies: 189 pass, 44 skipped
+5 policies: 191 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

@@ -51,7 +51,7 @@ chock add opaque-blob-guard
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI4M2Q3YTExYTY4ZmM2MzkyOWE5YTE5Y2UzMzIyMGQ3ZGQyZjU5YWNiIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoib3BhcXVlLWJsb2ItZ3VhcmQiLCJ2ZXJzaW9uIjoiMC4wLjUiLCJzaGEyNTYiOiIyMmY4NzJmNGJhMTdiZDdkMzBiNjY5OTdhZTE2ZjU2YTQ4YjhkNGY0M2Y4ZTViNjg2OTA1M2RlOTA2MGU2MDlmIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhOTBhZjBkNDE0ZDgwNGYyMjJjNGI4Zjc3N2RhMGVhYmQyYmY5ZmVkIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoib3BhcXVlLWJsb2ItZ3VhcmQiLCJ2ZXJzaW9uIjoiMC4wLjUiLCJzaGEyNTYiOiJkMDAwODdlOTkxM2Q1ZWRkMTk2OTEwYjg3ZDM4NmU1ZWZhMTQxZWQzNDQ3YjBmMmJjNDZkNzQ4N2EzYzA1MGFlIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
