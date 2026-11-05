@@ -226,12 +226,13 @@ jobs:
   # The same adopter check on Windows, where git checks text out with CRLF and paths use backslashes. The install
   # step runs under bash so the pinned-dependency lines are the ones tools/check_workflows.py requires; the pin
   # read and verify steps stay in the default shell, since that tool allows the verify step no extra keys.
-  # The 9-minute budget is provisional until a run on main records the real time. Not in the `policies` gate.   
+  # Budget 26: the longest of 14 runs from 2026-11-02 to 2026-11-05 was 17:00 (runs 41552867589 and 41950172932
+  # hit the old 17-minute budget), plus half again, rounded up. Not in the `policies` gate.
   windows-adopter:
     needs: scope
     if: needs.scope.outputs.windows == 'true'
     runs-on: windows-latest
-    timeout-minutes: 17
+    timeout-minutes: 26
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -862,10 +863,20 @@ jobs:
   # what this repo runs with what it ships -- the exact separation that makes editing a
   # published policy safe. A full run stages every published policy; a targeted one stages the
   # policies of the matrix and the skills they need, and none at all when the PR names no policy.
+  # One `chock check` took up to 8:53 (run 41954387569), nearly all of it replaying evals, so the job is a matrix
+  # that stages the same adopter in each cell. Shard 0 runs every check but the evals, and the OWASP claim. Shards
+  # 1..N replay the evals: each policy goes, by its eval case count, longest first to the lightest shard (the
+  # packing tools/plan_shards.py does for test files), so every staged policy is replayed by exactly one shard.
+  # N is the matrix's own job count less one, so editing the matrix cannot leave a policy unreplayed.
   staged-adopter:
     needs: scope
+    name: staged-adopter (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 9
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -944,13 +955,45 @@ jobs:
           chock sync --repo . --skip-hooks
           ls .agents/policies .agents/skills
 
-      # Validates every published policy and, as tier 2, replays each policy's own gate or
-      # guard against a throwaway repo: a policy whose declared gate does not do what its eval
-      # suite claims fails here. One run -- `chock check` already replays the evals, so the
-      # `--only evals` step that followed it ran every case a second time.
-      - name: Validate the staged policies and replay their evals
-        if: steps.stage.outputs.empty != 'true'
-        run: chock check --repo /tmp/catalog-check
+      # Validates every published policy. matrix, mechanisms and baseline are left out as a plain
+      # `chock check` skips them here: no spec/enforcement-matrix.md, no --base.
+      - name: Validate the staged policies
+        if: steps.stage.outputs.empty != 'true' && matrix.shard == 0
+        run: chock check --repo /tmp/catalog-check --only validate,verify,index,conflicts
+
+      # Tier 2: replays each policy's own gate or guard against a throwaway repo, so a policy whose
+      # declared gate does not do what its eval suite claims fails here. Each policy's seconds are
+      # printed, to re-plan the shards from.
+      - name: Replay the evals of this shard's staged policies
+        if: steps.stage.outputs.empty != 'true' && matrix.shard != 0
+        env:
+          SHARD: ${{ matrix.shard }}
+          JOBS: ${{ strategy.job-total }}
+        run: |
+          python -I - "$SHARD" "$((JOBS - 1))" /tmp/catalog-check > "$RUNNER_TEMP/shard-policies" <<'PY'
+          import sys
+          from pathlib import Path
+
+          from chock.eval.suites import discover_policies
+
+          shard, shards, repo = int(sys.argv[1]), int(sys.argv[2]), Path(sys.argv[3])
+          cases = {policy.id: len(policy.cases()) for policy in discover_policies(repo)}
+          loads = [0] * shards
+          for policy in sorted(cases, key=lambda p: (-cases[p], p)):
+              lightest = min(range(shards), key=lambda i: (loads[i], i))
+              loads[lightest] += cases[policy]
+              if lightest + 1 == shard:
+                  print(policy)
+          PY
+          mapfile -t policies < "$RUNNER_TEMP/shard-policies"
+          echo "shard $SHARD of $((JOBS - 1)): ${#policies[@]} policies"
+          failed=0
+          for policy in "${policies[@]}"; do
+            start=$SECONDS
+            chock eval "$policy" --repo /tmp/catalog-check < /dev/null || failed=1
+            echo "== $policy: $((SECONDS - start))s"
+          done
+          exit "$failed"
 
       # The README's coverage claim, re-derived: the staged adopter (which installs every
       # published policy) must score all ten OWASP ASI controls covered. This repo itself
@@ -959,7 +1002,7 @@ jobs:
       # Needs the whole pack, so only a full run (and main, which is always full) makes it; the merge queue
       # runs a full run before anything merges.
       - name: OWASP ASI coverage claim holds in the staged adopter
-        if: needs.scope.outputs.full == 'true'
+        if: needs.scope.outputs.full == 'true' && matrix.shard == 0
         run: |
           cd /tmp/catalog-check
           report="$(chock compliance report --framework owasp_asi)"
