@@ -387,7 +387,7 @@ jobs:
   # rather than only in the framework's tests.
   adopter:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 9
     steps:
       # Full history: `review verify` recomputes diff_sha from `merge-base origin/main HEAD`,
       # and a shallow clone has no merge base to find.
