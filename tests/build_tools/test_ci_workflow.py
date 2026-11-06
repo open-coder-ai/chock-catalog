@@ -140,6 +140,14 @@ def test_every_staged_policy_is_replayed_by_exactly_one_shard(shards: int, tmp_p
     assert set(replayed.values()) == {1}
 
 
+@pytest.mark.parametrize("shard", [1, 2, 3])
+def test_a_shard_fails_when_no_policy_is_discovered(shard: int, tmp_path: Path) -> None:
+    with pytest.raises(subprocess.CalledProcessError) as refused:
+        pack(tmp_path, {}, shard, 3)
+    assert refused.value.returncode == 1
+    assert "No policies found" in refused.value.stderr
+
+
 def test_each_matrix_shard_replays_a_part_of_the_catalog(tmp_path: Path) -> None:
     shards = len(STAGED["strategy"]["matrix"]["shard"]) - 1
     cases = catalog_cases()

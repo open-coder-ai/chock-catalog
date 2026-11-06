@@ -978,6 +978,8 @@ jobs:
 
           shard, shards, repo = int(sys.argv[1]), int(sys.argv[2]), Path(sys.argv[3])
           cases = {policy.id: len(policy.cases()) for policy in discover_policies(repo)}
+          if not cases:
+              sys.exit(f"No policies found under {repo}: nothing to replay, so the staged adopter fails.")
           loads = [0] * shards
           for policy in sorted(cases, key=lambda p: (-cases[p], p)):
               lightest = min(range(shards), key=lambda i: (loads[i], i))
