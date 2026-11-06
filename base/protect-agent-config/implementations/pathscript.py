@@ -10,6 +10,7 @@ from collections.abc import Callable
 from chock_shellparse.parse import Cmd, _parse
 from pathfeed import shown, strings
 from pathmatch import DRIVE, DYNAMIC
+from pathpy import judged
 from pathtext import matching, scan
 from pathwords import PRODUCERS
 from pathwrap import unwrap
@@ -142,4 +143,5 @@ class Scripts:
 
     def code(self, cmd: Cmd) -> bool:
         scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(self.prev)[0]
-        return interpreter(self, cmd.name, cmd.args, cmd.env, scripts)
+        # a read-only Python script on stdin is judged without the paths it only opens to read (pathpy.judged)
+        return interpreter(self, cmd.args, cmd.env, judged(cmd.name, cmd.args, scripts))
