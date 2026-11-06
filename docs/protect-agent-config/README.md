@@ -47,7 +47,7 @@ chock add protect-agent-config
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIxMTZmZWU1NmYxYTMyOTIzYTAwNjdmNTEzNDg2MzM3ODkyODQ5MzQ1In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1hZ2VudC1jb25maWciLCJ2ZXJzaW9uIjoiMC43LjciLCJzaGEyNTYiOiJlMjE4YTI1NjZjNjVkODYwNTE4MzBlZGNjZGVjZjAwOWIzMWIxNDQwZjJjNTljYzYzNjIyZGQ4YTYyNzdhMWFmIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJmOThjODE5NTU1NTkxNjdhNzhiNmFjNjExZDkwZDgxZjc5ODJhOWY1In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1hZ2VudC1jb25maWciLCJ2ZXJzaW9uIjoiMC43LjciLCJzaGEyNTYiOiI3MDg1OWI0YWMwYzdhMWI1ZjY1ZGM5NmY2ZDA5Zjk2OGJlNGY4NDQzNWE5NzhhZjJhZmRkMDU0MGJjMjZhOWI4In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
