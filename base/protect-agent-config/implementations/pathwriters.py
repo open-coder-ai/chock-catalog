@@ -13,6 +13,7 @@ from chock_shellparse import abbreviates, flags_of
 from chock_shellparse.parse import _SHELLS
 from chock_shellparse.wrappers import WRAPPERS
 from pathmatch import DYNAMIC, literals
+from pathpy import judged
 from pathwords import is_interpreter
 from pathwrap import WRAP
 
@@ -147,10 +148,14 @@ def awk(w: Any, args: list[str], env: dict[str, str]) -> bool:
     )
 
 
-def interpreter(w: Any, args: list[str], env: dict[str, str], scripts: list[str]) -> bool:
-    """The code may write or remove any path it names as a string: plain literals only, never a guess at a glob."""
+def interpreter(w: Any, name: str, args: list[str], env: dict[str, str], scripts: list[str]) -> bool:
+    """The code may write or remove any path it names as a string: plain literals only, never a guess at a glob.
+
+    A Python script on stdin that provably only reads (pathpy.judged) is judged without the paths it opens to read.
+    """
     code = bool(scripts) or any(_CODE.match(a) for a in args)
-    words = [t for a in args for t in literals(a)] + [t for s in scripts for t in _STRING.findall(s)]
+    shown = judged(name, args, scripts)
+    words = [t for a in args for t in literals(a)] + [t for s in shown for t in _STRING.findall(s)]
     return code and any(w.reaches(t, env, parents=True) for t in words if not DYNAMIC.search(t))
 
 

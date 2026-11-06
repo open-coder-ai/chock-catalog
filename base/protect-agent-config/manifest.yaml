@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.7.6"
+version: "0.7.7"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent
   folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...),
@@ -54,7 +54,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-08-16T00:00:00Z"
-  updated_at: "2026-10-25T00:00:00Z"
+  updated_at: "2026-11-06T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -68,6 +68,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.7
+  date: '2026-11-06'
+  changes:
+  - "Behaviour change, a false positive fixed (IR-F55; eval cases tc-1594 to tc-1607; tests in test_protect_agent_config_readonly.py). A read-only `python3 -I - <<'EOF'` here-document that opened a saved tool result under `~/.claude/projects/` was refused as a write: an interpreter fed its script on standard input was judged by every string it named (pathwriters.interpreter, then the pathopaque backstop). Now, when `ast` proves a Python script on standard input only reads (module `pathpy.py`), the quoted paths it passes straight to a read-mode `open()` leave the judged text; every other string is judged as before, so a read-only script that merely names a protected path (`print('.mcp.json')`, pinned in 0.7.5) stays refused. Read-only means:`python[...]` with no argument but `-IEsSBuqOP` flags and `-`; `open()` only called, with a literal mode of `r`, `b` and `t` and no opener; no import but `json` (`load`, `loads`, `dumps`), and that only under `-I` or `-P`; no `exec`, `eval`, `compile`, `getattr`, `setattr`, `globals`, `vars` and the like; no name or attribute starting with `_`. Anything else, a script that does not parse included, is judged as before. The protected paths are unchanged, and so is every write: `cat >`, `tee`, `>>`, `sed -i`, `python -c \"open(..., 'w')\"`, a here-document to the file, a read-only script whose output is redirected there, and a here-document that opens for writing, hides the mode in a variable, reaches a writer through `json.codecs`, `pathlib`, `os` or `__import__`, or imports `json` without `-I` are refused. Unchanged on purpose: the same read as `python3 -c` is still refused (the shared shell reader's interpreter rule), and other interpreters fed a here-document are judged as before."
 - version: 0.7.6
   date: '2026-10-27'
   changes:

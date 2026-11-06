@@ -142,4 +142,4 @@ class Scripts:
 
     def code(self, cmd: Cmd) -> bool:
         scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(self.prev)[0]
-        return interpreter(self, cmd.args, cmd.env, scripts)
+        return interpreter(self, cmd.name, cmd.args, cmd.env, scripts)

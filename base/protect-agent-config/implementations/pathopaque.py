@@ -9,6 +9,7 @@ from chock_shellparse.args import taken
 from chock_shellparse.parse import _ASSIGN, _base, _Clause, _crude, _Scan, script_at
 from chock_shellparse.wrappers import WRAPPERS as _WRAPPERS
 from pathescape import decode
+from pathpy import judged
 from pathtext import scan
 from pathwrap import WRAPPERS
 
@@ -128,13 +129,13 @@ class _Look:
             self.texts.append(own)
             doc = _literal_doc(clause, scanned.docs)
             self.judged = False
-            self.clause(list(clause.words), depth, None if doc is None else f"{own} {doc}")
+            self.clause(list(clause.words), depth, None if doc is None else (own, doc))
             if not self.judged and not _plain_read(clause):
                 self.rest.append(own)
         for body in scanned.bodies if depth < _DEPTH else []:
             self.run(body, depth + 1)
 
-    def clause(self, words: list[str], depth: int, shown: str | None = None) -> None:
+    def clause(self, words: list[str], depth: int, shown: tuple[str, str] | None = None) -> None:
         while words and (_ASSIGN.match(words[0]) or words[0] in _LEAD):
             words.pop(0)
         if not words:
@@ -153,7 +154,9 @@ class _Look:
             if at == 0 or inner in SHELLS | EVALS | SOURCES | ONE_LINERS.keys() or inner.startswith(tuple(ONE_LINERS)):
                 self.invoke(inner, args, fed=fed, depth=depth, shown=shown)
 
-    def invoke(self, name: str, args: list[str], *, fed: bool, depth: int, shown: str | None = None) -> None:
+    def invoke(
+        self, name: str, args: list[str], *, fed: bool, depth: int, shown: tuple[str, str] | None = None
+    ) -> None:
         if name in SHELLS:
             self.found |= fed or _shell(args)
             if depth < _DEPTH and (script := _literal(args)):
@@ -171,7 +174,8 @@ class _Look:
         else:
             on_line, stdin = _runtime(name, args)
             if stdin and not fed and shown is not None:
-                self.fed.append(shown)  # the script is the here-document: it is read, and judged by what it names
+                own, doc = shown  # the script is the here-document: it is read, and judged by what it names
+                self.fed.append(f"{own} {judged(name, args, [doc])[0]}")  # less the paths a read-only script opens to read
                 self.judged = True
             else:
                 self.found |= on_line or stdin
