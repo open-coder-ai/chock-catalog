@@ -24,9 +24,29 @@ OPEN = [
     doc(f"from json import loads\nprint(loads(open('{RESULT}', 'rb').read()))"),
     doc(f"print(open('{SETTINGS}', 'r', encoding='utf-8').read())"),
     doc("print(open('.claude/settings.json', mode='rt').read()[:100])"),
-    doc(f"print(open('{RESULT}').read())", "python3 -"),  # no import: the working directory cannot shadow one
-    doc(f"import json; print(json.dumps(json.load(open('{RESULT}')), indent=2))", "python3 -P -"),
+    doc(f"import json; print(json.dumps(json.load(open('{RESULT}')), indent=2))", "python3 -IP -"),
     doc(f"import json; print(json.load(open('{RESULT}')))", "python3 -IB"),
+]
+READ = f"print(open('{SETTINGS}').read())"
+# Not read-only without -I, or when the environment or the line around it can change what Python runs.
+ENVIRONED = [
+    doc(f"print(open('{RESULT}').read())", "python3 -"),  # PYTHON* variables, a sitecustomize on sys.path
+    doc(f"import json; print(json.load(open('{RESULT}')))", "python3 -P -"),  # -P still reads PYTHON* variables
+    doc(READ, "PYTHONPATH=/work/x python3 -"),
+    doc(READ, "PYTHONPATH=/work/x python3 -I -"),
+    doc(READ, "LD_PRELOAD=/work/x.so python3 -I -"),
+    doc(READ, "env PYTHONPATH=/work/x python3 -I -"),
+    doc(READ, "env LD_PRELOAD=/work/x.so python3 -I -"),
+    "export LD_PRELOAD=/work/x.so; " + doc(READ),
+    "cd /work && " + doc(READ),
+    f"python3 -I - <<'EOF' | head\n{READ}\nEOF",  # not the whole line
+]
+# A read-only script never launders a shell-level write.
+LAUNDERED = [
+    doc(READ, f"python3 -I - > {SETTINGS}"),
+    f"python3 -I - <<'EOF' > {SETTINGS}\n{READ}\nEOF",
+    f"python3 -I - <<'EOF' | tee {SETTINGS}\n{READ}\nEOF",
+    f"python3 -I - <<'EOF' >> {SETTINGS}\n{READ}\nEOF",
 ]
 REFUSED = [
     f"cat > {SETTINGS}",
@@ -55,7 +75,6 @@ REFUSED = [
     doc(f"getattr(__builtins__, 'open')('{SETTINGS}', 'w')"),
     doc(f"print(().__class__, '{SETTINGS}')"),
     doc(f"print(open('{RESULT}').read())") + f" > {SETTINGS}",
-    doc(f"import json; print(json.load(open('{RESULT}')))", "python3 -"),  # a json.py in the working directory
     doc(f"print(open('{RESULT}').read())", "python3 -I x.py"),
     doc("print(1)", f"python3 -I - {SETTINGS}"),
     doc(f"print(open('{RESULT}').read())", "python3 -i -"),
@@ -80,6 +99,16 @@ def test_a_read_only_python_here_document_passes(raw: str) -> None:
     assert GUARD.check(raw) is None, raw
 
 
+@pytest.mark.parametrize("raw", ENVIRONED)
+def test_a_read_without_i_or_with_a_changed_environment_is_refused(raw: str) -> None:
+    assert GUARD.check(raw) is not None, raw
+
+
+@pytest.mark.parametrize("raw", LAUNDERED)
+def test_a_read_only_script_does_not_launder_a_shell_write(raw: str) -> None:
+    assert GUARD.check(raw) == GUARD.REASON, raw
+
+
 @pytest.mark.parametrize("raw", REFUSED)
 def test_a_write_or_a_script_not_provably_read_only_is_still_refused(raw: str) -> None:
     assert GUARD.check(raw) is not None, raw
@@ -91,6 +120,9 @@ def test_a_write_or_a_script_not_provably_read_only_is_still_refused(raw: str) -
         ("python3", ["-I", "-"], "import json; print(json.loads('1'))", True),
         ("/usr/bin/python3.12", ["-I"], "print(open('a').read())", True),
         ("python3", ["-I", "-"], "import sys; print(sys.argv)", False),
+        ("python3", ["-"], "print(open('a').read())", False),
+        ("python3", ["-P", "-"], "print(open('a').read())", False),
+        ("python3", ["-EsP", "-"], "print(open('a').read())", False),
         ("python3", ["-c", "x"], "print(1)", False),
         ("python3", ["-X", "dev", "-"], "print(1)", False),
         ("ruby", ["-"], "print 1", False),

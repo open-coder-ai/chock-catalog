@@ -7,7 +7,8 @@ import re
 
 # `python3 -I -`: only flags that change no file and run no other code; `-` (or nothing) reads the script from stdin.
 _FLAGS = re.compile(r"-[IEsSBuqOP]+")
-_ISOLATED = re.compile(r"-[EsSBuqOP]*[IP][EsSBuqOP]*")  # -I or -P: the working directory cannot shadow an import
+# -I is required: it ignores PYTHON* variables and user site-packages and keeps the working directory off sys.path.
+_ISOLATED = re.compile(r"-[EsSBuqOP]*I[EsSBuqOP]*")
 _MODULES = {"json": frozenset(("load", "loads", "dumps"))}
 _BANNED = frozenset(
     (
@@ -20,12 +21,10 @@ _OPEN_POSITIONAL = 2  # open(file, mode): buffering and the rest go by keyword, 
 _READ_MODE = re.compile(r"[rbt]*")
 
 
-def _isolated(args: list[str]) -> bool | None:
-    """Whether `python [-IEsSBuqOP...] [-]` runs isolated (-I or -P), or None for any other argument list."""
+def _isolated(args: list[str]) -> bool:
+    """Whether the arguments are `[-IEsSBuqOP...] [-]` with -I among them."""
     flags = args[:-1] if args[-1:] == ["-"] else args
-    if not all(_FLAGS.fullmatch(a) for a in flags):
-        return None
-    return any(_ISOLATED.fullmatch(a) for a in flags)
+    return all(_FLAGS.fullmatch(a) for a in flags) and any(_ISOLATED.fullmatch(a) for a in flags)
 
 
 def _open(call: ast.Call) -> bool:
@@ -40,14 +39,12 @@ def _open(call: ast.Call) -> bool:
     )
 
 
-def _imports(tree: ast.Module, *, isolated: bool) -> dict[str, frozenset[str]] | None:
+def _imports(tree: ast.Module) -> dict[str, frozenset[str]] | None:
     """Each module name the script binds and the attributes it may use, or None when it imports anything else."""
     modules: dict[str, frozenset[str]] = {}
     for node in ast.walk(tree):
         if not isinstance(node, (ast.Import, ast.ImportFrom)):
             continue
-        if not isolated:
-            return None
         if isinstance(node, ast.Import):
             if any(a.name not in _MODULES for a in node.names):
                 return None
@@ -86,19 +83,18 @@ def read_only(name: str, args: list[str], scripts: list[str]) -> bool:
     """Whether `python [flags] [-]` fed these scripts on stdin can open files only for reading and import nothing but json.
 
     The subset: builtins without exec, eval, getattr and the like; no name or attribute starting with `_`; `open` only
-    called, in a read mode; `import json` (load, loads, dumps) only under -I or -P. Anything else is not read-only.
+    called, in a read mode; no import but json (load, loads, dumps); and always -I. Anything else is not read-only.
     """
     if not scripts or not name.rsplit("/", 1)[-1].startswith("python"):
         return False
-    isolated = _isolated(args)
-    if isolated is None:
+    if not _isolated(args):
         return False
     try:
         trees = [ast.parse(s) for s in scripts]
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         return False
     for tree in trees:
-        modules = _imports(tree, isolated=isolated)
+        modules = _imports(tree)
         if modules is None:
             return False
         calls = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}

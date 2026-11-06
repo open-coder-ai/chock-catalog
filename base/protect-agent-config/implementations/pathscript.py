@@ -143,5 +143,7 @@ class Scripts:
 
     def code(self, cmd: Cmd) -> bool:
         scripts = [self.docs[r] for r in cmd.reads if r in self.docs] or self.produced(self.prev)[0]
-        # a read-only Python script on stdin is judged without the paths it only opens to read (pathpy.judged)
-        return interpreter(self, cmd.args, cmd.env, judged(cmd.name, cmd.args, scripts))
+        # a read-only Python script on stdin is judged without the paths it only opens to read (pathpy.judged),
+        # unless the command sets a variable (PYTHONPATH=, LD_PRELOAD=): PWD is the guard's own
+        plain = not set(cmd.env) - {"PWD"}
+        return interpreter(self, cmd.args, cmd.env, judged(cmd.name, cmd.args, scripts) if plain else scripts)
