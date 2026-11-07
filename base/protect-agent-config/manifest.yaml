@@ -1,6 +1,6 @@
 id: protect-agent-config
 name: "Protect Agent Config"
-version: "0.7.7"
+version: "0.7.8"
 description: >
   Stops an agent editing its guardrails (MITRE ATLAS AML.T0081). Shell guard refuses writes to AGENTS.md, whole agent
   folders (.claude/, .cursor/, .codex/, .gemini/, .agents/, .chock/, ...), MCP/hook client configs (.mcp.json, ...),
@@ -68,6 +68,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.8
+  date: '2026-11-07'
+  changes:
+  - "Behaviour change, a false positive fixed (IR-F64; eval cases tc-1613 to tc-1623; tests in test_protect_agent_config_readonly.py). The read 0.7.7 allows as a `python3 -I -` here-document was still refused as a one-liner, `python3 -I -c \"import json; print(json.load(open('~/.claude/projects/...')))\"`: the `-c` code was judged by every string it named, by the shared shell reader's interpreter rule, pathwriters.interpreter and the pathopaque backstop. Now `python[...] -I [-EsSBuqOP flags] -c CODE` (or `-Ic`), with CODE the last argument, is judged by the same `pathpy` test (`pathpy.inline`): when CODE is in the 0.7.7 read-only subset, the quoted paths it passes straight to a read-mode `open()` leave the judged text. The conditions are those of 0.7.7: -I is required, the interpreter is the whole line (no `VAR=`, `env` or other launcher, `export`, `cd` or pipe), and the subset is unchanged; CODE holding `$` or a backquote, which the shell may expand, is never read-only. The shared shell reader is unchanged: this policy hands it the command with the judged code. The protected paths are unchanged, and so is every write: `-c` code that opens for writing or imports `os`, the read without `-I` or with `PYTHONPATH=` set, its output redirected or piped to `tee` on a protected path are refused."
 - version: 0.7.7
   date: '2026-11-06'
   changes:
