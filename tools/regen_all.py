@@ -7,9 +7,9 @@
     python tools/regen_all.py --drift        # write nothing; check only the files that lag until the release
     python tools/regen_all.py --base main    # the ref whose diff picks the transcripts to re-make
 
-Order is load-bearing: lib/ copies -> plugin packages -> sync (the lockfile hashes packaged files) -> registry
-and README counts -> docs, matrix, figures, brand card (read the registry) -> adoption
-transcripts (adopt the packaged folder). Checks run cheapest first, in parallel; transcripts
+Order is load-bearing: lib/ copies and the java-security contract (both write policy trees) -> plugin packages ->
+sync (the lockfile hashes packaged files) -> registry and README counts -> docs, matrix, figures, brand card (read
+the registry) -> adoption transcripts (adopt the packaged folder). Checks run cheapest first, in parallel; transcripts
 are checked only once the plugin packages are known current.
 """
 
@@ -108,6 +108,9 @@ def regenerate(base: str, *, adopt: bool = False, transcripts: bool = True) -> i
     rc = report(run("lib copies (before packaging: plugins ship them)", [PY, "tools/gen_lib_copies.py"]))
     if adopt:
         rc = max(rc, report(run("plugin build (installed)", ["chock", "plugin", "build", "--repo", "."])))
+    # It rewrites base/java-security/skill/ (CRLF in, LF out); everything below packages or hashes that pack.
+    contract = [PY, "tools/gen_java_security_contract.py"]
+    rc = max(rc, report(run("java-security setup contract (before packaging: it writes the pack)", contract)))
     rc = max([rc] + [report(run(f"plugin build {tree}", plugin_build(tree))) for tree in TREES])
     if adopt:
         rc = max(rc, report(run("chock sync (recompile + hooks + index + lockfile)", ["chock", "sync", "--repo", "."])))
@@ -119,7 +122,6 @@ def regenerate(base: str, *, adopt: bool = False, transcripts: bool = True) -> i
     steps: list[tuple[str, Cmd]] = [
         ("policy docs", [PY, "tools/gen_policy_docs.py"]),
         ("coverage matrix", [PY, "tools/gen_coverage_matrix.py"]),
-        ("java-security setup contract", [PY, "tools/gen_java_security_contract.py"]),
         ("quickstart.sh", [PY, "tools/gen_quickstart_sh.py"]),
         ("figures", render_figures),
     ]
