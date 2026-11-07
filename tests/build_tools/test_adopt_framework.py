@@ -9,6 +9,7 @@ from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 
 import adopt_framework
+import gen_java_security_contract as contract
 import pytest
 import regen_all
 from trees import ROOT, TREES
@@ -72,6 +73,36 @@ def test_a_sha_is_pinned_regenerated_and_checked(pin: Path, monkeypatch, capsys)
     out = capsys.readouterr().out
     assert all(f"update_{name} ran" in out for name in ("registry", "readme", "prose"))
     assert "ADOPTION CLEAN" in out
+
+
+#: Steps that read or hash the policy trees: each must see them as the adoption commits them.
+TREE_READERS = (*(f"plugin build {tree}" for tree in TREES), "chock sync", "policy docs")
+
+
+@pytest.mark.usefixtures("pin")
+def test_every_tree_reader_sees_the_line_endings_the_adoption_commits(tmp_path: Path, monkeypatch) -> None:
+    """The java-security contract rewrites setup.html (CRLF in, LF out) before anything hashes its pack."""
+    page = tmp_path / "setup.html"
+    page.write_bytes(contract.PAGE.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+    reference = tmp_path / "setup-contract.json"
+    reference.write_bytes(contract.REFERENCE.read_bytes())
+    monkeypatch.setattr(contract, "PAGE", page)
+    monkeypatch.setattr(contract, "REFERENCE", reference)
+    stub = _fake(monkeypatch)
+    seen: dict[str, bytes] = {}
+
+    def regen(label: str, cmd: regen_all.Cmd, cwd: Path = ROOT) -> regen_all.Result:
+        if label.startswith("java-security setup contract"):
+            contract.main([])
+        elif reader := next((r for r in TREE_READERS if label.startswith(r)), None):
+            seen[reader] = page.read_bytes()
+        return stub.regen(label, cmd, cwd)
+
+    monkeypatch.setattr(regen_all, "run", regen)
+    assert adopt_framework.main([SHA, "--skip-transcripts"]) == 0
+    assert b"\r\n" not in page.read_bytes()
+    assert set(seen) == set(TREE_READERS)
+    assert [reader for reader, data in seen.items() if data != page.read_bytes()] == []
 
 
 @pytest.mark.parametrize("engine", [OLD, None])
