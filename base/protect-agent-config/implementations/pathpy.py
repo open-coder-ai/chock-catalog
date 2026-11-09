@@ -1,4 +1,4 @@
-"""Whether a Python script fed on standard input provably writes no file: a small read-only subset, read with `ast` (stdlib only)."""
+"""Whether a Python script fed on standard input or given by `-c` provably writes no file: a small read-only subset, read with `ast` (stdlib only)."""
 
 from __future__ import annotations
 
@@ -19,12 +19,17 @@ _BANNED = frozenset(
 _OPEN_KEYS = frozenset(("mode", "encoding", "errors", "newline", "buffering"))
 _OPEN_POSITIONAL = 2  # open(file, mode): buffering and the rest go by keyword, opener never
 _READ_MODE = re.compile(r"[rbt]*")
+_CODE = re.compile(r"-([IEsSBuqOP]*)c")  # `-c`, `-Ic`: the letters before c are flags too
+_EXPANDS = re.compile(r"[$`]")  # a `-c` word the shell may expand: the code Python gets is not the text shown
 
 
-def _isolated(args: list[str]) -> bool:
-    """Whether the arguments are `[-IEsSBuqOP...] [-]` with -I among them."""
-    flags = args[:-1] if args[-1:] == ["-"] else args
+def _isolated(flags: list[str]) -> bool:
+    """Whether the flags are all `-IEsSBuqOP...`, with -I among them."""
     return all(_FLAGS.fullmatch(a) for a in flags) and any(_ISOLATED.fullmatch(a) for a in flags)
+
+
+def _python(name: str) -> bool:
+    return name.rsplit("/", 1)[-1].startswith("python")
 
 
 def _open(call: ast.Call) -> bool:
@@ -85,10 +90,13 @@ def read_only(name: str, args: list[str], scripts: list[str]) -> bool:
     The subset: builtins without exec, eval, getattr and the like; no name or attribute starting with `_`; `open` only
     called, in a read mode; no import but json (load, loads, dumps); and always -I. Anything else is not read-only.
     """
-    if not scripts or not name.rsplit("/", 1)[-1].startswith("python"):
+    if not scripts or not _python(name):
         return False
-    if not _isolated(args):
-        return False
+    return _isolated(args[:-1] if args[-1:] == ["-"] else args) and _subset(scripts)
+
+
+def _subset(scripts: list[str]) -> bool:
+    """Whether every script parses and stays inside the read-only subset."""
     try:
         trees = [ast.parse(s) for s in scripts]
     except (SyntaxError, ValueError, RecursionError, MemoryError):
@@ -122,12 +130,21 @@ def judged(name: str, args: list[str], scripts: list[str]) -> list[str]:
 
     Every other string stays: a read-only script that merely names a protected path (`print('.mcp.json')`) is judged as before.
     """
-    if not read_only(name, args, scripts):
-        return scripts
-    kept = []
-    for script in scripts:
-        text = script
-        for path in _opened(ast.parse(script)):
-            text = text.replace(f"'{path}'", "''").replace(f'"{path}"', '""')
-        kept.append(text)
-    return kept
+    return [_strip(s) for s in scripts] if read_only(name, args, scripts) else scripts
+
+
+def _strip(script: str) -> str:
+    """A read-only script without the quoted paths it only opens to read."""
+    for path in _opened(ast.parse(script)):
+        script = script.replace(f"'{path}'", "''").replace(f'"{path}"', '""')
+    return script
+
+
+def inline(name: str, args: list[str]) -> list[str] | None:
+    """`python -I [flags] -c CODE`, CODE last and inside the read-only subset: the arguments with CODE judged as `judged`
+    judges a script. None for any other command; CODE holding `$` or a backquote is never read-only."""
+    found = _CODE.fullmatch(args[-2]) if len(args) > 1 and _python(name) else None
+    if found is None or _EXPANDS.search(args[-1]):
+        return None
+    flags = [*args[:-2], *([f"-{found.group(1)}"] if found.group(1) else [])]
+    return [*args[:-1], _strip(args[-1])] if _isolated(flags) and _subset([args[-1]]) else None
