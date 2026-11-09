@@ -1,6 +1,6 @@
 id: agent-discipline
 name: "Agent Discipline"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   trigger: edits without reading, unverified completion claims, weakened tests, dead code.
   avoid: skipping verification, deleting assertions, leaving unused code.
@@ -27,10 +27,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.0.4
-  date: '2026-10-27'
-  changes:
-  - "Title wording only (IR-F40): \"Agent Discipline Rule\" is now \"Agent Discipline\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:
@@ -43,3 +39,11 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Rule text: block-test-skips' focus markers read focus_marker(.only) instead of 'only'. source_repo points at chock-catalog."
+- version: 0.0.4
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Agent Discipline Rule\" is now \"Agent Discipline\". The id, guard and tests are unchanged."
+- version: 0.0.5
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."

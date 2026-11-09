@@ -1,6 +1,6 @@
 id: block-destructive-commands
 name: "Block Destructive Commands"
-version: "0.3.1"
+version: "0.3.2"
 description: >
   Best-effort, on parsed commands (echo ignored); one verdict table shared with
   rtk-dangerous-actions-blocker. Blocks recursive deletes of root, home, abs paths or .git;
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.3.2
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run newest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."
 - version: 0.3.1
   date: '2026-10-24'
   changes:
@@ -109,6 +113,14 @@ changelog:
   date: '2026-09-17'
   changes:
   - "Four destruction families the guard never saw, and one wrapper it did not look through. `find ... -delete` and `find ... -exec rm` are refused when the start path is a dangerous root -- the slot after `find`, or the implied `.` when it is omitted -- while a relative start path stays allowed, the same trade `rm -rf ./build` makes. `shred` and `truncate` apply that same target test: both destroy contents without unlinking, so no rm rule saw them, and truncate leaves the path in place so it reads as a write. `wipefs` is refused only in its erasing forms (-a/--all, -o/--offset); bare `wipefs DEV` only lists signatures and stays allowed. `pkexec` joins sudo/doas/env as a transparent wrapper, so `pkexec dropdb production` and `pkexec helm uninstall api` are now graded on the program they run -- previously only `pkexec rm -rf /home` blocked, and by accident, on the inner rm. Privilege escalation itself is still not refused: that is a different policy, and blocking `pkexec whoami` here would fire on a non-destructive command. Operands for shred/truncate are read straight from argv rather than through the shared value-flag list, which is tuned for the wrapper CLIs and swallowed shred's own target after its no-value `-u`. The declared bypass classes named none of these and now do. Thirteen eval cases added, six of them negative or adversarial."
+- version: 0.0.8
+  date: '2026-08-26'
+  changes:
+  - "Position-aware family matching (catalog #11): the aws/docker/helm/dropdb families read their destructive verb from the slot the tool parses it in, instead of matching the word anywhere in argv. `aws s3 cp --recursive <src> rm` (a destination dir named rm), `docker volume inspect rm`, `docker volume ls prune`, `helm list delete`, and a path/name that merely contains `dropdb` are no longer refused; the real `aws s3 rm --recursive`, `docker volume rm`, `docker system prune`, `helm uninstall|delete`, and `dropdb <db>` still block. Value-flag operands are consumed before positions are resolved (a curated set: --namespace, --kube-context, --region, --profile, -u, -n, -c, ...), so `helm --kube-context prod uninstall api` and `sudo -u postgres dropdb production` still block rather than reading the flag value as the action/program; an unusual value-flag outside that set can still shift a slot (named bypass class). rule.text and the description were stale -- they listed only the original rm/git/kubectl/terraform set and now name every family the guard covers (aws, dropdb, helm, docker, gcloud, PowerShell) plus the $HOME target forms. Eight negative/adversarial eval cases added."
+- version: 0.0.7
+  date: '2026-08-24'
+  changes:
+  - "Git flag-parsing hardening (hardening review): git accepts unambiguous option prefixes, so `git reset --h` and `git clean --f` now match --hard/--force via prefix (floor 3 chars). `push --force` stays an EXACT match on purpose -- it is itself a prefix of the safe --force-with-lease, which must not be blocked, and git rejects shorter push abbreviations as ambiguous. Also block a '+' force-refspec on push (`git push origin +main`, `+refs/heads/main`), which overwrites the remote ref with no --force flag. The PowerShell/cmd branch no longer requires -Force -- -Recurse alone deletes the tree. Eight eval cases added (reset/clean prefixes and negatives, +refspec, PowerShell recurse-without-force)."
 - version: 0.0.6
   date: '2026-08-23'
   changes:
@@ -116,31 +128,23 @@ changelog:
     rd /s /q, del /f /s /q) targeting a drive root or home path, matched against the raw
     command (CHOCK_RAW_COMMAND) so Windows paths and PowerShell long flags survive; relative
     targets like ./build stay allowed. Closes the Windows gap for the agent-hooks surface."
-- version: 0.0.1
-  date: '2026-07-12'
-  changes:
-  - "Initial public baseline (0.0.1); pre-release iteration history is preserved in git log."
-- version: 0.0.2
-  date: '2026-08-13'
-  changes:
-  - "Five command families from #11: aws s3 rm --recursive / rb --force, dropdb, helm uninstall|delete, docker volume rm|prune and system prune, gcloud delete. Each ships with a near-miss case that must stay allowed."
-- version: 0.0.3
-  date: '2026-08-16'
-  changes:
-  - "Add compliance claims (mitre_atlas); no mechanism change."
-- version: 0.0.4
-  date: '2026-08-22'
-  changes:
-  - "Block rm -rf against ~/... and $HOME/... forms: the unquoted tilde in the guard's pattern underwent tilde expansion, so home-directory deletions were allowed while the bare ~ was caught."
 - version: 0.0.5
   date: '2026-08-22'
   changes:
   - "Delivery bump for the Claude-format plugin packages built from this policy: on republish, their PreToolUse command is a single python3 invocation (the proposed interpreter-fallback chain was rejected after review proved it could erase deny verdicts) and their descriptions state the per-client fail posture. Guard logic and this repo's own artifacts are unchanged."
-- version: 0.0.7
-  date: '2026-08-24'
+- version: 0.0.4
+  date: '2026-08-22'
   changes:
-  - "Git flag-parsing hardening (hardening review): git accepts unambiguous option prefixes, so `git reset --h` and `git clean --f` now match --hard/--force via prefix (floor 3 chars). `push --force` stays an EXACT match on purpose -- it is itself a prefix of the safe --force-with-lease, which must not be blocked, and git rejects shorter push abbreviations as ambiguous. Also block a '+' force-refspec on push (`git push origin +main`, `+refs/heads/main`), which overwrites the remote ref with no --force flag. The PowerShell/cmd branch no longer requires -Force -- -Recurse alone deletes the tree. Eight eval cases added (reset/clean prefixes and negatives, +refspec, PowerShell recurse-without-force)."
-- version: 0.0.8
-  date: '2026-08-26'
+  - "Block rm -rf against ~/... and $HOME/... forms: the unquoted tilde in the guard's pattern underwent tilde expansion, so home-directory deletions were allowed while the bare ~ was caught."
+- version: 0.0.3
+  date: '2026-08-16'
   changes:
-  - "Position-aware family matching (catalog #11): the aws/docker/helm/dropdb families read their destructive verb from the slot the tool parses it in, instead of matching the word anywhere in argv. `aws s3 cp --recursive <src> rm` (a destination dir named rm), `docker volume inspect rm`, `docker volume ls prune`, `helm list delete`, and a path/name that merely contains `dropdb` are no longer refused; the real `aws s3 rm --recursive`, `docker volume rm`, `docker system prune`, `helm uninstall|delete`, and `dropdb <db>` still block. Value-flag operands are consumed before positions are resolved (a curated set: --namespace, --kube-context, --region, --profile, -u, -n, -c, ...), so `helm --kube-context prod uninstall api` and `sudo -u postgres dropdb production` still block rather than reading the flag value as the action/program; an unusual value-flag outside that set can still shift a slot (named bypass class). rule.text and the description were stale -- they listed only the original rm/git/kubectl/terraform set and now name every family the guard covers (aws, dropdb, helm, docker, gcloud, PowerShell) plus the $HOME target forms. Eight negative/adversarial eval cases added."
+  - "Add compliance claims (mitre_atlas); no mechanism change."
+- version: 0.0.2
+  date: '2026-08-13'
+  changes:
+  - "Five command families from #11: aws s3 rm --recursive / rb --force, dropdb, helm uninstall|delete, docker volume rm|prune and system prune, gcloud delete. Each ships with a near-miss case that must stay allowed."
+- version: 0.0.1
+  date: '2026-07-12'
+  changes:
+  - "Initial public baseline (0.0.1); pre-release iteration history is preserved in git log."

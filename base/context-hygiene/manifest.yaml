@@ -1,6 +1,6 @@
 id: context-hygiene
 name: "Context Hygiene"
-version: "0.0.3"
+version: "0.0.4"
 description: >
   trigger: context bloat, stale observations, resolved content inlined, noisy exploration.
   avoid: context rot and lost-in-the-middle failures.
@@ -27,15 +27,19 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.0.4
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run newest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."
 - version: 0.0.3
   date: '2026-10-27'
   changes:
   - "Title wording only (IR-F40): \"Context Hygiene Rule\" is now \"Context Hygiene\". The id, guard and tests are unchanged."
-- version: 0.0.1
-  date: '2026-07-12'
-  changes:
-  - "Initial public baseline (0.0.1); pre-release iteration history is preserved in git log."
 - version: 0.0.2
   date: '2026-09-30'
   changes:
   - "Metadata: source_repo points at chock-catalog, where this policy lives, not at chock."
+- version: 0.0.1
+  date: '2026-07-12'
+  changes:
+  - "Initial public baseline (0.0.1); pre-release iteration history is preserved in git log."
