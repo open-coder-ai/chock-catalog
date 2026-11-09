@@ -1,6 +1,6 @@
 id: block-unsafe-code-execution
 name: "Block Unsafe Code Execution"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver
   and indirect eval/exec forms, the Function constructor, string
@@ -75,10 +75,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.1.1
-  date: '2026-10-07'
-  changes:
-  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-08-13'
   changes:
@@ -100,3 +96,11 @@ changelog:
   changes:
   - "v2, regex tier (roadmap HP13). New refusals: the child_process exec method on its usual receivers (optional chaining and a require of child_process included) and a Runtime exec; os exec*/spawn*/posix_spawn (process launch by the program the line names, refused as HP13 lists them although they take an argument vector); subprocess and commands getstatusoutput/getoutput and asyncio's shell subprocess; an argument vector that starts with a shell (bare name or /bin path) and a flag group ending in c; eval/exec through window, globalThis, global or builtins and their indirect forms (bracket access, the comma-operator call, assignment to a name, getattr with a literal name); the Function constructor without new unless every argument is a plain literal; string timers; compile with an exec, eval or single mode on the line; import by computed name, and import of os-class modules by literal name; the shell option as 1, and as true or 1 in JSON or object form; the cPickle/dill/jsonpickle/shelve/Unpickler deserializers; the yaml unsafe and full loader functions and ruamel's unsafe type; torch load without weights_only set to True inside the call; allow_pickle set to True or 1; the node vm run APIs; shell eval of a variable expansion. Spacing around a dot no longer evades os, pickle or marshal. The yaml SafeLoader exemption now needs the loader name itself. Each rule names its CWE under compliance.cwe."
   - "Nothing loosens: the 0.0.4 pattern is kept as its own alternatives where a boundary was added, and a seeded fuzz test checks that no string the 0.0.4 pattern refused passes (also checked over about 3.3 million lines of installed Python and Node packages). Kept exemptions: dotted method calls on other receivers, ast.literal_eval, yaml.safe_load, the shell-init idiom that evals a command substitution, Function or import with plain-literal arguments. Not done here: the roadmap's markdown-fence, comment-line and test-path exemptions would loosen the gate, and a line scan cannot see a fence; they are left to NP10 (wave 4) and the owner. Multi-line calls, aliases and constructed names stay documented limits."
+- version: 0.1.1
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
+- version: 0.1.2
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."

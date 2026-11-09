@@ -47,7 +47,7 @@ chock add limit-diff-size
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJmODhiZjIyOTBiM2UzNjljYTYxZTJjZWEyMmFlNTE4ZDEyNjgzZGYyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibGltaXQtZGlmZi1zaXplIiwidmVyc2lvbiI6IjAuMC40Iiwic2hhMjU2IjoiZDhkN2YzZGI1NWFmOTk4NzYwOTk5YjlkYWQ4NmQ5MzZkZGMyMDVkMjMxNTQwNGFhYTU5MGI3YWU3ZWE4YzE3NiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0NWQzNDNlODMwZDVjZTE0ZmUxYmM1N2I4NjE4MTJhZGEyOWYyY2RmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibGltaXQtZGlmZi1zaXplIiwidmVyc2lvbiI6IjAuMC41Iiwic2hhMjU2IjoiY2Q0YzE3MTg5ODJmYzZmMTVkMTg2OGFjYmY1YjdhZjFhY2VkZWNhNzI2OGJlZTkyNmQ0YjFhNWI5OTgxMjBkMyJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

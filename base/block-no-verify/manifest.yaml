@@ -1,6 +1,6 @@
 id: block-no-verify
 name: "Block Skipping Git Hooks"
-version: "0.5.4"
+version: "0.5.5"
 description: >
   Friction, not a security boundary: refuses agent commands that skip git hooks. --no-verify on
   commit/push/merge/am/rebase/pull/cherry-pick/revert, -n on commit/am; core.hooksPath set by -c,
@@ -36,34 +36,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.5.4
-  date: '2026-10-30'
-  changes:
-  - "Fix for Windows (IR-F45; tests in test_block_no_verify_launcher.py). A direct write to the repository config with `--file .git/config` was allowed there because the path check compared a backslash-separated path with `.git/config`; it now compares with `/` separators, so the write is refused on Windows as elsewhere. The comparison also ignores case, since Windows and default macOS file systems fold it: `.GIT/CONFIG` is the same file."
-- version: 0.5.3
-  date: '2026-10-27'
-  changes:
-  - "Title wording only (IR-F40): \"Block No-Verify\" is now \"Block Skipping Git Hooks\". The id, guard and tests are unchanged."
-- version: 0.5.2
-  date: '2026-10-24'
-  changes:
-  - "Behaviour change, added coverage for the environment wipe (SR-2d1; eval cases tc-114 to tc-117; tests in test_block_no_verify_env_wipe.py). `env -i` is now read from the parsed command instead of raw text, so a wipe through the program's full path, a quoted `env`, an abbreviated `--ignore-environment`, a lone `-` or an `env -S` string is refused in front of a hook-running git command, as the bare form was. Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
-- version: 0.5.1
-  date: '2026-10-24'
-  changes:
-  - "Behaviour change, added coverage for three more ways to switch the hooks chock installs off (SR-1c; eval cases tc-109 to tc-113; tests in test_block_no_verify_launcher.py). Refused: writing the `chock.python` git key (the interpreter chock's launcher runs hooks under), as `git config`, `-c` or the GIT_CONFIG_* variables; `git config --unset core.hooksPath` and `--unset-all`, which asked a person and now refuse as setting the key does (`--remove-section core` still asks); `git config --file <repo>/.git/config <key> <value>`, a direct write to the repository config. Reads (`--get`, `--list`, a key alone) and other `--file` targets pass."
-- version: 0.5.0
-  date: '2026-10-19'
-  changes:
-  - "Behaviour change, the policy cannot be switched off from the config it guards (chock review B1, M2; pre-release fix CAT-6). `mandatory: true`: the engine ignores this policy in `.chock/config.yaml` `policies.disabled` (POL-1), `chock disable` refuses it, and `chock validate` reports a config entry that names it as dead. This policy refuses the commands that skip the hooks chock installs and the person-only variables that answer or lower them; a config line that disabled it would have lifted both in one unguarded write (the review's chain wrote that line through a wrapper script and ran `chock sync`). Guard verdicts are unchanged, so no eval case is added; the flag is a manifest fact the engine reads."
-- version: 0.4.4
-  date: '2026-10-07'
-  changes:
-  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier best-effort, no open bug issue, no chock check warning. Behaviour unchanged."
-- version: 0.4.3
-  date: '2026-10-03'
-  changes:
-  - "a lone + ends shell options like -"
 - version: 0.0.1
   date: '2026-07-12'
   changes:
@@ -135,3 +107,35 @@ changelog:
   date: '2026-10-03'
   changes:
   - "The shared command reader (chock_shellparse, the same copy in every Python guard) changed: in a short-option cluster every `o` or `O` takes the next word (`bash -co pipefail '...'`, `-oc`, `-Oc extglob`, `-c -oe pipefail`) and a lone `-` ends the options as `--` does (`sh -c - '...'`), so the script behind them is read and judged. What this policy refuses is otherwise unchanged; it now also judges the command inside those forms. See protect-agent-config 0.2.7."
+- version: 0.4.3
+  date: '2026-10-03'
+  changes:
+  - "a lone + ends shell options like -"
+- version: 0.4.4
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier best-effort, no open bug issue, no chock check warning. Behaviour unchanged."
+- version: 0.5.0
+  date: '2026-10-19'
+  changes:
+  - "Behaviour change, the policy cannot be switched off from the config it guards (chock review B1, M2; pre-release fix CAT-6). `mandatory: true`: the engine ignores this policy in `.chock/config.yaml` `policies.disabled` (POL-1), `chock disable` refuses it, and `chock validate` reports a config entry that names it as dead. This policy refuses the commands that skip the hooks chock installs and the person-only variables that answer or lower them; a config line that disabled it would have lifted both in one unguarded write (the review's chain wrote that line through a wrapper script and ran `chock sync`). Guard verdicts are unchanged, so no eval case is added; the flag is a manifest fact the engine reads."
+- version: 0.5.1
+  date: '2026-10-24'
+  changes:
+  - "Behaviour change, added coverage for three more ways to switch the hooks chock installs off (SR-1c; eval cases tc-109 to tc-113; tests in test_block_no_verify_launcher.py). Refused: writing the `chock.python` git key (the interpreter chock's launcher runs hooks under), as `git config`, `-c` or the GIT_CONFIG_* variables; `git config --unset core.hooksPath` and `--unset-all`, which asked a person and now refuse as setting the key does (`--remove-section core` still asks); `git config --file <repo>/.git/config <key> <value>`, a direct write to the repository config. Reads (`--get`, `--list`, a key alone) and other `--file` targets pass."
+- version: 0.5.2
+  date: '2026-10-24'
+  changes:
+  - "Behaviour change, added coverage for the environment wipe (SR-2d1; eval cases tc-114 to tc-117; tests in test_block_no_verify_env_wipe.py). `env -i` is now read from the parsed command instead of raw text, so a wipe through the program's full path, a quoted `env`, an abbreviated `--ignore-environment`, a lone `-` or an `env -S` string is refused in front of a hook-running git command, as the bare form was. Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
+- version: 0.5.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Block No-Verify\" is now \"Block Skipping Git Hooks\". The id, guard and tests are unchanged."
+- version: 0.5.4
+  date: '2026-10-30'
+  changes:
+  - "Fix for Windows (IR-F45; tests in test_block_no_verify_launcher.py). A direct write to the repository config with `--file .git/config` was allowed there because the path check compared a backslash-separated path with `.git/config`; it now compares with `/` separators, so the write is refused on Windows as elsewhere. The comparison also ignores case, since Windows and default macOS file systems fold it: `.GIT/CONFIG` is the same file."
+- version: 0.5.5
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."

@@ -1,6 +1,6 @@
 id: guard-memory-writes
 name: "Guard Memory Writes"
-version: "0.0.10"
+version: "0.0.11"
 description: >
   Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate
   line or a secret. Warns (observe, ASI06) on an added line that tells the agent to run a
@@ -56,15 +56,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.0.10
-  date: '2026-10-25'
-  changes:
-  - "Hardening (SR-2d2d; finding F35; eval case tc-047; tests in test_guard_memory_writes_sr2d2.py). The ask-tier instruction and url-host rows take the set of lines a secret already refuses: for a statement with such a line (any physical line of it) the instruction row says the text is withheld and the url-host row names no host, and its key is the statement's digest alone, so the credential never reaches a finding message that the engine logs. A URL whose host cannot be read is shown without its userinfo (everything up to the last `@` is dropped), never as the raw authority. Messages and keys for lines no secret refuses are unchanged. Known limit: the engine still writes finding messages to its log unredacted; that is the framework's to change."
-  - "The secret pattern follows scan-secrets 0.1.3 verbatim (a test holds the two equal): the password-on-a-command-line shape also reads the mariadb clients and the other mysql client programs. No other change."
-- version: 0.0.9
-  date: '2026-10-19'
-  changes:
-  - "The secret pattern follows scan-secrets 0.1.2 verbatim (a test holds the two equal): the quoted `password = '...'` shape is silent on a value that starts with $, {{ or %(, so a memory note that records `password = \"${DB_PASSWORD}\"` is no longer refused as a secret. No other change."
 - version: 0.0.1
   date: '2026-09-29'
   changes:
@@ -97,3 +88,16 @@ changelog:
   date: '2026-10-07'
   changes:
   - "The shared host reader (chock_scan) now refuses a name holding a letter whose lowercase Unicode 3.2 lacks (Georgian U+10A0-10C5, Cherokee U+13A0-13F4, U+04C0, U+2132, U+2183) on every Python. From CPython 3.12.15 (gh-155292, CVE-2026-17084) the stdlib IDNA2003 codec keeps those letters while the URL Standard lowercases them, so the two read two different hosts; older interpreters lowercased them and accepted the name. Such a name now gets the verdict for a host that cannot be read, the same on every interpreter."
+- version: 0.0.9
+  date: '2026-10-19'
+  changes:
+  - "The secret pattern follows scan-secrets 0.1.2 verbatim (a test holds the two equal): the quoted `password = '...'` shape is silent on a value that starts with $, {{ or %(, so a memory note that records `password = \"${DB_PASSWORD}\"` is no longer refused as a secret. No other change."
+- version: 0.0.10
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d; finding F35; eval case tc-047; tests in test_guard_memory_writes_sr2d2.py). The ask-tier instruction and url-host rows take the set of lines a secret already refuses: for a statement with such a line (any physical line of it) the instruction row says the text is withheld and the url-host row names no host, and its key is the statement's digest alone, so the credential never reaches a finding message that the engine logs. A URL whose host cannot be read is shown without its userinfo (everything up to the last `@` is dropped), never as the raw authority. Messages and keys for lines no secret refuses are unchanged. Known limit: the engine still writes finding messages to its log unredacted; that is the framework's to change."
+  - "The secret pattern follows scan-secrets 0.1.3 verbatim (a test holds the two equal): the password-on-a-command-line shape also reads the mariadb clients and the other mysql client programs. No other change."
+- version: 0.0.11
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."

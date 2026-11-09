@@ -1,6 +1,6 @@
 id: block-unguarded-agent-spawn
 name: "Block Agents Started With Safety Off"
-version: "0.2.3"
+version: "0.2.4"
 description: >
   Best effort. Refuses agents with safety off: claude --dangerously-skip-permissions, bypassPermissions,
   wildcard --allowedTools; codex --full-auto, --yolo, -a never, danger-full-access; gemini --yolo; cursor-agent --force;
@@ -41,26 +41,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.2.3
-  date: '2026-10-27'
-  changes:
-  - "Title wording only (IR-F40): \"Block Unguarded Agent Spawn\" is now \"Block Agents Started With Safety Off\". The id, guard and tests are unchanged."
-- version: 0.2.2
-  date: '2026-10-25'
-  changes:
-  - "Behaviour change, added coverage for claude --allowedTools. A bare Bash, Edit, Write, MultiEdit, NotebookEdit, WebFetch or mcp__ tool name now counts as a wildcard grant of that tool, like Tool(*), and is refused."
-- version: 0.2.1
-  date: '2026-10-24'
-  changes:
-  - "Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
-- version: 0.2.0
-  date: '2026-10-11'
-  changes:
-  - "Refuses a shell HTTP request (curl, wget, HTTPie http/https, xh, Invoke-RestMethod/irm, Invoke-WebRequest/iwr) to DeepSeek Harness's loopback control API -- port 3080, path /api, host localhost, 127.x, 0.0.0.0, [::1] or omitted -- whose arguments or heredoc carry danger-full-access or an approval set to never: the one-command sandbox escape of CVE-2026-82533 (OX Security, https://www.ox.security/blog/cve-2026-82533-deepseek-harness-ai-agent-sandbox-escape/; VulnCheck CNA, https://www.cve.org/CVERecord?id=CVE-2026-82533). Other ports, /api paths on other hosts, other localhost:3080 paths and API calls that leave sandbox and approvals alone pass. Misses: a dsh started on another port, a body read from a file (-d @x.json), a host spelled another way (decimal IP, a DNS name that resolves to loopback, --resolve/--connect-to), and requests from interpreter one-liners."
-- version: 0.1.2
-  date: '2026-10-07'
-  changes:
-  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier best-effort, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-09-29'
   changes:
@@ -90,3 +70,27 @@ changelog:
   changes:
   - "Verification fixes: codex `-anever` and `-sdanger-full-access` (the value attached to the short flag, as clap reads it) are refused, and an agent named through a Windows launcher suffix (`claude.cmd`, `claude.exe`, `npx.cmd`) is read as the agent."
   - "Known limits, stated here because they were probed: `pnpm dlx`, `yarn dlx`, `npm exec`, `bun x`, `pipx run` and `uv tool run` are not looked through (only npx, bunx, pnpx and uvx are); a program or flag built by a variable or `$(...)`, a here-string and a pipe into a shell are not read; wrappers other than the ones the shared parser knows (chrt, taskset, watch, script, busybox, firejail, flock) are not looked through; `codex -c approval_policy=never`, `-c sandbox_mode=danger-full-access` and `claude --settings` with a bypass mode are not read; a command of 400000 words takes the guard 6 to 10 seconds, and past the runner's 30s it is not checked."
+- version: 0.1.2
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier best-effort, no open bug issue, no chock check warning. Behaviour unchanged."
+- version: 0.2.0
+  date: '2026-10-11'
+  changes:
+  - "Refuses a shell HTTP request (curl, wget, HTTPie http/https, xh, Invoke-RestMethod/irm, Invoke-WebRequest/iwr) to DeepSeek Harness's loopback control API -- port 3080, path /api, host localhost, 127.x, 0.0.0.0, [::1] or omitted -- whose arguments or heredoc carry danger-full-access or an approval set to never: the one-command sandbox escape of CVE-2026-82533 (OX Security, https://www.ox.security/blog/cve-2026-82533-deepseek-harness-ai-agent-sandbox-escape/; VulnCheck CNA, https://www.cve.org/CVERecord?id=CVE-2026-82533). Other ports, /api paths on other hosts, other localhost:3080 paths and API calls that leave sandbox and approvals alone pass. Misses: a dsh started on another port, a body read from a file (-d @x.json), a host spelled another way (decimal IP, a DNS name that resolves to loopback, --resolve/--connect-to), and requests from interpreter one-liners."
+- version: 0.2.1
+  date: '2026-10-24'
+  changes:
+  - "Shared shell reader updated (SR-2d1; the copy in implementations/chock_shellparse is regenerated, this policy's own script is unchanged). Added coverage: an arithmetic shift in `$(( ))`, `(( ))` or `$[ ]` is no longer read as the start of a here-document, so the lines after it are judged as before; the string given to `env -S` or `--split-string` is read as the command env runs; `env -i` is recorded on the command it runs. Tests: test_shellparse_sr2d1.py."
+- version: 0.2.2
+  date: '2026-10-25'
+  changes:
+  - "Behaviour change, added coverage for claude --allowedTools. A bare Bash, Edit, Write, MultiEdit, NotebookEdit, WebFetch or mcp__ tool name now counts as a wildcard grant of that tool, like Tool(*), and is refused."
+- version: 0.2.3
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Block Unguarded Agent Spawn\" is now \"Block Agents Started With Safety Off\". The id, guard and tests are unchanged."
+- version: 0.2.4
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."

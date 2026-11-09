@@ -1,6 +1,6 @@
 id: block-unpinned-agent-components
 name: "Block Unpinned Agent Components"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Gate for the line-visible slice of ASI04: agent components fetched at a floating
   version. Blocks dist-tags (latest, next, canary, beta, rc, nightly) on npx/uvx/bunx,
@@ -72,10 +72,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.1.1
-  date: '2026-10-07'
-  changes:
-  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-08-13'
   changes:
@@ -102,3 +98,11 @@ changelog:
   - "Behaviour change (roadmap HP06 v2, single-line forms). Also blocks: dist-tags latest, next, canary, beta, rc, nightly, alpha and experimental after npx, pnpx, uvx, bunx, pnpm dlx, yarn dlx, pipx run, uv tool run/install, npm i/install/add/exec, pnpm add/install, yarn add and bun add/install/x, with flags in between; single- or double-quoted package-at-dist-tag strings (MCP args arrays); FROM in any letter case, with or without the platform flag, at the latest tag or at an untagged image path that has a slash (a stage alias never has one); docker, podman and nerdctl run/pull/create naming an image (a registry port allowed) at latest, edge, nightly or canary, and a one-line args array whose run, pull or create element precedes such an image; docker:// refs untagged or at those tags or next, main, master; pip's pre-release install flag; go install and go run at latest; a cargo install command in command position (line start or after a shell separator, then, do or a brace, behind RUN with its flags, sudo with its flags, env assignments, timeout, nice, nohup, command, xargs, a Makefile recipe sign, a run, script or commands key, a prompt sign, or a path to cargo) for crates with no version, or for a git source, with none of the locked, path, rev or list flags; a git+ URL (with a scheme) without a full 40-hex commit ending the ref, in a pip, pipx, uv or uvx command, a requirements line (editable too), a PEP 508 string, a lone quoted args line or after a quoted from-flag; a github: owner/repo ref without a 40-hex commit as a dependency value (not the repository, homepage, bugs, url or upstream keys), as a quoted array element or lone quoted line (MCP args), or in an npm, pnpm, yarn or bun command."
   - "Every repeat in the pattern is bounded, so a gate run stays linear in line length (well under a second for an ordinary 1 MB line, under 4 s for a crafted one). Two 0.0.5 alternatives were quadratic on long whitespace-free lines (a 100 KB minified JSON line took 6.6 s and could exceed the 30 s gate budget): the double-quoted latest string and the image key now allow at most 256 characters before the tag. Every other 0.0.5 alternative is kept verbatim, so their verdicts are unchanged; the two bounded ones differ only for a token longer than 256 characters."
   - "Not covered yet, listed in references: bare untagged FROM (needs the wave 3 stage-aware script), untagged compose/k8s image keys and the opt-in digest requirement (ask tier, a separate gate), docker run with an untagged image, launchers with no version, multi-line forms. Known cost: docs that show one of these forms are refused too; pin the example or a person waives it."
+- version: 0.1.1
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
+- version: 0.1.2
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."
