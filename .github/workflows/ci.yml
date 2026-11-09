@@ -149,6 +149,7 @@ jobs:
       full: ${{ steps.scope.outputs.full }}
       matrix: ${{ steps.scope.outputs.matrix }}
       has_matrix: ${{ steps.scope.outputs.has_matrix }}
+      split: ${{ steps.scope.outputs.split }}
       residual: ${{ steps.scope.outputs.residual }}
       paths: ${{ steps.scope.outputs.paths }}
       shards: ${{ steps.scope.outputs.shards }}
@@ -178,6 +179,7 @@ jobs:
           python3 tools/plan_shards.py plan test-durations.json > shard-plan.json
           full=true
           matrix='[]'
+          split=
           residual=
           paths=
           if [ "$EVENT_NAME" = pull_request ]; then
@@ -186,7 +188,26 @@ jobs:
             wait
             if [ "$(cat matrix.out)" != FULL ]; then
               full=false
-              matrix=$(cat matrix.out)
+              # A policy whose one job ran near the budget is cut into parts: part i of k runs `--shard i/k` of the
+              # same tests (tools/shard_tests.py), so each test runs in exactly one part, and the `tests` job holds
+              # the union of the parts' coverage to 100%. Every other policy is one part, `--shard 1/1`.
+              matrix=$(python3 -I - matrix.out <<'PY'
+          import json
+          import sys
+
+          PARTS = {"protect-agent-config": 3}
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              jobs = json.load(handle)
+          cells = []
+          for job in jobs:
+              parts = PARTS.get(job["id"], 1)
+              for part in range(1, parts + 1):
+                  name = job["id"] if parts == 1 else f"{job['id']} {part}/{parts}"
+                  cells.append({**job, "part": part, "parts": parts, "name": name})
+          print(json.dumps(cells))
+          PY
+              )
+              split=$(python3 -c 'import json, sys; print(" ".join(sorted({c["id"] + ":" + str(c["parts"]) for c in json.load(sys.stdin) if c["parts"] > 1})))' <<< "$matrix")
               residual=$(tr '\n' ' ' < residual.out)
               paths=$(python3 -c 'import json, sys; print(" ".join(j["path"] for j in json.load(sys.stdin)))' < matrix.out)
             fi
@@ -209,6 +230,7 @@ jobs:
             echo "full=$full"
             echo "matrix=$matrix"
             echo "has_matrix=$has_matrix"
+            echo "split=$split"
             echo "residual=$residual"
             echo "paths=$paths"
             echo "shards=$shards"
@@ -671,10 +693,13 @@ jobs:
   # ship has nothing to measure. `--policy` keeps the walker tests (those that visit every policy) to the rows
   # about this policy; a row that names no policy, or another one only, is the one thing it can drop. Matrix
   # values reach the shell through the environment, never into the script text.
+  # protect-agent-config is three parts (the scope step's PARTS): its one job took up to 9:15 on runs 42159416505,
+  # 42160013807 and 42160531698 (the last hit the budget), 8:58 of it in the test step. Each part runs `--shard i/3`
+  # of the same tests, so each test runs once; the `tests` job combines the parts' coverage and holds it to 100%.
   tests-policy:
     needs: scope
     if: needs.scope.outputs.full == 'false' && needs.scope.outputs.has_matrix == 'true'
-    name: tests-policy (${{ matrix.id }})
+    name: tests-policy (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 9
     strategy:
@@ -724,22 +749,42 @@ jobs:
           POLICY: ${{ matrix.id }}
           POLICY_PATH: ${{ matrix.path }}
           TESTS: ${{ join(matrix.tests, ' ') }}
+          PART: ${{ matrix.part }}
+          PARTS: ${{ matrix.parts }}
         run: |
           read -ra files <<< "$TESTS"
           [ "${#files[@]}" -gt 0 ] || { echo "::error::no test names $POLICY; the selector is wrong"; exit 1; }
           impl="$POLICY_PATH/implementations"
           if [ ! -d "$impl" ] || ! find "$impl" -name '*.py' | grep -q .; then
-            python -m pytest -n auto --policy "$POLICY" "${files[@]}"
+            python -m pytest -n auto --policy "$POLICY" --shard "$PART/$PARTS" "${files[@]}"
             exit 0
           fi
           omit=
           for lib in lib/*/; do
             [ ! -d "$impl/$(basename "$lib")" ] || omit="$omit\"*/$impl/$(basename "$lib")/*\", "
           done
-          printf '[tool.coverage.run]\nbranch = true\npatch = ["subprocess"]\nomit = [%s]\n' "${omit%, }" > "$RUNNER_TEMP/coverage.toml"
-          python -m pytest -n auto --policy "$POLICY" "${files[@]}" --cov="$impl" \
-            --cov-config="$RUNNER_TEMP/coverage.toml" --cov-branch --cov-fail-under=100 \
-            --cov-report=term-missing:skip-covered
+          mkdir -p "$RUNNER_TEMP/policy-coverage"
+          printf '[tool.coverage.run]\nbranch = true\npatch = ["subprocess"]\nsource = ["%s"]\nomit = [%s]\n' \
+            "$impl" "${omit%, }" > "$RUNNER_TEMP/policy-coverage/coverage.$POLICY.toml"
+          if [ "$PARTS" = 1 ]; then
+            python -m pytest -n auto --policy "$POLICY" --shard 1/1 "${files[@]}" --cov="$impl" \
+              --cov-config="$RUNNER_TEMP/policy-coverage/coverage.$POLICY.toml" --cov-branch --cov-fail-under=100 \
+              --cov-report=term-missing:skip-covered
+            exit 0
+          fi
+          # One part sees a part of the tests, so its own coverage cannot be gated: the `tests` job combines the
+          # parts and fails below 100, with this same configuration.
+          COVERAGE_FILE="$RUNNER_TEMP/policy-coverage/cov.$POLICY.$PART" python -m pytest -n auto --policy "$POLICY" \
+            --shard "$PART/$PARTS" "${files[@]}" --cov="$impl" \
+            --cov-config="$RUNNER_TEMP/policy-coverage/coverage.$POLICY.toml" --cov-branch --cov-fail-under=0 --cov-report=
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: matrix.parts > 1
+        with:
+          name: policy-coverage-${{ matrix.id }}-${{ matrix.part }}
+          path: ${{ runner.temp }}/policy-coverage
+          if-no-files-found: error
+          retention-days: 1
 
   # The test files a targeted pull request changed that no policy job owns, and the repo-wide standards test,
   # whole and with no coverage gate: the policy jobs hold their own implementations to 100%, and main holds the
@@ -825,19 +870,19 @@ jobs:
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
-        if: needs.scope.outputs.full == 'true'
+        if: needs.scope.outputs.full == 'true' || needs.scope.outputs.split != ''
         with:
           persist-credentials: false
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
-        if: needs.scope.outputs.full == 'true'
+        if: needs.scope.outputs.full == 'true' || needs.scope.outputs.split != ''
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: requirements/test.txt
 
       - name: Install the coverage tooling
-        if: needs.scope.outputs.full == 'true'
+        if: needs.scope.outputs.full == 'true' || needs.scope.outputs.split != ''
         run: pip install --require-hashes -r requirements/test.txt
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
@@ -857,6 +902,32 @@ jobs:
         run: |
           python -m coverage combine coverage-shards/cov-shard-*
           python -m coverage report
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        if: needs.scope.outputs.full == 'false' && needs.scope.outputs.split != ''
+        with:
+          pattern: policy-coverage-*
+          path: policy-coverage
+          merge-multiple: true
+
+      # A policy cut into parts: every part's data must be here, and their union holds the policy's implementations
+      # to 100% line and branch coverage, as its one job did.
+      - name: Combine each split policy's parts, 100% line and branch coverage
+        if: needs.scope.outputs.full == 'false' && needs.scope.outputs.split != ''
+        env:
+          SPLIT: ${{ needs.scope.outputs.split }}
+        run: |
+          for entry in $SPLIT; do
+            policy="${entry%%:*}"
+            parts="${entry##*:}"
+            for part in $(seq 1 "$parts"); do
+              [ -f "policy-coverage/cov.$policy.$part" ] || { echo "::error::$policy part $part/$parts left no coverage data"; exit 1; }
+            done
+            config="policy-coverage/coverage.$policy.toml"
+            COVERAGE_FILE="combined.$policy" python -m coverage combine --rcfile="$config" --keep policy-coverage/cov."$policy".*
+            COVERAGE_FILE="combined.$policy" python -m coverage report --rcfile="$config" --fail-under=100 \
+              --show-missing --skip-covered
+          done
 
   # Everything PUBLISHED is checked separately, in a throwaway repo. Staging into
   # `.agents/policies/` would overwrite the pinned copies above with `base/`, conflating
