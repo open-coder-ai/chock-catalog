@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | blocks — refuses a matched shell command before it runs. If the hook errors, the action goes through (measured) |
+| **On Claude Code** | advisory — advisory only. It is skill text, and nothing stops a violation |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | commit-time guard script `protect-commit-privacy-commit-msg.py` |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen |
@@ -47,7 +47,7 @@ chock add protect-commit-privacy
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0NWQzNDNlODMwZDVjZTE0ZmUxYmM1N2I4NjE4MTJhZGEyOWYyY2RmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1jb21taXQtcHJpdmFjeSIsInZlcnNpb24iOiIwLjIuNyIsInNoYTI1NiI6IjFhYmFhMjY5Njc4YTAyMzUxYThlOGM5YWIyM2I3MGMwMjFjMmRhNTQ5ZjYyMmIzYzE3ODZkNDExMjBmNjhkMzYifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzZmZkYmNhMDZlZmI5NGNiMThkODc4NmZmZjQ4MjdhNWMxZGI2YzFlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1jb21taXQtcHJpdmFjeSIsInZlcnNpb24iOiIwLjIuNyIsInNoYTI1NiI6IjFhYmFhMjY5Njc4YTAyMzUxYThlOGM5YWIyM2I3MGMwMjFjMmRhNTQ5ZjYyMmIzYzE3ODZkNDExMjBmNjhkMzYifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

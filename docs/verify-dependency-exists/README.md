@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `hook` |
-| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured) |
+| **On Claude Code** | advisory — advisory only. It is skill text, and nothing stops a violation |
 | **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
@@ -48,7 +48,7 @@ chock add verify-dependency-exists
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0NWQzNDNlODMwZDVjZTE0ZmUxYmM1N2I4NjE4MTJhZGEyOWYyY2RmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoidmVyaWZ5LWRlcGVuZGVuY3ktZXhpc3RzIiwidmVyc2lvbiI6IjAuMi4zIiwic2hhMjU2IjoiYWNjZDlmOGEyNTMyZTdlM2I5OTQ5YjFiMWM0N2Q4ZjdkZmI5MThlN2RjYWMxZmI2NWZiNjRjZTZmNjc3OGQwOSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzZmZkYmNhMDZlZmI5NGNiMThkODc4NmZmZjQ4MjdhNWMxZGI2YzFlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoidmVyaWZ5LWRlcGVuZGVuY3ktZXhpc3RzIiwidmVyc2lvbiI6IjAuMi4zIiwic2hhMjU2IjoiYWNjZDlmOGEyNTMyZTdlM2I5OTQ5YjFiMWM0N2Q4ZjdkZmI5MThlN2RjYWMxZmI2NWZiNjRjZTZmNjc3OGQwOSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
