@@ -47,7 +47,7 @@ chock add injection-defense
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIwYzk4YTI1Y2QzYWMyZTgwZWEwYjMzNDA2ODIxNmRmYWM4MjlkMzUwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaW5qZWN0aW9uLWRlZmVuc2UiLCJ2ZXJzaW9uIjoiMC4wLjQiLCJzaGEyNTYiOiI5NGZhMjVmMTBmM2RjZjMyYTE5NGVhYTFlMmY4ZmY0ZjNhNWM2ZmQ0NjZiZGJiZmRjNjc4ZTVmMzU2ZDY1MTY2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIxZTZjOTAyOGNmYmI5OWVjMDViYzhhODAyZDkwODQyYWYyMGRkNDBhIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaW5qZWN0aW9uLWRlZmVuc2UiLCJ2ZXJzaW9uIjoiMC4wLjQiLCJzaGEyNTYiOiI5NGZhMjVmMTBmM2RjZjMyYTE5NGVhYTFlMmY4ZmY0ZjNhNWM2ZmQ0NjZiZGJiZmRjNjc4ZTVmMzU2ZDY1MTY2In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

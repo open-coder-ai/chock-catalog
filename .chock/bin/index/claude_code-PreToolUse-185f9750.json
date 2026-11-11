@@ -1,0 +1,66 @@
+{
+  "members": [
+    {
+      "argv": [
+        "--tool-call",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/tool-call-gate.json"
+      ],
+      "files": {
+        ".agents/policies/firecrawl-fallback-only/evals/suite.yaml": "6ab41f877601f6f5b04a545230433975c23d2f449dfded1a466b52a66a29a28f",
+        ".agents/policies/firecrawl-fallback-only/implementations/firecrawl-fallback-gate.py": "5897a367b499d90d03aec085eabcfdf760fd77e20093e38b05f06b02c6104ce6",
+        ".agents/policies/firecrawl-fallback-only/manifest.yaml": "8909ec039a74e0ffdc14c09898bcf88033a7e1559f514379184caf9cf5dccc35",
+        ".agents/policies/firecrawl-fallback-only/plugin.json": "36b2bf98bb89ce3729c5a1c3b07ecc4cc875d2738fad809a2b0362f8a6607f15",
+        ".agents/policies/firecrawl-fallback-only/skills/firecrawl-fallback-only/SKILL.md": "80394d03d135814b7560e3b5c4677d8528e21540c408eb65457d67a22e6d0ed3",
+        ".chock/compiled/firecrawl-fallback-only/agent-hooks/tool-call-gate.json": "7f0444564be5a9244021a73adab8c6fde73a33c22c6429396a936496bf7146f3",
+        ".chock/compiled/firecrawl-fallback-only/agent-hooks/tool-call-hooks.json": "075d201a6a1be322a8dd4d1e998f4797fbc606eb3320f8b4bbe6a3b6cfad10a9",
+        ".chock/compiled/firecrawl-fallback-only/ambient-rule/ambient.md": "4d11b25584e8655f60e0db1381e06926657787528ad16165def588e663e6bb44",
+        ".chock/compiled/firecrawl-fallback-only/managed-setting/managed-settings.json": "859d05e0265611518ac5329c0a52141581f55956fd86e952206d6651820f018b",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/codex_cli-tool-call-hooks.json": "52e1cb18624cf100403048dea12c6d4bc47f5e354c9a01849bfe47e30b60a56a",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/cursor-post-hooks.json": "55d0b9c9e48794b26ca67364f459e68ec549a8138a610ecb934375b48e5c9e24",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/cursor-postfailure-hooks.json": "69164bcba9c5b3796c252999a608b97784dd12426e9601e0902003733317ca16",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/cursor-tool-call-hooks.json": "686756581c2132bf1daa79e6413b1d843a6ce944e33908d2c72b2117beee334d",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/factory_droid-tool-call-hooks.json": "2f190366c96299a3fe05d503d028a240c45a171c93ae219d8043f2f691a8c6a1",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/gemini_cli-tool-call-hooks.json": "05c279307ef487a89506739a12d37dd0dd7e9d6bcfc50cc4c596c989893ed29a",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/goose-tool-call-hooks.json": "e4b395533a934fcc44ea18901cb8f8c2b9f5dc0ec4a0d34570847e4d7b8829d2",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/mistral_vibe-tool-call-hooks.json": "85d512089745a2d938cc1c900695329d6026ab3c41c1548734e216b2d0a931ea",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/openhands-tool-call-hooks.json": "1f8d6823cf03e0cda25cc72c36a4894f61b53ee55e9ed1e7461c87986965ba76",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/posttooluse.json": "56b4c95ca52a10271e150547b33d68e990aebf0eaeb5b90c8a98d831bb63d3af",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/posttoolusefailure.json": "56b4c95ca52a10271e150547b33d68e990aebf0eaeb5b90c8a98d831bb63d3af",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/pretooluse-toolcall.json": "fb6fa2bd9af6b234bf8201f89c9f88f32828f4fdfeb0e6f0c2b9a3a482c200f5",
+        ".chock/compiled/firecrawl-fallback-only/pre-tool-use/tool-call-gate.json": "7f0444564be5a9244021a73adab8c6fde73a33c22c6429396a936496bf7146f3"
+      },
+      "timeout": 30
+    },
+    {
+      "argv": [
+        "--tool-call",
+        ".chock/compiled/token-efficiency/pre-tool-use/tool-call-gate.json"
+      ],
+      "files": {
+        ".agents/policies/token-efficiency/evals/suite.yaml": "8a5edfed37558d524f7cbee915fea152b94bf92a7b083384080e2b82b60f1287",
+        ".agents/policies/token-efficiency/implementations/token-efficiency-gate.py": "c4ba853c7475027e6f68d7274ff8ddc65c68089eaf71ee51ec8d494b9714668d",
+        ".agents/policies/token-efficiency/manifest.yaml": "ddaba6728326325423c01add3690f56e39894bae315278a342cbe8d4445a76f4",
+        ".agents/policies/token-efficiency/plugin.json": "7189b75adf798c2122ce4c851e5cc12ec6d81a6f47ef8efec421c60863632ac8",
+        ".agents/policies/token-efficiency/skills/token-efficiency/SKILL.md": "1f551400c31320dda55553b5e7f229f481bd0a8a43c0e8adc2d34bf95c786757",
+        ".chock/compiled/token-efficiency/agent-hooks/tool-call-gate.json": "0689304b5bacd25e9a371674d0faa8f9b8d9d35132d2faf7917c2b165a1a93fa",
+        ".chock/compiled/token-efficiency/agent-hooks/tool-call-hooks.json": "7300181bc92f845f81e316813adc9eb6cfd58d8a94525126455203df7fb08e6a",
+        ".chock/compiled/token-efficiency/ambient-rule/ambient.md": "6d94b590c79d340fe25c48dc119b41ece181c5c605b4a38a853e54b54f4e9156",
+        ".chock/compiled/token-efficiency/managed-setting/managed-settings.json": "859d05e0265611518ac5329c0a52141581f55956fd86e952206d6651820f018b",
+        ".chock/compiled/token-efficiency/pre-tool-use/codex_cli-tool-call-hooks.json": "a80d3ca758064cba6407f75213a659ec24321eddd85b2adc444cf9f367c5e741",
+        ".chock/compiled/token-efficiency/pre-tool-use/cursor-post-hooks.json": "4348e99148692cafca9417a6dba71e01bda26a404733926415313428bb7f2d93",
+        ".chock/compiled/token-efficiency/pre-tool-use/cursor-postfailure-hooks.json": "9c1e9f0f10255027115cfe5f74ac955be9f66f29973905f8eae319293285f2ab",
+        ".chock/compiled/token-efficiency/pre-tool-use/cursor-tool-call-hooks.json": "e913f5625ab0c20f33372a1510ddcb475e265fc1fd9b13d1b38e52e3fd79c591",
+        ".chock/compiled/token-efficiency/pre-tool-use/factory_droid-tool-call-hooks.json": "5afbd11c0e5cd2b3a03a29003f9191954676babd5642aa4806fe0eb245745d61",
+        ".chock/compiled/token-efficiency/pre-tool-use/gemini_cli-tool-call-hooks.json": "d6e9dbc2ec1977ce54e04c945a8a0c35851a58a4d84aa8ed80c05fc80e5e7f4b",
+        ".chock/compiled/token-efficiency/pre-tool-use/goose-tool-call-hooks.json": "79e76587f80fb6e13628f5a19084d3fafeb292c1de3e624bb5a8eb26e30c0ae0",
+        ".chock/compiled/token-efficiency/pre-tool-use/mistral_vibe-tool-call-hooks.json": "45c46faf7450bc1355fa60a4e758e639d239203c600fb44a40b94d390a03ed3a",
+        ".chock/compiled/token-efficiency/pre-tool-use/openhands-tool-call-hooks.json": "c0d5f1de2914cd29bac863738058af974ede6adabd753502b73ad801e7ef4f09",
+        ".chock/compiled/token-efficiency/pre-tool-use/posttooluse.json": "55c8de96218a7b35718a7952f832bc0654715f8e6c00031fe86821bc15b893f8",
+        ".chock/compiled/token-efficiency/pre-tool-use/posttoolusefailure.json": "55c8de96218a7b35718a7952f832bc0654715f8e6c00031fe86821bc15b893f8",
+        ".chock/compiled/token-efficiency/pre-tool-use/pretooluse-toolcall.json": "0082ae9ed2342f8a22c275e37eb6d38df106775e5b5ba1b4255724771a5b77d0",
+        ".chock/compiled/token-efficiency/pre-tool-use/tool-call-gate.json": "0689304b5bacd25e9a371674d0faa8f9b8d9d35132d2faf7917c2b165a1a93fa"
+      },
+      "timeout": 30
+    }
+  ]
+}
