@@ -13,6 +13,14 @@ from chock.gate import runner
 from chock.gate.build import build_gate_json
 from trees import ROOT, TREES
 
+try:
+    from chock.gate.runner.headread import _head_forget
+except ImportError:  # an engine before PERF-T caches no HEAD
+
+    def _head_forget() -> None:
+        """Nothing to forget."""
+
+
 PRE_TOOL_USE = "pre-tool-use"
 STOP = "stop"
 COMMIT = "pre-commit"
@@ -47,6 +55,8 @@ def judge(
     captured = io.StringIO()
     previous = os.environ.get(runner.GATE_LOG_ENV)
     os.environ[runner.GATE_LOG_ENV] = "0"
+    # A hook is one process per call; in-process, the runner's per-root HEAD cache would outlive a commit.
+    _head_forget()
     try:
         with contextlib.redirect_stderr(captured):
             if event in runner.AGENT_EVENTS:
