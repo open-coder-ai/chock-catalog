@@ -137,3 +137,27 @@ def test_an_edit_the_hook_lets_through_is_caught(tmp_path: Path, monkeypatch: py
     calls = [json.loads(line) for line in seen.read_text(encoding="utf-8").splitlines()]
     assert calls[1] == {"tool": "Edit", "on_disk": True, "old": doctor.PLACEHOLDER}, "an edit needs a file to edit"
     assert not (tmp_path / doctor.PROBE).exists(), "the probe file is removed again"
+
+
+def _folded(workspace: Path, *member_gates: str) -> str:
+    """A `chock sync` settings.json whose Write hook is one `--multi` command over a pinned index of `member_gates`."""
+    index = ".chock/bin/index/claude_code-PreToolUse-0000.json"
+    (workspace / index).parent.mkdir(parents=True)
+    members = [{"argv": ["--gate", f".chock/compiled/{gate}/pre-tool-use/gate.json"]} for gate in member_gates]
+    (workspace / index).write_text(json.dumps({"members": members}), encoding="utf-8")
+    command = f'sh .chock/bin/launch.sh .chock/bin/claude_code.py --multi "{index}" --index-sha256 00'
+    entry = {"matcher": "Write|Edit", "hooks": [{"command": command}]}
+    settings = workspace / ".claude" / "settings.json"
+    settings.parent.mkdir()
+    settings.write_text(json.dumps({"hooks": {"PreToolUse": [entry]}}), encoding="utf-8")
+    return command
+
+
+def test_java_security_is_found_inside_a_folded_hooks_pinned_index(tmp_path: Path) -> None:
+    command = _folded(tmp_path, "scan-secrets", "java-security")
+    assert doctor.claude_pre_tool_use(tmp_path) == doctor._argv(command, tmp_path)
+
+
+def test_a_folded_hook_without_java_security_among_its_members_is_not_it(tmp_path: Path) -> None:
+    _folded(tmp_path, "scan-secrets")
+    assert doctor.claude_pre_tool_use(tmp_path) is None
