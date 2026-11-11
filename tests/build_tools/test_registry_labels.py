@@ -20,10 +20,12 @@ from label_honesty import (
     GUARD_ASKS,
     GUARD_NOT_ENFORCED,
     GUARD_SPLIT,
+    Hooks,
     fail_open_qualifier,
     guard_can_ask,
     honest_asks,
     honest_guard,
+    package_reader,
     status_label,
 )
 from mechanism import NONE, classify
@@ -45,8 +47,8 @@ def _manifest(pid: str) -> dict:
 
 
 @pytest.fixture(scope="module")
-def guard_hooks(tmp_path_factory: pytest.TempPathFactory) -> dict[tuple[str, str], str]:
-    """The hooks file each ask-only guard's built package ships, per label key."""
+def guard_hooks(tmp_path_factory: pytest.TempPathFactory) -> dict[tuple[str, str], Hooks]:
+    """The hooks file each ask-only guard's built package ships, with a reader of the package, per label key."""
     out = tmp_path_factory.mktemp("built")
     hooks = {}
     for pid in ASK_ONLY_GUARDS:
@@ -58,13 +60,14 @@ def guard_hooks(tmp_path_factory: pytest.TempPathFactory) -> dict[tuple[str, str
         )  # fmt: skip
         for key, fmt in CLIENTS:
             rel = packaging.supports(bundle_build.CLIENTS[fmt].package_agent, packaging.HOOKS)
-            hooks[pid, key] = (out / pid / fmt / pid / rel).read_text(encoding="utf-8")
+            package = out / pid / fmt / pid
+            hooks[pid, key] = Hooks((package / rel).read_text(encoding="utf-8"), package_reader(package))
     return hooks
 
 
 @pytest.mark.parametrize(("key", "fmt"), CLIENTS)
 def test_a_label_asks_only_where_the_client_can_prompt(
-    key: str, fmt: str, guard_hooks: dict[tuple[str, str], str]
+    key: str, fmt: str, guard_hooks: dict[tuple[str, str], Hooks]
 ) -> None:
     """An ask-only guard is held to the events it is wired at; every other label to the client's pre-tool event."""
     agent = bundle_build.CLIENTS[fmt].agent
@@ -191,7 +194,7 @@ WIRED_CAN_ASK = {
 @pytest.mark.parametrize("pid", ASK_ONLY_GUARDS)
 @pytest.mark.parametrize(("key", "fmt"), CLIENTS)
 def test_an_ask_only_guards_wired_events_are_what_the_engine_passes(
-    pid: str, key: str, fmt: str, guard_hooks: dict[tuple[str, str], str]
+    pid: str, key: str, fmt: str, guard_hooks: dict[tuple[str, str], Hooks]
 ) -> None:
     assert guard_can_ask(guard_hooks[pid, key], bundle_build.CLIENTS[fmt].agent) == WIRED_CAN_ASK[key]
 
@@ -210,8 +213,8 @@ def test_an_ask_only_guard_asks_where_the_client_can_prompt_and_is_not_enforced_
         assert label[key] == {"keyword": "advise", "says": GUARD_NOT_ENFORCED}
 
 
-def _hooks(event: str) -> str:
-    return json.dumps({"hooks": {event: [{"hooks": [{"command": "x --guard g.py"}]}]}})
+def _hooks(event: str) -> Hooks:
+    return Hooks(json.dumps({"hooks": {event: [{"hooks": [{"command": "x --guard g.py"}]}]}}))
 
 
 def test_honest_guard_leaves_other_policies_and_grades_alone() -> None:
@@ -253,12 +256,14 @@ def test_a_split_client_without_wording_stops_the_generator(monkeypatch: pytest.
 
 
 #: A guard plus an asking gate wired at Claude Code's write and turn-end events.
-GUARD_AND_GATE = json.dumps(
-    {
-        "hooks": {
-            e: [{"hooks": [{"command": "x --guard g.py"}, {"command": "x --gate"}]}] for e in ("PreToolUse", "Stop")
+GUARD_AND_GATE = Hooks(
+    json.dumps(
+        {
+            "hooks": {
+                e: [{"hooks": [{"command": "x --guard g.py"}, {"command": "x --gate"}]}] for e in ("PreToolUse", "Stop")
+            }
         }
-    }
+    )
 )
 ASKED = (
     bundle_grade.ASKS,

@@ -18,6 +18,7 @@ from label_honesty import (
     GUARD_SAYS,
     MIXED_SAYS,
     Asks,
+    Hooks,
     asks_in_evals,
     fail_open_basis,
     fail_open_qualifier,
@@ -31,13 +32,15 @@ GATE_SAYS = "blocks on an agent's file writes and at turn end"
 STOP_SAYS = "blocks at turn end only; the write itself is not judged"
 
 
-def _hooks(*events: str, guard: bool = False, gate: bool = True) -> str:
+def _hooks(*events: str, guard: bool = False, gate: bool = True) -> Hooks:
     hooks = ([{"command": "x --guard g.py"}] if guard else []) + ([{"command": "x --gate"}] if gate else [])
-    return json.dumps({"hooks": {e: [{"hooks": hooks}] for e in events}})
+    return Hooks(json.dumps({"hooks": {e: [{"hooks": hooks}] for e in events}}))
 
 
 def test_the_guard_text_is_the_engines() -> None:
-    assert bundle_grade.grade_of(_hooks("PreToolUse", guard=True, gate=False), None, "claude_code")[1] == GUARD_SAYS
+    assert (
+        bundle_grade.grade_of(_hooks("PreToolUse", guard=True, gate=False).text, None, "claude_code")[1] == GUARD_SAYS
+    )
 
 
 def test_fail_open_basis_is_the_matrix_claims_own() -> None:

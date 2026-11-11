@@ -155,12 +155,33 @@ def asks_in_evals(policy_dir: Path, gate_text: str | None) -> Asks:
     return Asks(gate, any("command" in run for run in asked))
 
 
+class Hooks(NamedTuple):
+    """A package's hooks file and `read(path inside the package)`, which the engine needs to see folded members."""
+
+    text: str
+    read: bundle_grade.Reader | None = None
+
+    def doc(self) -> object:
+        return json.loads(self.text)
+
+
+def package_reader(package: Path) -> bundle_grade.Reader:
+    """The engine's `read=`: a file's text for a path inside the built package, None where it holds none."""
+
+    def read(rel: str) -> str | None:
+        path = package / rel
+        inside = path.resolve().is_relative_to(package.resolve())
+        return path.read_text(encoding="utf-8") if inside and path.is_file() else None
+
+    return read
+
+
 def _honours(agent: str, event: str) -> bool:
     """Whether the client honours an ask at `event` (agentseam `verdicts.gates`)."""
     return bool(VENDOR_CONFIG[agent]["verdicts"]["gates"].get(event, {}).get("honours_escalate"))
 
 
-def honest_asks(grade: int, says: str, hooks_text: str, agent: str) -> tuple[int, str]:
+def honest_asks(grade: int, says: str, hooks: Hooks, agent: str) -> tuple[int, str]:
     """Regrade an asking gate by what each wired event honours (agentseam `verdicts.gates`).
 
     A client that cannot prompt at an event degrades the engine's `ask` to a block there, so the
@@ -168,9 +189,8 @@ def honest_asks(grade: int, says: str, hooks_text: str, agent: str) -> tuple[int
     """
     if grade != bundle_grade.ASKS:
         return grade, says
-    doc = json.loads(hooks_text)
     pre_tool, stop = vendors.pre_tool_event(agent), vendors.stop_event(agent)
-    writes = pre_tool in bundle_grade.events_for(doc, "--gate")
+    writes = pre_tool in bundle_grade.events_for(hooks.doc(), "--gate", hooks.read)
     tail = (
         ASK_TAILS[_honours(agent, pre_tool), _honours(agent, stop)] if writes else ASK_STOP_ONLY[_honours(agent, stop)]
     )
@@ -181,7 +201,7 @@ def honest_asks(grade: int, says: str, hooks_text: str, agent: str) -> tuple[int
     return grade, f"{guard}. {_sentence(tail)}" if guard else tail
 
 
-def guard_can_ask(hooks_text: str, agent: str) -> set[bool]:
+def guard_can_ask(hooks: Hooks, agent: str) -> set[bool]:
     """CHOCK_CAN_ASK at each event a guard is wired at, from the engine's own map (agentseam `verdicts.gates`).
 
     Every spelling of a wired event counts (Copilot: VS Code's PreToolUse, Copilot CLI's preToolUse); an
@@ -189,14 +209,14 @@ def guard_can_ask(hooks_text: str, agent: str) -> set[bool]:
     """
     can_ask = pre_tool_can_ask(agent)
     values: set[bool] = set()
-    for event in bundle_grade.events_for(json.loads(hooks_text), "--guard"):
+    for event in bundle_grade.events_for(hooks.doc(), "--guard", hooks.read):
         values |= {v for name, v in can_ask.items() if name.lower() == event.lower()} or {False}
     return values
 
 
-def _by_can_ask(hooks_text: str, agent: str, whole: dict[bool, str], split: tuple[str, dict[str, str]]) -> str:
+def _by_can_ask(hooks: Hooks, agent: str, whole: dict[bool, str], split: tuple[str, dict[str, str]]) -> str:
     """A guard's wording by CHOCK_CAN_ASK at its wired events: one answer, or a two-product client's named split."""
-    values = guard_can_ask(hooks_text, agent)
+    values = guard_can_ask(hooks, agent)
     if len(values) == 1:
         return whole[True in values]
     name, wording = split
@@ -205,12 +225,12 @@ def _by_can_ask(hooks_text: str, agent: str, whole: dict[bool, str], split: tupl
     return wording[agent]
 
 
-def honest_guard(policy_id: str, grade: int, says: str, hooks_text: str, agent: str) -> tuple[int, str]:
+def honest_guard(policy_id: str, grade: int, says: str, hooks: Hooks, agent: str) -> tuple[int, str]:
     """An ask-only guard's label: it asks where the client prompts at the wired event, and is not enforced elsewhere."""
     if policy_id not in ASK_ONLY_GUARDS or grade != bundle_grade.BLOCKS:
         return grade, says
     whole = {True: GUARD_ASKS, False: GUARD_NOT_ENFORCED}
-    said = _by_can_ask(hooks_text, agent, whole, ("GUARD_SPLIT", GUARD_SPLIT))
+    said = _by_can_ask(hooks, agent, whole, ("GUARD_SPLIT", GUARD_SPLIT))
     return (bundle_grade.ADVISORY if said == GUARD_NOT_ENFORCED else bundle_grade.ASKS), said
 
 
@@ -225,14 +245,14 @@ def _halves(says: str) -> tuple[str, str]:
     return GUARD_SAYS, says[len(GUARD_SAYS) :].removeprefix("; ").removeprefix(". ")
 
 
-def _mixed_gate(doc: dict, agent: str) -> str:
+def _mixed_gate(hooks: Hooks, agent: str) -> str:
     pre_tool, stop = vendors.pre_tool_event(agent), vendors.stop_event(agent)
-    if pre_tool in bundle_grade.events_for(doc, "--gate"):
+    if pre_tool in bundle_grade.events_for(hooks.doc(), "--gate", hooks.read):
         return MIXED_TAILS[_honours(agent, pre_tool), _honours(agent, stop)]
     return MIXED_STOP_ONLY[_honours(agent, stop)]
 
 
-def honest_mixed(grade: int, says: str, hooks_text: str, agent: str, asks: Asks) -> tuple[int, str]:
+def honest_mixed(grade: int, says: str, hooks: Hooks, agent: str, asks: Asks) -> tuple[int, str]:
     """Say what a blocking unit's ask cases do on this client: ask where it prompts, refuse where it cannot.
 
     The grade stays, since the unit refuses its block cases everywhere. Only the sentence the description's
@@ -242,8 +262,8 @@ def honest_mixed(grade: int, says: str, hooks_text: str, agent: str, asks: Asks)
         return grade, says
     guard, gate = _halves(says)
     split = ("GUARD_MIXED_SPLIT", GUARD_MIXED_SPLIT)
-    guard_tail = _by_can_ask(hooks_text, agent, GUARD_MIXED, split) if guard and asks.guard else ""
-    gate_tail = _mixed_gate(json.loads(hooks_text), agent) if gate and asks.gate else ""
+    guard_tail = _by_can_ask(hooks, agent, GUARD_MIXED, split) if guard and asks.guard else ""
+    gate_tail = _mixed_gate(hooks, agent) if gate and asks.gate else ""
     if not (guard_tail or gate_tail):
         return grade, says
     guard = f"{guard}. {_sentence(guard_tail)}" if guard_tail else guard

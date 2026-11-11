@@ -24,12 +24,14 @@ from chock.plugin import bundle_build, bundle_grade
 from chock.plugin.store import SCRIPTS_TEMPLATE
 from label_honesty import (
     TEXT_ONLY_SAYS,
+    Hooks,
     asks_in_evals,
     data_label,
     fail_open_qualifier,
     honest_asks,
     honest_guard,
     honest_mixed,
+    package_reader,
     status_label,
 )
 from mechanism import CEILING, NONE, classify
@@ -115,15 +117,15 @@ def derive_labels(root: Path = ROOT) -> dict[str, dict]:
                 gate = package / SCRIPTS_TEMPLATE.format(name="gate.json")
                 hooks_text = hooks.read_text(encoding="utf-8") if hooks.is_file() else None
                 gate_text = gate.read_text(encoding="utf-8") if gate.is_file() else None
-                grade, says = bundle_grade.grade_of(hooks_text, gate_text, client.agent)
+                read = package_reader(package)
+                grade, says = bundle_grade.grade_of(hooks_text, gate_text, client.agent, read=read)
                 if hooks_text is None and policy_kind != NONE:
                     says = TEXT_ONLY_SAYS
                 elif hooks_text is not None:
-                    grade, says = honest_asks(grade, says, hooks_text, client.agent)
-                    grade, says = honest_guard(manifest["id"], grade, says, hooks_text, client.agent)
-                    grade, says = honest_mixed(
-                        grade, says, hooks_text, client.agent, asks_in_evals(policy_dir, gate_text)
-                    )
+                    shipped = Hooks(hooks_text, read)
+                    grade, says = honest_asks(grade, says, shipped, client.agent)
+                    grade, says = honest_guard(manifest["id"], grade, says, shipped, client.agent)
+                    grade, says = honest_mixed(grade, says, shipped, client.agent, asks_in_evals(policy_dir, gate_text))
                     says += fail_open_qualifier(client.agent) if grade != bundle_grade.ADVISORY else ""
                 label[key] = {"keyword": bundle_grade.enforcement_keyword(grade), "says": says}
             if status := status_label(manifest):
