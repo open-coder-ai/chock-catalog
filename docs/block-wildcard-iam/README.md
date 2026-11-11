@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `hook` |
-| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured) |
+| **On Claude Code** | advisory — advisory only. It is skill text, and nothing stops a violation |
 | **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | content_regex gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
@@ -50,7 +50,7 @@ chock add block-wildcard-iam
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0NWQzNDNlODMwZDVjZTE0ZmUxYmM1N2I4NjE4MTJhZGEyOWYyY2RmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2std2lsZGNhcmQtaWFtIiwidmVyc2lvbiI6IjAuMS40Iiwic2hhMjU2IjoiNGFjM2M4Mjc3NjhmZjQ2MTg0ZjEyZDllZTcxNzg4YjQxZWRlMWFmYmU1YzJlMTQ2MzdlOWIxMGJhZmFlM2Y0NSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzZmZkYmNhMDZlZmI5NGNiMThkODc4NmZmZjQ4MjdhNWMxZGI2YzFlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2std2lsZGNhcmQtaWFtIiwidmVyc2lvbiI6IjAuMS40Iiwic2hhMjU2IjoiNGFjM2M4Mjc3NjhmZjQ2MTg0ZjEyZDllZTcxNzg4YjQxZWRlMWFmYmU1YzJlMTQ2MzdlOWIxMGJhZmFlM2Y0NSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
