@@ -11,9 +11,11 @@ import shlex
 import sys
 
 from chock_shellparse import commands, writes_files
+from chock_shellparse.parse import Cmd, _Scan
 from pathguard import refuses
 from pathload import loads_plugin
 from pathopaque import refuses as opaque
+from pathpy import inline
 from pathset import ASK as ASKED
 from pathset import BLOCK, PROTECTED, hit, normalise, verdict
 from pathwrap import too_deep
@@ -93,6 +95,17 @@ def _resumes(name: str, args: list[str], depth: int = 0) -> bool:
     return name in _CHOCK and words[:1] == ["resume"]
 
 
+def _written(raw: str) -> list[Cmd]:
+    """The commands of the line; a read-only `python -I -c CODE` that is the whole line (no VAR=, env, cd or pipe) has
+    CODE judged less the paths it only opens to read (pathpy.inline)."""
+    cmds = commands(raw)
+    clauses = _Scan(raw).run() or []
+    if len(cmds) != 1 or cmds[0].env or len(clauses) != 1 or clauses[0].words[1:] != cmds[0].args:
+        return cmds
+    code = inline(cmds[0].name, cmds[0].args)
+    return cmds if code is None else [cmds[0]._replace(args=code)]
+
+
 def check(raw: str) -> str | None:
     """The reason a command edits protected files (REASON, LOADS, BLIND, DEEP) or lifts a stop (RESUMES), ASK when it only writes docs instruction files, or None."""
     raw = _TRAILING.sub("/", raw.rstrip())
@@ -108,7 +121,7 @@ def check(raw: str) -> str | None:
             asked.append(path)
         return kind == BLOCK
 
-    if any(writes_files(cmd, firm) for cmd in commands(raw)) or refuses(raw, PROTECTED, firm, normalise):
+    if any(writes_files(cmd, firm) for cmd in _written(raw)) or refuses(raw, PROTECTED, firm, normalise):
         return REASON
     if loads_plugin(raw):
         return LOADS

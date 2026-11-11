@@ -1,6 +1,6 @@
 id: limit-diff-size
 name: "Keep Changes Small Enough to Review"
-version: "0.0.4"
+version: "0.0.5"
 description: >
   trigger: staging a large change, committing more than a reviewer can read at once.
   avoid: one commit carrying hundreds of hand-written lines; lockfile and generated churn is not counted.
@@ -30,10 +30,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.0.4
-  date: '2026-10-27'
-  changes:
-  - "Title wording only (IR-F40): \"Limit Diff Size Rule\" is now \"Keep Changes Small Enough to Review\". The id, guard and tests are unchanged."
 - version: 0.0.1
   date: '2026-09-29'
   changes:
@@ -47,3 +43,11 @@ changelog:
   date: '2026-09-30'
   changes:
   - "Rule text only: CHOCK_DIFF_LIMIT is marked person-only beside the two answers, and the case where `git diff --cached` fails is stated (block, not ask). The script is unchanged."
+- version: 0.0.4
+  date: '2026-10-27'
+  changes:
+  - "Title wording only (IR-F40): \"Limit Diff Size Rule\" is now \"Keep Changes Small Enough to Review\". The id, guard and tests are unchanged."
+- version: 0.0.5
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."

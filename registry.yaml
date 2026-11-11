@@ -14,7 +14,7 @@ source: https://github.com/open-coder-ai/chock-catalog
 policies:
 - id: agent-discipline
   path: base/agent-discipline
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   status: draft
@@ -57,7 +57,7 @@ policies:
     ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction only.'
 - id: block-destructive-commands
   path: base/block-destructive-commands
-  version: 0.3.1
+  version: 0.3.2
   artifact: rule
   enforcement: advise
   status: production
@@ -80,7 +80,7 @@ policies:
     stash drop, -auto-approve, drain, prunes, API deletes. Dry runs pass. Pre-push: no non-ff.'
 - id: block-invisible-unicode
   path: base/block-invisible-unicode
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: production
@@ -104,7 +104,7 @@ policies:
     HEAD only.'
 - id: block-no-verify
   path: base/block-no-verify
-  version: 0.5.4
+  version: 0.5.5
   artifact: rule
   enforcement: advise
   status: production
@@ -151,7 +151,7 @@ policies:
     Blocks ~/.curlrc writes. A floor, not a sandbox: other clients, runtimes, obfuscation.'
 - id: block-unpinned-agent-components
   path: agentic-security/block-unpinned-agent-components
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: production
@@ -174,7 +174,7 @@ policies:
     github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: production
@@ -198,7 +198,7 @@ policies:
     in HEAD.'
 - id: block-wildcard-iam
   path: agentic-security/block-wildcard-iam
-  version: 0.1.3
+  version: 0.1.4
   artifact: hook
   enforcement: block
   status: production
@@ -226,7 +226,7 @@ policies:
     only when that exact line is already committed in HEAD.'
 - id: code-safety
   path: base/code-safety
-  version: 0.0.5
+  version: 0.0.6
   artifact: rule
   enforcement: advise
   status: draft
@@ -249,7 +249,7 @@ policies:
     pack: Python eval/exec, SQL built from strings in Python and JS).'
 - id: context-hygiene
   path: base/context-hygiene
-  version: 0.0.3
+  version: 0.0.4
   artifact: rule
   enforcement: advise
   status: draft
@@ -269,7 +269,7 @@ policies:
     avoid: context rot and lost-in-the-middle failures.'
 - id: chock-mise
   path: base/chock-mise
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: advise
   status: draft
@@ -383,7 +383,7 @@ policies:
     avoid: reaching for the Firecrawl connector as the default fetch path.'
 - id: git-safety
   path: base/git-safety
-  version: 0.0.5
+  version: 0.0.6
   artifact: rule
   enforcement: advise
   status: draft
@@ -451,7 +451,7 @@ policies:
     by the operator.
 - id: memory-discipline
   path: base/memory-discipline
-  version: 0.0.6
+  version: 0.0.7
   artifact: rule
   enforcement: advise
   status: draft
@@ -471,7 +471,7 @@ policies:
     avoid: persisting file contents, git history, or task intermediates as memory.'
 - id: no-a11y-regression
   path: base/no-a11y-regression
-  version: 1.1.3
+  version: 1.1.4
   artifact: rule
   enforcement: block
   status: production
@@ -723,7 +723,7 @@ policies:
     monitoring. Do NOT use for a single hijacked request within a supervised session — that is `owasp-asi01-agent-goal-hijack`.
 - id: block-wildcard-agent-permissions
   path: base/block-wildcard-agent-permissions
-  version: 0.0.10
+  version: 0.0.11
   artifact: hook
   enforcement: block
   status: production
@@ -746,7 +746,7 @@ policies:
     commit: honoured. Agent: only if already in HEAD; MCP gateway: never. Agent asks a person.'
 - id: pin-github-actions
   path: base/pin-github-actions
-  version: 0.0.7
+  version: 0.0.8
   artifact: hook
   enforcement: block
   status: production
@@ -770,15 +770,15 @@ policies:
     MCP gateway: never.'
 - id: protect-agent-config
   path: base/protect-agent-config
-  version: 0.7.7
+  version: 0.7.8
   artifact: rule
   enforcement: advise
   status: production
   mandatory: true
   mechanism: guard script
   enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 1612
-  eval_executed: 1612
+  eval_cases: 1623
+  eval_executed: 1623
   label:
     claude-code: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Where its description says it asks, it asks. Blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -823,7 +823,7 @@ policies:
     ship no gate.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
-  version: 0.2.6
+  version: 0.2.7
   artifact: rule
   enforcement: advise
   status: production
@@ -847,7 +847,7 @@ policies:
     the person.'
 - id: protect-main-branch
   path: base/protect-main-branch
-  version: 0.0.4
+  version: 0.0.5
   artifact: hook
   enforcement: block
   status: production
@@ -893,7 +893,7 @@ policies:
     Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.1.3
+  version: 0.1.4
   artifact: hook
   enforcement: block
   status: production
@@ -936,7 +936,7 @@ policies:
     references. avoid: wasting context window on low-signal content.'
 - id: verify-dependency-exists
   path: base/verify-dependency-exists
-  version: 0.2.2
+  version: 0.2.3
   artifact: hook
   enforcement: block
   status: production
@@ -1008,7 +1008,7 @@ policies:
     computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.10
+  version: 0.0.11
   artifact: hook
   enforcement: block
   status: draft
@@ -1032,7 +1032,7 @@ policies:
     seen.
 - id: limit-diff-size
   path: base/limit-diff-size
-  version: 0.0.4
+  version: 0.0.5
   artifact: rule
   enforcement: block
   status: draft
@@ -1103,7 +1103,7 @@ policies:
     and one supply rule start as allow.'
 - id: block-unguarded-agent-spawn
   path: base/block-unguarded-agent-spawn
-  version: 0.2.3
+  version: 0.2.4
   artifact: rule
   enforcement: advise
   status: production
@@ -1388,7 +1388,7 @@ policies:
     and enableAllProjectMcpServers. Misses: other MCP configs, user-level settings, scripts, Read.'
 - id: block-persistence-shapes
   path: base/block-persistence-shapes
-  version: 0.0.6
+  version: 0.0.7
   artifact: rule
   enforcement: advise
   status: production
@@ -1435,7 +1435,7 @@ policies:
     proxy or SDK.'
 - id: guard-deletion
   path: base/guard-deletion
-  version: 0.0.3
+  version: 0.0.4
   artifact: hook
   enforcement: block
   status: draft
@@ -1458,7 +1458,7 @@ policies:
     in place, added insecure settings, a deletion-only commit.'
 - id: hardening-flags
   path: base/hardening-flags
-  version: 0.1.2
+  version: 0.1.3
   artifact: hook
   enforcement: block
   status: draft

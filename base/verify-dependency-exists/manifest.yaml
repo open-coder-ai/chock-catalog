@@ -1,6 +1,6 @@
 id: verify-dependency-exists
 name: "Dependency Allowlist"
-version: "0.2.2"
+version: "0.2.3"
 description: >
   Allowlist gate for new dependencies; no registry lookup. Reads Python, Node, Rust, Ruby, PHP, JVM, .NET, Go,
   Elixir, Dart and Swift manifests (read, never run); blocks an added name missing from
@@ -67,23 +67,6 @@ security:
   content_instructions: never-obey
 
 changelog:
-- version: 0.2.2
-  date: '2026-10-25'
-  changes:
-  - "Hardening (SR-2d2d): at an agent's event with no usable HEAD (a repository with no commit yet, or no git) the allowlist is treated as not seeded (warn-only) and the file on disk is never read, so an agent cannot approve its own dependencies with a freshly written allowlist; a write that adds an allowlist entry is still refused against the empty base. A person's commit, push and CI still read the file on disk. Replaces the 0.2.1 rule that read the disk when there was no commit. Tests: test_verify_dependency_exists_sr2d2.py."
-- version: 0.2.1
-  date: '2026-10-25'
-  changes:
-  - "Hardening (SR-2d2d): at an agent's event (tool_use, stop, agent-commit, or any event that is not commit, push or ci) the allowlist is the one HEAD holds (`git show HEAD:./.chock/dependency-allowlist.txt`), not the file on disk, so an agent cannot approve its own dependency by moving or editing the file. A file HEAD holds that is gone from disk is an empty list; missing at HEAD and on disk keeps the warn-only note, and a file created after HEAD does not approve anything. With no commit yet the file on disk is read as before. A write that adds an entry to the allowlist at an agent's event is refused (finding key `allowlist|<entry>`). A person's commit, push and CI still read the file on disk. Tests: test_verify_dependency_exists_sr2d2.py; eval cases tc-062, tc-063; the agent-event cases tc-006 to tc-009, tc-027 and tc-061 now commit the allowlist as HEAD."
-- version: 0.2.0
-  date: '2026-10-19'
-  changes:
-  - "Behaviour change (plugin review M1): when nothing exists at .chock/dependency-allowlist.txt, a change to a manifest or lockfile is allowed with a note (the script exits 4, warn) that names the files it did not check and says how a person seeds the list; a change that touches no manifest stays silent. Before, an absent file was an empty allowlist, so a plugin-only install -- which has no `chock enable` step and no seeded list -- refused every dependency addition, listed or not. A file that exists but is empty, comments only, or unreadable is still the allowlist, and every added name is refused."
-  - "The description now says the plugin form warns until an allowlist exists and that the repo form is opt-in."
-- version: 0.1.2
-  date: '2026-10-07'
-  changes:
-  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
 - version: 0.0.1
   date: '2026-07-12'
   changes:
@@ -122,3 +105,24 @@ changelog:
   changes:
   - "Fixes from a fourth, independent review. A requirements.txt saved as UTF-16 or UTF-32 (what PowerShell's `pip freeze >` writes, and pip reads by its BOM) passed the commit gate as noise; a file holding a NUL byte is now a file the reader cannot parse, so it asks. A requirements line whose name pip builds from `${VAR}` was skipped; it is now judged as written, so it is not a listed name. A Gradle `id` followed by a long run of whitespace, and a mix.exs with a long run of blank lines, took quadratic time and hit the 30 s script budget (a refusal, never a pass); both readers are linear now."
   - "Limits named, no behaviour change: a Poetry, Pipfile, Gemfile or pubspec path dependency is reported by its name (local paths are skipped only in npm, Cargo, pip, Go and mix); a folder named node_modules is never read; a quoted a:b:c string in a Gradle script reads as a coordinate; conda environment.yml, tox.ini and noxfile.py are not read; a lock edited by hand passes beside a changed manifest of its ecosystem."
+- version: 0.1.2
+  date: '2026-10-07'
+  changes:
+  - "Status draft -> production by the BV-C3 promotion rule, measured at catalog main 9e3e2fe: every eval case executed and passing in the replay, tier enforced-at-commit, no open bug issue, no chock check warning. Behaviour unchanged."
+- version: 0.2.0
+  date: '2026-10-19'
+  changes:
+  - "Behaviour change (plugin review M1): when nothing exists at .chock/dependency-allowlist.txt, a change to a manifest or lockfile is allowed with a note (the script exits 4, warn) that names the files it did not check and says how a person seeds the list; a change that touches no manifest stays silent. Before, an absent file was an empty allowlist, so a plugin-only install -- which has no `chock enable` step and no seeded list -- refused every dependency addition, listed or not. A file that exists but is empty, comments only, or unreadable is still the allowlist, and every added name is refused."
+  - "The description now says the plugin form warns until an allowlist exists and that the repo form is opt-in."
+- version: 0.2.1
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d): at an agent's event (tool_use, stop, agent-commit, or any event that is not commit, push or ci) the allowlist is the one HEAD holds (`git show HEAD:./.chock/dependency-allowlist.txt`), not the file on disk, so an agent cannot approve its own dependency by moving or editing the file. A file HEAD holds that is gone from disk is an empty list; missing at HEAD and on disk keeps the warn-only note, and a file created after HEAD does not approve anything. With no commit yet the file on disk is read as before. A write that adds an entry to the allowlist at an agent's event is refused (finding key `allowlist|<entry>`). A person's commit, push and CI still read the file on disk. Tests: test_verify_dependency_exists_sr2d2.py; eval cases tc-062, tc-063; the agent-event cases tc-006 to tc-009, tc-027 and tc-061 now commit the allowlist as HEAD."
+- version: 0.2.2
+  date: '2026-10-25'
+  changes:
+  - "Hardening (SR-2d2d): at an agent's event with no usable HEAD (a repository with no commit yet, or no git) the allowlist is treated as not seeded (warn-only) and the file on disk is never read, so an agent cannot approve its own dependencies with a freshly written allowlist; a write that adds an allowlist entry is still refused against the empty base. A person's commit, push and CI still read the file on disk. Replaces the 0.2.1 rule that read the disk when there was no commit. Tests: test_verify_dependency_exists_sr2d2.py."
+- version: 0.2.3
+  date: '2026-11-09'
+  changes:
+  - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."

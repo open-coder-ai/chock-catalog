@@ -47,7 +47,7 @@ chock add block-no-verify
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhOTBhZjBkNDE0ZDgwNGYyMjJjNGI4Zjc3N2RhMGVhYmQyYmY5ZmVkIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stbm8tdmVyaWZ5IiwidmVyc2lvbiI6IjAuNS40Iiwic2hhMjU2IjoiNDUwNTVjODg5NmU4NDAxYzQzMGZiZjI3ZjYwYTgzMTk0ZmQ4YTZhYWQ5M2U3NTQ0MmIzYWFlM2IwMTQ2YzMzMCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0NWQzNDNlODMwZDVjZTE0ZmUxYmM1N2I4NjE4MTJhZGEyOWYyY2RmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stbm8tdmVyaWZ5IiwidmVyc2lvbiI6IjAuNS41Iiwic2hhMjU2IjoiMDVhNjhmYjQzOTdkNjllMWVlYWU0N2M1MDg4NzA2YjQ3ZDgzOWQ4ZDdhOTZiMzAwODUyZjMxZTA2ODVhMzA0OSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

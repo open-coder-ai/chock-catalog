@@ -142,3 +142,71 @@ def test_only_the_paths_a_read_only_script_opens_leave_the_judged_text() -> None
     assert PY.judged("python3", ["-I", "-"], [script]) == [f"print(open('').read(), '{SETTINGS}')"]
     writes = f"open('{SETTINGS}', 'w')"
     assert PY.judged("python3", ["-I", "-"], [writes]) == [writes]
+
+
+# IR-F64 (0.7.8): the same read as `python3 -I -c CODE` passes under the same conditions; every write is still refused.
+CODE = f"import json; print(json.load(open('{RESULT}'))['k'])"
+ONE_LINERS = [
+    f'python3 -I -c "{CODE}"',
+    f'python3 -Ic "{CODE}"',
+    f'python3 -IB -c "{CODE}"',
+    f"python3 -I -c 'print(open(\"{SETTINGS}\").read())'",
+]
+ONE_LINERS_REFUSED = [
+    f"python3 -I -c \"open('{SETTINGS}','w').write('x')\"",
+    f"python3 -I -c \"open('{SETTINGS}', 'a')\"",
+    f"python3 -I -c \"m = 'w'; open('{SETTINGS}', m)\"",
+    f"python3 -I -c \"import os; os.remove('{SETTINGS}')\"",
+    f"python3 -I -c \"print('{SETTINGS}')\"",  # names a path it does not open
+    f'python3 -c "{CODE}"',
+    f'python3 -P -c "{CODE}"',
+    f'python3 -I -X dev -c "{CODE}"',
+    f'PYTHONPATH=x python3 -I -c "{CODE}"',
+    f'LD_PRELOAD=x.so python3 -I -c "{CODE}"',
+    f'env python3 -I -c "{CODE}"',
+    f'env PYTHONPATH=x python3 -I -c "{CODE}"',
+    f'sudo python3 -I -c "{CODE}"',
+    f'export X=1; python3 -I -c "{CODE}"',
+    f'cd /work && python3 -I -c "{CODE}"',
+    f'python3 -I -c "{CODE}" | head',
+    f'python3 -I -c "{CODE}" x',  # CODE is not the last argument
+    f"python3 -I -c \"print(open('{SETTINGS}').read(), '$(rm AGENTS.md)')\"",
+]
+ONE_LINERS_LAUNDERED = [
+    f'python3 -I -c "{CODE}" > {SETTINGS}',
+    f'python3 -I -c "{CODE}" >> {SETTINGS}',
+    f'python3 -I -c "{CODE}" | tee {SETTINGS}',
+]
+
+
+@pytest.mark.parametrize("raw", ONE_LINERS)
+def test_a_read_only_python_one_liner_passes(raw: str) -> None:
+    assert GUARD.check(raw) is None, raw
+
+
+@pytest.mark.parametrize("raw", ONE_LINERS_REFUSED)
+def test_a_one_liner_not_provably_read_only_or_not_the_whole_line_is_refused(raw: str) -> None:
+    assert GUARD.check(raw) is not None, raw
+
+
+@pytest.mark.parametrize("raw", ONE_LINERS_LAUNDERED)
+def test_a_read_only_one_liner_does_not_launder_a_shell_write(raw: str) -> None:
+    assert GUARD.check(raw) == GUARD.REASON, raw
+
+
+@pytest.mark.parametrize(
+    ("args", "expected"),
+    [
+        (["-I", "-c", "print(open('a').read())"], ["-I", "-c", "print(open('').read())"]),
+        (["-Ic", "print(1)"], ["-Ic", "print(1)"]),
+        (["-c", "print(1)"], None),
+        (["-I", "-c"], None),
+        (["-I", "-c", "print(1)", "x"], None),
+        (["-I", "-c", "import sys"], None),
+        (["-I", "-c", "print('$HOME')"], None),
+        (["-I", "-m", "json"], None),
+    ],
+)
+def test_the_one_liner_subset(args: list[str], expected: list[str] | None) -> None:
+    assert PY.inline("python3", args) == expected
+    assert PY.inline("ruby", args) is None

@@ -10,7 +10,7 @@ from collections.abc import Callable
 from chock_shellparse.parse import Cmd, _parse
 from pathfeed import shown, strings
 from pathmatch import DRIVE, DYNAMIC
-from pathpy import judged
+from pathpy import inline, judged
 from pathtext import matching, scan
 from pathwords import PRODUCERS
 from pathwrap import unwrap
@@ -146,4 +146,6 @@ class Scripts:
         # a read-only Python script on stdin is judged without the paths it only opens to read (pathpy.judged),
         # unless the command sets a variable (PYTHONPATH=, LD_PRELOAD=): PWD is the guard's own
         plain = not set(cmd.env) - {"PWD"}
+        if plain and (args := inline(cmd.name, cmd.args)) is not None:  # `python -I -c CODE` likewise
+            return interpreter(self, args, cmd.env, scripts)
         return interpreter(self, cmd.args, cmd.env, judged(cmd.name, cmd.args, scripts) if plain else scripts)
