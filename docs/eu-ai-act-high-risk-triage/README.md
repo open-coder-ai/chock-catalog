@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | advisory — advisory only. It is skill text, and nothing stops a violation |
+| **On Claude Code** | warns — warns on an agent's file writes and at turn end. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | warn-only `content_regex` gate |
 | **Reaches** | `advisory` — the gate runs and prints its findings; it never refuses |
@@ -51,7 +51,7 @@ chock add eu-ai-act-high-risk-triage
 chock sync --repo .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIwYzk4YTI1Y2QzYWMyZTgwZWEwYjMzNDA2ODIxNmRmYWM4MjlkMzUwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZXUtYWktYWN0LWhpZ2gtcmlzay10cmlhZ2UiLCJ2ZXJzaW9uIjoiMC4wLjQiLCJzaGEyNTYiOiJkNDAzOTY1MTMzMjQzNjNjMTk1MTViOGQ4M2Y2OTExNGU4OGY3NDgwMTg4ZWI5MGQ4ODQyY2MwZTc4MGQ2MzAzIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIxZTZjOTAyOGNmYmI5OWVjMDViYzhhODAyZDkwODQyYWYyMGRkNDBhIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZXUtYWktYWN0LWhpZ2gtcmlzay10cmlhZ2UiLCJ2ZXJzaW9uIjoiMC4wLjQiLCJzaGEyNTYiOiJkNDAzOTY1MTMzMjQzNjNjMTk1MTViOGQ4M2Y2OTExNGU4OGY3NDgwMTg4ZWI5MGQ4ODQyY2MwZTc4MGQ2MzAzIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
