@@ -38,6 +38,8 @@ BAD = _QUERY.format("'\" + customer + \"'", "")
 GOOD = _QUERY.format("?", ", customer")
 #: What the Edit probe replaces: a file already on disk, as Claude finds existing code.
 PLACEHOLDER = "return;"
+#: The pinned index a folded hook command runs (`chock sync` since PERF-1 writes one per event).
+_MULTI = re.compile(r"""--multi ["']?([^"' ]+\.json)""")
 _REFERENCED = re.compile(r"""["']?((?:\$\{?\w+\}?[/\\]|\.)?[\w./\\-]+\.(?:py|json|sh|ps1))["']?""")
 
 
@@ -81,13 +83,24 @@ def _argv(command: str, workspace: Path) -> list[str]:
     return [part.strip('"') for part in shlex.split(command, posix=False)]
 
 
+def _runs(command: str, workspace: Path) -> list[str]:
+    """The command, plus each member's argv in the pinned index a folded `--multi <index>` command runs."""
+    found = _MULTI.search(command)
+    index = _in_workspace(workspace, found.group(1)) if found else None
+    if index is None or not index.is_file():
+        return [command]
+    members = json.loads(index.read_text(encoding="utf-8")).get("members", [])
+    return [command, *(" ".join(str(arg) for arg in member.get("argv", [])) for member in members)]
+
+
 def claude_pre_tool_use(workspace: Path) -> list[str] | None:
     settings = json.loads((workspace / ".claude" / "settings.json").read_text(encoding="utf-8"))
     for entry in settings.get("hooks", {}).get("PreToolUse", []):
         if "Write" in entry.get("matcher", ""):
             for hook in entry.get("hooks", []):
-                if "java-security" in hook.get("command", ""):
-                    return _argv(hook["command"], workspace)
+                command = hook.get("command", "")
+                if any("java-security" in run for run in _runs(command, workspace)):
+                    return _argv(command, workspace)
     return None
 
 
