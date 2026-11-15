@@ -8,9 +8,10 @@ each one the masked file.
 What is blanked, by file type:
 - Java and Kotlin: `//` and `/* */` comments (Javadoc included), and a string or text block that holds Java
   call syntax (`Cipher.getInstance(`, `new XStream(`) and is not SQL. A literal that is a rule's subject -- a
-  cipher name, a JDBC URL, a query text, a secret, an annotation value -- is kept.
+  cipher name, a JDBC URL, a query text, a secret, an annotation value -- is kept. So is any Kotlin
+  literal holding a `$` template, since its `${...}` runs.
 - Gradle and Kotlin script: comments only; every quoted coordinate stays, since it is what the rule reads.
-- XML (pom.xml, a mapper): `<!-- ... -->`, which may span lines.
+- XML (pom.xml, a mapper): `<!-- ... -->`, which may span lines; a CDATA section is text and opens no comment.
 - properties: a line whose first character after blanks is `#` or `!`.
 - YAML: `#` at the start of a line or after a blank, outside quotes.
 Waivers are read from the file as written, not from this view.
@@ -22,15 +23,17 @@ import re
 from dataclasses import replace
 
 from chock_security.decision import FileText
-from chock_security.source import KEEP_ALL, KEEP_TEXT_ONLY, uncommented
+from chock_security.source import KEEP_ALL, KEEP_TEMPLATES, KEEP_TEXT_ONLY, uncommented
 
 _NOT_NEWLINE = re.compile(r"[^\r\n]")
-_XML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+#: A CDATA section is text, so a `<!--` inside one opens nothing: it matches first and is kept whole.
+_XML_COMMENT = re.compile(r"<!\[CDATA\[.*?\]\]>|<!--.*?-->", re.DOTALL)
 _PROPERTIES_COMMENT = re.compile(r"^[ \t\f]*[#!].*$", re.MULTILINE)
 
 
 def _spaces(match: re.Match[str]) -> str:
-    return _NOT_NEWLINE.sub(" ", match.group())
+    text = match.group()
+    return text if text.startswith("<![") else _NOT_NEWLINE.sub(" ", text)
 
 
 def _yaml_line(line: str) -> str:
@@ -51,7 +54,7 @@ def _yaml(text: str) -> str:
 
 _MASKS = {
     ".java": lambda text: uncommented(text, KEEP_TEXT_ONLY),
-    ".kt": lambda text: uncommented(text, KEEP_TEXT_ONLY),
+    ".kt": lambda text: uncommented(text, KEEP_TEMPLATES),
     ".gradle": lambda text: uncommented(text, KEEP_ALL),
     ".kts": lambda text: uncommented(text, KEEP_ALL),
     ".xml": lambda text: _XML_COMMENT.sub(_spaces, text),

@@ -48,7 +48,7 @@ chock add java-security
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzOGZiNDg3Zjc3NjhmM2Q1YzA2ODUzYTBkNGEzNDY1ODdhYmVjOTM3In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiamF2YS1zZWN1cml0eSIsInZlcnNpb24iOiIwLjcuMSIsInNoYTI1NiI6IjQ4Nzg2ZTdlZWU0ZjZlMDA4MjhhYTI0OWFmZTFhOGRlOGIwZjQ1N2I2MjNjYmYyZTE4OWRiZDFhZjJjYmM4MDcifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0MzUwNTQ4YzBjYjZmNWNiZTY3NmIxYzg3OTZkZjZhMGFkZmZlNmUwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiamF2YS1zZWN1cml0eSIsInZlcnNpb24iOiIwLjcuMSIsInNoYTI1NiI6IjE3NTkzY2FjYTJhMWUyZjY4Yzc5NTRjM2U4MjZkMDJmOWJiMGQ0ZTQ2YzY3NzdhNWViZTY2OTRlMDc0NzkxMGMifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

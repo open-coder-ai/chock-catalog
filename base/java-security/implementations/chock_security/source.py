@@ -92,7 +92,7 @@ def _step(text: str, i: int, state: int) -> tuple[str, int, int]:
 
 
 #: What a literal keeps when comments are masked but literals are not blanked outright.
-BLANK_ALL, KEEP_ALL, KEEP_TEXT_ONLY = range(3)
+BLANK_ALL, KEEP_ALL, KEEP_TEXT_ONLY, KEEP_TEMPLATES = range(4)
 
 #: Java call syntax inside a literal: `Cipher.getInstance(` or `new XStream(`. Such a literal is advice or a log
 #: message quoting code, not the argument a rule reads. SQL is excluded: a query text is a rule's subject.
@@ -103,7 +103,9 @@ _SQL = re.compile(
 
 
 def _kept(interior: str, literals: int) -> bool:
-    return literals == KEEP_ALL or not _CALL.search(interior) or bool(_SQL.search(interior))
+    """A Kotlin `$` template runs its code, so `KEEP_TEMPLATES` keeps any literal that holds one."""
+    template = literals == KEEP_TEMPLATES and "$" in interior
+    return literals == KEEP_ALL or template or not _CALL.search(interior) or bool(_SQL.search(interior))
 
 
 def _lex(text: str, literals: int = BLANK_ALL) -> str:
