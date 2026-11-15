@@ -46,3 +46,12 @@ def test_a_file_the_parser_cannot_read_is_skipped_not_refused(
     monkeypatch.setattr(GUARD, "evaluate", unreadable)
     assert GUARD.main() == 0
     assert "skipped page.html: ValueError" in capsys.readouterr().err
+
+
+def test_a_new_element_without_a_name_warns_at_commit_and_exits_0(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(GUARD, "staged_markup", lambda: ["page.html"])
+    monkeypatch.setattr(GUARD, "_git", lambda *args: '<img src="/a.png">' if args[-1] == ":page.html" else "")
+    assert GUARD.main() == 0
+    assert "warning: page.html: img[src=/a.png]" in capsys.readouterr().err

@@ -56,6 +56,8 @@ def judge(payload: dict) -> list[str]:
         except Exception as exc:  # noqa: BLE001 -- a parse failure is not evidence of a violation
             print(f"no-a11y-regression: skipped {path}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
+        for row in (r for r in rows if r["action"] == guard.WARN):
+            print(f"no-a11y-regression: warning: {path}: {row['ref']}   {row['why']}", file=sys.stderr)
         for row in (r for r in rows if r["action"] == guard.DENY):
             lines += [
                 f"  {path}: {row['ref']}   {row['key'][0]} -> {row['key'][1]}",
