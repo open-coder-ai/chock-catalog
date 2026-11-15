@@ -801,15 +801,15 @@ policies:
     a script makes, an existing hard link.'
 - id: protect-ci-workflows
   path: base/protect-ci-workflows
-  version: 0.2.7
+  version: 0.2.8
   artifact: rule
   enforcement: advise
   status: production
   mandatory: false
-  mechanism: guard script
-  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
-  eval_cases: 63
-  eval_executed: 63
+  mechanism: script
+  enforces: enforced-at-commit
+  eval_cases: 71
+  eval_executed: 71
   label:
     claude-code: {"keyword": "ask", "says": "refuses a matched shell command before it runs. Asks on an agent's file writes. It refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses a matched shell command before it runs. Refuses an agent's file writes and refuses at turn end, because this client cannot prompt at either point"}
@@ -819,10 +819,10 @@ policies:
     misses: null
   description: 'Asks a person before an agent weakens the checks that review its work. Shell guard refuses
     writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed
-    -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate
-    asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky,
-    more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs
-    ship no gate.'
+    -i/yq -i/sponge/ curl -o, git checkout/apply, patch, cmdlets); reads and `chock sync` pass. Edit/Write
+    and an agent''s commit ask before a change to CI, hook or bot config (GitLab, Jenkins, CircleCI,
+    CODEOWNERS, husky, more). Not judged: deletions, empty writes, non-GitHub CI paths in the shell,
+    a patch not readable by path, a path set outside the command; plugin installs ship no gate.'
 - id: protect-commit-privacy
   path: base/protect-commit-privacy
   version: 0.2.7

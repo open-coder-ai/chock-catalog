@@ -1,6 +1,6 @@
 # Protect CI Workflows
 
-`protect-ci-workflows` · rule · enforces
+`protect-ci-workflows` · hook · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
@@ -9,17 +9,17 @@
 | **Type** | `rule` |
 | **On Claude Code** | asks — refuses a matched shell command before it runs. Asks on an agent's file writes. It refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
-| **Mechanism** | guard script `protect-ci-workflows.py` |
-| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
-| **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 63 total, 63 executable |
+| **Mechanism** | script gate |
+| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
+| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
+| **Eval cases** | 71 total, 71 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs ship no gate.
+Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i/yq -i/sponge/ curl -o, git checkout/apply, patch, cmdlets); reads and `chock sync` pass. Edit/Write and an agent's commit ask before a change to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, non-GitHub CI paths in the shell, a patch not readable by path, a path set outside the command; plugin installs ship no gate.
 
 ## What it solves
 
@@ -27,18 +27,19 @@ The gate an agent can quietly widen: its own CI. When the checks that must pass 
 
 ## How it works
 
-A guard script, `implementations/protect-ci-workflows.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
+A declarative `script` gate, evaluated on `commit` and `tool_use`, action `ask`.
 
-The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
+Parameters, from `manifest.yaml`:
 
-```text
-ci_config(.github/{workflows,actions,dependabot.y*ml}): never(shell_edit|delete); edit_or_write(those|CODEOWNERS|.gitlab-ci.yml|.gitlab/|Jenkinsfile*|.circleci/|azure-pipelines*|bitbucket-pipelines.yml|.buildkite/|.drone.yml|cloudbuild*|renovate|.pre-commit-config.yaml|.husky/|lefthook|.githooks/|.travis.yml|action.yml|more): ask_person
-if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
-```
+- `script`
+
+On a match it prints:
+
+> This path is CI, release, hook or dependency-bot configuration: the checks that review an agent's own work. An agent's change to it needs a person's decision. Say which file should change, what and why, and let the person approve the edit or make it from their own shell. Where a person cannot be asked, the write is refused: propose the change instead. At the turn's end this is a reminder that such a file is still changed and uncommitted. A person's own commit is not judged.
 
 ## Which primitive it becomes
 
-A **PreToolUse guard**. `recompile` writes `.chock/compiled/protect-ci-workflows/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
+A **git hook**. `recompile` writes `.chock/compiled/protect-ci-workflows/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
 
 ## Installing it
 
@@ -47,7 +48,7 @@ chock add protect-ci-workflows
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlYjA4NDIzNGVmNmU1MjM5NGU2OTBjOTRhMWIxYjM0N2U5ZmU4YzlmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1jaS13b3JrZmxvd3MiLCJ2ZXJzaW9uIjoiMC4yLjciLCJzaGEyNTYiOiI5Y2RkMGFiYTA3MDY4ODU2NTY5YjA0YjIwMmRlOGY2ZTFiNWI0NmJmZjQwMGU2ODJlOTE2YTVhMmEwMmJmYWM5In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJiZDNhNTVlM2U5ZDUwZmI5NDA1NzcxZmJhODNhOGViYzhjZjdiZjJiIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoicHJvdGVjdC1jaS13b3JrZmxvd3MiLCJ2ZXJzaW9uIjoiMC4yLjgiLCJzaGEyNTYiOiJmZjI4NDM1Yzk2ZDZmNWY5N2E3ZmMzZTdhYWI2OTg4MmFjZmJkYjMyYjZiZTYwYTUyNDYxNWVhOTM3N2MwMjVhIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
