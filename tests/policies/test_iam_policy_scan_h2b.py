@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from policies import iam_h2b_cases as cases
-from policies.iamkit import gate
+from policies.iamkit import IMPL, gate
 
 #: The counts the review's tables give for the gate before this change, and the ones this change is held to.
 CAUGHT_BEFORE, CAUGHT_AFTER, CATCH_TOTAL = 12, 19, 24
@@ -133,3 +135,71 @@ def test_an_unlisted_service_wildcard_on_a_named_resource_is_still_silent() -> N
 def test_a_service_wildcard_on_a_named_resource_still_asks_for_the_listed_services() -> None:
     text = cases.policy(cases.allow("s3:*", "arn:aws:s3:::b"))
     assert cases.rule_of("p.json", text) == ("iam-service-wildcard", "ask")
+
+
+VPC_ACCESS = [
+    "ec2:CreateNetworkInterface",
+    "ec2:DescribeNetworkInterfaces",
+    "ec2:DeleteNetworkInterface",
+    "ec2:AssignPrivateIpAddresses",
+    "ec2:UnassignPrivateIpAddresses",
+]
+SSM_AGENT = [
+    "ssmmessages:CreateControlChannel",
+    "ssmmessages:CreateDataChannel",
+    "ssmmessages:OpenControlChannel",
+    "ssmmessages:OpenDataChannel",
+    "ec2messages:AcknowledgeMessage",
+    "ec2messages:DeleteMessage",
+    "ec2messages:FailMessage",
+    "ec2messages:GetEndpoint",
+    "ec2messages:GetMessages",
+    "ec2messages:SendReply",
+    "ssm:UpdateInstanceInformation",
+]
+
+
+@pytest.mark.parametrize("actions", [VPC_ACCESS, SSM_AGENT], ids=["vpc-access-lambda", "ssm-agent"])
+def test_the_managed_policy_shapes_aws_ships_on_every_resource_are_silent(actions: list[str]) -> None:
+    assert gate.scan_file("p.json", cases.policy(cases.allow(actions))) == []
+
+
+def test_the_writes_that_are_legitimate_on_every_resource_live_in_a_dated_data_file() -> None:
+    data = json.loads((IMPL / "iamscan" / "data" / "writes_on_all.json").read_text(encoding="utf-8"))
+    assert data["written"] == "2026-11-15"
+    assert data["note"]
+    assert "logs:putlogevents" in data["actions"]
+    assert all(a == a.lower() and ":" in a for a in data["actions"])
+
+
+PASS_ROLE_RESOURCES = {
+    "every-account": "arn:aws:iam::*:role/*",
+    "one-account": "arn:aws:iam::123456789012:role/*",
+    "other-partition": "arn:aws-us-gov:iam::*:role/*",
+    "path-wildcards": "arn:aws:iam::123456789012:role/*/*",
+}
+
+
+@pytest.mark.parametrize("resource", sorted(PASS_ROLE_RESOURCES))
+def test_passrole_on_every_role_blocks_like_a_star(resource: str) -> None:
+    text = cases.policy(cases.allow("iam:PassRole", PASS_ROLE_RESOURCES[resource]))
+    assert cases.rule_of("p.json", text) == ("iam-passrole-all-resources", "block")
+
+
+def test_passrole_on_every_role_in_a_list_blocks() -> None:
+    text = cases.policy(cases.allow("iam:PassRole", ["arn:aws:iam::1:role/a", "arn:aws:iam::*:role/*"]))
+    assert cases.rule_of("p.json", text) == ("iam-passrole-all-resources", "block")
+
+
+def test_passrole_on_every_role_with_a_passed_to_service_condition_is_silent() -> None:
+    condition = {"StringEquals": {"iam:PassedToService": "ecs-tasks.amazonaws.com"}}
+    text = cases.policy(cases.allow("iam:PassRole", "arn:aws:iam::*:role/*", Condition=condition))
+    assert gate.scan_file("p.json", text) == []
+
+
+@pytest.mark.parametrize(
+    "resource",
+    ["arn:aws:iam::123456789012:role/app-*", "arn:aws:iam::*:role/app", "arn:aws:iam::1:role/service-role/*"],
+)
+def test_passrole_on_a_narrower_role_pattern_is_silent(resource: str) -> None:
+    assert gate.scan_file("p.json", cases.policy(cases.allow("iam:PassRole", resource))) == []
