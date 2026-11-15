@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 
+from policies.iamkit import gate
+
 AWS_ACCOUNT = "111122223333"  # the AWS documentation's example account
 OWNER = "8e3af657-a8ff-443c-a75c-2fe8c4bcb635"  # the built-in Owner role id, as the Azure tests spell it
 
@@ -25,9 +27,7 @@ ADMIN_BLOCK_YAML = (
     "          PolicyDocument:\n            Version: '2012-10-17'\n            Statement:\n"
     "              - Effect: Allow\n                Action:\n                  - '*'\n                Resource: '*'\n"
 )
-NOT_ACTION_YAML = (
-    "Statement:\n  - Effect: Allow\n    NotAction:\n      - iam:*\n    Resource: '*'\n"
-)
+NOT_ACTION_YAML = "Statement:\n  - Effect: Allow\n    NotAction:\n      - iam:*\n    Resource: '*'\n"
 CLUSTER_ROLE_LIST = (
     "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: ops\nrules:\n"
     "  - apiGroups:\n      - ''\n    resources:\n      - pods\n    verbs:\n      - '*'\n"
@@ -76,7 +76,9 @@ TF_K8S_BINDING = (
     'resource "kubernetes_cluster_role_binding" "b" {\n  metadata { name = "b" }\n  role_ref {\n'
     '    api_group = "rbac.authorization.k8s.io"\n    kind = "ClusterRole"\n    name = "cluster-admin"\n  }\n}\n'
 )
-TF_GCP_OWNER = 'resource "google_project_iam_member" "m" {\n  role = "roles/owner"\n  member = "user:a@example.com"\n}\n'
+TF_GCP_OWNER = (
+    'resource "google_project_iam_member" "m" {\n  role = "roles/owner"\n  member = "user:a@example.com"\n}\n'
+)
 GCP_YAML = "bindings:\n  - role: roles/owner\n    members:\n      - user:a@example.com\n"
 AZURE_ROLE_JSON = json.dumps(
     {"Name": "all", "IsCustom": True, "Actions": ["*"], "AssignableScopes": ["/subscriptions/x"]}
@@ -92,8 +94,11 @@ CATCH = {
     "I01v": ("template.yaml", ADMIN_BLOCK_YAML, True),
     "I02": ("iam/writer.json", policy(allow(["s3:PutObject", "s3:DeleteObject"])), True),
     "I02v": ("iam.tf", TF_WRITE, True),
-    "I03": ("bucket.json", policy({"Effect": "Allow", "Principal": "*", "Action": "s3:GetObject",
-                                   "Resource": "arn:aws:s3:::b/*"}), True),
+    "I03": (
+        "bucket.json",
+        policy({"Effect": "Allow", "Principal": "*", "Action": "s3:GetObject", "Resource": "arn:aws:s3:::b/*"}),
+        True,
+    ),
     "I03v": ("pub.tf", TF_PRINCIPAL_STAR, True),
     "I04": ("iam/pass.json", policy(allow("iam:PassRole")), True),
     "I04v": ("pass.tf", TF_PASSROLE, True),
@@ -197,7 +202,18 @@ def data_json(edited: int = -1) -> str:
 
 GO_TEMPLATED_ROLE = (
     "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: {{ .Release.Name }}-reader\n"
-    "  namespace: {{ .Release.Namespace }}\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"configmaps\"]\n"
+    '  namespace: {{ .Release.Namespace }}\nrules:\n  - apiGroups: [""]\n    resources: ["configmaps"]\n'
     '    verbs: ["get", "list"]\n'
 )
 NAN_JSON = '{"effect": "ok", "value": NaN}\n'
+
+
+def added(path: str, text: str, head: str | None = None) -> list:
+    """The findings a change adds: those in the new text whose rule and id the old text does not already hold."""
+    old = {f.key for f in gate.scan_file(path, head)} if head is not None else set()
+    return [f for f in gate.scan_file(path, text) if f.key not in old]
+
+
+def rule_of(path: str, text: str) -> tuple[str, str]:
+    (finding,) = gate.scan_file(path, text)
+    return finding.rule, finding.tier

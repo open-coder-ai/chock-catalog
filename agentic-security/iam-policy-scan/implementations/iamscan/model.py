@@ -12,8 +12,14 @@ BLOCK, ASK = "block", "ask"
 RULES = {
     "iam-admin-grant": "Allow with Action '*' on every resource: administrator access. Name the actions and resources.",
     "iam-action-wildcard": "Allow with Action '*' on a named resource. Name the actions the task needs.",
-    "iam-service-wildcard": "Allow with a whole-service action wildcard (s3:*, iam:*, sts:*, kms:*, ec2:*). "
-    "Name the actions; on every resource it is refused, on a named one it asks.",
+    "iam-service-wildcard": "Allow with a whole-service action wildcard (s3:*, lambda:*). "
+    "Name the actions; on every resource it is refused, on a named s3, iam, sts, kms or ec2 resource it asks.",
+    "iam-write-all-resources": "Allow of write actions on every resource. Name the resources; if AWS supports an "
+    "action only on '*', a reviewed exception says so.",
+    "iam-passrole-all-resources": "Allow iam:PassRole on every resource lets the caller hand any role to any service "
+    "it can start. Name the role ARNs, or add an iam:PassedToService condition.",
+    "iam-admin-policy-attached": "The AWS managed policy AdministratorAccess is attached: administrator access. "
+    "Attach policies that name the actions and resources needed.",
     "iam-allow-inverted": "Allow with NotAction, NotResource or NotPrincipal grants everything the key does not name. "
     "Allow the named actions, resources and principals instead.",
     "iam-principal-wildcard": "Allow for any principal with no Condition: public access. Name the principals or add a Condition.",
@@ -40,13 +46,15 @@ class Finding:
     anchors: tuple[int, ...] = ()
     hint: str = ""
     nth: int = -1  # which occurrence of the hint key in the file this is, for files that carry no line numbers
+    why: str = ""  # for iam-unreadable: what stopped the reader; not part of the id
 
     @property
     def key(self) -> str:
         return f"{self.rule}|{self.sig}"
 
     def render(self) -> str:
-        return f"{self.path}:{self.line}: [{self.rule}] ({self.tier}; id {self.sig}) {RULES[self.rule]}"
+        reason = f" Why: {self.why}." if self.why else ""
+        return f"{self.path}:{self.line}: [{self.rule}] ({self.tier}; id {self.sig}) {RULES[self.rule]}{reason}"
 
 
 def signature(value: object) -> str:

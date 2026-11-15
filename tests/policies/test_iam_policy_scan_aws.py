@@ -40,6 +40,7 @@ JSON_CASES = {
         doc(stmt(Action="kms:*", Resource="arn:aws:kms:us-east-1:1:key/k")),
         [("iam-service-wildcard", ASK)],
     ),
+    "service-unlisted": (doc(stmt(Action="logs:*", Resource="*")), [("iam-service-wildcard", BLOCK)]),
     "ec2-and-sts": (doc(stmt(Action=["ec2:*", "sts:*"], Resource="*")), [("iam-service-wildcard", BLOCK)]),
     "not-action": (doc(stmt(NotAction="iam:*", Resource="*")), [("iam-allow-inverted", BLOCK)]),
     "not-action-star": (doc(stmt(NotAction="*", Resource="*")), [("iam-allow-inverted", BLOCK)]),
@@ -109,7 +110,6 @@ JSON_CASES = {
 JSON_ALLOWED = {
     "scoped-list": doc(stmt(Action=["s3:GetObject", "s3:PutObject"], Resource="arn:aws:s3:::b/*")),
     "partial-wildcard": doc(stmt(Action="s3:Get*", Resource="arn:aws:s3:::b/*")),
-    "unlisted-service-wildcard": doc(stmt(Action="logs:*", Resource="*")),
     "deny-star": doc({"Effect": "Deny", "Action": "*", "Resource": "*"}),
     "deny-not-action": doc({"Effect": "Deny", "NotAction": ["iam:ChangePassword"], "Resource": "*"}),
     "deny-case": doc({"EFFECT": " deny ", "Action": "*", "Resource": "*"}),

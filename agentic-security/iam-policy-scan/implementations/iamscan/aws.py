@@ -11,6 +11,18 @@ from iamscan.model import ASK, BLOCK
 
 STAR = frozenset({"*", "*:*"})
 SERVICE_STAR = re.compile(r"(?i)(?:s3|iam|sts|kms|ec2):\*")
+ANY_SERVICE_STAR = re.compile(r"(?i)[a-z0-9-]+:\*")
+#: An action whose name starts with one of these only reads; on every resource it is how AWS documents most of them.
+READ_VERBS = ("get", "list", "describe", "head", "view", "lookup", "search", "batchget", "query", "scan", "select")
+#: Writes that AWS supports on `*` only (or ships on `*` in its own managed policies): logging, metrics and tracing.
+WRITES_ON_ALL = frozenset(
+    {
+        "logs:createloggroup", "logs:createlogstream", "logs:putlogevents", "cloudwatch:putmetricdata",
+        "xray:puttracesegments", "xray:puttelemetryrecords",
+    }
+)  # fmt: skip
+#: Condition keys that say which service a passed role may be handed to.
+PASSED_TO = frozenset({"iam:passedtoservice"})
 ASSUME = re.compile(r"(?i)sts:(?:\*|a\w*\*|assumerole\w*)")
 ACCOUNT = re.compile(r"(?:arn:[\w-]+:iam::)?\d{12}(?::|$)")
 INVERTED = ("notaction", "notresource", "notprincipal")
@@ -76,12 +88,37 @@ def _all_resources(statement: dict) -> bool:
 
 def _actions(statement: dict) -> list[Hit]:
     actions = strings_of(statement, "action")
-    everywhere = BLOCK if _all_resources(statement) else ASK
+    everywhere = _all_resources(statement)
+    tier = BLOCK if everywhere else ASK
     if any(a in STAR for a in actions):
-        return [Hit("iam-admin-grant" if everywhere == BLOCK else "iam-action-wildcard", everywhere, "action")]
+        return [Hit("iam-admin-grant" if everywhere else "iam-action-wildcard", tier, "action")]
     if any(SERVICE_STAR.fullmatch(a) for a in actions):
-        return [Hit("iam-service-wildcard", everywhere, "action")]
+        return [Hit("iam-service-wildcard", tier, "action")]
+    return _on_every_resource(statement, actions) if everywhere else []
+
+
+def _on_every_resource(statement: dict, actions: list[str]) -> list[Hit]:
+    """What an Allow of these actions on `*` grants beyond reading: any service wildcard, PassRole, a write."""
+    if any(ANY_SERVICE_STAR.fullmatch(a) for a in actions):
+        return [Hit("iam-service-wildcard", BLOCK, "action")]
+    passes = [a for a in actions if _matches(a, "iam:passrole")]
+    if passes and not _restricts(statement, PASSED_TO):
+        return [Hit("iam-passrole-all-resources", BLOCK, "action")]
+    if any(_writes(a) for a in actions if a not in passes):
+        return [Hit("iam-write-all-resources", ASK, "action")]
     return []
+
+
+def _matches(pattern: str, name: str) -> bool:
+    """Whether an action pattern (`*` and `?` wildcards, any case) covers a literal action name."""
+    return re.fullmatch(re.escape(pattern.lower()).replace(r"\*", ".*").replace(r"\?", "."), name) is not None
+
+
+def _writes(action: str) -> bool:
+    """Whether an action `service:Verb` may change something: no read verb, and AWS does not allow it only on `*`."""
+    name = action.lower()
+    service, colon, verb = name.partition(":")
+    return bool(service and colon and verb) and name not in WRITES_ON_ALL and not verb.startswith(READ_VERBS)
 
 
 def _wildcard_principal(principal: object) -> bool:

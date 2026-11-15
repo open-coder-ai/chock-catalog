@@ -19,8 +19,15 @@ from iamscan.walk import LOCATABLE, Scan, Spot, number
 #: A file this gate never opens unless its text mentions something a grant is made of.
 PREFILTER = re.compile(
     r"(?i)effect|principal|notaction|\bstatement\b|\bverbs\b|rolebinding|clusterrole|roleassignment|azurerm_role"
+    r"|administratoraccess"
 )
+#: What a JSON file over the size limit must hold to be plausibly a policy: an Allow, a rule's verbs or a binding.
+GRANT_SHAPE = re.compile(
+    r"(?i)effect[\\\"']*\s*[:=]\s*[\\\"']*allow|\bverbs[\\\"']*\s*[:=]|rolebinding|clusterrole|roleassignment|administratoraccess"
+)
+TEMPLATE_MARKER = re.compile(r"\{\{|\{%")
 MAX_CHARS = 1 << 20  # the readers refuse more; a file this big that mentions a grant is refused, not skipped
+MAX_WHY = 200  # characters of a reader's complaint that the message repeats
 MAX_FINDINGS = 1000  # past this, judging and placing each one is itself a way to stall the hook
 LOCKFILE = re.compile(r"(?i)(?:^|/)[^/]*(?:-lock\.(?:json|ya?ml)|\.lock|\.lockb)$")
 STRING = re.compile(r'"(?:[^"\\]|\\.)*"')
@@ -58,7 +65,9 @@ def scan_file(path: str, text: str) -> list[Finding]:
     scan = Scan(path)
     try:
         if len(text) > MAX_CHARS:
-            msg = f"larger than {MAX_CHARS} characters"
+            if kind == "json" and not GRANT_SHAPE.search(unescaped(text)):
+                return []  # data that uses the words (effect, principal) but holds no Allow, verbs or binding
+            msg = f"larger than {MAX_CHARS} characters, and it holds an Allow, a rule's verbs or a binding"
             raise ValueError(msg)
         _READERS[kind](text, scan)
         if len(scan.found) > MAX_FINDINGS:
@@ -70,7 +79,8 @@ def scan_file(path: str, text: str) -> list[Finding]:
         found = [] if len(scan.found) > MAX_FINDINGS else [f for f in scan.found if f.rule != "iam-unreadable"]
         # The id holds the text, so any change to a file that cannot be read is new: an old refusal never excuses an edit.
         sig = signature([kind, hashlib.sha256(text.encode("utf-8", "replace")).hexdigest()])
-        return [*found, Finding("iam-unreadable", BLOCK, path, getattr(exc, "line", None) or 1, sig, (1,))]
+        why = " ".join(str(exc).split())[:MAX_WHY]
+        return [*found, Finding("iam-unreadable", BLOCK, path, getattr(exc, "line", None) or 1, sig, (1,), why=why)]
     return scan.found
 
 
@@ -107,11 +117,15 @@ def is_template(path: str) -> bool:
 def _yaml(text: str, scan: Scan) -> None:
     try:
         trees, repeats = tree.docs(text)
-    except yamlpath.ParseError:
-        if not is_template(scan.path):
+    except yamlpath.ParseError as first:
+        if not (is_template(scan.path) or TEMPLATE_MARKER.search(text)):
             raise
-        # Helm and Jinja text is not YAML until its directives are gone; what still does not read is refused.
-        trees, repeats = tree.docs(neutralize(text))
+        # Helm and Jinja text is not YAML until its directives are gone, in a chart or beside one; what still
+        # does not read is refused, with the first complaint (its line is the file's own).
+        try:
+            trees, repeats = tree.docs(neutralize(text))
+        except yamlpath.ParseError:
+            raise first from None
     for name, line in repeats:
         scan.duplicate(name, line)
     for document in trees:
