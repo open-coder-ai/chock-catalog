@@ -55,6 +55,10 @@ def measure(guard: object) -> dict:
 def check(guard: object) -> list[str]:
     m = measure(guard)
     seen, failures = m["seen"], []
+
+    def swaps(kind: str) -> list[str]:
+        return [i for i, (p, *_) in seen.items() if p["kind"] == kind]
+
     failures += [f"{i}: correct work refused at block" for i in SILENT_AT_BLOCK if seen[i][1]]
     for i in RULED_TO_WARN:
         if seen[i][1]:
@@ -67,6 +71,12 @@ def check(guard: object) -> list[str]:
         for i in m["regressions"]
         if seen[i][0]["reviewed"] == "caught" and i not in RULED_TO_WARN and not seen[i][1]
     ]
+    # An element replaced by one of its tag that lost the name is a lost name, whatever else changed.
+    failures += [f"{i}: a named element swapped for an unnamed one is allowed" for i in swaps("swap_regression") if not seen[i][1]]
+    failures += [f"{i}: a swap that keeps the name is refused" for i in swaps("swap_correct") if seen[i][1]]
+    for i in swaps("swap_added"):
+        if seen[i][1] or not seen[i][2]:
+            failures.append(f"{i}: a genuinely added unnamed element must warn and not block")
     # Nothing the review marks MISSED may start blocking by accident, and nothing it marks silent may start.
     failures += [
         f"{i}: now blocked, the review saw it allowed"

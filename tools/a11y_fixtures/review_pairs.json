@@ -1372,5 +1372,101 @@
     "after": "<!doctype html>\n<html lang=\"fr\">\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n"
    }
   }
+ },
+ {
+  "id": "S01",
+  "kind": "swap_regression",
+  "title": "image swapped, alt dropped",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"b.png\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "S02",
+  "kind": "swap_regression",
+  "title": "image swapped with more attributes changed, alt dropped",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"img/a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"img/team-2.webp\" class=\"hero\" loading=\"lazy\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "S03",
+  "kind": "swap_regression",
+  "title": "label removed and the input id renamed",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<label for=\"email\">Email address</label>\n<input id=\"email\" type=\"email\">\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<input id=\"mail\" type=\"email\" placeholder=\"Email\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "S04",
+  "kind": "swap_correct",
+  "title": "image swapped, alt kept",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"b.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "S05",
+  "kind": "swap_correct",
+  "title": "image swapped with more attributes changed, alt reworded",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"img/a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"img/team-2.webp\" class=\"hero\" loading=\"lazy\" alt=\"The team at the 2025 summit\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "S06",
+  "kind": "swap_correct",
+  "title": "label replaced by an aria-label and the input id renamed",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<label for=\"email\">Email address</label>\n<input id=\"email\" type=\"email\">\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<input id=\"mail\" type=\"email\" aria-label=\"Email address\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "S07",
+  "kind": "swap_added",
+  "title": "an image genuinely added, nothing removed",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<p>Hello</p>\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<p>Hello</p>\n<img src=\"b.png\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "S08",
+  "kind": "swap_added",
+  "title": "an unnamed image added beside a named one that stays",
+  "reviewed": "orchestrator",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n<img src=\"b.png\">\n</body>\n</html>\n"
+   }
+  }
  }
 ]
