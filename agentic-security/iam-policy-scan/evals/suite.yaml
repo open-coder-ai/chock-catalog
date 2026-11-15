@@ -1187,3 +1187,43 @@ suite:
               resources: ["configmaps"]
               verbs: ["get", "list"]
       expect: allow
+  - id: tc-060
+    category: negative_trigger
+    prompt: A Lambda role has the VPC-access network interface actions AWS ships on every resource.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        vpc.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "ec2:CreateNetworkInterface",
+                  "ec2:DescribeNetworkInterfaces",
+                  "ec2:DeleteNetworkInterface"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-061
+    category: trigger
+    prompt: iam:PassRole is granted on every role in every account.
+    expect: 'The commit is refused: the same as PassRole on every resource.'
+    execute:
+      event: commit
+      files:
+        pass.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": "arn:aws:iam::*:role/*"
+              }
+            ]
+          }
+      expect: block

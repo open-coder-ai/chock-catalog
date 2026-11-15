@@ -166,7 +166,7 @@ def test_the_managed_policy_shapes_aws_ships_on_every_resource_are_silent(action
 
 def test_the_writes_that_are_legitimate_on_every_resource_live_in_a_dated_data_file() -> None:
     data = json.loads((IMPL / "iamscan" / "data" / "writes_on_all.json").read_text(encoding="utf-8"))
-    assert data["written"] == "2026-11-15"
+    assert data["as_of"] == "2026-11-15"
     assert data["note"]
     assert "logs:putlogevents" in data["actions"]
     assert all(a == a.lower() and ":" in a for a in data["actions"])

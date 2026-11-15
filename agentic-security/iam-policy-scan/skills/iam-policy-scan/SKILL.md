@@ -1,6 +1,6 @@
 ---
 name: iam-policy-scan
-description: "Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s), not by line. Refuses Allow with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous. Waiver: pragma or sidecar."
+description: "Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s). Refuses Allow with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, secret reads on *. Waiver: pragma or sidecar."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # IAM Policy Scan
 
-Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s), not by line. Refuses Allow with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous. Waiver: pragma or sidecar.
+Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s). Refuses Allow with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, secret reads on *. Waiver: pragma or sidecar.
 
 ```
 on(commit|tool_use): block(script) script=iam-policy-scan-gate.py

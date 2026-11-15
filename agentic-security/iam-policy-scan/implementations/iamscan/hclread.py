@@ -58,7 +58,9 @@ def _block(block: hcl.Block, scan_: Scan) -> None:
 def _attached(block: hcl.Block, scan_: Scan) -> None:
     """AdministratorAccess named by an attachment attribute, read from the expression so an interpolated partition counts."""
     for attr in block.attributes:
-        if attr.key.lower() in managed.ATTACH_KEYS and any(managed.names_admin(s) for s in QUOTED_LITERAL.findall(attr.expr)):
+        if attr.key.lower() in managed.ATTACH_KEYS and any(
+            managed.names_admin(s) for s in QUOTED_LITERAL.findall(attr.expr)
+        ):
             span = (attr.line, attr.line + attr.expr.count("\n"))
             subject = [attr.key.lower(), block.type, *block.labels]
             scan_.add("iam-admin-policy-attached", BLOCK, subject, Spot(attr.line, attr.key.lower(), span))

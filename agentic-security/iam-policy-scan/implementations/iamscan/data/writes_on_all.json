@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-11-15",
+  "source": {
+    "lambda-basic": "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaBasicExecutionRole.html",
+    "lambda-vpc": "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaVPCAccessExecutionRole.html",
+    "ssm-agent": "https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonSSMManagedInstanceCore.html"
+  },
+  "note": "Write actions AWS supports only on '*', or ships on '*' in its own managed policies (Lambda basic and VPC execution, X-Ray and CloudWatch agents, the SSM agent). On every resource they are not asked about. Lower-case service:action.",
+  "actions": [
+    "logs:createloggroup",
+    "logs:createlogstream",
+    "logs:putlogevents",
+    "cloudwatch:putmetricdata",
+    "xray:puttracesegments",
+    "xray:puttelemetryrecords",
+    "ec2:createnetworkinterface",
+    "ec2:describenetworkinterfaces",
+    "ec2:deletenetworkinterface",
+    "ec2:assignprivateipaddresses",
+    "ec2:unassignprivateipaddresses",
+    "ssmmessages:createcontrolchannel",
+    "ssmmessages:createdatachannel",
+    "ssmmessages:opencontrolchannel",
+    "ssmmessages:opendatachannel",
+    "ec2messages:acknowledgemessage",
+    "ec2messages:deletemessage",
+    "ec2messages:failmessage",
+    "ec2messages:getendpoint",
+    "ec2messages:getmessages",
+    "ec2messages:sendreply",
+    "ssm:updateinstanceinformation"
+  ]
+}
