@@ -174,7 +174,7 @@ policies:
     github: dependencies, with no commit SHA. Per line: friction, not a boundary (limits in references).'
 - id: block-unsafe-code-execution
   path: agentic-security/block-unsafe-code-execution
-  version: 0.1.2
+  version: 0.1.3
   artifact: hook
   enforcement: block
   status: production
