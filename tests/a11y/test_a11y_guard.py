@@ -13,6 +13,7 @@ from collections.abc import Callable
 
 import check_a11y_pairs as pairs
 import check_a11y_rules as rules
+import check_a11y_swaps as swaps
 import check_a11y_table as table
 import pytest
 
@@ -28,6 +29,7 @@ RULE_CHECKS = [
     rules.check_every_key_is_covered,
     rules.check_the_commit_path,
 ]
+SWAP_CHECKS = [swaps.check_a_swap_that_loses_the_name]
 TABLE_CHECKS = [
     table.check_the_table_is_total,
     table.check_a_patch_at_scale,
@@ -38,7 +40,6 @@ TABLE_CHECKS = [
     table.check_deleting_a_block_is_not_hiding_a_violation,
     table.check_hiding_a_subtree_retracts_the_names_inside_it,
     table.check_quality_is_judged_only_on_a_fix,
-    table.check_a_swap_that_loses_the_name,
     table.check_components,
 ]
 
@@ -56,7 +57,7 @@ def test_the_guard_agrees_with_its_rules(guard: object, check: Callable) -> None
     assert probe.failures == []
 
 
-@pytest.mark.parametrize("check", TABLE_CHECKS, ids=[c.__name__ for c in TABLE_CHECKS])
+@pytest.mark.parametrize("check", TABLE_CHECKS + SWAP_CHECKS, ids=[c.__name__ for c in TABLE_CHECKS + SWAP_CHECKS])
 def test_the_decision_table_holds(guard: object, check: Callable) -> None:
     cases = table.Cases(guard)
     check(cases)
@@ -65,7 +66,7 @@ def test_the_decision_table_holds(guard: object, check: Callable) -> None:
 
 
 def test_both_checkers_run_every_check_they_define() -> None:
-    for module, listed in ((rules, RULE_CHECKS), (table, TABLE_CHECKS)):
+    for module, listed in ((rules, RULE_CHECKS), (table, TABLE_CHECKS), (swaps, SWAP_CHECKS)):
         defined = {name for name in dir(module) if name.startswith("check_")}
         assert defined == {c.__name__ for c in listed}, module.__name__
 
