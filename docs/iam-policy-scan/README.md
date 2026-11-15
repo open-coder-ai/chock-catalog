@@ -12,14 +12,14 @@
 | **Mechanism** | script gate |
 | **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
 | **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
-| **Eval cases** | 51 total, 51 executable |
+| **Eval cases** | 61 total, 61 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
 
 ## What it is about
 
-Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, unlisted extensions. Waiver: pragma or sidecar.
+Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s). Refuses Allow with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, secret reads on *. Waiver: pragma or sidecar.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action star, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in .chock/iam-policy-scan.json for strict JSON, which cannot carry a comment. In the agent a waiver counts only once a person has committed it, so an agent asks a person.
+> Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action star, no service wildcard or iam:PassRole on every resource, no write actions on every resource, no AdministratorAccess attached, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in .chock/iam-policy-scan.json for strict JSON, which cannot carry a comment. In the agent a waiver counts only once a person has committed it, so an agent asks a person.
 
 ## Which primitive it becomes
 
@@ -48,7 +48,7 @@ chock add iam-policy-scan
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhNmE4ODQxMTkzOTk0MGMzYTVhM2YxMjI5OWZkYWIzMjRjN2RjMWQyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaWFtLXBvbGljeS1zY2FuIiwidmVyc2lvbiI6IjAuMS4yIiwic2hhMjU2IjoiZTVjMzdlZjk2NzU1ZWQyZDZjYzhlNmU3NzEzMzhmYjNhNDg5YTE5NDhkYTAzMjc4NzRjOWQ3MjI4NTZlYjU5YSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1YjU5ZmMwMmY5NzY1MmZkYzlkNTFlNjI1MjQ5NTllYTA5NmJiOGE0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaWFtLXBvbGljeS1zY2FuIiwidmVyc2lvbiI6IjAuMS4zIiwic2hhMjU2IjoiZGFiOWVhYjllYzBiNWIzNzljNTRiMGYxN2I5MGE2NmNhMjUzN2VlM2FmOTJiZWJhYzNhN2NjMjA2MzNlNDM3ZiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

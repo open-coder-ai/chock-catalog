@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "iam-policy-scan",
-  "version": "0.1.2",
-  "description": "Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, unlisted extensions. Waiver: pragma or sidecar.",
+  "version": "0.1.3",
+  "description": "Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s). Refuses Allow with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource, cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, secret reads on *. Waiver: pragma or sidecar.",
   "author": {
     "name": "chock-core"
   },

@@ -1,11 +1,12 @@
 id: iam-policy-scan
 name: "IAM Policy Scan"
-version: "0.1.2"
+version: "0.1.3"
 description: >
-  Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep, Kubernetes. Refuses
-  Allow with Action star or an inverted key, public or any-principal trust, cluster-admin, subscription Owner. Asks
-  for service wildcards on a named resource, cross-account trust. Only added grants. Misses computed grants, partial
-  wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous, unlisted extensions. Waiver: pragma or sidecar.
+  Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s). Refuses Allow
+  with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess
+  attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource, cross-account
+  trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s
+  escalate/bind/anonymous, secret reads on *. Waiver: pragma or sidecar.
 artifact: hook
 enforcement: block
 mandatory: false
@@ -21,8 +22,9 @@ hook:
     action: block
     message: >
       Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action
-      star, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no
-      cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a
+      star, no service wildcard or iam:PassRole on every resource, no write actions on every resource, no
+      AdministratorAccess attached, no Allow with NotAction, NotResource or NotPrincipal, no public principal
+      without a Condition, no cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a
       pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in
       .chock/iam-policy-scan.json for strict JSON, which cannot carry a comment. In the agent a waiver counts only once a
       person has committed it, so an agent asks a person.
@@ -52,6 +54,12 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.3
+  date: '2026-11-15'
+  changes:
+  - "Behaviour change, from the 2026-11-15 hardening review of the infrastructure policies (REVIEW-infra, sections 2.3 and 3): four forms a line cannot judge are now caught. `iam:PassRole` (or a pattern that covers it) on every resource, or on a role ARN that is only wildcards after `role/` (`arn:aws:iam::*:role/*`, or one account's `role/*`), is refused unless the statement has a positive `iam:PassedToService` condition; a service wildcard of any service on every resource is refused (it was s3, iam, sts, kms and ec2 only); write actions on every resource ask (an action that starts with Get, List, Describe, Head, View, Lookup, Search, BatchGet, Query, Scan or Select, the writes AWS supports only on `*` or ships on `*` in its own managed policies (logging, metrics, tracing, Lambda VPC access, the SSM agent; the list is `iamscan/data/writes_on_all.json`, as_of 2026-11-15), a Deny, and a statement with a named resource stay silent); the AdministratorAccess managed policy attached through `policy_arn`, `managed_policy_arns` (Terraform), `ManagedPolicyArns` (CloudFormation, JSON or YAML) and their kin is refused, and a file that names it is now opened. Measured on the review's cases rebuilt from its tables: caught 12 of 24 before, 19 after; correct work refused 2 of 26 before and after."
+  - "Behaviour change, unreadable input: a JSON file over 1 MiB that holds no `Effect: Allow`, no `verbs` and no binding or role assignment is data, not a policy, and is no longer refused; one that holds any of them still is, and now says it is larger than the readers take. A YAML file that does not parse and holds `{{` or `{%` outside a `templates/` directory is read with its directives set aside, as a template is, instead of refused; if it still does not read it is refused with the reader's first complaint. An `iam-unreadable` message now says why the file could not be read."
+  - "Limits (not caught): `iam:PassRole` or a service wildcard with the resource held in a variable, `local` or `Fn::` form; write actions in a statement whose resource is a partial wildcard (`arn:aws:s3:::*`); `AdministratorAccess-*` service variants and an administrator policy attached by a name held in a variable; a write that AWS supports only on `*` and is not in that list asks; `secretsmanager:GetSecretValue` and other reads that matter on `*` are not caught (a read verb is silent). Unchanged and still missed: GCP roles, Azure custom role definitions, native Terraform Kubernetes bindings, a wildcard behind a Terraform variable, the KMS default key policy (refused)."
 - version: 0.1.2
   date: '2026-10-25'
   changes:

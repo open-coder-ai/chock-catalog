@@ -1577,15 +1577,15 @@ policies:
     encoded payloads. Added text only; English phrases; friction, not a boundary.'
 - id: iam-policy-scan
   path: agentic-security/iam-policy-scan
-  version: 0.1.2
+  version: 0.1.3
   artifact: hook
   enforcement: block
   status: draft
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 51
-  eval_executed: 51
+  eval_cases: 61
+  eval_executed: 61
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point"}
@@ -1593,11 +1593,11 @@ policies:
     copilot: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. Where its description says it asks, it refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     devin: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. Where its description says it asks, it refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (vendor docs only, not witnessed)"}
     misses: null
-  description: 'Reads whole IAM, RBAC and role documents, not lines: JSON, YAML, Terraform, ARM, Bicep,
-    Kubernetes. Refuses Allow with Action star or an inverted key, public or any-principal trust, cluster-admin,
-    subscription Owner. Asks for service wildcards on a named resource, cross-account trust. Only added
-    grants. Misses computed grants, partial wildcards, GCP, Azure role definitions, k8s escalate/bind/anonymous,
-    unlisted extensions. Waiver: pragma or sidecar.'
+  description: 'Reads IAM, RBAC and role documents whole (JSON, YAML, Terraform, ARM, Bicep, k8s). Refuses
+    Allow with Action star, an inverted key, a service wildcard or iam:PassRole on every resource; AdministratorAccess
+    attached; public trust; cluster-admin; subscription Owner. Asks for write actions on every resource,
+    cross-account trust. Only added grants. Misses computed grants, partial wildcards, GCP, Azure role
+    definitions, k8s escalate/bind/anonymous, secret reads on *. Waiver: pragma or sidecar.'
 - id: block-fetch-exec-in-files
   path: base/block-fetch-exec-in-files
   version: 0.0.3

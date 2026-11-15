@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 from chock_scan import jsonc
 
-from iamscan import aws, azure, k8s
+from iamscan import aws, azure, k8s, managed
 from iamscan.access import unescaped
 from iamscan.model import BLOCK, Finding, signature
 
@@ -26,6 +26,7 @@ LOCATABLE = frozenset(
         "resources",
         "roledefinitionid",
     }
+    | managed.ATTACH_KEYS
 )
 POLICY_KEY = re.compile(
     r'(?i)"(?:Statement|Effect|rules|kind)\\*"'
@@ -61,7 +62,7 @@ class Scan:
         )
 
     def unreadable(self, why: str, line: int = 1) -> None:
-        self.found.append(Finding("iam-unreadable", BLOCK, self.path, line, signature(why), (line,)))
+        self.found.append(Finding("iam-unreadable", BLOCK, self.path, line, signature(why), (line,), why=why))
 
     def duplicate(self, name: str, line: int) -> None:
         if name.lower() in GUARDED_KEYS:
@@ -104,6 +105,15 @@ class Scan:
                 k8s_hit.tier,
                 k8s_hit.subject,
                 Spot(at, k8s_hit.hint, self._anchors(at, line, span=span), nth.get(k8s_hit.hint.lower(), -1)),
+            )
+        if attachment := managed.attached(node):
+            hint, subject = attachment
+            at = _hint_line(getattr(node, "keylines", {}), hint, line)
+            self.add(
+                "iam-admin-policy-attached",
+                BLOCK,
+                subject,
+                Spot(at, hint, self._anchors(at, line, span=span), nth.get(hint, -1)),
             )
         if azure.arm_assignment(node, subscription_deployment=self.subscription_deployment):
             self.add(
