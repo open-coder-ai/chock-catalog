@@ -292,8 +292,8 @@ Every policy is labelled with what it actually reaches. The label is stated up f
 
 | | What it means | How many |
 | :--- | :--- | ---: |
-| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 36 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 11 |
+| `enforced-at-commit` | the command exits non-zero, the commit does not happen | 35 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
 | `advisory` | text an agent reads and may or may not follow | 25 |
 
 Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay. No agent reaches `enforced` today: commit-time enforcement is git's, and at tool use the best an agent gets is best-effort. OWASP mappings are partial, and the engine is frozen at the commit above. Chock does not stop every attack: it closes common, known entry points before they ship.
