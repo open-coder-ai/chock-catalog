@@ -22,6 +22,8 @@ def test_the_same_secret_line_uncommented_is_refused(gate: GateRun) -> None:
 
 
 @pytest.mark.parametrize(("case_id", "path", "text"), CASES, ids=[c[0] for c in CASES])
-def test_a_construct_named_only_where_no_code_runs_is_allowed(gate: GateRun, case_id: str, path: str, text: str) -> None:
+def test_a_construct_named_only_where_no_code_runs_is_allowed(
+    gate: GateRun, case_id: str, path: str, text: str
+) -> None:
     code, stderr = gate({path: text})
     assert code == ALLOWED, f"{case_id} refused:\n{stderr}"

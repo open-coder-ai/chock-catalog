@@ -36,7 +36,7 @@ CONSTRUCTS = [
     (
         "sql-concat",
         ["import java.sql.Statement;"],
-        "stmt.executeQuery(\"SELECT * FROM t WHERE a = '\" + name + \"'\")",
+        'stmt.executeQuery("SELECT * FROM t WHERE a = \'" + name + "\'")',
     ),
     (
         "hostname-verifier",
@@ -56,7 +56,7 @@ CONSTRUCTS = [
     ),
 ]
 
-_METHOD = '    public String describe() {{\n{body}        return {value};\n    }}\n'
+_METHOD = "    public String describe() {{\n{body}        return {value};\n    }}\n"
 
 
 def _class(imports: list[str], before: str, members: str, body: str, value: str) -> str:
