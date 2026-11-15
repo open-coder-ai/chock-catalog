@@ -1,6 +1,6 @@
 # Protect CI Workflows
 
-`protect-ci-workflows` · hook · enforces
+`protect-ci-workflows` · rule · enforces
 
 <!-- generated:start — tools/gen_policy_docs.py; edit policy-prose.yaml, not this -->
 
@@ -9,9 +9,9 @@
 | **Type** | `rule` |
 | **On Claude Code** | asks — refuses a matched shell command before it runs. Asks on an agent's file writes. It refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: advise` (propagation and index ranking; not what it blocks) |
-| **Mechanism** | script gate |
-| **Reaches** | `enforced-at-commit` — the command exits non-zero and the commit does not happen |
-| **Compiles to** | `git-hook`, `ci-gate`, `ambient-rule` |
+| **Mechanism** | guard script `protect-ci-workflows-gate.py` |
+| **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
+| **Compiles to** | `pre-tool-use`, `ambient-rule` |
 | **Eval cases** | 71 total, 71 executable |
 | **Enabled by default** | yes |
 
@@ -27,19 +27,18 @@ The gate an agent can quietly widen: its own CI. When the checks that must pass 
 
 ## How it works
 
-A declarative `script` gate, evaluated on `commit` and `tool_use`, action `ask`.
+A guard script, `implementations/protect-ci-workflows-gate.py`, run before the agent executes a Bash command. It inspects the proposed command and exits non-zero to refuse it.
 
-Parameters, from `manifest.yaml`:
+The rule text ships alongside, so an agent reading its context knows the constraint before it proposes the command rather than only after being refused:
 
-- `script`
-
-On a match it prints:
-
-> This path is CI, release, hook or dependency-bot configuration: the checks that review an agent's own work. An agent's change to it needs a person's decision. Say which file should change, what and why, and let the person approve the edit or make it from their own shell. Where a person cannot be asked, the write is refused: propose the change instead. At the turn's end this is a reminder that such a file is still changed and uncommitted. A person's own commit is not judged.
+```text
+ci_config(.github/{workflows,actions,dependabot.y*ml}): never(shell_edit|delete); edit_or_write|agent_commit(those|CODEOWNERS|.gitlab-ci.yml|.gitlab/|Jenkinsfile*|.circleci/|azure-pipelines*|bitbucket-pipelines.yml|.buildkite/|.drone.yml|cloudbuild*|renovate|.pre-commit-config.yaml|.husky/|lefthook|.githooks/|.travis.yml|action.yml|more): ask_person
+if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
+```
 
 ## Which primitive it becomes
 
-A **git hook**. `recompile` writes `.chock/compiled/protect-ci-workflows/git-hook/gate.json`, and `install-hooks` registers a dispatcher entry under `.git/hooks/pre-commit.d/`. The gate is declarative: the compiled JSON is the whole check, so reviewing it reviews the effect rather than the intent.
+A **PreToolUse guard**. `recompile` writes `.chock/compiled/protect-ci-workflows/pre-tool-use/pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent consults the guard script before running a Bash command. Until that install runs, the fragment is compiled and enforces nothing, and coverage says so.
 
 ## Installing it
 
