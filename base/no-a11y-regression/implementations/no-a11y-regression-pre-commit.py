@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -342,11 +343,36 @@ def uninformative(name: str, src: str, tag: str = "", *, labelled: bool = False)
     return None
 
 
+def swapped_in(b_states: dict, a_states: dict, b_tags: dict, a_tags: dict) -> set[str]:
+    """Refs of new unnamed elements that stand where a named element of the same tag was removed.
+
+    The key an element is paired by (src, id, ordinal) is what an edit that swaps an image or renames
+    an input changes, so the old element reads as deleted and the new one as new. Aligning the two
+    revisions' element order finds the swap: in one replaced stretch, the n-th lost named element and
+    the n-th added unnamed element of a tag are one element that lost its name.
+    """
+    before, after = list(b_states), list(a_states)
+    found: set[str] = set()
+    for op, i1, i2, j1, j2 in SequenceMatcher(None, before, after, autojunk=False).get_opcodes():
+        if op != "replace":
+            continue
+        lost = [r for r in before[i1:i2] if r not in a_states and b_states[r][0] == SATISFIED]
+        added = [r for r in after[j1:j2] if r not in b_states and a_states[r][0] == MISSING]
+        for tag in {b_tags[r] for r in lost}:
+            found.update(
+                new for old, new in zip(
+                    (r for r in lost if b_tags[r] == tag), (r for r in added if a_tags[r] == tag), strict=False
+                )
+            )  # fmt: skip
+    return found
+
+
 # ── The decision: one table lookup per element, plus one promotion rule. ──────────────────────
 def evaluate(before_html: str, after_html: str) -> list[dict]:
     """Compare two revisions; every row carries the lookup key that produced its action."""
-    b_states, _ = scan(before_html)
+    b_states, b_nodes = scan(before_html)
     a_states, a_nodes = scan(after_html)
+    swaps = swapped_in(b_states, a_states, {r: n.tag for r, n in b_nodes.items()}, {r: n.tag for r, n in a_nodes.items()})
     rows = []
     for ref in sorted(b_states.keys() | a_states.keys()):
         bs, bw, b_name = b_states.get(ref, (GONE, "not in this revision", ""))
@@ -360,6 +386,8 @@ def evaluate(before_html: str, after_html: str) -> list[dict]:
         labelled = labelled_by_its_own_text(node) if node else False
         if supplied and (bad := uninformative(a_name, src, tag, labelled=labelled)) is not None:
             action, why = WARN, f"the value supplied conveys nothing: {bad}"
+        if ref in swaps:
+            action, why = DENY, "a named element of this tag was replaced by one without its name"
         rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
 
     # Deleting an unnamed element is how a violation gets resolved by deletion -- and it is also

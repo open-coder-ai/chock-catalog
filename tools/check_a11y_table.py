@@ -223,6 +223,20 @@ def check_quality_is_judged_only_on_a_fix(c: Cases) -> None:
         c.silent("a button label that is honest", "<p>x</p>", markup)
 
 
+def check_a_swap_that_loses_the_name(c: Cases) -> None:
+    """The key an edit changes must not hide a lost name: a named element replaced by an unnamed one blocks."""
+    named, bare = '<img src="a.png" alt="Team">', '<img src="b.png">'
+    c.refused("an image swapped, alt dropped", named, bare)
+    c.refused("two tags swapped in one stretch", f'{named}<button aria-label="Close"></button>', f'{bare}<button class="x"></button>')
+    c.silent("an image swapped, alt kept", named, '<img src="b.png" alt="Team">')
+    c.warned("an unnamed image added beside the named one", named, f"{named}{bare}")
+    rows = c.rows(named, f'{bare}<img src="c.png">')
+    c.expect(
+        c.alarms(rows) == ["img[src=b.png]"] and c.warnings(rows) == ["img[src=c.png]"],
+        "the image in the lost one's place blocks and the extra one only warns",
+    )
+
+
 def check_components(c: Cases) -> None:
     """A component is not the HTML element it shadows, and absence of a name proves nothing."""
     for markup in (
@@ -264,6 +278,7 @@ def main() -> int:
         check_deleting_a_block_is_not_hiding_a_violation,
         check_hiding_a_subtree_retracts_the_names_inside_it,
         check_quality_is_judged_only_on_a_fix,
+        check_a_swap_that_loses_the_name,
         check_components,
     ):
         check(cases)

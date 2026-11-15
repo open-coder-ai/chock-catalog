@@ -38,6 +38,7 @@ TABLE_CHECKS = [
     table.check_deleting_a_block_is_not_hiding_a_violation,
     table.check_hiding_a_subtree_retracts_the_names_inside_it,
     table.check_quality_is_judged_only_on_a_fix,
+    table.check_a_swap_that_loses_the_name,
     table.check_components,
 ]
 
