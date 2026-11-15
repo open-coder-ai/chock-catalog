@@ -105,6 +105,8 @@ def _hostname_verifier_findings(text: FileText) -> Iterator[Finding]:
 
 def _unambiguous_token_findings(text: FileText) -> Iterator[Finding]:
     for line_no, line in enumerate(text.lines, 1):
+        if line.lstrip().startswith("import "):
+            continue  # naming the class in an import runs nothing; its use on another line is the finding
         token = next((t for t in _FACTS["unambiguous_tokens"] if t in line), None)
         if token is not None:
             yield Finding(RULE_ID, text.path, line_no, line, _MESSAGE_TOKEN.format(token=token))

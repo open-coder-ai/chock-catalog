@@ -94,6 +94,15 @@ CASES: list[tuple[str, str, str, list[int]]] = [
     ),
     (TLS_TRUST_ALL, "C.java", "HostnameVerifier hv = (h, s) -> true;\n", [1]),
     (TLS_TRUST_ALL, "C.java", "builder.hostnameVerifier(NoopHostnameVerifier.INSTANCE);\n", [1]),
+    (TLS_TRUST_ALL, "C.java", "conn.setHostnameVerifier(NoopHostnameVerifier.INSTANCE);\n", [1]),
+    (TLS_TRUST_ALL, "C.java", "HostnameVerifier v = new NoopHostnameVerifier();\n", [1]),
+    (TLS_TRUST_ALL, "C.java", "import org.apache.http.conn.ssl.NoopHostnameVerifier;\n", []),
+    (
+        TLS_TRUST_ALL,
+        "C.java",
+        "import org.apache.http.conn.ssl.NoopHostnameVerifier;\nHostnameVerifier v = new NoopHostnameVerifier();\n",
+        [2],
+    ),
     (TLS_TRUST_ALL, "C.java", "TrustManagerFactory tmf = InsecureTrustManagerFactory.INSTANCE;\n", [1]),
     (
         TLS_TRUST_ALL,
