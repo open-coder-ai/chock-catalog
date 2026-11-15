@@ -154,7 +154,7 @@ def test_exit_codes(tmp_path: Path) -> None:
     assert json.loads(out)["findings"][0]["rule"] == "dk-last-user-root"
     assert "Dockerfile:2: dk-last-user-root (CWE-250" in err
     assert "chock: allow <rule-id>" in err
-    code, _, _ = run({"Dockerfile": "FROM node:20\nUSER 1000\n"}, tmp_path)
+    code, _, _ = run({"Dockerfile": f"FROM a:1{PIN}\nRUN chmod 777 /app\nUSER 1000\n"}, tmp_path)
     assert code == 3
 
 

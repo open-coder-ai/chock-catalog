@@ -1244,7 +1244,7 @@ policies:
     agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.'
 - id: dockerfile-compose-security
   path: base/dockerfile-compose-security
-  version: 0.2.0
+  version: 0.2.1
   artifact: rule
   enforcement: block
   status: production
@@ -1259,18 +1259,18 @@ policies:
     codex: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. Where its description says it asks, it refuses at both points, because this client cannot prompt at either point. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     copilot: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. Where its description says it asks, it refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     devin: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. Where its description says it asks, it refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (vendor docs only, not witnessed)"}
-    misses: "build args overriding defaults, commands in variables, aliases or $'' quoting, bake and k8s files."
+    misses: "digest pinning (a version tag passes), build args overriding defaults, commands in variables, aliases or $'' quoting, bake and k8s files, extends or include, other file names, a moved file."
   description: 'Blocks (some rules ask) when a change to a Dockerfile, Containerfile or compose file
-    adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware: FROM or COPY
-    --from a stage is not an image); a final stage running as root; TLS or package-signature checks
-    off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote ADD without checksum;
-    fetch piped to a shell; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd; unpinned
-    git clone; ONBUILD RUN; compose privileged, broad cap_add, unconfined profiles, devices, host namespaces,
-    runtime socket or host-root mounts, database ports on every interface, untagged images. A one-line
-    form is left to block-fetch-exec-in-files, block-unpinned-agent-components or agentic-code-security
-    only where that gate is installed and reads the file; scan-secrets lines always. Misses: build args
-    overriding defaults, commands in variables, aliases or $'''' quoting, bake and k8s files. Friction,
-    not a boundary.'
+    adds: a base image with no tag, a floating tag (latest, stable, edge, lts) or an unresolvable ARG;
+    a final stage running as root; TLS or signature checks off; secret ENV/ARG/environment literals;
+    COPY of key or .env files; remote ADD without checksum; fetch piped to a shell; RUN --security=insecure;
+    chmod 777 or setuid; sudo, sshd, chpasswd; unpinned git clone; ONBUILD RUN; compose privileged,
+    broad cap_add, unconfined profiles, devices, host namespaces, runtime socket or host-root mounts,
+    DB ports on every interface. A one-line form goes to block-fetch-exec-in-files, block-unpinned-agent-components
+    or agentic-code-security only where that gate is installed and reads the file; scan-secrets lines
+    always. Misses: digest pinning (a version tag passes), build args overriding defaults, commands
+    in variables, aliases or $'''' quoting, bake and k8s files, extends or include, other file names,
+    a moved file. Friction, not a boundary.'
 - id: lockfile-integrity
   path: base/lockfile-integrity
   version: 0.0.3
