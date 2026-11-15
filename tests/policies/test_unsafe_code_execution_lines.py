@@ -29,6 +29,13 @@ SPARED = {
         'HEALTHCHECK --interval=30s CMD ["sh", "-c", "curl -f http://localhost/"]',
         'command: ["/bin/sh", "-c", "alembic upgrade head"]',
         'test: ["CMD", "sh", "-c", "wget -qO- http://localhost:3000/health"]',
+        'ENTRYPOINT ["sh", "-c", "exec app"]',
+        'RUN ["/bin/sh", "-c", "make"]',
+        'SHELL ["/bin/bash", "-c"]',
+        '  args: ["-c", "x"] # unrelated',
+        '        - ["sh", "-c", "alembic upgrade head"]',
+        '    "command": ["sh", "-c", "npm start"],',
+        '  "entrypoint": ["/bin/sh", "-c", "run"]',
     ],
 }
 
@@ -52,6 +59,16 @@ REFUSED = {
         "await exec(cmd)",
         "async_exec(cmd); eval(x)",
         "x = def_eval(y); eval(z)",
+    ],
+    "shell vector anywhere that is not configuration": [
+        '    ["sh", "-c", cmd],',
+        'return ["sh", "-c", cmd]',
+        '    return ["bash", "-c", cmd]',
+        'cmd = {"run": ["sh", "-c", x]}',
+        'x = foo(["sh", "-c", y])',
+        'RUNNER = ["sh", "-c", cmd]  # CMD',
+        'env_command: ["sh", "-c", cmd]',
+        'commands: ["sh", "-c", cmd]',
     ],
     "shell vector in a call or an assignment": [
         'new ProcessBuilder("sh", "-c", cmd)',

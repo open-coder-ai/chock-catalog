@@ -9,7 +9,7 @@ import pytest
 from chock.eval.execute import run_case
 from chock.eval.model import Case
 from policies import gatekit
-from policies.unsafe_exec_review_cases import CATCH
+from policies.unsafe_exec_review_cases import CATCH, ORCH
 from policies.unsafe_exec_review_correct import CORRECT
 
 POLICY = "block-unsafe-code-execution"
@@ -26,8 +26,8 @@ NOW_ALLOWED = {"uce-k04", "uce-k06", "uce-k12", "uce-k16", "uce-k17", "uce-k18"}
 
 def observed(case_id: str) -> str:
     """`block` or `allow`, as the replay judges the review's case."""
-    event, files, head = {**CATCH, **CORRECT}[case_id]
-    expect = "block" if case_id in CATCH else "allow"
+    event, files, head = {**CATCH, **ORCH, **CORRECT}[case_id]
+    expect = "allow" if case_id in CORRECT else "block"
     case = Case(
         id=case_id,
         category="review",
@@ -41,12 +41,12 @@ def observed(case_id: str) -> str:
     return expect if result.outcome == "pass" else ("allow" if expect == "block" else "block")
 
 
-CAUGHT = sorted(set(CATCH) - MISSED_BY_DESIGN)
+CAUGHT = sorted(set(CATCH) - MISSED_BY_DESIGN) + sorted(ORCH)
 SILENT = sorted(set(CORRECT) - STILL_REFUSED - NOW_ALLOWED)
 
 
-def test_the_review_has_33_catches_and_34_rebuilt_correct_cases() -> None:
-    assert len(CATCH) == 33
+def test_the_review_has_33_catches_two_more_and_34_rebuilt_correct_cases() -> None:
+    assert len(CATCH) == 33 and len(ORCH) == 2
     assert len(CORRECT) == 34
 
 

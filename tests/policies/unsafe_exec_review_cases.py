@@ -165,3 +165,15 @@ CATCH: dict[str, tuple[str, dict[str, str], dict[str, str]]] = {
         README,
     ),
 }
+
+# Added by the orchestrator's review of 0.1.3: the vector on a line of its own, and returned from a function.
+ORCH: dict[str, tuple[str, dict[str, str], dict[str, str]]] = {
+    "orch-vector-own-line": (
+        "commit",
+        {
+            "app/ops.py": 'import subprocess\n\n\ndef go(cmd):\n    subprocess.run(\n        ["sh", "-c", cmd],\n        check=True,\n    )\n'
+        },
+        README,
+    ),
+    "orch-vector-returned": ("commit", {"app/ops.py": 'def argv(cmd):\n    return ["sh", "-c", cmd]\n'}, README),
+}
