@@ -19,7 +19,7 @@
 
 ## What it is about
 
-Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a wildcard action, resource or principal in string or list form, any quote style (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on s3, iam, sts, kms and ec2 actions, Allow with an inverted key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-line strict-JSON AWS Deny statement is exempt. Friction, not a security boundary: grants split across lines (iam-policy-scan reads those), partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants pass; other Deny forms and admission-webhook wildcards are refused. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit; at agent tool-use only when that exact line is already committed in HEAD.
+Pre-commit gate for the mechanizable slice of ASI03, one line at a time, in IaC, config, policy and CDK files, comments skipped: a wildcard action or principal (a bare Resource star is iam-policy-scan's), any quote style (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on s3, iam, sts, kms and ec2 actions, Allow with an inverted key, administrator, power-user and IAM-admin managed policies, GCP owner and editor roles and public members, Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner. Only a one-line strict-JSON AWS Deny statement is exempt. Friction, not a security boundary: grants split across lines (iam-policy-scan reads those), partial wildcards, unlisted services and roles, YAML aliases or tags and runtime-built grants pass; other Deny forms and admission-webhook wildcards are refused. Escape: 'pragma: allowlist broad-privilege' on the same line, honoured at commit; at agent tool-use only when that exact line is already committed in HEAD.
 
 ## What it solves
 
@@ -50,7 +50,7 @@ chock add block-wildcard-iam
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzZmZkYmNhMDZlZmI5NGNiMThkODc4NmZmZjQ4MjdhNWMxZGI2YzFlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2std2lsZGNhcmQtaWFtIiwidmVyc2lvbiI6IjAuMS40Iiwic2hhMjU2IjoiNGFjM2M4Mjc3NjhmZjQ2MTg0ZjEyZDllZTcxNzg4YjQxZWRlMWFmYmU1YzJlMTQ2MzdlOWIxMGJhZmFlM2Y0NSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIwOTZkZTk4ZWMwODBiMzM0OThjNTQ2ZTUxY2ZlZjAyOTUxZjJiNDZkIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2std2lsZGNhcmQtaWFtIiwidmVyc2lvbiI6IjAuMS41Iiwic2hhMjU2IjoiMmE3OTFlMTc2NGEyMzI3YjJlMTZiYmEwMWQ5NWQ4NTZiOTdmNGMzNGEzNmNkNTFhZDhlMDdjMzE2NmVjYWJlYSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
