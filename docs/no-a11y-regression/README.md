@@ -49,7 +49,7 @@ chock add no-a11y-regression
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI4YTkxNmQyYTlhMzU4OWM4YzZhNDQxYzZkMmIzYWEzZWI2NWU5MjZiIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibm8tYTExeS1yZWdyZXNzaW9uIiwidmVyc2lvbiI6IjEuMS41Iiwic2hhMjU2IjoiY2RiOGUzNTY4NTVmYzNhMjc4NDU2MWNjNmQ5MWYxODM0ZWEzZmI4MzE5ODhjN2FjNmEyMTAzZTFhOTc0MTUwOCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIwOGZjOTc5ZGM2MmI0NjAwNDRkYjMyMDU4OTNiNGViYWUwNjFlN2M0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibm8tYTExeS1yZWdyZXNzaW9uIiwidmVyc2lvbiI6IjEuMS41Iiwic2hhMjU2IjoiY2RiOGUzNTY4NTVmYzNhMjc4NDU2MWNjNmQ5MWYxODM0ZWEzZmI4MzE5ODhjN2FjNmEyMTAzZTFhOTc0MTUwOCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

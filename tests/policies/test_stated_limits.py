@@ -46,7 +46,7 @@ def curl_verdict(command: str) -> int:
 
 IAM_CAUGHT = {
     "json-action-star": ("p.json", '{"Action": "*"}\n'),  # pragma: allowlist broad-privilege
-    "yaml-single-quoted": ("p.yaml", "Resource: '*'\n"),  # pragma: allowlist broad-privilege
+    "yaml-single-quoted": ("p.yaml", "Action: '*'\n"),  # pragma: allowlist broad-privilege
     "terraform-one-element": ("main.tf", 'actions = ["*"]\n'),  # pragma: allowlist broad-privilege
     "gcp-owner": ("bind.sh", "--role='roles/owner'\n"),  # pragma: allowlist broad-privilege
     "json-list": ("p.json", '{"Action": ["*"]}\n'),  # pragma: allowlist broad-privilege
