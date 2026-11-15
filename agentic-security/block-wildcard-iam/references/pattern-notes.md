@@ -54,6 +54,15 @@ suite holds the literal forms.
 - Azure Contributor, Microsoft.Authorization wildcards and scope, GCP admin-suffix
   and impersonation roles, whole-service wildcards on services beyond the five
   listed, Kubernetes nonResourceURLs and escalate/bind/impersonate verbs.
+- Not judged since 0.1.5: a Resource wildcard (and Terraform `resources = [...]`) is left to
+  `iam-policy-scan`, because a line cannot tell it on describe/list actions (correct) from the same
+  line under write actions. Missed as a result: a resource wildcard with write actions (I02, I02v),
+  `iam:PassRole` on a wildcard (I04, I04v) and an unlisted service wildcard on a wildcard resource (I11v).
+- Known false refusals, one line carrying no sign of its Deny, condition or HEAD: a pretty-printed
+  Deny (N05, N06), a Principal narrowed by a condition (N08), a KMS default key policy (N07), a
+  re-indented legacy file (N18), admission-webhook wildcards (N22), and a `.json`/`.yaml` test
+  fixture (N12: applies_to.paths has no exclusion). The message names the file, not the line. A
+  script gate that parses the statement (H-2b) is where these belong.
 - Lines split by the runner on vertical tab, form feed or other Unicode line
   breaks are judged as separate lines.
 - False positives that take the pragma (or narrowing): a wildcard resource on
