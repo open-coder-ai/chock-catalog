@@ -126,9 +126,9 @@
       "id": "protect-ci-workflows",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "9cdd0aba07068856569b04b202de8f6e1b5b46bff400e682e916a5a2a02bfac9",
+      "sha256": "ff28435c96d6f5f97a7fc3e7aab69882acfbdb32b6be60a524615ea9377c025a",
       "source": "local",
-      "artifacts_sha256": "b7e43bac0490fad5cc0eb37c3631470c4e668b50383b800afb881903f399d027"
+      "artifacts_sha256": "289af79b9f745af49e9be0212fc5dc18ca57dc3458e3cd1d1e1ead35edd7929b"
     },
     {
       "id": "protect-commit-privacy",
@@ -150,9 +150,9 @@
       "id": "scan-secrets",
       "version": "0.0.1",
       "managed": false,
-      "sha256": "c7cf363c6eb8a8ed47287beef9c06fe76dfd2d9c0ccc203fe74e32fba0e92a94",
+      "sha256": "9d99cab3f5657d37554d6bd899396d95847825c7ff0d8ec4bd3f850a4a5e8a00",
       "source": "local",
-      "artifacts_sha256": "69c793ef8d9c08fb3e7b68462793a6e80e48f80e1c621cb81d74d69b9a58aa13"
+      "artifacts_sha256": "f7e59e67f6ffc538f7f66efce202a35adec360f69cae3ff5cf8a99dd90369ac5"
     },
     {
       "id": "token-efficiency",

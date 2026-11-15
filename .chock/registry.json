@@ -323,9 +323,9 @@
       {
         "id": "protect-ci-workflows",
         "artifact": "rule",
-        "version": "0.2.7",
+        "version": "0.2.8",
         "name": "Protect CI Workflows",
-        "description": "Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i, cp into, git checkout/restore, cmdlets); reads and `chock sync` pass. Edit/Write: tool_use gate asks a person before a write to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, shell writes to non-GitHub CI paths; plugin installs ship no gate.",
+        "description": "Asks a person before an agent weakens the checks that review its work. Shell guard refuses writes to .github/workflows/, .github/actions/, .github/dependabot.y*ml (redirect, rm/mv/tee/sed -i/yq -i/sponge/ curl -o, git checkout/apply, patch, cmdlets); reads and `chock sync` pass. Edit/Write and an agent's commit ask before a change to CI, hook or bot config (GitLab, Jenkins, CircleCI, CODEOWNERS, husky, more). Not judged: deletions, empty writes, non-GitHub CI paths in the shell, a patch not readable by path, a path set outside the command; plugin installs ship no gate.",
         "path": ".agents/policies/protect-ci-workflows",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
@@ -339,7 +339,8 @@
           "chock_shellparse/targets.py": "dd7a94d66bf2daa9bbdbdf863ac440e5b28a43470c2ad0c61bb4f32c70bc86a1",
           "chock_shellparse/wrappers.py": "545ccbbe00e42a953f8f51d0e8f47284da4c5a9e6393418f25850e3dc618e3c8",
           "chock_shellparse/writes.py": "0dab41ca9a6f4c22ce8d046905afb9763eac39d6de6fe34b863a6d35b6fcdb83",
-          "protect-ci-workflows.py": "09c2e72ad62a5a58c80c16c7c7ebea03c40170d9fe8411f3d4a93c39c3b2085b"
+          "protect-ci-workflows-gate.py": "242ea989a1d8608ba4ba97eaf98d76a87e79f5d9c1d49d9ea207dc6d53d70b39",
+          "protect-ci-workflows.py": "0eb90975f0a8dd68de15e33bfe8b46c023361a84d4c34353459239f9f916fcc8"
         }
       }
     ],
@@ -387,9 +388,9 @@
       {
         "id": "scan-secrets",
         "artifact": "hook",
-        "version": "0.1.3",
+        "version": "0.1.5",
         "name": "Scan Secrets",
-        "description": "Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values. Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.",
+        "description": "Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded values, quoted values with spaces, unlisted names, reference-, placeholder- or expression-like values (a call, a subscript, a member chain). Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.",
         "path": ".agents/policies/scan-secrets",
         "manifest": "manifest.yaml",
         "trust_tier": "community",

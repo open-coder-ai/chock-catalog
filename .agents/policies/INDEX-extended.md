@@ -10,7 +10,7 @@ budget focused on block and verify enforcement. Read them when the task matches.
   docs/**/<instruction>: ask; no waiver
 
 - **protect-ci-workflows**:
-  ci_config(.github/{workflows,actions,dependabot.y*ml}): never(shell_edit|delete); edit_or_write(those|CODEOWNERS|.gitlab-ci.yml|.gitlab/|Jenkinsfile*|.circleci/|azure-pipelines*|bitbucket-pipelines.yml|.buildkite/|.drone.yml|cloudbuild*|renovate|.pre-commit-config.yaml|.husky/|lefthook|.githooks/|.travis.yml|action.yml|more): ask_person
+  ci_config(.github/{workflows,actions,dependabot.y*ml}): never(shell_edit|delete); edit_or_write|agent_commit(those|CODEOWNERS|.gitlab-ci.yml|.gitlab/|Jenkinsfile*|.circleci/|azure-pipelines*|bitbucket-pipelines.yml|.buildkite/|.drone.yml|cloudbuild*|renovate|.pre-commit-config.yaml|.husky/|lefthook|.githooks/|.travis.yml|action.yml|more): ask_person
   if(ci_change_needed): ask_person; person edits from own shell; no agent-typed marker passes  # an agent must not disarm the checks on its own work
 
 - **protect-commit-privacy**:
