@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import mechanism
+import yaml
 
 
 def gate(action: str | None, on: list[str]) -> dict:
@@ -107,3 +108,82 @@ def test_a_tool_call_script_gate_keeps_its_script_as_a_guard(tmp_path: Path) -> 
 
 def test_a_blocking_script_gate_at_commit_is_still_enforced_at_commit(tmp_path: Path) -> None:
     assert mechanism.classify(tmp_path, _script_gate(tmp_path, ["commit"], "block")) == (mechanism.GATE, "script")
+
+
+def _judging(tmp_path: Path, source: str, action: str = "ask") -> dict:
+    manifest = {
+        "id": "p",
+        "hook": {
+            "gate": {
+                "kind": "script",
+                "on": ["commit", "tool_use"],
+                "action": action,
+                "params": {"script": "p-gate.py"},
+            }
+        },
+    }
+    (tmp_path / "implementations").mkdir(exist_ok=True)
+    (tmp_path / "implementations" / "p-gate.py").write_text(source, encoding="utf-8")
+    return manifest
+
+
+AGENT_ONLY = 'JUDGED = ("tool_use", "agent-commit")\n'
+
+
+def test_a_gate_that_judges_only_an_agents_commit_is_not_enforced_at_commit(tmp_path: Path) -> None:
+    for action in ("ask", "block"):
+        kind, label = mechanism.classify(tmp_path, _judging(tmp_path, AGENT_ONLY, action))
+        assert kind == mechanism.GUARD
+        assert mechanism.CEILING[kind].startswith("best-effort")
+        assert label.endswith("at an agent's write and an agent's commit")
+
+
+def test_the_label_says_what_the_agent_commit_gate_does(tmp_path: Path) -> None:
+    manifest = _judging(tmp_path, AGENT_ONLY)
+    assert mechanism.classify(tmp_path, manifest) == (
+        mechanism.GUARD,
+        "script gate that asks at an agent's write and an agent's commit",
+    )
+    assert mechanism.classify(tmp_path, _judging(tmp_path, AGENT_ONLY, "block"))[1].startswith(
+        "script gate that refuses"
+    )
+
+
+def test_a_shell_guard_beside_an_agent_commit_gate_names_both_parts(tmp_path: Path) -> None:
+    manifest = _judging(tmp_path, AGENT_ONLY)
+    (tmp_path / "implementations" / "p.py").write_text("", encoding="utf-8")
+    assert mechanism.classify(tmp_path, manifest) == (
+        mechanism.GUARD,
+        "shell guard that refuses + script gate that asks at an agent's write and an agent's commit",
+    )
+
+
+def test_a_gate_that_judges_a_persons_commit_stays_enforced_at_commit(tmp_path: Path) -> None:
+    for source in ('JUDGED = ("commit", "tool_use")\n', 'JUDGED = ("tool_use", "commit", "agent-commit")\n', ""):
+        assert mechanism.classify(tmp_path, _judging(tmp_path, source)) == (mechanism.GATE, "script")
+
+
+def test_a_judged_list_that_is_not_a_tuple_of_strings_is_not_trusted(tmp_path: Path) -> None:
+    for source in (
+        'JUDGED = ["tool_use", "agent-commit"]\n',
+        "JUDGED = (EVENT, 'agent-commit')\n",
+        "JUDGED: tuple = ()\n",
+        "def (\n",
+    ):
+        assert mechanism.classify(tmp_path, _judging(tmp_path, source))[0] == mechanism.GATE
+
+
+def test_a_gate_script_that_is_missing_is_not_trusted(tmp_path: Path) -> None:
+    manifest = _judging(tmp_path, AGENT_ONLY)
+    (tmp_path / "implementations" / "p-gate.py").unlink()
+    assert mechanism.classify(tmp_path, manifest)[0] == mechanism.GATE
+
+
+def test_the_shipped_protect_ci_workflows_is_in_the_agent_not_at_commit() -> None:
+    root = Path(__file__).resolve().parents[2] / "base" / "protect-ci-workflows"
+    manifest = yaml.safe_load((root / "manifest.yaml").read_text(encoding="utf-8"))
+    kind, label = mechanism.classify(root, manifest)
+    assert kind == mechanism.GUARD
+    assert mechanism.CEILING[kind].startswith("best-effort")
+    assert "shell guard that refuses" in label
+    assert "asks at an agent's write and an agent's commit" in label
