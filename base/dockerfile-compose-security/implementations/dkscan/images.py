@@ -18,8 +18,12 @@ HP06_FROM = re.compile(
 )
 HP06_IMAGE = re.compile(r"image:\s*['\"]?\S{1,256}:late[s]t\b")
 TABLE = Path(__file__).resolve().parent / "data" / "floating-tags.json"
-#: Tags that name a moving target (data/floating-tags.json); a missing or broken table raises and the runner refuses.
-FLOATING_TAGS = frozenset(json.loads(TABLE.read_text(encoding="utf-8"))["floating_tags"])
+#: Tag words that name a moving target, and release codenames (data/floating-tags.json); a missing or broken table
+#: raises and the runner refuses.
+_FACTS = json.loads(TABLE.read_text(encoding="utf-8"))
+FLOATING_TAGS = frozenset(_FACTS["floating_tags"])
+RELEASE_CODENAMES = frozenset(_FACTS["release_codenames"])
+TAG_PARTS = re.compile(r"[-._]")
 
 
 def substitute(text: str, env: dict[str, str | None]) -> str | None:
@@ -61,13 +65,20 @@ def split_ref(ref: str) -> tuple[str, str, str]:
 
 
 def judge(ref: str) -> str:
-    """'floating' (no digest, and no tag or a floating one), 'pinned' (a digest or any other tag) or 'scratch'."""
+    """'floating', 'pinned' (a digest, or a tag that names a release) or 'scratch'.
+
+    Without a digest a tag floats when it is absent, when any `-._` component is a floating word (`lts-alpine`), or
+    when it holds no digit and does not start with a release codename (`slim`, `alpine`; `bookworm-slim` names one).
+    """
     if ref.lower() == "scratch":
         return "scratch"
     _, tag, digest = split_ref(ref)
     if digest:
         return "pinned"
-    return "floating" if not tag or tag.lower() in FLOATING_TAGS else "pinned"
+    parts = TAG_PARTS.split(tag.lower())
+    if not tag or FLOATING_TAGS.intersection(parts):
+        return "floating"
+    return "pinned" if any(c.isdigit() for c in tag) or parts[0] in RELEASE_CODENAMES else "floating"
 
 
 def runs_as_non_root(ref: str) -> bool:

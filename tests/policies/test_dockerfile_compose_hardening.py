@@ -5,11 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from dkscan import images
 from policies import dockerkit, scriptkit
 from policies.dockerreview import BASE, LEGACY_COMPOSE, LONG, PIN, compose, engine, judged, mod
 
 person = dockerkit.person
+
+from dkscan import images  # noqa: E402  (the policy's own copy, on the path once the gate is loaded)
 
 WAIVED_DOCKERFILE = BASE + "USER root  # chock: allow dk-last-user-root\n"
 WAIVED_COMPOSE = compose("    privileged: true  # chock: allow cm-privileged-caps\n")
@@ -99,7 +100,47 @@ def test_a_second_service_with_the_same_weakness_is_new_after_a_rename() -> None
         ("app:nightly", "floating"),
         ("scratch", "scratch"),
         (f"ubuntu:latest{PIN}", "pinned"),
+        ("debian:stable-slim", "floating"),
+        ("node:lts-alpine", "floating"),
+        ("python:slim", "floating"),
+        ("golang:alpine", "floating"),
+        ("redis:alpine", "floating"),
+        ("nginx:mainline", "floating"),
+        ("app:beta", "floating"),
+        ("app:dev", "floating"),
+        ("debian:bookworm", "pinned"),
+        ("debian:bookworm-slim", "pinned"),
+        ("ubuntu:jammy", "pinned"),
+        ("ubuntu:noble", "pinned"),
+        ("debian:bookworm-20240812-slim", "pinned"),
+        ("alpine:3.20", "pinned"),
+        ("app:1.0.0-beta.1", "pinned"),
+        (f"python:slim{PIN}", "pinned"),
     ],
 )
-def test_only_the_listed_tags_float(ref: str, verdict: str) -> None:
+def test_a_tag_floats_by_its_components_and_a_release_needs_a_digit_or_a_codename(ref: str, verdict: str) -> None:
     assert images.judge(ref) == verdict
+
+
+@pytest.mark.parametrize(
+    "image", ["debian:stable-slim", "node:lts-alpine", "python:slim", "golang:alpine", "redis:alpine", "nginx:mainline"]
+)
+def test_a_floating_word_hidden_by_a_variant_is_caught_in_a_dockerfile_and_in_compose(image: str) -> None:
+    assert judged(None, {"Dockerfile": f"FROM {image}\nUSER 1000\n"}) == ("block", {"dk-from-floating"})
+    assert judged(None, {"compose.yaml": f"services:\n  a:\n    image: {image}\n"}) == ("ask", {"cm-image-floating"})
+
+
+@pytest.mark.parametrize(
+    "image",
+    [
+        "python:3.12.4-slim",
+        f"debian:bookworm{PIN}",
+        "node:20",
+        "postgres:16.4",
+        "alpine:3.20",
+        "debian:bookworm-20240812-slim",
+    ],
+)
+def test_a_version_or_a_digest_or_a_release_codename_is_allowed(image: str) -> None:
+    assert judged(None, {"Dockerfile": f"FROM {image}\nUSER 1000\n"})[0] == "allow"
+    assert judged(None, {"compose.yaml": f"services:\n  a:\n    image: {image}\n"})[0] == "allow"
