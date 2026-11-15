@@ -278,27 +278,23 @@ STILL_REFUSED = {"N05", "N06", "N07", "N08", "N12", "N18", "N22"}
 STILL_CAUGHT = {"I01", "I03", "I03v", "I06", "I07", "I07v", "I08", "I08v", "I09v", "I10", "I10v", "I11"}
 
 
-def verdict(tmp_path: Path, case: Case, monkeypatch: pytest.MonkeyPatch) -> tuple[bool, str]:
-    """(refused, stderr) for `case` staged in a fresh repository, judged as a person's commit."""
+def verdict(tmp_path: Path, case: Case, monkeypatch: pytest.MonkeyPatch) -> bool:
+    """Whether the gate refuses `case` staged in a fresh repository, judged as a person's commit."""
     for marker in ("CLAUDECODE", "AI_AGENT", "CHOCK_AGENT_COMMIT"):
         monkeypatch.delenv(marker, raising=False)
     repo = scriptkit.init_repo(tmp_path / "r", {"README.txt": "x\n", **case.base})
     scriptkit.write(repo, case.files)
     scriptkit.git(repo, "add", "-A")
-    code, err = gatekit.judge(POLICY, repo, gatekit.COMMIT)
-    return code != 0, err
+    return gatekit.judge(POLICY, repo, gatekit.COMMIT)[0] != 0
 
 
 @pytest.mark.parametrize("case", [c for c in CATCH if c.id in STILL_CAUGHT], ids=lambda c: c.id)
 def test_a_violation_the_line_gate_catches_is_still_refused(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: Case
 ) -> None:
-    assert verdict(tmp_path, case, monkeypatch)[0]
+    assert verdict(tmp_path, case, monkeypatch)
 
 
-FIXED = [c for c in CORRECT if c.id not in STILL_REFUSED]
-
-
-@pytest.mark.parametrize("case", FIXED, ids=lambda c: c.id)
+@pytest.mark.parametrize("case", [c for c in CORRECT if c.id not in STILL_REFUSED], ids=lambda c: c.id)
 def test_correct_work_is_allowed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: Case) -> None:
-    assert not verdict(tmp_path, case, monkeypatch)[0]
+    assert not verdict(tmp_path, case, monkeypatch)
