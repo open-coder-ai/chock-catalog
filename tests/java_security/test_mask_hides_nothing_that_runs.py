@@ -43,6 +43,29 @@ COMMENT_HOLDING_CDATA_TEXT = (
 )
 
 
+PI_OPENS_A_COMMENT = POM_HEAD + "  <?note <!-- ?>\n" + VULNERABLE_DEPENDENCY + "  <?note --> ?>\n</project>\n"
+
+COMMENT_HOLDING_PI_TEXT = (
+    POM_HEAD + "  <!-- was: <?note x\n" + VULNERABLE_DEPENDENCY + "  -->\n  <name>orders</name>\n</project>\n"
+)
+
+
+def test_a_comment_opener_inside_a_processing_instruction_is_text_and_hides_no_dependency(gate: GateRun) -> None:
+    code, stderr = gate({"pom.xml": PI_OPENS_A_COMMENT})
+    assert code == BLOCKED
+    assert "build-vulnerable-dependency" in stderr
+
+
+def test_a_real_comment_that_mentions_a_processing_instruction_is_still_blanked(gate: GateRun) -> None:
+    code, stderr = gate({"pom.xml": COMMENT_HOLDING_PI_TEXT})
+    assert code == 0, stderr
+
+
+def test_the_processing_instruction_itself_is_kept_whole() -> None:
+    raw = "<a><?x <!-- ?><!-- y --></a>\n"
+    assert mask(FileText("a.xml", raw)).text == "<a><?x <!-- ?>" + " " * 10 + "</a>\n"
+
+
 def test_a_kotlin_string_template_runs_its_code(gate: GateRun) -> None:
     code, stderr = gate({"src/main/kotlin/app/F.kt": KOTLIN_TEMPLATE})
     assert code == BLOCKED
