@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.7.0"
+version: "0.7.1"
 description: >
   trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android), SQL/JPA/MyBatis,
   templates, application.properties/.yml, web.xml, pom.xml, Gradle; "customize java security"
@@ -45,6 +45,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.1
+  date: '2026-11-15'
+  changes:
+  - "Rules no longer fire on text no code runs through (hardening review of 2026-11-15, REVIEW-java-security.md, section 3.2 and section 8 item 1). One masking step runs before the rules and blanks, keeping lines and columns: `//` and `/* */` comments and Javadoc in Java and Kotlin; a string or text block that quotes Java call syntax (`Cipher.getInstance(`, `new XStream(`) and is not SQL; comments in Gradle and Kotlin script, `<!-- -->` in XML (a commented-out pom dependency or mapper line), `#` and `!` lines in .properties and `#` comments in YAML. A literal that is a rule's subject (a cipher name, a JDBC URL, a query text, a coordinate, a secret value) is kept, and so is any Kotlin literal holding a `$` template, whose `${...}` runs. XML masking walks the text once and skips CDATA sections and processing instructions whole, where `<!--` is text. A `// chock: allow` waiver is still read from the file as written. The review's 46 comment cases are all allowed (14 were). One rule changed on its own: crypto-tls-trust-all no longer fires on an `import` line naming NoopHostnameVerifier or another unambiguous token, since an import runs nothing; each use of the class is still refused. The review's insecure cases are caught as before (61 of 84 plain, 27 of 72 variations). Limit: a literal that quotes code but sits inside a rule's subject (a SpEL expression with a method call) is blanked; a `#` line inside a YAML block scalar or multi-line quoted scalar, a `.properties` continuation line starting with `#`, and a `#` after an apostrophe in a plain scalar are read as comments or as written, not as the value they are."
 - version: 0.7.0
   date: '2026-10-02'
   changes:

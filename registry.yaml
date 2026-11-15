@@ -406,7 +406,7 @@ policies:
     rule is the advisory layer over them plus atomic-commit guidance no gate can decide.'
 - id: java-security
   path: base/java-security
-  version: 0.7.0
+  version: 0.7.1
   artifact: hook
   enforcement: block
   status: draft

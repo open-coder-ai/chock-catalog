@@ -91,11 +91,36 @@ def _step(text: str, i: int, state: int) -> tuple[str, int, int]:
     return step(text, i) if step is not None else _in_literal(text, i, state)
 
 
-def _lex(text: str) -> str:
+#: What a literal keeps when comments are masked but literals are not blanked outright.
+BLANK_ALL, KEEP_ALL, KEEP_TEXT_ONLY, KEEP_TEMPLATES = range(4)
+
+#: Java call syntax inside a literal: `Cipher.getInstance(` or `new XStream(`. Such a literal is advice or a log
+#: message quoting code, not the argument a rule reads. SQL is excluded: a query text is a rule's subject.
+_CALL = re.compile(r"\w\.\w+\s*\(|\bnew\s+[A-Za-z_][\w.]*\s*\(")
+_SQL = re.compile(
+    r"\bselect\b.+\bfrom\b|\binsert\s+into\b|\bupdate\s+\w+\s+set\b|\bdelete\s+from\b", re.IGNORECASE | re.DOTALL
+)
+
+
+def _kept(interior: str, literals: int) -> bool:
+    """A Kotlin `$` template runs its code, so `KEEP_TEMPLATES` keeps any literal that holds one."""
+    template = literals == KEEP_TEMPLATES and "$" in interior
+    return literals == KEEP_ALL or template or not _CALL.search(interior) or bool(_SQL.search(interior))
+
+
+def _lex(text: str, literals: int = BLANK_ALL) -> str:
     out: list[str] = []
     i, state = 0, _CODE
+    start = mark = 0
     while i < len(text):
+        was = state
         emitted, width, state = _step(text, i, state)
+        if literals != BLANK_ALL:
+            quoted = (_STRING, _TEXT_BLOCK, _CHAR) if literals == KEEP_ALL else (_STRING, _TEXT_BLOCK)
+            if state in quoted and was == _CODE:
+                start, mark = i + width, len(out) + 1
+            elif was in quoted and state == _CODE and _kept(text[start:i], literals):
+                out[mark:] = [text[start:i]]
         out.append(emitted)
         i += width
     return "".join(out)
@@ -125,18 +150,29 @@ def _decoded(text: str) -> tuple[str, list[int]]:
     return "".join(chars), widths
 
 
+def _lexed(text: str, literals: int) -> str:
+    """`text` lexed with its Unicode escapes decoded first; each decoded character keeps its columns."""
+    if "\\u" not in text:
+        return _lex(text, literals)
+    decoded, widths = _decoded(text)
+    out: list[str] = []
+    for emitted, width in zip(_lex(decoded, literals), widths, strict=True):
+        out.append(emitted if width == 1 else (" " if emitted.isspace() else emitted) + " " * (width - 1))
+    return "".join(out)
+
+
 @lru_cache(maxsize=_CACHE_SIZE)
 def blank(text: str) -> str:
     """`text` with comments and literal contents blanked, newlines and columns kept.
 
     Cached: a pure function of its argument, and the hottest call in the engine."""
-    if "\\u" not in text:
-        return _lex(text)
-    decoded, widths = _decoded(text)
-    out: list[str] = []
-    for emitted, width in zip(_lex(decoded), widths, strict=True):
-        out.append(emitted if width == 1 else (" " if emitted.isspace() else emitted) + " " * (width - 1))
-    return "".join(out)
+    return _lexed(text, BLANK_ALL)
+
+
+@lru_cache(maxsize=_CACHE_SIZE)
+def uncommented(text: str, literals: int) -> str:
+    """`text` with comments blanked and literals kept (`KEEP_ALL`), or blanked only when they quote Java code."""
+    return _lexed(text, literals)
 
 
 @lru_cache(maxsize=_CACHE_SIZE)
