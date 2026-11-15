@@ -51,9 +51,12 @@ def test_at_the_turns_end_disk_holds_the_write_so_head_is_the_baseline(repo: Pat
     assert mod.judge(payload(repo, {"page.html": RENAMED})) == []
 
 
-def test_a_new_file_is_judged_against_nothing(repo: Path) -> None:
+def test_a_new_file_is_judged_against_nothing(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert mod.judge(payload(repo, {"new.html": NAMED})) == []
-    assert mod.judge(payload(repo, {"new.html": '<img src="/a.png">\n'}))
+    assert capsys.readouterr().err == ""
+    # A new element that lacks its name is no regression: it warns and does not block.
+    assert mod.judge(payload(repo, {"new.html": '<img src="/a.png">\n'})) == []
+    assert "warning: new.html: img[src=/a.png]" in capsys.readouterr().err
 
 
 def test_no_writes_is_silent(repo: Path) -> None:

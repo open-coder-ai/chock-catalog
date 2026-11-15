@@ -57,6 +57,13 @@ class Probe:
     def _refused(self, before: str, after: str) -> bool:
         return any(row["action"] == self.guard.DENY for row in self.guard.evaluate(before, after))
 
+    def warns(self, label: str, before: str, after: str) -> None:
+        """A weak name supplied as a fix is worth a warning, and no longer blocks."""
+        self.checked += 1
+        rows = self.guard.evaluate(before, after)
+        if any(r["action"] == self.guard.DENY for r in rows) or not any(r["action"] == self.guard.WARN for r in rows):
+            self.failures.append(f"{label}: expected a warning and no refusal\n      was: {before}\n      now: {after}")
+
     def refuses(self, label: str, before: str, after: str) -> None:
         self.checked += 1
         if not self._refused(before, after):
@@ -181,13 +188,13 @@ def check_noise(p: Probe) -> None:
     """A name supplied as a fix that names nothing is not a fix."""
     bare_img = '<img data-testid="i" src="/chart.png">'
     for word in p.noise["words"]:
-        p.refuses(f"alt={word!r}", bare_img, f'<img data-testid="i" src="/chart.png" alt="{word}">')
+        p.warns(f"alt={word!r}", bare_img, f'<img data-testid="i" src="/chart.png" alt="{word}">')
     for extension in p.noise["file_extensions"]:
         filename = f"quarterly-revenue.{extension}"
-        p.refuses(f"alt={filename!r}", bare_img, f'<img data-testid="i" src="/chart.png" alt="{filename}">')
+        p.warns(f"alt={filename!r}", bare_img, f'<img data-testid="i" src="/chart.png" alt="{filename}">')
     for word in p.noise["by_tag"]["a"]:
         bare_link = '<a data-testid="l" href="/pricing"></a>'
-        p.refuses(f"link text {word!r}", bare_link, f'<a data-testid="l" href="/pricing">{word}</a>')
+        p.warns(f"link text {word!r}", bare_link, f'<a data-testid="l" href="/pricing">{word}</a>')
         # The same word on a button: <button>Continue</button> names a button honestly, which is
         # why link noise cannot live in the global list.
         bare_button = '<button data-testid="b"></button>'
@@ -217,7 +224,7 @@ def check_a_name_the_path_also_spells(p: Probe) -> None:
     # What the rule is for: a path segment pasted where a description belongs. Punctuation no word
     # carries inside itself, no spaces, and the src spelling it -- all three, or it is a name.
     for alt, src in (("icons/home", "/icons/home.svg"), ("hero_banner", "/img/hero_banner.png")):
-        p.refuses(f"alt={alt!r} copied out of the src", img(src), img(src, alt))
+        p.warns(f"alt={alt!r} copied out of the src", img(src), img(src, alt))
     p.allows("a path segment the src does not spell", img("/img/promo.png"), img("/img/promo.png", "nav/primary"))
     p.allows("a slash inside a phrase", img("/gauge.svg"), img("/gauge.svg", "Speed in km/h"))
     # The hyphen is excluded, so a hyphen-joined slug goes unremarked. That is the known cost, and
@@ -231,7 +238,7 @@ def check_name_length(p: Probe) -> None:
     """min_length catches two characters of alt text; it must not refuse a button saying Go."""
     limit = p.noise["min_length"]
     bare_img = '<img data-testid="i" src="/a.png">'
-    p.refuses(
+    p.warns(
         f"an alt of {limit - 1} characters",
         bare_img,
         f'<img data-testid="i" src="/a.png" alt="{"x" * (limit - 1)}">',
