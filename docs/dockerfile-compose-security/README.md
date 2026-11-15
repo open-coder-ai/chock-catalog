@@ -19,7 +19,7 @@
 
 ## What it is about
 
-Blocks (some rules ask) when a change to a Dockerfile, Containerfile or compose file adds: a base image with no tag, latest, an unresolvable ARG or no digest (stage-aware: FROM or COPY --from a stage is not an image); a final stage running as root; TLS or package-signature checks off; secret-named ENV/ARG/environment literals; COPY of key or .env files; remote ADD without checksum; fetch piped to a shell; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd; unpinned git clone; ONBUILD RUN; compose privileged, broad cap_add, unconfined profiles, devices, host namespaces, runtime socket or host-root mounts, database ports on every interface, untagged images. A one-line form is left to block-fetch-exec-in-files, block-unpinned-agent-components or agentic-code-security only where that gate is installed and reads the file; scan-secrets lines always. Misses: build args overriding defaults, commands in variables, aliases or $'' quoting, bake and k8s files. Friction, not a boundary.
+Blocks (some rules ask) when a change to a Dockerfile, Containerfile or compose file adds: a base image with no tag, a floating tag (latest, stable, edge, lts) or an unresolvable ARG; a final stage running as root; TLS or signature checks off; secret ENV/ARG/environment literals; COPY of key or .env files; remote ADD without checksum; fetch piped to a shell; RUN --security=insecure; chmod 777 or setuid; sudo, sshd, chpasswd; unpinned git clone; ONBUILD RUN; compose privileged, broad cap_add, unconfined profiles, devices, host namespaces, runtime socket or host-root mounts, DB ports on every interface. A one-line form goes to block-fetch-exec-in-files, block-unpinned-agent-components or agentic-code-security only where that gate is installed and reads the file; scan-secrets lines always. Misses: digest pinning (a version tag passes), build args overriding defaults, commands in variables, aliases or $'' quoting, bake and k8s files, extends or include, other file names, a moved file. Friction, not a boundary.
 
 ## What it solves
 
@@ -35,7 +35,7 @@ Parameters, from `manifest.yaml`:
 
 On a match it prints:
 
-> A Dockerfile or compose change weakens the container's isolation or supply chain (each finding names its rule, weakness and fix). Pin images by tag and digest, end the final stage with a non-root USER, keep TLS and signature checks on, pass secrets with RUN --mount=type=secret or compose secrets, and drop privileged, broad cap_add, host namespaces and host-root or Docker socket mounts. Deny-tier findings block; ask-tier findings ask a person. A person may keep a reviewed finding with '# chock: allow <rule-id>' on the line or the comment line above it; in the agent only a line already committed in HEAD counts, so an agent asks a person.
+> A Dockerfile or compose change weakens the container's isolation or supply chain (each finding names its rule, weakness and fix). Pin images to a version tag (a digest is better), end the final stage with a non-root USER, keep TLS and signature checks on, pass secrets with RUN --mount=type=secret or compose secrets, and drop privileged, broad cap_add, host namespaces and host-root or Docker socket mounts. Deny-tier findings block; ask-tier findings ask a person. A person may keep a reviewed finding with '# chock: allow <rule-id>' on the line or the comment line above it; in the agent only a line already committed in HEAD counts, so an agent asks a person.
 
 ## Which primitive it becomes
 
@@ -48,7 +48,7 @@ chock add dockerfile-compose-security
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhNmE4ODQxMTkzOTk0MGMzYTVhM2YxMjI5OWZkYWIzMjRjN2RjMWQyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZG9ja2VyZmlsZS1jb21wb3NlLXNlY3VyaXR5IiwidmVyc2lvbiI6IjAuMi4wIiwic2hhMjU2IjoiZTZkNmRmNjcyYjNmNWRhMTI3NzJjZjYyNjA5YzQzODNmMmJlYTYwMTI2OTUxZDUwZmI4NzRkOGNmZWNjOTA2MCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI2Zjg4Mzg5ZTQ5ZGE3MmQ3MTU2YWFjNTg3NzU3Y2E0YmQ5ZDNmZWVlIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiZG9ja2VyZmlsZS1jb21wb3NlLXNlY3VyaXR5IiwidmVyc2lvbiI6IjAuMi4xIiwic2hhMjU2IjoiNTI4YzZiNzI3Nzk2ZWFiYjhjZGUwNjZhOGZmYWVhMDEwNWQ5ODUzNTI0YTQ3MWJlYzdkMDVhMjhhNDhmOWQ5NyJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
