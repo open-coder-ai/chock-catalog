@@ -893,27 +893,28 @@ policies:
     Skips file rows in container exec.'
 - id: scan-secrets
   path: base/scan-secrets
-  version: 0.1.4
+  version: 0.1.5
   artifact: hook
   enforcement: block
   status: production
   mandatory: true
   mechanism: content_regex
   enforces: enforced-at-commit
-  eval_cases: 59
-  eval_executed: 59
+  eval_cases: 64
+  eval_executed: 64
   label:
     claude-code: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end"}
     codex: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     copilot: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     devin: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. If the hook errors, the action goes through (vendor docs only, not witnessed)"}
-    misses: "split or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values."
+    misses: "split or encoded values, quoted values with spaces, unlisted names, reference-, placeholder- or expression-like values (a call, a subscript, a member chain)."
   description: 'Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs,
     private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code),
     URI creds, Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split
-    or encoded values, quoted values with spaces, unlisted names, reference- or placeholder-like values.
-    Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.'
+    or encoded values, quoted values with spaces, unlisted names, reference-, placeholder- or expression-like
+    values (a call, a subscript, a member chain). Runs: commit, agent write, turn end. Pragma same line;
+    agent: only if in HEAD; MCP gateway: never.'
 - id: token-efficiency
   path: base/token-efficiency
   version: 0.1.3
@@ -1008,7 +1009,7 @@ policies:
     computed names evade it. Waiver: ''chock: allow test-skip'' same line; agent: only if in HEAD.'
 - id: guard-memory-writes
   path: base/guard-memory-writes
-  version: 0.0.11
+  version: 0.0.12
   artifact: hook
   enforcement: block
   status: draft

@@ -190,7 +190,7 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | Policy | Blocks | Evals |
 | :--- | :--- | ---: |
 | [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
-| [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes -- vendor tokens, private keys, JWTs, named key and password values, URI credentials -- and secret files by path (`.env*`, keys); misses split or encoded values | 59/59 |
+| [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes -- vendor tokens, private keys, JWTs, named key and password values, URI credentials -- and secret files by path (`.env*`, keys); misses split or encoded values | 64/64 |
 | [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 61/61 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 72/72 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 17/17 |
