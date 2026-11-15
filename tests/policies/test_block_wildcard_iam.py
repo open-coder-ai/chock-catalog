@@ -16,11 +16,13 @@ PATTERN = re.compile(SPEC["params"]["content_pattern"])
 PRAGMA = re.compile(SPEC["params"]["allowlist_pragma"])
 
 BLOCKED = [
+    # A code line that merely ends in a comment is still a grant.
+    r'actions = ["*"] # all',
+    r'resources: ["*"]',
     r'{"Effect": "Allow", "Action": "*", "Resource": "arn:aws:s3:::reports"}',
     r'"Action": ["*"],',
     r'"Action": [ "*" ],',
     r'"Action": ["s3:GetObject", "*"],',
-    r'"Resource": ["*"]',
     r'"Action":"*"',
     '"Action"\t:\t"*",',
     r"'Action': '*'",
@@ -49,7 +51,6 @@ BLOCKED = [
     r'"Action": "\u002a"',
     r'actions = ["*"]',
     r'actions   =   [ "*" ]',
-    r'resources = ["*"]',
     r'actions = ["s3:GetObject", "*"]',
     r'identifiers = ["*"]',
     r"actions: ['*'],",
@@ -107,7 +108,6 @@ BLOCKED = [
     r"role.addToPolicy(new iam.PolicyStatement({ actions: ['*'], resources: ['*'] })); // effect: Deny",
     r"  Action: '*'  # Effect: Deny",
     r'iam.PolicyStatement(actions=["*"], resources=["*"])  # effect=Deny',
-    r'resources = ["*"] # Effect = Deny',
     r"new iam.PolicyStatement({ effect: iam.Effect.DENY, actions: ['s3:x'] }); "
     + r"new iam.PolicyStatement({ actions: ['*'], resources: ['*'] });",
     r'{"Statement":[{"Effect":"Deny","Action":"x:Y","Resource":"*"},{"Effect":"\u0041llow","Action":"*","Resource":"*"}]}',
@@ -119,7 +119,6 @@ BLOCKED = [
     r"Action: '*' // all",
     r'"Action": "*" /* all */',
     r"Action: '*' -- x",
-    r'"Resource": "*" + suffix',
     r"Policies: [AdministratorAccess]",
     r"Policies: AdministratorAccess",
     r"  - AdministratorAccess",
@@ -143,6 +142,19 @@ BLOCKED = [
 ]
 
 ALLOWED = [
+    # A bare resource wildcard: the line cannot see the actions beside it, so iam-policy-scan judges it.
+    r'"Resource": ["*"]',
+    r'"Resource": "*"',
+    r"Resource: '*'",
+    r'resources = ["*"]',
+    r'resources = ["*"] # Effect = Deny',
+    r'"Resource": "*" + suffix',
+    # A whole-line comment is not a grant.
+    r'# actions = ["*"]',
+    r'    // "Action": "*"',
+    r'/* "Principal": "*" */',
+    r' * role = "roles/owner"',
+    r"  # kubectl create clusterrolebinding ci --clusterrole=cluster-admin",
     r'{"Effect": "Allow", "Action": "s3:GetObject", "Resource": "arn:aws:s3:::reports/*"}',
     r'"Resource": "arn:aws:s3:::bucket/*"',
     r'"Resource": ["arn:aws:s3:::b", "arn:aws:s3:::b/*"]',
