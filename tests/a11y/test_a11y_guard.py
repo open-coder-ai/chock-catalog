@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import check_a11y_pairs as pairs
 import check_a11y_rules as rules
 import check_a11y_table as table
 import pytest
@@ -66,3 +67,7 @@ def test_both_checkers_run_every_check_they_define() -> None:
     for module, listed in ((rules, RULE_CHECKS), (table, TABLE_CHECKS)):
         defined = {name for name in dir(module) if name.startswith("check_")}
         assert defined == {c.__name__ for c in listed}, module.__name__
+
+
+def test_the_review_pairs_are_judged_as_hardened(guard: object) -> None:
+    assert pairs.check(guard) == []

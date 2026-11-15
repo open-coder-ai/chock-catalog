@@ -1,0 +1,1376 @@
+[
+ {
+  "id": "R01",
+  "kind": "regression",
+  "title": "alt removed from an informative image",
+  "reviewed": "caught",
+  "files": {
+   "report.html": {
+    "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
+    "after": "<img src=\"/img/revenue-q3.png\">\n"
+   }
+  }
+ },
+ {
+  "id": "R02",
+  "kind": "regression",
+  "title": "alt emptied on an informative image",
+  "reviewed": "caught",
+  "files": {
+   "report.html": {
+    "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
+    "after": "<img src=\"/img/revenue-q3.png\" alt=\"\">\n"
+   }
+  }
+ },
+ {
+  "id": "R03",
+  "kind": "regression",
+  "title": "aria-label removed from an icon-only button (inline svg child)",
+  "reviewed": "missed",
+  "files": {
+   "dialog.html": {
+    "before": "<div class=\"modal\"><button type=\"button\" class=\"icon-btn\" aria-label=\"Close dialog\"><svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M6 18L18 6\"/></svg></button><p>Saved.</p></div>\n",
+    "after": "<div class=\"modal\"><button type=\"button\" class=\"icon-btn\"><svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M6 18L18 6\"/></svg></button><p>Saved.</p></div>\n"
+   }
+  }
+ },
+ {
+  "id": "R04",
+  "kind": "regression",
+  "title": "aria-label removed from an icon-only button (CSS icon, no children)",
+  "reviewed": "caught",
+  "files": {
+   "dialog.html": {
+    "before": "<div class=\"modal\"><button type=\"button\" class=\"btn-close\" aria-label=\"Close\"></button><p>Saved.</p></div>\n",
+    "after": "<div class=\"modal\"><button type=\"button\" class=\"btn-close\"></button><p>Saved.</p></div>\n"
+   }
+  }
+ },
+ {
+  "id": "R05",
+  "kind": "regression",
+  "title": "aria-label removed from an icon-only button (font-icon <i> child)",
+  "reviewed": "missed",
+  "files": {
+   "search.html": {
+    "before": "<form action=\"/search\"><input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search the site\"><button type=\"submit\" aria-label=\"Search\"><i class=\"fa fa-search\"></i></button></form>\n",
+    "after": "<form action=\"/search\"><input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search the site\"><button type=\"submit\"><i class=\"fa fa-search\"></i></button></form>\n"
+   }
+  }
+ },
+ {
+  "id": "R06",
+  "kind": "regression",
+  "title": "<label for> removed, placeholder left in its place",
+  "reviewed": "caught",
+  "files": {
+   "signup.html": {
+    "before": "<label for=\"email\">Email address</label>\n<input type=\"email\" id=\"email\" name=\"email\">\n",
+    "after": "<input type=\"email\" id=\"email\" name=\"email\" placeholder=\"Email address\">\n"
+   }
+  }
+ },
+ {
+  "id": "R07",
+  "kind": "regression",
+  "title": "label's for no longer matches the input id",
+  "reviewed": "caught",
+  "files": {
+   "signup.html": {
+    "before": "<input type=\"email\" id=\"email\">\n<label for=\"email\">Email address</label>\n",
+    "after": "<input type=\"email\" id=\"email\">\n<label for=\"user_email\">Email address</label>\n"
+   }
+  },
+  "context_restored": true
+ },
+ {
+  "id": "R08",
+  "kind": "regression",
+  "title": "lang removed from <html>",
+  "reviewed": "caught",
+  "files": {
+   "index.html": {
+    "before": "<html lang=\"en\">\n",
+    "after": "<html>\n"
+   }
+  }
+ },
+ {
+  "id": "R09",
+  "kind": "regression",
+  "title": "aria-labelledby points at an id that no longer exists",
+  "reviewed": "missed",
+  "files": {
+   "confirm.html": {
+    "before": "<h2 id=\"confirm-title\">Delete project?</h2>\n",
+    "after": "<h2 class=\"modal-heading\">Delete project?</h2>\n"
+   }
+  }
+ },
+ {
+  "id": "R10",
+  "kind": "regression",
+  "title": "<button> replaced by a clickable <div>",
+  "reviewed": "missed",
+  "files": {
+   "toolbar.html": {
+    "before": "<div class=\"toolbar\"><button type=\"button\" onclick=\"save()\">Save</button></div>\n",
+    "after": "<div class=\"toolbar\"><div class=\"btn\" onclick=\"save()\">Save</div></div>\n"
+   }
+  }
+ },
+ {
+  "id": "R11",
+  "kind": "regression",
+  "title": "alt replaced by title only on an informative image",
+  "reviewed": "missed",
+  "files": {
+   "report.html": {
+    "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
+    "after": "<img src=\"/img/revenue-q3.png\" title=\"Bar chart: revenue grew 12% in Q3\">\n"
+   }
+  }
+ },
+ {
+  "id": "R12",
+  "kind": "regression",
+  "title": "aria-label replaced by title only on an icon-only button",
+  "reviewed": "missed",
+  "files": {
+   "dialog.html": {
+    "before": "<button type=\"button\" class=\"btn-close\" aria-label=\"Close\"></button>\n",
+    "after": "<button type=\"button\" class=\"btn-close\" title=\"Close\"></button>\n"
+   }
+  }
+ },
+ {
+  "id": "R13",
+  "kind": "regression",
+  "title": "static alt dropped in JSX",
+  "reviewed": "caught",
+  "files": {
+   "src/Hero.jsx": {
+    "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" className=\"hero-img\" />\n",
+    "after": "      <img src=\"/img/team.jpg\" className=\"hero-img\" />\n"
+   }
+  }
+ },
+ {
+  "id": "R14",
+  "kind": "regression",
+  "title": "alt={...} expression dropped in TSX",
+  "reviewed": "caught",
+  "files": {
+   "src/Avatar.tsx": {
+    "before": "  return <img src={user.avatarUrl} alt={user.fullName} className=\"avatar\" />;\n",
+    "after": "  return <img src={user.avatarUrl} className=\"avatar\" />;\n"
+   }
+  }
+ },
+ {
+  "id": "R15",
+  "kind": "regression",
+  "title": "alt replaced by a prop spread that does not carry it",
+  "reviewed": "missed",
+  "files": {
+   "src/Hero.jsx": {
+    "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" />\n",
+    "after": "      <img src=\"/img/team.jpg\" {...imgProps} />\n"
+   }
+  }
+ },
+ {
+  "id": "R16",
+  "kind": "regression",
+  "title": "aria-label removed from an icon-only button (<CloseIcon /> child)",
+  "reviewed": "missed",
+  "files": {
+   "src/Modal.jsx": {
+    "before": "      <button type=\"button\" aria-label=\"Close dialog\" onClick={onClose}><CloseIcon /></button>\n",
+    "after": "      <button type=\"button\" onClick={onClose}><CloseIcon /></button>\n"
+   }
+  }
+ },
+ {
+  "id": "R17",
+  "kind": "regression",
+  "title": "<label htmlFor> removed, placeholder left in its place",
+  "reviewed": "missed",
+  "files": {
+   "src/Signup.tsx": {
+    "before": "      <label htmlFor=\"email\">Email address</label>\n      <input type=\"email\" id=\"email\" name=\"email\" />\n",
+    "after": "      <input type=\"email\" id=\"email\" name=\"email\" placeholder=\"Email address\" />\n"
+   }
+  }
+ },
+ {
+  "id": "R18",
+  "kind": "regression",
+  "title": "bound :alt removed in a Vue SFC",
+  "reviewed": "missed",
+  "files": {
+   "src/ProductCard.vue": {
+    "before": "  <div class=\"card\"><img :src=\"product.image\" :alt=\"product.name\"><h3>{{ product.name }}</h3></div>\n",
+    "after": "  <div class=\"card\"><img :src=\"product.image\"><h3>{{ product.name }}</h3></div>\n"
+   }
+  }
+ },
+ {
+  "id": "R19",
+  "kind": "regression",
+  "title": "v-bind:aria-label removed from an icon-only button in a Vue SFC",
+  "reviewed": "missed",
+  "files": {
+   "src/Drawer.vue": {
+    "before": "  <aside><button class=\"icon close\" v-bind:aria-label=\"$t('close')\" @click=\"close\"></button><slot /></aside>\n",
+    "after": "  <aside><button class=\"icon close\" @click=\"close\"></button><slot /></aside>\n"
+   }
+  }
+ },
+ {
+  "id": "R20",
+  "kind": "regression",
+  "title": "static alt emptied in a Vue SFC",
+  "reviewed": "caught",
+  "files": {
+   "src/Banner.vue": {
+    "before": "  <div class=\"banner\"><img src=\"/img/sale.png\" alt=\"Summer sale: 20% off all tents\"></div>\n",
+    "after": "  <div class=\"banner\"><img src=\"/img/sale.png\" alt=\"\"></div>\n"
+   }
+  }
+ },
+ {
+  "id": "R21",
+  "kind": "regression",
+  "title": "[attr.aria-label] removed from a search input in an Angular template",
+  "reviewed": "missed",
+  "files": {
+   "src/app/search/search.component.html": {
+    "before": "  <input type=\"search\" [attr.aria-label]=\"searchLabel\" [(ngModel)]=\"query\">\n",
+    "after": "  <input type=\"search\" [(ngModel)]=\"query\">\n"
+   }
+  }
+ },
+ {
+  "id": "R22",
+  "kind": "regression",
+  "title": "static aria-label removed from an Angular icon button (<mat-icon> child)",
+  "reviewed": "missed",
+  "files": {
+   "src/app/list/list.component.html": {
+    "before": "  <button mat-icon-button aria-label=\"Delete item\" (click)=\"remove(item)\"><mat-icon>delete</mat-icon></button>\n",
+    "after": "  <button mat-icon-button (click)=\"remove(item)\"><mat-icon>delete</mat-icon></button>\n"
+   }
+  }
+ },
+ {
+  "id": "R23",
+  "kind": "regression",
+  "title": "alt={...} dropped in a Svelte component",
+  "reviewed": "caught",
+  "files": {
+   "src/Photo.svelte": {
+    "before": "<figure><img src={photo.url} alt={photo.caption}></figure>\n",
+    "after": "<figure><img src={photo.url}></figure>\n"
+   }
+  }
+ },
+ {
+  "id": "R24",
+  "kind": "regression",
+  "title": "templated alt emptied in a Handlebars partial",
+  "reviewed": "caught",
+  "files": {
+   "views/partials/avatar.hbs": {
+    "before": "<a class=\"profile\" href=\"/users/{{id}}\"><img src=\"{{avatarUrl}}\" alt=\"{{name}}'s profile photo\"></a>\n",
+    "after": "<a class=\"profile\" href=\"/users/{{id}}\"><img src=\"{{avatarUrl}}\" alt=\"\"></a>\n"
+   }
+  }
+ },
+ {
+  "id": "R25",
+  "kind": "regression",
+  "title": "templated aria-label removed from an input in an EJS view",
+  "reviewed": "caught",
+  "files": {
+   "views/search.ejs": {
+    "before": "  <input type=\"text\" id=\"q\" name=\"q\" aria-label=\"<%= t('search.label') %>\">\n",
+    "after": "  <input type=\"text\" id=\"q\" name=\"q\">\n"
+   }
+  }
+ },
+ {
+  "id": "R26",
+  "kind": "regression",
+  "title": "alt: dropped from an image_tag helper in ERB",
+  "reviewed": "missed",
+  "files": {
+   "app/views/reports/show.html.erb": {
+    "before": "<%= image_tag \"revenue.png\", alt: \"Revenue by quarter\", class: \"chart\" %>\n",
+    "after": "<%= image_tag \"revenue.png\", class: \"chart\" %>\n"
+   }
+  }
+ },
+ {
+  "id": "R27",
+  "kind": "regression",
+  "title": "templated alt removed in a Jinja template (.html)",
+  "reviewed": "caught",
+  "files": {
+   "templates/about.html": {
+    "before": "<img src=\"{{ url_for('static', filename='team.jpg') }}\" alt=\"{{ _('Our team at the 2024 offsite') }}\">\n",
+    "after": "<img src=\"{{ url_for('static', filename='team.jpg') }}\">\n"
+   }
+  }
+ },
+ {
+  "id": "R28",
+  "kind": "regression",
+  "title": "lang removed from <html> in a Jinja layout named .html.j2",
+  "reviewed": "missed",
+  "files": {
+   "templates/base.html.j2": {
+    "before": "<html lang=\"{{ locale }}\">\n",
+    "after": "<html>\n"
+   }
+  }
+ },
+ {
+  "id": "R29",
+  "kind": "regression",
+  "title": "th:alt removed in a Thymeleaf template",
+  "reviewed": "missed",
+  "files": {
+   "src/main/resources/templates/home.html": {
+    "before": "<img th:src=\"@{/img/logo.png}\" th:alt=\"#{home.logo.alt}\">\n",
+    "after": "<img th:src=\"@{/img/logo.png}\">\n"
+   }
+  }
+ },
+ {
+  "id": "R30",
+  "kind": "regression",
+  "title": "alt removed from an image in a JSP page",
+  "reviewed": "missed",
+  "files": {
+   "src/main/webapp/WEB-INF/views/home.jsp": {
+    "before": "<img src=\"${ctx}/img/chart.png\" alt=\"Revenue by quarter\">\n",
+    "after": "<img src=\"${ctx}/img/chart.png\">\n"
+   }
+  }
+ },
+ {
+  "id": "R31",
+  "kind": "regression",
+  "title": "alt removed from inline HTML in a Markdown page",
+  "reviewed": "missed",
+  "files": {
+   "content/guide.md": {
+    "before": "<img src=\"./wiring.png\" alt=\"Wiring diagram: red to terminal A, black to terminal B\" width=\"480\">\n",
+    "after": "<img src=\"./wiring.png\" width=\"480\">\n"
+   }
+  }
+ },
+ {
+  "id": "R32",
+  "kind": "regression",
+  "title": "alt removed from an image in a Pug template (suffix is listed)",
+  "reviewed": "missed",
+  "files": {
+   "views/home.pug": {
+    "before": "    img(src=\"/img/chart.png\" alt=\"Revenue by quarter\")\n",
+    "after": "    img(src=\"/img/chart.png\")\n"
+   }
+  }
+ },
+ {
+  "id": "R33",
+  "kind": "regression",
+  "title": "alt emptied in an Astro component",
+  "reviewed": "caught",
+  "files": {
+   "src/components/Hero.astro": {
+    "before": "  <img src={hero.src} alt=\"Two climbers on a snow ridge at dawn\" />\n",
+    "after": "  <img src={hero.src} alt=\"\" />\n"
+   }
+  }
+ },
+ {
+  "id": "R34",
+  "kind": "regression",
+  "title": "alt removed from an image in a PHP template",
+  "reviewed": "caught",
+  "files": {
+   "templates/header.php": {
+    "before": "  <a href=\"/\"><img src=\"<?= $logo_url ?>\" alt=\"<?= htmlspecialchars($site_name) ?> home\"></a>\n",
+    "after": "  <a href=\"/\"><img src=\"<?= $logo_url ?>\"></a>\n"
+   }
+  }
+ },
+ {
+  "id": "R35",
+  "kind": "regression",
+  "title": "component extracted to a new file, static alt lost on the way",
+  "reviewed": "caught",
+  "files": {
+   "src/Hero.jsx": {
+    "before": "",
+    "after": "export function Hero() {\n  return <img src=\"/img/team.jpg\" className=\"hero\" />;\n}\n"
+   },
+   "src/Home.jsx": {
+    "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" />\n",
+    "after": "import { Hero } from \"./Hero\";\n\n      <Hero />\n"
+   }
+  }
+ },
+ {
+  "id": "R36",
+  "kind": "regression",
+  "title": "component extracted with an alt prop; the call site no longer passes it",
+  "reviewed": "missed",
+  "files": {
+   "src/Home.jsx": {
+    "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" />\n",
+    "after": "import { Photo } from \"./Photo\";\n\n      <Photo src=\"/img/team.jpg\" />\n"
+   },
+   "src/Photo.jsx": {
+    "before": "",
+    "after": "export function Photo({ src, alt }) {\n  return <img src={src} alt={alt} className=\"photo\" />;\n}\n"
+   }
+  }
+ },
+ {
+  "id": "R37",
+  "kind": "regression",
+  "title": "element moved to another existing file, title lost on the way",
+  "reviewed": "caught",
+  "files": {
+   "about.html": {
+    "before": "",
+    "after": "<iframe src=\"https://maps.example.test/embed?q=office\"></iframe>\n"
+   },
+   "contact.html": {
+    "before": "<iframe src=\"https://maps.example.test/embed?q=office\" title=\"Map of our office\"></iframe>\n",
+    "after": ""
+   }
+  }
+ },
+ {
+  "id": "R38",
+  "kind": "regression",
+  "title": "name prop renamed away on a component (label -> tooltip)",
+  "reviewed": "caught",
+  "files": {
+   "src/Toolbar.tsx": {
+    "before": "    <IconButton data-testid=\"close\" icon=\"x\" label=\"Close\" />\n",
+    "after": "    <IconButton data-testid=\"close\" icon=\"x\" tooltip=\"Close\" />\n"
+   }
+  }
+ },
+ {
+  "id": "R39",
+  "kind": "regression",
+  "title": "formatter re-wrapped the element across lines and the alt went with it",
+  "reviewed": "caught",
+  "files": {
+   "src/Hero.jsx": {
+    "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" className=\"hero-img\" loading=\"lazy\" />\n",
+    "after": "      <img\n        src=\"/img/team.jpg\"\n        className=\"hero-img\"\n        loading=\"lazy\"\n        decoding=\"async\"\n      />\n"
+   }
+  }
+ },
+ {
+  "id": "R40",
+  "kind": "regression",
+  "title": "image migrated .png -> .webp and alt emptied in the same change",
+  "reviewed": "missed",
+  "files": {
+   "report.html": {
+    "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
+    "after": "<img src=\"/img/revenue-q3.webp\" alt=\"\">\n"
+   }
+  }
+ },
+ {
+  "id": "R41",
+  "kind": "regression",
+  "title": "<img> migrated to a framework <Image> component without alt",
+  "reviewed": "missed",
+  "files": {
+   "src/Hero.jsx": {
+    "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" />\n",
+    "after": "      <Image src=\"/img/team.jpg\" width={1200} height={600} />\n"
+   }
+  }
+ },
+ {
+  "id": "R42",
+  "kind": "regression",
+  "title": "aria-hidden added to a wrapper around named images",
+  "reviewed": "caught",
+  "files": {
+   "partners.html": {
+    "before": "<ul class=\"logos\">\n<li><img src=\"/logos/globex.svg\" alt=\"Globex\"></li>\n<li><img src=\"/logos/initech.svg\" alt=\"Initech\"></li>\n</ul>\n",
+    "after": "<ul class=\"logos\" aria-hidden=\"true\">\n<li><img src=\"/logos/globex.svg\" alt=\"Globex\"></li>\n<li><img src=\"/logos/initech.svg\" alt=\"Initech\"></li>\n</ul>\n"
+   }
+  },
+  "context_restored": true
+ },
+ {
+  "id": "R43",
+  "kind": "regression",
+  "title": "role=\"presentation\" added to an informative image",
+  "reviewed": "caught",
+  "files": {
+   "report.html": {
+    "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
+    "after": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\" role=\"presentation\">\n"
+   }
+  }
+ },
+ {
+  "id": "R44",
+  "kind": "regression",
+  "title": "wrapping (implicit) <label> removed from an input",
+  "reviewed": "missed",
+  "files": {
+   "signup.html": {
+    "before": "<label>Email address <input type=\"email\" name=\"email\"></label>\n",
+    "after": "<input type=\"email\" name=\"email\" placeholder=\"Email address\">\n"
+   }
+  }
+ },
+ {
+  "id": "R45",
+  "kind": "regression",
+  "title": "an unnamed image deleted instead of being given an alt (named content stays)",
+  "reviewed": "caught",
+  "files": {
+   "promo.html": {
+    "before": "<img src=\"/img/promo-hero.png\" alt=\"Customers at the spring sale\">\n<img src=\"/img/promo-tents.png\">\n",
+    "after": "<img src=\"/img/promo-hero.png\" alt=\"Customers at the spring sale\">\n"
+   }
+  },
+  "context_restored": true
+ },
+ {
+  "id": "R46",
+  "kind": "regression",
+  "title": "link text replaced by an icon only",
+  "reviewed": "missed",
+  "files": {
+   "nav.html": {
+    "before": "<nav><a href=\"/cart\">Cart</a></nav>\n",
+    "after": "<nav><a href=\"/cart\"><i class=\"icon icon-cart\"></i></a></nav>\n"
+   }
+  }
+ },
+ {
+  "id": "R47",
+  "kind": "regression",
+  "title": "legacy unnamed button removed and the next button's aria-label dropped in the same edit",
+  "reviewed": "missed",
+  "files": {
+   "carousel.html": {
+    "before": "<button type=\"button\" class=\"legacy-dot\"></button>\n<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n",
+    "after": "<button type=\"button\" class=\"next\"></button>\n"
+   }
+  }
+ },
+ {
+  "id": "R48",
+  "kind": "regression",
+  "title": "title removed from an iframe",
+  "reviewed": "caught",
+  "files": {
+   "contact.html": {
+    "before": "<iframe src=\"https://maps.example.test/embed?q=office\" title=\"Map of our office\"></iframe>\n",
+    "after": "<iframe src=\"https://maps.example.test/embed?q=office\"></iframe>\n"
+   }
+  }
+ },
+ {
+  "id": "R49",
+  "kind": "regression",
+  "title": "legend removed from a fieldset",
+  "reviewed": "caught",
+  "files": {
+   "prefs.html": {
+    "before": "<fieldset>\n<legend>Notification preferences</legend>\n<input type=\"checkbox\" id=\"n1\" aria-label=\"Email me\">\n</fieldset>\n",
+    "after": "<fieldset>\n<input type=\"checkbox\" id=\"n1\" aria-label=\"Email me\">\n</fieldset>\n"
+   }
+  },
+  "context_restored": true
+ },
+ {
+  "id": "R50",
+  "kind": "regression",
+  "title": "aria-label removed from an <svg role=\"img\">",
+  "reviewed": "caught",
+  "files": {
+   "chart.html": {
+    "before": "<svg role=\"img\" aria-label=\"Revenue trend, up 12% since Q1\" viewBox=\"0 0 100 40\"><polyline points=\"0,30 50,20 100,5\"/></svg>\n",
+    "after": "<svg role=\"img\" viewBox=\"0 0 100 40\"><polyline points=\"0,30 50,20 100,5\"/></svg>\n"
+   }
+  }
+ },
+ {
+  "id": "R51",
+  "kind": "regression",
+  "title": "alt removed inside a Lit html`` template in a .ts file",
+  "reviewed": "missed",
+  "files": {
+   "src/photo-card.ts": {
+    "before": "  return html`<img src=\"${this.src}\" alt=\"${this.caption}\">`;\n",
+    "after": "  return html`<img src=\"${this.src}\">`;\n"
+   }
+  }
+ },
+ {
+  "id": "N01",
+  "kind": "correct",
+  "title": "alt=\"\" given to a decorative image that had no alt",
+  "reviewed": "silent",
+  "files": {
+   "home.html": {
+    "before": "<img src=\"/img/swoosh.png\" class=\"divider\">\n",
+    "after": "<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"\">\n"
+   }
+  }
+ },
+ {
+  "id": "N02",
+  "kind": "correct",
+  "title": "alt=\"\" role=\"presentation\" given to a decorative image that had no alt",
+  "reviewed": "silent",
+  "files": {
+   "home.html": {
+    "before": "<img src=\"/img/swoosh.png\" class=\"divider\">\n",
+    "after": "<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"\" role=\"presentation\">\n"
+   }
+  }
+ },
+ {
+  "id": "N03",
+  "kind": "correct",
+  "title": "alt=\"\" aria-hidden=\"true\" given to a decorative image that had no alt",
+  "reviewed": "silent",
+  "files": {
+   "home.html": {
+    "before": "<img src=\"/img/swoosh.png\" class=\"divider\">\n",
+    "after": "<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"\" aria-hidden=\"true\">\n"
+   }
+  }
+ },
+ {
+  "id": "N04",
+  "kind": "correct",
+  "title": "alt=\"\" given to an icon that duplicated the visible text beside it",
+  "reviewed": "refused",
+  "files": {
+   "items.html": {
+    "before": "<button type=\"button\"><img src=\"/icons/trash.svg\" alt=\"Delete\"> Delete</button>\n",
+    "after": "<button type=\"button\"><img src=\"/icons/trash.svg\" alt=\"\"> Delete</button>\n"
+   }
+  }
+ },
+ {
+  "id": "N05",
+  "kind": "correct",
+  "title": "alt=\"\" role=\"presentation\" given to a decorative image wrongly described as \"swoosh\"",
+  "reviewed": "refused",
+  "files": {
+   "home.html": {
+    "before": "<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"swoosh\">\n",
+    "after": "<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"\" role=\"presentation\">\n"
+   }
+  }
+ },
+ {
+  "id": "N06",
+  "kind": "correct",
+  "title": "alt=\"\" aria-hidden=\"true\" given to an icon inside a link that has visible text",
+  "reviewed": "refused",
+  "files": {
+   "nav.html": {
+    "before": "<nav><a href=\"/settings\"><img src=\"/icons/gear.svg\" alt=\"Settings icon\"> Settings</a></nav>\n",
+    "after": "<nav><a href=\"/settings\"><img src=\"/icons/gear.svg\" alt=\"\" aria-hidden=\"true\"> Settings</a></nav>\n"
+   }
+  }
+ },
+ {
+  "id": "N07",
+  "kind": "correct",
+  "title": "aria-label replaced by a visible <label for>",
+  "reviewed": "silent",
+  "files": {
+   "search.html": {
+    "before": "<form action=\"/search\"><input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search\"></form>\n",
+    "after": "<form action=\"/search\"><label for=\"q\">Search</label> <input type=\"search\" id=\"q\" name=\"q\"></form>\n"
+   }
+  }
+ },
+ {
+  "id": "N08",
+  "kind": "correct",
+  "title": "aria-label replaced by a visible <label htmlFor> in TSX",
+  "reviewed": "refused",
+  "files": {
+   "src/Search.tsx": {
+    "before": "    <input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search\" />\n",
+    "after": "    <label htmlFor=\"q\">Search</label>\n    <input type=\"search\" id=\"q\" name=\"q\" />\n"
+   }
+  }
+ },
+ {
+  "id": "N09",
+  "kind": "correct",
+  "title": "aria-label replaced by aria-labelledby pointing at the visible heading",
+  "reviewed": "silent",
+  "files": {
+   "confirm.html": {
+    "before": "<dialog open aria-label=\"Delete project?\">\n<h2>Delete project?</h2>\n",
+    "after": "<dialog open aria-labelledby=\"confirm-title\">\n<h2 id=\"confirm-title\">Delete project?</h2>\n"
+   }
+  }
+ },
+ {
+  "id": "N10",
+  "kind": "correct",
+  "title": "redundant aria-label removed from a button that has visible text",
+  "reviewed": "silent",
+  "files": {
+   "form.html": {
+    "before": "<button type=\"submit\" aria-label=\"Save\">Save</button>\n",
+    "after": "<button type=\"submit\">Save</button>\n"
+   }
+  }
+ },
+ {
+  "id": "N11",
+  "kind": "correct",
+  "title": "redundant aria-label removed from a component that has visible text",
+  "reviewed": "refused",
+  "files": {
+   "src/Form.tsx": {
+    "before": "    <Button data-testid=\"save\" aria-label=\"Save\">Save</Button>\n",
+    "after": "    <Button data-testid=\"save\">Save</Button>\n"
+   }
+  }
+ },
+ {
+  "id": "N12",
+  "kind": "correct",
+  "title": "title tooltip removed from a link component that has visible text",
+  "reviewed": "refused",
+  "files": {
+   "src/Nav.jsx": {
+    "before": "    <Link href=\"/pricing\" title=\"Go to pricing\">Pricing</Link>\n",
+    "after": "    <Link href=\"/pricing\">Pricing</Link>\n"
+   }
+  }
+ },
+ {
+  "id": "N13",
+  "kind": "correct",
+  "title": "an image deleted together with the feature block it belonged to",
+  "reviewed": "silent",
+  "files": {
+   "home.html": {
+    "before": "<section class=\"promo\">\n<img src=\"/img/promo.png\" alt=\"Summer sale: 20% off tents\">\n<img src=\"/img/sparkle.png\">\n<a href=\"/sale\">Shop the summer sale</a>\n</section>\n",
+    "after": ""
+   }
+  }
+ },
+ {
+  "id": "N14",
+  "kind": "correct",
+  "title": "an element deleted from one file and re-added intact in another in the same commit",
+  "reviewed": "silent",
+  "files": {
+   "about.html": {
+    "before": "",
+    "after": "<iframe src=\"https://maps.example.test/embed?q=office\" title=\"Map of our office\"></iframe>\n"
+   },
+   "contact.html": {
+    "before": "<iframe src=\"https://maps.example.test/embed?q=office\" title=\"Map of our office\"></iframe>\n",
+    "after": ""
+   }
+  }
+ },
+ {
+  "id": "N15",
+  "kind": "correct",
+  "title": "alt text changed to better text",
+  "reviewed": "silent",
+  "files": {
+   "report.html": {
+    "before": "<img src=\"/img/revenue-q3.png\" alt=\"chart of revenue\">\n",
+    "after": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3, from 4.1M to 4.6M\">\n"
+   }
+  }
+ },
+ {
+  "id": "N16",
+  "kind": "correct",
+  "title": "alt moved into a translation call in JSX",
+  "reviewed": "silent",
+  "files": {
+   "src/Header.jsx": {
+    "before": "export const Header = () => (\n  <header>\n    <img src=\"/img/logo.svg\" alt=\"Acme home\" />\n  </header>\n);\n",
+    "after": "export const Header = () => {\n  const { t } = useTranslation();\n  return (\n    <header>\n      <img src=\"/img/logo.svg\" alt={t(\"header.logo\")} />\n    </header>\n  );\n};\n"
+   }
+  }
+ },
+ {
+  "id": "N17",
+  "kind": "correct",
+  "title": "alt moved into a translation call in Vue (:alt)",
+  "reviewed": "refused",
+  "files": {
+   "src/Header.vue": {
+    "before": "  <header><img src=\"/img/logo.svg\" alt=\"Acme home\"></header>\n",
+    "after": "  <header><img src=\"/img/logo.svg\" :alt=\"$t('header.logo')\"></header>\n"
+   }
+  }
+ },
+ {
+  "id": "N18",
+  "kind": "correct",
+  "title": "alt moved into a translate pipe in Angular ([alt])",
+  "reviewed": "refused",
+  "files": {
+   "src/app/header/header.component.html": {
+    "before": "<header><img src=\"/img/logo.svg\" alt=\"Acme home\"></header>\n",
+    "after": "<header><img src=\"/img/logo.svg\" [alt]=\"'header.logo' | translate\"></header>\n"
+   }
+  }
+ },
+ {
+  "id": "N19",
+  "kind": "correct",
+  "title": "aria-label moved into a binding in Angular ([attr.aria-label])",
+  "reviewed": "refused",
+  "files": {
+   "src/app/drawer/drawer.component.html": {
+    "before": "<aside><button type=\"button\" class=\"close\" aria-label=\"Close\" (click)=\"close()\"></button></aside>\n",
+    "after": "<aside><button type=\"button\" class=\"close\" [attr.aria-label]=\"closeLabel\" (click)=\"close()\"></button></aside>\n"
+   }
+  }
+ },
+ {
+  "id": "N20",
+  "kind": "correct",
+  "title": "hard-coded aria-label replaced by a prop in TSX",
+  "reviewed": "silent",
+  "files": {
+   "src/Drawer.tsx": {
+    "before": "export const Drawer = ({ onClose }: Props) => (\n    <button type=\"button\" className=\"close\" aria-label=\"Close\" onClick={onClose}></button>\n",
+    "after": "export const Drawer = ({ onClose, closeLabel }: Props) => (\n    <button type=\"button\" className=\"close\" aria-label={closeLabel} onClick={onClose}></button>\n"
+   }
+  }
+ },
+ {
+  "id": "N21",
+  "kind": "correct",
+  "title": "hard-coded aria-label replaced by a prop in Vue (:aria-label)",
+  "reviewed": "refused",
+  "files": {
+   "src/Drawer.vue": {
+    "before": "  <aside><button type=\"button\" class=\"close\" aria-label=\"Close\" @click=\"close\"></button></aside>\n",
+    "after": "  <aside><button type=\"button\" class=\"close\" :aria-label=\"closeLabel\" @click=\"close\"></button></aside>\n"
+   }
+  }
+ },
+ {
+  "id": "N22",
+  "kind": "correct",
+  "title": "lang=\"en\" replaced by th:lang in a Thymeleaf layout",
+  "reviewed": "refused",
+  "files": {
+   "src/main/resources/templates/layout.html": {
+    "before": "<html lang=\"en\" xmlns:th=\"http://www.thymeleaf.org\">\n",
+    "after": "<html th:lang=\"${#locale.language}\" xmlns:th=\"http://www.thymeleaf.org\">\n"
+   }
+  }
+ },
+ {
+  "id": "N23",
+  "kind": "correct",
+  "title": "lang=\"en\" changed to lang=\"en-GB\"",
+  "reviewed": "silent",
+  "files": {
+   "index.html": {
+    "before": "<html lang=\"en\">\n",
+    "after": "<html lang=\"en-GB\">\n"
+   }
+  }
+ },
+ {
+  "id": "N24",
+  "kind": "correct",
+  "title": "whitespace-only change (re-indent) in a file that also holds a legacy unnamed image",
+  "reviewed": "silent",
+  "files": {
+   "legacy.html": {
+    "before": "<div class=\"row\"><img src=\"/img/logo.png\" alt=\"Acme\"><img src=\"/img/old-banner.png\"><button type=\"button\" aria-label=\"Menu\"></button></div>\n",
+    "after": "<div class=\"row\">\n    <img src=\"/img/logo.png\" alt=\"Acme\">\n    <img src=\"/img/old-banner.png\">\n    <button type=\"button\" aria-label=\"Menu\"></button>\n</div>\n"
+   }
+  }
+ },
+ {
+  "id": "N25",
+  "kind": "correct",
+  "title": "attribute-order-only change",
+  "reviewed": "silent",
+  "files": {
+   "legacy.html": {
+    "before": "<img src=\"/img/logo.png\" alt=\"Acme\" class=\"logo\" width=\"120\">\n<input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search\">\n",
+    "after": "<img class=\"logo\" width=\"120\" alt=\"Acme\" src=\"/img/logo.png\">\n<input aria-label=\"Search\" name=\"q\" id=\"q\" type=\"search\">\n"
+   }
+  }
+ },
+ {
+  "id": "N26",
+  "kind": "correct",
+  "title": "formatter re-wrapped the element across lines, nothing else changed",
+  "reviewed": "silent",
+  "files": {
+   "src/Hero.jsx": {
+    "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" className=\"hero-img\" loading=\"lazy\" />\n",
+    "after": "      <img\n        src=\"/img/team.jpg\"\n        alt=\"The team at the 2024 summit\"\n        className=\"hero-img\"\n        loading=\"lazy\"\n      />\n"
+   }
+  }
+ },
+ {
+  "id": "N27",
+  "kind": "correct",
+  "title": "file renamed, content unchanged and compliant",
+  "reviewed": "refused",
+  "files": {
+   "plans/index.html": {
+    "before": "",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<h1>Pricing</h1>\n<img src=\"/img/plans.png\" alt=\"Comparison of the three plans\">\n<a href=\"/signup\">Start a free trial</a>\n</body>\n</html>\n"
+   },
+   "pricing.html": {
+    "before": "",
+    "after": ""
+   }
+  }
+ },
+ {
+  "id": "N28",
+  "kind": "correct",
+  "title": "file renamed, content unchanged; it holds a legacy unnamed image nobody touched",
+  "reviewed": "refused",
+  "files": {
+   "archive/legacy.html": {
+    "before": "",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<div class=\"row\"><img src=\"/img/logo.png\" alt=\"Acme\"><img src=\"/img/old-banner.png\"><button type=\"button\" aria-label=\"Menu\"></button></div>\n</body>\n</html>\n"
+   },
+   "legacy.html": {
+    "before": "",
+    "after": ""
+   }
+  }
+ },
+ {
+  "id": "N29",
+  "kind": "correct",
+  "title": "new test fixture that is deliberately inaccessible (input for the team's own a11y checker test)",
+  "reviewed": "refused",
+  "files": {
+   "tests/fixtures/a11y/missing-alt.html": {
+    "before": "",
+    "after": "<!doctype html>\n<html>\n<head><title>Acme</title></head>\n<body>\n<img src=\"/img/chart.png\">\n<input type=\"text\" name=\"q\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "N30",
+  "kind": "correct",
+  "title": "new Storybook story for an existing input component",
+  "reviewed": "refused",
+  "files": {
+   "src/Input.stories.tsx": {
+    "before": "",
+    "after": "import { Input } from \"./Input\";\n\nexport default { title: \"Forms/Input\", component: Input };\n\nexport const Default = () => <Input name=\"q\" placeholder=\"Search\" />;\nexport const Raw = () => <input className=\"input\" placeholder=\"Unstyled reference\" />;\n"
+   }
+  }
+ },
+ {
+  "id": "N31",
+  "kind": "correct",
+  "title": "Jest snapshot regenerated after an alt was reworded",
+  "reviewed": "silent",
+  "files": {
+   "src/__snapshots__/Header.test.tsx.snap": {
+    "before": "    alt=\"Acme home\"\n",
+    "after": "    alt=\"Acme - go to the home page\"\n"
+   }
+  }
+ },
+ {
+  "id": "N32",
+  "kind": "correct",
+  "title": "build output regenerated: hashed asset names changed, a pre-existing unnamed image is untouched in source",
+  "reviewed": "refused",
+  "files": {
+   "dist/index.html": {
+    "before": "<!doctype html><html lang=en><head><link rel=stylesheet href=/assets/app.3fa9c1.css></head><body><img src=/assets/logo.81bd22.svg alt=Acme><img src=/assets/banner.77aa01.png><script src=/assets/app.5c2e90.js></script></body></html>\n",
+    "after": "<!doctype html><html lang=en><head><link rel=stylesheet href=/assets/app.9e11b7.css></head><body><img src=/assets/logo.81bd22.svg alt=Acme><img src=/assets/banner.c04d5f.png><script src=/assets/app.0a7f3d.js></script></body></html>\n"
+   }
+  }
+ },
+ {
+  "id": "N33",
+  "kind": "correct",
+  "title": "src of a legacy unnamed image changed (new banner file); the missing alt was already missing",
+  "reviewed": "refused",
+  "files": {
+   "legacy.html": {
+    "before": "<div class=\"row\"><img src=\"/img/logo.png\" alt=\"Acme\"><img src=\"/img/old-banner.png\"><button type=\"button\" aria-label=\"Menu\"></button></div>\n",
+    "after": "<div class=\"row\"><img src=\"/img/logo.png\" alt=\"Acme\"><img src=\"/img/spring-banner.png\"><button type=\"button\" aria-label=\"Menu\"></button></div>\n"
+   }
+  }
+ },
+ {
+  "id": "N34",
+  "kind": "correct",
+  "title": "new <svg role=\"img\"> named by a <title> child",
+  "reviewed": "silent",
+  "files": {
+   "chart.html": {
+    "before": "",
+    "after": "<svg role=\"img\" viewBox=\"0 0 100 40\"><title>Revenue trend, up 12% since Q1</title><polyline points=\"0,30 50,20 100,5\"/></svg>\n"
+   }
+  }
+ },
+ {
+  "id": "N35",
+  "kind": "correct",
+  "title": "aria-label on an <svg role=\"img\"> replaced by a <title> child",
+  "reviewed": "silent",
+  "files": {
+   "chart.html": {
+    "before": "<svg role=\"img\" aria-label=\"Revenue trend, up 12% since Q1\" viewBox=\"0 0 100 40\"><polyline points=\"0,30 50,20 100,5\"/></svg>\n",
+    "after": "<svg role=\"img\" viewBox=\"0 0 100 40\"><title>Revenue trend, up 12% since Q1</title><polyline points=\"0,30 50,20 100,5\"/></svg>\n"
+   }
+  }
+ },
+ {
+  "id": "N36",
+  "kind": "correct",
+  "title": "label removed from an <input type=\"hidden\">",
+  "reviewed": "silent",
+  "files": {
+   "form.html": {
+    "before": "<label for=\"csrf\">Token</label>\n",
+    "after": ""
+   }
+  }
+ },
+ {
+  "id": "N37",
+  "kind": "correct",
+  "title": "new form whose inputs are named by wrapping <label> elements",
+  "reviewed": "refused",
+  "files": {
+   "signup.html": {
+    "before": "",
+    "after": "<form>\n<label>Email address <input type=\"email\" name=\"email\"></label>\n<label><input type=\"checkbox\" name=\"tos\"> I accept the terms</label>\n<button type=\"submit\">Sign up</button>\n</form>\n"
+   }
+  }
+ },
+ {
+  "id": "N38",
+  "kind": "correct",
+  "title": "new TSX form whose input is named by <label htmlFor>",
+  "reviewed": "refused",
+  "files": {
+   "src/Signup.tsx": {
+    "before": "  return <h1>Sign up</h1>;\n",
+    "after": "  return (\n    <form>\n      <label htmlFor=\"email\">Email address</label>\n      <input type=\"email\" id=\"email\" name=\"email\" />\n      <button type=\"submit\">Sign up</button>\n    </form>\n  );\n"
+   }
+  }
+ },
+ {
+  "id": "N39",
+  "kind": "correct",
+  "title": "new Vue image with a bound :alt",
+  "reviewed": "refused",
+  "files": {
+   "src/ProductCard.vue": {
+    "before": "  <div class=\"card\"><h3>{{ product.name }}</h3></div>\n",
+    "after": "  <div class=\"card\"><img :src=\"product.image\" :alt=\"product.name\"><h3>{{ product.name }}</h3></div>\n"
+   }
+  }
+ },
+ {
+  "id": "N40",
+  "kind": "correct",
+  "title": "new Angular image with [alt] and icon button with [attr.aria-label]",
+  "reviewed": "refused",
+  "files": {
+   "src/app/user/user.component.html": {
+    "before": "<div class=\"user\"><span>{{ user.name }}</span></div>\n",
+    "after": "<div class=\"user\"><img [src]=\"user.avatar\" [alt]=\"user.name\"><span>{{ user.name }}</span>\n  <button type=\"button\" class=\"edit\" [attr.aria-label]=\"'Edit ' + user.name\" (click)=\"edit()\"></button>\n</div>\n"
+   }
+  }
+ },
+ {
+  "id": "N41",
+  "kind": "correct",
+  "title": "new Thymeleaf image with th:alt",
+  "reviewed": "refused",
+  "files": {
+   "src/main/resources/templates/home.html": {
+    "before": "",
+    "after": "<img th:src=\"@{/img/logo.png}\" th:alt=\"#{home.logo.alt}\">\n"
+   }
+  }
+ },
+ {
+  "id": "N42",
+  "kind": "correct",
+  "title": "new data table with header cells and no caption",
+  "reviewed": "refused",
+  "files": {
+   "report.html": {
+    "before": "",
+    "after": "<table>\n<thead><tr><th scope=\"col\">Region</th><th scope=\"col\">Revenue</th></tr></thead>\n<tbody><tr><td>EMEA</td><td>4.6M</td></tr></tbody>\n</table>\n"
+   }
+  }
+ },
+ {
+  "id": "N43",
+  "kind": "correct",
+  "title": "new table with year column headers",
+  "reviewed": "refused",
+  "files": {
+   "report.html": {
+    "before": "",
+    "after": "<table aria-label=\"Revenue by year\">\n<thead><tr><th scope=\"col\">Region</th><th scope=\"col\">2024</th><th scope=\"col\">2025</th></tr></thead>\n<tbody><tr><td>EMEA</td><td>4.1M</td><td>4.6M</td></tr></tbody>\n</table>\n"
+   }
+  }
+ },
+ {
+  "id": "N44",
+  "kind": "correct",
+  "title": "new pagination links with numeric text inside a labelled nav",
+  "reviewed": "refused",
+  "files": {
+   "list.html": {
+    "before": "",
+    "after": "<nav aria-label=\"Pagination\"><a href=\"?page=1\" aria-current=\"page\">1</a> <a href=\"?page=2\">2</a> <a href=\"?page=3\">3</a></nav>\n"
+   }
+  }
+ },
+ {
+  "id": "N45",
+  "kind": "correct",
+  "title": "new \"Learn more\" link inside a card whose heading gives the context (WCAG 2.4.4 in context)",
+  "reviewed": "refused",
+  "files": {
+   "home.html": {
+    "before": "",
+    "after": "<article class=\"card\"><h2>Pro plan</h2><p>Unlimited projects and priority support.</p><a href=\"/plans/pro\">Learn more</a></article>\n"
+   }
+  }
+ },
+ {
+  "id": "N46",
+  "kind": "correct",
+  "title": "new editor toolbar buttons labelled \"Link\" and \"Image\"",
+  "reviewed": "refused",
+  "files": {
+   "editor.html": {
+    "before": "<div role=\"toolbar\" aria-label=\"Formatting\"><button type=\"button\">Bold</button></div>\n",
+    "after": "<div role=\"toolbar\" aria-label=\"Formatting\"><button type=\"button\">Bold</button><button type=\"button\">Link</button><button type=\"button\">Image</button></div>\n"
+   }
+  }
+ },
+ {
+  "id": "N47",
+  "kind": "correct",
+  "title": "new nav link whose text is \"Photos\"",
+  "reviewed": "refused",
+  "files": {
+   "nav.html": {
+    "before": "<nav><a href=\"/\">Home</a></nav>\n",
+    "after": "<nav><a href=\"/\">Home</a> <a href=\"/photos\">Photos</a></nav>\n"
+   }
+  }
+ },
+ {
+  "id": "N48",
+  "kind": "correct",
+  "title": "new flag image with alt=\"UK\"",
+  "reviewed": "refused",
+  "files": {
+   "locale.html": {
+    "before": "",
+    "after": "<img src=\"/flags/gb.svg\" alt=\"UK\" width=\"24\">\n"
+   }
+  }
+ },
+ {
+  "id": "N49",
+  "kind": "correct",
+  "title": "new JSX image whose arrow-function handler precedes its alt",
+  "reviewed": "refused",
+  "files": {
+   "src/Gallery.jsx": {
+    "before": "  return <div className=\"gallery\"></div>;\n",
+    "after": "  return (\n    <div className=\"gallery\">\n      <img onClick={() => onZoom(photo)} src={photo.url} alt={photo.caption} />\n    </div>\n  );\n"
+   }
+  }
+ },
+ {
+  "id": "N50",
+  "kind": "correct",
+  "title": "new TSX input whose arrow-function onChange precedes its aria-label",
+  "reviewed": "refused",
+  "files": {
+   "src/Filter.tsx": {
+    "before": "  return <div className=\"filter\"></div>;\n",
+    "after": "  return (\n    <div className=\"filter\">\n      <input type=\"search\" value={value} onChange={(e) => setValue(e.target.value)} aria-label=\"Filter orders\" />\n    </div>\n  );\n"
+   }
+  }
+ },
+ {
+  "id": "N51",
+  "kind": "correct",
+  "title": "new, correctly named button inserted before a legacy unnamed button nobody touched",
+  "reviewed": "refused",
+  "files": {
+   "carousel.html": {
+    "before": "<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n<button type=\"button\" class=\"legacy\"></button>\n",
+    "after": "<button type=\"button\" class=\"prev\" aria-label=\"Previous slide\"></button>\n<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n<button type=\"button\" class=\"legacy\"></button>\n"
+   }
+  },
+  "context_restored": true
+ },
+ {
+  "id": "N52",
+  "kind": "correct",
+  "title": "named button deleted with its feature; a legacy unnamed button after it is untouched",
+  "reviewed": "refused",
+  "files": {
+   "carousel.html": {
+    "before": "<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n<button type=\"button\" class=\"legacy\"></button>\n",
+    "after": "<button type=\"button\" class=\"legacy\"></button>\n"
+   }
+  },
+  "context_restored": true
+ },
+ {
+  "id": "N53",
+  "kind": "correct",
+  "title": "paragraph text edited in a file that holds legacy violations",
+  "reviewed": "silent",
+  "files": {
+   "legacy.html": {
+    "before": "<p>Opening hours: 9 to 5.</p>\n",
+    "after": "<p>Opening hours: 9 to 6.</p>\n"
+   }
+  }
+ },
+ {
+  "id": "N54",
+  "kind": "correct",
+  "title": "label moved from the input component to a wrapping field component",
+  "reviewed": "refused",
+  "files": {
+   "src/Signup.tsx": {
+    "before": "    <Input name=\"email\" label=\"Email address\" />\n",
+    "after": "    <Field label=\"Email address\">\n      <Input name=\"email\" />\n    </Field>\n"
+   }
+  }
+ },
+ {
+  "id": "N55",
+  "kind": "correct",
+  "title": "non-a11y prop renamed on a component (Card title -> heading)",
+  "reviewed": "refused",
+  "files": {
+   "src/Plans.tsx": {
+    "before": "    <Card id=\"pro\" title=\"Pro plan\" price={29} />\n",
+    "after": "    <Card id=\"pro\" heading=\"Pro plan\" price={29} />\n"
+   }
+  }
+ },
+ {
+  "id": "N56",
+  "kind": "correct",
+  "title": "label prop replaced by children text on a component",
+  "reviewed": "refused",
+  "files": {
+   "src/Form.tsx": {
+    "before": "    <Button data-testid=\"save\" label=\"Save\" />\n",
+    "after": "    <Button data-testid=\"save\">Save</Button>\n"
+   }
+  }
+ },
+ {
+  "id": "N57",
+  "kind": "correct",
+  "title": "decorative <img> replaced by a CSS background (element deleted)",
+  "reviewed": "silent",
+  "files": {
+   "home.html": {
+    "before": "<div class=\"hero\"><img src=\"/img/swoosh.png\" alt=\"\"><h1>Welcome</h1></div>\n",
+    "after": "<div class=\"hero hero--swoosh\"><h1>Welcome</h1></div>\n"
+   }
+  }
+ },
+ {
+  "id": "N58",
+  "kind": "correct",
+  "title": "alt removed where an equivalent aria-labelledby caption is added",
+  "reviewed": "silent",
+  "files": {
+   "report.html": {
+    "before": "<figure><img src=\"/img/revenue-q3.png\" alt=\"Revenue grew 12% in Q3\"></figure>\n",
+    "after": "<figure><img src=\"/img/revenue-q3.png\" aria-labelledby=\"cap-q3\"><figcaption id=\"cap-q3\">Revenue grew 12% in Q3</figcaption></figure>\n"
+   }
+  }
+ },
+ {
+  "id": "P01",
+  "kind": "correct",
+  "title": "new minimal page with lang=en",
+  "reviewed": "refused",
+  "files": {
+   "index.html": {
+    "before": "",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "P02",
+  "kind": "correct",
+  "title": "fix: lang=en added to <html> that had none",
+  "reviewed": "refused",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html>\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "P03",
+  "kind": "correct",
+  "title": "fix: lang=fr added",
+  "reviewed": "refused",
+  "files": {
+   "index.html": {
+    "before": "<!doctype html>\n<html>\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n",
+    "after": "<!doctype html>\n<html lang=\"fr\">\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n"
+   }
+  }
+ }
+]
