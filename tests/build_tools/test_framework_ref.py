@@ -106,6 +106,44 @@ def test_check_refuses_an_unset_ref(monkeypatch: pytest.MonkeyPatch) -> None:
     assert framework_ref.main(["check"]) == framework_ref.REFUSED
 
 
+@pytest.mark.parametrize("base", ["main", "rel12-catalog", "rel1-catalog", "rel120-catalog"])
+def test_an_allowed_base_branch_passes(monkeypatch: pytest.MonkeyPatch, base: str) -> None:
+    monkeypatch.setenv("BASE_BRANCH", base)
+    assert framework_ref.base_valid(base)
+    assert framework_ref.main(["check-base"]) == 0
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        "rel12-catalog; id",
+        "refs/pull/1/head",
+        "adopt/x",
+        "",
+        "Main",
+        "main\n",
+        "rel12-catalog\n",
+        "main\nrel12-catalog",
+        " main",
+        "rel-catalog",
+        "relx-catalog",
+        "REL12-catalog",
+        "$(id)",
+        "rel12-catalog/../main",
+    ],
+)
+def test_any_other_base_branch_is_refused_loudly(monkeypatch: pytest.MonkeyPatch, capsys, base: str) -> None:
+    monkeypatch.setenv("BASE_BRANCH", base)
+    assert not framework_ref.base_valid(base)
+    assert framework_ref.main(["check-base"]) == framework_ref.REFUSED
+    assert "::error::BASE_BRANCH must be exactly" in capsys.readouterr().err
+
+
+def test_an_unset_base_branch_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("BASE_BRANCH", raising=False)
+    assert framework_ref.main(["check-base"]) == framework_ref.REFUSED
+
+
 def _git(repo: Path, *args: str) -> str:
     env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
     cmd = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args]
