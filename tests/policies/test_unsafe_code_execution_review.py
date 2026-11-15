@@ -46,7 +46,7 @@ SILENT = sorted(set(CORRECT) - STILL_REFUSED - NOW_ALLOWED)
 
 
 def test_the_review_has_33_catches_two_more_and_34_rebuilt_correct_cases() -> None:
-    assert len(CATCH) == 33 and len(ORCH) == 2
+    assert len(CATCH) == 33 and len(ORCH) == 3
     assert len(CORRECT) == 34
 
 

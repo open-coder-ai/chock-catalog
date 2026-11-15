@@ -176,4 +176,9 @@ ORCH: dict[str, tuple[str, dict[str, str], dict[str, str]]] = {
         README,
     ),
     "orch-vector-returned": ("commit", {"app/ops.py": 'def argv(cmd):\n    return ["sh", "-c", cmd]\n'}, README),
+    "orch-dict-command": (
+        "commit",
+        {"app/ops.py": 'SPEC = {\n    "command": ["sh", "-c", cmd],\n}\n'},
+        README,
+    ),
 }
