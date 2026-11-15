@@ -17,6 +17,11 @@ V1 = re.compile(
     r"|pickle\.loads?\s*\(|marshal\.loads?\s*\(|yaml\.load\s*\((?![^)]*SafeLoader)|execSync\s*\(|new\s+Function\s*\("
 )
 
+# A line that is only a comment: a hash and a space (not a C directive), or two slashes; as the pattern's guard says.
+COMMENT_ONLY = re.compile(
+    r"\s*(?:#(?:[ \t]+(?![ \t])(?!(?:define|undef|include|if|ifdef|ifndef|elif|else|endif|pragma|error|line)\b)|$)|//)"
+)
+
 REFUSED = {
     "child-process-exec CWE-78": [
         "child_process.exec(cmd, cb)",
@@ -280,7 +285,8 @@ def test_every_cwe_the_rules_name_is_claimed() -> None:
 
 
 def test_a_seeded_fuzz_finds_no_v1_refusal_that_v2_allows() -> None:
+    """The one exemption is a comment-only line (0.1.3), under the pattern's own definition of it."""
     rnd = random.Random(7)  # noqa: S311 -- a reproducible fuzz, not a secret
     for _ in range(200_000):
         line = "".join(rnd.choice(FUZZ_TOKENS) for _ in range(rnd.randint(1, 12)))
-        assert not V1.search(line) or PATTERN.search(line), line
+        assert COMMENT_ONLY.match(line) or not V1.search(line) or PATTERN.search(line), line
