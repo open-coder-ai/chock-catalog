@@ -111,9 +111,8 @@ class Service:
         self.by_path = {row.path: row for row in rows}
 
     def hit(self, rule: str, row: Entry, why: str) -> Hit:
-        return Hit(
-            rule, row.line, f"{self.name}|{'.'.join(map(str, row.path))}={row.value}", f"service {self.name}: {why}"
-        )
+        """A hit keyed without the service name, so a rename does not re-fire what the file already held."""
+        return Hit(rule, row.line, f"{'.'.join(map(str, row.path))}={row.value}", f"service {self.name}: {why}")
 
     def line_text(self, row: Entry) -> str:
         return self.lines[row.line - 1] if 0 < row.line <= len(self.lines) else ""
@@ -184,11 +183,8 @@ class Service:
         ):
             return
         resolved = images.substitute(row.value.strip(), {})
-        verdict = "floating" if resolved is None else images.judge(resolved)
-        if verdict == "floating":
-            yield self.hit("cm-image-floating", row, f"image {row.value} has no tag, latest, or no value to judge")
-        elif verdict == "no-digest":
-            yield self.hit("cm-image-no-digest", row, f"image {row.value} has no digest")
+        if resolved is None or images.judge(resolved) == "floating":
+            yield self.hit("cm-image-floating", row, f"image {row.value} has no tag, a floating tag, or no value to judge")
 
 
 def compose_hits(text: str, ctx: Ctx | None = None) -> list[Hit]:

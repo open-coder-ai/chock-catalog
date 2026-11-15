@@ -140,12 +140,17 @@ def test_unreadable_compose_is_reported_not_passed(text: str) -> None:
         ("nginx", "cm-image-floating"),
         ("registry.example.com:5000/app", "cm-image-floating"),
         ("${IMAGE}", "cm-image-floating"),
-        ("nginx:1.27", "cm-image-no-digest"),
-        ("app:${TAG:-1.2}", "cm-image-no-digest"),
+        ("nginx:stable", "cm-image-floating"),
+        ("app:${TAG:-nightly}", "cm-image-floating"),
     ],
 )
 def test_images(image: str, rule: str) -> None:
     assert (rule, 3) in found(f"services:\n  web:\n    image: {image}\n")
+
+
+@pytest.mark.parametrize("image", ["nginx:1.27", "app:${TAG:-1.2}", "postgres:16.4"])
+def test_a_version_tagged_image_is_silent(image: str) -> None:
+    assert not found(f"services:\n  web:\n    image: {image}\n")
 
 
 @pytest.mark.parametrize(

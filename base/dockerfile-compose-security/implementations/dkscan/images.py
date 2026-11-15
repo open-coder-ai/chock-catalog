@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 NESTED = re.compile(r"\$\{[^}]*\$")
 VAR = re.compile(r"\$(?:\{([A-Za-z_]\w*)(?:(:?[-+?])([^}]*))?\}|([A-Za-z_]\w*))")
@@ -15,7 +17,9 @@ HP06_FROM = re.compile(
     r"|(?:[^\s/'\"]+/)+[^\s/:@'\"$]+(?:\s+[Aa][Ss]\s+\S+)?\s*(?:#.*)?$)"
 )
 HP06_IMAGE = re.compile(r"image:\s*['\"]?\S{1,256}:late[s]t\b")
-FLOATING_TAG = "latest"
+TABLE = Path(__file__).resolve().parent / "data" / "floating-tags.json"
+#: Tags that name a moving target (data/floating-tags.json); a missing or broken table raises and the runner refuses.
+FLOATING_TAGS = frozenset(json.loads(TABLE.read_text(encoding="utf-8"))["floating_tags"])
 
 
 def substitute(text: str, env: dict[str, str | None]) -> str | None:
@@ -57,15 +61,13 @@ def split_ref(ref: str) -> tuple[str, str, str]:
 
 
 def judge(ref: str) -> str:
-    """'floating' (no tag, or latest, and no digest), 'no-digest', 'pinned' or 'scratch'."""
+    """'floating' (no digest, and no tag or a floating one), 'pinned' (a digest or any other tag) or 'scratch'."""
     if ref.lower() == "scratch":
         return "scratch"
     _, tag, digest = split_ref(ref)
     if digest:
         return "pinned"
-    if not tag or tag == FLOATING_TAG:
-        return "floating"
-    return "no-digest"
+    return "floating" if not tag or tag.lower() in FLOATING_TAGS else "pinned"
 
 
 def runs_as_non_root(ref: str) -> bool:

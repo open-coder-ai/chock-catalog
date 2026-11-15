@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-11-15",
+  "source": {
+    "hardening-review": "open-coder-ai/org-plan:witness/reviews/2026-11-15-policy-hardening/REVIEW-infra.md section 2.1",
+    "hadolint-dl3007": "https://github.com/hadolint/hadolint/wiki/DL3007"
+  },
+  "note": "Tags that name a moving target rather than a release; an image on one of these (compared lower-case), or with no tag, is floating unless it carries a digest.",
+  "floating_tags": [
+    "alpha",
+    "beta",
+    "canary",
+    "current",
+    "dev",
+    "devel",
+    "develop",
+    "edge",
+    "head",
+    "latest",
+    "lts",
+    "main",
+    "master",
+    "nightly",
+    "rawhide",
+    "release",
+    "rolling",
+    "sid",
+    "snapshot",
+    "stable",
+    "testing",
+    "trunk",
+    "unstable"
+  ]
+}
