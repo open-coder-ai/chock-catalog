@@ -81,6 +81,18 @@ jobs:
       contents: write  # commit the regenerated tree and push the adoption branch
       pull-requests: write  # open the pull request that branch exists for
     steps:
+      # Refused before any repository code is fetched or run: the value is checked out next, with
+      # write credentials, so the check cannot live in the tree it would select. Same pattern as
+      # BASE in tools/framework_ref.py (a test keeps the two equal); the value reaches bash as env.
+      - name: Refuse a base branch that is not allowed
+        env:
+          BASE_BRANCH: ${{ inputs.base_branch }}
+        run: |
+          if [[ ! "$BASE_BRANCH" =~ ^(main|rel[0-9]+-catalog)$ ]]; then
+            echo "::error::base_branch must be exactly main or rel<N>-catalog"
+            exit 1
+          fi
+
       - name: Check out the catalog
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -96,8 +108,7 @@ jobs:
           # other value before the engine is installed. A dry run runs this file's logic on the base.
           ref: ${{ inputs.base_branch }}
 
-      # A dispatch input becomes a git ref and a PR base. Data, refused loudly, never rewritten:
-      # only `main` or `rel<N>-catalog` passes, and it reaches the shell only through env.
+      # The same refusal again, from the checked-out tools (tested in tests/build_tools).
       - name: Validate the base branch
         env:
           BASE_BRANCH: ${{ inputs.base_branch }}
