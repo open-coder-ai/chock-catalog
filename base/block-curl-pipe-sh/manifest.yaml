@@ -1,6 +1,6 @@
 id: block-curl-pipe-sh
 name: "Block Curl Piped to Shell"
-version: "0.1.8"
+version: "0.1.9"
 description: >
   Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws s3 cp to
   stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh,
@@ -25,7 +25,7 @@ approval:
 provenance:
   author: "chock-core"
   created_at: "2026-08-26T00:00:00Z"
-  updated_at: "2026-10-27T00:00:00Z"
+  updated_at: "2026-11-16T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -39,6 +39,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.9
+  date: '2026-11-16'
+  changes:
+  - "Hardening, closes a false block (org-plan plan/release-1.2.0.md, H-3 ruling (a) and H-4; tests in test_block_curl_pipe_sh_h4.py, 13 of 14 correct commands refused before and 0 of 14 after; eval cases tc-092 to tc-094). A here-document inside `$(...)` (a commit message or PR body given as `\"$(cat <<'EOF' ... EOF)\"`) is read as data: its body is skipped, so an apostrophe or quote in the text no longer reads as an unbalanced quote that fails closed on a command naming curl and sh. Still refused, as before: a download piped or substituted into a shell, a here-document fed to a shell whose body downloads and runs, a body written to a file that is then run, and a quote that really never closes. Guard script and shared shell reader unchanged; only the guard's own lexer changed."
 - version: 0.1.8
   date: '2026-10-27'
   changes:
