@@ -90,7 +90,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 .chock/compiled/injection-defense/ambient-rule/ambient.md
-.chock/compiled/injection-defense/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry

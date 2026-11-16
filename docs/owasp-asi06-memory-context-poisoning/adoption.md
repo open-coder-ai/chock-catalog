@@ -89,7 +89,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 .chock/compiled/owasp-asi06-memory-context-poisoning/ambient-rule/ambient.md
-.chock/compiled/owasp-asi06-memory-context-poisoning/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry
