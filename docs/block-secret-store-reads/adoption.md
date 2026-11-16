@@ -52,7 +52,6 @@ Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
   claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
-  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 hook entr(y/ies) in .gemini/settings.json
   gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
   gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
@@ -243,7 +242,6 @@ block-secret-store-reads  [deterministic]
 ```text
 .chock/compiled/block-secret-store-reads/agent-hooks/agent-hooks.json
 .chock/compiled/block-secret-store-reads/ambient-rule/ambient.md
-.chock/compiled/block-secret-store-reads/managed-setting/managed-settings.json
 .chock/compiled/block-secret-store-reads/pre-tool-use/antigravity-hooks.json
 .chock/compiled/block-secret-store-reads/pre-tool-use/codex_cli-hooks.json
 .chock/compiled/block-secret-store-reads/pre-tool-use/cursor-hooks.json

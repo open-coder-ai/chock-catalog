@@ -47,7 +47,7 @@ chock add block-curl-pipe-sh
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzOGZiNDg3Zjc3NjhmM2Q1YzA2ODUzYTBkNGEzNDY1ODdhYmVjOTM3In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stY3VybC1waXBlLXNoIiwidmVyc2lvbiI6IjAuMS45Iiwic2hhMjU2IjoiYjI3ZWFjNTczYjBlMTQ3OTAzODRhNjY2ODA5MDY0ZTIxYTc2NDI1MWIyN2Q2NWRhZjA1YTIzYWIwN2Q5MWFjZSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJkMGI4ZDNmMzk2Y2JiYjNiOGRjZTdlZjcxZTQzYzNkOWUxMmVhODU0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stY3VybC1waXBlLXNoIiwidmVyc2lvbiI6IjAuMS45Iiwic2hhMjU2IjoiYjI3ZWFjNTczYjBlMTQ3OTAzODRhNjY2ODA5MDY0ZTIxYTc2NDI1MWIyN2Q2NWRhZjA1YTIzYWIwN2Q5MWFjZSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

@@ -89,7 +89,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 .chock/compiled/owasp-asi08-cascading-failures/ambient-rule/ambient.md
-.chock/compiled/owasp-asi08-cascading-failures/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry

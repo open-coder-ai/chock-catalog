@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/tabnine.py --multi \".chock/bin/index/tabnine-BeforeTool-c8f6602b.json\" --index-sha256 7b65ed75ea3cb3d56860982fd46e29e548a9af4d8dfa0c66daedfe3bdf719aea --stop-check",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/tabnine.py --multi \".chock/bin/index/tabnine-BeforeTool-c8f6602b.json\" --index-sha256 4ba68f541c12d10f2b1f92500f0c5804f55d9cf532fd0d3054d029d335c11c32 --stop-check",
             "name": "agentseam",
             "timeout": 45000
           }

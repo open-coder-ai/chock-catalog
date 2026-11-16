@@ -52,7 +52,6 @@ Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
   claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
-  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 2 hook entr(y/ies) in .gemini/settings.json
   gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
   gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
@@ -163,7 +162,6 @@ scan-hidden-content  [deterministic]
 .chock/compiled/scan-hidden-content/ci-gate/step.yaml
 .chock/compiled/scan-hidden-content/git-hook/gate.json
 .chock/compiled/scan-hidden-content/git-hook/git-pre-commit.sh
-.chock/compiled/scan-hidden-content/managed-setting/managed-settings.json
 .chock/compiled/scan-hidden-content/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/scan-hidden-content/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/scan-hidden-content/pre-tool-use/factory_droid-write-hooks.json

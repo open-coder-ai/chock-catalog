@@ -89,7 +89,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 .chock/compiled/eu-ai-act-transparency/ambient-rule/ambient.md
-.chock/compiled/eu-ai-act-transparency/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry

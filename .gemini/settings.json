@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --multi \".chock/bin/index/gemini_cli-BeforeTool-09cc5246.json\" --index-sha256 7b65ed75ea3cb3d56860982fd46e29e548a9af4d8dfa0c66daedfe3bdf719aea",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --multi \".chock/bin/index/gemini_cli-BeforeTool-09cc5246.json\" --index-sha256 4ba68f541c12d10f2b1f92500f0c5804f55d9cf532fd0d3054d029d335c11c32",
             "timeout": 45000
           }
         ],
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --multi \".chock/bin/index/gemini_cli-BeforeTool-e86eddda.json\" --index-sha256 67d7b9475ada3a3b98f6d1d90cb11ea8e12f4dbeee714308639d746eb06ebf59",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --multi \".chock/bin/index/gemini_cli-BeforeTool-e86eddda.json\" --index-sha256 e168ca87f0d2fe7c1d1bdd9fa05819f5372a5e63549153a2d926c15e04875e04",
             "timeout": 45000
           }
         ],
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --multi \".chock/bin/index/gemini_cli-BeforeTool-c8f6602b.json\" --index-sha256 78609a7348b8692ce23bee9261cc956b106519d28ef6bc12464c5f0518cfce37 --stop-check",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/gemini_cli.py --multi \".chock/bin/index/gemini_cli-BeforeTool-c8f6602b.json\" --index-sha256 ff1007e9ebf92b7ed5487eb9220b1f1f3fe01e62425febc7d9d7fa05f7b59a48 --stop-check",
             "timeout": 45000
           }
         ]
