@@ -69,7 +69,8 @@ class Judge:
         if self.depth > DEPTH:
             return STRONG if FETCH_HINT.search(text) else NONE
         stages = [stage for pipeline in lex(text)[0] for stage in pipeline]
-        return max([NONE, *(fetch_strength(c) for stage in stages for c in self.cmds(stage))])
+        fetched = [fetch_strength(c) for stage in stages for c in self.cmds(stage)]
+        return max([NONE, *fetched, *(self.strength(sub.body) for stage in stages for sub in stage.expands)])
 
     def pipeline(self, stages: list[Stage], ran: list[Cmd]) -> Verdict:
         fed, printed, found, earlier = NONE, [], [], []
@@ -129,7 +130,7 @@ class Judge:
         if sub.kind == ">(" or not sub.body.strip():
             return PH_OTHER if sub.kind == ">(" else ""
         cmds = commands(sub.body)
-        printed = _printed(sub.body, cmds)
+        printed = _printed(sub.body, cmds) or _heredoc_text(sub.body)
         strength = NONE if printed is not None else Judge(self.depth + 1, self.vars).strength(sub.body)
         if printed is not None or strength:
             return printed if printed is not None else PH[strength]
@@ -160,11 +161,19 @@ class Judge:
         if stage.group is not None:
             found += [self.pipeline(stages, []) for stages in stage.group]
         exempt = _text_values(cmds)
+        code = any(c.name in SHELLS or c.name == "eval" for c in cmds)  # a here-document's text is code only for these
         for word in stage.words:
-            body = "".join(p if isinstance(p, str) else PH_OTHER for p in word.parts)
+            body = "".join(
+                p if isinstance(p, str) else (_heredoc_text(p.body) if code else None) or PH_OTHER for p in word.parts
+            )
             if self.fill(word) not in exempt and FETCH_HINT.search(body) and re.search(r"[\s|;&<>`$]", body):
                 found.append(self.deeper(body))
         runs = any(stdin_runs(c) for c in cmds)
+        found += [
+            wired(strength, "a here-document that expands a download into it")
+            for strength in (self.strength(sub.body) for sub in stage.expands)
+            if runs and strength
+        ]
         for doc in stage.heredocs:
             if any(c.name in SHELLS for c in cmds):
                 found.append(self.deeper(doc))
@@ -214,6 +223,17 @@ def _printed(body: str, cmds: list[Cmd]) -> str | None:
     if args and "%" not in args[0]:
         return args[0]
     return "".join(args[1:]) if args[:1] in (["%s"], ["%b"]) else None
+
+
+def _heredoc_text(body: str) -> str | None:
+    """What `$(cat <<'EOF' ... EOF)` prints, when `cat` and its one here-document are all the substitution holds."""
+    pipelines, broken = lex(body)
+    stages = [stage for stages in pipelines for stage in stages]
+    if broken or len(stages) != 1 or len(stages[0].heredocs) != 1 or stages[0].group is not None:
+        return None
+    stage = stages[0]
+    plain = not stage.redirs and [w.source for w in stage.words] == ["cat"]
+    return stage.heredocs[0] if plain and not stage.expands else None
 
 
 def _xargs_runs(words: list[str]) -> bool:
