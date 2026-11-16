@@ -152,7 +152,9 @@ def _adopt_steps() -> list[dict]:
 
 def test_the_inline_base_guard_runs_before_any_checkout_with_the_same_pattern() -> None:
     steps = _adopt_steps()
-    first_checkout = next(i for i, step in enumerate(steps) if str(step.get("uses", "")).startswith("actions/checkout@"))
+    first_checkout = next(
+        i for i, step in enumerate(steps) if str(step.get("uses", "")).startswith("actions/checkout@")
+    )
     guards = [i for i, step in enumerate(steps) if "BASE_BRANCH" in (step.get("env") or {}) and "run" in step]
     assert guards
     assert guards[0] < first_checkout
