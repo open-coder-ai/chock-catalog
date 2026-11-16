@@ -10,7 +10,7 @@ import pytest
 from chock.install import selection
 from chock.lock import compute_pack_hash
 from chock.scaffold.new import render_kind
-from trees import policy_dirs
+from trees import ROOT, policy_dirs
 
 LINK = builder_link.LINK_RE
 
@@ -131,6 +131,28 @@ def test_a_scaffolded_policy_holds_its_pack_once_committed(repo):
     ref = _ref(page, policy_dir, keep_pinned=False)
     assert ref == _git(repo, "rev-parse", "HEAD")
     assert builder_link.ref_holds_pack(ref, policy_dir, sha256)
+
+
+def test_a_pack_hash_does_not_depend_on_the_checkouts_line_endings(tmp_path):
+    """The engine hashes raw bytes, so the same pack on a CRLF and an LF checkout must be the same bytes."""
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    _git(seed, "init", "-q")
+    _git(seed, "config", "core.autocrlf", "true")
+    (seed / ".gitattributes").write_bytes((ROOT / ".gitattributes").read_bytes())
+    packs = [d.relative_to(ROOT) for d in policy_dirs()]
+    listed = _git(ROOT, "ls-files", "-z", "--", *[p.as_posix() for p in packs]).split("\0")
+    for rel in filter(None, listed):
+        dest = seed / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes((ROOT / rel).read_bytes())
+    _git(seed, "add", "-A")
+    _git(seed, "commit", "-qm", "packs")
+    for side, autocrlf in (("crlf", "true"), ("lf", "false")):
+        _git(tmp_path, "clone", "-q", "-c", f"core.autocrlf={autocrlf}", str(seed), str(tmp_path / side))
+    hashes = {side: {p.name: compute_pack_hash(tmp_path / side / p) for p in packs} for side in ("crlf", "lf")}
+    assert hashes["crlf"] == hashes["lf"]
+    assert hashes["lf"] == {p.name: compute_pack_hash(ROOT / p) for p in packs}
 
 
 def test_no_page_quotes_the_selection_code(pages):
