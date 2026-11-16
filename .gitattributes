@@ -18,6 +18,8 @@
 *.json text eol=lf
 *.txt text eol=lf
 *.tmpl text eol=lf
+# A pack's files are hashed as raw bytes, so a CRLF checkout of an .html file in a pack is a different pack.
+*.html text eol=lf
 
 # Generated trees: every file, including extensionless shims.
 .chock/** text eol=lf
