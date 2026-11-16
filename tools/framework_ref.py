@@ -16,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PIN_FILE = ".framework-ref"
 SHA = re.compile(r"[0-9a-f]{40}")
+BASE = re.compile(r"main|rel[0-9]+-catalog")
 REFUSED = 2
 # PEP 508 direct reference: `name[extras] @ url ; marker`. Version specifiers are requirements/framework.txt's.
 DIRECT = re.compile(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[[^\]]*\])?\s*@\s*([^\s;]+)")
@@ -25,6 +26,11 @@ GIT_COMMIT = re.compile(r"git\+(https://github\.com/open-coder-ai/[A-Za-z0-9._-]
 def valid(ref: str) -> bool:
     """True only for 40 lowercase hex: a branch, tag, short or uppercase SHA is a name, not a commit."""
     return SHA.fullmatch(ref) is not None
+
+
+def base_valid(base: str) -> bool:
+    """True only for `main` or `rel<N>-catalog`, in full: a ref path, another branch or any shell text is refused."""
+    return BASE.fullmatch(base) is not None
 
 
 def read_pin(root: Path = ROOT) -> str | None:
@@ -103,6 +109,13 @@ def _check() -> int:
     if _env_ref() is None:
         return _refuse("FRAMEWORK_REF must be a full 40-character lowercase commit SHA (no branch, tag or short SHA)")
     print("FRAMEWORK_REF is a full commit SHA")
+    return 0
+
+
+def _check_base() -> int:
+    if not base_valid(os.environ.get("BASE_BRANCH", "")):
+        return _refuse("BASE_BRANCH must be exactly `main` or `rel<N>-catalog` (for example rel12-catalog)")
+    print("BASE_BRANCH is an allowed base")
     return 0
 
 
@@ -197,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("read", help=f"validate {PIN_FILE}; export FRAMEWORK_REF to $GITHUB_ENV")
     sub.add_parser("check", help="validate $FRAMEWORK_REF before anything checks it out")
+    sub.add_parser("check-base", help="validate $BASE_BRANCH: `main` or `rel<N>-catalog`, nothing else")
     verify = sub.add_parser("verify", help="fail unless the checkout at PATH is exactly $FRAMEWORK_REF")
     verify.add_argument("path")
     direct = sub.add_parser("direct-deps", help="print the git commit pins in PATH's pyproject, one per line")
@@ -208,6 +222,8 @@ def main(argv: list[str] | None = None) -> int:
         return _read()
     if args.cmd == "check":
         return _check()
+    if args.cmd == "check-base":
+        return _check_base()
     if args.cmd == "direct-deps":
         return _direct_deps(args.path)
     if args.cmd == "deps":
