@@ -37,7 +37,6 @@ class Tok:
     value: str = ""
     word: Word | None = None
     body: str | None = None
-    #: The substitutions the shell runs while it expands an unquoted here-document's body.
     expands: list[Sub] = field(default_factory=list)
 
 
@@ -223,10 +222,8 @@ class _Lexer:
         """The substitutions the shell runs while it expands an unquoted here-document's body (quotes there are text)."""
         inner, word = _Lexer(body), Word()
         while inner.pos < len(body):
-            if body.startswith("\\", inner.pos):
-                inner.pos += 2
-            elif not inner._substitution(word):
-                inner.pos += 1
+            step = 2 if body.startswith("\\", inner.pos) else 0 if inner._substitution(word) else 1
+            inner.pos += step
         self.broken |= inner.broken
         return word.subs()
 
