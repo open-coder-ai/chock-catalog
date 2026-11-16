@@ -12,7 +12,7 @@
 | **Mechanism** | guard script `block-curl-pipe-sh.py` |
 | **Reaches** | `best-effort` on Claude Code, `enforceable` on Cursor, once `chock sync` has run — the tool call is refused before it runs, on a hook that is actually wired up. Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; Cursor's can be told to fail closed, but does not by default |
 | **Compiles to** | `pre-tool-use`, `ambient-rule` |
-| **Eval cases** | 91 total, 91 executable |
+| **Eval cases** | 94 total, 94 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -47,7 +47,7 @@ chock add block-curl-pipe-sh
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJmODhiZjIyOTBiM2UzNjljYTYxZTJjZWEyMmFlNTE4ZDEyNjgzZGYyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stY3VybC1waXBlLXNoIiwidmVyc2lvbiI6IjAuMS44Iiwic2hhMjU2IjoiOTlhYTNlNzBlMWQ4MGNmODk0ZmIwZDM5NTVlZDRhOWI0NDViZWY1YmNiMzg5MTRkM2Y5MTI4M2ZjNjZjNzlmNyJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIzOGZiNDg3Zjc3NjhmM2Q1YzA2ODUzYTBkNGEzNDY1ODdhYmVjOTM3In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stY3VybC1waXBlLXNoIiwidmVyc2lvbiI6IjAuMS45Iiwic2hhMjU2IjoiYjI3ZWFjNTczYjBlMTQ3OTAzODRhNjY2ODA5MDY0ZTIxYTc2NDI1MWIyN2Q2NWRhZjA1YTIzYWIwN2Q5MWFjZSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

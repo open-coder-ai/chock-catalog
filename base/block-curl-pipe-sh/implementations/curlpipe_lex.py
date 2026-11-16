@@ -167,15 +167,24 @@ class _Lexer:
 
     def _until_close(self) -> str:
         """The body of `$(` or `<(`, up to its matching `)`: quotes and nested substitutions are skipped whole."""
-        start, depth = self.pos, 0
+        start, depth, heredoc = self.pos, 0, None
         while self.pos < len(self.text):
             tok = self.token()
-            if tok is not None and tok.kind in ("open", "close"):
+            if tok is None:
+                continue
+            heredoc = self.note(tok, heredoc)
+            if tok.kind in ("open", "close"):
                 depth += 1 if tok.kind == "open" else -1
                 if depth < 0:
                     return self.text[start : self.pos - 1]
         self.broken = True
         return self.text[start:]
+
+    def note(self, tok: Tok, heredoc: str | None) -> str | None:
+        """Queue a heredoc's delimiter word so its body is skipped at the next newline; return the pending operator."""
+        if heredoc is not None and tok.kind == "word":
+            self.pending.append((tok, heredoc == "<<-"))
+        return tok.value if tok.kind == "redir" and tok.value in ("<<", "<<-") else None
 
     def _heredocs(self) -> None:
         while self.pending:
@@ -207,9 +216,7 @@ def _tokens(text: str) -> tuple[list[Tok], bool]:
         tok = lexer.token()
         if tok is None:
             continue
-        if heredoc is not None and tok.kind == "word":
-            lexer.pending.append((tok, heredoc == "<<-"))
-        heredoc = tok.value if tok.kind == "redir" and tok.value in ("<<", "<<-") else None
+        heredoc = lexer.note(tok, heredoc)
         out.append(tok)
     return out, lexer.broken
 
