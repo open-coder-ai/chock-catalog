@@ -133,15 +133,6 @@ def test_a_scaffolded_policy_holds_its_pack_once_committed(repo):
     assert builder_link.ref_holds_pack(ref, policy_dir, sha256)
 
 
-def _checkout(source, dest, autocrlf):
-    """Clone `source` with the given core.autocrlf, as a Windows (true) or a Linux (false) machine would."""
-    subprocess.run(
-        ["git", "clone", "-q", "-c", f"core.autocrlf={autocrlf}", str(source), str(dest)],
-        capture_output=True,
-        check=True,
-    )
-
-
 def test_a_pack_hash_does_not_depend_on_the_checkouts_line_endings(tmp_path):
     """The engine hashes raw bytes, so the same pack on a CRLF and an LF checkout must be the same bytes."""
     seed = tmp_path / "seed"
@@ -157,11 +148,9 @@ def test_a_pack_hash_does_not_depend_on_the_checkouts_line_endings(tmp_path):
         dest.write_bytes((ROOT / rel).read_bytes())
     _git(seed, "add", "-A")
     _git(seed, "commit", "-qm", "packs")
-    _checkout(seed, tmp_path / "crlf", "true")
-    _checkout(seed, tmp_path / "lf", "false")
-    hashes = {
-        side: {p.name: compute_pack_hash(tmp_path / side / p) for p in packs} for side in ("crlf", "lf")
-    }
+    for side, autocrlf in (("crlf", "true"), ("lf", "false")):
+        _git(tmp_path, "clone", "-q", "-c", f"core.autocrlf={autocrlf}", str(seed), str(tmp_path / side))
+    hashes = {side: {p.name: compute_pack_hash(tmp_path / side / p) for p in packs} for side in ("crlf", "lf")}
     assert hashes["crlf"] == hashes["lf"]
     assert hashes["lf"] == {p.name: compute_pack_hash(ROOT / p) for p in packs}
 
