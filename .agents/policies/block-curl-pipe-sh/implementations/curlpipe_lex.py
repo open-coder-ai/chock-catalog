@@ -37,6 +37,7 @@ class Tok:
     value: str = ""
     word: Word | None = None
     body: str | None = None
+    expands: list[Sub] = field(default_factory=list)
 
 
 @dataclass
@@ -46,11 +47,13 @@ class Stage:
     words: list[Word] = field(default_factory=list)
     redirs: list[tuple[str, Word]] = field(default_factory=list)
     heredocs: list[str] = field(default_factory=list)
+    #: Substitutions inside the bodies of this stage's unquoted here-documents: the shell runs them.
+    expands: list[Sub] = field(default_factory=list)
     group: list[list["Stage"]] | None = None
 
     def subs(self) -> list[Sub]:
         found = [sub for word in self.words for sub in word.subs()]
-        return found + [sub for _, word in self.redirs for sub in word.subs()]
+        return found + [sub for _, word in self.redirs for sub in word.subs()] + self.expands
 
 
 class _Lexer:
@@ -126,7 +129,22 @@ class _Lexer:
             word.parts.append(char)
             self.pos += 1
 
+    def _arithmetic(self, word: Word) -> bool:
+        """`$((...))` with no substitution inside is a number, whatever `<<` it holds; one with a `$(` or backtick is not."""
+        depth, end = 2, self.pos + 3
+        while end < len(self.text) and depth > 1:
+            depth += {"(": 1, ")": -1}.get(self.text[end], 0)
+            end += 1
+        body = self.text[self.pos + 3 : end - 1]
+        if depth != 1 or not self.text.startswith(")", end) or "`" in body or "$(" in body:
+            return False
+        word.parts.append(self.text[self.pos : end + 1])
+        self.pos = end + 1
+        return True
+
     def _substitution(self, word: Word) -> bool:
+        if self.at("$((") and self._arithmetic(word):
+            return True
         if self.at("$((") or not (self.at("$(") or self.at("`")):
             return False
         if self.at("`"):
@@ -167,15 +185,24 @@ class _Lexer:
 
     def _until_close(self) -> str:
         """The body of `$(` or `<(`, up to its matching `)`: quotes and nested substitutions are skipped whole."""
-        start, depth = self.pos, 0
+        start, depth, heredoc = self.pos, 0, None
         while self.pos < len(self.text):
             tok = self.token()
-            if tok is not None and tok.kind in ("open", "close"):
+            if tok is None:
+                continue
+            heredoc = self.note(tok, heredoc)
+            if tok.kind in ("open", "close"):
                 depth += 1 if tok.kind == "open" else -1
                 if depth < 0:
                     return self.text[start : self.pos - 1]
         self.broken = True
         return self.text[start:]
+
+    def note(self, tok: Tok, heredoc: str | None) -> str | None:
+        """Queue a heredoc's delimiter word so its body is skipped at the next newline; return the pending operator."""
+        if heredoc is not None and tok.kind == "word":
+            self.pending.append((tok, heredoc == "<<-"))
+        return tok.value if tok.kind == "redir" and tok.value in ("<<", "<<-") else None
 
     def _heredocs(self) -> None:
         while self.pending:
@@ -188,6 +215,17 @@ class _Lexer:
                     break
                 body.append(line)
             tok.body = "\n".join(body)
+            if tok.word is not None and not (tok.word.quoted or "\\" in tok.word.source):
+                tok.expands = self._expand(tok.body)
+
+    def _expand(self, body: str) -> list[Sub]:
+        """The substitutions the shell runs while it expands an unquoted here-document's body (quotes there are text)."""
+        inner, word = _Lexer(body), Word()
+        while inner.pos < len(body):
+            step = 2 if body.startswith("\\", inner.pos) else 0 if inner._substitution(word) else 1
+            inner.pos += step
+        self.broken |= inner.broken
+        return word.subs()
 
 
 def _ansi(match: re.Match[str]) -> str:
@@ -207,9 +245,7 @@ def _tokens(text: str) -> tuple[list[Tok], bool]:
         tok = lexer.token()
         if tok is None:
             continue
-        if heredoc is not None and tok.kind == "word":
-            lexer.pending.append((tok, heredoc == "<<-"))
-        heredoc = tok.value if tok.kind == "redir" and tok.value in ("<<", "<<-") else None
+        heredoc = lexer.note(tok, heredoc)
         out.append(tok)
     return out, lexer.broken
 
@@ -249,6 +285,7 @@ def _attach(cur: Stage, tok: Tok, redir: str) -> str:
         return tok.value
     if redir in ("<<", "<<-"):
         cur.heredocs.append(tok.body or "")
+        cur.expands += tok.expands
     elif redir:
         cur.redirs.append((redir, tok.word or Word()))
     else:

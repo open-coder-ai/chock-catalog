@@ -20,9 +20,9 @@
       {
         "id": "block-curl-pipe-sh",
         "artifact": "rule",
-        "version": "0.1.8",
+        "version": "0.1.11",
         "name": "Block Curl Piped to Shell",
-        "description": "Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws s3 cp to stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, su, source, eval, iex) by pipe, substitution or here-string, also inside bash -c/ssh/docker exec bodies, or downloaded then run with no checksum or signature step. nc/socat/one-liner reads ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads. Friction only.",
+        "description": "Best-effort guard: refuses a download (curl, wget, iwr; ssh host cmd, scp/rsync/aws s3 cp to stdout) wired into a shell or interpreter (sh..fish, python, perl, ruby, node, php, lua, pwsh, deno, bun, su, source, eval, iex) by pipe, substitution or here-string, also inside bash -c/ssh/docker exec bodies, or downloaded then run with no checksum or signature step. nc/socat/one-liner reads ask. Misses: aliases, functions, outside variables, encoded text, renamed downloads, source <(echo '...') of a download, and << inside (( )) or let, which hides the lines after it. Friction only.",
         "path": ".agents/policies/block-curl-pipe-sh",
         "manifest": "manifest.yaml",
         "trust_tier": "community",
