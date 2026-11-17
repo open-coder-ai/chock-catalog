@@ -1,6 +1,6 @@
 id: java-security
 name: "Java Security Rules"
-version: "0.7.1"
+version: "0.7.2"
 description: >
   trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android), SQL/JPA/MyBatis,
   templates, application.properties/.yml, web.xml, pom.xml, Gradle; "customize java security"
@@ -8,6 +8,7 @@ description: >
   crypto, trust-all TLS, Spring Security off, exposed secrets, known-exploited deps,
   SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules, 16 packs, each allow|deny|ask in
   .chock/security.json; absent = deny (quality: allow).
+  Draft: try it under `rollout: observe` first.
 artifact: hook
 enforcement: block
 effects: [read_only]
@@ -31,7 +32,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-22T00:00:00Z"
-  updated_at: "2026-10-02T00:00:00Z"
+  updated_at: "2026-11-17T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -45,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.7.2
+  date: '2026-11-17'
+  changes:
+  - "Description only (CAT-S1; review record discovery/2026-11-15-review-java-security.md): the label says this is a draft, to be tried under `rollout: observe` first. Status stays draft; no rule, script or eval changed."
 - version: 0.7.1
   date: '2026-11-15'
   changes:

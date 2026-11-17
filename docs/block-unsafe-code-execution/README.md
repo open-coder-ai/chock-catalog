@@ -19,7 +19,7 @@
 
 ## What it is about
 
-Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD.
+Commit and agent-write gate, greppable slice of ASI05: bare, global-receiver and indirect eval/exec forms, the Function constructor, string timers, exec-mode compile, import by computed name, shell-mode and implicit-shell process APIs, unsafe deserializers (pickle family, unsafe yaml loaders, model loads) and shell eval of a variable. File-type-blind line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on the line; in the agent only if already committed in HEAD. Draft: refuses 9 of 34 correct cases (Markdown, docstrings).
 
 ## What it solves
 
@@ -50,7 +50,7 @@ chock add block-unsafe-code-execution
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI4YzRiOTg2ZDQ1MzE0N2Y1YjFlMDk1ZTk1ZTc1YTNiNTFlNmMwMDYwIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5zYWZlLWNvZGUtZXhlY3V0aW9uIiwidmVyc2lvbiI6IjAuMS4zIiwic2hhMjU2IjoiYzgwYWNlMmYwODNlNTlhMzQ5NTZmNGRlMDgwOTdhMzBlYjI4MDJhMDA5OTRkZThlZTRjN2Y3ZjMxMzZjNGUwZCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhMTMwNjM4M2ZjYjY2M2NlOTgxOWJiNWE3YjUzZmNjMmM5MWNmY2E1In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5zYWZlLWNvZGUtZXhlY3V0aW9uIiwidmVyc2lvbiI6IjAuMS40Iiwic2hhMjU2IjoiMTBiN2I1NzdkNzkwNGFjYjUxMTA5ZWE5ZTIwMGQ5ZjcxZDUwN2ExYjI5NDZlMzk0OTljZjY5MWViYWIyZWQ3YiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
