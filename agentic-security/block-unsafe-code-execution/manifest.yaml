@@ -9,7 +9,7 @@ description: >
   loaders, model loads) and shell eval of a variable. File-type-blind
   line scan: friction, not a security boundary. Waiver 'pragma: allowlist exec' on
   the line; in the agent only if already committed in HEAD.
-  Draft: refuses 9 of 34 correct cases (Markdown, docstrings).
+  Not production-grade: refuses 9 of 34 correct cases (Markdown, docstrings).
 artifact: hook
 enforcement: block
 mandatory: false

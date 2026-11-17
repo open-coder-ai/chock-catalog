@@ -8,7 +8,7 @@ description: >
   crypto, trust-all TLS, Spring Security off, exposed secrets, known-exploited deps,
   SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules, 16 packs, each allow|deny|ask in
   .chock/security.json; absent = deny (quality: allow).
-  Draft: try it under `rollout: observe` first.
+  Not production-grade: try it under `rollout: observe` first.
 artifact: hook
 enforcement: block
 effects: [read_only]

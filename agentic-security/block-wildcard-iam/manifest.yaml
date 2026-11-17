@@ -9,13 +9,13 @@ description: >
   sts, kms and ec2 actions, Allow with an inverted key, administrator, power-user
   and IAM-admin managed policies, GCP owner and editor roles and public members,
   Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner.
-  Only a one-line strict-JSON AWS Deny statement is exempt. Friction, not a security boundary:
+  Only a one-line strict-JSON AWS Deny is exempt. Friction, not a security boundary:
   grants split across lines (iam-policy-scan reads those), partial wildcards, unlisted services and roles, YAML
   aliases or tags and runtime-built grants pass; other Deny forms and
   admission-webhook wildcards are refused. Escape: 'pragma: allowlist
   broad-privilege' on the same line, honoured at commit; at agent tool-use only
   when that exact line is already committed in HEAD.
-  Draft: catches 12 of 24 and refuses 7 of 26 correct cases; use iam-policy-scan.
+  Use iam-policy-scan.
 artifact: hook
 applies_to:
   # Files that can hold an IAM, RBAC or role grant: IaC, config, policy data, deploy scripts, CDK sources. No
