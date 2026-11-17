@@ -48,7 +48,7 @@ chock add iam-policy-scan
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1YjU5ZmMwMmY5NzY1MmZkYzlkNTFlNjI1MjQ5NTllYTA5NmJiOGE0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaWFtLXBvbGljeS1zY2FuIiwidmVyc2lvbiI6IjAuMS4zIiwic2hhMjU2IjoiZGFiOWVhYjllYzBiNWIzNzljNTRiMGYxN2I5MGE2NmNhMjUzN2VlM2FmOTJiZWJhYzNhN2NjMjA2MzNlNDM3ZiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI0ZDQ3MTc1NTVhYWQxNjYzYmNmZjRjN2MyZWI2MGIwOTY5OTU1MDc2In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiaWFtLXBvbGljeS1zY2FuIiwidmVyc2lvbiI6IjAuMS40Iiwic2hhMjU2IjoiYzhmMjM5OTQzN2RiOTMzZTVkYjFhZGY0ZmU1MzgxYTQ1MTljZjlmZGVjMzg5NTUyODBiOGRiNGNhZTEyN2EzYSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
