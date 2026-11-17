@@ -50,7 +50,7 @@ chock add block-unsafe-code-execution
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIyMmQ0ZDQ3ZGExYmE2ZWUyZWM1Nzg3OTQyNmQ3OWE0YWVjNWYyNjFiIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5zYWZlLWNvZGUtZXhlY3V0aW9uIiwidmVyc2lvbiI6IjAuMS40Iiwic2hhMjU2IjoiY2ExNDc4MzdjYjFlNmFkMTY4YWY4MGEyZTE5YThmYjUzZjdjZTZkMTlhMTExODNmNjU2MjQzYTc3NDUyNmM3NSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJiOTI5NzRjN2Q0MmFkYzViODZjOTE3YWI1MWQyOTI1NmE4YzE3ZTg5In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiYmxvY2stdW5zYWZlLWNvZGUtZXhlY3V0aW9uIiwidmVyc2lvbiI6IjAuMS40Iiwic2hhMjU2IjoiY2ExNDc4MzdjYjFlNmFkMTY4YWY4MGEyZTE5YThmYjUzZjdjZTZkMTlhMTExODNmNjU2MjQzYTc3NDUyNmM3NSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
