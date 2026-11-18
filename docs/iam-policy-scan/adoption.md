@@ -96,7 +96,7 @@ INDEX.md: ~486 tokens (chars/4, max 2000)
 
 ```text
 [PASS] Passed with warnings.
-  [WARN]  …/.agents/policies/iam-policy-scan :: interface: Artifact ID 'iam-policy-scan' does not start with a verb (INT-3). Suggest rename to a verb-first id, e.g. 'create-...', 'validate-...', 'check-...'
+  [WARN]  …/.agents/policies/iam-policy-scan/manifest.yaml :: lifecycle: Production artifact should record reviewed_by.
 ```
 
 ## `$ chock eval --repo .`
