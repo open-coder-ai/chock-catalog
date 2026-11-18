@@ -1033,3 +1033,197 @@ suite:
               verbs: [get]
           {{- end }}
       expect: allow
+  - id: tc-052
+    category: trigger
+    prompt: A policy lets a role write and delete S3 objects on every resource.
+    expect: 'The commit is asked about: write actions on every resource.'
+    execute:
+      event: commit
+      files:
+        writer.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:PutObject",
+                  "s3:DeleteObject"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: ask
+  - id: tc-053
+    category: trigger
+    prompt: A Terraform policy grants iam:PassRole on every resource through jsonencode.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        pass.tf: |
+          resource "aws_iam_policy" "p" {
+            name = "p"
+            policy = jsonencode({
+              Version = "2012-10-17"
+              Statement = [{ Effect = "Allow", Action = ["iam:PassRole"], Resource = "*" }]
+            })
+          }
+      expect: block
+  - id: tc-054
+    category: trigger
+    prompt: A policy grants every Lambda and Secrets Manager action on every resource.
+    expect: 'The commit is refused: a service wildcard on all resources, whatever the service.'
+    execute:
+      event: commit
+      files:
+        services.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "lambda:*",
+                  "secretsmanager:*"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: block
+  - id: tc-055
+    category: trigger
+    prompt: A Terraform attachment gives a role the AdministratorAccess managed policy.
+    expect: The commit is refused.
+    execute:
+      event: commit
+      files:
+        attach.tf: |
+          resource "aws_iam_role_policy_attachment" "admin" {
+            role       = aws_iam_role.deploy.name
+            policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+          }
+      expect: block
+  - id: tc-056
+    category: negative_trigger
+    prompt: A policy lets a role describe and list on every resource, which AWS supports on * only.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        read.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "ec2:DescribeInstances",
+                  "s3:ListAllMyBuckets"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-057
+    category: negative_trigger
+    prompt: A policy has the Lambda basic-execution logging actions on every resource.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        logs.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "logs:CreateLogGroup",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-058
+    category: negative_trigger
+    prompt: iam:PassRole on every resource is limited to one service by an iam:PassedToService condition.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        pass.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": "*",
+                "Condition": {
+                  "StringEquals": {
+                    "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                  }
+                }
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-059
+    category: negative_trigger
+    prompt: A Go-templated Role with named verbs sits outside a templates directory.
+    expect: 'The commit is allowed: its directives are set aside and the rule is read.'
+    execute:
+      event: commit
+      files:
+        deploy/rbac.yaml: |
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: {{ .Release.Name }}-reader
+          rules:
+            - apiGroups: [""]
+              resources: ["configmaps"]
+              verbs: ["get", "list"]
+      expect: allow
+  - id: tc-060
+    category: negative_trigger
+    prompt: A Lambda role has the VPC-access network interface actions AWS ships on every resource.
+    expect: The commit is allowed.
+    execute:
+      event: commit
+      files:
+        vpc.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "ec2:CreateNetworkInterface",
+                  "ec2:DescribeNetworkInterfaces",
+                  "ec2:DeleteNetworkInterface"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      expect: allow
+  - id: tc-061
+    category: trigger
+    prompt: iam:PassRole is granted on every role in every account.
+    expect: 'The commit is refused: the same as PassRole on every resource.'
+    execute:
+      event: commit
+      files:
+        pass.json: |
+          {
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": "arn:aws:iam::*:role/*"
+              }
+            ]
+          }
+      expect: block

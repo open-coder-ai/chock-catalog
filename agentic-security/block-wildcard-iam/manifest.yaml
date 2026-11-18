@@ -1,20 +1,42 @@
 id: block-wildcard-iam
 name: "Block Wildcard IAM Grants"
-version: "0.1.4"
+version: "0.1.6"
 description: >
-  Pre-commit gate for the mechanizable slice of ASI03, one line at a time: a
-  wildcard action, resource or principal in string or list form, any quote style
+  Pre-commit gate for the mechanizable slice of ASI03, one line at a time, in IaC,
+  config, policy and CDK files, comments skipped: a wildcard action or
+  principal (a bare Resource star is iam-policy-scan's), any quote style
   (JSON, YAML, Terraform, CDK, escaped JSON), whole-service wildcards on s3, iam,
   sts, kms and ec2 actions, Allow with an inverted key, administrator, power-user
   and IAM-admin managed policies, GCP owner and editor roles and public members,
   Kubernetes RBAC wildcards and cluster-admin, Azure wildcard actions and Owner.
-  Only a one-line strict-JSON AWS Deny statement is exempt. Friction, not a security boundary:
+  Only a one-line strict-JSON AWS Deny is exempt. Friction, not a security boundary:
   grants split across lines (iam-policy-scan reads those), partial wildcards, unlisted services and roles, YAML
   aliases or tags and runtime-built grants pass; other Deny forms and
   admission-webhook wildcards are refused. Escape: 'pragma: allowlist
   broad-privilege' on the same line, honoured at commit; at agent tool-use only
   when that exact line is already committed in HEAD.
+  Use iam-policy-scan.
 artifact: hook
+applies_to:
+  # Files that can hold an IAM, RBAC or role grant: IaC, config, policy data, deploy scripts, CDK sources. No
+  # exclusion exists (fnmatch, `*` crosses `/`), so a .json or .yaml fixture still falls in; Markdown, Python and
+  # JavaScript sources are out of scope.
+  paths:
+  - "*.tf"
+  - "*.tfvars"
+  - "*.hcl"
+  - "*.bicep"
+  - "*.template"
+  - "*.json"
+  - "*.yaml"
+  - "*.yml"
+  - "*.sh"
+  - "*.bash"
+  - "*.ps1"
+  - "*.ts"
+  - "*.java"
+  - "*.cs"
+  - "*.go"
 enforcement: block
 mandatory: false
 effects:
@@ -45,7 +67,9 @@ hook:
         (?x)
         # Grant keys and service wildcards, unless the line is one strict-JSON AWS Deny statement: Effect Deny
         # its first key, every later object a key's value, no other effect, statement, escape, code or allow.
-        ^(?:
+        # A whole-line comment (#, //, /* or a block comment's * line) is not a grant.
+        ^(?!\s*(?:\#|//|/\*|\*(?:\s|/|$)))
+        (?:
           (?!\s*\{\s*"Effect"\s*:\s*"Deny"\s*,(?!.*Effect)(?!.*(?i:allow))(?!.*Statement)(?!.*\[\s*\{)
              (?!.*[^:\s]\s*\{)(?!.*[(;\#])
              (?!.*"(?:actions|resources|verbs|apiGroups|identifiers|dataActions|DataActions|Actions|permissions|rules)")
@@ -57,7 +81,8 @@ hook:
           | .*?(?:
         # A grant key whose value is the wildcard, or a one-line list holding it.
               (?<![\w.-])\\?["']?
-              (?:Action|Resource|Principal|AWS|Federated|Service|CanonicalUser|actions|resources|Actions
+        # Resource and Terraform's resources = [...] are not judged here: a line cannot see the actions beside them.
+              (?:Action|Principal|AWS|Federated|Service|CanonicalUser|actions|resources(?=\\?["']?\s*:)|Actions
                 |dataActions|DataActions|verbs|apiGroups|identifiers)
               \\?["']?\s*[:=]\s*
               (?:\\?["'](?:\*|\\u002[aA])(?::(?:\*|\\u002[aA]))?\\?["']
@@ -107,13 +132,13 @@ provenance:
   author: "chock-core"
   author_email: "chock@example.com"
   created_at: "2026-08-13T00:00:00Z"
-  updated_at: "2026-10-27T00:00:00Z"
+  updated_at: "2026-11-17T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
 lifecycle:
-  status: production
+  status: draft
   reviewed_by: []
 
 security:
@@ -160,3 +185,11 @@ changelog:
   date: '2026-11-09'
   changes:
   - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."
+- version: 0.1.5
+  date: '2026-11-15'
+  changes:
+  - "Judges an IAM statement's grant, not any line that holds a star (hardening review REVIEW-infra 2026-11-15, section 2.2, 3 and 5, rel12 H-2). A bare Resource or Terraform resources = [...] wildcard is no longer refused: a line cannot see the actions beside it, and describe, list and logs actions are valid on * (N01, N02, N23, BW3); iam-policy-scan judges those. The gate is bounded with applies_to.paths to IaC, config, policy-data, script and CDK-source files (Markdown, Python and JavaScript are out: N11, N24, BW6) and skips whole-line comments (N10). Still refused by design, because one line carries no sign of its Deny, condition or HEAD: pretty-printed Deny and conditioned statements (N05-N08), a re-indented legacy file (N18), admission-webhook wildcards (N22), and a fixture under tests/ that is JSON or YAML (N12). Caught 12 of 24, was 17; correct work blocked 7 of 26, was 13. Not done: the message still names the file, not the line (the content_regex runner prints no line)."
+- version: 0.1.6
+  date: '2026-11-17'
+  changes:
+  - "Status production -> draft (owner decision 2026-11-15, CAT-S1; review record discovery/2026-11-15-review-container-iam-ci-policies.md). Measured after 0.1.5: catches 12 of 24 and refuses 7 of 26 correct cases, a line gate that cannot see the Deny, condition or HEAD beside a grant; use iam-policy-scan, which catches 19 of 24 and refuses 2 of 26. No rule, script or eval changed."

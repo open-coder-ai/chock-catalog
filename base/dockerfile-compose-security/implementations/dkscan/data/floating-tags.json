@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "kind": "curated",
+  "as_of": "2026-11-15",
+  "source": {
+    "hardening-review": "open-coder-ai/org-plan:witness/reviews/2026-11-15-policy-hardening/REVIEW-infra.md section 2.1",
+    "hadolint-dl3007": "https://github.com/hadolint/hadolint/wiki/DL3007"
+  },
+  "note": "A tag floats if any of its components (split on - . _, lower-case) is in floating_tags, or if it has no digit and its first component is not in release_codenames; otherwise it is a version.",
+  "codenames_note": "release_codenames are the Debian and Ubuntu releases in support on the as_of date, not every release ever made; a codename tag names a release, so it is allowed alone or with a variant.",
+  "floating_tags": [
+    "canary",
+    "devel",
+    "develop",
+    "edge",
+    "latest",
+    "lts",
+    "main",
+    "mainline",
+    "master",
+    "nightly",
+    "rawhide",
+    "rolling",
+    "sid",
+    "stable",
+    "testing",
+    "trunk",
+    "unstable"
+  ],
+  "release_codenames": [
+    "bookworm",
+    "bullseye",
+    "jammy",
+    "noble",
+    "questing",
+    "resolute",
+    "trixie"
+  ]
+}

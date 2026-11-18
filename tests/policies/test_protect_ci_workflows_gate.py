@@ -16,6 +16,7 @@ from trees import ROOT
 
 POLICY = "protect-ci-workflows"
 guard = guardkit.load_guard(POLICY)
+GATE = scriptkit.load(POLICY, "protect-ci-workflows-gate.py")
 PATHS = [
     ".github/workflows/ci.yml",
     ".github/workflows/release.yaml",
@@ -140,24 +141,32 @@ def repo(tmp_path: Path) -> Path:
 
 
 def pattern() -> re.Pattern[str]:
-    return re.compile(gatekit.gate_spec(POLICY)["params"]["forbidden_path_regex"])
+    return GATE.PATH
 
 
-def test_the_gate_asks_at_tool_use_only_and_has_no_waiver() -> None:
+@pytest.fixture
+def person(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A commit is a person's: none of the variables the engine reads as an agent's."""
+    for name in ("CLAUDECODE", "AI_AGENT", "CHOCK_AGENT_COMMIT"):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_the_gate_asks_at_tool_use_and_an_agents_commit_and_has_no_waiver() -> None:
     manifest = scriptkit.manifest(POLICY)
     assert manifest["artifact"] == "rule"
     gate = manifest["hook"]["gate"]
-    assert (gate["kind"], gate["on"], gate["action"]) == ("content_regex", ["tool_use"], "ask")
-    assert gate["params"]["content_pattern"] == "(?!)"
-    assert "allowlist_pragma" not in gate["params"]
+    assert (gate["kind"], gate["on"], gate["action"]) == ("script", ["commit", "tool_use"], "ask")
+    assert gate["params"] == {"script": "protect-ci-workflows-gate.py"}
     assert "propose the change" in gate["message"]
+    assert "person's own commit is not judged" in gate["message"]
+    assert " ".join(gate["message"].split()) == GATE.MESSAGE
 
 
 @pytest.mark.parametrize("path", PATHS)
 def test_a_write_to_ci_config_asks_a_person(repo: Path, path: str) -> None:
     code, err = gatekit.judge(POLICY, repo, gatekit.PRE_TOOL_USE, {path: "new\n"}, {path: "new\n"})
     assert code == runner.EXIT_ASK
-    assert "forbidden path" in err
+    assert "CI, hook or bot configuration" in err
     assert "person" in err
 
 
@@ -181,14 +190,15 @@ def test_the_turns_end_warns_about_a_changed_workflow(repo: Path) -> None:
     (repo / ".github/workflows/ci.yml").write_text("on: workflow_dispatch\n", encoding="utf-8")
     code, err = gatekit.judge(POLICY, repo, gatekit.STOP, {".github/workflows/ci.yml": "on: workflow_dispatch\n"})
     assert code == runner.EXIT_WARN
-    assert "forbidden path" in err
+    assert "CI, hook or bot configuration" in err
 
 
 def test_the_turns_end_passes_when_no_ci_file_changed(repo: Path) -> None:
     assert gatekit.judge(POLICY, repo, gatekit.STOP, {"src/app.py": "x = 2\n"}) == (0, "")
 
 
-def test_a_commit_is_never_judged_so_a_person_edits_freely(repo: Path) -> None:
+@pytest.mark.usefixtures("person")
+def test_a_persons_commit_is_not_judged_so_a_person_edits_freely(repo: Path) -> None:
     (repo / ".github/workflows/ci.yml").write_text("on: workflow_dispatch\n", encoding="utf-8")
     scriptkit.git(repo, "add", "-A")
     assert gatekit.judge(POLICY, repo, gatekit.COMMIT) == (0, "")

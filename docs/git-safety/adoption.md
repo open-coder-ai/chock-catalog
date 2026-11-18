@@ -89,7 +89,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 .chock/compiled/git-safety/ambient-rule/ambient.md
-.chock/compiled/git-safety/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry

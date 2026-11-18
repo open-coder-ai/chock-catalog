@@ -81,11 +81,8 @@ class Walker:
         if resolved is None:
             self.hits.append(Hit("dk-from-unresolved", instr.line, detail, f"{detail}: a variable with no default"))
             return
-        verdict = images.judge(resolved)
-        if verdict == "floating":
-            self.hits.append(Hit("dk-from-floating", instr.line, detail, f"{what} {resolved}: no tag, or latest"))
-        elif verdict == "no-digest":
-            self.hits.append(Hit("dk-from-no-digest", instr.line, detail, f"{what} {resolved}: tag without digest"))
+        if images.judge(resolved) == "floating":
+            self.hits.append(Hit("dk-from-floating", instr.line, detail, f"{what} {resolved}: no tag, or a floating tag"))
 
     def from_(self, instr: Instr) -> None:
         found = words(instr.args)

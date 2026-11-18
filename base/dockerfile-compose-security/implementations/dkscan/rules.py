@@ -58,28 +58,12 @@ _TABLE = (
         "give the ARG a pinned default, or write the image out",
     ),
     (
-        "dk-from-no-digest",
-        "image",
-        ASK,
-        "CWE-829",
-        "OpenSSF Scorecard Pinned-Dependencies",
-        "add the digest: image:tag@sha256:...",
-    ),
-    (
         "cm-image-floating",
         "image",
         ASK,
         "CWE-829",
         "Trivy DS001, KICS Image Version Using 'latest'",
         "name an exact tag or digest, or a default in ${VAR:-image:1.2.3}",
-    ),
-    (
-        "cm-image-no-digest",
-        "image",
-        ASK,
-        "CWE-829",
-        "OpenSSF Scorecard Pinned-Dependencies",
-        "add the digest: image:tag@sha256:...",
     ),
     (
         "dk-fetch-exec",

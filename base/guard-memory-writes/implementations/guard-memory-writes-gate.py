@@ -48,9 +48,18 @@ SECRET = re.compile(
 |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 # v1 quoted password, now silent on a value that starts like a reference: $VAR, ${VAR}, {{ x }}, %(x)s
 |password\s*=\s*["'](?!\$|\{\{|%[({])[^"'\s]{12,}["']
-|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*[A-Za-z0-9_\-]{20,}
-# v1 bare password, now silent on SOPS, vault:, Terraform references and environment lookups
-|password\s*[=:]\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])[^\s"'${}]{12,}
+# bare key and token: a literal value, not a placeholder, a call or a subscript, a member chain or a name
+|(api|secret|auth)[_-]?(key|token)\s*[=:]\s*
+ (?!<|\*{3}|x{4}|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
+ (?![A-Za-z0-9_\-]*[(\[]|[A-Za-z0-9_\-]*\.[A-Za-z_])
+ (?!(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+|[a-z]+[0-9]{0,3}(?:_[a-z]+[0-9]{0,3})+)(?:_[0-9]{1,3})?(?:[\s,;)\]}]|$))
+ [A-Za-z0-9_\-]{20,}
+# v1 bare password, a literal value: silent on SOPS, vault:, Terraform references, environment lookups,
+# placeholders, and expressions (a call, a subscript, a generic, a member chain without a digit)
+|password\s*[=:](?!:)\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])
+ (?!<|\*{3}|x{4}|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
+ (?![A-Za-z_]\w*(?:(?:\.|::|->)[A-Za-z_]\w*)*[(\[<])(?![A-Za-z_]+(?:(?:\.|::)[A-Za-z_]+)+[;,)\s]|[A-Za-z_]+(?:(?:\.|::)[A-Za-z_]+)+$)
+ [^\s"'${}]{12,}
 # private keys: any PEM label ending PRIVATE KEY (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS8), PGP armor
 |-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE\ KEY(?:\ BLOCK)?-----
 # key, token, secret and password names in any case and separator: JSON, YAML, env, HCL, Go, Ruby, PHP, Python, JS

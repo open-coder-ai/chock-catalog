@@ -19,7 +19,7 @@
 
 ## What it is about
 
-trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android), SQL/JPA/MyBatis, templates, application.properties/.yml, web.xml, pom.xml, Gradle; "customize java security" opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto, trust-all TLS, Spring Security off, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules, 16 packs, each allow|deny|ask in .chock/security.json; absent = deny (quality: allow).
+trigger: writing Java or Kotlin (Spring, Jakarta EE, Quarkus, Android), SQL/JPA/MyBatis, templates, application.properties/.yml, web.xml, pom.xml, Gradle; "customize java security" opens the guided page. avoid: injection, XXE, SSRF, unsafe deserialization, path traversal, weak crypto, trust-all TLS, Spring Security off, exposed secrets, known-exploited deps, SpotBugs/Sonar/PMD/Checkstyle findings. 129 rules, 16 packs, each allow|deny|ask in .chock/security.json; absent = deny (quality: allow). Not production-grade: try it under `rollout: observe` first.
 
 ## What it solves
 
@@ -48,7 +48,7 @@ chock add java-security
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlMDZkZDQyYWU3NmRkMzBmZDgzMDJkODU5ZDVmMThhMTllYWJjM2E0In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiamF2YS1zZWN1cml0eSIsInZlcnNpb24iOiIwLjcuMCIsInNoYTI1NiI6IjllZjJkMmM5YzhhMTBlZTYyOWIyY2UzNGQyMWUxN2E2OWI4NGVjZGYwN2ZmMTFkZDQ3NWMzZjYyYjk5Y2Q2MGIifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJiOTI5NzRjN2Q0MmFkYzViODZjOTE3YWI1MWQyOTI1NmE4YzE3ZTg5In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoiamF2YS1zZWN1cml0eSIsInZlcnNpb24iOiIwLjcuMiIsInNoYTI1NiI6IjIyODExNzk1MGM0ZDRjMGMwYTJmMmI5NTEzNWRmMWVjMWNhODBmNjNmYjg5ZmE5ODMxODQyYWQ5YjNkMzE2ZmEifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

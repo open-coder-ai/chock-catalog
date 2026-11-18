@@ -29,18 +29,18 @@ def rules(text: str, root: str = dockerkit.BARE) -> set[str]:
         ("FROM ubuntu\n", "dk-from-floating"),
         ("from ubuntu as build\nFROM build\n", "dk-from-floating"),
         ("FROM --platform=$BUILDPLATFORM node AS b\n", "dk-from-floating"),
-        ("FROM node:20\n", "dk-from-no-digest"),
-        ("FROM registry.example.com:5000/team/app:1.2\n", "dk-from-no-digest"),
+        ("FROM node:lts\n", "dk-from-floating"),
+        ("FROM registry.example.com:5000/team/app:edge\n", "dk-from-floating"),
         ("ARG BASE\nFROM ${BASE}\n", "dk-from-unresolved"),
         ("ARG V\nFROM node:$V\n", "dk-from-unresolved"),
         ("FROM $UNDECLARED\n", "dk-from-unresolved"),
         ("ARG BASE=debian\nFROM ${BASE}\n", "dk-from-floating"),
-        ("ARG BASE=debian:12\nFROM ${BASE}\n", "dk-from-no-digest"),
-        ("ARG T\nFROM debian:${T:-12}\n", "dk-from-no-digest"),
+        ("ARG BASE=debian:stable\nFROM ${BASE}\n", "dk-from-floating"),
+        ("ARG T\nFROM debian:${T:-stable}\n", "dk-from-floating"),
         ("ARG T\nFROM debian${T:+:12}\n", "dk-from-unresolved"),
-        ("ARG T=1\nFROM debian${T:+:12}\n", "dk-from-no-digest"),
+        ("ARG T=1\nFROM debian${T:+:stable}\n", "dk-from-floating"),
         ("FROM a:1@sha256:" + "0" * 64 + " AS a\nCOPY --from=nginx /x /y\n", "dk-from-floating"),
-        ("FROM a:1@sha256:" + "0" * 64 + "\nCOPY --from=nginx:1.27 /x /y\n", "dk-from-no-digest"),
+        ("FROM a:1@sha256:" + "0" * 64 + "\nCOPY --from=nginx:edge /x /y\n", "dk-from-floating"),
         ("FROM a:1@sha256:" + "0" * 64 + "\nRUN --mount=type=bind,from=alpine,target=/m true\n", "dk-from-floating"),
         ("FROM a:1@sha256:" + "0" * 64 + "\nCOPY --from=5 /x /y\n", "dk-from-floating"),
         ("FROM a:1@sha256:" + "0" * 64 + "\nARG IMG\nCOPY --from=$IMG /x /y\n", "dk-from-unresolved"),
@@ -48,6 +48,20 @@ def rules(text: str, root: str = dockerkit.BARE) -> set[str]:
 )
 def test_image_findings(text: str, rule: str) -> None:
     assert rule in rules(text + USER)
+
+
+@pytest.mark.parametrize(
+    ("floating", "version"),
+    [
+        ("node:lts", "node:20"),
+        ("debian:stable", "debian:12"),
+        ("app:edge", "app:1.2.3"),
+        ("ubuntu:rolling", "ubuntu:24.04"),
+    ],
+)
+def test_a_floating_tag_is_caught_and_a_version_next_to_it_is_not(floating: str, version: str) -> None:
+    assert rules(f"FROM {floating}\n" + USER) == {"dk-from-floating"}
+    assert not rules(f"FROM {version}\n" + USER)
 
 
 @pytest.mark.parametrize(
@@ -137,7 +151,7 @@ def test_non_root_is_read_from_the_tag_only(base: str) -> None:
 
 
 def test_bom_does_not_hide_the_first_stage() -> None:
-    assert {"dk-from-no-digest", "dk-last-user-root"} <= rules("\ufeffFROM ubuntu:22.04\n")
+    assert {"dk-from-floating", "dk-last-user-root"} <= rules("\ufeffFROM ubuntu:rolling\n")
 
 
 def test_arg_and_env_before_any_stage_or_user() -> None:
@@ -168,4 +182,5 @@ def test_split_ref_and_judge() -> None:
     assert images.split_ref("a:1@sha256:" + "f" * 64) == ("a", "1", "@sha256:" + "f" * 64)
     assert images.judge("SCRATCH") == "scratch"
     assert images.judge("a:" + "late" + "st") == "floating"
-    assert images.judge("a:LATEST") == "no-digest"
+    assert images.judge("a:LATEST") == "floating"
+    assert images.judge("a:1.2") == "pinned"

@@ -30,6 +30,9 @@ class Cases:
     def alarms(self, rows: dict[str, dict]) -> list[str]:
         return sorted(ref for ref, row in rows.items() if row["action"] == self.g.DENY)
 
+    def warnings(self, rows: dict[str, dict]) -> list[str]:
+        return sorted(ref for ref, row in rows.items() if row["action"] == self.g.WARN)
+
     def expect(self, condition: bool, complaint: str) -> None:
         self.checked += 1
         if not condition:
@@ -39,6 +42,12 @@ class Cases:
         """Correct markup, from every direction this parser can be shown it."""
         alarms = self.alarms(self.rows(before, after))
         self.expect(not alarms, f"{label}: refused a correct change ({', '.join(alarms)})\n      {after}")
+
+    def warned(self, label: str, before: str, after: str) -> None:
+        """Worth saying, not worth blocking: a warning row and no refusal."""
+        rows = self.rows(before, after)
+        ok = bool(self.warnings(rows)) and not self.alarms(rows)
+        self.expect(ok, f"{label}: expected a warning and no refusal ({self.alarms(rows)}, {self.warnings(rows)})\n      {after}")
 
     def refused(self, label: str, before: str, after: str) -> None:
         self.expect(bool(self.alarms(self.rows(before, after))), f"{label}: allowed a break\n      {after}")
@@ -63,8 +72,12 @@ def check_a_patch_at_scale(c: Cases) -> None:
     fixed = [r for r in rows.values() if r["key"] == (c.g.MISSING, c.g.SATISFIED) and r["action"] == c.g.RECORD]
     c.expect(len(fixed) == 38, f"{len(fixed)} correct fixes were recorded, not 38")
     c.expect(
-        c.alarms(rows) == ["html:1", "img[src=/chart.png]", "img[src=/product-39.png]", "img[src=/product-40.png]"],
+        c.alarms(rows) == ["html:1", "img[src=/chart.png]", "img[src=/product-40.png]"],
         f"the alarms on the scale fixture are {c.alarms(rows)}",
+    )
+    c.expect(
+        c.warnings(rows) == ["img[src=/product-39.png]"],
+        f"the warnings on the scale fixture are {c.warnings(rows)}",
     )
     c.expect(
         "placeholder wording" in rows["img[src=/product-39.png]"]["why"],
@@ -98,7 +111,7 @@ def check_the_requirement_qualifiers(c: Cases) -> None:
 def check_a_name_the_subtree_carries(c: Cases) -> None:
     """accname computes a name from the whole subtree, so an icon link is named, not unnamed."""
     c.silent("an svg named by its title child", "<p>x</p>", '<svg role="img"><title>Quarterly revenue</title></svg>')
-    c.refused("an svg with no title child", "<p>x</p>", '<svg role="img"></svg>')
+    c.warned("a new svg with no title child", "<p>x</p>", '<svg role="img"></svg>')
     c.silent("a link named by its icon's title", "<p>x</p>", '<a href="/home"><svg role="img"><title>Home</title></svg></a>')
     for markup in (
         '<a href="/home"><img src="/i.png" alt="Home"></a>',
@@ -107,9 +120,9 @@ def check_a_name_the_subtree_carries(c: Cases) -> None:
     ):
         c.silent("an element named by its child image", "<p>x</p>", markup)
     # "legend-text" is narrower than "text": stray descendant text must not name a fieldset.
-    c.refused("a fieldset with no legend", "<p>x</p>", "<fieldset><p>Address</p></fieldset>")
+    c.warned("a new fieldset with no legend", "<p>x</p>", "<fieldset><p>Address</p></fieldset>")
     # And the unevaluated channel must not swallow the case it was carved out of.
-    c.refused("a genuinely empty link", "<p>x</p>", '<a href="/x"></a>')
+    c.warned("a new empty link", "<p>x</p>", '<a href="/x"></a>')
 
 
 def check_what_the_parser_cannot_resolve(c: Cases) -> None:
@@ -199,9 +212,13 @@ def check_quality_is_judged_only_on_a_fix(c: Cases) -> None:
     """A pre-existing weak name is not this change's business; judging it fails innocent commits."""
     weak = '<html lang="en"><img src="/a.png" alt="image"></html>'
     c.silent("an untouched weak name", weak, weak)
-    c.refused("a fix that supplies a weak name", '<html lang="en"><img src="/a.png"></html>', weak)
+    c.warned("a fix that supplies a weak name", '<html lang="en"><img src="/a.png"></html>', weak)
     for text in ("click here", "read more", "learn more", "this link", "more info"):
-        c.refused(f"a link named {text!r}", '<a href="/x"></a>', f'<a href="/x">{text}</a>')
+        c.warned(f"a link named {text!r}", '<a href="/x"></a>', f'<a href="/x">{text}</a>')
+    # A language code is two letters by design: min_length never applies to lang, even as a warning.
+    for code in ("en", "fr", "de-CH"):
+        rows = c.rows("<html><p>x</p></html>", f'<html lang="{code}"><p>x</p></html>')
+        c.expect(not c.alarms(rows) and not c.warnings(rows), f'lang="{code}" was not accepted without comment')
     for markup in ("<button>Continue</button>", "<button>More options</button>"):
         c.silent("a button label that is honest", "<p>x</p>", markup)
 

@@ -52,7 +52,6 @@ Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 1 PreToolUse/Stop hook(s) in .claude/settings.json
   claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
-  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 hook entr(y/ies) in .gemini/settings.json
   gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
   gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
@@ -196,9 +195,19 @@ block-curl-pipe-sh  [deterministic]
   PASS  tc-089                             authored  CONFIRM: a raw network read (nc, socat, /dev/tcp or an interpreter …
   PASS  tc-090                             authored  CONFIRM: a raw network read (nc, socat, /dev/tcp or an interpreter …
   PASS  tc-091                             authored  CONFIRM: a raw network read (nc, socat, /dev/tcp or an interpreter …
+  PASS  tc-092                             authored  guard exit 0
+  PASS  tc-093                             authored  guard exit 0
+  PASS  tc-094                             authored  BLOCKED: a network download is wired into bash, so remote code woul…
+  PASS  tc-095                             authored  BLOCKED: a network download is wired into sh, so remote code would …
+  PASS  tc-096                             authored  BLOCKED: a network download is wired into sh, so remote code would …
+  PASS  tc-097                             authored  BLOCKED: a network download is wired into sh, so remote code would …
+  PASS  tc-098                             authored  BLOCKED: a network download is wired into sh, so remote code would …
+  PASS  tc-099                             authored  BLOCKED: a network download is wired into sh, so remote code would …
+  PASS  tc-100                             authored  BLOCKED: a network download is wired into sh, so remote code would …
+  PASS  tc-101                             authored  guard exit 0
   score 1.00
 
-5 policies: 91 pass, 44 skipped
+5 policies: 101 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -207,7 +216,6 @@ block-curl-pipe-sh  [deterministic]
 ```text
 .chock/compiled/block-curl-pipe-sh/agent-hooks/agent-hooks.json
 .chock/compiled/block-curl-pipe-sh/ambient-rule/ambient.md
-.chock/compiled/block-curl-pipe-sh/managed-setting/managed-settings.json
 .chock/compiled/block-curl-pipe-sh/pre-tool-use/antigravity-hooks.json
 .chock/compiled/block-curl-pipe-sh/pre-tool-use/codex_cli-hooks.json
 .chock/compiled/block-curl-pipe-sh/pre-tool-use/cursor-hooks.json

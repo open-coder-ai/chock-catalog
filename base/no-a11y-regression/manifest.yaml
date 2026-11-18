@@ -1,10 +1,12 @@
 id: no-a11y-regression
 name: "Keep Accessibility From Regressing"
-version: "1.1.4"
+version: "1.1.6"
 description: >
   trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label,
   label or lang that an element already had, deleting a flagged element.
   avoid: breaking a requirement the previous revision met; interrupting a correct fix.
+  Misses: a name lost while an element moves to another file, and a new element or a supplied name that is weak, which warn and do not block.
+  Not production-grade: caught 23 of 51 regressions and refused 17 of 58 correct changes in the 2026-11-15 hardening review; known gaps are framework attribute syntax (Angular, Vue, Thymeleaf, JSP, ERB, Pug, Lit), icon-only controls that lose an aria-label, and an alt removed in some forms.
 artifact: rule
 enforcement: block
 effects: [read_only]
@@ -25,13 +27,13 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-09-10T00:00:00Z"
-  updated_at: "2026-10-27T00:00:00Z"
+  updated_at: "2026-11-17T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
 
 lifecycle:
-  status: production
+  status: draft
   reviewed_by:
     - "chock-core"
 
@@ -130,3 +132,11 @@ changelog:
   date: '2026-11-09'
   changes:
   - "Changelog order only (IR-F46): entries had been added at the top of a list that ran oldest-first, so it rose and fell by version; they now run oldest-first throughout. No entry's text or version, and no rule, guard or eval, changed. Patch bump because the manifest is part of the published pack hash."
+- version: 1.1.5
+  date: '2026-11-15'
+  changes:
+  - "Block a regression, not a new element or the wording of a name (hardening review REVIEW-no-a11y-regression, 2026-11-15, section 7 item 1). The guard now refuses only an element that had a name or a required attribute and lost it. A new element that lacks its name (gone -> missing) and the quality test on a supplied name now print a warning and exit 0, and min_length no longer applies to lang, so lang=\"en\" passes. A named element replaced by an unnamed one of the same tag in the same stretch of the file (an image swapped with its alt dropped, a label removed with the input's id renamed) is still a lost name and still blocks: the pairing key is what such an edit changes, so the elements are aligned by position in the diff. On the review's own pairs: caught 25 of 51 before and 23 of 51 after, correct work refused 36 of 58 before and 17 of 58 after; the two catches given up, R35 and R37 (a name lost while an element moves to another file), were caught only by refusing every new element, and are now named in the description's Misses text until cross-file pairing exists."
+- version: 1.1.6
+  date: '2026-11-17'
+  changes:
+  - "Status production -> draft (owner decision 2026-11-15, CAT-S1; review record discovery/2026-11-15-review-no-a11y-regression.md). Measured after 1.1.5: caught 23 of 51 regressions, correct work refused 17 of 58. Known to be wrong: framework attribute syntax is not read (Angular, Vue, Thymeleaf, JSP, ERB, Pug, Lit), an aria-label lost from an icon-only control is left unevaluated, an alt removed in some forms is missed, and there is no waiver a person can record. It returns to production when the hardening items are done and the counts are measured again. No rule, script or eval changed."

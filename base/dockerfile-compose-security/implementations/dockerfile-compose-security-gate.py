@@ -27,6 +27,8 @@ COMPOSE = re.compile(r"^(?:docker-)?compose(?:[._-][\w.-]+)?\.ya?ml$", re.IGNORE
 WAIVER = re.compile(r"chock:\s*allow\s+([\w-]+)")
 COMMENT = re.compile(r"^\s*#")
 EXIT_BLOCK, EXIT_ASK = 1, 3
+PERSON_EVENTS = frozenset({"commit", "push", "ci"})
+UNREADABLE = "cm-unreadable"
 
 
 def kind_of(path: str) -> str | None:
@@ -80,8 +82,8 @@ def marks_by_line(text: str, instrs: list[dockerfile.Instr] | None) -> dict[int,
 
 
 def waivable(event: str, repo: Repo) -> bool:
-    """A waiver counts only at commit, and never for a commit the engine would mark as an agent's."""
-    return event == "commit" and not agent_commit(repo.root)
+    """A waiver counts where a person reviews (commit, push, ci), never for a commit the engine would mark as an agent's."""
+    return event in PERSON_EVENTS and not (event == "commit" and agent_commit(repo.root))
 
 
 def findings(payload: dict) -> list[dict]:
@@ -105,15 +107,18 @@ def findings(payload: dict) -> list[dict]:
             if any(hit.rule in WAIVER.findall(mark) for mark in marks.get(hit.line, ())):
                 continue
             rule = RULES[hit.rule]
-            found.append(
-                {
-                    "key": f"{hit.rule}|{' '.join(hit.detail.split())[:400]}",
-                    "path": norm,
-                    "line": hit.line,
-                    "rule": hit.rule,
-                    "message": f"{hit.rule} ({rule.cwe or 'no CWE'}; {rule.refs}): {hit.why}. Fix: {rule.fix}",
-                }
-            )
+            item = {
+                "key": f"{hit.rule}|{' '.join(hit.detail.split())[:400]}",
+                "path": norm,
+                "line": hit.line,
+                "rule": hit.rule,
+                "message": f"{hit.rule} ({rule.cwe or 'no CWE'}; {rule.refs}): {hit.why}. Fix: {rule.fix}",
+            }
+            # An unreadable file hides whatever the change put in it, so a baseline that was already
+            # unreadable never absolves it: the finding is new on every write of that file.
+            if hit.rule == UNREADABLE and not payload.get("baseline"):
+                item["new"] = True
+            found.append(item)
     return found
 
 

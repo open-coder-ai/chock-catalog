@@ -12,7 +12,7 @@ look the line up here. CWE ids are also claimed under `compliance.cwe`.
 
 | Rule | Refuses | CWE |
 | --- | --- | --- |
-| eval-exec-call | bare eval or exec followed by a call paren, optional-call form included | 95 |
+| eval-exec-call | bare eval or exec followed by a call paren, optional-call form included; not after def, function, func, fn or async (a definition) | 95 |
 | eval-exec-receiver | eval or exec called on window, globalThis, global, builtins, `__builtins__`, optional chaining included | 95 |
 | eval-exec-indirect | bracket access by a literal sink name (Function included), the comma-operator call, eval assigned to a name, getattr of builtins with a literal sink name | 95 |
 | function-constructor | the Function constructor with new; without new unless every argument is a plain literal | 95 |
@@ -20,7 +20,7 @@ look the line up here. CWE ids are also claimed under `compliance.cwe`.
 | compile-builtin | compile with an exec, eval or single mode literal on the line | 95 |
 | vm-run | the node vm run-in-context APIs, compileFunction, a new vm Script, the same on a require of vm | 95 |
 | dynamic-import | dunder import or import_module by a non-literal name, or of os-class modules by literal name | 470 |
-| shell-mode | the shell keyword as True or 1; the shell key as true or 1 in JSON or object form; an argument vector that starts with a shell (bare name or /bin path) and a flag group ending in c, which also refuses prose that quotes such a vector | 78 |
+| shell-mode | the shell keyword as True or 1; the shell key as true or 1 in JSON or object form; an argument vector that starts with a shell (bare name or /bin path) and a flag group ending in c, anywhere except a configuration line: a Dockerfile CMD, ENTRYPOINT, RUN, SHELL or HEALTHCHECK instruction, a YAML or JSON key command, args, entrypoint or test with the array after it, or a YAML list item that opens with an array, each only when every element is a quoted string literal; it also refuses a string that quotes such a vector | 78 |
 | implicit-shell | os system and popen, subprocess or commands getoutput and getstatusoutput, asyncio's shell subprocess, execSync | 78 |
 | os-exec-spawn | os exec*, spawn*, posix_spawn: they take an argument vector, but run whatever program the line names; refused because HP13 lists them | 78 |
 | child-process-exec | the exec method on child_process, childProcess, cp, or on require of child_process, optional chaining included | 78 |
@@ -58,9 +58,14 @@ Each needs parsing and is left to the NP10 sink pack (roadmap wave 4, lexer base
   variable.
 - Taint: whether a literal-looking argument is attacker-controlled; JS `import()` and
   `require()` by computed path (too common in correct bundler code to block by regex).
-- Context: a markdown fence, a comment-only line or a test path is scanned like code.
-  Exempting them would loosen the gate, which only a person may do; the per-line
-  pragma is the waiver.
+- A configuration-shaped line whose array holds only quoted literals is exempt; an annotated or
+  dict-valued line that holds only literals (`"command": ["sh", "-c", "make"]` in Python) is the same text
+  and is allowed.
+- Context: a line that is only a comment (hash and a space, or two slashes) is skipped, except a hash that starts a C preprocessor directive
+  (define, include, if and the rest) and a shebang.
+  Still scanned like code: a match in a trailing comment, in a string literal or docstring
+  (one line cannot tell a literal from code), in a Markdown fence (the gate cannot skip a
+  file type) and in a test path; the per-line pragma is the waiver.
 - The shell option given as a string path, and `bash -c` with a variable in a
   shell script: too common in correct CI YAML and scripts to block by regex.
 - torch 2.6 and later already default weights_only to True; the gate still asks for

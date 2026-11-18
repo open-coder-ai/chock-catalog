@@ -52,7 +52,6 @@ Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
   claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
-  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 2 hook entr(y/ies) in .gemini/settings.json
   gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
   gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
@@ -162,9 +161,14 @@ scan-secrets  [deterministic]
   PASS  tc-057                             authored  gate exit 0
   PASS  tc-058                             authored  gate exit 0
   PASS  tc-059                             authored  gate exit 0
+  PASS  tc-060                             authored  gate exit 0
+  PASS  tc-061                             authored  gate exit 0
+  PASS  tc-062                             authored  gate exit 0
+  PASS  tc-063                             authored  gate exit 0
+  PASS  tc-064                             authored  gate exit 0
   score 1.00
 
-5 policies: 59 pass, 44 skipped
+5 policies: 64 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -178,7 +182,6 @@ scan-secrets  [deterministic]
 .chock/compiled/scan-secrets/ci-gate/step.yaml
 .chock/compiled/scan-secrets/git-hook/gate.json
 .chock/compiled/scan-secrets/git-hook/git-pre-commit.sh
-.chock/compiled/scan-secrets/managed-setting/managed-settings.json
 .chock/compiled/scan-secrets/mcp-gateway/gateway-gate.json
 .chock/compiled/scan-secrets/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/scan-secrets/pre-tool-use/cursor-write-hooks.json

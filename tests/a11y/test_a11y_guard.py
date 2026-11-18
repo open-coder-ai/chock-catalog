@@ -11,7 +11,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import check_a11y_pairs as pairs
 import check_a11y_rules as rules
+import check_a11y_swaps as swaps
 import check_a11y_table as table
 import pytest
 
@@ -27,6 +29,7 @@ RULE_CHECKS = [
     rules.check_every_key_is_covered,
     rules.check_the_commit_path,
 ]
+SWAP_CHECKS = [swaps.check_a_swap_that_loses_the_name]
 TABLE_CHECKS = [
     table.check_the_table_is_total,
     table.check_a_patch_at_scale,
@@ -54,7 +57,7 @@ def test_the_guard_agrees_with_its_rules(guard: object, check: Callable) -> None
     assert probe.failures == []
 
 
-@pytest.mark.parametrize("check", TABLE_CHECKS, ids=[c.__name__ for c in TABLE_CHECKS])
+@pytest.mark.parametrize("check", TABLE_CHECKS + SWAP_CHECKS, ids=[c.__name__ for c in TABLE_CHECKS + SWAP_CHECKS])
 def test_the_decision_table_holds(guard: object, check: Callable) -> None:
     cases = table.Cases(guard)
     check(cases)
@@ -63,6 +66,10 @@ def test_the_decision_table_holds(guard: object, check: Callable) -> None:
 
 
 def test_both_checkers_run_every_check_they_define() -> None:
-    for module, listed in ((rules, RULE_CHECKS), (table, TABLE_CHECKS)):
+    for module, listed in ((rules, RULE_CHECKS), (table, TABLE_CHECKS), (swaps, SWAP_CHECKS)):
         defined = {name for name in dir(module) if name.startswith("check_")}
         assert defined == {c.__name__ for c in listed}, module.__name__
+
+
+def test_the_review_pairs_are_judged_as_hardened(guard: object) -> None:
+    assert pairs.check(guard) == []

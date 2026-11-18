@@ -462,3 +462,95 @@ suite:
     prompt: "A commit adds a backup script that pipes a dump through ssh -p with a port and makes directories with -p."
     expect: "The hook allows it: -p is a password only for the mysql and mariadb clients and sshpass, and only within their own command."
     execute: {event: commit, files: {"backup.sh": "mkdir -p /srv/backup\nmysqldump app | ssh -p2222 backup.internal 'cat > app.sql'\ntar -pxzf app.tar.gz\n"}, expect: allow}
+  # SS-1 (0.1.5): code that handles a password, token or key is not a credential. Each case below holds no secret value;
+  # review record: witness/reviews/2026-11-15-policy-hardening/REVIEW-secrets.md sections 4 and 4b. The refused direction
+  # is held by the cases above (tc-001 to tc-059), which are unchanged.
+  - id: tc-060
+    category: negative_trigger
+    prompt: A commit adds Python that takes a password from a prompt, a vault, a request, a keyring or a model field.
+    expect: The hook allows it; a call, a subscript, an attribute or a member chain is an expression, not a literal password.
+    execute:
+      files:
+        login.py: |
+          password = getpass.getpass()
+          password = getpass.getpass("Password: ")
+          password = get_password_from_vault()
+          password = request.json["password"]
+          password = request.POST.get("password")
+          password = serializer.validated_data["password"]
+          password = credentials.password
+          password = keyring.get_password("svc", user)
+          password = secrets.token_urlsafe(16)
+          password=make_password(raw),
+          password = db.Column(db.String(128), nullable=False)
+          password = models.CharField(max_length=128)
+          password = factory.PostGenerationMethodCall("set_password", "pw")
+          auth_token = generate_authentication_token(user)
+          api_key = get_api_key_from_settings()
+          password: Optional[str] = None
+      expect: allow
+  - id: tc-061
+    category: negative_trigger
+    prompt: A commit adds JavaScript and TypeScript that read a password from a request, a form, an event or component state.
+    expect: The hook allows it.
+    execute:
+      files:
+        form.ts: |
+          const password = req.body.password;
+          password: formData.get("password"),
+          password: Joi.string().min(12).required(),
+          password: yup.string().required("Password is required"),
+          password: event.target.value,
+          password: FormControl<string>;
+          const password = this.form.controls.password.value;
+          password: this.state.password,
+      expect: allow
+  - id: tc-062
+    category: negative_trigger
+    prompt: A commit adds Java, Go, Ruby, Rust and C# that read a password from a request, a parameter map, a model or a prompt.
+    expect: The hook allows it.
+    execute:
+      files:
+        Login.java: |
+          String password = request.getParameter("password");
+          var password = model.Password;
+        login.go: |
+          password = strings.TrimSpace(password)
+        login.rb: |
+          password = params[:user][:password]
+        login.rs: |
+          let password = rpassword::prompt_password("Password: ")?;
+        main.tf: |
+          password = random_password.db.result
+      expect: allow
+  - id: tc-063
+    category: negative_trigger
+    prompt: A commit adds example configuration whose password, token and key are placeholders.
+    expect: The hook allows it; a placeholder is not a credential.
+    execute:
+      files:
+        config.example.yaml: |
+          password: <your-password>
+          password: your-password-here
+          password: ${DB_PASSWORD_PROD}
+          password: {{ db_password_value }}
+          password: changeme
+          password: xxxxxxxxxxxxxxxx
+          password: ************
+          password: example-password-here
+          password: REPLACE_ME_WITH_PASSWORD
+          password:
+          api_key = <your-api-key-goes-here>
+          api_key: ${API_KEY_FROM_ENV_VAR}
+          secret_token: your-secret-token-goes-here
+          DB_PASSWORD=<password-goes-here>
+          DB_PASSWORD=
+        setup.sh: |
+          mysql_setup --password=<your-password>
+          password = %(password_value)s
+      expect: allow
+  - id: tc-064
+    category: negative_trigger
+    prompt: The agent writes a login module that reads its password from a prompt and a request.
+    expect: The write is allowed.
+    execute: {event: tool_use, writes: {"cli.py": "password = getpass.getpass()\npassword = request.json[\"password\"]\nauth_token = generate_authentication_token(user)\n"}, expect: allow}

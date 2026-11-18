@@ -106,7 +106,6 @@ protect-main-branch  [deterministic]
 .chock/compiled/protect-main-branch/git-hook/gate.json
 .chock/compiled/protect-main-branch/git-hook/git-pre-commit.sh
 .chock/compiled/protect-main-branch/git-hook/git-pre-push.sh
-.chock/compiled/protect-main-branch/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry

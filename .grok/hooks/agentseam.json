@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/grok.py --multi \".chock/bin/index/grok-PreToolUse-185f9750.json\" --index-sha256 c3d67c320e1c6ac323bf2609f258d5a5c2abac5c31ef01ccddd4f41eebe547ee --stop-check",
+            "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/grok.py --multi \".chock/bin/index/grok-PreToolUse-185f9750.json\" --index-sha256 084d3a1706f6839465c318e7cca7df0fbbed8f868da0e27c40ffa1eaf005d542 --stop-check",
             "timeout": 45
           }
         ]

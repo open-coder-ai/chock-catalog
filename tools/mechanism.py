@@ -8,6 +8,7 @@ repo publishes two different numbers for the same question.
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import Any
 
@@ -87,6 +88,35 @@ def write_gate_script(manifest: dict[str, Any]) -> str | None:
     return str((gate.get("params") or {}).get("script") or "") or None
 
 
+def judges_a_person_commit(policy_dir: Path, manifest: dict[str, Any]) -> bool:
+    """False when the gate script names the events it judges (`JUDGED`) and a person's `commit` is not one.
+
+    Read with `ast`, never run. A script that names no `JUDGED` tuple of strings is taken to judge every commit.
+    """
+    script = write_gate_script(manifest)
+    path = Path(policy_dir) / "implementations" / (script or "")
+    if not script or not path.is_file():
+        return True
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError, ValueError):
+        return True
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "JUDGED" for t in node.targets):
+            value = node.value
+            if isinstance(value, ast.Tuple) and all(
+                isinstance(e, ast.Constant) and isinstance(e.value, str) for e in value.elts
+            ):
+                return "commit" in {e.value for e in value.elts}  # type: ignore[attr-defined]
+    return True
+
+
+def agent_commit_gate_label(gate: dict[str, Any]) -> str:
+    """The label of a gate that judges an agent's write and an agent's commit, never a person's commit."""
+    verb = "asks" if gate.get("action") == "ask" else "refuses"
+    return f"{gate['kind']} gate that {verb} at an agent's write and an agent's commit"
+
+
 def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     """Return (kind, the mechanism label), strongest mechanism first."""
     policy_id = str(manifest.get("id") or Path(policy_dir).name)
@@ -96,12 +126,22 @@ def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     # never lifts a policy above the rule text, though a script or guard it ships still counts.
     warns = gate.get("action") == "warn"
     gate = {} if warns else gate
+    # A person's commit is not judged by a gate that reads only an agent's: it is in-agent, never at commit.
+    agent_only = (
+        bool(gate.get("kind"))
+        and "commit" in (gate.get("on") or [])
+        and not judges_a_person_commit(policy_dir, manifest)
+    )
     # A gate that never runs at commit (tool_use only) is enforced in the agent, not at commit.
-    if gate.get("kind") and "commit" in (gate.get("on") or []):
+    if gate.get("kind") and "commit" in (gate.get("on") or []) and not agent_only:
         return GATE, str(gate["kind"])
     if event_scripts(policy_dir, policy_id):
         return EVENT_SCRIPT, script_mechanism(manifest)
-    if any(p.name != own_script for p in command_guards(policy_dir, policy_id)):
+    guarded = any(p.name != own_script for p in command_guards(policy_dir, policy_id))
+    if agent_only:
+        label = agent_commit_gate_label(gate)
+        return GUARD, f"shell guard that refuses + {label}" if guarded else label
+    if guarded:
         return GUARD, "guard script"
     if gate.get("kind"):
         return GUARD, str(gate["kind"])

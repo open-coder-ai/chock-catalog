@@ -89,7 +89,6 @@ No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 
 ```text
 .chock/compiled/owasp-asi04-agentic-supply-chain/ambient-rule/ambient.md
-.chock/compiled/owasp-asi04-agentic-supply-chain/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry

@@ -52,7 +52,6 @@ Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 3 PreToolUse/Stop hook(s) in .claude/settings.json
   claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
-  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 hook entr(y/ies) in .gemini/settings.json
   gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
   gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
@@ -109,7 +108,6 @@ INDEX.md: ~330 tokens (chars/4, max 2000)
 .chock/compiled/firecrawl-fallback-only/agent-hooks/tool-call-gate.json
 .chock/compiled/firecrawl-fallback-only/agent-hooks/tool-call-hooks.json
 .chock/compiled/firecrawl-fallback-only/ambient-rule/ambient.md
-.chock/compiled/firecrawl-fallback-only/managed-setting/managed-settings.json
 .chock/compiled/firecrawl-fallback-only/pre-tool-use/codex_cli-tool-call-hooks.json
 .chock/compiled/firecrawl-fallback-only/pre-tool-use/cursor-post-hooks.json
 .chock/compiled/firecrawl-fallback-only/pre-tool-use/cursor-postfailure-hooks.json

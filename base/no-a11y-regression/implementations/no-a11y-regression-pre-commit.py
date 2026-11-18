@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -37,8 +38,9 @@ _AUTHORED = (SATISFIED, SUPPRESSED)
 
 # ── The only judgement in the program: authored once, reviewable as a diff. ───────────────────
 # This gate never asks a question. A patch that correctly fixes a hundred images must cost zero
-# interruptions, so a correct fix is silent and only a break refuses the commit.
-DENY, RECORD, SILENT = "deny", "record", "silent"
+# interruptions, so a correct fix is silent and only a break refuses the commit. A warning is printed
+# and never blocks: it names a new element or a weak name, which is not a regression.
+DENY, WARN, RECORD, SILENT = "deny", "warn", "record", "silent"
 
 TABLE: dict[tuple[str, str], tuple[str, str]] = {
     (SATISFIED, SATISFIED): (SILENT, "the requirement is met in both revisions"),
@@ -55,7 +57,7 @@ TABLE: dict[tuple[str, str], tuple[str, str]] = {
     (MISSING, GONE): (DENY, "a violation removed by deleting the element rather than fixing it"),
     (GONE, SATISFIED): (SILENT, "a new, compliant element -- ordinary product work"),
     (GONE, SUPPRESSED): (SILENT, "a new decorative element -- ordinary product work"),
-    (GONE, MISSING): (DENY, "a new element that does not meet its requirement"),
+    (GONE, MISSING): (WARN, "a new element that does not meet its requirement (not a regression: it warns)"),
     (GONE, GONE): (SILENT, "unreachable"),
     # A component is never required to have a name, so only losing one is a break.
     (SATISFIED, NAMELESS): (DENY, "a name this element carried is gone from its markup"),
@@ -330,7 +332,7 @@ def uninformative(name: str, src: str, tag: str = "", *, labelled: bool = False)
         return None  # not a name: its spelling is a variable's or a build step's, not a reader's
     words = set(NOISE["words"]) | set((NOISE.get("by_tag") or {}).get(tag, []))
     bare = re.sub(r"[^a-z0-9 ]+", " ", name.lower()).strip()
-    if not labelled and len(bare) < NOISE["min_length"]:
+    if not labelled and tag != "html" and len(bare) < NOISE["min_length"]:  # a lang code is short by design
         return f"{name!r} is too short to describe anything"
     if all(w in words or w.isdigit() for w in bare.split()):
         return f"{name!r} is placeholder wording, not a description"
@@ -341,11 +343,36 @@ def uninformative(name: str, src: str, tag: str = "", *, labelled: bool = False)
     return None
 
 
+def swapped_in(b_states: dict, a_states: dict, b_tags: dict, a_tags: dict) -> set[str]:
+    """Refs of new unnamed elements that stand where a named element of the same tag was removed.
+
+    The key an element is paired by (src, id, ordinal) is what an edit that swaps an image or renames
+    an input changes, so the old element reads as deleted and the new one as new. Aligning the two
+    revisions' element order finds the swap: in one replaced stretch, the n-th lost named element and
+    the n-th added unnamed element of a tag are one element that lost its name.
+    """
+    before, after = list(b_states), list(a_states)
+    found: set[str] = set()
+    for op, i1, i2, j1, j2 in SequenceMatcher(None, before, after, autojunk=False).get_opcodes():
+        if op != "replace":
+            continue
+        lost = [r for r in before[i1:i2] if r not in a_states and b_states[r][0] == SATISFIED]
+        added = [r for r in after[j1:j2] if r not in b_states and a_states[r][0] == MISSING]
+        for tag in {b_tags[r] for r in lost}:
+            found.update(
+                new for old, new in zip(
+                    (r for r in lost if b_tags[r] == tag), (r for r in added if a_tags[r] == tag), strict=False
+                )
+            )  # fmt: skip
+    return found
+
+
 # ── The decision: one table lookup per element, plus one promotion rule. ──────────────────────
 def evaluate(before_html: str, after_html: str) -> list[dict]:
     """Compare two revisions; every row carries the lookup key that produced its action."""
-    b_states, _ = scan(before_html)
+    b_states, b_nodes = scan(before_html)
     a_states, a_nodes = scan(after_html)
+    swaps = swapped_in(b_states, a_states, {r: n.tag for r, n in b_nodes.items()}, {r: n.tag for r, n in a_nodes.items()})
     rows = []
     for ref in sorted(b_states.keys() | a_states.keys()):
         bs, bw, b_name = b_states.get(ref, (GONE, "not in this revision", ""))
@@ -358,7 +385,9 @@ def evaluate(before_html: str, after_html: str) -> list[dict]:
         src, tag = (node.attrs.get("src", ""), node.tag) if node else ("", "")
         labelled = labelled_by_its_own_text(node) if node else False
         if supplied and (bad := uninformative(a_name, src, tag, labelled=labelled)) is not None:
-            action, why = DENY, f"the value supplied conveys nothing: {bad}"
+            action, why = WARN, f"the value supplied conveys nothing: {bad}"
+        if ref in swaps:
+            action, why = DENY, "a named element of this tag was replaced by one without its name"
         rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
 
     # Deleting an unnamed element is how a violation gets resolved by deletion -- and it is also
@@ -402,6 +431,7 @@ def staged_markup() -> list[str]:
 def main() -> int:
     """Refuse the commit when a staged file destroys an assertion it previously carried."""
     alarms: list[tuple[str, dict]] = []
+    warnings: list[tuple[str, dict]] = []
     for path in staged_markup():
         before, after = _git("show", f"HEAD:{path}"), _git("show", f":{path}")
         try:
@@ -410,7 +440,10 @@ def main() -> int:
             print(f"no-a11y-regression: skipped {path}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         alarms.extend((path, r) for r in rows if r["action"] == DENY)
+        warnings.extend((path, r) for r in rows if r["action"] == WARN)
 
+    for path, row in warnings:
+        print(f"no-a11y-regression: warning: {path}: {row['ref']}   {row['why']}", file=sys.stderr)
     if not alarms:
         return 0
 

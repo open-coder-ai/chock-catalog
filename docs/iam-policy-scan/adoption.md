@@ -52,13 +52,12 @@ Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
   claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
-  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 2 hook entr(y/ies) in .gemini/settings.json
   gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
   gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
   vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
-INDEX.md: ~455 tokens (chars/4, max 2000)
+INDEX.md: ~486 tokens (chars/4, max 2000)
 Recompiled 1 policies
 iam-policy-scan:
   claude: enforced-at-commit + best-effort at tool use (live-run)
@@ -90,14 +89,14 @@ Registered 2 hook entr(y/ies) in .vibe/hooks.toml
 Registered 2 hook entr(y/ies) in .openhands/hooks.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~455 tokens (chars/4, max 2000)
+INDEX.md: ~486 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
 
 ```text
 [PASS] Passed with warnings.
-  [WARN]  …/.agents/policies/iam-policy-scan :: interface: Artifact ID 'iam-policy-scan' does not start with a verb (INT-3). Suggest rename to a verb-first id, e.g. 'create-...', 'validate-...', 'check-...'
+  [WARN]  …/.agents/policies/iam-policy-scan/manifest.yaml :: lifecycle: Production artifact should record reviewed_by.
 ```
 
 ## `$ chock eval --repo .`
@@ -155,9 +154,19 @@ iam-policy-scan  [deterministic]
   PASS  tc-049                             authored  k8s/clusterrole.yaml:7: [iam-unreadable] (block; id 3f942a6469d3) C…
   PASS  tc-050                             authored  chart/templates/role.yaml:1: [iam-unreadable] (block; id ba11fa5131…
   PASS  tc-051                             authored  gate exit 0
+  PASS  tc-052                             authored  writer.json:5: [iam-write-all-resources] (ask; id 1923a5af28d3) All…
+  PASS  tc-053                             authored  pass.tf:3: [iam-passrole-all-resources] (block; id 8009ea87f963) Al…
+  PASS  tc-054                             authored  services.json:5: [iam-service-wildcard] (block; id c2cf167b6d2b) Al…
+  PASS  tc-055                             authored  attach.tf:3: [iam-admin-policy-attached] (block; id 6f1ae98cc293) T…
+  PASS  tc-056                             authored  gate exit 0
+  PASS  tc-057                             authored  gate exit 0
+  PASS  tc-058                             authored  gate exit 0
+  PASS  tc-059                             authored  gate exit 0
+  PASS  tc-060                             authored  gate exit 0
+  PASS  tc-061                             authored  pass.json:5: [iam-passrole-all-resources] (block; id de501dd3e2cf) …
   score 1.00
 
-5 policies: 51 pass, 44 skipped
+5 policies: 61 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
@@ -171,7 +180,6 @@ iam-policy-scan  [deterministic]
 .chock/compiled/iam-policy-scan/ci-gate/step.yaml
 .chock/compiled/iam-policy-scan/git-hook/gate.json
 .chock/compiled/iam-policy-scan/git-hook/git-pre-commit.sh
-.chock/compiled/iam-policy-scan/managed-setting/managed-settings.json
 .chock/compiled/iam-policy-scan/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/iam-policy-scan/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/iam-policy-scan/pre-tool-use/factory_droid-write-hooks.json
@@ -199,5 +207,5 @@ iam-policy-scan  [deterministic]
 ## INDEX.md entry
 
 ```text
-- **iam-policy-scan**: Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action star, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in .chock/iam-policy-scan.json for strict JSON, which cannot carry a comment. In the agent a waiver counts only once a person has committed it, so an agent asks a person. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
+- **iam-policy-scan**: Broad IAM, RBAC or role grant added. Name the actions, resources and principals the task needs: no Action star, no service wildcard or iam:PassRole on every resource, no write actions on every resource, no AdministratorAccess attached, no Allow with NotAction, NotResource or NotPrincipal, no public principal without a Condition, no cluster-admin binding, no Owner or Contributor at subscription scope. A reviewed exception is a person's: a pragma comment 'pragma: allowlist broad-privilege' beside the grant (YAML, Terraform, Bicep), or an entry in .chock/iam-policy-scan.json for strict JSON, which cannot carry a comment. In the agent a waiver counts only once a person has committed it, so an agent asks a person. Also checked in the agent: before a write, or at the end of the turn, depending on the agent.
 ```

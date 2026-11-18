@@ -96,7 +96,6 @@ limit-diff-size  [deterministic]
 ```text
 .chock/compiled/limit-diff-size/ambient-rule/ambient.md
 .chock/compiled/limit-diff-size/git-hook/git-pre-commit.sh
-.chock/compiled/limit-diff-size/managed-setting/managed-settings.json
 ```
 
 ## INDEX.md entry

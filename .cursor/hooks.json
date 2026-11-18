@@ -2,14 +2,14 @@
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --multi \".chock/bin/index/cursor-beforeShellExecution-b6c825df.json\" --index-sha256 c3d67c320e1c6ac323bf2609f258d5a5c2abac5c31ef01ccddd4f41eebe547ee",
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --multi \".chock/bin/index/cursor-beforeShellExecution-b6c825df.json\" --index-sha256 084d3a1706f6839465c318e7cca7df0fbbed8f868da0e27c40ffa1eaf005d542",
         "timeout": 45,
         "failClosed": true
       }
     ],
     "preToolUse": [
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --multi \".chock/bin/index/cursor-preToolUse-b6c825df.json\" --index-sha256 07379e6c7601c68d1cc907a719f1ba6ac2dd3d053aa8342b3e0affc5bcd3c0e3 --stop-check",
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --multi \".chock/bin/index/cursor-preToolUse-b6c825df.json\" --index-sha256 b03cb4c2d85ace8c31a8aa1019250da96cd3c907989c4ca466afcdc4e2999734 --stop-check",
         "timeout": 45,
         "failClosed": true
       }

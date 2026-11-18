@@ -7,6 +7,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import replace
 
 from chock_security.decision import ALLOW, FileText, Finding
+from chock_security.masking import mask
 from chock_security.rules import registry
 
 #: Per-occurrence waiver, named per rule so waiving one does not waive its neighbours.
@@ -54,10 +55,11 @@ def evaluate(files: Iterable[FileText], verdicts: Mapping[str, str], reviewed: R
         honoured = None
         if reviewed is not None:
             honoured = reviewed_lines(text, reviewed(text.path)) if PRAGMA in text.text else set()
+        seen = mask(text)
         for rule_id, rule in acting.items():
-            if not rule.reads(text):
+            if not rule.reads(seen):
                 continue
-            found = (replace(f, verdict=verdicts[rule_id], cwe=rule.cwe) for f in rule.scan(text))
+            found = (replace(f, verdict=verdicts[rule_id], cwe=rule.cwe) for f in rule.scan(seen))
             findings.extend(
                 f for f in found if not (waiver_on(f, text) and (honoured is None or f.line_no in honoured))
             )

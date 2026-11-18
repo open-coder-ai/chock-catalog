@@ -52,13 +52,12 @@ Installed commit-msg dispatcher to …/.git/hooks/commit-msg
 No git-commit-msg.sh policies found; commit-msg dispatcher unchanged
 Registered 2 PreToolUse/Stop hook(s) in .claude/settings.json
   claude_code: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run, recorded 2026-09-07)
-  claude_code: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 2 hook entr(y/ies) in .gemini/settings.json
   gemini_cli: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis vendor-source, recorded 2026-08-28)
   gemini_cli: Untested: chock has not witnessed its hooks run in this client; the wiring follows agentseam's record. What you see there is wanted as evidence: open-coder-ai/agentseam issues labelled 'evidence wanted'.
 Registered 1 agent hook(s) in .github/hooks/chock.json
   vscode_copilot: pre-tool: block+rewrite, best-effort, fail mode open (agentseam basis live-run-partial, recorded 2026-09-28)
-INDEX.md: ~367 tokens (chars/4, max 2000)
+INDEX.md: ~372 tokens (chars/4, max 2000)
 Recompiled 1 policies
 dockerfile-compose-security:
   claude: enforced-at-commit + best-effort at tool use (live-run)
@@ -90,7 +89,7 @@ Registered 2 hook entr(y/ies) in .vibe/hooks.toml
 Registered 2 hook entr(y/ies) in .openhands/hooks.json
 Registered 1 hook entr(y/ies) in .tabnine/agent/settings.json
 Registered 1 agent hook(s) in .github/hooks/chock.json
-INDEX.md: ~367 tokens (chars/4, max 2000)
+INDEX.md: ~372 tokens (chars/4, max 2000)
 ```
 
 ## `$ chock validate .`
@@ -157,7 +156,6 @@ dockerfile-compose-security  [deterministic]
 .chock/compiled/dockerfile-compose-security/ci-gate/step.yaml
 .chock/compiled/dockerfile-compose-security/git-hook/gate.json
 .chock/compiled/dockerfile-compose-security/git-hook/git-pre-commit.sh
-.chock/compiled/dockerfile-compose-security/managed-setting/managed-settings.json
 .chock/compiled/dockerfile-compose-security/pre-tool-use/codex_cli-write-hooks.json
 .chock/compiled/dockerfile-compose-security/pre-tool-use/cursor-write-hooks.json
 .chock/compiled/dockerfile-compose-security/pre-tool-use/factory_droid-write-hooks.json
@@ -186,6 +184,6 @@ dockerfile-compose-security  [deterministic]
 
 ```text
 - **dockerfile-compose-security**:
-  flag(container_change): Dockerfile|Containerfile|compose adds floating/undigested image, root final stage, TLS|signature off, literal secret, key-file COPY, privileged|cap_add|host ns|docker.sock|host-root mount, db port on 0.0.0.0
+  flag(container_change): Dockerfile|Containerfile|compose adds floating image (no tag, latest, stable, edge), root final stage, TLS|signature off, literal secret, key-file COPY, privileged|cap_add|host ns|docker.sock|host-root mount, db port on 0.0.0.0
   prefer: pinned tag@sha256, USER <uid>, RUN --mount=type=secret, cap_add narrow, named volumes; waiver: '# chock: allow <rule-id>', person only
 ```

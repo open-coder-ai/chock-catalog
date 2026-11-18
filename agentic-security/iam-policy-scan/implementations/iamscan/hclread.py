@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 from chock_scan import hcl, jsonc
 
-from iamscan import azure
+from iamscan import azure, managed
 from iamscan.aws import judge
 from iamscan.model import BLOCK
 from iamscan.walk import Scan, Spot
@@ -24,6 +24,7 @@ HEREDOC = re.compile(r"(?s)<<-?\s*(\w+)[ \t]*\n(.*?)\n[ \t]*\1[ \t]*$")
 INTERPOLATION = re.compile(r"\$\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|%\{[^{}]*\}")
 RISKY = re.compile(r"(?i)\b(?:effect|action|principal|statement)\b")
 RISKY_KEY = re.compile(r'(?i)"(?:effect|action|principal|statement)"')
+QUOTED_LITERAL = re.compile(r'"((?:[^"\\]|\\.)*)"')
 POLICY_DOCUMENT = ("aws_iam_policy_document",)
 RENAMED = {"actions": "Action", "not_actions": "NotAction", "resources": "Resource", "not_resources": "NotResource"}
 
@@ -43,6 +44,7 @@ def scan_block(root: hcl.Block, scan_: Scan, *, nested: bool = True) -> None:
 
 
 def _block(block: hcl.Block, scan_: Scan) -> None:
+    _attached(block, scan_)
     if block.type == "data" and block.labels[:1] == POLICY_DOCUMENT:
         for child in block.blocks:
             for statement in _statements(child):
@@ -51,6 +53,17 @@ def _block(block: hcl.Block, scan_: Scan) -> None:
         attrs = {a.key: (a.expr, a.value) for a in block.attributes}
         if azure.terraform_assignment(attrs):
             scan_.add("azure-subscription-owner", BLOCK, attrs, Spot(block.line, "role_definition_name", (block.line,)))
+
+
+def _attached(block: hcl.Block, scan_: Scan) -> None:
+    """AdministratorAccess named by an attachment attribute, read from the expression so an interpolated partition counts."""
+    for attr in block.attributes:
+        if attr.key.lower() in managed.ATTACH_KEYS and any(
+            managed.names_admin(s) for s in QUOTED_LITERAL.findall(attr.expr)
+        ):
+            span = (attr.line, attr.line + attr.expr.count("\n"))
+            subject = [attr.key.lower(), block.type, *block.labels]
+            scan_.add("iam-admin-policy-attached", BLOCK, subject, Spot(attr.line, attr.key.lower(), span))
 
 
 def _statements(child: hcl.Block) -> list[hcl.Block]:
