@@ -109,3 +109,15 @@ def test_a_change_to_one_policys_suite_runs_the_replay_in_every_job_it_selects()
     assert jobs
     assert "block-no-verify" in {j["id"] for j in jobs}
     assert all("tests/policies/test_scan_secrets_entropy_replay.py" in j["tests"] for j in jobs)
+
+
+def test_known_miss_a_secret_shaped_like_a_type_name_in_a_signature_is_not_reported() -> None:
+    """Stated in the manifest: CamelCase words with at most two digit runs, after `name:` in a signature."""
+    shaped = "Xkqmlprtvnbswdhj" + "Ab" + "Cd"
+    assert refused({"suite.yaml": f'x: "def sign(private_key: {shaped}):"\n'}) == []
+    assert refused({"suite.yaml": 'x: "def sign(private_key: Xk9Qm2Lp7Rt4Vn8Bs3Wd6Hj5):"\n'})
+
+
+def test_known_miss_a_secret_after_another_argument_is_not_reported() -> None:
+    """Stated in the manifest, and the same before the keyword-argument change."""
+    assert refused({"conf.yaml": f"password = f(a=1, b={kit.secret(44)})\n"}) == []

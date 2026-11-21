@@ -48,7 +48,7 @@ chock add scan-secrets-entropy
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhNDAyNDYyOWQyNTJlMWE2NDhmOWM2MDJkNzFlOTVlYTk1YWE4NmFmIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzLWVudHJvcHkiLCJ2ZXJzaW9uIjoiMC4xLjUiLCJzaGEyNTYiOiI5ZDcwNDEzMDQwOGE5Yjg5MjJhMTg2NGQ0YzJlNzU5MjMzOGQwYzc3NGY0NzdmMjVhNmI3MzA3OWU2MGM3YjcwIn1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJlYzExNjdiODJkMjk3MjIxMWQwYWI1MWFkNDMwMWZiM2ViYWM5OGI2In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzLWVudHJvcHkiLCJ2ZXJzaW9uIjoiMC4xLjUiLCJzaGEyNTYiOiJiZWEzODU3ZmNmOTVmMDY1MDQxODA1YTZiMmUxZmEyMGZmYjU3OGE1NTI5ODZlMzM5YzFmNWM5NGM3NTI5NzE4In1dfQ): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

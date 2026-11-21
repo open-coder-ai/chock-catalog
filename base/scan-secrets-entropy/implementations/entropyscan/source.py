@@ -41,6 +41,9 @@ _PARAMETER = re.compile(
     r"[A-Za-z_]\w{0,63}[ \t]{0,4}:[ \t]{0,8}\Z"
 )
 _WINDOW = 400
+#: A type name holds at most this many runs of digits (`Ed25519PrivateKey`: one); a random value holds more.
+_DIGIT_RUNS = 2
+_DIGITS = re.compile(r"[0-9]+")
 #: A type as a signature spells it: dotted lowercase scope, then CamelCase words or a short lowercase
 #: name, with type arguments of the same; a random credential has no such case pattern.
 _NAME = r"(?:[a-z_][a-z0-9_]{0,30}\.){0,4}(?:(?:[A-Z][a-z]{0,20}[0-9]{0,6}){1,8}|[a-z]{2,8})"
@@ -67,4 +70,6 @@ def opened(line: str, column: int) -> bool:
 
 def typed(line: str, column: int, value: str) -> bool:
     """True when value, at column, is a type following `name:` inside a function signature's parameters."""
+    if len(_DIGITS.findall(value)) > _DIGIT_RUNS:
+        return False
     return _TYPE.fullmatch(value) is not None and _PARAMETER.search(line[max(0, column - _WINDOW) : column]) is not None
