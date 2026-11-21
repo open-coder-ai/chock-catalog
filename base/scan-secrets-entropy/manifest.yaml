@@ -1,6 +1,6 @@
 id: scan-secrets-entropy
 name: "Review Values That Look Like Secrets"
-version: "0.1.4"
+version: "0.1.5"
 description: >
   Friction, not a security boundary: asks a person before a write adds secrets scan-secrets misses -- high-entropy values
   (16-150 chars) by secret-like keys, GitHub/npm tokens with valid checksums, Stripe test
@@ -33,7 +33,7 @@ hook:
 provenance:
   author: "chock-core"
   created_at: "2026-10-02T00:00:00Z"
-  updated_at: "2026-10-27T00:00:00Z"
+  updated_at: "2026-11-21T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -46,6 +46,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.5
+  date: '2026-11-21'
+  changes:
+  - "Fix: two lines of correct code, read through a YAML string, were asked about. In text that is not source code, the type after `name:` in a function signature (`def sign(private_key: Ed25519PrivateKey, ...)`) is no secret, and a call's keyword argument (`models.CharField(max_length=128)`) no longer keeps the call from reading as code. They blocked an adopter's first commit when scan-secrets and this policy were both installed (scan-secrets' own suite holds both lines). No path exemption and no pragma: a secret written into the same file is still asked about. Evals tc-026 and tc-027; replay of every catalog suite in tests/policies/test_scan_secrets_entropy_replay.py. Stated miss, unchanged in kind: a secret written where a signature's type belongs, or as a call argument."
 - version: 0.1.4
   date: '2026-10-27'
   changes:

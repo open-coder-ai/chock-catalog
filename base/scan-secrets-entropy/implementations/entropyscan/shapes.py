@@ -24,10 +24,11 @@ _REGEX = re.compile(r"\\[sdwbSDWB.{}()\[\]|^$*+?]|\(\?[:=!<P]|\[\^?[A-Za-z0-9]-[
 _ESCAPE = re.compile(r"\\[nrt]")
 _OPENERS = "{[(!*&."
 #: A dotted, arrowed or scoped name, or a name followed by a call, index or type argument whose
-#: text holds only identifier punctuation; each name segment must read as code (see _readable).
+#: text holds only identifier punctuation and `name=word` keyword arguments; each name segment must
+#: read as code (see _readable).
 _CODE = re.compile(
     r"(?P<name>[$@]?[A-Za-z_](?:-(?!>)|[\w$])*(?:(?:\.|->|::|\?\.)[$@]?[A-Za-z_](?:-(?!>)|[\w$])*)*)"
-    r"(?P<tail>[(\[<][\w$.,:'\"\[\]<>(){} -]*)?;?"
+    r"(?P<tail>[(\[<](?:[\w$.,:'\"\[\]<>(){} -]|(?<=\w)=(?=\w))*)?;?"
 )
 _SEGMENT = re.compile(r"\.|->|::|\?\.")
 _SHORT = 5

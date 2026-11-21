@@ -7,6 +7,9 @@ The rewrite only feeds detection; nothing is written back and line numbers do no
   annotation between key and `=` is dropped (`apiKey: string = "v"`, `let key: &str = "v"`,
   `var key string = "v"` in Go), and `#define KEY "v"` reads as `KEY = "v"`.
 
+`typed(line, column, value)` says whether the value at that column is the type of a function parameter, in text
+that is not itself source code (a signature inside a YAML or JSON string): a type name is no secret.
+
 `opened(line, column)` says whether a value at that column is a string literal's text in source
 code: its own opening quote sits right before it (after an auth word), or the line before it holds
 an unclosed quote (the key is itself inside a literal: a connection string, a URL query).
@@ -31,6 +34,17 @@ _GO_VAR = re.compile(r"\b(?:var|const)[ \t]{1,16}+([A-Za-z_]\w{0,127}+)[ \t]{1,1
 _DEFINE = re.compile(r"^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)[ \t]+(?=[\"'])")
 _OPENED = re.compile(r"[\"'`](?:(?i:bearer|basic|token|bot)[ \t]{1,16})?\Z")
 _QUOTES = "\"'`"
+#: A parameter name and its colon at the end of a function signature's opened parameter list; the
+#: window and every quantifier are bounded, and the repeated alternatives exclude each other.
+_PARAMETER = re.compile(
+    r"\b(?:def|fn|func|function|fun)[ \t]{1,8}[A-Za-z_]\w{0,63}[ \t]{0,8}\((?:[^()]|\([^()]{0,64}\)){0,300}"
+    r"[A-Za-z_]\w{0,63}[ \t]{0,4}:[ \t]{0,8}\Z"
+)
+_WINDOW = 400
+#: A type as a signature spells it: dotted lowercase scope, then CamelCase words or a short lowercase
+#: name, with type arguments of the same; a random credential has no such case pattern.
+_NAME = r"(?:[a-z_][a-z0-9_]{0,30}\.){0,4}(?:(?:[A-Z][a-z]{0,20}[0-9]{0,6}){1,8}|[a-z]{2,8})"
+_TYPE = re.compile(rf"{_NAME}(?:\[{_NAME}(?:,[ \t]?{_NAME}){{0,3}}\]?)?")
 
 
 def rewrite(line: str, *, language: str | None) -> str:
@@ -49,3 +63,8 @@ def opened(line: str, column: int) -> bool:
     """True when the value at column is inside a string literal of a source-code line."""
     before = line[:column]
     return _OPENED.search(before[-24:]) is not None or any(before.count(q) % 2 for q in _QUOTES)
+
+
+def typed(line: str, column: int, value: str) -> bool:
+    """True when value, at column, is a type following `name:` inside a function signature's parameters."""
+    return _TYPE.fullmatch(value) is not None and _PARAMETER.search(line[max(0, column - _WINDOW) : column]) is not None
