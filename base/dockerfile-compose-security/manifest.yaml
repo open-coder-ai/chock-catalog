@@ -1,6 +1,6 @@
 id: dockerfile-compose-security
 name: "Dockerfile and Compose Security"
-version: "0.2.1"
+version: "0.2.2"
 description: >
   Blocks (some rules ask) when a change to a Dockerfile, Containerfile or compose
   file adds: a base image with no tag, a floating tag (latest, stable, edge, lts) or an
@@ -62,12 +62,17 @@ provenance:
 
 lifecycle:
   status: production
-  reviewed_by: []
+  reviewed_by:
+    - "chock-core"
 
 security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.2.2
+  date: '2026-11-21'
+  changes:
+  - "Records reviewed_by: chock-core, which `chock validate` asks of a production policy. Promotion approval: the BV-C3 promotion rule (owner decision 2026-10-07, org-plan plan/builder-v2-items.md), and confirmed production in CAT-S1 (owner, 2026-11-15). Metadata only; behaviour unchanged."
 - version: 0.2.1
   date: '2026-11-15'
   changes:
