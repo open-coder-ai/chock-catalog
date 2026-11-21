@@ -1630,15 +1630,15 @@ policies:
     refuses. Friction only.'
 - id: scan-secrets-entropy
   path: base/scan-secrets-entropy
-  version: 0.1.4
+  version: 0.1.5
   artifact: hook
   enforcement: block
   status: production
   mandatory: false
   mechanism: script
   enforces: enforced-at-commit
-  eval_cases: 25
-  eval_executed: 25
+  eval_cases: 27
+  eval_executed: 27
   label:
     claude-code: {"keyword": "ask", "says": "asks on an agent's file writes. It refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured)"}
     cursor: {"keyword": "block", "says": "refuses an agent's file writes and refuses at turn end, because this client cannot prompt at either point"}

@@ -24,12 +24,15 @@ _REGEX = re.compile(r"\\[sdwbSDWB.{}()\[\]|^$*+?]|\(\?[:=!<P]|\[\^?[A-Za-z0-9]-[
 _ESCAPE = re.compile(r"\\[nrt]")
 _OPENERS = "{[(!*&."
 #: A dotted, arrowed or scoped name, or a name followed by a call, index or type argument whose
-#: text holds only identifier punctuation; each name segment must read as code (see _readable).
+#: text holds only identifier punctuation and `name=word` keyword arguments; each name segment must
+#: read as code (see _readable).
 _CODE = re.compile(
     r"(?P<name>[$@]?[A-Za-z_](?:-(?!>)|[\w$])*(?:(?:\.|->|::|\?\.)[$@]?[A-Za-z_](?:-(?!>)|[\w$])*)*)"
-    r"(?P<tail>[(\[<][\w$.,:'\"\[\]<>(){} -]*)?;?"
+    r"(?P<tail>[(\[<](?:[\w$.,:'\"\[\]<>(){} -]|(?<=\w)=(?=\w))*)?;?"
 )
 _SEGMENT = re.compile(r"\.|->|::|\?\.")
+#: The value of a `name=value` keyword argument in a call tail: it must be a number or read as code.
+_KWARG_VALUE = re.compile(r"(?<=\w)=([\w$.]*)")
 _SHORT = 5
 _SNAKE = re.compile(r"[$@_]*[a-z][a-z0-9]*(?:_[a-z0-9]+)+")
 _LOWER_WORD = re.compile(r"[a-z]{1,12}[0-9]{0,3}")
@@ -104,7 +107,14 @@ def _code(value: str) -> bool:
     if match is None or value.startswith("eyJ"):
         return False
     segments = _SEGMENT.split(match["name"])
-    return (len(segments) > 1 or match["tail"] is not None) and all(_readable(s) for s in segments)
+    if not (len(segments) > 1 or match["tail"] is not None) or not all(_readable(s) for s in segments):
+        return False
+    return all(v.isdigit() or _readable_dotted(v) for v in _KWARG_VALUE.findall(match["tail"] or ""))
+
+
+def _readable_dotted(value: str) -> bool:
+    """True when a keyword argument's value is a name or dotted name whose segments read as code."""
+    return bool(value) and all(_readable(s) for s in _SEGMENT.split(value))
 
 
 def _readable(segment: str) -> bool:
