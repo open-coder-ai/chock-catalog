@@ -213,3 +213,25 @@ suite:
       files:
         conf/long.env: "CLIENT_SEC\x52ET=fA6lGZfED39xxHxiB4yROVnlJ6R5VOtp7CMXxjUnxTLHWrDteuYEPeTQlAjXHXV65T8AGFgmaMxOZcul5x86jRl3dr5hl5dfds59AuMqmn6mrA4M80gwVy3Dv20kmhJR2u8gRgwyssUgl27ONZ9whpY7RFsw4sFM\n"
       expect: allow
+  - id: tc-026
+    category: negative_trigger
+    prompt: "An eval suite holds a Python signature inside a double-quoted YAML string, as scan-secrets' own suite does."
+    expect: "Allowed: a parameter's type annotation read through a YAML string is code, not a value."
+    execute:
+      files:
+        evals/suite.yaml: |
+          files:
+            sign.py: "def sign(private_key: Ed25519PrivateKey, password_min_length: int = 12):\n    pass\n"
+      expect: allow
+  - id: tc-027
+    category: negative_trigger
+    prompt: "An eval suite holds Python calls in a YAML block scalar, as scan-secrets' own suite does."
+    expect: "Allowed: a call with keyword or string arguments read through a YAML block is code, not a value."
+    execute:
+      files:
+        evals/suite.yaml: |
+          files:
+            login.py: |
+              password = models.CharField(max_length=128)
+              password = factory.PostGenerationMethodCall("set_password", "pw")
+      expect: allow

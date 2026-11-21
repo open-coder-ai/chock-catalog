@@ -76,7 +76,8 @@ def hits(lines: list[str], *, language: str | None = None) -> Iterator[Hit]:
 
     Lines are read as source.rewrite spells them. In source code (`language`, the file's suffix) a
     value outside a string literal is never a secret's text (an identifier, a number, a comment's
-    words), so only values source.opened places inside a literal are judged there.
+    words), so only values source.opened places inside a literal are judged there. Elsewhere a
+    parameter's type in a signature (source.typed) is no secret's text either.
     """
     lines = [source.rewrite(line, language=language) for line in lines]
     seen: set[tuple[int, str]] = set()
@@ -86,7 +87,10 @@ def hits(lines: list[str], *, language: str | None = None) -> Iterator[Hit]:
             line = first + found.line
             if (limit is not None and found.column >= limit) or (line, found.value) in seen:
                 continue
-            if language is not None and not source.opened(lines[line - 1], offset + found.column):
+            column = offset + found.column
+            if language is not None and not source.opened(lines[line - 1], column):
+                continue
+            if language is None and source.typed(lines[line - 1], column, found.value):
                 continue
             seen.add((line, found.value))
             value = _scheme_token(shapes.trim(found.value))
