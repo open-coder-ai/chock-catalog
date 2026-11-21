@@ -1179,7 +1179,7 @@ policies:
     as findings with exploit scenarios. Advisory: refuses nothing, writes no waiver, lowers no gate.'
 - id: block-hook-bypass-in-files
   path: base/block-hook-bypass-in-files
-  version: 0.1.2
+  version: 0.1.3
   artifact: hook
   enforcement: block
   status: production
@@ -1248,7 +1248,7 @@ policies:
     agent steps on untrusted text. Misses: step outputs, composite internals, custom runner labels.'
 - id: dockerfile-compose-security
   path: base/dockerfile-compose-security
-  version: 0.2.1
+  version: 0.2.2
   artifact: rule
   enforcement: block
   status: production
@@ -1348,7 +1348,7 @@ policies:
     Adopt under rollout observe.'
 - id: scan-secret-files
   path: base/scan-secret-files
-  version: 0.1.1
+  version: 0.1.2
   artifact: hook
   enforcement: block
   status: production
@@ -1372,7 +1372,7 @@ policies:
     unlisted secret names, values split or encoded.'
 - id: agent-permissions-scan
   path: base/agent-permissions-scan
-  version: 0.2.2
+  version: 0.2.3
   artifact: rule
   enforcement: block
   status: production
@@ -1630,7 +1630,7 @@ policies:
     refuses. Friction only.'
 - id: scan-secrets-entropy
   path: base/scan-secrets-entropy
-  version: 0.1.5
+  version: 0.1.6
   artifact: hook
   enforcement: block
   status: production
