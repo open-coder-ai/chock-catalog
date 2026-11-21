@@ -1,6 +1,6 @@
 id: scan-secret-files
 name: "Scan Secret Files"
-version: "0.1.1"
+version: "0.1.2"
 description: >
   Friction, not a security boundary: flags files that are secrets by name or content -- private
   keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc,
@@ -41,12 +41,17 @@ provenance:
 
 lifecycle:
   status: production
-  reviewed_by: []
+  reviewed_by:
+    - "chock-core"
 
 security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.2
+  date: '2026-11-21'
+  changes:
+  - "Records reviewed_by: chock-core, which `chock validate` asks of a production policy. Promotion approval: the BV-C3 promotion rule (owner decision 2026-10-07, org-plan plan/builder-v2-items.md). Metadata only; behaviour unchanged."
 - version: 0.1.1
   date: '2026-10-07'
   changes:
