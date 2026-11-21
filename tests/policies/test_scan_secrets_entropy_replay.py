@@ -11,9 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import select_tests
 import yaml
 from policies import entropykit as kit
-from trees import policy_dirs
+from trees import ROOT, policy_dirs
 
 gate = kit.load()
 SUITED = [d for d in policy_dirs() if (d / "evals" / "suite.yaml").is_file()]
@@ -79,3 +80,32 @@ def test_a_type_annotation_and_a_call_read_through_yaml_are_code(text: str) -> N
 def test_a_secret_beside_those_shapes_is_still_asked_about(text: str) -> None:
     value = kit.secret(43)
     assert len(refused({"suite.yaml": text.replace("{V}", value) + "\n"})) == 1
+
+
+@pytest.mark.parametrize("path", ["conf.yaml", ".env", "note.md"])
+@pytest.mark.parametrize(
+    "template",
+    [
+        'client = connect(password="{V}")',
+        "token = make(api_key={V})",
+        "password = f(x={V})",
+        'cmd: "client = connect(password={V})"',
+    ],
+)
+def test_a_secret_in_a_keyword_argument_is_still_asked_about(path: str, template: str) -> None:
+    assert refused({path: template.replace("{V}", kit.secret(44)) + "\n"})
+
+
+@pytest.mark.parametrize(
+    "text", ["f(x=)", "models.CharField(max_length=128, null=True)", "make(api_key=settings.api_key)", "f(a=b.c, d=2)"]
+)
+def test_keyword_arguments_that_read_as_code_are_code(text: str) -> None:
+    assert refused({"suite.yaml": f"password = {text}\n"}) == []
+
+
+def test_a_change_to_one_policys_suite_runs_the_replay_in_every_job_it_selects() -> None:
+    """Selection data: the replay walks every policy, so a PR touching only another policy's suite runs it."""
+    jobs = select_tests.matrix(ROOT, ["base/block-no-verify/evals/suite.yaml"])
+    assert jobs
+    assert "block-no-verify" in {j["id"] for j in jobs}
+    assert all("tests/policies/test_scan_secrets_entropy_replay.py" in j["tests"] for j in jobs)

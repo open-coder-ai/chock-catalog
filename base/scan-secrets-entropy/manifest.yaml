@@ -49,7 +49,7 @@ changelog:
 - version: 0.1.5
   date: '2026-11-21'
   changes:
-  - "Fix: two lines of correct code, read through a YAML string, were asked about. In text that is not source code, the type after `name:` in a function signature (`def sign(private_key: Ed25519PrivateKey, ...)`) is no secret, and a call's keyword argument (`models.CharField(max_length=128)`) no longer keeps the call from reading as code. They blocked an adopter's first commit when scan-secrets and this policy were both installed (scan-secrets' own suite holds both lines). No path exemption and no pragma: a secret written into the same file is still asked about. Evals tc-026 and tc-027; replay of every catalog suite in tests/policies/test_scan_secrets_entropy_replay.py. Stated miss, unchanged in kind: a secret written where a signature's type belongs, or as a call argument."
+  - "Fix: two lines of correct code, read through a YAML string, were asked about. In text that is not source code, the type after `name:` in a function signature (`def sign(private_key: Ed25519PrivateKey, ...)`) is no secret, and a call's keyword arguments (`models.CharField(max_length=128)`) no longer keep the call from reading as code when each value is a number or reads as a name (`f(x=<random value>)` is still asked about). They blocked an adopter's first commit when scan-secrets and this policy were both installed (scan-secrets' own suite holds both lines). No path exemption and no pragma: a secret written into the same file is still asked about. Evals tc-026 and tc-027; replay of every catalog suite in tests/policies/test_scan_secrets_entropy_replay.py. Stated miss, unchanged in kind: a secret written where a signature's type belongs, or as a call argument."
 - version: 0.1.4
   date: '2026-10-27'
   changes:
