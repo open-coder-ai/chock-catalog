@@ -179,6 +179,10 @@ REFUSED = [
         js({"logins": [{"hostname": "h", "encryptedPassword": "MDoEEPgAAAB"}]}),
         "sbf-browser-credential-stores",
     ),
+    # an agent's local settings file, clean or not: the vendor documents it as local
+    (".claude/settings.local.json", js({"permissions": {"allow": ["Bash(ls)"]}}), "sbf-agent-local-settings"),
+    ("svc/.claude/settings.local.json", "{}", "sbf-agent-local-settings"),
+    (".CLAUDE/Settings.Local.json", "{}", "sbf-agent-local-settings"),
 ]
 
 
@@ -193,6 +197,7 @@ ASKED = [
     ("tests/fixtures/client.p12", "binary", "sbf-private-key-files"),
     ("docs/setup.md", OVPN, "sbf-private-key-files"),
     (".agents/policies/x/evals/suite.yaml", OVPN, "sbf-private-key-files"),
+    ("tests/fixtures/.claude/settings.local.json", "{}", "sbf-agent-local-settings"),
 ]
 
 
@@ -272,6 +277,10 @@ ALLOWED = [
     ("ff/logins.json", js({"logins": [{"user": "u"}]})),
     ("nb/clean.ipynb", js(NOTEBOOK).replace("{out}", "accuracy 0.93")),
     ("nb/odd.ipynb", js({"nbformat": 4, "cells": [{"outputs": "x"}, "y", {"outputs": [1, {"text": 2}]}]})),
+    # only the agent's local settings file is local: its shared settings, and a look-alike elsewhere, are not
+    (".claude/settings.json", js({"permissions": {"allow": ["Bash(ls)"]}})),
+    ("config/settings.local.json", "{}"),
+    ("settings.local.json", "{}"),
 ]
 
 

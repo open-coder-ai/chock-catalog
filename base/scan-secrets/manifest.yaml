@@ -1,11 +1,11 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.1.5"
+version: "0.1.6"
 description: >
   Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key
   and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds,
   Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded
-  values, quoted values with spaces, unlisted names, reference-, placeholder- or expression-like values (a call, a subscript, a member chain). Runs:
+  values, a value split across lines, a password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted names, reference-, placeholder- or expression-like values (a call, a subscript, a member chain). Runs:
   commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.
 artifact: hook
 enforcement: block
@@ -70,7 +70,7 @@ hook:
            |(?:client|consumer|jwt|webhook|app|session|signing|cookie)[_.-]?secret
            |(?:auth|access|refresh|api|bearer|bot)[_.-]?token|(?:private|signing|encryption|master)[_.-]?key
            |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
-         ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?P<kv_quote>["'`])?
+         ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?:\\(?=["'`]))?(?P<kv_quote>["'`])?
          (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/
            |/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
            |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
@@ -95,8 +95,8 @@ hook:
         # passwords passed on a command line
         |\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
         |\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-        |\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b[^|;&\n]{0,200}\s(?-i:-p)["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-        |\bsshpass\s+(?-i:-p)\s*["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+        |\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b[^|;&\n]{0,200}\s(?-i:-p)(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+        |\bsshpass\s+(?-i:-p)\s*(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
         # vendor token shapes (case-sensitive)
         |(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})
         |(?-i:\bGR1348941[0-9A-Za-z_-]{20,})
@@ -132,7 +132,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-11-15T00:00:00Z"
+  updated_at: "2026-11-22T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -146,6 +146,10 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.6
+  date: '2026-11-22'
+  changes:
+  - "R13-1 (secrets in agent settings files): a password typed into a command is refused when the quote around it is JSON-escaped, which is how an agent saves a command into its own settings file after a person chose don't-ask-again. Measured first, at catalog c2925a1: 2080 replays of six command shapes (a Postgres password variable, a ssh password flag, the mysql short and long password flags, a curl bearer header, a connection string), each as a literal, a variable reference and a placeholder, in a settings file, a shell script and a Markdown note, at commit and at an agent write. Every plain literal was already refused and every reference and placeholder already silent; three forms passed only with an escaped quote (the Postgres variable, the mysql short flag and the ssh flag, each followed by a backslash-quoted value). The key-value, mysql-family and ssh password alternatives now accept one backslash before an opening quote, and the two flag placeholder exemptions accept one after the value. A literal beside a local host is still refused, and a literal with no host still blocks rather than asks: loosening either would lower this policy, and local-host noise belongs to R13-8. Tests: test_scan_secrets_agent_settings.py; eval cases tc-065 and tc-066."
 - version: 0.1.5
   date: '2026-11-15'
   changes:

@@ -139,3 +139,23 @@ suite:
     prompt: "Documented miss: a JKS key store renamed to .bin whose first entry count is 65536 or more."
     expect: "Allowed; a renamed Java key store is recognised only by the header shape the gate's lossy text keeps (stated on the policy page)."
     execute: {files: {"build/store.bin": "\uFFFD\uFFFD\uFFFD\uFFFD\0\0\0\x02\0\x01\0\0\0\0\0\x01"}, expect: allow}
+  - id: tc-026
+    category: trigger
+    prompt: A commit stages an agent's local settings file that holds only an allowed command.
+    expect: Refused by its name; the vendor documents the file as local, and the next approval may add a password to it.
+    execute: {files: {".claude/settings.local.json": "{\"permissions\": {\"allow\": [\"Bash(ls)\"]}}\n"}, expect: block}
+  - id: tc-027
+    category: trigger
+    prompt: An agent writes that file inside a service folder of a monorepo.
+    expect: Refused at the write, whichever folder holds the .claude directory.
+    execute: {event: tool_use, writes: {"svc/.claude/settings.local.json": "{}\n"}, expect: block}
+  - id: tc-028
+    category: negative_trigger
+    prompt: A commit stages the shared settings file and a file of the same name outside a .claude folder.
+    expect: Allowed; only the agent's local file is meant to stay local.
+    execute: {files: {".claude/settings.json": "{\"permissions\": {\"allow\": [\"Bash(ls)\"]}}\n", "config/settings.local.json": "{}\n"}, expect: allow}
+  - id: tc-029
+    category: behavior
+    prompt: A test fixture stages that file under a tests path.
+    expect: Asks rather than refuses, as every fixture path does.
+    execute: {files: {"tests/fixtures/.claude/settings.local.json": "{}\n"}, expect: ask}
