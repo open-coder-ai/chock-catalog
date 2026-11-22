@@ -67,7 +67,7 @@ SECRET = re.compile(
    |(?:client|consumer|jwt|webhook|app|session|signing|cookie)[_.-]?secret
    |(?:auth|access|refresh|api|bearer|bot)[_.-]?token|(?:private|signing|encryption|master)[_.-]?key
    |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
- ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?P<kv_quote>["'`])?
+ ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?:\\(?=["'`]))?(?P<kv_quote>["'`])?
  (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/
    |/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
    |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
@@ -92,8 +92,8 @@ SECRET = re.compile(
 # passwords passed on a command line
 |\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
 |\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-|\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b[^|;&\n]{0,200}\s(?-i:-p)["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-|\bsshpass\s+(?-i:-p)\s*["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+|\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b[^|;&\n]{0,200}\s(?-i:-p)(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+|\bsshpass\s+(?-i:-p)\s*(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
 # vendor token shapes (case-sensitive)
 |(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})
 |(?-i:\bGR1348941[0-9A-Za-z_-]{20,})

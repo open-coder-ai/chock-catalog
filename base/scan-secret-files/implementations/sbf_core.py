@@ -20,6 +20,7 @@ ENV = "sbf-tracked-env"
 FRAMEWORK = "sbf-framework-secrets"
 NOTEBOOK = "sbf-notebook-outputs"
 BROWSER = "sbf-browser-credential-stores"
+LOCAL_SETTINGS = "sbf-agent-local-settings"
 #: Credential keys of a kubeconfig user, and of its auth-provider config.
 KUBE_USER = frozenset({"token", "client-key-data", "password"})
 KUBE_PROVIDER = frozenset({"client-secret", "refresh-token", "id-token", "access-token"})

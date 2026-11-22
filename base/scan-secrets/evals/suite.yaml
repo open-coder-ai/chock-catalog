@@ -554,3 +554,33 @@ suite:
     prompt: The agent writes a login module that reads its password from a prompt and a request.
     expect: The write is allowed.
     execute: {event: tool_use, writes: {"cli.py": "password = getpass.getpass()\npassword = request.json[\"password\"]\nauth_token = generate_authentication_token(user)\n"}, expect: allow}
+  # R13-1 (0.1.6): the refused direction of a password typed into a saved command is held by pytest
+  # (test_scan_secrets_agent_settings.py), which builds each line from one made-up value; a literal credential
+  # in this file would need a person's pragma, so these cases hold none.
+  - id: tc-065
+    category: negative_trigger
+    prompt: A commit adds an agent settings file whose allowed commands read the password from a variable, with the quotes JSON-escaped.
+    expect: The hook allows it; a variable reference is not a credential.
+    execute:
+      files:
+        .claude/settings.json: |
+          {"permissions": {"allow": [
+            "Bash(PGPASSWORD=\"${DBPW}\" psql -h db.acme-demo.net -U app)",
+            "Bash(mysql -h db.acme-demo.net -u app -p\"$DBPW\" prod)",
+            "Bash(sshpass -p \"$DBPW\" ssh root@db.acme-demo.net uptime)"
+          ]}}
+      expect: allow
+  - id: tc-066
+    category: negative_trigger
+    prompt: The agent writes an agent settings file whose allowed commands carry placeholders, with the quotes JSON-escaped.
+    expect: The write is allowed; a placeholder is documentation, not a credential.
+    execute:
+      event: tool_use
+      writes:
+        .claude/settings.json: |
+          {"permissions": {"allow": [
+            "Bash(PGPASSWORD=\"changeme\" psql -h db.acme-demo.net -U app)",
+            "Bash(mysql -h db.acme-demo.net -u app -p\"<password>\" prod)",
+            "Bash(sshpass -p \"xxxx\" ssh root@db.acme-demo.net uptime)"
+          ]}}
+      expect: allow

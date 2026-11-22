@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from sbf_core import BROWSER, ENV, FRAMEWORK, KEYS, TF, Finding, line_of, literal, secretish, unquote
+from sbf_core import BROWSER, ENV, FRAMEWORK, KEYS, LOCAL_SETTINGS, TF, Finding, line_of, literal, secretish, unquote
 
 KEY_SUFFIXES = (".p12", ".pfx", ".jks", ".keystore", ".jceks", ".p8", ".ppk")
 SSH_KEYS = frozenset({"id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "id_ecdsa_sk", "id_ed25519_sk"})
@@ -33,7 +33,7 @@ def judge(path: str, name: str, base: str, text: str) -> list[Finding]:
     """`path` uses /, `name` is its last segment lowercased and `base` as written."""
     if not text.strip():
         return []
-    found = [*containers(name, base, text)]
+    found = [*containers(name, base, text), *local_settings(path, name, text)]
     if dotenv(name):
         found += [Finding(ENV, line_of(text, m.start()), f"literal value for {m[1]}", v) for m, v in assignments(text)]
     if name.endswith(".tfvars"):
@@ -59,6 +59,19 @@ def containers(name: str, base: str, text: str) -> list[Finding]:
         return [Finding(TF, 1, "Terraform state", text)]
     if base in BROWSER_EXACT or name in BROWSER_LOWER:
         return [Finding(BROWSER, 1, f"browser credential store ({base})", text)]
+    return []
+
+
+LOCAL_ADVICE = (
+    "agent local settings file, meant to stay local: run `git rm --cached <this path>` "
+    "and add it to this repository's own .gitignore"
+)
+
+
+def local_settings(path: str, name: str, text: str) -> list[Finding]:
+    """An agent's local settings file holds the commands a person approved, passwords typed in them included."""
+    if name == "settings.local.json" and path.lower().split("/")[-2:-1] == [".claude"]:
+        return [Finding(LOCAL_SETTINGS, 1, LOCAL_ADVICE, text)]
     return []
 
 
