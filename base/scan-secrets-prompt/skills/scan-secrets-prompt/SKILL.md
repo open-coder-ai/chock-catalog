@@ -1,6 +1,6 @@
 ---
 name: scan-secrets-prompt
-description: "Refuses a prompt that holds a credential, before the model reads it: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, Anthropic, HF, ...), private-key blocks with a body, JWTs, URI logins, Authorization literals. Only shapes that are a credential wherever they sit; no name-based rule, so code that mentions a password passes. Allows AWS example keys, masked or truncated keys and variable names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver applies."
+description: "Screens a prompt for a credential before the model reads it: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, Anthropic, HF, ...), private keys with a body, JWTs, URI logins, Authorization literals. Installed with chock it refuses the prompt; a plugin alone carries text only. No name-based rule, so code that mentions a password passes. Allows AWS example keys, masked keys and variable names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Scan Secrets in Prompts
 
-Refuses a prompt that holds a credential, before the model reads it: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, Anthropic, HF, ...), private-key blocks with a body, JWTs, URI logins, Authorization literals. Only shapes that are a credential wherever they sit; no name-based rule, so code that mentions a password passes. Allows AWS example keys, masked or truncated keys and variable names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver applies.
+Screens a prompt for a credential before the model reads it: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, Anthropic, HF, ...), private keys with a body, JWTs, URI logins, Authorization literals. Installed with chock it refuses the prompt; a plugin alone carries text only. No name-based rule, so code that mentions a password passes. Allows AWS example keys, masked keys and variable names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver.
 
 ```
 on(prompt_submit): block(content_regex) content_pattern(regex)

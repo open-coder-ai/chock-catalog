@@ -15,7 +15,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import yaml
-from mechanism import CEILING, EVENT_SCRIPT, GATE, GUARD, NONE
+from mechanism import CEILING, EVENT_SCRIPT, GATE, NONE
 
 #: The prose files whose counts this module owns.
 FILES = ("SECURITY.md", "CONTRIBUTING.md")
@@ -59,7 +59,7 @@ def values(rows: list[dict]) -> dict[str, str]:
     return {
         "policies": str(len(rows)),
         "advisory": count(lambda row: row["enforces"] == CEILING[NONE]),
-        "best-effort": count(lambda row: row["enforces"] == CEILING[GUARD]),
+        "best-effort": count(lambda row: row["enforces"].split(" ", 1)[0] == "best-effort"),
         "enforced-at-commit": count(lambda row: row["enforces"] in (CEILING[GATE], CEILING[EVENT_SCRIPT])),
         "hook-programs": str(len(programs)),
         "hook-program-ids": ", ".join(f"`{pid}`" for pid in programs),

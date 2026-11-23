@@ -19,6 +19,7 @@ README = ROOT / "README.md"
 _TIER_OF = {
     "enforced-at-commit": "gate",
     CEILING["guard"]: "guard",
+    CEILING["prompt"]: "guard",
     "advisory": "text",
 }
 

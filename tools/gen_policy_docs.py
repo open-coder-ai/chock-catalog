@@ -18,7 +18,7 @@ from mechanism import (
     classify,
     command_guards,
     event_scripts,
-    prompt_gate_only,
+    PROMPT,
     script_mechanism,
     tool_use_gate_kind,
 )
@@ -33,12 +33,11 @@ MARK_END = "<!-- generated:end -->"
 
 
 #: The one classifier (tools/mechanism.py), so this page and the registry cannot disagree.
-_KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard"}
+_KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard", PROMPT: "prompt"}
 
 
 def kind_of(policy_dir: Path, manifest: dict) -> str:
-    kind = _KIND.get(classify(policy_dir, manifest)[0], "text")
-    return "prompt" if kind == "guard" and prompt_gate_only(policy_dir, manifest) else kind
+    return _KIND.get(classify(policy_dir, manifest)[0], "text")
 
 
 def _mechanism(kind: str, gate: dict, scripts: list[str], manifest: dict) -> str:

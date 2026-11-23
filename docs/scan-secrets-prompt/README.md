@@ -19,7 +19,7 @@
 
 ## What it is about
 
-Refuses a prompt that holds a credential, before the model reads it: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, Anthropic, HF, ...), private-key blocks with a body, JWTs, URI logins, Authorization literals. Only shapes that are a credential wherever they sit; no name-based rule, so code that mentions a password passes. Allows AWS example keys, masked or truncated keys and variable names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver applies.
+Screens a prompt for a credential before the model reads it: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, Anthropic, HF, ...), private keys with a body, JWTs, URI logins, Authorization literals. Installed with chock it refuses the prompt; a plugin alone carries text only. No name-based rule, so code that mentions a password passes. Allows AWS example keys, masked keys and variable names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver.
 
 ## What it solves
 
@@ -48,7 +48,7 @@ chock add scan-secrets-prompt
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI3YjM2ZGExYWRmZmVhZjBiMDEyNmUxYzQ1YzhmODdlZTAyMjhiNmU1In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzLXByb21wdCIsInZlcnNpb24iOiIwLjAuMSIsInNoYTI1NiI6IjQ3YzNjM2I3MDUyN2E3NWI0YjBjYzdiZWI2ZDkzNzM2N2VhZmZmZTk3MTc0NjFmZWUzZDY5ZDgwMTIyYjgxYWYifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1ZmUwZWFmYmQ0MzkxNjRmNjEyZDQ2MjJhOTUwYjIxOWZkMjk4Mzk3In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzLXByb21wdCIsInZlcnNpb24iOiIwLjAuMSIsInNoYTI1NiI6IjRhZjIxYjQxOGVkNTdjYWFkYmVkOGQwYWI4ZTE3NDcyZGExMTVjYWEzOThkMjJlNzBjODgyNjI0M2YxMTY0Y2UifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

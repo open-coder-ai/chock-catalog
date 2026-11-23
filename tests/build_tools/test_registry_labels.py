@@ -144,7 +144,13 @@ def test_a_policy_whose_enforcement_no_plugin_carries_is_text_only() -> None:
     declared = {
         d.name for d in policy_dirs() if classify(d, yaml.safe_load((d / "manifest.yaml").read_text()))[0] != NONE
     }
-    assert text_only == {"protect-main-branch", "limit-diff-size", "firecrawl-fallback-only", "token-efficiency"}
+    assert text_only == {
+        "protect-main-branch",
+        "limit-diff-size",
+        "firecrawl-fallback-only",
+        "token-efficiency",
+        "scan-secrets-prompt",
+    }
     assert text_only <= declared
     for pid in text_only:
         assert all(v["keyword"] == "advise" for k, v in ROWS[pid]["label"].items() if k not in {"misses", "status"})

@@ -1708,7 +1708,7 @@ policies:
   status: draft
   mandatory: false
   mechanism: content_regex
-  enforces: best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)
+  enforces: best-effort (prompt submit, for the clients the engine wires, once hooks are installed)
   eval_cases: 17
   eval_executed: 17
   label:
@@ -1718,8 +1718,8 @@ policies:
     copilot: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
     devin: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
     misses: "a bare password, a split or encoded value, a vendor shape not listed."
-  description: 'Refuses a prompt that holds a credential, before the model reads it: vendor tokens (AWS,
-    GitHub, GitLab, Slack, OpenAI, Anthropic, HF, ...), private-key blocks with a body, JWTs, URI logins,
-    Authorization literals. Only shapes that are a credential wherever they sit; no name-based rule,
-    so code that mentions a password passes. Allows AWS example keys, masked or truncated keys and variable
-    names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver applies.'
+  description: 'Screens a prompt for a credential before the model reads it: vendor tokens (AWS, GitHub,
+    GitLab, Slack, OpenAI, Anthropic, HF, ...), private keys with a body, JWTs, URI logins, Authorization
+    literals. Installed with chock it refuses the prompt; a plugin alone carries text only. No name-based
+    rule, so code that mentions a password passes. Allows AWS example keys, masked keys and variable
+    names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver.'
