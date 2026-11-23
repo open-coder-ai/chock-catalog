@@ -43,6 +43,12 @@ def tool_use_gate_kind(manifest: dict[str, Any]) -> str | None:
     return str(gate["kind"])
 
 
+def prompt_gate_only(policy_dir: Path, manifest: dict[str, Any]) -> bool:
+    """True when the policy's only mechanism is a gate that runs at the prompt: no guard script beside it."""
+    on = ((manifest.get("hook") or {}).get("gate") or {}).get("on")
+    return on == ["prompt_submit"] and not command_guards(policy_dir, str(manifest["id"]))
+
+
 def script_mechanism(manifest: dict[str, Any]) -> str:
     """The event script's label, naming the tool-use gate beside it when the policy has one."""
     kind = tool_use_gate_kind(manifest)

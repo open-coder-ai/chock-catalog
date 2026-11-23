@@ -1,0 +1,164 @@
+suite:
+  id: scan-secrets-prompt-tests-v1
+  policy_id: scan-secrets-prompt
+  version_constraint: ">=0.0.1"
+  maintainer: chock-core
+  primary_metric: pass_rate
+  metrics:
+    pass_rate:
+      direction: higher_is_better
+      threshold: 1.0
+  # `content_regex` has no derived cases: every case states its expectation independently of the pattern.
+  # The cases below hold no secret-shaped text, so they commit clean: they are the allow cases a person types.
+  # The block cases, and the allow cases that carry a secret-shaped value, are built by an owner-run script.
+  # R13-11 owner fixtures go here
+  # Ids sp-007, sp-008 and sp-016 are reserved for the owner's cases.
+  cases:
+  - id: sp-001
+    category: negative_trigger
+    prompt: A prompt shows a masked Anthropic key.
+    expect: The prompt is allowed; a truncated key is not a credential.
+    execute:
+      event: prompt_submit
+      prompt: "My key looks like sk-ant-... in the dashboard; where do I set it?"
+      expect: allow
+  - id: sp-002
+    category: negative_trigger
+    prompt: A prompt shows a GitHub token with its characters starred out.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "The log prints ghp_**** for the token, is that safe to share?"
+      expect: allow
+  - id: sp-003
+    category: negative_trigger
+    prompt: A prompt shows a Slack token and an npm token with placeholder characters.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Replace xoxb-xxxx-xxxx and npm_xxxxxxxx in the example with real values from the vault."
+      expect: allow
+  - id: sp-004
+    category: negative_trigger
+    prompt: A prompt names the AWS secret key variable.
+    expect: The prompt is allowed; a variable name is not a value.
+    execute:
+      event: prompt_submit
+      prompt: "Export AWS_SECRET_ACCESS_KEY and AWS_ACCESS_KEY_ID before running the deploy script."
+      expect: allow
+  - id: sp-005
+    category: negative_trigger
+    prompt: A prompt asks how to rotate a key.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "How do I rotate a leaked GitHub personal access token and clean it out of git history?"
+      expect: allow
+  - id: sp-006
+    category: negative_trigger
+    prompt: A prompt holds code that reads a password from the environment.
+    expect: The prompt is allowed; no name-based rule applies at a prompt.
+    execute:
+      event: prompt_submit
+      prompt: |
+        Why does this fail on CI?
+        password = os.environ["DB_PASSWORD"]
+        api_key = settings.API_KEY
+        client = Client(user="app", password=password, token=api_key)
+      expect: allow
+  - id: sp-009
+    category: negative_trigger
+    prompt: A prompt shows a connection string with the documentation placeholder password.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Use postgres://user:password@localhost:5432/db for the local database."
+      expect: allow
+  - id: sp-010
+    category: negative_trigger
+    prompt: A prompt shows a connection string whose password is a bracketed placeholder.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Point it at redis://:<password>@cache.internal:6379 and report the latency."
+      expect: allow
+  - id: sp-011
+    category: negative_trigger
+    prompt: A prompt shows an Authorization header that reads a variable.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: 'curl -H "Authorization: Bearer $TOKEN" https://api.example.com/v1/items'
+      expect: allow
+  - id: sp-012
+    category: negative_trigger
+    prompt: A prompt shows an Authorization header with a bracketed placeholder.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Send Authorization: Bearer <your-access-token-goes-here> with each request."
+      expect: allow
+  - id: sp-013
+    category: negative_trigger
+    prompt: A prompt mentions an Authorization header in words.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "The client should send an Authorization: Bearer header on every call, but it does not."
+      expect: allow
+  - id: sp-014
+    category: negative_trigger
+    prompt: A prompt shows an Authorization header whose token is an upper-case variable name.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "headers = {'Authorization': 'Bearer MY_SERVICE_API_TOKEN'}"
+      expect: allow
+  - id: sp-015
+    category: behavior
+    prompt: An ordinary request to refactor code.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Refactor the uploader to retry on a 503 and add a test for the backoff."
+      expect: allow
+  - id: sp-017
+    category: negative_trigger
+    prompt: A prompt holds a .env block of names and placeholders.
+    expect: The prompt is allowed; no value in it is a credential.
+    execute:
+      event: prompt_submit
+      prompt: |
+        Is this .env layout right?
+        DB_HOST=localhost
+        DB_USER=app
+        DB_PASSWORD=<your-password>
+        AWS_ACCESS_KEY_ID=
+        AWS_SECRET_ACCESS_KEY=
+      expect: allow
+  - id: sp-018
+    category: negative_trigger
+    prompt: A prompt holds JSON config with placeholder values.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: |
+        {"service": {"token": "<your-token>", "url": "https://api.example.com"}}
+        Validate this against the schema.
+      expect: allow
+  - id: sp-019
+    category: edge
+    prompt: A prompt says a password in words, with no value that has a credential shape.
+    expect: The prompt is allowed; a bare password is a documented miss, not a refusal.
+    execute:
+      event: prompt_submit
+      prompt: "The staging password is hunter2, can you update the README?"
+      expect: allow
+  - id: sp-020
+    category: negative_trigger
+    prompt: A prompt asks what a JWT is made of.
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "A JWT has a header, a payload and a signature joined by dots; which part carries the expiry?"
+      expect: allow
