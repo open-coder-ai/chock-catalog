@@ -11,8 +11,6 @@ suite:
   # `content_regex` has no derived cases: every case states its expectation independently of the pattern.
   # The cases below hold no secret-shaped text, so they commit clean: they are the allow cases a person types.
   # The block cases, and the allow cases that carry a secret-shaped value, are built by an owner-run script.
-  # R13-11 owner fixtures go here
-  # Ids sp-007, sp-008 and sp-016 are reserved for the owner's cases.
   cases:
   - id: sp-001
     category: negative_trigger
@@ -161,4 +159,268 @@ suite:
     execute:
       event: prompt_submit
       prompt: "A JWT has a header, a payload and a signature joined by dots; which part carries the expiry?"
+      expect: allow
+  - id: sp-101
+    category: trigger
+    prompt: Owner fixture sp-101, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Deploy with AKIAW87V42UUXZ0X2SQF and tell me what it can reach."  # pragma: allowlist secret
+      expect: block
+  - id: sp-102
+    category: trigger
+    prompt: Owner fixture sp-102, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "My session key is ASIA305KYAC0M2NO9HZ8, why does it expire?"  # pragma: allowlist secret
+      expect: block
+  - id: sp-103
+    category: trigger
+    prompt: Owner fixture sp-103, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "git clone with ghp_juufXD9Zfmbs1WUiRyBhB4c0KIID85YMQS1E fails with a 403."  # pragma: allowlist secret
+      expect: block
+  - id: sp-104
+    category: trigger
+    prompt: Owner fixture sp-104, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Use github_pat_KYzQTk8Hv1Eh3nlMMK3TEpYtIRbDDq1KLcvYwfFR for the release script."  # pragma: allowlist secret
+      expect: block
+  - id: sp-105
+    category: trigger
+    prompt: Owner fixture sp-105, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "The bot token is xoxb-1234567890-CZ9rcVVdCvR42aJ5hWeN, post to #ops."  # pragma: allowlist secret
+      expect: block
+  - id: sp-106
+    category: trigger
+    prompt: Owner fixture sp-106, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Charge the card with sk_live_Py0uNtYPR1EutY1zMwxToSto."  # pragma: allowlist secret
+      expect: block
+  - id: sp-107
+    category: trigger
+    prompt: Owner fixture sp-107, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Call the API with sk-egNsweL2l66mA6NThabvwHNUFdWbI49HkisFmMMC."  # pragma: allowlist secret
+      expect: block
+  - id: sp-108
+    category: trigger
+    prompt: Owner fixture sp-108, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "OPENAI_API_KEY=sk-proj-RNTUXNp4htcu7QOUqW-2qSsQB1v3X9JupCvS24eYfVOHSqzEln"  # pragma: allowlist secret
+      expect: block
+  - id: sp-109
+    category: trigger
+    prompt: Owner fixture sp-109, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Why does sk-ant-api03-8LXNfd22HeVf4KCkBuZO-Hfc76eoAjLye4L9ReYqEXCzKXYsBGGlCfrZXPk5 return a 401?"  # pragma: allowlist secret
+      expect: block
+  - id: sp-110
+    category: trigger
+    prompt: Owner fixture sp-110, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "The Maps key is AIzaWlfIBe0fGFHgkYCGxuzUHbHr1cO8H455M1j."  # pragma: allowlist secret
+      expect: block
+  - id: sp-111
+    category: trigger
+    prompt: Owner fixture sp-111, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "//registry.npmjs.org/:_authToken=npm_sD408hA4HZvt627dJfhbon616VktMDALhOde"  # pragma: allowlist secret
+      expect: block
+  - id: sp-112
+    category: trigger
+    prompt: Owner fixture sp-112, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Send mail with 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."  # pragma: allowlist secret
+      expect: block
+  - id: sp-113
+    category: trigger
+    prompt: Owner fixture sp-113, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Decode this token: eyJ_lp0WLC6T2nFISKU.eyJTXOOYIcD3ZxHjNHo.DdwohH-o_BmGmqWfMYCDBcpHNUSRRlPBwutR0G4ZoSi"  # pragma: allowlist secret
+      expect: block
+  - id: sp-114
+    category: trigger
+    prompt: Owner fixture sp-114, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Is this key valid?\n-----BEGIN RSA PRIVATE KEY-----\ncIZzpv2cB0+nZFX5jV5jTSR39qi12mRnoRLBTHkN2B/bBqJ1c7ExgEc4e0+WhKPj\nZdzQ38keiw3EsEHBO55h7+q7LOfNQ5v3W7eCV2JD1fGgnD7Mlg7ejk5bba4jf7f+\n-----END RSA PRIVATE KEY-----"  # pragma: allowlist secret
+      expect: block
+  - id: sp-115
+    category: trigger
+    prompt: Owner fixture sp-115, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Decrypt this: -----BEGIN RSA PRIVATE KEY-----\nProc-Type: 4,ENCRYPTED\nDEK-Info: AES-128-CBC,17AA9FF1325D880BBECBF066609AF9FE\n\nHGRknEz+/e+m84QxraU3QX7Uz/sWkafrT2X8l1hArwsH13GWUbqHaH+wAkP5ACj2"  # pragma: allowlist secret
+      expect: block
+  - id: sp-116
+    category: trigger
+    prompt: Owner fixture sp-116, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Import -----BEGIN PGP PRIVATE KEY BLOCK-----\n\nOt09Za64NIEkw4+pavzMYaFBp2MK4jh5pxyFzKhJvgAUgXazdzABxFGkLzvI2flk"  # pragma: allowlist secret
+      expect: block
+  - id: sp-117
+    category: trigger
+    prompt: Owner fixture sp-117, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "psql postgres://admin:pUQCdI7REUdVja@db.internal.acme.io:5432/app times out."  # pragma: allowlist secret
+      expect: block
+  - id: sp-118
+    category: trigger
+    prompt: Owner fixture sp-118, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "curl -H \"Authorization: Bearer dkJCL4vnp76BaFioH4WvfbGAVUSc3ljRwC9wSxkm\" https://api.acme.io/v1/items"  # pragma: allowlist secret
+      expect: block
+  - id: sp-119
+    category: trigger
+    prompt: Owner fixture sp-119, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Why does Authorization: Basic MPJccnPzlHXa7fthJx40i8Xi== get a 401?"  # pragma: allowlist secret
+      expect: block
+  - id: sp-120
+    category: trigger
+    prompt: Owner fixture sp-120, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Clone with glpat-gvlrlMv21RIeMJic2pk03iDY."  # pragma: allowlist secret
+      expect: block
+  - id: sp-121
+    category: trigger
+    prompt: Owner fixture sp-121, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "huggingface-cli login --token hf_xPlEAtzxIn1CLoicHxu9iTENXXsSQytqEV"  # pragma: allowlist secret
+      expect: block
+  - id: sp-122
+    category: edge
+    prompt: Owner fixture sp-122, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Fix this config:\n{\"config\": {\"token\": \"ghp_V5u28j9yto5koczSvGJkivBlqQDAcauzKvWo\"}}"  # pragma: allowlist secret
+      expect: block
+  - id: sp-123
+    category: edge
+    prompt: Owner fixture sp-123, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "Why is this .env ignored?\nDB_HOST=localhost\nAWS_ACCESS_KEY_ID=AKIA0JWMIAWKXIKAALTB\nAWS_REGION=us-east-1\nDEBUG=true"  # pragma: allowlist secret
+      expect: block
+  - id: sp-124
+    category: edge
+    prompt: Owner fixture sp-124, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is refused before the model reads it.
+    execute:
+      event: prompt_submit
+      prompt: "so my key is sk-ant-LFoIlf0WHpU3udPiEKqJ4O2ns1ciE8JI7yUnzVHi and it fails"  # pragma: allowlist secret
+      expect: block
+  - id: sp-007
+    category: negative_trigger
+    prompt: Owner fixture sp-007, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "What does the line -----BEGIN RSA PRIVATE KEY----- at the top of a file mean?"  # pragma: allowlist secret
+      expect: allow
+  - id: sp-008
+    category: negative_trigger
+    prompt: Owner fixture sp-008, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "My file starts like this, is it PKCS1?\n-----BEGIN RSA PRIVATE KEY-----\nMIIEow..."  # pragma: allowlist secret
+      expect: allow
+  - id: sp-016
+    category: negative_trigger
+    prompt: Owner fixture sp-016, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Write up the risk-assessmentprocessforthecloudmigrationteam as a checklist."  # pragma: allowlist secret
+      expect: allow
+  - id: sp-022
+    category: negative_trigger
+    prompt: Owner fixture sp-022, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Pin the step to docker://alpine:3.19@sha256:b07973e0c3ec15ee041caebe07310adfd2dd4a9256cb4efdc265de93b0d056ba and rerun."  # pragma: allowlist secret
+      expect: allow
+  - id: sp-023
+    category: negative_trigger
+    prompt: Owner fixture sp-023, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "The docs show AKIAZJRTQA0R1EXAMPLE as the example access key id."  # pragma: allowlist secret
+      expect: allow
+  - id: sp-024
+    category: negative_trigger
+    prompt: Owner fixture sp-024, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "The docs show ASIAHGSKM2T7UEXAMPLE for a session key."  # pragma: allowlist secret
+      expect: allow
+  - id: sp-025
+    category: negative_trigger
+    prompt: Owner fixture sp-025, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "Mask it like eyJ... in the logs."  # pragma: allowlist secret
+      expect: allow
+  - id: sp-026
+    category: negative_trigger
+    prompt: Owner fixture sp-026, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "The log shows eyJ.. for the token."  # pragma: allowlist secret
+      expect: allow
+  - id: sp-027
+    category: negative_trigger
+    prompt: Owner fixture sp-027, a fake secret-shaped value in a prompt (R13-11).
+    expect: The prompt is allowed.
+    execute:
+      event: prompt_submit
+      prompt: "The word akias60vi9tdscrup3zz is a hash prefix in this table."  # pragma: allowlist secret
       expect: allow
