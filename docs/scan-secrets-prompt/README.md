@@ -12,7 +12,7 @@
 | **Mechanism** | content_regex gate |
 | **Reaches** | `best-effort` on a client that can refuse a prompt, once `chock sync` has run — the prompt is refused before the model reads it. Not witnessed live in any client yet |
 | **Compiles to** | `prompt-submit`, `ambient-rule` |
-| **Eval cases** | 17 total, 17 executable |
+| **Eval cases** | 50 total, 50 executable |
 | **Enabled by default** | yes |
 
 <!-- generated:end -->
@@ -48,7 +48,7 @@ chock add scan-secrets-prompt
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI1ZmUwZWFmYmQ0MzkxNjRmNjEyZDQ2MjJhOTUwYjIxOWZkMjk4Mzk3In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzLXByb21wdCIsInZlcnNpb24iOiIwLjAuMSIsInNoYTI1NiI6IjRhZjIxYjQxOGVkNTdjYWFkYmVkOGQwYWI4ZTE3NDcyZGExMTVjYWEzOThkMjJlNzBjODgyNjI0M2YxMTY0Y2UifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJiOTg1Y2ZiNDViNTIwMWIxNTkxNjFkNGQxNWIxMGIwOWJkNWM0YTUyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzLXByb21wdCIsInZlcnNpb24iOiIwLjAuMSIsInNoYTI1NiI6ImMzYzA0ZjI0NjU4ODcxZGFiYzRjN2YzMDIwMzZjNDcyMTBjZjU2ODVmYmUwYWNiMjNlZWFlYjgzMDlmOGE0M2EifV19): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 

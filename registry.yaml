@@ -1709,8 +1709,8 @@ policies:
   mandatory: false
   mechanism: content_regex
   enforces: best-effort (prompt submit, for the clients the engine wires, once hooks are installed)
-  eval_cases: 17
-  eval_executed: 17
+  eval_cases: 50
+  eval_executed: 50
   label:
     claude-code: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
     cursor: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
