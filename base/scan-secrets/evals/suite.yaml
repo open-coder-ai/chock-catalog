@@ -584,3 +584,228 @@ suite:
             "Bash(sshpass -p \"xxxx\" ssh root@db.acme-demo.net uptime)"
           ]}}
       expect: allow
+  - id: tc-101
+    category: negative_trigger
+    prompt: "A script runs psql on localhost with a literal password."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "scripts/dev-db.sh": "PGPASSWORD=CAckGFDwxtyiVp48 psql -h localhost -U app dev\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-102
+    category: negative_trigger
+    prompt: "A script runs mysql on 127.0.0.1 with a literal password."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "scripts/dev-db.sh": "mysql -h 127.0.0.1 -u app -pVQBfSOVBsBWtId42 dev\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-103
+    category: negative_trigger
+    prompt: "A config holds a connection string to localhost with a literal password."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "config/dev.yaml": "database_url: postgres://app:gMOZxatuoZYfGk57@localhost:5432/dev\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-104
+    category: trigger
+    prompt: "A script runs psql on a private address with a literal password."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "scripts/db.sh": "PGPASSWORD=ZhDyRUzaQzuzoX65 psql -h 10.0.0.5 -U app prod\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-105
+    category: trigger
+    prompt: "A config holds a connection string to a 192.168 host with a literal password."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "config/staging.yaml": "database_url: postgres://app:TngeXJbCeRwzRC13@192.168.1.20/app\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-106
+    category: adversarial
+    prompt: "A connection string whose host only starts with localhost."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "config/prod.yaml": "database_url: postgres://app:lCuWvEutJTgxby30@localhost.attacker-host.io/app\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-107
+    category: adversarial
+    prompt: "A psql command whose host is 127.0.0.1 inside a public DNS name."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "scripts/db.sh": "PGPASSWORD=ESSDZxkCpMLnah50 psql -h 127.0.0.1.nip.io -U app prod\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-108
+    category: negative_trigger
+    prompt: "AWS's documented example key pair in a README."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "docs/aws.md": "aws_access_key_id = AKIAIOSFODNN7EXAMPLE\naws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-109
+    category: negative_trigger
+    prompt: "The jwt.io documented sample token in a test."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "tests/test_jwt.py": "SAMPLE = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\"\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-110
+    category: adversarial
+    prompt: "An AWS key id one character away from the documented example."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "config/aws.py": "KEY_ID = \"AKIAIOSFODNN7EXAMPLF\"\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-111
+    category: negative_trigger
+    prompt: "A public key committed as a .pem file."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "keys/jwt-public.pem": "-----BEGIN PUBLIC KEY-----\n/xrFm/vP+E/u96KngzsyBbJlnzqkN/15vHM/gPUZca1qUs0stdjdtCPyjRJfS3BX\nm+GG4HAl+O0kcbBrcImn+TUq0mSSXyG3/XOWQYKfrBBKQDd9HNGZpLNP64Wvd76c\neVmSrlniruyMRY6Q3Hblhe58OqnhC/P8l1du817s/rcqwzghv0gO8cRHvV8XLKI2\n-----END PUBLIC KEY-----\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-112
+    category: negative_trigger
+    prompt: "A CA certificate committed as a .pem file."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "certs/ca.pem": "-----BEGIN CERTIFICATE-----\n/xrFm/vP+E/u96KngzsyBbJlnzqkN/15vHM/gPUZca1qUs0stdjdtCPyjRJfS3BX\nm+GG4HAl+O0kcbBrcImn+TUq0mSSXyG3/XOWQYKfrBBKQDd9HNGZpLNP64Wvd76c\neVmSrlniruyMRY6Q3Hblhe58OqnhC/P8l1du817s/rcqwzghv0gO8cRHvV8XLKI2\n-----END CERTIFICATE-----\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-113
+    category: negative_trigger
+    prompt: "A translation file whose extension is .key."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "i18n/messages.key": "greeting=Hello\nfarewell=Goodbye\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-114
+    category: trigger
+    prompt: "A private key committed as a .key file."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "deploy/server.key": "-----BEGIN RSA PRIVATE KEY-----\n/xrFm/vP+E/u96KngzsyBbJlnzqkN/15vHM/gPUZca1qUs0stdjdtCPyjRJfS3BX\nm+GG4HAl+O0kcbBrcImn+TUq0mSSXyG3/XOWQYKfrBBKQDd9HNGZpLNP64Wvd76c\neVmSrlniruyMRY6Q3Hblhe58OqnhC/P8l1du817s/rcqwzghv0gO8cRHvV8XLKI2\n-----END RSA PRIVATE KEY-----\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-115
+    category: trigger
+    prompt: "An Azure storage connection string in a JSON settings file."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "appsettings.json": "{\"Storage\": \"DefaultEndpointsProtocol=https;AccountName=acmeprod;AccountKey=QizmI4ndp47e2WpPdeaXjfR4gQSnrlHH1DDpLC6Wy2SReTfZ9sLzXt9OMuc1L62sE13L47auCbXOMIGX5O5bVH==;EndpointSuffix=core.windows.net\"}\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-116
+    category: trigger
+    prompt: "An Azure blob URL carrying a SAS signature."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "scripts/fetch.sh": "curl 'https://acmeprod.blob.core.windows.net/data/report.csv?sv=2022-11-02&ss=b&srt=o&sp=r&se=2026-12-31T00:00:00Z&sig=GzOae2Hn4FbjzlgFt70B6QHR24wpxKr7yj5ekYJNOn%3D'\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-117
+    category: negative_trigger
+    prompt: "An Azure connection string read from a variable."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "appsettings.json": "{\"Storage\": \"DefaultEndpointsProtocol=https;AccountName=acmeprod;AccountKey=${AZURE_STORAGE_KEY}\"}\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-118
+    category: trigger
+    prompt: "psql to a public host with an 8-character literal password."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "scripts/db.sh": "PGPASSWORD=eTLhju93 psql -h db.acme-prod.io -U app prod\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-119
+    category: trigger
+    prompt: "mysql to a public host with an 8-character literal after -p."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "scripts/db.sh": "mysql -h db.acme-prod.io -u app -pjYxUcE03 prod\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-120
+    category: trigger
+    prompt: "A deploy command with --password= and a public host."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        "scripts/deploy.sh": "deployctl --host db.acme-prod.io --password=RuoOUat72\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-121
+    category: negative_trigger
+    prompt: "psql to localhost with an 8-character literal password."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "scripts/dev-db.sh": "PGPASSWORD=zHQrem90 psql -h localhost -U app dev\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-122
+    category: negative_trigger
+    prompt: "An 8-character password assignment in settings keeps the 12-character floor."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        "settings.py": "PASSWORD = \"bQNkgx10\"\n"  # pragma: allowlist secret
+      expect: allow
+  - id: tc-123
+    category: adversarial
+    prompt: "A dotted passphrase of letters in an env file."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        ".env.example": "DB_PASSWORD=FnxKHF.mKzqFC.iwgSRo.omzmbE\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-124
+    category: adversarial
+    prompt: "A value that starts like a call in an env file."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        ".env.example": "DB_PASSWORD=vsy(42)HepayAskRb25\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-125
+    category: adversarial
+    prompt: "A value that starts like a subscript in an env file."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        ".env.example": "DB_PASSWORD=ygj[7]tevoLmTExr58\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-126
+    category: adversarial
+    prompt: "A value that starts with xxxx and goes on in an env file."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        ".env.example": "DB_PASSWORD=xxxxeDSzFvvDnapV43\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-127
+    category: adversarial
+    prompt: "A value that starts with my- and goes on in an env file."
+    expect: "The hook blocks the commit."
+    execute:
+      files:
+        ".env.example": "DB_PASSWORD=my-tlCsHWNafCuh44\n"  # pragma: allowlist secret
+      expect: block
+  - id: tc-128
+    category: negative_trigger
+    prompt: "Whole-value placeholders and expressions stay silent."
+    expect: "The hook allows the commit."
+    execute:
+      files:
+        ".env.example": "DB_PASSWORD=xxxx\nAPI_TOKEN=my-token\nSECRET=changeme\n"  # pragma: allowlist secret
+        "app/settings.py": "PASSWORD = get_password()\nTOKEN = config[\"api\"][\"token\"]\n"  # pragma: allowlist secret
+      expect: allow
