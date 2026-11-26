@@ -177,12 +177,12 @@ Chock doesn't stop every attack. It closes common, known entry points earlier, a
 
 ### The policies, by tier
 
-Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (field `label.claude-code.keyword`, `eval_cases`, `eval_executed`) and the manifests' `compliance.owasp_asi`. The counts above are rewritten by `tools/gen_registry.py`; these are not, so re-derive them before you quote them.
+Facts below are as of catalog commit `fbd7182`, derived from `registry.yaml` (field `label.claude-code.keyword`, `eval_cases`, `eval_executed`) and the manifests' `compliance.owasp_asi`. The counts above are rewritten by `tools/gen_registry.py`; these are not, so re-derive them before you quote them.
 
 | Fact | Value |
 | :--- | :--- |
-| What a policy does in Claude Code | 39 block, 3 ask, 5 warn, 24 advise |
-| Eval cases in the registry | 4,280, of which 4,098 replay automatically |
+| What a policy does in Claude Code | 39 block, 4 ask, 5 warn, 25 advise |
+| Eval cases in the registry | 4,804, of which 4,622 replay automatically |
 | OWASP ASI risks | 10 of 10 have a policy; 7 have a slice refused at commit; ASI10 asks at commit, ASI06 warns only, ASI08 advisory only; 0 fully covered |
 
 **Enforced at commit** — declarative gates and commit-time scripts, verified by replaying their own gate against a throwaway repo on every push.
@@ -241,6 +241,12 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | [`block-persistence-shapes`](docs/block-persistence-shapes/) | Refuses shell commands that publish or keep access after the session — `npm`/`twine`/`cargo`/`docker push` and registry-auth edits, repos made public, user services, launch agents, cron, Run keys, `authorized_keys`, runner registration, sudoers, setuid bits, detached downloads; **asks** before `gh release create`, `git remote add` and `git push` to a URL. Best effort on the command text; OWASP ASI03, ASI10 | 109/109 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
+
+**Refused when the prompt is submitted** — a check on the prompt a person submits, before the model reads it. `chock sync` wires it only on agents whose prompt-submit hook can refuse. Witnessed refusing in Claude Code only; every other client untested.
+
+| Policy | Refuses | Evals |
+| :--- | :--- | ---: |
+| [`scan-secrets-prompt`](docs/scan-secrets-prompt/) | a credential pasted into a prompt -- vendor tokens, private keys with a body, JWTs, URI logins, Authorization literals -- before the model reads it; no name-based rule, so a prompt about passwords passes; misses a bare password, a split or encoded value | 50/50 |
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
