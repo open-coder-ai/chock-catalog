@@ -13,13 +13,13 @@ suite:
   # the pattern. That is what makes them evidence rather than a restatement.
   cases:
   - id: tc-001
-    category: trigger
-    prompt: A staged file contains an AWS access key ID pattern.
-    expect: The hook blocks the commit.
+    category: negative_trigger
+    prompt: A staged file holds AWS's documented example access key ID, exactly as the documentation writes it.
+    expect: The hook allows the commit.
     execute:
       files:
         creds.py: "AWS_ACCESS_KEY_ID = 'AKIAIOSFODNN7EXAMPLE'\n"  # pragma: allowlist secret
-      expect: block
+      expect: allow
   - id: tc-002
     category: trigger
     prompt: A commit adds a .env file.

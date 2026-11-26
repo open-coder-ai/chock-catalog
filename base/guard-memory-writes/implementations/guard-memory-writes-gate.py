@@ -30,7 +30,8 @@ HISTORY = re.compile(
 SECRET = re.compile(
     r"""(?ix)
 # v1 shapes, unchanged except where noted
-(AKIA|ASIA)[0-9A-Z]{16}
+# AWS's documented example key id, allowed by exact value (docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html, read 2026-11-26); its last letter is a class so this line holds no key shape
+(?!(?<![0-9A-Za-z])(?-i:AKIAIOSFODNN7EXAMPL[E])(?![0-9A-Za-z]))(AKIA|ASIA)[0-9A-Z]{16}
 |gh[oprsu]_[0-9A-Za-z]{36}
 |github_pat_[0-9A-Za-z_]{22,}
 |xox[bpas]-[0-9A-Za-z-]{10,}
@@ -47,28 +48,39 @@ SECRET = re.compile(
 |secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
 # v1 quoted password, now silent on a value that starts like a reference: $VAR, ${VAR}, {{ x }}, %(x)s
-|password\s*=\s*["'](?!\$|\{\{|%[({])[^"'\s]{12,}["']
+|(?:(?<!pg)(?<!--)|(?!password=))password\s*=\s*["'](?!\$|\{\{|%[({])[^"'\s]{12,}["']
 # bare key and token: a literal value, not a placeholder, a call or a subscript, a member chain or a name
 |(api|secret|auth)[_-]?(key|token)\s*[=:]\s*
- (?!<|\*{3}|x{4}|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
+ (?!<|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
  (?![A-Za-z0-9_\-]*[(\[]|[A-Za-z0-9_\-]*\.[A-Za-z_])
  (?!(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+|[a-z]+[0-9]{0,3}(?:_[a-z]+[0-9]{0,3})+)(?:_[0-9]{1,3})?(?:[\s,;)\]}]|$))
  [A-Za-z0-9_\-]{20,}
-# v1 bare password, a literal value: silent on SOPS, vault:, Terraform references, environment lookups,
-# placeholders, and expressions (a call, a subscript, a generic, a member chain without a digit)
-|password\s*[=:](?!:)\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])
- (?!<|\*{3}|x{4}|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
- (?![A-Za-z_]\w*(?:(?:\.|::|->)[A-Za-z_]\w*)*[(\[<])(?![A-Za-z_]+(?:(?:\.|::)[A-Za-z_]+)+[;,)\s]|[A-Za-z_]+(?:(?:\.|::)[A-Za-z_]+)+$)
+# v1 bare password, a literal value: silent on SOPS, vault:, Terraform references, environment lookups, placeholders and expressions; a placeholder start (xxxx), a call, a subscript, a generic or a member chain silences only when it is the whole value, and a member chain only when every segment reads as an identifier
+|(?:(?<!pg)(?<!--)|(?!password=))password\s*[=:](?!:)\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])
+ (?!<|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
+ (?![A-Za-z_]\w*(?:(?:\.|::|->)[A-Za-z_]\w*)*(?:\((?:[^()\n]|\([^()\n]{0,128}\)){0,256}\)|\[[^\[\]\n]{0,256}\]|<[^<>\n]{0,256}>)
+   (?:(?:\.|::|->)[A-Za-z_]\w*|(?:\((?:[^()\n]|\([^()\n]{0,128}\)){0,256}\)|\[[^\[\]\n]{0,256}\]|<[^<>\n]{0,256}>))*(?:[;,)\]}?!\s"'`\\]|$))
+ (?!(?-i:(?:[A-Z][A-Z_]*|(?:[a-z_]|[A-Z](?=[a-z]))+)(?:(?:\.|::)(?:[A-Z][A-Z_]*|(?:[a-z_]|[A-Z](?=[a-z]))+))+)(?:[;,)\s]|$))
  [^\s"'${}]{12,}
+# PGPASSWORD= and --password= in a command: silent when the command names a loopback host as its host operand; a literal of 8+ characters when it names another host (a dotted name or an address), 12+ otherwise
+|(?<![^|;&\n])
+ (?![^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))
+ (?P<nonloop>(?=[^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+))?
+ [^|;&\n]*?(?:(?<!\w)PGPASSWORD|(?<![\w-])--password)=(?:\\(?=["']))?["']?
+ (?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[]|\$|\{\{)
+ (?!<|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$)|(?:pass(?:word|wd)?|pwd|secret)(?:["'`\s,;)\\]|$))
+ (?(nonloop)[^\s"'${}]{8,}|[^\s"'${}]{12,})
 # private keys: any PEM label ending PRIVATE KEY (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS8), PGP armor
 |-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE\ KEY(?:\ BLOCK)?-----
 # key, token, secret and password names in any case and separator: JSON, YAML, env, HCL, Go, Ruby, PHP, Python, JS
 |(?:api[_.-]?key|secret[_.-]?(?:access[_.-]?)?key(?:[_.-]?base)?|access[_.-]?key
    |(?:client|consumer|jwt|webhook|app|session|signing|cookie)[_.-]?secret
    |(?:auth|access|refresh|api|bearer|bot)[_.-]?token|(?:private|signing|encryption|master)[_.-]?key
-   |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
+   |(?:(?<!pg)(?<!--)|(?!password=))passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
  ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?:\\(?=["'`]))?(?P<kv_quote>["'`])?
- (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/
+ (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|\.{1,2}/|~/
+   # AWS's documented example secret access key, by exact value (same page, read 2026-11-26); the last letter is a class
+   |(?-i:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKE[Y])(?![A-Za-z0-9/+=_~-])
    |/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
    |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
    |[\w.]{0,64}(?:env|getenv|environ)[.(\[]
@@ -84,7 +96,7 @@ SECRET = re.compile(
 # userinfo has no unescaped \ # ? / (RFC 3986), so a URL parser test vector is not a login
 |\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"#?\\]*):(?!(?P=uri_user)@)
  (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|foo(?:bar)?|bar|baz|changeme|token|example|dummy|redacted|placeholder)@))
- [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
+ [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
 # Authorization header literals
 |\bauthorization["'`]?\]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]{1,512}(?:["'`\s,;)]|$))
  (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?:["'`\s,;)]|$)))
@@ -92,8 +104,14 @@ SECRET = re.compile(
 # passwords passed on a command line
 |\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
 |\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-|\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b[^|;&\n]{0,200}\s(?-i:-p)(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
-|\bsshpass\s+(?-i:-p)\s*(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+|\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b
+ (?![^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))
+ [^|;&\n]{0,200}\s(?-i:-p)(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+|\bsshpass\b(?![^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))
+ \s+(?-i:-p)\s*(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+# Azure: a storage connection string's account key, and a SAS signature on a URL that also carries sv= and se=
+|AccountKey=[A-Za-z0-9+/]{86,}==
+|\?(?=[a-z]{2,3}=)(?=(?:[^\s'"#]{0,1024}?&)?sv=\d{4}-\d{2}-\d{2}(?:[&\s'"#]|$))(?=(?:[^\s'"#]{0,1024}?&)?se=)[^\s'"#]{0,1024}?&sig=[A-Za-z0-9%+/=]{40,}
 # vendor token shapes (case-sensitive)
 |(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})
 |(?-i:\bGR1348941[0-9A-Za-z_-]{20,})

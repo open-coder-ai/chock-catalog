@@ -1,6 +1,6 @@
 id: guard-memory-writes
 name: "Guard Memory Writes"
-version: "0.0.13"
+version: "0.0.14"
 description: >
   Refuses agent-memory writes holding pasted git history, a code block over 20 lines, a duplicate
   line or a secret. Warns (observe, ASI06) on an added line that tells the agent to run a
@@ -43,7 +43,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-09-29T00:00:00Z"
-  updated_at: "2026-11-22T00:00:00Z"
+  updated_at: "2026-11-26T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -109,3 +109,7 @@ changelog:
   date: '2026-11-22'
   changes:
   - "The secret pattern follows scan-secrets 0.1.6 verbatim (a test holds the two equal): a password typed into a saved command is refused when its quote is JSON-escaped. No other rule changed."
+- version: 0.0.14
+  date: '2026-11-26'
+  changes:
+  - "The secret pattern follows scan-secrets 0.1.7 verbatim (a test holds the two equal): AWS's documented example key pair is no longer a secret in a memory note, a password beside a loopback host in a command is silent, and an Azure storage key or SAS signature is refused. No other change."
