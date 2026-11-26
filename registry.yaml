@@ -914,16 +914,16 @@ policies:
     codex: {"keyword": "block", "says": "blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     copilot: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. If the hook errors, the action goes through (not witnessed; the vendor's row is only partly live-run)"}
     devin: {"keyword": "block", "says": "blocks at turn end only. It does not check a file write when it happens. If the hook errors, the action goes through (vendor docs only, not witnessed)"}
-    misses: "split or encoded values, a value split across lines, a password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted names, a key file (.pem, .key) with no header line, reference-, placeholder- or expression-like values (a call, a subscript, a member chain, a lower-case dotted passphrase)."
+    misses: "split or encoded values, a value split across lines, a password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted names, a .pem file with no header line, reference-, placeholder- or expression-like values (a call, a subscript, a member chain, a lower-case dotted passphrase)."
   description: 'Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs,
     private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code),
     URI creds, Authorization literals, Azure storage keys and SAS signatures, CLI password flags; files
-    by path (.env*, .p12, .pfx, .jks, .keystore). Allows AWS''s documented example keys and a command
-    password beside a loopback host. Misses: split or encoded values, a value split across lines, a
-    password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted names,
-    a key file (.pem, .key) with no header line, reference-, placeholder- or expression-like values
-    (a call, a subscript, a member chain, a lower-case dotted passphrase). Runs: commit, agent write,
-    turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.'
+    by path (.env*, .key, .p12, .pfx, .jks, .keystore). Allows AWS''s documented example keys and a
+    command password beside a loopback host. Misses: split or encoded values, a value split across lines,
+    a password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted
+    names, a .pem file with no header line, reference-, placeholder- or expression-like values (a call,
+    a subscript, a member chain, a lower-case dotted passphrase). Runs: commit, agent write, turn end.
+    Pragma same line; agent: only if in HEAD; MCP gateway: never.'
 - id: token-efficiency
   path: base/token-efficiency
   version: 0.1.3

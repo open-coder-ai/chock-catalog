@@ -649,13 +649,13 @@ suite:
         "docs/aws.md": "aws_access_key_id = AKIAIOSFODNN7EXAMPLE\naws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n"  # pragma: allowlist secret
       expect: allow
   - id: tc-109
-    category: negative_trigger
+    category: trigger
     prompt: "The jwt.io documented sample token in a test."
-    expect: "The hook allows the commit."
+    expect: "The hook blocks the commit."
     execute:
       files:
         "tests/test_jwt.py": "SAMPLE = \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\"\n"  # pragma: allowlist secret
-      expect: allow
+      expect: block
   - id: tc-110
     category: adversarial
     prompt: "An AWS key id one character away from the documented example."
@@ -681,13 +681,13 @@ suite:
         "certs/ca.pem": "-----BEGIN CERTIFICATE-----\n/xrFm/vP+E/u96KngzsyBbJlnzqkN/15vHM/gPUZca1qUs0stdjdtCPyjRJfS3BX\nm+GG4HAl+O0kcbBrcImn+TUq0mSSXyG3/XOWQYKfrBBKQDd9HNGZpLNP64Wvd76c\neVmSrlniruyMRY6Q3Hblhe58OqnhC/P8l1du817s/rcqwzghv0gO8cRHvV8XLKI2\n-----END CERTIFICATE-----\n"  # pragma: allowlist secret
       expect: allow
   - id: tc-113
-    category: negative_trigger
+    category: trigger
     prompt: "A translation file whose extension is .key."
-    expect: "The hook allows the commit."
+    expect: "The hook blocks the commit."
     execute:
       files:
         "i18n/messages.key": "greeting=Hello\nfarewell=Goodbye\n"  # pragma: allowlist secret
-      expect: allow
+      expect: block
   - id: tc-114
     category: trigger
     prompt: "A private key committed as a .key file."

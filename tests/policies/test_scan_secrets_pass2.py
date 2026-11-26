@@ -14,12 +14,10 @@ PARAMS = scriptkit.manifest("scan-secrets")["hook"]["gate"]["params"]
 PATTERN = re.compile(PARAMS["content_pattern"])
 PATH = re.compile(PARAMS["forbidden_path_regex"])
 SUITE = yaml.safe_load((ROOT / "base" / "scan-secrets" / "evals" / "suite.yaml").read_text(encoding="utf-8"))
-# tc-109 (the jwt.io sample token) is not mirrored: the value the owner committed is not the one jwt.io shows today.
-WAITING = {"tc-109"}
 OWNER = [
     c
     for c in SUITE["suite"]["cases"]
-    if re.fullmatch(r"tc-1[0-2]\d", c["id"]) and c["id"] not in WAITING and (c.get("execute") or {}).get("files")
+    if re.fullmatch(r"tc-1[0-2]\d", c["id"]) and (c.get("execute") or {}).get("files")
 ]
 
 # Forms that stay silent: references, placeholders and expressions, none of them a credential shape.
@@ -54,7 +52,7 @@ def verdict(files: dict[str, str]) -> str:
 
 
 def test_the_owner_cases_are_all_present() -> None:
-    assert len(OWNER) == 27
+    assert len(OWNER) == 28
 
 
 @pytest.mark.parametrize("case", OWNER, ids=[c["id"] for c in OWNER])
@@ -69,13 +67,25 @@ def test_the_pattern_is_silent(line: str) -> None:
 
 @pytest.mark.parametrize(
     "path",
-    ["keys/jwt-public.pem", "certs/ca.pem", "i18n/messages.key", "deploy/server.key", "tls/server.crt"],
+    ["keys/jwt-public.pem", "certs/ca.pem", "tls/server.crt"],
 )
-def test_a_pem_or_key_file_is_judged_by_its_content_not_its_name(path: str) -> None:
+def test_a_pem_file_is_judged_by_its_content_not_its_name(path: str) -> None:
     assert not PATH.search(path)
 
 
-@pytest.mark.parametrize("path", [".env", "a/.env.production", "store.p12", "store.pfx", "store.jks", "store.keystore"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".env",
+        "a/.env.production",
+        "deploy/server.key",
+        "i18n/messages.key",
+        "store.p12",
+        "store.pfx",
+        "store.jks",
+        "store.keystore",
+    ],
+)
 def test_the_other_secret_files_keep_the_path_rule(path: str) -> None:
     assert PATH.search(path)
 
