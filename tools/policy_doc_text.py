@@ -9,6 +9,10 @@ CEILING = {
         "Claude Code's PreToolUse fails **open**, so a crashed hook silently allows; "
         "Cursor's can be told to fail closed, but does not by default"
     ),
+    "prompt": (
+        "`best-effort` on a client that can refuse a prompt, once `chock sync` has run — the prompt is "
+        "refused before the model reads it. Not witnessed live in any client yet"
+    ),
     "text": "`advisory` — an agent reads it and may or may not follow it",
 }
 
@@ -18,6 +22,7 @@ SURFACES = {
     "gate": ["`git-hook`", "`ci-gate`", "`ambient-rule`"],
     "script": ["`git-hook`", "`ambient-rule`"],
     "guard": ["`pre-tool-use`", "`ambient-rule`"],
+    "prompt": ["`prompt-submit`", "`ambient-rule`"],
     "text": ["`ambient-rule`"],
 }
 
@@ -40,6 +45,12 @@ PRIMITIVE = {
         "pretooluse.json`, and `install-hooks` merges it into `.claude/settings.json` so the agent "
         "consults the guard script before running a Bash command. Until that install runs, the "
         "fragment is compiled and enforces nothing, and coverage says so."
+    ),
+    "prompt": (
+        "A **prompt-submit gate**. `recompile` writes `.chock/compiled/{id}/prompt-submit/prompt-submit-gate.json`, "
+        "and `install-hooks` wires it into each client's prompt hook that can refuse a prompt. The gate is "
+        "declarative: the compiled JSON is the whole check. It judges the prompt text alone, so no waiver applies, "
+        "and a refusal never repeats the prompt."
     ),
     "text": (
         "An **ambient rule**. `recompile` writes `.chock/compiled/{id}/ambient-rule/ambient.md`, "

@@ -9,7 +9,7 @@ All are mechanical, and all are checked by a machine rather than by a reviewer's
 rules 1 and 2 by CI on every PR, rule 3 by the nightly run against `main` and by the release.
 
 **1. A policy claims only what it can do.** If it does not exit non-zero, it is advisory,
-and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->25<!-- /gen --> of the <!-- gen:policies -->72<!-- /gen -->
+and the tooling labels it that way whatever the manifest says. <!-- gen:advisory -->25<!-- /gen --> of the <!-- gen:policies -->73<!-- /gen -->
 policies here are advisory, and the README says so in its third paragraph rather than its
 appendix. Do not raise a claim your mechanism cannot support.
 

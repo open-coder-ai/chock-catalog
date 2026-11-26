@@ -61,8 +61,13 @@ PRE_TOOL = [
     if str(p.get("enforces", "")).split(" ", 1)[0] in IN_AGENT_WORDS
     and "pre-tool-use" in str(p.get("enforces", ""))
 ]
+PROMPT = [
+    p
+    for p in POLICIES
+    if str(p.get("enforces", "")).split(" ", 1)[0] in IN_AGENT_WORDS and "prompt submit" in str(p.get("enforces", ""))
+]
 ADVISORY = [p for p in POLICIES if p.get("enforces") == "advisory"]
-N_ENFORCED = len(AT_COMMIT) + len(PRE_TOOL)
+N_ENFORCED = len(AT_COMMIT) + len(PRE_TOOL) + len(PROMPT)
 EVAL_CASES = sum(p.get("eval_cases", 0) for p in POLICIES)
 assert len(ADVISORY) + N_ENFORCED == len(POLICIES), (
     "a policy is graded with a word this card does not know"
@@ -76,7 +81,7 @@ ALT = (
     "chock-catalog — the policy catalog for chock: policies you can adopt, graded by what they "
     f"actually enforce. {len(POLICIES)} policies across {len(PACKS)} packs ("
     + ", ".join(f"{name} {len(items)}" for name, items in sorted(PACKS.items()))
-    + f"); {N_ENFORCED} enforced ({len(AT_COMMIT)} at commit, {len(PRE_TOOL)} at pre-tool-use) "
+    + f"); {N_ENFORCED} enforced ({len(AT_COMMIT)} at commit, {len(PRE_TOOL)} at pre-tool-use, {len(PROMPT)} at prompt submit) "
     f"and {len(ADVISORY)} advisory; {EVAL_CASES} eval cases. "
     f"The {len(BLOCKING)} blocking policies: " + ", ".join(sorted(BLOCKING)) + ". "
     "Full OWASP Agentic Security Initiative top ten coverage, ASI01 through ASI10. Apache-2.0."

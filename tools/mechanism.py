@@ -20,6 +20,7 @@ SCRIPT_SUFFIXES = (".py", ".sh")
 GATE = "gate"
 EVENT_SCRIPT = "event_script"
 GUARD = "guard"
+PROMPT = "prompt"
 NONE = "none"
 
 #: What each kind can actually promise. The wording is the registry's and the README's alike.
@@ -27,6 +28,7 @@ CEILING = {
     GATE: "enforced-at-commit",
     EVENT_SCRIPT: "enforced-at-commit",
     GUARD: "best-effort (pre-tool-use, once hooks are installed; fails open if the hook crashes)",
+    PROMPT: "best-effort (prompt submit, for the clients the engine wires, once hooks are installed)",
     NONE: "advisory",
 }
 
@@ -144,5 +146,6 @@ def classify(policy_dir: Path, manifest: dict[str, Any]) -> tuple[str, str]:
     if guarded:
         return GUARD, "guard script"
     if gate.get("kind"):
-        return GUARD, str(gate["kind"])
+        # A gate that runs only when a prompt is submitted is judged there, not at a tool call.
+        return (PROMPT if gate.get("on") == ["prompt_submit"] else GUARD), str(gate["kind"])
     return NONE, "warn-only gate" if warns else "rule text only"

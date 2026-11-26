@@ -1700,3 +1700,26 @@ policies:
     set of a key; gcloud account, configuration, login or impersonation; az account set, az login as
     a principal or identity; kubectl use-context or set-credentials; writes to ~/.aws, ~/.config/gcloud,
     ~/.azure. Names in .chock/credential-allowlist.json pass. Misses: scripts, SDKs, env files, credential_process.'
+- id: scan-secrets-prompt
+  path: base/scan-secrets-prompt
+  version: 0.0.1
+  artifact: hook
+  enforcement: block
+  status: draft
+  mandatory: false
+  mechanism: content_regex
+  enforces: best-effort (prompt submit, for the clients the engine wires, once hooks are installed)
+  eval_cases: 50
+  eval_executed: 50
+  label:
+    claude-code: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
+    cursor: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
+    codex: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
+    copilot: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
+    devin: {"keyword": "advise", "says": "text only in a plugin. Nothing in the plugin stops a violation. The plugin does not carry the enforcement the manifest declares"}
+    misses: "a bare password, a split or encoded value, a vendor shape not listed."
+  description: 'Screens a prompt for a credential before the model reads it: vendor tokens (AWS, GitHub,
+    GitLab, Slack, OpenAI, Anthropic, HF, ...), private keys with a body, JWTs, URI logins, Authorization
+    literals. Installed with chock it refuses the prompt; a plugin alone carries text only. No name-based
+    rule, so code that mentions a password passes. Allows AWS example keys, masked keys and variable
+    names. Misses: a bare password, a split or encoded value, a vendor shape not listed. No waiver.'

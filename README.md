@@ -11,8 +11,8 @@ Open-source guardrails for AI coding agents: rules the agent reads, checks that 
 [chock](https://github.com/open-coder-ai/chock) · [chock-catalog](https://github.com/open-coder-ai/chock-catalog) · chock.sh (launching soon)
 
 <p>
-<img alt="72 policies" src="https://img.shields.io/badge/policies-72-blue">
-<img alt="47 enforced" src="https://img.shields.io/badge/enforced-47-brightgreen">
+<img alt="73 policies" src="https://img.shields.io/badge/policies-73-blue">
+<img alt="48 enforced" src="https://img.shields.io/badge/enforced-48-brightgreen">
 <img alt="25 advisory" src="https://img.shields.io/badge/advisory-25-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -293,7 +293,7 @@ Every policy is labelled with what it actually reaches. The label is stated up f
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 35 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 13 |
 | `advisory` | text an agent reads and may or may not follow | 25 |
 
 Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay. No agent reaches `enforced` today: commit-time enforcement is git's, and at tool use the best an agent gets is best-effort. OWASP mappings are partial, and the engine is frozen at the commit above. Chock does not stop every attack: it closes common, known entry points before they ship.
