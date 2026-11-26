@@ -19,7 +19,7 @@
 
 ## What it is about
 
-Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, Azure storage keys and SAS signatures, CLI password flags; files by path (.env*, .p12, .pfx, .jks, .keystore). Allows AWS's documented example keys and a command password beside a loopback host. Misses: split or encoded values, a value split across lines, a password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted names, a key file (.pem, .key) with no header line, reference-, placeholder- or expression-like values (a call, a subscript, a member chain, a lower-case dotted passphrase). Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.
+Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds, Authorization literals, Azure storage keys and SAS signatures, CLI password flags; files by path (.env*, .key, .p12, .pfx, .jks, .keystore). Allows AWS's documented example keys and a command password beside a loopback host. Misses: split or encoded values, a value split across lines, a password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted names, a .pem file with no header line, reference-, placeholder- or expression-like values (a call, a subscript, a member chain, a lower-case dotted passphrase). Runs: commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.
 
 ## What it solves
 
@@ -51,7 +51,7 @@ chock add scan-secrets
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJjZjNhMjkzMjg0ZmYyNWNkMzFiZGY0NDBkZDM1ZjNkNDMyNTNhNTZhIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzIiwidmVyc2lvbiI6IjAuMS43Iiwic2hhMjU2IjoiNzA4Y2UxZDNjMmE0MDA5ZTYzNzY0NTUwNWE3ZjE5NWNiYTU2ODIyMmZkMDRmMGEwNGY5MDIzYjNmOWJiMTYzMiJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiI5OTcyOWE0OThjMmUyMmM4ODJiY2E3Yzk5ZDAwNTQ5YjI1NzcyYjdkIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoic2Nhbi1zZWNyZXRzIiwidmVyc2lvbiI6IjAuMS43Iiwic2hhMjU2IjoiMGYwNmNiZmYwMDJiNGNkOTJmNzAzMjQwNTEyMjc4MmU3NjA2YWU1OTAyMDQ2OTc1YzJhNjRkYWNhYzc2M2Y5MCJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
