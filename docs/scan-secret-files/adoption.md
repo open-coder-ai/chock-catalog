@@ -95,8 +95,7 @@ INDEX.md: ~434 tokens (chars/4, max 2000)
 ## `$ chock validate .`
 
 ```text
-[PASS] Passed with warnings.
-  [WARN]  …/.agents/policies/scan-secret-files/manifest.yaml :: lifecycle: Production artifact should record reviewed_by.
+[PASS] All checks passed.
 ```
 
 ## `$ chock eval --repo .`
@@ -128,9 +127,13 @@ scan-secret-files  [deterministic]
   PASS  tc-023                             authored  gate exit 0
   PASS  tc-024                             authored  tests/fixtures/me.ppk:1: sbf-private-key-files: PuTTY private key (…
   PASS  tc-025                             authored  gate exit 0
+  PASS  tc-026                             authored  .claude/settings.local.json:1: sbf-agent-local-settings: agent loca…
+  PASS  tc-027                             authored  svc/.claude/settings.local.json:1: sbf-agent-local-settings: agent …
+  PASS  tc-028                             authored  gate exit 0
+  PASS  tc-029                             authored  tests/fixtures/.claude/settings.local.json:1: sbf-agent-local-setti…
   score 1.00
 
-5 policies: 25 pass, 44 skipped
+5 policies: 29 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 
