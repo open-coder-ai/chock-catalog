@@ -50,3 +50,5 @@ __pycache__/
 .chock/compiled/**/*.pyc
 # chock: a stop (`chock stop`) is local to this machine and never committed
 .chock/stop.json
+# chock: Claude Code saves approved commands here, secrets included; the vendor documents it as local
+.claude/settings.local.json
