@@ -177,7 +177,7 @@ Chock doesn't stop every attack. It closes common, known entry points earlier, a
 
 ### The policies, by tier
 
-Facts below are as of catalog commit `0dd0d4d`, derived from `registry.yaml` (field `label.claude-code.keyword`, `eval_cases`, `eval_executed`) and the manifests' `compliance.owasp_asi`. The counts above are rewritten by `tools/gen_registry.py`; these are not, so re-derive them before you quote them.
+Facts below are as of catalog commit `fbd7182`, derived from `registry.yaml` (field `label.claude-code.keyword`, `eval_cases`, `eval_executed`) and the manifests' `compliance.owasp_asi`. The counts above are rewritten by `tools/gen_registry.py`; these are not, so re-derive them before you quote them.
 
 | Fact | Value |
 | :--- | :--- |
@@ -242,7 +242,7 @@ Facts below are as of catalog commit `0dd0d4d`, derived from `registry.yaml` (fi
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
 
-**Refused when the prompt is submitted** — a check on the prompt a person submits, before the model reads it. `chock sync` wires it only on agents whose prompt-submit hook can refuse. Draft; witnessed refusing in Claude Code only, every other client untested.
+**Refused when the prompt is submitted** — a check on the prompt a person submits, before the model reads it. `chock sync` wires it only on agents whose prompt-submit hook can refuse. Witnessed refusing in Claude Code only; every other client untested.
 
 | Policy | Refuses | Evals |
 | :--- | :--- | ---: |
