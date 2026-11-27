@@ -1,11 +1,12 @@
 id: scan-secrets
 name: "Scan Secrets"
-version: "0.1.5"
+version: "0.1.7"
 description: >
   Blocks credentials: vendor tokens (AWS, GitHub, GitLab, Slack, OpenAI, HF, ...), JWTs, private-key
   and PGP blocks, named key/token/secret/password values (JSON, YAML, env, HCL, code), URI creds,
-  Authorization literals, CLI password flags; files by path (.env*, keys). Misses: split or encoded
-  values, quoted values with spaces, unlisted names, reference-, placeholder- or expression-like values (a call, a subscript, a member chain). Runs:
+  Authorization literals, Azure storage keys and SAS signatures, CLI password flags; files by path
+  (.env*, .key, .p12, .pfx, .jks, .keystore). Allows AWS's documented example keys and a command password beside a loopback host. Misses: split or encoded
+  values, a value split across lines, a password flag of a tool not listed, a quote escaped twice, quoted values with spaces, unlisted names, a .pem file with no header line, reference-, placeholder- or expression-like values (a call, a subscript, a member chain, a lower-case dotted passphrase). Runs:
   commit, agent write, turn end. Pragma same line; agent: only if in HEAD; MCP gateway: never.
 artifact: hook
 enforcement: block
@@ -27,13 +28,15 @@ hook:
       scan: added_lines
       # .env plus environment-specific variants (.env.production, .env.local, .env.staging)
       # but NOT a committed template: a name whose last suffix is .example/.sample/.template/
-      # .dist/.defaults (.env.example, .env.local.example), which carries placeholders.
-      forbidden_path_regex: '(\.env(?![^/]*\.(sample|example|template|dist|defaults)$)(\.[^/]+)?|\.(pem|key|p12|pfx|jks|keystore))$'
+      # .dist/.defaults (.env.example, .env.local.example), which carries placeholders. A .pem file is judged by
+      # what it adds (a private-key block is refused whatever the name), so a public key or a certificate is allowed; .key keeps the path rule.
+      forbidden_path_regex: '(\.env(?![^/]*\.(sample|example|template|dist|defaults)$)(\.[^/]+)?|\.(key|p12|pfx|jks|keystore))$'
       allowlist_pragma: '#\s*pragma:\s*allowlist\s+secret'
       content_pattern: |-
         (?ix)
         # v1 shapes, unchanged except where noted
-        (AKIA|ASIA)[0-9A-Z]{16}
+        # AWS's documented example key id, allowed by exact value (docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html, read 2026-11-26); its last letter is a class so this line holds no key shape
+        (?!(?<![0-9A-Za-z])(?-i:AKIAIOSFODNN7EXAMPL[E])(?![0-9A-Za-z]))(AKIA|ASIA)[0-9A-Z]{16}
         |gh[oprsu]_[0-9A-Za-z]{36}
         |github_pat_[0-9A-Za-z_]{22,}
         |xox[bpas]-[0-9A-Za-z-]{10,}
@@ -50,28 +53,39 @@ hook:
         |secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
         |auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']
         # v1 quoted password, now silent on a value that starts like a reference: $VAR, ${VAR}, {{ x }}, %(x)s
-        |password\s*=\s*["'](?!\$|\{\{|%[({])[^"'\s]{12,}["']
+        |(?:(?<!pg)(?<!--)|(?!password=))password\s*=\s*["'](?!\$|\{\{|%[({])[^"'\s]{12,}["']
         # bare key and token: a literal value, not a placeholder, a call or a subscript, a member chain or a name
         |(api|secret|auth)[_-]?(key|token)\s*[=:]\s*
-         (?!<|\*{3}|x{4}|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
+         (?!<|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
          (?![A-Za-z0-9_\-]*[(\[]|[A-Za-z0-9_\-]*\.[A-Za-z_])
          (?!(?-i:[A-Z]+[0-9]{0,3}(?:_[A-Z]+[0-9]{0,3})+|[a-z]+[0-9]{0,3}(?:_[a-z]+[0-9]{0,3})+)(?:_[0-9]{1,3})?(?:[\s,;)\]}]|$))
          [A-Za-z0-9_\-]{20,}
-        # v1 bare password, a literal value: silent on SOPS, vault:, Terraform references, environment lookups,
-        # placeholders, and expressions (a call, a subscript, a generic, a member chain without a digit)
-        |password\s*[=:](?!:)\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])
-         (?!<|\*{3}|x{4}|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
-         (?![A-Za-z_]\w*(?:(?:\.|::|->)[A-Za-z_]\w*)*[(\[<])(?![A-Za-z_]+(?:(?:\.|::)[A-Za-z_]+)+[;,)\s]|[A-Za-z_]+(?:(?:\.|::)[A-Za-z_]+)+$)
+        # v1 bare password, a literal value: silent on SOPS, vault:, Terraform references, environment lookups, placeholders and expressions; a placeholder start (xxxx), a call, a subscript, a generic or a member chain silences only when it is the whole value, and a member chain only when every segment reads as an identifier
+        |(?:(?<!pg)(?<!--)|(?!password=))password\s*[=:](?!:)\s*(?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[])
+         (?!<|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$))
+         (?![A-Za-z_]\w*(?:(?:\.|::|->)[A-Za-z_]\w*)*(?:\((?:[^()\n]|\([^()\n]{0,128}\)){0,256}\)|\[[^\[\]\n]{0,256}\]|<[^<>\n]{0,256}>)
+           (?:(?:\.|::|->)[A-Za-z_]\w*|(?:\((?:[^()\n]|\([^()\n]{0,128}\)){0,256}\)|\[[^\[\]\n]{0,256}\]|<[^<>\n]{0,256}>))*(?:[;,)\]}?!\s"'`\\]|$))
+         (?!(?-i:(?:[A-Z][A-Z_]*|(?:[a-z_]|[A-Z](?=[a-z]))+)(?:(?:\.|::)(?:[A-Z][A-Z_]*|(?:[a-z_]|[A-Z](?=[a-z]))+))+)(?:[;,)\s]|$))
          [^\s"'${}]{12,}
+        # PGPASSWORD= and --password= in a command: silent when every host the line names is loopback (a host operand: -h, --host, host=, @host, ://host, a URI's comma list); a literal of 8+ characters when it names another host (a dotted name or an address), 12+ otherwise
+        |(?<![^\n])
+         (?!(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))(?![^\n]*(?:(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[]|://[^\s/?#'\"]*,(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[])))
+         (?P<nonloop>(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+))?
+         [^\n]*?(?:(?<!\w)PGPASSWORD|(?<![\w-])--password)=(?:\\(?=["']))?["']?
+         (?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[]|\$|\{\{)
+         (?!<|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$)|(?:pass(?:word|wd)?|pwd|secret)(?:["'`\s,;)\\]|$))
+         (?(nonloop)[^\s"'${}]{8,}|[^\s"'${}]{12,})
         # private keys: any PEM label ending PRIVATE KEY (RSA, EC, DSA, OPENSSH, ENCRYPTED, PKCS8), PGP armor
         |-----BEGIN[ A-Z0-9_-]{0,100}PRIVATE\ KEY(?:\ BLOCK)?-----
         # key, token, secret and password names in any case and separator: JSON, YAML, env, HCL, Go, Ruby, PHP, Python, JS
         |(?:api[_.-]?key|secret[_.-]?(?:access[_.-]?)?key(?:[_.-]?base)?|access[_.-]?key
            |(?:client|consumer|jwt|webhook|app|session|signing|cookie)[_.-]?secret
            |(?:auth|access|refresh|api|bearer|bot)[_.-]?token|(?:private|signing|encryption|master)[_.-]?key
-           |passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
-         ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?P<kv_quote>["'`])?
-         (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4}|\.\.\.|\.{1,2}/|~/
+           |(?:(?<!pg)(?<!--)|(?!password=))passw(?:or)?d|passphrase|(?-i:[A-Z0-9_]{0,32}_(?:TOKEN|SECRET|PASS|PWD)))
+         ["'`]?\]?(?:\s*:\s*[\w.|\[\], ]{1,40}?(?=\s*=))?\s*(?::=|=>|\?=|[:=])\s*(?!=)(?:[bruf]{1,2}(?=["'`]))?(?:\\(?=["'`]))?(?P<kv_quote>["'`])?
+         (?!(?:\$|\{\{|\{(?-i:[a-z_][a-z0-9_.]{0,64})\}|%[({]|\#\{|<|\[\[|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|\.{1,2}/|~/
+           # AWS's documented example secret access key, by exact value (same page, read 2026-11-26); the last letter is a class
+           |(?-i:wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKE[Y])(?![A-Za-z0-9/+=_~-])
            |/(?:etc|home|usr|var|opt|run|tmp|srv|root|Users|secrets?|keys?|certs?|config)/
            |[a-z]:\\|file:|ENC\[|vault:|(?:var|local|data|module|each|self)\.|arn:aws:|projects/|@Microsoft\.KeyVault|secretKeyRef
            |[\w.]{0,64}(?:env|getenv|environ)[.(\[]
@@ -87,7 +101,7 @@ hook:
         # userinfo has no unescaped \ # ? / (RFC 3986), so a URL parser test vector is not a login
         |\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"#?\\]*):(?!(?P=uri_user)@)
          (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|foo(?:bar)?|bar|baz|changeme|token|example|dummy|redacted|placeholder)@))
-         [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
+         [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?::\d*)?(?:,(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?::\d*)?)*(?:[/\s'"?#]|$))
         # Authorization header literals
         |\bauthorization["'`]?\]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]{1,512}(?:["'`\s,;)]|$))
          (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?:["'`\s,;)]|$)))
@@ -95,8 +109,14 @@ hook:
         # passwords passed on a command line
         |\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
         |\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-        |\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b[^|;&\n]{0,200}\s(?-i:-p)["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-        |\bsshpass\s+(?-i:-p)\s*["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
+        |(?<![^\n])(?!(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))(?![^\n]*(?:(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[]|://[^\s/?#'\"]*,(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[])))
+         [^\n]*?\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b
+         [^|;&\n]{0,200}\s(?-i:-p)(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+        |(?<![^\n])(?!(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))(?![^\n]*(?:(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[]|://[^\s/?#'\"]*,(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[])))
+         [^\n]*?\bsshpass\s+(?-i:-p)\s*(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+        # Azure: a storage connection string's account key, and a SAS signature on a URL that also carries sv= and se=
+        |AccountKey=[A-Za-z0-9+/]{86,}==
+        |\?(?=[a-z]{2,3}=)(?=(?:[^\s'"#]{0,1024}?&)?sv=\d{4}-\d{2}-\d{2}(?:[&\s'"#]|$))(?=(?:[^\s'"#]{0,1024}?&)?se=)[^\s'"#]{0,1024}?&sig=[A-Za-z0-9%+/=]{40,}
         # vendor token shapes (case-sensitive)
         |(?-i:\bgl(?:pat|dt|rtr?|cbt|ptt|ft|imt|agent|oas|soat|ffct|wt)-[0-9A-Za-z_-]{20,})
         |(?-i:\bGR1348941[0-9A-Za-z_-]{20,})
@@ -132,7 +152,7 @@ compliance:
 provenance:
   author: "chock-core"
   created_at: "2026-07-12T00:00:00Z"
-  updated_at: "2026-11-15T00:00:00Z"
+  updated_at: "2026-11-26T00:00:00Z"
   source_repo: "https://github.com/open-coder-ai/chock-catalog"
   license: "Apache-2.0"
   trust_tier: "community"
@@ -146,6 +166,14 @@ security:
   content_instructions: never-obey
 
 changelog:
+- version: 0.1.7
+  date: '2026-11-26'
+  changes:
+  - "R13-8 (second pass, review of 2026-11-15, REVIEW-secrets; owner decisions D-R13-8a, b and c of 2026-11-26). A password beside a loopback host is silent in the command-line and URI shapes: the PGPASSWORD= and --password= forms, the mysql family, sshpass and the URI shape read every host operand on the line (-h, --host, host=, @host, ://host, and a URI's comma-separated host list) and stay silent only when every one is localhost, 127.x.x.x or ::1 as a whole host token, in any case; a second -h or --host naming another host, or a public host listed after localhost in a URI, keeps the line refused; localhost.attacker-host.io, 127.0.0.1.nip.io and every private range (10.x, 192.168.x) stay refused. PGPASSWORD= and --password= with a literal of 8 or more characters are refused when the command names another host (a dotted name or an address), and keep the 12 floor when it names none; assignments keep 12. AWS's documented example key pair is allowed by exact value (docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html, read 2026-11-26): AKIAIOSFODNN7EXAMPLE and its secret key; one character off is refused, and so is the example inside a longer token. No published JWT is exempted: jwt.io's current sample differs from the token in tc-109, which now expects block. .pem files are judged by what they add instead of by name: a public key or a certificate is allowed, a private-key block is refused whatever the name; .env*, .key, .p12, .pfx, .jks and .keystore keep the path rule (a binary .key stays refused; tc-113, a translation file named .key, is refused on purpose). Limit: the engine's path rule cannot read content, so a .pem with no header line is no longer refused by name. Azure: a storage connection string's AccountKey (86 or more base64 characters and ==) and a SAS sig= on a URL that also carries sv= and se= are refused; a variable reference is silent. A placeholder start counts only as the whole value: xxxx, a call, a subscript, a generic and a member chain no longer silence a longer value (a value that starts like a call or a subscript, or starts with xxxx), and a member chain is silent only when every segment reads as an identifier, so a dotted passphrase of mixed letters is refused while a lower-case one (correct.horse.battery) is still read as a member chain. A call or subscript expression ends at whitespace, a quote, a backtick, a backslash or one of ;,)]}?!. tc-001 changes from block to allow: it is AWS's documented example key. Measured, scratch repo without the compiled gate, chock 1.2.0: the suite is 94 cases; before 79 pass and 15 fail (the owner's fixtures); after 91 pass and 3 fail, tc-027, tc-030 and tc-031, which use the documented example key as their violating line and need a fixture with another value. Every case earlier than tc-101 is unchanged except tc-001 and those three; tc-109 and tc-113 expect block. Replay of the old and the new pattern over 2735 unique fixture lines of every catalog suite: refused 64 before, 63 after; 9 refusals lost (the documented example key pair and the loopback cases, all meant to be lost) and 8 gained (the owner's fixtures tc-115, 116, 118, 120 and 123 to 126, all meant to be refused). Over 412420 added lines of the first-parent history of this repository: refused 191 before, 185 after; 14 lost (the same plus a demo line that types the example key), 7 gained (owner fixtures). 0 new refusals on a line that is not a secret. Open-coder-ai/chock history: unmeasured. Tests: test_scan_secrets_pass2.py (the owner cases against the manifest pattern, the silent forms, hostile lines) and the forbidden-path and hostile-line lists of test_scan_secrets_pattern.py."
+- version: 0.1.6
+  date: '2026-11-22'
+  changes:
+  - "R13-1 (secrets in agent settings files): a password typed into a command is refused when the quote around it is JSON-escaped, which is how an agent saves a command into its own settings file after a person chose don't-ask-again. Measured first, at catalog c2925a1: 2080 replays of six command shapes (a Postgres password variable, a ssh password flag, the mysql short and long password flags, a curl bearer header, a connection string), each as a literal, a variable reference and a placeholder, in a settings file, a shell script and a Markdown note, at commit and at an agent write. Every plain literal was already refused and every reference and placeholder already silent; three forms passed only with an escaped quote (the Postgres variable, the mysql short flag and the ssh flag, each followed by a backslash-quoted value). The key-value, mysql-family and ssh password alternatives now accept one backslash before an opening quote, and the two flag placeholder exemptions accept one after the value. A literal beside a local host is still refused, and a literal with no host still blocks rather than asks: loosening either would lower this policy, and local-host noise belongs to R13-8. Tests: test_scan_secrets_agent_settings.py; eval cases tc-065 and tc-066."
 - version: 0.1.5
   date: '2026-11-15'
   changes:
