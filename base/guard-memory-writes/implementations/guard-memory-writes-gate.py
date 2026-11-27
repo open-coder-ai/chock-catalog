@@ -62,11 +62,11 @@ SECRET = re.compile(
    (?:(?:\.|::|->)[A-Za-z_]\w*|(?:\((?:[^()\n]|\([^()\n]{0,128}\)){0,256}\)|\[[^\[\]\n]{0,256}\]|<[^<>\n]{0,256}>))*(?:[;,)\]}?!\s"'`\\]|$))
  (?!(?-i:(?:[A-Z][A-Z_]*|(?:[a-z_]|[A-Z](?=[a-z]))+)(?:(?:\.|::)(?:[A-Z][A-Z_]*|(?:[a-z_]|[A-Z](?=[a-z]))+))+)(?:[;,)\s]|$))
  [^\s"'${}]{12,}
-# PGPASSWORD= and --password= in a command: silent when the command names a loopback host as its host operand; a literal of 8+ characters when it names another host (a dotted name or an address), 12+ otherwise
-|(?<![^|;&\n])
- (?![^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))
- (?P<nonloop>(?=[^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+))?
- [^|;&\n]*?(?:(?<!\w)PGPASSWORD|(?<![\w-])--password)=(?:\\(?=["']))?["']?
+# PGPASSWORD= and --password= in a command: silent when every host the line names is loopback (a host operand: -h, --host, host=, @host, ://host, a URI's comma list); a literal of 8+ characters when it names another host (a dotted name or an address), 12+ otherwise
+|(?<![^\n])
+ (?!(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))(?![^\n]*(?:(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[]|://[^\s/?#'\"]*,(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[])))
+ (?P<nonloop>(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)+))?
+ [^\n]*?(?:(?<!\w)PGPASSWORD|(?<![\w-])--password)=(?:\\(?=["']))?["']?
  (?!ENC\[|vault:|(?:var|local|data|module|each|self)\.|[\w.]{0,64}(?:env|getenv|environ)[.(\[]|\$|\{\{)
  (?!<|\*{3}|x{4,}(?:[\W_]x{2,})*(?:["'`\s,;)\]}\\]|$)|\.\.\.|%[({]|\#\{|\[\[|(?:your|my|example|sample|dummy|fake|placeholder|change[_-]?me|replace[_-]?me|redacted|todo|none|null|insert|enter)(?:[\W_][^\d"'`\s]{0,128})?(?:["'`\s,;)\]}]|$)|(?:pass(?:word|wd)?|pwd|secret)(?:["'`\s,;)\\]|$))
  (?(nonloop)[^\s"'${}]{8,}|[^\s"'${}]{12,})
@@ -96,7 +96,7 @@ SECRET = re.compile(
 # userinfo has no unescaped \ # ? / (RFC 3986), so a URL parser test vector is not a login
 |\b[a-z][a-z0-9+.-]{1,20}://(?P<uri_user>[^\s/:@'"#?\\]*):(?!(?P=uri_user)@)
  (?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|foo(?:bar)?|bar|baz|changeme|token|example|dummy|redacted|placeholder)@))
- [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?:[:/\s'"]|$))
+ [^\s/:@'"#?\\]{3,}@(?!(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?::\d*)?(?:,(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1\]|(?:[\w-]+\.)*example(?:\.(?:com|org|net))?|host|hostname)(?::\d*)?)*(?:[/\s'"?#]|$))
 # Authorization header literals
 |\bauthorization["'`]?\]?\s*[:=,]\s*["'`]?(?!(?:bearer|token)\s+[A-Za-z._~+/-]{1,512}(?:["'`\s,;)]|$))
  (?:bearer|basic|token)\s+(?!(?:\$|\{|<|%|\*|x{3}|\.\.\.|your|example|(?-i:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?:["'`\s,;)]|$)))
@@ -104,11 +104,11 @@ SECRET = re.compile(
 # passwords passed on a command line
 |\bcurl\b.{0,200}\s(?:-u|--user)(?:[=\s]+|(?=[^\s-]))["']?[^\s:"']+:(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme|token)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
 |\b(?:docker|podman|oras)\s+login\b.{0,200}\s(?:-p|--password)(?:[=\s]+|(?=["']))["']?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)]|$)))[^\s"'`]{3,}
-|\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b
- (?![^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))
+|(?<![^\n])(?!(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))(?![^\n]*(?:(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[]|://[^\s/?#'\"]*,(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[])))
+ [^\n]*?\b(?:mysql(?:dump|admin|sh|pump|import|check|show|slap|binlog)?|mariadb(?:-(?:dump|admin|import|check|show|slap|binlog))?)\b
  [^|;&\n]{0,200}\s(?-i:-p)(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
-|\bsshpass\b(?![^|;&\n]{0,400}(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))
- \s+(?-i:-p)\s*(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
+|(?<![^\n])(?!(?=[^\n]*(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))(?![^\n]*(?:(?:(?<![\w-])(?:--host(?:name)?[=\s]+|-[hH]\s*)|@|://|(?<![\w-])host=)["']?(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[]|://[^\s/?#'\"]*,(?!(?:localhost|127(?:\.\d{1,3}){3}|\[?::1\]?)(?![\w.-]))[A-Za-z0-9_\[])))
+ [^\n]*?\bsshpass\s+(?-i:-p)\s*(?:\\?["'])?(?!(?:\$|\{|<|%|\*|\\|x{3}|\.\.\.|(?:pass(?:word|wd)?|pwd|secret|changeme)(?:["'`\s,;)\\]|$)))[^\s"'`]{3,}
 # Azure: a storage connection string's account key, and a SAS signature on a URL that also carries sv= and se=
 |AccountKey=[A-Za-z0-9+/]{86,}==
 |\?(?=[a-z]{2,3}=)(?=(?:[^\s'"#]{0,1024}?&)?sv=\d{4}-\d{2}-\d{2}(?:[&\s'"#]|$))(?=(?:[^\s'"#]{0,1024}?&)?se=)[^\s'"#]{0,1024}?&sig=[A-Za-z0-9%+/=]{40,}

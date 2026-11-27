@@ -114,3 +114,33 @@ def test_the_new_alternatives_judge_a_hostile_line_in_linear_time(line: str) -> 
     start = time.perf_counter()
     PATTERN.search(line)
     assert time.perf_counter() - start < 5.0
+
+
+LIT = "Qx7" * 5 + "Z"
+# A line is silent only when every host it names is loopback; the last -h or --host wins, and a URI tries every listed host.
+MIXED_HOSTS = [
+    f"PGPASSWORD={LIT} psql -h localhost -h db.acme-prod.io -U app",
+    f"postgres://app:{LIT}@localhost:5432,db.acme-prod.io:5432/app",
+    f"mysql -h127.0.0.1 -u app -p{LIT} --host=db.acme-prod.io",
+    f"deployctl --host localhost --host db.acme-prod.io --password={LIT}",
+    f"sshpass -p {LIT} ssh root@localhost; ssh root@db.acme-prod.io",
+]
+LOOPBACK_ONLY = [
+    f"PGPASSWORD={LIT} psql -h 127.0.0.1",
+    f"PGPASSWORD={LIT} psql -h LOCALHOST -U app",
+    f"PGHOST=db.acme-prod.io PGPASSWORD={LIT} psql -h localhost",
+    f"postgres://app:{LIT}@localhost:5432,127.0.0.1:5433/app",
+    f"mysql -h localhost -u app -p{LIT} --host=127.0.0.1",
+    f"sshpass -p {LIT} ssh root@localhost uptime",
+    f"deployctl --host ::1 --password={LIT}",
+]
+
+
+@pytest.mark.parametrize("line", MIXED_HOSTS)
+def test_one_public_host_keeps_the_line_refused(line: str) -> None:
+    assert PATTERN.search(line)
+
+
+@pytest.mark.parametrize("line", LOOPBACK_ONLY)
+def test_a_line_naming_only_loopback_hosts_is_silent(line: str) -> None:
+    assert not PATTERN.search(line)
