@@ -18,6 +18,7 @@ from mechanism import (
     classify,
     command_guards,
     event_scripts,
+    PROMPT,
     script_mechanism,
     tool_use_gate_kind,
 )
@@ -32,7 +33,7 @@ MARK_END = "<!-- generated:end -->"
 
 
 #: The one classifier (tools/mechanism.py), so this page and the registry cannot disagree.
-_KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard"}
+_KIND = {GATE: "gate", EVENT_SCRIPT: "script", GUARD: "guard", PROMPT: "prompt"}
 
 
 def kind_of(policy_dir: Path, manifest: dict) -> str:
@@ -40,7 +41,7 @@ def kind_of(policy_dir: Path, manifest: dict) -> str:
 
 
 def _mechanism(kind: str, gate: dict, scripts: list[str], manifest: dict) -> str:
-    if kind == "gate":
+    if kind in ("gate", "prompt"):
         return f"{gate['kind']} gate"
     if kind == "script":
         return script_mechanism(manifest).replace("guard script", f"guard script `{scripts[0]}`", 1)
@@ -86,7 +87,7 @@ def render(policy_dir: Path, manifest: dict, prose: dict, label: dict, builder_l
     lines: list[str] = [
         f"# {manifest.get('name', policy_id)}",
         "",
-        f"`{policy_id}` · {'hook' if kind == 'gate' else 'rule'} · {'enforces' if kind != 'text' else 'advises'}",
+        f"`{policy_id}` · {'hook' if kind in ('gate', 'prompt') else 'rule'} · {'enforces' if kind != 'text' else 'advises'}",
         "",
         MARK_START,
         "",
@@ -116,7 +117,7 @@ def render(policy_dir: Path, manifest: dict, prose: dict, label: dict, builder_l
         "",
     ]
 
-    if kind == "gate":
+    if kind in ("gate", "prompt"):
         lines += [
             f"A declarative `{gate['kind']}` gate, evaluated on "
             f"{' and '.join('`' + e + '`' for e in gate.get('on', []))}, action `{gate.get('action')}`.",

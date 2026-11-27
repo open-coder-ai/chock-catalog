@@ -15,16 +15,17 @@ ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 
 
-#: The README's three buckets, keyed by the ceiling every classifier agrees on.
+#: The README's four buckets, keyed by the ceiling every classifier agrees on.
 _TIER_OF = {
     "enforced-at-commit": "gate",
     CEILING["guard"]: "guard",
+    CEILING["prompt"]: "prompt",
     "advisory": "text",
 }
 
 
 def classify_readme() -> tuple[dict[str, list[str]], dict[str, tuple[int, int]]]:
-    kinds: dict[str, list[str]] = {"gate": [], "guard": [], "text": []}
+    kinds: dict[str, list[str]] = {"gate": [], "guard": [], "prompt": [], "text": []}
     evals: dict[str, tuple[int, int]] = {}
     for d in policy_dirs():
         manifest = yaml.safe_load((d / "manifest.yaml").read_text(encoding="utf-8"))
@@ -55,6 +56,7 @@ _COUNT_NOUNS = r"polic\w*|advisor\w*|enforced[\w-]*|in-agent|gate\w*|guard\w*|ev
 _TIER_SECTIONS = (
     ("Enforced at commit", "gate"),
     ("Enforced before the tool runs", "guard"),
+    ("Refused when the prompt is submitted", "prompt"),
 )
 
 
@@ -150,7 +152,7 @@ def main() -> int:
     text = README.read_text(encoding="utf-8")
     kinds, evals = classify_readme()
     total = sum(len(v) for v in kinds.values())
-    enforced = len(kinds["gate"]) + len(kinds["guard"])
+    enforced = len(kinds["gate"]) + len(kinds["guard"]) + len(kinds["prompt"])
     problems: list[str] = []
 
     for label, actual, pattern in (
@@ -166,7 +168,7 @@ def main() -> int:
 
     for row, want in (
         ("enforced-at-commit", len(kinds["gate"])),
-        ("`in-agent`", len(kinds["guard"])),
+        ("`in-agent`", len(kinds["guard"]) + len(kinds["prompt"])),
         ("`advisory`", len(kinds["text"])),
     ):
         rows = re.findall(

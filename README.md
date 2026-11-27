@@ -11,8 +11,8 @@ Open-source guardrails for AI coding agents: rules the agent reads, checks that 
 [chock](https://github.com/open-coder-ai/chock) · [chock-catalog](https://github.com/open-coder-ai/chock-catalog) · chock.sh (launching soon)
 
 <p>
-<img alt="72 policies" src="https://img.shields.io/badge/policies-72-blue">
-<img alt="47 enforced" src="https://img.shields.io/badge/enforced-47-brightgreen">
+<img alt="73 policies" src="https://img.shields.io/badge/policies-73-blue">
+<img alt="48 enforced" src="https://img.shields.io/badge/enforced-48-brightgreen">
 <img alt="25 advisory" src="https://img.shields.io/badge/advisory-25-orange">
 <img alt="agents" src="https://img.shields.io/badge/agents-15-8957e5">
 <a href="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/open-coder-ai/chock-catalog/actions/workflows/ci.yml/badge.svg"></a>
@@ -177,12 +177,12 @@ Chock doesn't stop every attack. It closes common, known entry points earlier, a
 
 ### The policies, by tier
 
-Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (field `label.claude-code.keyword`, `eval_cases`, `eval_executed`) and the manifests' `compliance.owasp_asi`. The counts above are rewritten by `tools/gen_registry.py`; these are not, so re-derive them before you quote them.
+Facts below are as of catalog commit `fbd7182`, derived from `registry.yaml` (field `label.claude-code.keyword`, `eval_cases`, `eval_executed`) and the manifests' `compliance.owasp_asi`. The counts above are rewritten by `tools/gen_registry.py`; these are not, so re-derive them before you quote them.
 
 | Fact | Value |
 | :--- | :--- |
-| What a policy does in Claude Code | 39 block, 3 ask, 5 warn, 24 advise |
-| Eval cases in the registry | 4,280, of which 4,098 replay automatically |
+| What a policy does in Claude Code | 39 block, 4 ask, 5 warn, 25 advise |
+| Eval cases in the registry | 4,804, of which 4,622 replay automatically |
 | OWASP ASI risks | 10 of 10 have a policy; 7 have a slice refused at commit; ASI10 asks at commit, ASI06 warns only, ASI08 advisory only; 0 fully covered |
 
 **Enforced at commit** — declarative gates and commit-time scripts, verified by replaying their own gate against a throwaway repo on every push.
@@ -190,7 +190,7 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | Policy | Blocks | Evals |
 | :--- | :--- | ---: |
 | [`protect-main-branch`](docs/protect-main-branch/) | commits and pushes to `main`/`master` | 4/4 |
-| [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes -- vendor tokens, private keys, JWTs, named key and password values, URI credentials -- and secret files by path (`.env*`, keys); misses split or encoded values | 64/64 |
+| [`scan-secrets`](docs/scan-secrets/) | credentials in staged changes -- vendor tokens, private keys, JWTs, named key and password values, URI credentials -- and secret files by path (`.env*`, keys); misses split or encoded values | 66/66 |
 | [`verify-dependency-exists`](docs/verify-dependency-exists/) | packages absent from your allowlist | 61/61 |
 | [`block-invisible-unicode`](docs/block-invisible-unicode/) | bidi-override and tag-block Unicode in staged changes -- Trojan Source and instructions hidden from reviewers but legible to agents | 72/72 |
 | [`block-wildcard-agent-permissions`](docs/block-wildcard-agent-permissions/) | committed everything-grants -- bare-wildcard shell grants and allow-everything tool lists -- that hand an agent unlimited tool authority | 17/17 |
@@ -222,8 +222,8 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | [`ci-github-actions-security`](docs/ci-github-actions-security/) | Blocks or asks (each rule's tier) on GitHub Actions weaknesses a change adds to workflows, composite actions and `dependabot.yml` -- event text in `run`, PR-head checkout under `pull_request_target`, missing or `write-all` permissions, inherited or inlined secrets, self-hosted runners on PRs, `GITHUB_ENV` writes, artifact and cache poisoning -- on an agent's file writes and at turn end; friction not a boundary, misses step outputs, composite internals and custom runner labels | 43/43 |
 | [`dockerfile-compose-security`](docs/dockerfile-compose-security/) | Blocks (some rules ask) a Dockerfile, Containerfile or compose change that adds an untagged, `latest` or undigested base image, a root final stage, TLS or signature checks off, secret-named `ENV`/`ARG` literals, a remote `ADD` without checksum, `chmod 777`, or compose `privileged`, broad `cap_add`, host namespaces, runtime-socket or host-root mounts -- on an agent's file writes and at turn end; friction not a boundary, misses build-arg overrides, commands in variables and k8s files | 37/37 |
 | [`package-lifecycle-scripts`](docs/package-lifecycle-scripts/) | Blocks fetch-and-run hooks and asks about other new ones when a change adds code that runs at install or build time -- npm `install`/`prepare` scripts, `setup.py` cmdclass, `.pth` imports, `build.rs`, `go:generate`, gemspec, Composer, Maven and Gradle exec -- on an agent's file writes and at turn end; judges file text, not what a hook runs; friction not a boundary | 28/28 |
-| [`scan-secret-files`](docs/scan-secret-files/) | Blocks files that are secrets by name or content -- private keys and key stores, service-account and OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc and registry credentials, `tfstate`, non-template `.env`, browser stores -- on an agent's file writes and at turn end; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask; friction not a boundary, misses unlisted names and split or encoded values | 25/25 |
-| [`scan-secrets-entropy`](docs/scan-secrets-entropy/) | **Asks** a person before a write adds secrets `scan-secrets` misses -- high-entropy values by secret-like keys, GitHub and npm tokens with valid checksums, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid cards -- on an agent's file writes and at turn end; entropy is a heuristic so it asks rather than blocks; friction not a boundary, misses split, over-150-character or code-shaped values | 25/25 |
+| [`scan-secret-files`](docs/scan-secret-files/) | Blocks files that are secrets by name or content -- private keys and key stores, service-account and OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc and registry credentials, `tfstate`, non-template `.env`, browser stores -- on an agent's file writes and at turn end; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask; friction not a boundary, misses unlisted names and split or encoded values | 29/29 |
+| [`scan-secrets-entropy`](docs/scan-secrets-entropy/) | **Asks** a person before a write adds secrets `scan-secrets` misses -- high-entropy values by secret-like keys, GitHub and npm tokens with valid checksums, Stripe test keys, Slack and AWS key-id shapes, Luhn-valid cards -- on an agent's file writes and at turn end; entropy is a heuristic so it asks rather than blocks; friction not a boundary, misses split, over-150-character or code-shaped values | 27/27 |
 
 **Enforced before the tool runs** — guard scripts consulted before the agent executes a command. `chock sync` wires these natively on the agents with an in-agent surface, Claude Code, Cursor, Codex, Copilot CLI and VS Code among them; Codex additionally requires a per-hook trust review before its hooks run. Best-effort: a guard fails open if the hook itself does not run.
 
@@ -241,6 +241,12 @@ Facts below are as of catalog commit `9a64623`, derived from `registry.yaml` (fi
 | [`block-persistence-shapes`](docs/block-persistence-shapes/) | Refuses shell commands that publish or keep access after the session — `npm`/`twine`/`cargo`/`docker push` and registry-auth edits, repos made public, user services, launch agents, cron, Run keys, `authorized_keys`, runner registration, sudoers, setuid bits, detached downloads; **asks** before `gh release create`, `git remote add` and `git push` to a URL. Best effort on the command text; OWASP ASI03, ASI10 | 109/109 |
 | [`firecrawl-fallback-only`](docs/firecrawl-fallback-only/) | warns (never blocks) on a Firecrawl call when no WebFetch, WebSearch or `curl`/`wget` has failed earlier in the session, read from chock's session log | 0/8 |
 | [`token-efficiency`](docs/token-efficiency/) | warns (never blocks) on the third `Read` of an unchanged file and on a fourth attempt at a command that failed three times | 0/7 |
+
+**Refused when the prompt is submitted** — a check on the prompt a person submits, before the model reads it. `chock sync` wires it only on agents whose prompt-submit hook can refuse. Witnessed refusing in Claude Code only; every other client untested.
+
+| Policy | Refuses | Evals |
+| :--- | :--- | ---: |
+| [`scan-secrets-prompt`](docs/scan-secrets-prompt/) | a credential pasted into a prompt -- vendor tokens, private keys with a body, JWTs, URI logins, Authorization literals -- before the model reads it; no name-based rule, so a prompt about passwords passes; misses a bare password, a split or encoded value | 50/50 |
 
 **Advisory** — rule text compiled into agent context. No mechanism, no executed evals.
 
@@ -293,7 +299,7 @@ Every policy is labelled with what it actually reaches. The label is stated up f
 | | What it means | How many |
 | :--- | :--- | ---: |
 | `enforced-at-commit` | the command exits non-zero, the commit does not happen | 35 |
-| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 12 |
+| `in-agent` | the tool call is refused before it runs, if the hook itself runs | 13 |
 | `advisory` | text an agent reads and may or may not follow | 25 |
 
 Advisory evals report as *skipped*, never as *passing*, because there is nothing to replay. No agent reaches `enforced` today: commit-time enforcement is git's, and at tool use the best an agent gets is best-effort. OWASP mappings are partial, and the engine is frozen at the commit above. Chock does not stop every attack: it closes common, known entry points before they ship.

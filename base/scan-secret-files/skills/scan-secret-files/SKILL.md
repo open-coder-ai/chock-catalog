@@ -1,6 +1,6 @@
 ---
 name: scan-secret-files
-description: "Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores. Blocks; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask. Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded."
+description: "Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores, an agent's local settings file (.claude/settings.local.json, whatever it holds). Blocks; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask. Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded."
 metadata:
   chock.artifact: hook
   chock.enforcement: block
@@ -9,7 +9,7 @@ metadata:
 
 # Scan Secret Files
 
-Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores. Blocks; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask. Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.
+Friction, not a security boundary: flags files that are secrets by name or content -- private keys and key stores, Google service-account/OAuth JSON, kubeconfig users, AWS, npm, PyPI, netrc, git, pgpass, docker, Composer, NuGet, Maven credentials, tfstate/tfvars, non-template .env, framework secret files, browser stores, an agent's local settings file (.claude/settings.local.json, whatever it holds). Blocks; encrypted keys, notebook outputs and test, fixture, example, doc, lock and eval paths ask. Misses: renamed binary stores other than PKCS#12/JKS/DER, unlisted secret names, values split or encoded.
 
 ```
 on(commit|tool_use): block(script) script=scan-secret-files-gate.py

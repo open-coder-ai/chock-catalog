@@ -121,15 +121,20 @@ def _readme(kinds: dict[str, list[str]], evals: dict[str, tuple[int, int]], *, s
             f"| [`{pid}`](base/{pid}) | runs `curl \\| sh` | {suite(pid)} |\n" for pid in sorted(kinds[kind])
         )
 
-    badges = (("policies", n("gate", "guard", "text")), ("enforced", n("gate", "guard")), ("advisory", n("text")))
+    badges = (
+        ("policies", n("gate", "guard", "prompt", "text")),
+        ("enforced", n("gate", "guard", "prompt")),
+        ("advisory", n("text")),
+    )
     return "".join(
         [
             *(f'<img alt="{v} {label}" src="https://img.shields.io/badge/{label}-{v}-blue">\n' for label, v in badges),
             f"\n| `enforced-at-commit` | the commit does not happen | {n('gate')} |\n",
-            f"| `in-agent` | the tool call is refused | {n('guard')} |\n",
+            f"| `in-agent` | the tool call is refused | {n('guard', 'prompt')} |\n",
             f"| `advisory` | text an agent reads | {n('text')} |\n",
             f"\n**Enforced at commit**\n\n{rows('gate')}",
             f"\n**Enforced before the tool runs**\n\n{rows('guard')}",
+            f"\n**Refused when the prompt is submitted**\n\n{rows('prompt')}",
             f"\n**Advisory**\n\n{rows('text')}",
         ]
     )

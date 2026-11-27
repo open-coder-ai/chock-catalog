@@ -95,8 +95,7 @@ INDEX.md: ~426 tokens (chars/4, max 2000)
 ## `$ chock validate .`
 
 ```text
-[PASS] Passed with warnings.
-  [WARN]  …/.agents/policies/scan-secrets-entropy/manifest.yaml :: lifecycle: Production artifact should record reviewed_by.
+[PASS] All checks passed.
 ```
 
 ## `$ chock eval --repo .`
@@ -128,9 +127,11 @@ scan-secrets-entropy  [deterministic]
   PASS  tc-023                             authored  gate exit 0
   PASS  tc-024                             authored  gate exit 0
   PASS  tc-025                             authored  gate exit 0
+  PASS  tc-026                             authored  gate exit 0
+  PASS  tc-027                             authored  gate exit 0
   score 1.00
 
-5 policies: 25 pass, 44 skipped
+5 policies: 27 pass, 44 skipped
 44 case(s) have no executable form; they are agent-mode material (tier 3).
 ```
 

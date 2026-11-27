@@ -487,6 +487,15 @@ scan-secrets:
     `params.forbidden_path_regex` covers file types; `params.allowlist_pragma` sets the
     inline escape for documented fixtures.
 
+scan-secrets-prompt:
+  solves: >
+    A credential pasted into a prompt: it reaches the model, the provider's logs and the client's
+    history before any commit gate runs, and every such key has to be rotated.
+  customise: >
+    `params.content_pattern` is one regex and holds only shapes that are a credential wherever they
+    sit; add your own token formats there. A name-based rule (`password = ...`) belongs in
+    scan-secrets, not here: it would refuse a person describing code. No waiver applies at a prompt.
+
 token-efficiency:
   solves: >
     Context spent on output nobody reads: full command dumps, broad searches, re-reading

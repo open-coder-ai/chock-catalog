@@ -61,8 +61,12 @@ LABEL_FORMATS = (
 #: The marker whose trailing sentence is what a policy says it misses.
 MISSES = re.compile(r"(?:Misses|Not caught here):\s*(.*?\.(?=\s|$)|.*)", re.S)
 #: The README's tier rows, as check_readme.py reads them, and which kinds each counts.
-LADDER = (("enforced-at-commit", ("gate",)), ("in-agent", ("guard",)), ("advisory", ("text",)))
-BADGES = (("policies", ("gate", "guard", "text")), ("enforced", ("gate", "guard")), ("advisory", ("text",)))
+LADDER = (("enforced-at-commit", ("gate",)), ("in-agent", ("guard", "prompt")), ("advisory", ("text",)))
+BADGES = (
+    ("policies", ("gate", "guard", "prompt", "text")),
+    ("enforced", ("gate", "guard", "prompt")),
+    ("advisory", ("text",)),
+)
 #: A table cell; `\|` is an escaped pipe inside a cell, not a column break (see check_readme.py).
 CELL = r"(?:\\\||[^\r\n|])*"
 
