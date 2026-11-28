@@ -352,6 +352,34 @@
     "a11ylabel"
   ],
   "component_note": "Props that carry a human-readable name on a component this table has no requirements for. A component is never REQUIRED to have one -- whether <Thumbnail> needs a name is not decidable from markup -- so absence is silent and only removal is refused. That asymmetry is why no per-framework component registry is needed. Attribute names arrive lowercased from the parser, so ariaLabel and accessibilityLabel appear folded.",
+  "bound_attributes": {
+    "prefixes": [
+      "v-bind:",
+      ":",
+      "th:"
+    ],
+    "brackets": [
+      [
+        "[attr.",
+        "]"
+      ],
+      [
+        "[",
+        "]"
+      ]
+    ],
+    "aliases": {
+      "htmlfor": "for"
+    },
+    "empty": [
+      "''",
+      "\"\"",
+      "``",
+      "undefined",
+      "null"
+    ]
+  },
+  "bound_attributes_note": "Spellings a framework gives an attribute whose value it computes: Vue `:x` and `v-bind:x`, Angular `[x]` and `[attr.x]`, Thymeleaf `th:x`, JSX `htmlFor` for `for`. A bound attribute is the attribute it binds, present with a value this parser cannot read, so it meets a requirement and is never judged for quality. Thymeleaf `th:attr` sets several at once and is not read. The parser lowercases attribute names, so the alias is written lowercase.",
   "component_identity_note": "A component is compared across revisions only when it carries one of the identity attributes. Without a stable identity the two revisions cannot be matched, and ordinal position is not identity -- inserting one component would shift every later one onto a different element's state.",
   "suppressible": [
     "img",

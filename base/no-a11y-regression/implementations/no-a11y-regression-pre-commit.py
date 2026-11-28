@@ -20,6 +20,7 @@ VOID = frozenset(SPEC["void_elements"])
 # Props that carry a name on an element this table has no requirements for.
 COMPONENT_NAME_PROPS = tuple(SPEC["component_name_props"])
 MARKUP_SUFFIXES = tuple(SPEC["markup_suffixes"])
+BOUND = SPEC["bound_attributes"]
 # Names that are present but convey nothing, so their presence is not a fix.
 NOISE = json.loads((_DATA / "uninformative_names.json").read_text(encoding="utf-8"))
 
@@ -99,6 +100,11 @@ _PATH_SEGMENT = re.compile(r"\S*[/\\_]\S*")
 #: React requires the capital, a namespaced component carries the dot, and the HTML spec
 #: requires a hyphen in every custom element name and forbids one in its own.
 _SOURCE_TAG_RE = re.compile(r"<\s*([^\s/>]+)")
+#: A `<` that opens a tag: a name, then whitespace, a slash or the end, so `a <b)` and `a < b` are not tags.
+_TAG_START = re.compile(r"<[A-Za-z][\w.:-]*(?=[\s/>])")
+#: Stand in for a `>` and for whitespace inside an attribute expression while the tokenizer reads the tag.
+_MASK_GT, _MASK_SP = "\ue000", "\ue001"
+_UNMASK = str.maketrans({_MASK_GT: ">", _MASK_SP: " "})
 
 
 def is_component(raw: str | None) -> bool:
@@ -108,6 +114,108 @@ def is_component(raw: str | None) -> bool:
         return False
     source = match.group(1)
     return source[0].isupper() or "." in source or "-" in source
+
+
+def mask_expressions(html: str) -> str:
+    """Make each `{...}` attribute expression one token: the tokenizer would end the tag at its `>`.
+
+    `onClick={() => go()}` is one attribute value. A tag that never closes is left as written, and a
+    backslash escape inside the expression's strings is not read, which leaves such a tag as written too.
+    """
+    if "{" not in html:
+        return html
+    out, resume = list(html), 0
+    for match in _TAG_START.finditer(html):
+        if match.start() >= resume:
+            resume = _mask_tag(html, match.end(), out)
+    return "".join(out)
+
+
+def _mask_tag(html: str, start: int, out: list[str]) -> int:
+    """Mask the `>` and whitespace inside braces of the tag whose name ends at `start`; return where it stopped."""
+    depth, quote, prev, hidden, i = 0, "", "", [], start
+    while i < len(html):
+        c = html[i]
+        if depth:
+            if c == ">" or c.isspace():
+                hidden.append(i)
+            elif quote:
+                quote = "" if c == quote else quote
+            elif c in "'\"`":
+                quote = c
+            else:
+                depth += (c == "{") - (c == "}")
+        elif quote:
+            quote = "" if c == quote else quote
+        elif c == ">":
+            for j in hidden:
+                out[j] = _MASK_GT if html[j] == ">" else _MASK_SP
+            return i + 1
+        elif c == "{":
+            depth = 1
+        elif c in "'\"" and prev == "=":
+            quote = c
+        if not (depth or quote or c.isspace()):
+            prev = c
+        i += 1
+    return start
+
+
+def read_attribute(key: str) -> tuple[str, bool]:
+    """(the attribute a spelling means, whether its value is bound): `:alt` is `alt`, `htmlfor` is `for`."""
+    if key in BOUND["aliases"]:
+        return BOUND["aliases"][key], False
+    for prefix in BOUND["prefixes"]:
+        if key.startswith(prefix) and len(key) > len(prefix):
+            return key[len(prefix) :], True
+    for opener, closer in BOUND["brackets"]:
+        name = key[len(opener) : -len(closer)]
+        if key.startswith(opener) and key.endswith(closer) and name and not set("[]()") & set(name):
+            return name, True
+    return key, False
+
+
+def attribute_value(text: str, *, is_bound: bool) -> str | None:
+    """What an attribute's value reads as: None for no value at all, "" for an empty literal.
+
+    A bound value is `{text}`, present and unknown, unless it is empty (no value) or an empty literal.
+    A brace value that is an empty literal, `undefined` or `null` is the empty string too.
+    """
+    inner = text.strip()
+    if not is_bound and not (inner.startswith("{") and inner.endswith("}")):
+        return text
+    if is_bound:
+        if not inner:
+            return None
+    else:
+        inner = inner[1:-1].strip()
+    return "" if inner in BOUND["empty"] else ("{" + text + "}" if is_bound else text)
+
+
+def read_attributes(attrs: list[tuple[str, str | None]]) -> dict[str, str]:
+    """Attributes by the name they bind. A bound value reads `{value}`, so it is present and never judged."""
+    plain: dict[str, str] = {}
+    bound: dict[str, str] = {}
+    for key, value in attrs:
+        name, is_bound = read_attribute(key.lower().translate(_UNMASK))
+        read = attribute_value((value or "").translate(_UNMASK), is_bound=is_bound)
+        if read is None:
+            continue
+        if is_bound:
+            bound.setdefault(name, read)
+        else:
+            plain[name] = read
+    return {**bound, **plain}
+
+
+class Wrap:
+    """The text a `<label>` carries, which names every control inside it."""
+
+    def __init__(self) -> None:
+        self.text = ""
+
+    def add(self, text: str) -> None:
+        self.text = f"{self.text} {text}".strip()
 
 
 @dataclass
@@ -123,6 +231,7 @@ class Node:
     child_elements: int = 0  # a name may come from any of them, and a component hides it
     spread: bool = False  # `{...props}`: the attributes are not knowable from the markup
     component: bool = False  # this table has no requirements for it; only a lost name counts
+    wrap: Wrap | None = None  # the <label> without `for` this control sits inside
 
     @property
     def ref(self) -> str:
@@ -142,16 +251,15 @@ class Scanner(HTMLParser):
         self._counts: dict[str, int] = {}
         self._stack: list[int] = []
         self._label_for: str | None = None
+        self._wraps: list[Wrap | None] = []  # open <label>s: a Wrap, or None when it names its control by `for`
         self._inner_depth = 0
         # Tags that opened a subtree hidden from assistive technology. Kept separately from
         # `_stack`, which holds only elements this table has requirements for -- a <nav> or <div>
         # carrying aria-hidden is in neither, and that is exactly what an agent reached for.
         self._hidden: list[str] = []
 
-    def _open(
-        self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None
-    ) -> None:
-        a = {k.lower(): (v or "") for k, v in attrs}
+    def _open(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None) -> None:
+        a = read_attributes(attrs)
         inherited = bool(self._hidden)
         if a.get("aria-hidden") == SPEC["suppressing"]["aria-hidden"] and not closed and tag not in VOID:
             # Before the early returns below: an untracked wrapper still hides what it contains.
@@ -161,8 +269,11 @@ class Scanner(HTMLParser):
         for i in self._stack:
             self.nodes[i].child_elements += 1
         self._lend_name(a)
-        if tag == "label" and a.get("for"):
-            self._label_for = a["for"]
+        if tag == "label":
+            if not closed:
+                self._wraps.append(None if a.get("for") else Wrap())
+            if a.get("for"):
+                self._label_for = a["for"]
             return
         if tag in _NAME_BEARING_CHILDREN:
             self._inner_depth += 1
@@ -185,6 +296,7 @@ class Scanner(HTMLParser):
                 spread=spread,
                 component=component,
                 hidden=inherited,
+                wrap=self._wraps[-1] if self._wraps and not component else None,
             )
         )
         if not closed and tag not in VOID:
@@ -196,6 +308,8 @@ class Scanner(HTMLParser):
             if value := attrs.get(attr, "").strip():
                 for i in self._stack:
                     self.nodes[i].text = f"{self.nodes[i].text} {value}".strip()
+                for wrap in filter(None, self._wraps):
+                    wrap.add(value)
                 return
 
     def handle_starttag(self, tag, attrs):
@@ -209,6 +323,8 @@ class Scanner(HTMLParser):
             self._hidden.pop()
         if tag == "label":
             self._label_for = None
+            if self._wraps:
+                self._wraps.pop()
         elif tag in _NAME_BEARING_CHILDREN:
             self._inner_depth = max(0, self._inner_depth - 1)
         elif self._stack and self.nodes[self._stack[-1]].tag == tag:
@@ -221,6 +337,8 @@ class Scanner(HTMLParser):
         if self._label_for is not None:
             self.labels[self._label_for] = f"{self.labels.get(self._label_for, '')} {text}".strip()
             return
+        for wrap in filter(None, self._wraps):
+            wrap.add(text)
         for i in self._stack:
             if self._inner_depth:
                 self.nodes[i].inner = f"{self.nodes[i].inner} {text}".strip()
@@ -282,6 +400,15 @@ def component_state(node: Node) -> tuple[str, str, str]:
     return NAMELESS, f"<{node.tag}> carries no name prop, and may not need one", ""
 
 
+def label_name(node: Node, labels: dict[str, str]) -> tuple[str, str] | None:
+    """(evidence, name) from the <label> that names this control, by `for` or by wrapping it."""
+    if node.attrs.get("id") and (lbl := labels.get(node.attrs["id"])):
+        return f'<label for="{node.attrs["id"]}">{lbl}</label>', lbl
+    if node.wrap is not None and node.wrap.text:
+        return f"a wrapping <label> reading {node.wrap.text[:40]!r}", node.wrap.text
+    return None
+
+
 def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
     """Return (state, evidence, resolved name), walking the accepted sources in the spec's order."""
     if node.component:
@@ -299,8 +426,8 @@ def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
             if val:
                 return SATISFIED, f"{src} {val[:40]!r}", val
         elif src == "label-for":
-            if node.attrs.get("id") and (lbl := labels.get(node.attrs["id"])):
-                return SATISFIED, f'<label for="{node.attrs["id"]}">{lbl}</label>', lbl
+            if (found := label_name(node, labels)) is not None:
+                return SATISFIED, found[0], found[1]
         elif src == "implicit-default":
             return SATISFIED, f"the platform default name for type={node.attrs.get('type')}", node.tag
         elif node.attrs.get(src):
@@ -313,7 +440,7 @@ def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
 def scan(html: str) -> tuple[dict[str, tuple[str, str, str]], dict[str, Node]]:
     """Parse one revision into {ref: (state, evidence, name)} and {ref: node}."""
     s = Scanner()
-    s.feed(html)
+    s.feed(mask_expressions(html))
     return {n.ref: state_of(n, s.labels) for n in s.nodes}, {n.ref: n for n in s.nodes}
 
 
@@ -372,7 +499,9 @@ def evaluate(before_html: str, after_html: str) -> list[dict]:
     """Compare two revisions; every row carries the lookup key that produced its action."""
     b_states, b_nodes = scan(before_html)
     a_states, a_nodes = scan(after_html)
-    swaps = swapped_in(b_states, a_states, {r: n.tag for r, n in b_nodes.items()}, {r: n.tag for r, n in a_nodes.items()})
+    swaps = swapped_in(
+        b_states, a_states, {r: n.tag for r, n in b_nodes.items()}, {r: n.tag for r, n in a_nodes.items()}
+    )
     rows = []
     for ref in sorted(b_states.keys() | a_states.keys()):
         bs, bw, b_name = b_states.get(ref, (GONE, "not in this revision", ""))

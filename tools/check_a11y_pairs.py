@@ -25,6 +25,12 @@ def load_pairs() -> list[dict]:
     return json.loads(PAIRS.read_text(encoding="utf-8"))
 
 
+def verdict(flags: tuple[bool, bool]) -> str:
+    """The one word a pair's `expect` is compared with, from (blocked, warned)."""
+    blocked, warned = flags
+    return "block" if blocked else "warn" if warned else "silent"
+
+
 def verdicts(guard: object, pair: dict) -> tuple[bool, bool]:
     """(blocked, warned) as a commit would judge it: each staged markup file, deletions excluded."""
     blocked = warned = False
@@ -40,15 +46,17 @@ def verdicts(guard: object, pair: dict) -> tuple[bool, bool]:
 def measure(guard: object) -> dict:
     """Counts per direction, and the ids behind them."""
     seen = {p["id"]: (p, *verdicts(guard, p)) for p in load_pairs()}
-    regressions = [i for i, (p, *_) in seen.items() if p["kind"] == "regression"]
+    regressions = [i for i, (p, *_) in seen.items() if p["kind"] == "regression" and i.startswith("R")]
     correct = [i for i, (p, *_) in seen.items() if p["kind"] == "correct" and i.startswith("N")]
+    probes = [i for i, (p, *_) in seen.items() if p["kind"] == "correct" and i.startswith("P")]
     return {
         "seen": seen,
         "regressions": regressions,
         "correct": correct,
         "caught": [i for i in regressions if seen[i][1]],
         "refused": [i for i in correct if seen[i][1]],
-        "probes_refused": [i for i, (p, b, _) in seen.items() if i.startswith("P") and b],
+        "probes": probes,
+        "probes_refused": [i for i in probes if seen[i][1]],
     }
 
 
@@ -72,16 +80,20 @@ def check(guard: object) -> list[str]:
         if seen[i][0]["reviewed"] == "caught" and i not in RULED_TO_WARN and not seen[i][1]
     ]
     # An element replaced by one of its tag that lost the name is a lost name, whatever else changed.
-    failures += [f"{i}: a named element swapped for an unnamed one is allowed" for i in swaps("swap_regression") if not seen[i][1]]
+    failures += [
+        f"{i}: a named element swapped for an unnamed one is allowed"
+        for i in swaps("swap_regression")
+        if not seen[i][1]
+    ]
     failures += [f"{i}: a swap that keeps the name is refused" for i in swaps("swap_correct") if seen[i][1]]
     for i in swaps("swap_added"):
         if seen[i][1] or not seen[i][2]:
             failures.append(f"{i}: a genuinely added unnamed element must warn and not block")
-    # Nothing the review marks MISSED may start blocking by accident, and nothing it marks silent may start.
+    # Every pair says what the guard must do with it; `reviewed` stays the review's record, not the rule.
     failures += [
-        f"{i}: now blocked, the review saw it allowed"
-        for i, (p, blocked, _) in seen.items()
-        if blocked and p["reviewed"] in ("missed", "silent")
+        f"{i}: the guard says {verdict((b, w))}, the pair expects {p['expect']}"
+        for i, (p, b, w) in seen.items()
+        if verdict((b, w)) != p["expect"]
     ]
     return failures
 
@@ -91,7 +103,7 @@ def main() -> int:
     m = measure(guard)
     print(
         f"caught {len(m['caught'])} of {len(m['regressions'])}; correct work refused "
-        f"{len(m['refused'])} of {len(m['correct'])}; probes refused {len(m['probes_refused'])} of 3"
+        f"{len(m['refused'])} of {len(m['correct'])}; probes refused {len(m['probes_refused'])} of {len(m['probes'])}"
     )
     print(f"refused: {' '.join(m['refused'])} {' '.join(m['probes_refused'])}".rstrip())
     failures = check(guard)
