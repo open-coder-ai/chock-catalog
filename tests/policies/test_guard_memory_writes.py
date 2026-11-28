@@ -15,6 +15,7 @@ mod = memorykit.load()
 
 # Built by concatenation so this file never carries a credential-shaped literal.
 AWS = "AKIA" + "IOSFODNN7EXAMPLE"
+TOKEN = "ghp_" + "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8"
 SHA = "0123456789abcdef" * 2 + "01234567"
 
 
@@ -102,8 +103,7 @@ def test_prose_about_git_is_not_history(repo: Path, line: str) -> None:
 @pytest.mark.parametrize(
     "line",
     [
-        "aws: " + AWS,
-        "token ghp_" + "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8",
+        "token " + TOKEN,
         "-----BEGIN RSA PRIVATE KEY-----",  # pragma: allowlist secret
         "api_key = 'abcdefghijklmnopqrstuvwx'",  # pragma: allowlist secret
         "password: hunter2hunter2hunter2",  # pragma: allowlist secret
@@ -179,9 +179,9 @@ def test_headings_blank_lines_rules_and_code_are_not_duplicates(repo: Path) -> N
 
 
 def test_a_secret_is_never_printed_in_the_document(repo: Path) -> None:
-    stdin = json.dumps({"event": "commit", "repo_root": str(repo), "writes": {"memory/a.md": f"- key {AWS}\n"}})
+    stdin = json.dumps({"event": "commit", "repo_root": str(repo), "writes": {"memory/a.md": f"- key {TOKEN}\n"}})
     proc = scriptkit.run_script_full("guard-memory-writes", NAME, repo, stdin)
-    assert AWS not in proc.stdout + proc.stderr
+    assert TOKEN not in proc.stdout + proc.stderr
     (row,) = json.loads(proc.stdout)["findings"]
     assert row["key"].startswith("secret|")
 
@@ -194,7 +194,7 @@ def test_the_baseline_run_judges_as_the_change_run_does(repo: Path) -> None:
 
 
 def test_each_secret_line_is_reported(repo: Path) -> None:
-    text = f"- key {AWS}\n- key {AWS}\n"
+    text = f"- key {TOKEN}\n- key {TOKEN}\n"
     assert check(repo, {"memory/a.md": text}) == ["memory/a.md:1: secret", "memory/a.md:2: secret"]
 
 
@@ -242,7 +242,7 @@ def test_main_allows_refuses_and_rejects_bad_input(
 
 
 def test_the_script_runs_as_a_process(repo: Path) -> None:
-    stdin = json.dumps({"event": "tool_use", "repo_root": str(repo), "writes": {"MEMORY.md": f"{AWS}\n"}})
+    stdin = json.dumps({"event": "tool_use", "repo_root": str(repo), "writes": {"MEMORY.md": f"{TOKEN}\n"}})
     code, err = scriptkit.run_script("guard-memory-writes", NAME, repo, stdin)
     assert code == 1
     assert "MEMORY.md:1: secret" in err

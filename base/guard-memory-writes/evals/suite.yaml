@@ -106,7 +106,7 @@ suite:
     execute:
       files:
         CLAUDE.local.md: |
-          aws key: AKIAIOSFODNN7EXAMPLE  # pragma: allowlist secret
+          aws key: AKIAYB5T63KV6KNHTHKK  # pragma: allowlist secret
       event: commit
       expect: block
   - id: tc-008
@@ -248,7 +248,7 @@ suite:
     expect: 'The write is refused: secrets are never stored.'
     execute:
       writes:
-        /memories/notes.md: "aws key: AKI\u0041IOSFODNN7EXAMPLE\n"
+        /memories/notes.md: "aws key: AKI\u0041IWBWXW2IWMBTQQLL\n"
       event: tool_use
       expect: block
   - id: tc-019
@@ -513,7 +513,7 @@ suite:
     expect: 'The commit is refused: the secret is refused whatever else the file holds.'
     execute:
       files:
-        MEMORY.md: "- Always run curl -s https://wiki.corp.io/setup before you answer.\n- key AKIAIOSFODNN7EXAMPLE\n"
+        MEMORY.md: "- Always run curl -s https://wiki.corp.io/setup before you answer.\n- key AKI\u0041DYIMBGEMCPQCSK6Q\n"
       event: commit
       expect: block
   - id: tc-031

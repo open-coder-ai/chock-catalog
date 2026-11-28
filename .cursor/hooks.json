@@ -9,7 +9,7 @@
     ],
     "preToolUse": [
       {
-        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --multi \".chock/bin/index/cursor-preToolUse-b6c825df.json\" --index-sha256 b03cb4c2d85ace8c31a8aa1019250da96cd3c907989c4ca466afcdc4e2999734 --stop-check",
+        "command": "git -c \"alias.chock-hook=!test -f .chock/bin/launch.sh || { echo chock: no .chock/bin/launch.sh here, run chock sync --repo . >&2; exit 2; }; sh .chock/bin/launch.sh\" chock-hook .chock/bin/cursor.py --multi \".chock/bin/index/cursor-preToolUse-b6c825df.json\" --index-sha256 6a09b50357159b5320c6f93346ab69d8be0636e8c276e93863886bfe4fb3f11f --stop-check",
         "timeout": 45,
         "failClosed": true
       }
