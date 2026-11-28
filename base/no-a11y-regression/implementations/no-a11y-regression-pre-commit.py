@@ -21,6 +21,7 @@ VOID = frozenset(SPEC["void_elements"])
 COMPONENT_NAME_PROPS = tuple(SPEC["component_name_props"])
 MARKUP_SUFFIXES = tuple(SPEC["markup_suffixes"])
 BOUND = SPEC["bound_attributes"]
+GLYPH = SPEC["glyph_text"]
 # Names that are present but convey nothing, so their presence is not a fix.
 NOISE = json.loads((_DATA / "uninformative_names.json").read_text(encoding="utf-8"))
 
@@ -232,6 +233,7 @@ class Node:
     spread: bool = False  # `{...props}`: the attributes are not knowable from the markup
     component: bool = False  # this table has no requirements for it; only a lost name counts
     wrap: Wrap | None = None  # the <label> without `for` this control sits inside
+    lent: str = ""  # the name an enclosing component carries, which names this component inside it
 
     @property
     def ref(self) -> str:
@@ -257,6 +259,8 @@ class Scanner(HTMLParser):
         # `_stack`, which holds only elements this table has requirements for -- a <nav> or <div>
         # carrying aria-hidden is in neither, and that is exactly what an agent reached for.
         self._hidden: list[str] = []
+        self._glyphs: list[str] = []  # open icon-font elements: their text is a glyph name
+        self._comps: list[tuple[str, str]] = []  # open components and the name each carries
 
     def _open(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None) -> None:
         a = read_attributes(attrs)
@@ -266,9 +270,13 @@ class Scanner(HTMLParser):
             # A nested subtree hidden by the same tag name ends at the inner close, which errs
             # toward silence -- the direction a gate that blocks commits must err in.
             self._hidden.append(tag)
+        glyph = tag in GLYPH["tags"] or bool(set((a.get("class") or "").split()) & set(GLYPH["classes"]))
+        if glyph and not closed and tag not in VOID:
+            self._glyphs.append(tag)
         for i in self._stack:
             self.nodes[i].child_elements += 1
-        self._lend_name(a)
+        if not (inherited or a.get("aria-hidden") == SPEC["suppressing"]["aria-hidden"]):
+            self._lend_name(a)  # an aria-hidden element lends nothing
         if tag == "label":
             if not closed:
                 self._wraps.append(None if a.get("for") else Wrap())
@@ -279,6 +287,9 @@ class Scanner(HTMLParser):
             self._inner_depth += 1
             return
         component = is_component(raw)
+        lent = next((name for _, name in reversed(self._comps) if name), "") if component else ""
+        if component and not closed:
+            self._comps.append((tag, next((a[p] for p in COMPONENT_NAME_PROPS if a.get(p)), "")))
         # A component is compared only when the markup gives it a stable identity. Ordinal
         # position is not identity: inserting one would shift every later component onto a
         # different element's state, and invent a lost name out of the reordering.
@@ -295,6 +306,7 @@ class Scanner(HTMLParser):
                 ordinal=self._counts[tag],
                 spread=spread,
                 component=component,
+                lent=lent,
                 hidden=inherited,
                 wrap=self._wraps[-1] if self._wraps and not component else None,
             )
@@ -319,6 +331,10 @@ class Scanner(HTMLParser):
         self._open(tag, attrs, closed=True, raw=self.get_starttag_text())
 
     def handle_endtag(self, tag):
+        if self._glyphs and self._glyphs[-1] == tag:
+            self._glyphs.pop()
+        if self._comps and self._comps[-1][0] == tag:
+            self._comps.pop()
         if self._hidden and self._hidden[-1] == tag:
             self._hidden.pop()
         if tag == "label":
@@ -332,7 +348,7 @@ class Scanner(HTMLParser):
 
     def handle_data(self, data):
         text = data.strip()
-        if not text:
+        if not text or self._hidden or self._glyphs:  # aria-hidden text and a glyph's name name nothing
             return
         if self._label_for is not None:
             self.labels[self._label_for] = f"{self.labels.get(self._label_for, '')} {text}".strip()
@@ -395,6 +411,10 @@ def component_state(node: Node) -> tuple[str, str, str]:
             return SATISFIED, f'{prop}="{value}"', value
         if prop in node.attrs:
             return SUPPRESSED, f'{prop}="" asserts this carries no name', ""
+    if text := node.text or node.inner:
+        return SATISFIED, f"text {text[:40]!r}", text
+    if node.lent:
+        return SATISFIED, f"named by an enclosing component: {node.lent[:40]!r}", node.lent
     if node.child_elements:
         return UNEVALUATED, f"<{node.tag}> may be named by a child this parser cannot resolve", ""
     return NAMELESS, f"<{node.tag}> carries no name prop, and may not need one", ""
@@ -432,7 +452,7 @@ def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
             return SATISFIED, f"the platform default name for type={node.attrs.get('type')}", node.tag
         elif node.attrs.get(src):
             return SATISFIED, f'{src}="{node.attrs[src]}"', node.attrs[src]
-    if node.child_elements and "text" in rule["from"]:
+    if node.child_elements and "text" in rule["from"] and not rule.get("icon_only"):
         return UNEVALUATED, f"<{node.tag}> is named by a child this parser cannot resolve", ""
     return MISSING, f"needs {rule['needs']} from one of {rule['from']} (WCAG {rule['wcag']})", ""
 
