@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from chock.eval import execute
-from chock.eval.fixture import git, prepare
+from chock.eval.fixture import git, init_repo, prepare, write_files
 from chock.eval.model import Case
 from chock.eval.suites import Policy
 from chock.gate import runner as gate_runner
@@ -95,6 +95,10 @@ def verdict(policy: str, case: dict) -> tuple[str, str]:
         repo.mkdir()
         if case["surface"] == "ci":
             return _ci(repo, policy_dir, spec)
+        if "command" in case:
+            init_repo(repo)
+            write_files(repo, case.get("repo_files", {}))
+            return execute._run_guard(repo, guards[0], case["command"])
         run = Case(case["id"], "pair", case["title"], "-", policy, execute=spec)
         if case["surface"] == "agent-commit":
             saved = execute._person_env
