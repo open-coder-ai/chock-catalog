@@ -20,14 +20,12 @@ UNBLOCKED_REGRESSIONS = frozenset(
         "R35",
         "R36",
         "R37",
-        "R40",
         "R41",
-        "R47",
         "R51",
     }
 )
 #: Correct work the guard blocks. A fix flips `expect` and drops the id here.
-REFUSED_CORRECT = frozenset({"N04", "N05", "N06", "N32", "N33", "N52"})
+REFUSED_CORRECT = frozenset({"N04", "N05", "N06"})
 
 
 def _ids(kinds: tuple[str, ...], unblocked: bool) -> set[str]:

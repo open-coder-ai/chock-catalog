@@ -80,6 +80,10 @@ for _state, _why in _QUIET.items():
         TABLE.setdefault((_other, _state), (SILENT, _why))
 
 _ID_ATTRS = ("data-testid", "id", "name", "src", "href")
+#: The attribute names of `Node` the aligner matches on, finest first, then by tag order.
+_SIGNATURES = ("signature", "coarse")
+#: The most element pairs difflib is asked to align at once; past it the cost is bounded by trimming and tag order.
+ALIGN_LIMIT = 4_000_000
 #: A `from` source that reads the element's own content rather than an attribute. "inner" is a
 #: name-bearing child (<legend>, <caption>, <title>); "text" is the whole subtree, which per
 #: accname includes those children too.
@@ -219,10 +223,18 @@ class Wrap:
     """The text a `<label>` carries, which names every control inside it."""
 
     def __init__(self) -> None:
-        self.text = ""
+        self._parts: list[str] = []
+        self._joined: str | None = ""
+
+    @property
+    def text(self) -> str:
+        if self._joined is None:
+            self._joined = " ".join(self._parts)
+        return self._joined
 
     def add(self, text: str) -> None:
-        self.text = f"{self.text} {text}".strip()
+        self._parts.append(text)
+        self._joined = None
 
 
 @dataclass
@@ -240,6 +252,23 @@ class Node:
     component: bool = False  # this table has no requirements for it; only a lost name counts
     wrap: Wrap | None = None  # the <label> without `for` this control sits inside
     enclosing: frozenset[str] = frozenset()  # the names the components around this one carry, normalised
+    state: tuple[str, str, str] = ("", "", "")  # set by `scan`: (state, evidence, resolved name)
+    start: int = 0  # where this element's text begins in the scanner's chunk list
+
+    @property
+    def signature(self) -> tuple:
+        """What the aligner matches on: the element's identity and styling, never the name it carries."""
+        ids = tuple(self.attrs.get(a, "") for a in _ID_ATTRS)
+        return (self.tag, ids, self.attrs.get("class", ""), self.attrs.get("type", ""))
+
+    @property
+    def coarse(self) -> tuple:
+        """The signature without its identity attributes, which an edit to `src` or `href` changes.
+
+        It adds the state: of two same-tag elements left over, one deleted and one edited, the edited one
+        is the one still in the state it was in, which errs toward silence.
+        """
+        return (self.tag, self.attrs.get("class", ""), self.attrs.get("type", ""), self.state[0])
 
     @property
     def ref(self) -> str:
@@ -267,6 +296,9 @@ class Scanner(HTMLParser):
         self._hidden: list[str] = []
         self._glyphs: list[str] = []  # open icon-font elements: their text is a glyph name
         self._comps: list[tuple[str, str]] = []  # open components and the name each carries
+        # Every text chunk once, with whether it is a legend/caption/title child's: an element's text is
+        # the join of the chunks since it opened, taken when it closes, so no chunk is copied per ancestor.
+        self._chunks: list[tuple[str, bool]] = []
 
     def _open(self, tag: str, attrs: list[tuple[str, str | None]], closed: bool, raw: str | None = None) -> None:
         a = read_attributes(attrs)
@@ -315,6 +347,7 @@ class Scanner(HTMLParser):
                 enclosing=enclosing,
                 hidden=inherited,
                 wrap=self._wraps[-1] if self._wraps and not component else None,
+                start=len(self._chunks),
             )
         )
         if not closed and tag not in VOID:
@@ -322,8 +355,7 @@ class Scanner(HTMLParser):
 
     def _lend(self, value: str) -> None:
         """Give every enclosing element and wrapping label this name."""
-        for i in self._stack:
-            self.nodes[i].text = f"{self.nodes[i].text} {value}".strip()
+        self._chunks.append((value, False))
         for wrap in filter(None, self._wraps):
             wrap.add(value)
 
@@ -356,7 +388,19 @@ class Scanner(HTMLParser):
         elif tag in _NAME_BEARING_CHILDREN:
             self._inner_depth = max(0, self._inner_depth - 1)
         elif self._stack and self.nodes[self._stack[-1]].tag == tag:
-            self._stack.pop()
+            self._finish(self._stack.pop())
+
+    def _finish(self, index: int) -> None:
+        """Fix the text of the element at `index`: every chunk since it opened."""
+        node = self.nodes[index]
+        taken = self._chunks[node.start :]
+        node.text = " ".join(t for t, inner in taken if not inner)
+        node.inner = " ".join(t for t, inner in taken if inner)
+
+    def finish(self) -> None:
+        """Close what the markup left open."""
+        while self._stack:
+            self._finish(self._stack.pop())
 
     def handle_data(self, data):
         text = data.strip()
@@ -367,11 +411,7 @@ class Scanner(HTMLParser):
             return
         for wrap in filter(None, self._wraps):
             wrap.add(text)
-        for i in self._stack:
-            if self._inner_depth:
-                self.nodes[i].inner = f"{self.nodes[i].inner} {text}".strip()
-            else:
-                self.nodes[i].text = f"{self.nodes[i].text} {text}".strip()
+        self._chunks.append((text, bool(self._inner_depth)))
 
 
 # ── The state function. It consults the spec table; it decides nothing. ───────────────────────
@@ -465,11 +505,14 @@ def state_of(node: Node, labels: dict[str, str]) -> tuple[str, str, str]:
     return MISSING, f"needs {rule['needs']} from one of {rule['from']} (WCAG {rule['wcag']})", ""
 
 
-def scan(html: str) -> tuple[dict[str, tuple[str, str, str]], dict[str, Node]]:
-    """Parse one revision into {ref: (state, evidence, name)} and {ref: node}."""
-    s = Scanner()
-    s.feed(mask_expressions(html))
-    return {n.ref: state_of(n, s.labels) for n in s.nodes}, {n.ref: n for n in s.nodes}
+def scan(html: str) -> list[Node]:
+    """Parse one revision into its tracked elements in document order, each carrying its state."""
+    scanner = Scanner()
+    scanner.feed(mask_expressions(html))
+    scanner.finish()
+    for node in scanner.nodes:
+        node.state = state_of(node, scanner.labels)
+    return scanner.nodes
 
 
 def labelled_by_its_own_text(node: Node) -> bool:
@@ -498,28 +541,64 @@ def uninformative(name: str, src: str, tag: str = "", *, labelled: bool = False)
     return None
 
 
-def swapped_in(b_states: dict, a_states: dict, b_tags: dict, a_tags: dict) -> set[str]:
-    """Refs of new unnamed elements that stand where a named element of the same tag was removed.
+def _zip_by_tag(before: list[Node], after: list[Node]) -> list[tuple[Node | None, Node | None]]:
+    """In one replaced stretch, the n-th element of a tag before is the n-th of that tag after."""
+    queued: dict[str, list[Node]] = {}
+    for node in after:
+        queued.setdefault(node.tag, []).append(node)
+    taken = dict.fromkeys(queued, 0)
+    pairs: list[tuple[Node | None, Node | None]] = []
+    for node in before:
+        n, match = taken.get(node.tag, 0), queued.get(node.tag, [])
+        pairs.append((node, match[n] if n < len(match) else None))
+        taken[node.tag] = n + (n < len(match))
+    paired = {id(a) for _, a in pairs if a}
+    return pairs + [(None, node) for node in after if id(node) not in paired]
 
-    The key an element is paired by (src, id, ordinal) is what an edit that swaps an image or renames
-    an input changes, so the old element reads as deleted and the new one as new. Aligning the two
-    revisions' element order finds the swap: in one replaced stretch, the n-th lost named element and
-    the n-th added unnamed element of a tag are one element that lost its name.
+
+def _trim(before: list[Node], after: list[Node], sig: str):
+    """Pair what two long lists share at both ends, leaving the middle: (head, before, after, tail)."""
+    n = min(len(before), len(after))
+    i = 0
+    while i < n and getattr(before[i], sig) == getattr(after[i], sig):
+        i += 1
+    j = 0
+    while j < n - i and getattr(before[-1 - j], sig) == getattr(after[-1 - j], sig):
+        j += 1
+    head = list(zip(before[:i], after[:i], strict=True))
+    tail = list(zip(before[len(before) - j :], after[len(after) - j :], strict=True))
+    return head, before[i : len(before) - j], after[i : len(after) - j], tail
+
+
+def pair_elements(before: list[Node], after: list[Node], level: int = 0) -> list[tuple[Node | None, Node | None]]:
+    """Align two revisions' tracked elements: an unpaired `before` was deleted, an unpaired `after` is new.
+
+    difflib matches the elements whose signature is unchanged, so inserting or deleting one moves nothing
+    else. Each stretch it cannot match is aligned again on a signature without `src`, `href` and `id`
+    (an edit to those is the same element), then by tag order. A pair of long lists is trimmed at both
+    ends first, and a stretch still past the limit is paired by tag order alone, so the cost is bounded.
     """
-    before, after = list(b_states), list(a_states)
-    found: set[str] = set()
-    for op, i1, i2, j1, j2 in SequenceMatcher(None, before, after, autojunk=False).get_opcodes():
-        if op != "replace":
-            continue
-        lost = [r for r in before[i1:i2] if r not in a_states and b_states[r][0] == SATISFIED]
-        added = [r for r in after[j1:j2] if r not in b_states and a_states[r][0] == MISSING]
-        for tag in {b_tags[r] for r in lost}:
-            found.update(
-                new for old, new in zip(
-                    (r for r in lost if b_tags[r] == tag), (r for r in added if a_tags[r] == tag), strict=False
-                )
-            )  # fmt: skip
-    return found
+    if not before or not after:
+        return [(n, None) for n in before] + [(None, n) for n in after]
+    sig = _SIGNATURES[level] if level < len(_SIGNATURES) else None
+    if sig is None:
+        return _zip_by_tag(before, after)
+    head: list[tuple[Node | None, Node | None]] = []
+    tail: list[tuple[Node | None, Node | None]] = []
+    if len(before) * len(after) > ALIGN_LIMIT:
+        head, before, after, tail = _trim(before, after, sig)
+        if len(before) * len(after) > ALIGN_LIMIT:
+            return head + _zip_by_tag(before, after) + tail
+    pairs: list[tuple[Node | None, Node | None]] = []
+    keys = ([getattr(n, sig) for n in before], [getattr(n, sig) for n in after])
+    for op, i1, i2, j1, j2 in SequenceMatcher(None, *keys, autojunk=False).get_opcodes():
+        if op == "equal":
+            pairs += zip(before[i1:i2], after[j1:j2], strict=True)
+        elif op == "replace":
+            pairs += pair_elements(before[i1:i2], after[j1:j2], level + 1)
+        else:
+            pairs += [(n, None) for n in before[i1:i2]] + [(None, n) for n in after[j1:j2]]
+    return head + pairs + tail
 
 
 def _name_moved(before: Node | None, after: Node | None, bs: str, as_: str, name: str) -> str | None:
@@ -534,29 +613,21 @@ def _name_moved(before: Node | None, after: Node | None, bs: str, as_: str, name
 # ── The decision: one table lookup per element, plus one promotion rule. ──────────────────────
 def evaluate(before_html: str, after_html: str) -> list[dict]:
     """Compare two revisions; every row carries the lookup key that produced its action."""
-    b_states, b_nodes = scan(before_html)
-    a_states, a_nodes = scan(after_html)
-    swaps = swapped_in(
-        b_states, a_states, {r: n.tag for r, n in b_nodes.items()}, {r: n.tag for r, n in a_nodes.items()}
-    )
     rows = []
-    for ref in sorted(b_states.keys() | a_states.keys()):
-        bs, bw, b_name = b_states.get(ref, (GONE, "not in this revision", ""))
-        as_, aw, a_name = a_states.get(ref, (GONE, "not in this revision", ""))
+    for old, new in pair_elements(scan(before_html), scan(after_html)):
+        bs, bw, b_name = old.state if old else (GONE, "not in this revision", "")
+        as_, aw, a_name = new.state if new else (GONE, "not in this revision", "")
         action, why = TABLE[(bs, as_)]
         # Only judge a name this change actually supplied. Judging an untouched element is how a
         # gate starts refusing commits over code nobody edited.
         supplied = as_ == SATISFIED and bs != SATISFIED and a_name != b_name
-        node = a_nodes.get(ref)
-        src, tag = (node.attrs.get("src", ""), node.tag) if node else ("", "")
-        labelled = labelled_by_its_own_text(node) if node else False
+        src, tag = (new.attrs.get("src", ""), new.tag) if new else ("", "")
+        labelled = labelled_by_its_own_text(new) if new else False
         if supplied and (bad := uninformative(a_name, src, tag, labelled=labelled)) is not None:
             action, why = WARN, f"the value supplied conveys nothing: {bad}"
-        if key_moved := _name_moved(b_nodes.get(ref), a_nodes.get(ref), bs, as_, b_name):
+        if key_moved := _name_moved(old, new, bs, as_, b_name):
             action, why = SILENT, key_moved
-        if ref in swaps:
-            action, why = DENY, "a named element of this tag was replaced by one without its name"
-        rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
+        rows.append({"ref": (new or old).ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
 
     # Deleting an unnamed element is how a violation gets resolved by deletion -- and it is also
     # what happens to every legacy block that holds one, when the block is correctly removed. The
@@ -590,18 +661,30 @@ def _git(*args: str) -> str:
     return proc.stdout or ""
 
 
-def staged_markup() -> list[str]:
-    """Staged paths this guard can read: markup, by the suffixes the spec enumerates."""
-    out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMRT")
-    return [p.strip() for p in out.splitlines() if p.strip().endswith(MARKUP_SUFFIXES)]
+def staged_markup() -> list[tuple[str, str]]:
+    """Staged (path, path it was renamed from) this guard can read: markup, by the spec's suffixes.
+
+    `-M` pairs a renamed file with its old path, so the new one is judged against what it was. A file
+    that is not a rename is its own old path; a path whose old name is not markup has no old revision.
+    """
+    out = _git("diff", "--cached", "-M", "--name-status", "-z", "--diff-filter=ACMRT").split("\0")
+    staged, i = [], 0
+    while i < len(out) and out[i]:
+        status = out[i]
+        count = 2 if status[0] in "RC" else 1
+        paths = out[i + 1 : i + 1 + count]
+        i += 1 + count
+        if len(paths) == count and paths[-1].endswith(MARKUP_SUFFIXES):
+            staged.append((paths[-1], paths[0] if status[0] == "R" and paths[0].endswith(MARKUP_SUFFIXES) else paths[-1]))
+    return staged
 
 
 def main() -> int:
     """Refuse the commit when a staged file destroys an assertion it previously carried."""
     alarms: list[tuple[str, dict]] = []
     warnings: list[tuple[str, dict]] = []
-    for path in staged_markup():
-        before, after = _git("show", f"HEAD:{path}"), _git("show", f":{path}")
+    for path, was in staged_markup():
+        before, after = _git("show", f"HEAD:{was}"), _git("show", f":{path}")
         try:
             rows = evaluate(before, after)
         except Exception as exc:  # noqa: BLE001 -- a parse failure is not evidence of a violation
