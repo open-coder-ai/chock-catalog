@@ -10,7 +10,7 @@ NAMED_BY_LABEL = ("input", "select", "textarea", "meter", "progress")
 
 
 def _states(markup: str) -> list[str]:
-    return [state for state, _, _ in GUARD.scan(markup)[0].values()]
+    return [node.state[0] for node in GUARD.scan(markup)]
 
 
 def _actions(before: str, after: str) -> list[str]:
