@@ -13,6 +13,10 @@ from difflib import SequenceMatcher
 from html.parser import HTMLParser
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # the waiver module ships beside this script
+
+import a11y_waiver as waiver
+
 _DATA = Path(__file__).resolve().parent / "data"
 # What each element must carry, and what may satisfy it. Adding a row adds a check, with no code.
 SPEC = json.loads((_DATA / "element_requirements.json").read_text(encoding="utf-8"))
@@ -45,6 +49,8 @@ _AUTHORED = (SATISFIED, SUPPRESSED)
 # interruptions, so a correct fix is silent and only a break refuses the commit. A warning is printed
 # and never blocks: it names a new element or a weak name, which is not a regression.
 DENY, WARN, RECORD, SILENT = "deny", "warn", "record", "silent"
+#: What a deny or warn becomes when a person's waiver or path exemption covers it: allowed, and logged.
+WAIVED = "waived"
 
 TABLE: dict[tuple[str, str], tuple[str, str]] = {
     (SATISFIED, SATISFIED): (SILENT, "the requirement is met in both revisions"),
@@ -699,10 +705,43 @@ def staged_markup() -> list[tuple[str, str]]:
     return staged
 
 
+def waive(path: str, rows: list[dict], honoured: waiver.Honoured) -> None:
+    """Turn each deny or warn that a recorded waiver or path exemption covers into `waived`, keeping its reason."""
+    for row in rows:
+        reason = honoured.reason(path, row["ref"]) if row["action"] in (DENY, WARN) else None
+        if reason is not None:
+            row.update(action=WAIVED, reason=reason)
+
+
+def waived_line(path: str, row: dict) -> str:
+    """The one line that records a finding as allowed by a person's waiver."""
+    return f"no-a11y-regression: waived: {path}: {row['ref']}   {row['key'][0]} -> {row['key'][1]}   ({row['reason']})"
+
+
+def waiver_hint() -> str:
+    """How a person records an intended change, and who may."""
+    return (
+        f"If the change is intended (an image decorative after all, a generated or fixture tree), a person records it "
+        f"in {waiver.PATH}, in their own commit: a `waive` entry {{file, element, reason}} naming the element as printed "
+        f"above, or an `exempt` entry {{path, reason}}. An agent asks the person and never writes it."
+    )
+
+
+def added_line(entry: waiver.Entry) -> str:
+    """One waiver or exemption a change adds."""
+    what = f"waive {entry[2]} in {entry[1]}" if entry[0] == "waive" else f"exempt {entry[1]}"
+    return f"  {waiver.PATH}: {what}   ({entry[-1]})"
+
+
 def main() -> int:
-    """Refuse the commit when a staged file destroys an assertion it previously carried."""
+    """Judge the staged markup; exit 0, the engine's warn code for a warning or a waived finding, or its ask code."""
+    person = waiver.by_person()
+    honoured = waiver.read(
+        waiver.show(f"HEAD:./{waiver.PATH}", Path.cwd()), waiver.show(f":./{waiver.PATH}", Path.cwd()), person=person
+    )
     alarms: list[tuple[str, dict]] = []
     warnings: list[tuple[str, dict]] = []
+    waived: list[tuple[str, dict]] = []
     for path, was in staged_markup():
         before, after = _git("show", f"HEAD:{was}"), _git("show", f":{path}")
         try:
@@ -710,31 +749,42 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001 -- a parse failure is not evidence of a violation
             print(f"no-a11y-regression: skipped {path}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
+        waive(path, rows, honoured)
         alarms.extend((path, r) for r in rows if r["action"] == DENY)
         warnings.extend((path, r) for r in rows if r["action"] == WARN)
+        waived.extend((path, r) for r in rows if r["action"] == WAIVED)
 
+    for problem in honoured.problems:
+        print(f"no-a11y-regression: {problem}", file=sys.stderr)
     for path, row in warnings:
         print(f"no-a11y-regression: warning: {path}: {row['ref']}   {row['why']}", file=sys.stderr)
-    if not alarms:
-        return 0
+    for path, row in waived:
+        print(waived_line(path, row), file=sys.stderr)
+    adds = [] if person else honoured.added
+    if adds:
+        print(
+            f"no-a11y-regression: this commit adds a waiver outside a person's commit, so none of it counts "
+            f"({len(adds)} entr{'y' if len(adds) == 1 else 'ies'}):",
+            file=sys.stderr,
+        )
+        print("\n".join(added_line(entry) for entry in adds), file=sys.stderr)
+    if not (alarms or adds):
+        return waiver.EXIT_WARN if warnings or waived else 0
 
-    print(
-        f"BLOCKED: this change destroys an accessibility assertion in {len({p for p, _ in alarms})} file(s). "
-        "The previous revision carried it and this one does not, which no violation report will show you "
-        "-- a removed element and an emptied alt both score as fewer violations, not more.",
-        file=sys.stderr,
-    )
+    if alarms:
+        print(
+            f"BLOCKED: this change destroys an accessibility assertion in {len({p for p, _ in alarms})} file(s). "
+            "The previous revision carried it and this one does not, which no violation report will show you "
+            "-- a removed element and an emptied alt both score as fewer violations, not more.",
+            file=sys.stderr,
+        )
     for path, row in alarms:
         print(f"  {path}: {row['ref']}   {row['key'][0]} -> {row['key'][1]}", file=sys.stderr)
         print(f"      {row['why']}", file=sys.stderr)
         print(f"      was: {row['was']}", file=sys.stderr)
         print(f"      now: {row['now']}", file=sys.stderr)
-    print(
-        "Restore what the element carried, or -- if it truly is decorative -- say so where a "
-        "reviewer sees it, in the diff.",
-        file=sys.stderr,
-    )
-    return 1
+    print(f"Restore what the element carried. {waiver_hint()}", file=sys.stderr)
+    return waiver.EXIT_ASK
 
 
 if __name__ == "__main__":

@@ -1486,6 +1486,19 @@
   }
  },
  {
+  "id": "P14",
+  "kind": "correct",
+  "title": "a person marks a described divider decorative and says so in a comment",
+  "reviewed": "refused",
+  "expect": "block",
+  "files": {
+   "home.html": {
+    "before": "<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"swoosh\">\n",
+    "after": "<!-- decorative: a purely visual divider, reviewed with design -->\n<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"\" role=\"presentation\">\n"
+   }
+  }
+ },
+ {
   "id": "P21",
   "kind": "regression",
   "title": "JSX: alt removed from an image whose arrow-function handler precedes it",

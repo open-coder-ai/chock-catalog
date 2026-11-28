@@ -120,7 +120,7 @@ def test_a_rename_that_also_loses_a_name_is_refused(repo: Path) -> None:
     (repo / "plans.html").write_text(PAGE.format(body='<img src="/img/a.png" alt="">\n'), encoding="utf-8")
     _git(repo, "add", "plans.html")
     done = _judge(repo)
-    assert done.returncode == 1
+    assert done.returncode == GUARD.waiver.EXIT_ASK
     assert "plans.html: img[src=/img/a.png]" in done.stderr
 
 
@@ -130,7 +130,7 @@ def test_a_file_renamed_into_markup_from_another_suffix_has_no_old_revision(repo
     (repo / "page.html").write_text(BARE, encoding="utf-8")
     _git(repo, "add", "page.html")
     done = _judge(repo)
-    assert (done.returncode, "warning: page.html" in done.stderr) == (0, True)
+    assert (done.returncode, "warning: page.html" in done.stderr) == (GUARD.waiver.EXIT_WARN, True)
 
 
 def test_a_path_with_spaces_and_a_tab_pairs_with_its_old_path(repo: Path) -> None:
@@ -139,7 +139,7 @@ def test_a_path_with_spaces_and_a_tab_pairs_with_its_old_path(repo: Path) -> Non
     _git(repo, "mv", old, new)
     (repo / new).write_text(PAGE.format(body=BARE), encoding="utf-8")
     _git(repo, "add", new)
-    assert _judge(repo).returncode == 1
+    assert _judge(repo).returncode == GUARD.waiver.EXIT_ASK
 
 
 @pytest.mark.parametrize("rows", [2000, 10000, 40000])

@@ -420,5 +420,18 @@
       "img",
       "area"
     ]
+  },
+  "waiver": {
+    "path": ".chock/a11y-waivers.json",
+    "note": "A person's recorded exceptions. waive: {file, element, reason}, element being the key a refusal prints. exempt: {path, reason}, a glob whose * crosses a slash, for generated and fixture trees. Closed schema; a person's commit honours entries it adds, an agent surface only entries already in HEAD.",
+    "agent_env": [
+      "CHOCK_AGENT_COMMIT",
+      "CLAUDECODE",
+      "AI_AGENT"
+    ],
+    "exit": {
+      "ask": 3,
+      "warn": 4
+    }
   }
 }

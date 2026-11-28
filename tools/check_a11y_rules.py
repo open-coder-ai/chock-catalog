@@ -411,7 +411,7 @@ def check_the_commit_path(p: Probe) -> None:
         _git(repo, "config", "user.email", "rules@chock.invalid")
         _git(repo, "config", "user.name", "rules")
         for name, committed, staged, expected, claim in (
-            ("page.html", named, emptied, 1, "an emptied alt in a staged .html"),
+            ("page.html", named, emptied, p.guard.waiver.EXIT_ASK, "an emptied alt in a staged .html"),
             ("fix.html", emptied, named, 0, "a staged fix"),
             ("notes.txt", named, emptied, 0, "the same break in a suffix the guard does not read"),
         ):

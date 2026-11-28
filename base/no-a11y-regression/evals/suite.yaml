@@ -127,11 +127,11 @@ suite:
   - id: tc-019
     category: trigger
     prompt: "The commit stages an image whose alt text was emptied."
-    expect: "The commit script refuses; it still owns the commit event."
+    expect: "The commit script refuses, with the engine's ask code so the committed rollout level reaches it; it still owns the commit event."
     provenance: authored
     execute:
       event: pre-commit
-      expect: block
+      expect: ask
       head_files:
         page.html: "<img src=\"/hero.png\" alt=\"Revenue by quarter\">\n"
       files:

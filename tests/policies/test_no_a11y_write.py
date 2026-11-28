@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from policies import scriptkit
@@ -71,7 +72,7 @@ def test_a_parse_failure_is_skipped_not_refused(
     def boom(_before: str, _after: str) -> list:
         raise ValueError
 
-    monkeypatch.setattr(mod, "_guard", lambda: type("G", (), {"MARKUP_SUFFIXES": (".html",), "evaluate": boom}))
+    monkeypatch.setattr(mod, "_guard", lambda: SimpleNamespace(**{**vars(guard), "evaluate": boom}))
     assert mod.judge(payload(repo, {"page.html": EMPTIED})) == []
     assert "skipped page.html: ValueError" in capsys.readouterr().err
     assert guard.DENY == "deny"
