@@ -32,6 +32,8 @@ COVERED_SPEC = {
     "component_name_props",
     "markup_suffixes",
     "bound_attributes",
+    "glyph_text",
+    "component_text_props",
 }
 COVERED_NOISE = {"words", "min_length", "file_extensions", "by_tag"}
 #: Data files the guard must not read: their entries are records, not verdicts.
@@ -215,6 +217,64 @@ def check_bound_attributes(p: Probe) -> None:
         p.allows(f"<label for> replaced by {written}", label.replace(written, "for"), label)
 
 
+def check_icon_only_controls(p: Probe) -> None:
+    """A control whose children lend no name is unnamed without its own; a child that lends one keeps it named."""
+    for tag, rule in ((t, r) for t, r in p.required.items() if r.get("icon_only")):
+        attrs = {"data-testid": "ic", **({rule["only_when"]["attr"]: "/x"} if rule.get("only_when") else {})}
+        labelled, bare = {**attrs, "aria-label": REAL_NAME}, attrs
+        glyph = p.spec["glyph_text"]
+        icons = [
+            '<i class="fa"></i>',
+            "<CloseIcon />",
+            f'<svg aria-hidden="true"><title>{REAL_NAME}</title></svg>',
+            f'<img alt="{REAL_NAME}" aria-hidden="true">',
+            f'<span aria-hidden="true">{REAL_NAME}</span>',
+            f"<{glyph['tags'][0]}>delete</{glyph['tags'][0]}>",
+            f'<span class="{glyph["classes"][0]}">delete</span>',
+        ]
+        for icon in icons:
+            p.refuses(
+                f"<{tag}> losing its aria-label over {icon}", p.element(tag, labelled, icon), p.element(tag, bare, icon)
+            )
+        for icon in (
+            f'<img alt="{REAL_NAME}">',
+            f"<svg><title>{REAL_NAME}</title></svg>",
+            f'<i aria-label="{REAL_NAME}"></i>',
+        ):
+            p.allows(f"<{tag}> naming itself by {icon}", p.element(tag, labelled, icon), p.element(tag, bare, icon))
+        visible = f'<svg aria-hidden="true"></svg>{REAL_NAME}'
+        p.allows(
+            f"<{tag}> keeping visible text beside an aria-hidden icon",
+            p.element(tag, labelled, visible),
+            p.element(tag, bare, visible),
+        )
+    named = f'<Widget data-testid="w" aria-label="{REAL_NAME}">{REAL_NAME}</Widget>'
+    p.allows(
+        "<Widget> with text children losing its aria-label", named, f'<Widget data-testid="w">{REAL_NAME}</Widget>'
+    )
+    for prop in p.spec["component_text_props"]:
+        child = f'<Message {prop}="x" />'
+        p.allows(
+            f"<Button> keeping a <Message {prop}> child",
+            f'<Button id="b" aria-label="Go">{child}</Button>',
+            f'<Button id="b">{child}</Button>',
+        )
+    p.refuses(
+        "<Button> keeping a child with no text prop",
+        '<Button id="b" aria-label="Go"><Icon name="x" /></Button>',
+        '<Button id="b"><Icon name="x" /></Button>',
+    )
+    lent = f'<Field label="{REAL_NAME}"><Input name="n" /></Field>'
+    p.allows("<Input> moving its label to a wrapping <Field>", f'<Input name="n" label="{REAL_NAME}" />', lent)
+    wrapper = f'<Field label="{REAL_NAME}"><Input name="n" aria-label="Other" /></Field>'
+    p.refuses(
+        "<Input> losing its label under a wrapper that already carried another name",
+        wrapper,
+        wrapper.replace(' aria-label="Other"', ""),
+    )
+    p.refuses("<Input> losing its label", f'<Input name="n" label="{REAL_NAME}" />', '<Input name="n" />')
+
+
 def check_wrapping_labels(p: Probe) -> None:
     """A control inside a <label> that has text is named by it, for every row that accepts a label."""
     for tag, rule in ((t, r) for t, r in p.required.items() if "label-for" in r["from"]):
@@ -381,6 +441,7 @@ def main() -> int:
         check_suppressions,
         check_components,
         check_bound_attributes,
+        check_icon_only_controls,
         check_wrapping_labels,
         check_void_elements,
         check_noise,

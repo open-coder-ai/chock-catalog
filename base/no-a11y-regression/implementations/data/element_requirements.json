@@ -137,6 +137,7 @@
     },
     "button": {
       "needs": "name",
+      "icon_only": true,
       "from": [
         "aria-label",
         "aria-labelledby",
@@ -148,6 +149,7 @@
     },
     "a": {
       "needs": "name",
+      "icon_only": true,
       "from": [
         "aria-label",
         "aria-labelledby",
@@ -248,6 +250,7 @@
     },
     "summary": {
       "needs": "name",
+      "icon_only": true,
       "from": [
         "text",
         "aria-label",
@@ -344,7 +347,6 @@
     "alt",
     "aria-label",
     "aria-labelledby",
-    "title",
     "label",
     "caption",
     "arialabel",
@@ -352,6 +354,22 @@
     "a11ylabel"
   ],
   "component_note": "Props that carry a human-readable name on a component this table has no requirements for. A component is never REQUIRED to have one -- whether <Thumbnail> needs a name is not decidable from markup -- so absence is silent and only removal is refused. That asymmetry is why no per-framework component registry is needed. Attribute names arrive lowercased from the parser, so ariaLabel and accessibilityLabel appear folded.",
+  "component_text_props": ["i18nkey", "defaultmessage", "message", "text", "t"],
+  "component_text_note": "Props that make a child component render visible text of its own (react-i18next `<Trans i18nKey>`, react-intl `<FormattedMessage defaultMessage>`). Such a child lends its parent a name that is present and unknown. Folded to lower case, as the parser folds attribute names. A child component without one lends nothing, so `<CloseIcon />` stays nameless.",
+  "glyph_text": {
+    "tags": ["mat-icon", "md-icon"],
+    "classes": [
+      "material-icons",
+      "material-icons-outlined",
+      "material-icons-round",
+      "material-icons-sharp",
+      "material-icons-two-tone",
+      "material-symbols-outlined",
+      "material-symbols-rounded",
+      "material-symbols-sharp"
+    ]
+  },
+  "glyph_note": "Elements whose text is the name of a glyph in an icon font (a ligature), not words a reader hears as a name: `<mat-icon>delete</mat-icon>` shows a bin. Text inside one names nothing.",
   "bound_attributes": {
     "prefixes": [
       "v-bind:",

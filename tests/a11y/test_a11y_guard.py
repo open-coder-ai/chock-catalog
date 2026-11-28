@@ -23,6 +23,7 @@ RULE_CHECKS = [
     rules.check_suppressions,
     rules.check_components,
     rules.check_bound_attributes,
+    rules.check_icon_only_controls,
     rules.check_wrapping_labels,
     rules.check_void_elements,
     rules.check_noise,

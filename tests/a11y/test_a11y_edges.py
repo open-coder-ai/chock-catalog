@@ -25,6 +25,13 @@ def test_a_spread_component_is_undecidable_so_the_guard_stays_silent() -> None:
     ]
 
 
+def test_a_header_cell_with_only_child_elements_is_undecidable_so_the_guard_stays_silent() -> None:
+    named = '<th data-testid="h" abbr="Qty"><span class="x"></span></th>'
+    assert _keys(named, '<th data-testid="h"><span class="x"></span></th>') == [
+        ((GUARD.SATISFIED, GUARD.UNEVALUATED), GUARD.SILENT)
+    ]
+
+
 def test_hiding_a_named_component_is_refused() -> None:
     assert _keys(WIDGET, '<Widget data-testid="w" aria-hidden="true" />') == [
         ((GUARD.SATISFIED, GUARD.SUPPRESSED), GUARD.DENY)
