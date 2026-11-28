@@ -65,7 +65,10 @@ def test_a_wrapping_label_names_a_control_from_text_after_it() -> None:
 
 
 def test_a_wrapping_label_with_a_name_bearing_child_names_its_control() -> None:
-    assert _states('<label><img src="/i.png" alt="Email"><input name="e"></label>') == [GUARD.SATISFIED, GUARD.SATISFIED]
+    assert _states('<label><img src="/i.png" alt="Email"><input name="e"></label>') == [
+        GUARD.SATISFIED,
+        GUARD.SATISFIED,
+    ]
 
 
 def test_a_wrapping_label_with_no_text_names_nothing() -> None:
@@ -81,22 +84,21 @@ def test_text_in_a_label_after_a_closed_one_names_nothing() -> None:
 
 
 @pytest.mark.parametrize(
-    "tag",
+    ("tag", "state", "action"),
     [
-        '<img onClick={() => onZoom(photo)} src={photo.url} alt={photo.caption} />',
-        '<img onClick={(e) => { if (a > b) go(e); }} src={photo.url} alt={photo.caption} />',
-        '<img title={a > b ? "x>y}" : `}>`} src={photo.url} alt={photo.caption} />',
-        '<img {...(a > b ? one : two)} src={photo.url} alt={photo.caption} />',
+        ("<img onClick={() => onZoom(photo)} src={photo.url} alt={photo.caption} />", GUARD.SATISFIED, GUARD.DENY),
+        ("<img onClick={(e) => { if (a > b) go(e); }} src={u} alt={photo.caption} />", GUARD.SATISFIED, GUARD.DENY),
+        ('<img data-x={a > b ? "x>y}" : `}>`} src={u} alt={photo.caption} />', GUARD.SATISFIED, GUARD.DENY),
+        ("<img {...(a > b ? one : two)} src={u} alt={photo.caption} />", GUARD.UNEVALUATED, GUARD.SILENT),
     ],
 )
-def test_a_gt_inside_a_brace_expression_does_not_end_the_tag(tag: str) -> None:
-    states = _states(tag)
-    assert states in ([GUARD.SATISFIED], [GUARD.UNEVALUATED])
-    assert _actions(tag, tag.replace(" alt={photo.caption}", "")) in ([GUARD.DENY], [GUARD.SILENT])
+def test_a_gt_inside_a_brace_expression_does_not_end_the_tag(tag: str, state: str, action: str) -> None:
+    assert _states(tag) == [state]
+    assert _actions(tag, tag.replace(" alt={photo.caption}", "")) == [action]
 
 
 def test_a_gt_in_a_jsx_expression_keeps_the_alt_that_follows_it() -> None:
-    tag = '<img onClick={() => onZoom(photo)} src={photo.url} alt={photo.caption} />'
+    tag = "<img onClick={() => onZoom(photo)} src={photo.url} alt={photo.caption} />"
     assert _actions(tag, tag.replace(" alt={photo.caption}", "")) == [GUARD.DENY]
 
 
@@ -107,3 +109,16 @@ def test_an_unclosed_brace_does_not_swallow_the_rest_of_the_file() -> None:
 
 def test_a_gt_outside_braces_still_ends_the_tag() -> None:
     assert _states('<img src="/a.png" alt="x">{a > b}') == [GUARD.SATISFIED]
+
+
+def test_a_tag_inside_an_expression_is_read_with_the_tag_around_it() -> None:
+    markup = '<Row render={() => <b>x</b>} data-testid="r" />'
+    assert _states(markup) == [GUARD.NAMELESS]
+
+
+def test_a_self_closed_label_wraps_nothing() -> None:
+    assert _states('<label /><input name="e">') == [GUARD.MISSING]
+
+
+def test_a_stray_closing_label_is_ignored() -> None:
+    assert _states('</label><input name="e">') == [GUARD.MISSING]

@@ -1163,7 +1163,7 @@
   "kind": "correct",
   "title": "new form whose inputs are named by wrapping <label> elements",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "signup.html": {
     "before": "",
@@ -1176,7 +1176,7 @@
   "kind": "correct",
   "title": "new TSX form whose input is named by <label htmlFor>",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "src/Signup.tsx": {
     "before": "  return <h1>Sign up</h1>;\n",
@@ -1189,7 +1189,7 @@
   "kind": "correct",
   "title": "new Vue image with a bound :alt",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "src/ProductCard.vue": {
     "before": "  <div class=\"card\"><h3>{{ product.name }}</h3></div>\n",
@@ -1202,7 +1202,7 @@
   "kind": "correct",
   "title": "new Angular image with [alt] and icon button with [attr.aria-label]",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "src/app/user/user.component.html": {
     "before": "<div class=\"user\"><span>{{ user.name }}</span></div>\n",
@@ -1215,7 +1215,7 @@
   "kind": "correct",
   "title": "new Thymeleaf image with th:alt",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "src/main/resources/templates/home.html": {
     "before": "",
@@ -1319,7 +1319,7 @@
   "kind": "correct",
   "title": "new JSX image whose arrow-function handler precedes its alt",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "src/Gallery.jsx": {
     "before": "  return <div className=\"gallery\"></div>;\n",
@@ -1332,7 +1332,7 @@
   "kind": "correct",
   "title": "new TSX input whose arrow-function onChange precedes its aria-label",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "src/Filter.tsx": {
     "before": "  return <div className=\"filter\"></div>;\n",

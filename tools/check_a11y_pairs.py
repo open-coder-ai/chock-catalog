@@ -25,8 +25,9 @@ def load_pairs() -> list[dict]:
     return json.loads(PAIRS.read_text(encoding="utf-8"))
 
 
-def verdict(blocked: bool, warned: bool) -> str:
-    """The one word a pair's `expect` is compared with."""
+def verdict(flags: tuple[bool, bool]) -> str:
+    """The one word a pair's `expect` is compared with, from (blocked, warned)."""
+    blocked, warned = flags
     return "block" if blocked else "warn" if warned else "silent"
 
 
@@ -79,16 +80,20 @@ def check(guard: object) -> list[str]:
         if seen[i][0]["reviewed"] == "caught" and i not in RULED_TO_WARN and not seen[i][1]
     ]
     # An element replaced by one of its tag that lost the name is a lost name, whatever else changed.
-    failures += [f"{i}: a named element swapped for an unnamed one is allowed" for i in swaps("swap_regression") if not seen[i][1]]
+    failures += [
+        f"{i}: a named element swapped for an unnamed one is allowed"
+        for i in swaps("swap_regression")
+        if not seen[i][1]
+    ]
     failures += [f"{i}: a swap that keeps the name is refused" for i in swaps("swap_correct") if seen[i][1]]
     for i in swaps("swap_added"):
         if seen[i][1] or not seen[i][2]:
             failures.append(f"{i}: a genuinely added unnamed element must warn and not block")
     # Every pair says what the guard must do with it; `reviewed` stays the review's record, not the rule.
     failures += [
-        f"{i}: the guard says {verdict(b, w)}, the pair expects {p['expect']}"
+        f"{i}: the guard says {verdict((b, w))}, the pair expects {p['expect']}"
         for i, (p, b, w) in seen.items()
-        if verdict(b, w) != p["expect"]
+        if verdict((b, w)) != p["expect"]
     ]
     return failures
 
