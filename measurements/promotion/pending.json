@@ -1,0 +1,27 @@
+{
+  "pending": [
+    "agent-permissions-scan",
+    "ask-credential-switching",
+    "block-curl-pipe-sh",
+    "block-destructive-commands",
+    "block-invisible-unicode",
+    "block-no-verify",
+    "block-persistence-shapes",
+    "block-secret-store-reads",
+    "block-unapproved-egress",
+    "block-unguarded-agent-spawn",
+    "block-unpinned-agent-components",
+    "block-wildcard-agent-permissions",
+    "dockerfile-compose-security",
+    "iam-policy-scan",
+    "pin-github-actions",
+    "protect-agent-config",
+    "protect-ci-workflows",
+    "protect-commit-privacy",
+    "protect-main-branch",
+    "scan-secret-files",
+    "scan-secrets-entropy",
+    "verify-dependency-exists",
+    "verify-mcp-allowlist"
+  ]
+}

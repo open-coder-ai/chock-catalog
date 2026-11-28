@@ -86,6 +86,23 @@ pair — not a human gatekeeper — is the filter for low-effort machine-generat
 against every commit to this repo; a PR that cannot say what it checked, human- or
 agent-authored, will not pass either the gates or `chock check`, which replays every eval.
 
+## Production needs a measurement
+
+A policy is `production` only if `measurements/promotion/<id>.json` records both directions for its current version,
+and the record meets the bar. `python tools/check_promotion.py` holds this in CI.
+
+- **Correct work refused.** Replay the gate over the first-parent history of this repo and of open-coder-ai/chock,
+  each a full clone (`python tools/measure_false_positives.py --record <id> --corpus REPO=PATH ...`), and judge
+  every fire: `correct_work` (a refusal of a change that was fine, a fixture included) or `true_catch`. The bar:
+  correct-work refusals over commits judged is at or under 5%, and every authored block case is refused and every
+  authored allow case is allowed.
+- **Misses.** The record says the policy's own `Misses:` sentence was read, and counts the items it names.
+- **A new version needs a new record.** `python tools/check_promotion.py --settle <id>` fills the rate and
+  `bar_met` once every verdict has a one-line reason. If the bar is missed, the policy stays as it is: report it,
+  do not tune the policy to pass.
+- **`measurements/promotion/pending.json`** lists the production policies that predate this rule. It only shrinks;
+  a policy that becomes production is never added to it.
+
 ## Local loop
 
 ```bash

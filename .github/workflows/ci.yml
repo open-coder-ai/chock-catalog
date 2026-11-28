@@ -363,6 +363,12 @@ jobs:
       - name: Installed policies trail, never lead, what this catalog publishes
         run: python tools/check_installed.py
 
+      # A policy is `production` only with a measurement on record for its current version, and the record meets
+      # the bar (CONTRIBUTING.md). The 25 policies that predate the rule are listed in
+      # measurements/promotion/pending.json, which only shrinks.
+      - name: Production policies have a measurement on record
+        run: python tools/check_promotion.py
+
       # Not here, on purpose: the policy docs, the README, the coverage matrix, the quoted console
       # transcripts, the figures, the brand card and the adoption transcripts. They lag until the
       # owner's release, and the nightly drift report (nightly-transcripts.yml) says which are stale.

@@ -1,0 +1,40 @@
+{
+  "policy": "block-hook-bypass-in-files",
+  "version": "0.1.3",
+  "engine": "c684731c51fdbbb6eac7769fb82ce4e5485f6274",
+  "catalog": "0c48c423b22a32b3b5b13b6740af2613d3ef1ef9",
+  "date": "2026-11-28",
+  "corpora": [
+    {
+      "repo": "open-coder-ai/chock-catalog",
+      "commits": 253,
+      "history_exhausted": true,
+      "judged": 28,
+      "fires": 0
+    },
+    {
+      "repo": "open-coder-ai/chock",
+      "commits": 295,
+      "history_exhausted": true,
+      "judged": 25,
+      "fires": 0
+    }
+  ],
+  "triage": [],
+  "eval": {
+    "block": {
+      "caught": 15,
+      "total": 15
+    },
+    "allow": {
+      "allowed": 13,
+      "total": 13
+    }
+  },
+  "misses": {
+    "read": true,
+    "listed": 2
+  },
+  "correct_work_rate": 0.0,
+  "bar_met": true
+}
