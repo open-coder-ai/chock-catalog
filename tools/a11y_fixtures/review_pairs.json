@@ -1861,5 +1861,31 @@
     "after": "<button type=\"submit\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M0 0\"/></svg>Save</button>\n"
    }
   }
+ },
+ {
+  "id": "X17",
+  "kind": "regression",
+  "title": "aria-label removed from an Input inside a Form that carries a label prop",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Signup.tsx": {
+    "before": "    <Form label=\"Sign up\"><Input id=\"email\" aria-label=\"Email\" /></Form>\n",
+    "after": "    <Form label=\"Sign up\"><Input id=\"email\" /></Form>\n"
+   }
+  }
+ },
+ {
+  "id": "X18",
+  "kind": "regression",
+  "title": "aria-label removed from an IconButton (CloseIcon child) inside a Card that carries a label prop",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Profile.tsx": {
+    "before": "    <Card label=\"Profile\"><IconButton id=\"close\" aria-label=\"Close\"><CloseIcon /></IconButton></Card>\n",
+    "after": "    <Card label=\"Profile\"><IconButton id=\"close\"><CloseIcon /></IconButton></Card>\n"
+   }
+  }
  }
 ]
