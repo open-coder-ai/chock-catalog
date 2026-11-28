@@ -1,0 +1,962 @@
+{
+ "policy": "iam-policy-scan",
+ "cases": [
+  {
+   "id": "I01",
+   "kind": "catch",
+   "title": "JSON \"Action\": \"*\" on \"*\"",
+   "surface": "commit",
+   "files": {
+    "iam/admin.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I01v",
+   "kind": "catch",
+   "title": "variant: CloudFormation YAML, Action as block list",
+   "surface": "commit",
+   "files": {
+    "template.yaml": {
+     "before": "",
+     "after": "Resources:\n  Role:\n    Type: AWS::IAM::Role\n    Properties:\n      Policies:\n        - PolicyName: all\n          PolicyDocument:\n            Version: '2012-10-17'\n            Statement:\n              - Effect: Allow\n                Action:\n                  - '*'\n                Resource: '*'\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I02",
+   "kind": "catch",
+   "title": "\"Resource\": \"*\" with write actions (s3:PutObject, s3:DeleteObject)",
+   "surface": "commit",
+   "files": {
+    "iam/writer.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:PutObject\",\n        \"s3:DeleteObject\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "ask"
+  },
+  {
+   "id": "I02v",
+   "kind": "catch",
+   "title": "variant: Terraform HCL resources = [\"*\"] with write actions",
+   "surface": "commit",
+   "files": {
+    "iam.tf": {
+     "before": "",
+     "after": "data \"aws_iam_policy_document\" \"writer\" {\n  statement {\n    effect    = \"Allow\"\n    actions   = [\"s3:PutObject\", \"s3:DeleteObject\"]\n    resources = [\"*\"]\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "ask"
+  },
+  {
+   "id": "I03",
+   "kind": "catch",
+   "title": "\"Principal\": \"*\" bucket policy",
+   "surface": "commit",
+   "files": {
+    "bucket.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": \"*\",\n      \"Action\": \"s3:GetObject\",\n      \"Resource\": \"arn:aws:s3:::b/*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I03v",
+   "kind": "catch",
+   "title": "variant: Terraform principals block with identifiers [\"*\"]",
+   "surface": "commit",
+   "files": {
+    "pub.tf": {
+     "before": "",
+     "after": "data \"aws_iam_policy_document\" \"pub\" {\n  statement {\n    effect = \"Allow\"\n    actions = [\"s3:GetObject\"]\n    resources = [\"arn:aws:s3:::b/*\"]\n    principals {\n      type        = \"AWS\"\n      identifiers = [\"*\"]\n    }\n  }\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I04",
+   "kind": "catch",
+   "title": "iam:PassRole on *",
+   "surface": "commit",
+   "files": {
+    "iam/pass.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"iam:PassRole\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "block"
+  },
+  {
+   "id": "I04v",
+   "kind": "catch",
+   "title": "variant: Terraform jsonencode, iam:PassRole on *",
+   "surface": "commit",
+   "files": {
+    "pass.tf": {
+     "before": "",
+     "after": "resource \"aws_iam_policy\" \"p\" {\n  name   = \"p\"\n  policy = jsonencode({\n    Version = \"2012-10-17\"\n    Statement = [{ Effect = \"Allow\", Action = [\"iam:PassRole\"], Resource = \"*\" }]\n  })\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "block"
+  },
+  {
+   "id": "I05",
+   "kind": "catch",
+   "title": "Allow with NotAction (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/inverted.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"NotAction\": \"iam:*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I05v",
+   "kind": "catch",
+   "title": "variant: NotAction in YAML",
+   "surface": "commit",
+   "files": {
+    "inverted.yaml": {
+     "before": "",
+     "after": "Statement:\n  - Effect: Allow\n    NotAction:\n      - iam:*\n    Resource: '*'\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I06",
+   "kind": "catch",
+   "title": "k8s Role verbs: [\"*\"]",
+   "surface": "commit",
+   "files": {
+    "k8s/role.yaml": {
+     "before": "",
+     "after": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: ops\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"*\"]\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I06v",
+   "kind": "catch",
+   "title": "variant: verbs as a block list in a ClusterRole",
+   "surface": "commit",
+   "files": {
+    "k8s/clusterrole.yaml": {
+     "before": "",
+     "after": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: ops\nrules:\n  - apiGroups:\n      - ''\n    resources:\n      - pods\n    verbs:\n      - '*'\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I07",
+   "kind": "catch",
+   "title": "ClusterRoleBinding to cluster-admin",
+   "surface": "commit",
+   "files": {
+    "k8s/binding.yaml": {
+     "before": "",
+     "after": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: ops\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: cluster-admin\nsubjects:\n  - kind: User\n    name: dana\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I07v",
+   "kind": "catch",
+   "title": "variant: Terraform kubernetes_cluster_role_binding to cluster-admin",
+   "surface": "commit",
+   "files": {
+    "rbac.tf": {
+     "before": "",
+     "after": "resource \"kubernetes_cluster_role_binding\" \"b\" {\n  metadata { name = \"b\" }\n  role_ref {\n    api_group = \"rbac.authorization.k8s.io\"\n    kind = \"ClusterRole\"\n    name = \"cluster-admin\"\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I08",
+   "kind": "catch",
+   "title": "GCP roles/owner in Terraform",
+   "surface": "commit",
+   "files": {
+    "gcp.tf": {
+     "before": "",
+     "after": "resource \"google_project_iam_member\" \"m\" {\n  role = \"roles/owner\"\n  member = \"user:a@example.com\"\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I08v",
+   "kind": "catch",
+   "title": "variant: GCP policy YAML bindings role: roles/owner",
+   "surface": "commit",
+   "files": {
+    "gcp.yaml": {
+     "before": "",
+     "after": "bindings:\n  - role: roles/owner\n    members:\n      - user:a@example.com\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I09",
+   "kind": "catch",
+   "title": "Azure custom role actions [\"*\"] (JSON)",
+   "surface": "commit",
+   "files": {
+    "azure/role.json": {
+     "before": "",
+     "after": "{\"Name\": \"all\", \"IsCustom\": true, \"Actions\": [\"*\"], \"AssignableScopes\": [\"/subscriptions/x\"]}"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I09v",
+   "kind": "catch",
+   "title": "variant: Bicep Owner role assignment at subscription scope",
+   "surface": "commit",
+   "files": {
+    "main.bicep": {
+     "before": "",
+     "after": "targetScope = 'subscription'\n\nresource ra 'Microsoft.Authorization/roleAssignments@2022-04-01' = {\n  name: guid('x')\n  properties: {\n    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8e3af657-a8ff-443c-a75c-2fe8c4bcb635')\n  }\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I10",
+   "kind": "catch",
+   "title": "AdministratorAccess managed policy attached (Terraform)",
+   "surface": "commit",
+   "files": {
+    "attach.tf": {
+     "before": "",
+     "after": "resource \"aws_iam_role_policy_attachment\" \"admin\" {\n  role       = aws_iam_role.deploy.name\n  policy_arn = \"arn:aws:iam::aws:policy/AdministratorAccess\"\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "block"
+  },
+  {
+   "id": "I10v",
+   "kind": "catch",
+   "title": "variant: CloudFormation ManagedPolicyArns list",
+   "surface": "commit",
+   "files": {
+    "stack.yaml": {
+     "before": "",
+     "after": "Resources:\n  DeployRole:\n    Type: AWS::IAM::Role\n    Properties:\n      RoleName: deploy\n      ManagedPolicyArns:\n        - arn:aws:iam::aws:policy/AdministratorAccess\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "block"
+  },
+  {
+   "id": "I11",
+   "kind": "catch",
+   "title": "service wildcard s3:* on *",
+   "surface": "commit",
+   "files": {
+    "iam/s3.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"s3:*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I11v",
+   "kind": "catch",
+   "title": "variant: unlisted service wildcard (lambda:*, secretsmanager:*) on *",
+   "surface": "commit",
+   "files": {
+    "iam/svc.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"lambda:*\",\n        \"secretsmanager:*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "block"
+  },
+  {
+   "id": "I12",
+   "kind": "catch",
+   "title": "wildcard hidden behind a Terraform variable default",
+   "surface": "commit",
+   "files": {
+    "var.tf": {
+     "before": "",
+     "after": "variable \"acts\" {\n  default = [\"*\"]\n}\n\ndata \"aws_iam_policy_document\" \"d\" {\n  statement {\n    effect = \"Allow\"\n    actions = var.acts\n    resources = [\"*\"]\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I12v",
+   "kind": "catch",
+   "title": "variant: YAML anchor reused as the Action value",
+   "surface": "commit",
+   "files": {
+    "anchor.yaml": {
+     "before": "",
+     "after": "x: &a '*'\nStatement:\n  - Effect: Allow\n    Action: *a\n    Resource: '*'\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N01",
+   "kind": "correct",
+   "title": "\"Resource\": \"*\" on describe/list actions AWS only supports on * (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/read.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"ec2:DescribeInstances\",\n        \"s3:ListAllMyBuckets\",\n        \"sts:GetCallerIdentity\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N02",
+   "kind": "correct",
+   "title": "same in Terraform: resources = [\"*\"] with describe/list actions",
+   "surface": "commit",
+   "files": {
+    "read.tf": {
+     "before": "",
+     "after": "data \"aws_iam_policy_document\" \"read\" {\n  statement {\n    effect    = \"Allow\"\n    actions   = [\"ec2:DescribeInstances\", \"s3:ListAllMyBuckets\"]\n    resources = [\"*\"]\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N03",
+   "kind": "correct",
+   "title": "scoped role: named actions on named ARNs (JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/scoped.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:GetObject\",\n        \"s3:PutObject\"\n      ],\n      \"Resource\": \"arn:aws:s3:::b/*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N04",
+   "kind": "correct",
+   "title": "scoped Terraform policy document with interpolated ARN and /* object suffix",
+   "surface": "commit",
+   "files": {
+    "scoped.tf": {
+     "before": "",
+     "after": "data \"aws_iam_policy_document\" \"d\" {\n  statement {\n    effect = \"Allow\"\n    actions = [\"s3:GetObject\"]\n    resources = [\"${aws_s3_bucket.b.arn}/*\"]\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N05",
+   "kind": "correct",
+   "title": "enforce-TLS bucket policy: Deny, Principal *, s3:*, SecureTransport false (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/tls.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Deny\",\n      \"Principal\": \"*\",\n      \"Action\": \"s3:*\",\n      \"Resource\": [\n        \"arn:aws:s3:::b\",\n        \"arn:aws:s3:::b/*\"\n      ],\n      \"Condition\": {\n        \"Bool\": {\n          \"aws:SecureTransport\": \"false\"\n        }\n      }\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N06",
+   "kind": "correct",
+   "title": "deny-all guardrail (SCP): Deny Action * Resource * outside approved regions (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/scp.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Deny\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\",\n      \"Condition\": {\n        \"StringNotEquals\": {\n          \"aws:RequestedRegion\": [\n            \"eu-west-1\"\n          ]\n        }\n      }\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N07",
+   "kind": "correct",
+   "title": "KMS default key policy: account root, kms:*, Resource * (AWS's documented default)",
+   "surface": "commit",
+   "files": {
+    "kms/key.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"AWS\": \"arn:aws:iam::111122223333:root\"\n      },\n      \"Action\": \"kms:*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N08",
+   "kind": "correct",
+   "title": "Principal * narrowed by aws:PrincipalOrgID condition (bucket policy)",
+   "surface": "commit",
+   "files": {
+    "iam/org.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": \"*\",\n      \"Action\": \"s3:GetObject\",\n      \"Resource\": \"arn:aws:s3:::b/*\",\n      \"Condition\": {\n        \"StringEquals\": {\n          \"aws:PrincipalOrgID\": \"o-exampleorgid\"\n        }\n      }\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N09",
+   "kind": "correct",
+   "title": "service trust policy: lambda.amazonaws.com may assume the role",
+   "surface": "commit",
+   "files": {
+    "iam/trust.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"lambda.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N10",
+   "kind": "correct",
+   "title": "comment that mentions the bad pattern in Terraform",
+   "surface": "commit",
+   "files": {
+    "commented.tf": {
+     "before": "",
+     "after": "# never write actions = [\"*\"] with resources = [\"*\"]\ndata \"aws_iam_policy_document\" \"read\" {\n  statement {\n    effect    = \"Allow\"\n    actions   = [\"ec2:DescribeInstances\", \"s3:ListAllMyBuckets\"]\n    resources = [\"*\"]\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N11",
+   "kind": "correct",
+   "title": "docs example in Markdown showing what not to write",
+   "surface": "commit",
+   "files": {
+    "docs/iam.md": {
+     "before": "",
+     "after": "```json\n{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n```\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N12",
+   "kind": "correct",
+   "title": "test fixture: tests/fixtures/overbroad_policy.json",
+   "surface": "commit",
+   "files": {
+    "tests/fixtures/overbroad_policy.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N13",
+   "kind": "correct",
+   "title": "k8s Role with named verbs and resources",
+   "surface": "commit",
+   "files": {
+    "k8s/reader.yaml": {
+     "before": "",
+     "after": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: r\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N14",
+   "kind": "correct",
+   "title": "ClusterRoleBinding to the built-in view role",
+   "surface": "commit",
+   "files": {
+    "k8s/view.yaml": {
+     "before": "",
+     "after": "apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: ops\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: view\nsubjects:\n  - kind: User\n    name: dana\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N15",
+   "kind": "correct",
+   "title": "GCP narrow role to a service account",
+   "surface": "commit",
+   "files": {
+    "gcp-narrow.tf": {
+     "before": "",
+     "after": "resource \"google_project_iam_member\" \"m\" {\n  role = \"roles/storage.objectViewer\"\n  member = \"serviceAccount:a@p.iam.gserviceaccount.com\"\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N16",
+   "kind": "correct",
+   "title": "Azure Reader at resource-group scope (Terraform)",
+   "surface": "commit",
+   "files": {
+    "reader.tf": {
+     "before": "",
+     "after": "resource \"azurerm_role_assignment\" \"r\" {\n  scope = azurerm_resource_group.rg.id\n  role_definition_name = \"Reader\"\n  principal_id = var.pid\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N17",
+   "kind": "correct",
+   "title": "legacy admin policy in HEAD: add a scoped statement after it",
+   "surface": "commit",
+   "files": {
+    "iam/legacy.json": {
+     "before": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    },\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"s3:GetObject\",\n      \"Resource\": \"arn:aws:s3:::b/*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N18",
+   "kind": "correct",
+   "title": "legacy admin policy in HEAD: re-indent the file 2 -> 4 spaces only",
+   "surface": "commit",
+   "files": {
+    "iam/legacy.json": {
+     "before": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n",
+     "after": "{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": [\n                \"*\"\n            ],\n            \"Resource\": \"*\"\n        }\n    ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N19",
+   "kind": "correct",
+   "title": "legacy admin policy in HEAD: add a Sid to the old statement",
+   "surface": "commit",
+   "files": {
+    "iam/legacy.json": {
+     "before": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"Legacy\",\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N20",
+   "kind": "correct",
+   "title": "CDK Python with scoped grant",
+   "surface": "commit",
+   "files": {
+    "stack.py": {
+     "before": "",
+     "after": "role.add_to_policy(iam.PolicyStatement(actions=[\"s3:GetObject\"], resources=[bucket.arn]))\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N21",
+   "kind": "correct",
+   "title": "S3 CORS config with AllowedHeaders * (not IAM)",
+   "surface": "commit",
+   "files": {
+    "cors.json": {
+     "before": "",
+     "after": "[{\"AllowedHeaders\": [\"*\"], \"AllowedMethods\": [\"GET\"], \"AllowedOrigins\": [\"*\"]}]"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N22",
+   "kind": "correct",
+   "title": "ValidatingWebhookConfiguration rules with wildcards (not RBAC)",
+   "surface": "commit",
+   "files": {
+    "webhook.yaml": {
+     "before": "",
+     "after": "apiVersion: admissionregistration.k8s.io/v1\nkind: ValidatingWebhookConfiguration\nmetadata:\n  name: w\nwebhooks:\n  - name: w.example.com\n    rules:\n      - apiGroups: ['*']\n        apiVersions: ['*']\n        operations: ['CREATE']\n        resources: ['*']\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N23",
+   "kind": "correct",
+   "title": "Lambda basic logging: logs:CreateLogGroup on * (AWS managed-policy shape)",
+   "surface": "commit",
+   "files": {
+    "iam/logs.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"logs:CreateLogGroup\",\n        \"logs:CreateLogStream\",\n        \"logs:PutLogEvents\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N24",
+   "kind": "correct",
+   "title": "Python unit test asserting the scanner rejects a wildcard",
+   "surface": "commit",
+   "files": {
+    "tests/test_scan.py": {
+     "before": "",
+     "after": "def test_rejects():\n    assert scan({\"Effect\": \"Allow\", \"Action\": \"*\"})\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N25",
+   "kind": "correct",
+   "title": "Azure Contributor at resource-group scope (Bicep)",
+   "surface": "commit",
+   "files": {
+    "contrib.bicep": {
+     "before": "",
+     "after": "targetScope = 'resourceGroup'\n\nresource ra 'Microsoft.Authorization/roleAssignments@2022-04-01' = {\n  name: guid('x')\n  properties: {\n    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N26",
+   "kind": "correct",
+   "title": "Helm values listing a Kubernetes user named cluster-admin-readonly group mapping (name: key)",
+   "surface": "commit",
+   "files": {
+    "values.yaml": {
+     "before": "",
+     "after": "rbac:\n  groups:\n    - name: cluster-admin-readonly\n      users: [dana]\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS2",
+   "kind": "probe",
+   "title": "sidecar waiver for a strict-JSON policy, sidecar staged with it",
+   "surface": "agent-commit",
+   "files": {
+    "iam/admin.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    },
+    ".chock/iam-policy-scan.json": {
+     "before": "",
+     "after": "{\n  \"version\": 1,\n  \"waive\": [\n    {\n      \"path\": \"iam/admin.json\",\n      \"rule\": \"iam-admin-grant\",\n      \"id\": \"1208495a7e52\",\n      \"reason\": \"reviewed\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block/exit1",
+   "expect": "block"
+  },
+  {
+   "id": "PS3",
+   "kind": "probe",
+   "title": "sidecar already in HEAD, policy file new",
+   "surface": "agent-commit",
+   "files": {
+    "iam/admin.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    },
+    ".chock/iam-policy-scan.json": {
+     "before": "{\n  \"version\": 1,\n  \"waive\": [\n    {\n      \"path\": \"iam/admin.json\",\n      \"rule\": \"iam-admin-grant\",\n      \"id\": \"1208495a7e52\",\n      \"reason\": \"reviewed\"\n    }\n  ]\n}\n",
+     "after": null
+    }
+   },
+   "reviewed": "allow/exit0",
+   "expect": "allow"
+  },
+  {
+   "id": "PS4",
+   "kind": "probe",
+   "title": "broken sidecar staged with a clean change (no grant)",
+   "surface": "commit",
+   "files": {
+    ".chock/iam-policy-scan.json": {
+     "before": "",
+     "after": "{bad"
+    },
+    "iam/scoped.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"s3:GetObject\",\n      \"Resource\": \"arn:aws:s3:::b/*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS5",
+   "kind": "probe",
+   "title": "broken JSON (trailing comma) that mentions Effect",
+   "surface": "commit",
+   "files": {
+    "iam/broken.json": {
+     "before": "",
+     "after": "{\n  \"Effect\": \"Allow\",\n  \"Action\": \"s3:GetObject\",\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS6",
+   "kind": "probe",
+   "title": "package.json with sideEffects: false",
+   "surface": "commit",
+   "files": {
+    "package.json": {
+     "before": "",
+     "after": "{\n  \"name\": \"web\",\n  \"version\": \"1.0.0\",\n  \"sideEffects\": false\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS7",
+   "kind": "probe",
+   "title": "k8s Deployment with a toleration effect: NoSchedule",
+   "surface": "commit",
+   "files": {
+    "k8s/deploy.yaml": {
+     "before": "",
+     "after": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\nspec:\n  template:\n    spec:\n      tolerations:\n        - key: dedicated\n          operator: Equal\n          value: web\n          effect: NoSchedule\n      containers:\n        - name: web\n          image: example.com/web:1.0\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS8",
+   "kind": "probe",
+   "title": "YAML with a tab inside a block scalar and the word effect",
+   "surface": "commit",
+   "files": {
+    "config/notes.yaml": {
+     "before": "",
+     "after": "description: |\n  line one\n  a tab\tinside the text, the effect of the setting\n  line three\nname: notes\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS9",
+   "kind": "probe",
+   "title": "Helm template (templates/ dir) with if/end directives and a named-verb Role",
+   "surface": "commit",
+   "files": {
+    "charts/app/templates/role.yaml": {
+     "before": "",
+     "after": "{{- if .Values.rbac.create }}\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: {{ .Release.Name }}-reader\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"configmaps\"]\n    verbs: [\"get\", \"list\"]\n{{- end }}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS10",
+   "kind": "probe",
+   "title": "Helm template with verbs [\"*\"]",
+   "surface": "commit",
+   "files": {
+    "charts/app/templates/role.yaml": {
+     "before": "",
+     "after": "{{- if .Values.rbac.create }}\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: {{ .Release.Name }}-ops\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"configmaps\"]\n    verbs: [\"*\"]\n{{- end }}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "PS11",
+   "kind": "probe",
+   "title": "Go-templated YAML outside templates/ (deploy/rbac.yaml) with a named-verb Role",
+   "surface": "commit",
+   "files": {
+    "deploy/rbac.yaml": {
+     "before": "",
+     "after": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: {{ .Release.Name }}-reader\n  namespace: {{ .Release.Namespace }}\nrules:\n  - apiGroups: [\"\"]\n    resources: [\"configmaps\"]\n    verbs: [\"get\", \"list\"]\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "PS14",
+   "kind": "probe",
+   "title": "realistic Terraform: heredoc, dynamic block, for expr, conditional, scoped grants",
+   "surface": "commit",
+   "files": {
+    "infra/main.tf": {
+     "before": "",
+     "after": "locals {\n  buckets = [\"logs\", \"reports\"]\n  tags    = { team = \"platform\" }\n}\n\ndata \"aws_iam_policy_document\" \"reader\" {\n  dynamic \"statement\" {\n    for_each = local.buckets\n    content {\n      effect    = \"Allow\"\n      actions   = [\"s3:GetObject\", \"s3:ListBucket\"]\n      resources = [\n        \"arn:aws:s3:::${statement.value}\",\n        \"arn:aws:s3:::${statement.value}/*\",\n      ]\n    }\n  }\n\n  statement {\n    effect    = \"Allow\"\n    actions   = [\"ec2:DescribeInstances\"]\n    resources = [\"*\"]\n  }\n}\n\nresource \"aws_iam_policy\" \"reader\" {\n  name   = var.enabled ? \"reader\" : \"reader-off\"\n  policy = data.aws_iam_policy_document.reader.json\n  tags   = { for k, v in local.tags : lower(k) => v }\n}\n\nresource \"aws_instance\" \"web\" {\n  ami           = var.ami\n  instance_type = \"t3.micro\"\n  user_data     = <<-EOT\n    #!/bin/bash\n    echo \"effect of the change: none\" > /etc/motd\n    echo \"principal host: $(hostname)\" >> /etc/motd\n  EOT\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS15",
+   "kind": "probe",
+   "title": "Terraform with %{ if } template directive in a string and word statement",
+   "surface": "commit",
+   "files": {
+    "infra/msg.tf": {
+     "before": "",
+     "after": "variable \"greeting\" {\n  default = \"statement: %{ if var.prod }production%{ else }staging%{ endif }\"\n}\n\noutput \"msg\" {\n  value = \"the statement is %{ if var.prod }live%{ endif }\"\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "PS16",
+   "kind": "probe",
+   "title": "rollout: observe in HEAD, new JSON admin policy",
+   "surface": "commit",
+   "files": {
+    "iam/admin.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    },
+    ".chock/config.yaml": {
+     "before": "rollout: observe\n",
+     "after": null
+    }
+   },
+   "reviewed": "warn",
+   "expect": "warn"
+  },
+  {
+   "id": "PS17",
+   "kind": "probe",
+   "title": "JSON with NaN that mentions effect (Python json.dumps output)",
+   "surface": "commit",
+   "files": {
+    "data/out.json": {
+     "before": "",
+     "after": "{\"effect\": \"ok\", \"value\": NaN}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "PS18",
+   "kind": "probe",
+   "title": "cross-account trust without ExternalId (ask tier)",
+   "surface": "commit",
+   "files": {
+    "iam/trust.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"AWS\": \"arn:aws:iam::123456789012:root\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "PS19",
+   "kind": "probe",
+   "title": "s3:* on a named bucket (ask tier)",
+   "surface": "commit",
+   "files": {
+    "iam/bucket.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"s3:*\",\n      \"Resource\": \"arn:aws:s3:::reports\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  }
+ ],
+ "unrebuilt": [
+  {
+   "id": "PS1",
+   "title": "pragma beside the grant (YAML admin statement), new file",
+   "reason": "needs the waiver pragma comment text, which this task may not write; not guessed"
+  },
+  {
+   "id": "PS12",
+   "title": "data JSON over 1 MiB that only uses the words effect/principal",
+   "reason": "data JSON over 1 MiB; not embedded in a fixture file"
+  },
+  {
+   "id": "PS13",
+   "title": "legacy >1 MiB data JSON in HEAD, one record edited",
+   "reason": "legacy data JSON over 1 MiB in HEAD (twice, before and after); not embedded in a fixture file"
+  }
+ ]
+}
