@@ -1653,5 +1653,148 @@
     "after": "<p>Home</p>\n<img src=\"/img/logo.svg\" :alt=\"logoText\">\n"
    }
   }
+ },
+ {
+  "id": "X01",
+  "kind": "regression",
+  "title": "alt replaced by bound :alt empty",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/c.png\" alt=\"Revenue chart\">\n",
+    "after": "<img src=\"/c.png\" :alt=\"\">\n"
+   }
+  }
+ },
+ {
+  "id": "X02",
+  "kind": "regression",
+  "title": "alt replaced by valueless [alt]",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/c.png\" alt=\"Revenue chart\">\n",
+    "after": "<img src=\"/c.png\" [alt]>\n"
+   }
+  }
+ },
+ {
+  "id": "X03",
+  "kind": "regression",
+  "title": "alt replaced by th:alt empty",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/c.png\" alt=\"Revenue chart\">\n",
+    "after": "<img src=\"/c.png\" th:alt=\"\">\n"
+   }
+  }
+ },
+ {
+  "id": "X04",
+  "kind": "regression",
+  "title": "alt replaced by bound :alt of an empty string literal",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/c.png\" alt=\"Revenue chart\">\n",
+    "after": "<img src=\"/c.png\" :alt=\"''\">\n"
+   }
+  }
+ },
+ {
+  "id": "X05",
+  "kind": "regression",
+  "title": "alt replaced by [alt] of an empty string literal",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/c.png\" alt=\"Revenue chart\">\n",
+    "after": "<img src=\"/c.png\" [alt]=\"''\">\n"
+   }
+  }
+ },
+ {
+  "id": "X06",
+  "kind": "regression",
+  "title": "lang replaced by an empty bound :lang",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<html lang=\"en\">\n",
+    "after": "<html :lang=\"\">\n"
+   }
+  }
+ },
+ {
+  "id": "X07",
+  "kind": "regression",
+  "title": "JSX alt replaced by alt={\"\"}",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Chart.jsx": {
+    "before": "  return <img src=\"/c.png\" alt=\"Revenue chart\" />;\n",
+    "after": "  return <img src=\"/c.png\" alt={\"\"} />;\n"
+   }
+  }
+ },
+ {
+  "id": "X08",
+  "kind": "regression",
+  "title": "JSX alt replaced by alt={''}",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Chart.jsx": {
+    "before": "  return <img src=\"/c.png\" alt=\"Revenue chart\" />;\n",
+    "after": "  return <img src=\"/c.png\" alt={''} />;\n"
+   }
+  }
+ },
+ {
+  "id": "X09",
+  "kind": "regression",
+  "title": "JSX alt replaced by alt={``}",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Chart.jsx": {
+    "before": "  return <img src=\"/c.png\" alt=\"Revenue chart\" />;\n",
+    "after": "  return <img src=\"/c.png\" alt={``} />;\n"
+   }
+  }
+ },
+ {
+  "id": "X10",
+  "kind": "regression",
+  "title": "JSX alt replaced by alt={undefined}",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Chart.jsx": {
+    "before": "  return <img src=\"/c.png\" alt=\"Revenue chart\" />;\n",
+    "after": "  return <img src=\"/c.png\" alt={undefined} />;\n"
+   }
+  }
+ },
+ {
+  "id": "X11",
+  "kind": "regression",
+  "title": "JSX alt replaced by alt={null}",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Chart.jsx": {
+    "before": "  return <img src=\"/c.png\" alt=\"Revenue chart\" />;\n",
+    "after": "  return <img src=\"/c.png\" alt={null} />;\n"
+   }
+  }
  }
 ]

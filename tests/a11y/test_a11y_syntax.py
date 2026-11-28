@@ -122,3 +122,31 @@ def test_a_self_closed_label_wraps_nothing() -> None:
 
 def test_a_stray_closing_label_is_ignored() -> None:
     assert _states('</label><input name="e">') == [GUARD.MISSING]
+
+
+@pytest.mark.parametrize("empty", ["", " ", "''", '""', "``", " '' "])
+def test_a_bound_empty_value_is_not_a_name(empty: str) -> None:
+    named = '<img src="/c.png" alt="Revenue chart">'
+    assert _actions(named, f'<img src="/c.png" :alt="{empty}">') == [GUARD.DENY]
+    assert _actions('<html lang="en">', f'<html :lang="{empty}">') == [GUARD.DENY]
+
+
+def test_a_valueless_binding_is_not_a_name() -> None:
+    assert _actions('<img src="/c.png" alt="x y">', '<img src="/c.png" [alt]>') == [GUARD.DENY]
+
+
+@pytest.mark.parametrize("empty", ['""', "''", "``", "undefined", "null", ' "" '])
+def test_a_brace_value_that_is_empty_is_not_a_name(empty: str) -> None:
+    before = '<img src="/c.png" alt="Revenue chart" />'
+    assert _actions(before, f'<img src="/c.png" alt={{{empty}}} />') == [GUARD.DENY]
+    assert _actions('<button aria-label="Close" />', f"<button aria-label={{{empty}}} />") == [GUARD.DENY]
+
+
+def test_an_empty_literal_bound_to_alt_reads_as_a_decorative_marking() -> None:
+    assert _states('<img src="/c.png" :alt="\'\'">') == [GUARD.SUPPRESSED]
+    assert _states('<img src="/c.png" :alt="">') == [GUARD.MISSING]
+
+
+def test_a_bound_value_that_only_looks_empty_is_still_a_name() -> None:
+    assert _states('<img src="/c.png" :alt="nullable">') == [GUARD.SATISFIED]
+    assert _states('<img src="/c.png" alt={undefinedLabel}>') == [GUARD.SATISFIED]

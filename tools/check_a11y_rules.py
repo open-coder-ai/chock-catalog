@@ -24,8 +24,15 @@ CRITERION = re.compile(r"^\d\.\d{1,2}\.\d{1,2}$")
 
 #: Config keys this module exercises. The guard's source is read for the keys it actually
 #: consults, so a rule file that grows a key the guard reads fails here until it is covered.
-COVERED_SPEC = {"requirements", "void_elements", "suppressible", "suppressing", "component_name_props",
-                "markup_suffixes", "bound_attributes"}
+COVERED_SPEC = {
+    "requirements",
+    "void_elements",
+    "suppressible",
+    "suppressing",
+    "component_name_props",
+    "markup_suffixes",
+    "bound_attributes",
+}
 COVERED_NOISE = {"words", "min_length", "file_extensions", "by_tag"}
 #: Data files the guard must not read: their entries are records, not verdicts.
 RECORDED = ("rules.json", "aria_tables.json", "jurisdictions.json")
@@ -162,7 +169,7 @@ def check_suppressions(p: Probe) -> None:
     for tag in p.spec["suppressing"]["empty_alt"]:
         named = p.synthesise(tag, p.required[tag], named=True)
         emptied = p.element(tag, {"data-testid": f"probe-{tag}", "alt": ""})
-        p.refuses(f'<{tag}> with its alt emptied', named, emptied)
+        p.refuses(f"<{tag}> with its alt emptied", named, emptied)
 
 
 def check_components(p: Probe) -> None:
@@ -172,7 +179,9 @@ def check_components(p: Probe) -> None:
         p.refuses(f"<Widget> losing {prop}", before, '<Widget data-testid="w" />')
         p.refuses(f"<Widget> with {prop} emptied", before, f'<Widget data-testid="w" {prop}="" />')
         p.allows(f"<Widget> gaining {prop}", "<p>x</p>", before)
-    p.allows("<Widget> that never carried a name", '<Widget data-testid="w" />', '<Widget data-testid="w" edited="1" />')
+    p.allows(
+        "<Widget> that never carried a name", '<Widget data-testid="w" />', '<Widget data-testid="w" edited="1" />'
+    )
 
 
 def check_bound_attributes(p: Probe) -> None:
@@ -185,6 +194,20 @@ def check_bound_attributes(p: Probe) -> None:
         p.refuses(f"<img> losing {spelling}", bound_img, '<img data-testid="b">')
         p.allows(f"alt replaced by {spelling}", f'<img data-testid="b" alt="{REAL_NAME}">', bound_img)
         p.allows(f"{spelling} naming a new <img>", "<p>x</p>", bound_img)
+        for empty in ("", *bound["empty"]):
+            p.refuses(f"<img> {spelling} bound to {empty!r}", bound_img, f'<img data-testid="b" {spelling}="{empty}">')
+    for opener, closer in bound["brackets"]:
+        p.refuses(
+            f"<img> {opener}alt{closer} left without a value",
+            f'<img data-testid="b" {opener}alt{closer}="x">',
+            f'<img data-testid="b" {opener}alt{closer}>',
+        )
+    for empty in bound["empty"]:
+        p.refuses(
+            f"<img> alt={{{empty}}}",
+            f'<img data-testid="b" alt="{REAL_NAME}">',
+            f'<img data-testid="b" alt={{{empty}}}>',
+        )
     for written, attr in bound["aliases"].items():
         p.assert_that(attr == "for", f"alias {written} -> {attr}: no case here reads an alias for anything but `for`")
         label = f'<label {written}="f">{REAL_NAME}</label><input data-testid="i" id="f">'
@@ -232,6 +255,7 @@ def check_noise(p: Probe) -> None:
 
 def check_a_name_the_path_also_spells(p: Probe) -> None:
     """Naming a file after what it depicts is good practice, so alt matching src is not evidence."""
+
     def img(src: str, alt: str | None = None) -> str:
         name = "" if alt is None else f' alt="{alt}"'
         return f'<img data-testid="i" src="{src}"{name}>'
@@ -259,8 +283,11 @@ def check_a_name_the_path_also_spells(p: Probe) -> None:
     # The hyphen is excluded, so a hyphen-joined slug goes unremarked. That is the known cost, and
     # it is the direction a gate wired at block must err in: a weak name added beats a good one
     # refused, and this rule judges quality, not either transition the policy exists for.
-    p.allows("a hyphen-joined slug, the cost of excluding the hyphen",
-             img("/img/hero-banner.png"), img("/img/hero-banner.png", "hero-banner"))
+    p.allows(
+        "a hyphen-joined slug, the cost of excluding the hyphen",
+        img("/img/hero-banner.png"),
+        img("/img/hero-banner.png", "hero-banner"),
+    )
 
 
 def check_name_length(p: Probe) -> None:
@@ -365,8 +392,7 @@ def main() -> int:
         check(probe)
 
     if probe.failures:
-        print(f"The shipped guard misjudges its own rules ({len(probe.failures)} of {probe.checked}):",
-              file=sys.stderr)
+        print(f"The shipped guard misjudges its own rules ({len(probe.failures)} of {probe.checked}):", file=sys.stderr)
         for failure in probe.failures:
             print(f"  - {failure}", file=sys.stderr)
         print(
