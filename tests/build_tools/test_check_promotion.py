@@ -11,10 +11,13 @@ from pathlib import Path
 import check_promotion as cp
 import pytest
 from build_tools.selkit import write
+from promotion_record import executable_totals
 from trees import ROOT
 
 SCHEMA = json.loads((ROOT / cp.FOLDER / "record.schema.json").read_text(encoding="utf-8"))
 SHA = "a" * 40
+A, B = "open-coder-ai/chock-catalog", "open-coder-ai/chock"
+TOTALS = {"block": 3, "allow": 2}
 #: The 25 policies production on 2026-11-28 (R13-4): pending.json may lose names from it, never gain one.
 GRANDFATHERED = {
     "agent-permissions-scan", "ask-credential-switching", "block-curl-pipe-sh", "block-destructive-commands",
@@ -27,8 +30,14 @@ GRANDFATHERED = {
 }  # fmt: skip
 
 
+def corpora(judged: int = 40, fires: int = 2, **over: object) -> list[dict]:
+    """Both histories replayed past 300 commits; the catalog's holds all the judged commits and fires."""
+    first = {"repo": A, "commits": 400, "history_exhausted": False, "judged": judged, "fires": fires} | over
+    return [first, {"repo": B, "commits": 400, "history_exhausted": False, "judged": 0, "fires": 0}]
+
+
 def entry(verdict: str = "correct_work", reason: str = "a fixture") -> dict:
-    return {"repo": "r/a", "commit": SHA, "path": "t.py", "rule": "", "verdict": verdict, "reason": reason}
+    return {"repo": A, "commit": SHA, "path": "t.py", "rule": "", "verdict": verdict, "reason": reason}
 
 
 def record(**over: object) -> dict:
@@ -39,7 +48,7 @@ def record(**over: object) -> dict:
         "engine": SHA,
         "catalog": SHA,
         "date": "2026-11-28",
-        "corpora": [{"repo": "r/a", "commits": 50, "judged": 40, "fires": 2}],
+        "corpora": corpora(),
         "triage": [entry(), entry("true_catch")],
         "eval": {"block": {"caught": 3, "total": 3}, "allow": {"allowed": 2, "total": 2}},
         "misses": {"read": True, "listed": 4},
@@ -50,7 +59,7 @@ def record(**over: object) -> dict:
 
 
 def defects(rec: dict, version: str = "1.0.0") -> list[str]:
-    return cp.defects(rec, "demo", version, SCHEMA)
+    return cp.defects(rec, "demo", version, SCHEMA, TOTALS)
 
 
 def test_a_record_inside_the_bar_holds() -> None:
@@ -60,14 +69,13 @@ def test_a_record_inside_the_bar_holds() -> None:
 
 
 def test_five_percent_exactly_is_inside_the_bar_and_a_hair_over_is_not() -> None:
-    corpora = [{"repo": "r/a", "commits": 50, "judged": 40, "fires": 2}]
     two = [entry(), entry()]
     assert record(triage=two)["bar_met"] is True
-    assert record(triage=two, corpora=[{**corpora[0], "judged": 39}])["bar_met"] is False
+    assert record(triage=two, corpora=corpora(judged=39))["bar_met"] is False
 
 
 def test_a_missed_bar_is_reported_with_its_rate() -> None:
-    rec = record(triage=[entry()] * 4, corpora=[{"repo": "r/a", "commits": 50, "judged": 40, "fires": 4}])
+    rec = record(triage=[entry()] * 4, corpora=corpora(fires=4))
     assert rec["correct_work_rate"] == 0.1
     assert defects(rec) == ["does not meet the bar"]
 
@@ -84,11 +92,11 @@ def test_a_missed_bar_is_reported_with_its_rate() -> None:
 )
 def test_an_authored_case_wrong_or_missing_or_an_unread_misses_sentence_fails_the_bar(over: dict) -> None:
     assert record(**over)["bar_met"] is False
-    assert defects(record(**over)) == ["does not meet the bar"]
+    assert "does not meet the bar" in defects(record(**over))
 
 
 def test_nothing_judged_has_no_rate_and_no_bar() -> None:
-    rec = record(triage=[], corpora=[{"repo": "r/a", "commits": 0, "judged": 0, "fires": 0}])
+    rec = record(triage=[], corpora=corpora(judged=0, fires=0))
     assert (rec["correct_work_rate"], rec["bar_met"]) == (None, False)
 
 
@@ -117,7 +125,7 @@ def test_a_record_for_another_version_or_policy_is_refused() -> None:
     [
         ({"triage": [entry()]}, "differs from the fires"),
         ({"triage": [{**entry(), "repo": "r/zz"}, entry()]}, "did not replay"),
-        ({"corpora": [{"repo": "r/a", "commits": 30, "judged": 40, "fires": 2}]}, "judged more commits"),
+        ({"corpora": corpora(commits=30, history_exhausted=True)}, "judged more commits"),
         ({"eval": {"block": {"caught": 4, "total": 3}, "allow": {"allowed": 2, "total": 2}}}, "more eval cases"),
     ],
 )
@@ -126,8 +134,8 @@ def test_counts_that_do_not_add_up_are_named(over: dict, said: str) -> None:
 
 
 def test_a_corpus_listed_twice_is_refused() -> None:
-    twice = [{"repo": "r/a", "commits": 50, "judged": 20, "fires": 1}] * 2
-    assert any("lists a corpus twice" in d for d in defects(record(corpora=twice)))
+    twice = [corpora()[0]] * 2
+    assert any("not exactly" in d for d in defects(record(corpora=twice)))
 
 
 def test_a_record_that_does_not_fit_the_schema_is_refused_without_a_traceback() -> None:
@@ -148,6 +156,14 @@ def catalog(tmp_path: Path, status: str = "production", pending: tuple[str, ...]
     write(tmp_path, "base/demo/manifest.yaml", f'id: demo\nversion: "1.0.0"\nlifecycle:\n  status: {status}\n')
     write(tmp_path, "base/drafty/manifest.yaml", 'id: drafty\nversion: "0.1.0"\nlifecycle:\n  status: draft\n')
     write(tmp_path, "base/bare/manifest.yaml", 'id: bare\nversion: "0.1.0"\n')
+    cases = [(f"b{n}", "block") for n in range(3)] + [(f"a{n}", "allow") for n in range(2)]
+    body = "".join(
+        f"  - id: {cid}\n    prompt: p\n    expect: e\n    execute: {{files: {{x: y}}, expect: {kind}}}\n"
+        for cid, kind in cases
+    )
+    write(
+        tmp_path, "base/demo/evals/suite.yaml", f"suite:\n  cases:\n  - id: prose\n    prompt: p\n    expect: e\n{body}"
+    )
     folder = tmp_path / cp.FOLDER
     write(tmp_path, f"{cp.FOLDER}/record.schema.json", json.dumps(SCHEMA))
     write(tmp_path, f"{cp.FOLDER}/pending.json", json.dumps({"pending": list(pending)}))
@@ -160,7 +176,7 @@ def put(root: Path, rec: dict, name: str = "demo") -> None:
 
 
 def test_only_production_policies_are_listed_with_their_versions(tmp_path: Path) -> None:
-    assert cp.production(catalog(tmp_path)) == {"demo": "1.0.0"}
+    assert cp.production(catalog(tmp_path)) == {"demo": ("1.0.0", tmp_path / "base" / "demo")}
     assert cp.production(catalog(tmp_path / "x", status="draft")) == {}
 
 
@@ -233,3 +249,40 @@ def test_running_the_file_as_a_script_exits_zero(monkeypatch: pytest.MonkeyPatch
     with pytest.raises(SystemExit) as stop:
         runpy.run_path(cp.__file__, run_name="__main__")
     assert stop.value.code == 0
+
+
+def test_the_catalog_fixture_suite_has_three_block_and_two_allow_cases(tmp_path: Path) -> None:
+    assert executable_totals(catalog(tmp_path) / "base" / "demo") == TOTALS
+
+
+def test_a_record_must_replay_both_histories_and_only_those() -> None:
+    assert any("not exactly" in d for d in defects(record(corpora=corpora()[:1])))
+    assert any("not exactly" in d for d in defects(record(corpora=corpora()[1:])))
+    unknown = [corpora()[0], {**corpora()[1], "repo": "open-coder-ai/other"}]
+    assert any("not exactly" in d for d in defects(record(corpora=unknown)))
+
+
+def test_a_corpus_under_300_commits_needs_the_whole_history_flag() -> None:
+    short = corpora(commits=299)
+    assert any("under 300 commits" in d for d in defects(record(corpora=short)))
+    assert defects(record(corpora=corpora(commits=299, history_exhausted=True))) == []
+    assert defects(record(corpora=corpora(commits=300))) == []
+
+
+def test_a_record_that_understates_or_overstates_the_suite_is_refused() -> None:
+    wrong = {"block": {"caught": 1, "total": 1}, "allow": {"allowed": 1, "total": 1}}
+    assert any("differ from the suite's 3 block and 2 allow" in d for d in defects(record(eval=wrong)))
+    more = {"block": {"caught": 9, "total": 9}, "allow": {"allowed": 2, "total": 2}}
+    assert any("differ from the suite's 3 block and 2 allow" in d for d in defects(record(eval=more)))
+
+
+def test_check_counts_the_suite_on_disk_not_the_one_the_record_claims(tmp_path: Path) -> None:
+    root = catalog(tmp_path)
+    put(root, record(eval={"block": {"caught": 1, "total": 1}, "allow": {"allowed": 1, "total": 1}}))
+    assert any("differ from the suite's 3 block and 2 allow" in p for p in cp.check(root))
+
+
+def test_a_corpus_without_the_history_flag_does_not_validate() -> None:
+    rec = record()
+    del rec["corpora"][0]["history_exhausted"]
+    assert any("'history_exhausted' is a required property" in d for d in defects(rec))

@@ -74,8 +74,8 @@ def test_the_record_carries_each_corpus_its_fires_and_empty_verdicts(catalog: Pa
         "2026-11-28",
     )
     assert rec["corpora"] == [
-        {"repo": "r/cat", "commits": 2, "judged": 2, "fires": 1},
-        {"repo": "r/other", "commits": 3, "judged": 3, "fires": 0},
+        {"repo": "r/cat", "commits": 2, "history_exhausted": True, "judged": 2, "fires": 1},
+        {"repo": "r/other", "commits": 3, "history_exhausted": True, "judged": 3, "fires": 0},
     ]
     assert [(t["repo"], t["path"], t["verdict"], t["reason"]) for t in rec["triage"]] == [("r/cat", "a.txt", "", "")]
     assert rec["eval"] == STUB_EVAL
@@ -85,8 +85,9 @@ def test_the_record_carries_each_corpus_its_fires_and_empty_verdicts(catalog: Pa
 
 def test_a_fresh_record_validates_but_is_not_a_record_that_holds(catalog: Path, other: Path) -> None:
     schema = json.loads((catalog / cp.FOLDER / "record.schema.json").read_text(encoding="utf-8"))
-    said = cp.defects(build(catalog, other), "demo", "2.0.0", schema)
-    assert said == ["has 1 fire(s) without a verdict", "does not meet the bar"]
+    said = cp.defects(build(catalog, other), "demo", "2.0.0", schema, {"block": 1, "allow": 2})
+    assert "has 1 fire(s) without a verdict" in said
+    assert "does not meet the bar" in said
 
 
 def test_main_writes_the_record_and_says_how_many_fires_to_judge(
@@ -174,3 +175,12 @@ def test_a_prose_case_with_no_executable_form_is_not_counted() -> None:
     executable = [c for c in load_cases(folder, folder.name) if c.execute]
     assert len(executable) < len(load_cases(folder, folder.name))
     assert counts["block"]["total"] + counts["allow"]["total"] == len(executable)
+
+
+def test_a_history_longer_than_the_limit_is_not_exhausted(catalog: Path, other: Path) -> None:
+    rec = mfp.build_record(catalog, "demo", {"r/other": other}, 2, "2026-11-28")
+    assert [(c["commits"], c["history_exhausted"]) for c in rec["corpora"]] == [(2, False)]
+    assert (
+        mfp.build_record(catalog, "demo", {"r/other": other}, 3, "2026-11-28")["corpora"][0]["history_exhausted"]
+        is False
+    )

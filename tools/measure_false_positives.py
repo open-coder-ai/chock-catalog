@@ -199,7 +199,15 @@ def build_record(root: Path, pack: str, corpora: dict[str, Path], limit: int, da
         if done["errors"]:
             msg = f"the gate could not decide {done['errors']} commit(s) in {repo}"
             raise ValueError(msg)
-        rows.append({"repo": repo, "commits": len(history), "judged": done["judged"], "fires": done["fires"]})
+        rows.append(
+            {
+                "repo": repo,
+                "commits": len(history),
+                "history_exhausted": len(history) < limit,
+                "judged": done["judged"],
+                "fires": done["fires"],
+            }
+        )
         triage += [
             {"repo": repo, "commit": f["commit"], "path": f["items"][0]["path"], "rule": f["items"][0]["rule"]}
             | {"verdict": "", "reason": ""}

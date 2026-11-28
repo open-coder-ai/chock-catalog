@@ -8,12 +8,14 @@
     {
       "repo": "open-coder-ai/chock-catalog",
       "commits": 253,
+      "history_exhausted": true,
       "judged": 28,
       "fires": 0
     },
     {
       "repo": "open-coder-ai/chock",
       "commits": 295,
+      "history_exhausted": true,
       "judged": 25,
       "fires": 0
     }

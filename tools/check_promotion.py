@@ -14,9 +14,13 @@ from pathlib import Path
 
 import yaml
 from jsonschema import Draft202012Validator
+from promotion_record import executable_totals
 from trees import ROOT, policy_dirs
 
 FOLDER = Path("measurements") / "promotion"
+#: The two histories every record replays, each to at least MIN_COMMITS first-parent commits or to its beginning.
+REPOS = frozenset({"open-coder-ai/chock-catalog", "open-coder-ai/chock"})
+MIN_COMMITS = 300
 VERDICTS = ("correct_work", "true_catch")
 
 
@@ -49,22 +53,30 @@ def settle(record: dict) -> dict:
     return record | {"correct_work_rate": rate(record), "bar_met": bar_met(record)}
 
 
-def production(root: Path) -> dict[str, str]:
-    """Each production policy's id and manifest version."""
+def production(root: Path) -> dict[str, tuple[str, Path]]:
+    """Each production policy's id, with its manifest version and folder."""
     found = {}
     for folder in policy_dirs(root):
         manifest = yaml.safe_load((folder / "manifest.yaml").read_text(encoding="utf-8")) or {}
         if (manifest.get("lifecycle") or {}).get("status") == "production":
-            found[folder.name] = str(manifest["version"])
+            found[folder.name] = (str(manifest["version"]), folder)
     return found
 
 
-def numbers(record: dict) -> list[str]:
-    """What is wrong with the counts and verdicts of a record that validates."""
+def numbers(record: dict, totals: dict[str, int]) -> list[str]:
+    """What is wrong with the counts and verdicts of a record that validates; `totals` is the suite's executable cases."""
     out = []
-    repos = {c["repo"] for c in record["corpora"]}
-    if len(repos) != len(record["corpora"]) or any(t["repo"] not in repos for t in record["triage"]):
-        out.append("lists a corpus twice, or triages a fire from a repo it did not replay")
+    repos = [c["repo"] for c in record["corpora"]]
+    if sorted(repos) != sorted(REPOS):
+        out.append(f"replays {sorted(repos)}, not exactly {sorted(REPOS)}")
+    if any(t["repo"] not in repos for t in record["triage"]):
+        out.append("triages a fire from a repo it did not replay")
+    if any(c["commits"] < MIN_COMMITS and not c["history_exhausted"] for c in record["corpora"]):
+        out.append(f"replayed under {MIN_COMMITS} commits of a history that has more")
+    if (record["eval"]["block"]["total"], record["eval"]["allow"]["total"]) != (totals["block"], totals["allow"]):
+        out.append(
+            f"counts eval cases that differ from the suite's {totals['block']} block and {totals['allow']} allow"
+        )
     if len(record["triage"]) != sum(c["fires"] for c in record["corpora"]):
         out.append("has a triage entry count that differs from the fires")
     if any(c["judged"] > c["commits"] for c in record["corpora"]):
@@ -80,7 +92,7 @@ def numbers(record: dict) -> list[str]:
     return out
 
 
-def defects(record: dict, policy: str, version: str, schema: dict) -> list[str]:
+def defects(record: dict, policy: str, version: str, schema: dict, totals: dict[str, int]) -> list[str]:
     """What stops this record from standing for the policy at this version."""
     errors = [
         f"{'/'.join(map(str, e.path)) or 'record'}: {e.message}"
@@ -91,7 +103,7 @@ def defects(record: dict, policy: str, version: str, schema: dict) -> list[str]:
     out = [f"names policy {record['policy']!r}"] if record["policy"] != policy else []
     if record["version"] != version:
         out.append(f"is for version {record['version']}, the manifest is {version}")
-    out += numbers(record)
+    out += numbers(record, totals)
     if record["correct_work_rate"] != rate(record) or record["bar_met"] != bar_met(record):
         out.append("states a rate or bar_met that its numbers do not give")
     elif not record["bar_met"]:
@@ -105,7 +117,7 @@ def check(root: Path = ROOT) -> list[str]:
     pending = json.loads((folder / "pending.json").read_text(encoding="utf-8"))["pending"]
     live = production(root)
     problems = [f"pending.json lists {pid}, which is not a production policy" for pid in pending if pid not in live]
-    for pid, version in sorted(live.items()):
+    for pid, (version, policy_folder) in sorted(live.items()):
         path = folder / f"{pid}.json"
         if pid in pending:
             if path.exists():
@@ -114,7 +126,10 @@ def check(root: Path = ROOT) -> list[str]:
             problems.append(f"{pid} is production with no record: run measure_false_positives.py --record {pid}")
         else:
             problems += [
-                f"{pid}: record {d}" for d in defects(json.loads(path.read_text("utf-8")), pid, version, schema)
+                f"{pid}: record {d}"
+                for d in defects(
+                    json.loads(path.read_text("utf-8")), pid, version, schema, executable_totals(policy_folder)
+                )
             ]
     return problems
 

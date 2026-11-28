@@ -16,10 +16,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["repo", "commits", "judged", "fires"],
+        "required": ["repo", "commits", "history_exhausted", "judged", "fires"],
         "properties": {
           "repo": {"type": "string", "minLength": 1},
           "commits": {"type": "integer", "minimum": 0},
+          "history_exhausted": {"description": "The whole first-parent history was replayed: it ran out before the limit.", "type": "boolean"},
           "judged": {"type": "integer", "minimum": 0},
           "fires": {"type": "integer", "minimum": 0}
         }
