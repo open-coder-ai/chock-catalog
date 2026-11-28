@@ -4,6 +4,7 @@
   "kind": "regression",
   "title": "alt removed from an informative image",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "report.html": {
     "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
@@ -16,6 +17,7 @@
   "kind": "regression",
   "title": "alt emptied on an informative image",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "report.html": {
     "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
@@ -28,6 +30,7 @@
   "kind": "regression",
   "title": "aria-label removed from an icon-only button (inline svg child)",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "dialog.html": {
     "before": "<div class=\"modal\"><button type=\"button\" class=\"icon-btn\" aria-label=\"Close dialog\"><svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M6 18L18 6\"/></svg></button><p>Saved.</p></div>\n",
@@ -40,6 +43,7 @@
   "kind": "regression",
   "title": "aria-label removed from an icon-only button (CSS icon, no children)",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "dialog.html": {
     "before": "<div class=\"modal\"><button type=\"button\" class=\"btn-close\" aria-label=\"Close\"></button><p>Saved.</p></div>\n",
@@ -52,6 +56,7 @@
   "kind": "regression",
   "title": "aria-label removed from an icon-only button (font-icon <i> child)",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "search.html": {
     "before": "<form action=\"/search\"><input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search the site\"><button type=\"submit\" aria-label=\"Search\"><i class=\"fa fa-search\"></i></button></form>\n",
@@ -64,6 +69,7 @@
   "kind": "regression",
   "title": "<label for> removed, placeholder left in its place",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "signup.html": {
     "before": "<label for=\"email\">Email address</label>\n<input type=\"email\" id=\"email\" name=\"email\">\n",
@@ -76,6 +82,7 @@
   "kind": "regression",
   "title": "label's for no longer matches the input id",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "signup.html": {
     "before": "<input type=\"email\" id=\"email\">\n<label for=\"email\">Email address</label>\n",
@@ -89,6 +96,7 @@
   "kind": "regression",
   "title": "lang removed from <html>",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "index.html": {
     "before": "<html lang=\"en\">\n",
@@ -101,6 +109,7 @@
   "kind": "regression",
   "title": "aria-labelledby points at an id that no longer exists",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "confirm.html": {
     "before": "<h2 id=\"confirm-title\">Delete project?</h2>\n",
@@ -113,6 +122,7 @@
   "kind": "regression",
   "title": "<button> replaced by a clickable <div>",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "toolbar.html": {
     "before": "<div class=\"toolbar\"><button type=\"button\" onclick=\"save()\">Save</button></div>\n",
@@ -125,6 +135,7 @@
   "kind": "regression",
   "title": "alt replaced by title only on an informative image",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "report.html": {
     "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
@@ -137,6 +148,7 @@
   "kind": "regression",
   "title": "aria-label replaced by title only on an icon-only button",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "dialog.html": {
     "before": "<button type=\"button\" class=\"btn-close\" aria-label=\"Close\"></button>\n",
@@ -149,6 +161,7 @@
   "kind": "regression",
   "title": "static alt dropped in JSX",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "src/Hero.jsx": {
     "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" className=\"hero-img\" />\n",
@@ -161,6 +174,7 @@
   "kind": "regression",
   "title": "alt={...} expression dropped in TSX",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "src/Avatar.tsx": {
     "before": "  return <img src={user.avatarUrl} alt={user.fullName} className=\"avatar\" />;\n",
@@ -173,6 +187,7 @@
   "kind": "regression",
   "title": "alt replaced by a prop spread that does not carry it",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/Hero.jsx": {
     "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" />\n",
@@ -185,6 +200,7 @@
   "kind": "regression",
   "title": "aria-label removed from an icon-only button (<CloseIcon /> child)",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/Modal.jsx": {
     "before": "      <button type=\"button\" aria-label=\"Close dialog\" onClick={onClose}><CloseIcon /></button>\n",
@@ -197,6 +213,7 @@
   "kind": "regression",
   "title": "<label htmlFor> removed, placeholder left in its place",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/Signup.tsx": {
     "before": "      <label htmlFor=\"email\">Email address</label>\n      <input type=\"email\" id=\"email\" name=\"email\" />\n",
@@ -209,6 +226,7 @@
   "kind": "regression",
   "title": "bound :alt removed in a Vue SFC",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/ProductCard.vue": {
     "before": "  <div class=\"card\"><img :src=\"product.image\" :alt=\"product.name\"><h3>{{ product.name }}</h3></div>\n",
@@ -221,6 +239,7 @@
   "kind": "regression",
   "title": "v-bind:aria-label removed from an icon-only button in a Vue SFC",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/Drawer.vue": {
     "before": "  <aside><button class=\"icon close\" v-bind:aria-label=\"$t('close')\" @click=\"close\"></button><slot /></aside>\n",
@@ -233,6 +252,7 @@
   "kind": "regression",
   "title": "static alt emptied in a Vue SFC",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "src/Banner.vue": {
     "before": "  <div class=\"banner\"><img src=\"/img/sale.png\" alt=\"Summer sale: 20% off all tents\"></div>\n",
@@ -245,6 +265,7 @@
   "kind": "regression",
   "title": "[attr.aria-label] removed from a search input in an Angular template",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/app/search/search.component.html": {
     "before": "  <input type=\"search\" [attr.aria-label]=\"searchLabel\" [(ngModel)]=\"query\">\n",
@@ -257,6 +278,7 @@
   "kind": "regression",
   "title": "static aria-label removed from an Angular icon button (<mat-icon> child)",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/app/list/list.component.html": {
     "before": "  <button mat-icon-button aria-label=\"Delete item\" (click)=\"remove(item)\"><mat-icon>delete</mat-icon></button>\n",
@@ -269,6 +291,7 @@
   "kind": "regression",
   "title": "alt={...} dropped in a Svelte component",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "src/Photo.svelte": {
     "before": "<figure><img src={photo.url} alt={photo.caption}></figure>\n",
@@ -281,6 +304,7 @@
   "kind": "regression",
   "title": "templated alt emptied in a Handlebars partial",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "views/partials/avatar.hbs": {
     "before": "<a class=\"profile\" href=\"/users/{{id}}\"><img src=\"{{avatarUrl}}\" alt=\"{{name}}'s profile photo\"></a>\n",
@@ -293,6 +317,7 @@
   "kind": "regression",
   "title": "templated aria-label removed from an input in an EJS view",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "views/search.ejs": {
     "before": "  <input type=\"text\" id=\"q\" name=\"q\" aria-label=\"<%= t('search.label') %>\">\n",
@@ -305,6 +330,7 @@
   "kind": "regression",
   "title": "alt: dropped from an image_tag helper in ERB",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "app/views/reports/show.html.erb": {
     "before": "<%= image_tag \"revenue.png\", alt: \"Revenue by quarter\", class: \"chart\" %>\n",
@@ -317,6 +343,7 @@
   "kind": "regression",
   "title": "templated alt removed in a Jinja template (.html)",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "templates/about.html": {
     "before": "<img src=\"{{ url_for('static', filename='team.jpg') }}\" alt=\"{{ _('Our team at the 2024 offsite') }}\">\n",
@@ -329,6 +356,7 @@
   "kind": "regression",
   "title": "lang removed from <html> in a Jinja layout named .html.j2",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "templates/base.html.j2": {
     "before": "<html lang=\"{{ locale }}\">\n",
@@ -341,6 +369,7 @@
   "kind": "regression",
   "title": "th:alt removed in a Thymeleaf template",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/main/resources/templates/home.html": {
     "before": "<img th:src=\"@{/img/logo.png}\" th:alt=\"#{home.logo.alt}\">\n",
@@ -353,6 +382,7 @@
   "kind": "regression",
   "title": "alt removed from an image in a JSP page",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/main/webapp/WEB-INF/views/home.jsp": {
     "before": "<img src=\"${ctx}/img/chart.png\" alt=\"Revenue by quarter\">\n",
@@ -365,6 +395,7 @@
   "kind": "regression",
   "title": "alt removed from inline HTML in a Markdown page",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "content/guide.md": {
     "before": "<img src=\"./wiring.png\" alt=\"Wiring diagram: red to terminal A, black to terminal B\" width=\"480\">\n",
@@ -377,6 +408,7 @@
   "kind": "regression",
   "title": "alt removed from an image in a Pug template (suffix is listed)",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "views/home.pug": {
     "before": "    img(src=\"/img/chart.png\" alt=\"Revenue by quarter\")\n",
@@ -389,6 +421,7 @@
   "kind": "regression",
   "title": "alt emptied in an Astro component",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "src/components/Hero.astro": {
     "before": "  <img src={hero.src} alt=\"Two climbers on a snow ridge at dawn\" />\n",
@@ -401,6 +434,7 @@
   "kind": "regression",
   "title": "alt removed from an image in a PHP template",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "templates/header.php": {
     "before": "  <a href=\"/\"><img src=\"<?= $logo_url ?>\" alt=\"<?= htmlspecialchars($site_name) ?> home\"></a>\n",
@@ -413,6 +447,7 @@
   "kind": "regression",
   "title": "component extracted to a new file, static alt lost on the way",
   "reviewed": "caught",
+  "expect": "warn",
   "files": {
    "src/Hero.jsx": {
     "before": "",
@@ -429,6 +464,7 @@
   "kind": "regression",
   "title": "component extracted with an alt prop; the call site no longer passes it",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/Home.jsx": {
     "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" />\n",
@@ -445,6 +481,7 @@
   "kind": "regression",
   "title": "element moved to another existing file, title lost on the way",
   "reviewed": "caught",
+  "expect": "warn",
   "files": {
    "about.html": {
     "before": "",
@@ -461,6 +498,7 @@
   "kind": "regression",
   "title": "name prop renamed away on a component (label -> tooltip)",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "src/Toolbar.tsx": {
     "before": "    <IconButton data-testid=\"close\" icon=\"x\" label=\"Close\" />\n",
@@ -473,6 +511,7 @@
   "kind": "regression",
   "title": "formatter re-wrapped the element across lines and the alt went with it",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "src/Hero.jsx": {
     "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" className=\"hero-img\" loading=\"lazy\" />\n",
@@ -485,6 +524,7 @@
   "kind": "regression",
   "title": "image migrated .png -> .webp and alt emptied in the same change",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "report.html": {
     "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
@@ -497,6 +537,7 @@
   "kind": "regression",
   "title": "<img> migrated to a framework <Image> component without alt",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/Hero.jsx": {
     "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" />\n",
@@ -509,6 +550,7 @@
   "kind": "regression",
   "title": "aria-hidden added to a wrapper around named images",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "partners.html": {
     "before": "<ul class=\"logos\">\n<li><img src=\"/logos/globex.svg\" alt=\"Globex\"></li>\n<li><img src=\"/logos/initech.svg\" alt=\"Initech\"></li>\n</ul>\n",
@@ -522,6 +564,7 @@
   "kind": "regression",
   "title": "role=\"presentation\" added to an informative image",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "report.html": {
     "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
@@ -534,6 +577,7 @@
   "kind": "regression",
   "title": "wrapping (implicit) <label> removed from an input",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "signup.html": {
     "before": "<label>Email address <input type=\"email\" name=\"email\"></label>\n",
@@ -546,6 +590,7 @@
   "kind": "regression",
   "title": "an unnamed image deleted instead of being given an alt (named content stays)",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "promo.html": {
     "before": "<img src=\"/img/promo-hero.png\" alt=\"Customers at the spring sale\">\n<img src=\"/img/promo-tents.png\">\n",
@@ -559,6 +604,7 @@
   "kind": "regression",
   "title": "link text replaced by an icon only",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "nav.html": {
     "before": "<nav><a href=\"/cart\">Cart</a></nav>\n",
@@ -571,6 +617,7 @@
   "kind": "regression",
   "title": "legacy unnamed button removed and the next button's aria-label dropped in the same edit",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "carousel.html": {
     "before": "<button type=\"button\" class=\"legacy-dot\"></button>\n<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n",
@@ -583,6 +630,7 @@
   "kind": "regression",
   "title": "title removed from an iframe",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "contact.html": {
     "before": "<iframe src=\"https://maps.example.test/embed?q=office\" title=\"Map of our office\"></iframe>\n",
@@ -595,6 +643,7 @@
   "kind": "regression",
   "title": "legend removed from a fieldset",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "prefs.html": {
     "before": "<fieldset>\n<legend>Notification preferences</legend>\n<input type=\"checkbox\" id=\"n1\" aria-label=\"Email me\">\n</fieldset>\n",
@@ -608,6 +657,7 @@
   "kind": "regression",
   "title": "aria-label removed from an <svg role=\"img\">",
   "reviewed": "caught",
+  "expect": "block",
   "files": {
    "chart.html": {
     "before": "<svg role=\"img\" aria-label=\"Revenue trend, up 12% since Q1\" viewBox=\"0 0 100 40\"><polyline points=\"0,30 50,20 100,5\"/></svg>\n",
@@ -620,6 +670,7 @@
   "kind": "regression",
   "title": "alt removed inside a Lit html`` template in a .ts file",
   "reviewed": "missed",
+  "expect": "silent",
   "files": {
    "src/photo-card.ts": {
     "before": "  return html`<img src=\"${this.src}\" alt=\"${this.caption}\">`;\n",
@@ -632,6 +683,7 @@
   "kind": "correct",
   "title": "alt=\"\" given to a decorative image that had no alt",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "home.html": {
     "before": "<img src=\"/img/swoosh.png\" class=\"divider\">\n",
@@ -644,6 +696,7 @@
   "kind": "correct",
   "title": "alt=\"\" role=\"presentation\" given to a decorative image that had no alt",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "home.html": {
     "before": "<img src=\"/img/swoosh.png\" class=\"divider\">\n",
@@ -656,6 +709,7 @@
   "kind": "correct",
   "title": "alt=\"\" aria-hidden=\"true\" given to a decorative image that had no alt",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "home.html": {
     "before": "<img src=\"/img/swoosh.png\" class=\"divider\">\n",
@@ -668,6 +722,7 @@
   "kind": "correct",
   "title": "alt=\"\" given to an icon that duplicated the visible text beside it",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "items.html": {
     "before": "<button type=\"button\"><img src=\"/icons/trash.svg\" alt=\"Delete\"> Delete</button>\n",
@@ -680,6 +735,7 @@
   "kind": "correct",
   "title": "alt=\"\" role=\"presentation\" given to a decorative image wrongly described as \"swoosh\"",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "home.html": {
     "before": "<img src=\"/img/swoosh.png\" class=\"divider\" alt=\"swoosh\">\n",
@@ -692,6 +748,7 @@
   "kind": "correct",
   "title": "alt=\"\" aria-hidden=\"true\" given to an icon inside a link that has visible text",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "nav.html": {
     "before": "<nav><a href=\"/settings\"><img src=\"/icons/gear.svg\" alt=\"Settings icon\"> Settings</a></nav>\n",
@@ -704,6 +761,7 @@
   "kind": "correct",
   "title": "aria-label replaced by a visible <label for>",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "search.html": {
     "before": "<form action=\"/search\"><input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search\"></form>\n",
@@ -716,6 +774,7 @@
   "kind": "correct",
   "title": "aria-label replaced by a visible <label htmlFor> in TSX",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Search.tsx": {
     "before": "    <input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search\" />\n",
@@ -728,6 +787,7 @@
   "kind": "correct",
   "title": "aria-label replaced by aria-labelledby pointing at the visible heading",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "confirm.html": {
     "before": "<dialog open aria-label=\"Delete project?\">\n<h2>Delete project?</h2>\n",
@@ -740,6 +800,7 @@
   "kind": "correct",
   "title": "redundant aria-label removed from a button that has visible text",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "form.html": {
     "before": "<button type=\"submit\" aria-label=\"Save\">Save</button>\n",
@@ -752,6 +813,7 @@
   "kind": "correct",
   "title": "redundant aria-label removed from a component that has visible text",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Form.tsx": {
     "before": "    <Button data-testid=\"save\" aria-label=\"Save\">Save</Button>\n",
@@ -764,6 +826,7 @@
   "kind": "correct",
   "title": "title tooltip removed from a link component that has visible text",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Nav.jsx": {
     "before": "    <Link href=\"/pricing\" title=\"Go to pricing\">Pricing</Link>\n",
@@ -776,6 +839,7 @@
   "kind": "correct",
   "title": "an image deleted together with the feature block it belonged to",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "home.html": {
     "before": "<section class=\"promo\">\n<img src=\"/img/promo.png\" alt=\"Summer sale: 20% off tents\">\n<img src=\"/img/sparkle.png\">\n<a href=\"/sale\">Shop the summer sale</a>\n</section>\n",
@@ -788,6 +852,7 @@
   "kind": "correct",
   "title": "an element deleted from one file and re-added intact in another in the same commit",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "about.html": {
     "before": "",
@@ -804,6 +869,7 @@
   "kind": "correct",
   "title": "alt text changed to better text",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "report.html": {
     "before": "<img src=\"/img/revenue-q3.png\" alt=\"chart of revenue\">\n",
@@ -816,6 +882,7 @@
   "kind": "correct",
   "title": "alt moved into a translation call in JSX",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "src/Header.jsx": {
     "before": "export const Header = () => (\n  <header>\n    <img src=\"/img/logo.svg\" alt=\"Acme home\" />\n  </header>\n);\n",
@@ -828,6 +895,7 @@
   "kind": "correct",
   "title": "alt moved into a translation call in Vue (:alt)",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Header.vue": {
     "before": "  <header><img src=\"/img/logo.svg\" alt=\"Acme home\"></header>\n",
@@ -840,6 +908,7 @@
   "kind": "correct",
   "title": "alt moved into a translate pipe in Angular ([alt])",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/app/header/header.component.html": {
     "before": "<header><img src=\"/img/logo.svg\" alt=\"Acme home\"></header>\n",
@@ -852,6 +921,7 @@
   "kind": "correct",
   "title": "aria-label moved into a binding in Angular ([attr.aria-label])",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/app/drawer/drawer.component.html": {
     "before": "<aside><button type=\"button\" class=\"close\" aria-label=\"Close\" (click)=\"close()\"></button></aside>\n",
@@ -864,6 +934,7 @@
   "kind": "correct",
   "title": "hard-coded aria-label replaced by a prop in TSX",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "src/Drawer.tsx": {
     "before": "export const Drawer = ({ onClose }: Props) => (\n    <button type=\"button\" className=\"close\" aria-label=\"Close\" onClick={onClose}></button>\n",
@@ -876,6 +947,7 @@
   "kind": "correct",
   "title": "hard-coded aria-label replaced by a prop in Vue (:aria-label)",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Drawer.vue": {
     "before": "  <aside><button type=\"button\" class=\"close\" aria-label=\"Close\" @click=\"close\"></button></aside>\n",
@@ -888,6 +960,7 @@
   "kind": "correct",
   "title": "lang=\"en\" replaced by th:lang in a Thymeleaf layout",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/main/resources/templates/layout.html": {
     "before": "<html lang=\"en\" xmlns:th=\"http://www.thymeleaf.org\">\n",
@@ -900,6 +973,7 @@
   "kind": "correct",
   "title": "lang=\"en\" changed to lang=\"en-GB\"",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "index.html": {
     "before": "<html lang=\"en\">\n",
@@ -912,6 +986,7 @@
   "kind": "correct",
   "title": "whitespace-only change (re-indent) in a file that also holds a legacy unnamed image",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "legacy.html": {
     "before": "<div class=\"row\"><img src=\"/img/logo.png\" alt=\"Acme\"><img src=\"/img/old-banner.png\"><button type=\"button\" aria-label=\"Menu\"></button></div>\n",
@@ -924,6 +999,7 @@
   "kind": "correct",
   "title": "attribute-order-only change",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "legacy.html": {
     "before": "<img src=\"/img/logo.png\" alt=\"Acme\" class=\"logo\" width=\"120\">\n<input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search\">\n",
@@ -936,6 +1012,7 @@
   "kind": "correct",
   "title": "formatter re-wrapped the element across lines, nothing else changed",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "src/Hero.jsx": {
     "before": "      <img src=\"/img/team.jpg\" alt=\"The team at the 2024 summit\" className=\"hero-img\" loading=\"lazy\" />\n",
@@ -948,6 +1025,7 @@
   "kind": "correct",
   "title": "file renamed, content unchanged and compliant",
   "reviewed": "refused",
+  "expect": "silent",
   "files": {
    "plans/index.html": {
     "before": "",
@@ -964,6 +1042,7 @@
   "kind": "correct",
   "title": "file renamed, content unchanged; it holds a legacy unnamed image nobody touched",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "archive/legacy.html": {
     "before": "",
@@ -980,6 +1059,7 @@
   "kind": "correct",
   "title": "new test fixture that is deliberately inaccessible (input for the team's own a11y checker test)",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "tests/fixtures/a11y/missing-alt.html": {
     "before": "",
@@ -992,6 +1072,7 @@
   "kind": "correct",
   "title": "new Storybook story for an existing input component",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "src/Input.stories.tsx": {
     "before": "",
@@ -1004,6 +1085,7 @@
   "kind": "correct",
   "title": "Jest snapshot regenerated after an alt was reworded",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "src/__snapshots__/Header.test.tsx.snap": {
     "before": "    alt=\"Acme home\"\n",
@@ -1016,6 +1098,7 @@
   "kind": "correct",
   "title": "build output regenerated: hashed asset names changed, a pre-existing unnamed image is untouched in source",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "dist/index.html": {
     "before": "<!doctype html><html lang=en><head><link rel=stylesheet href=/assets/app.3fa9c1.css></head><body><img src=/assets/logo.81bd22.svg alt=Acme><img src=/assets/banner.77aa01.png><script src=/assets/app.5c2e90.js></script></body></html>\n",
@@ -1028,6 +1111,7 @@
   "kind": "correct",
   "title": "src of a legacy unnamed image changed (new banner file); the missing alt was already missing",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "legacy.html": {
     "before": "<div class=\"row\"><img src=\"/img/logo.png\" alt=\"Acme\"><img src=\"/img/old-banner.png\"><button type=\"button\" aria-label=\"Menu\"></button></div>\n",
@@ -1040,6 +1124,7 @@
   "kind": "correct",
   "title": "new <svg role=\"img\"> named by a <title> child",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "chart.html": {
     "before": "",
@@ -1052,6 +1137,7 @@
   "kind": "correct",
   "title": "aria-label on an <svg role=\"img\"> replaced by a <title> child",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "chart.html": {
     "before": "<svg role=\"img\" aria-label=\"Revenue trend, up 12% since Q1\" viewBox=\"0 0 100 40\"><polyline points=\"0,30 50,20 100,5\"/></svg>\n",
@@ -1064,6 +1150,7 @@
   "kind": "correct",
   "title": "label removed from an <input type=\"hidden\">",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "form.html": {
     "before": "<label for=\"csrf\">Token</label>\n",
@@ -1076,6 +1163,7 @@
   "kind": "correct",
   "title": "new form whose inputs are named by wrapping <label> elements",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "signup.html": {
     "before": "",
@@ -1088,6 +1176,7 @@
   "kind": "correct",
   "title": "new TSX form whose input is named by <label htmlFor>",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "src/Signup.tsx": {
     "before": "  return <h1>Sign up</h1>;\n",
@@ -1100,6 +1189,7 @@
   "kind": "correct",
   "title": "new Vue image with a bound :alt",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "src/ProductCard.vue": {
     "before": "  <div class=\"card\"><h3>{{ product.name }}</h3></div>\n",
@@ -1112,6 +1202,7 @@
   "kind": "correct",
   "title": "new Angular image with [alt] and icon button with [attr.aria-label]",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "src/app/user/user.component.html": {
     "before": "<div class=\"user\"><span>{{ user.name }}</span></div>\n",
@@ -1124,6 +1215,7 @@
   "kind": "correct",
   "title": "new Thymeleaf image with th:alt",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "src/main/resources/templates/home.html": {
     "before": "",
@@ -1136,6 +1228,7 @@
   "kind": "correct",
   "title": "new data table with header cells and no caption",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "report.html": {
     "before": "",
@@ -1148,6 +1241,7 @@
   "kind": "correct",
   "title": "new table with year column headers",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "report.html": {
     "before": "",
@@ -1160,6 +1254,7 @@
   "kind": "correct",
   "title": "new pagination links with numeric text inside a labelled nav",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "list.html": {
     "before": "",
@@ -1172,6 +1267,7 @@
   "kind": "correct",
   "title": "new \"Learn more\" link inside a card whose heading gives the context (WCAG 2.4.4 in context)",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "home.html": {
     "before": "",
@@ -1184,6 +1280,7 @@
   "kind": "correct",
   "title": "new editor toolbar buttons labelled \"Link\" and \"Image\"",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "editor.html": {
     "before": "<div role=\"toolbar\" aria-label=\"Formatting\"><button type=\"button\">Bold</button></div>\n",
@@ -1196,6 +1293,7 @@
   "kind": "correct",
   "title": "new nav link whose text is \"Photos\"",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "nav.html": {
     "before": "<nav><a href=\"/\">Home</a></nav>\n",
@@ -1208,6 +1306,7 @@
   "kind": "correct",
   "title": "new flag image with alt=\"UK\"",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "locale.html": {
     "before": "",
@@ -1220,6 +1319,7 @@
   "kind": "correct",
   "title": "new JSX image whose arrow-function handler precedes its alt",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "src/Gallery.jsx": {
     "before": "  return <div className=\"gallery\"></div>;\n",
@@ -1232,6 +1332,7 @@
   "kind": "correct",
   "title": "new TSX input whose arrow-function onChange precedes its aria-label",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "src/Filter.tsx": {
     "before": "  return <div className=\"filter\"></div>;\n",
@@ -1244,6 +1345,7 @@
   "kind": "correct",
   "title": "new, correctly named button inserted before a legacy unnamed button nobody touched",
   "reviewed": "refused",
+  "expect": "warn",
   "files": {
    "carousel.html": {
     "before": "<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n<button type=\"button\" class=\"legacy\"></button>\n",
@@ -1257,6 +1359,7 @@
   "kind": "correct",
   "title": "named button deleted with its feature; a legacy unnamed button after it is untouched",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "carousel.html": {
     "before": "<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n<button type=\"button\" class=\"legacy\"></button>\n",
@@ -1270,6 +1373,7 @@
   "kind": "correct",
   "title": "paragraph text edited in a file that holds legacy violations",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "legacy.html": {
     "before": "<p>Opening hours: 9 to 5.</p>\n",
@@ -1282,6 +1386,7 @@
   "kind": "correct",
   "title": "label moved from the input component to a wrapping field component",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Signup.tsx": {
     "before": "    <Input name=\"email\" label=\"Email address\" />\n",
@@ -1294,6 +1399,7 @@
   "kind": "correct",
   "title": "non-a11y prop renamed on a component (Card title -> heading)",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Plans.tsx": {
     "before": "    <Card id=\"pro\" title=\"Pro plan\" price={29} />\n",
@@ -1306,6 +1412,7 @@
   "kind": "correct",
   "title": "label prop replaced by children text on a component",
   "reviewed": "refused",
+  "expect": "block",
   "files": {
    "src/Form.tsx": {
     "before": "    <Button data-testid=\"save\" label=\"Save\" />\n",
@@ -1318,6 +1425,7 @@
   "kind": "correct",
   "title": "decorative <img> replaced by a CSS background (element deleted)",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "home.html": {
     "before": "<div class=\"hero\"><img src=\"/img/swoosh.png\" alt=\"\"><h1>Welcome</h1></div>\n",
@@ -1330,6 +1438,7 @@
   "kind": "correct",
   "title": "alt removed where an equivalent aria-labelledby caption is added",
   "reviewed": "silent",
+  "expect": "silent",
   "files": {
    "report.html": {
     "before": "<figure><img src=\"/img/revenue-q3.png\" alt=\"Revenue grew 12% in Q3\"></figure>\n",
@@ -1342,6 +1451,7 @@
   "kind": "correct",
   "title": "new minimal page with lang=en",
   "reviewed": "refused",
+  "expect": "silent",
   "files": {
    "index.html": {
     "before": "",
@@ -1354,6 +1464,7 @@
   "kind": "correct",
   "title": "fix: lang=en added to <html> that had none",
   "reviewed": "refused",
+  "expect": "silent",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html>\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n",
@@ -1366,6 +1477,7 @@
   "kind": "correct",
   "title": "fix: lang=fr added",
   "reviewed": "refused",
+  "expect": "silent",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html>\n<head><title>Acme</title></head>\n<body><h1>Acme</h1></body>\n</html>\n",
@@ -1378,6 +1490,7 @@
   "kind": "swap_regression",
   "title": "image swapped, alt dropped",
   "reviewed": "orchestrator",
+  "expect": "block",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
@@ -1390,6 +1503,7 @@
   "kind": "swap_regression",
   "title": "image swapped with more attributes changed, alt dropped",
   "reviewed": "orchestrator",
+  "expect": "block",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"img/a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
@@ -1402,6 +1516,7 @@
   "kind": "swap_regression",
   "title": "label removed and the input id renamed",
   "reviewed": "orchestrator",
+  "expect": "block",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<label for=\"email\">Email address</label>\n<input id=\"email\" type=\"email\">\n</body>\n</html>\n",
@@ -1414,6 +1529,7 @@
   "kind": "swap_correct",
   "title": "image swapped, alt kept",
   "reviewed": "orchestrator",
+  "expect": "silent",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
@@ -1426,6 +1542,7 @@
   "kind": "swap_correct",
   "title": "image swapped with more attributes changed, alt reworded",
   "reviewed": "orchestrator",
+  "expect": "silent",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"img/a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
@@ -1438,6 +1555,7 @@
   "kind": "swap_correct",
   "title": "label replaced by an aria-label and the input id renamed",
   "reviewed": "orchestrator",
+  "expect": "silent",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<label for=\"email\">Email address</label>\n<input id=\"email\" type=\"email\">\n</body>\n</html>\n",
@@ -1450,6 +1568,7 @@
   "kind": "swap_added",
   "title": "an image genuinely added, nothing removed",
   "reviewed": "orchestrator",
+  "expect": "warn",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<p>Hello</p>\n</body>\n</html>\n",
@@ -1462,6 +1581,7 @@
   "kind": "swap_added",
   "title": "an unnamed image added beside a named one that stays",
   "reviewed": "orchestrator",
+  "expect": "warn",
   "files": {
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
