@@ -7,7 +7,7 @@
 | | |
 | :--- | :--- |
 | **Type** | `rule` |
-| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end. If the hook errors, the action goes through (measured) |
+| **On Claude Code** | blocks — blocks on an agent's file writes and at turn end. Where its description says it asks, it asks at the write and refuses at turn end, because this client cannot prompt there. If the hook errors, the action goes through (measured) |
 | **Manifest tier** | `enforcement: block` (propagation and index ranking; not what it blocks) |
 | **Mechanism** | commit-time guard script `no-a11y-regression-pre-commit.py` + tool-use script gate |
 | **Reaches** | `enforced-at-commit` — the script exits non-zero and the commit does not happen; also judged at tool use, `best-effort` once `chock sync` has run (a crashed hook fails open) |
@@ -19,7 +19,7 @@
 
 ## What it is about
 
-trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label, label or lang that an element already had, deleting a flagged element. avoid: breaking a requirement the previous revision met; interrupting a correct fix. Misses: a name lost while an element moves to another file, a new element or a supplied name that is weak (these warn and do not block), Thymeleaf th:attr, which sets several attributes at once, one wrapper naming two inputs that each lost the name, and a stretch of edits too long to align, which pairs by tag order. Not production-grade: caught 36 of 51 regressions and refused 3 of 58 correct changes on the 2026-11-15 hardening review's pairs, measured 2026-11-28; known gaps are JSP, ERB, Pug and Lit syntax, an icon component whose own children hide its name, and an alt removed in some forms.
+trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label, label or lang that an element already had, deleting a flagged element. avoid: breaking a requirement the previous revision met; interrupting a correct fix. Misses: a name lost while an element moves to another file, a new element or a supplied name that is weak (these warn and do not block), Thymeleaf th:attr, which sets several attributes at once, one wrapper naming two inputs that each lost the name, and a stretch of edits too long to align, which pairs by tag order. Not production-grade: caught 36 of 51 regressions and refused 3 of 58 correct changes (and 1 of 4 probes) on the 2026-11-15 hardening review's pairs, measured 2026-11-28; known gaps are JSP, ERB, Pug and Lit syntax, an icon component whose own children hide its name, and an alt removed in some forms. A person records an intended change in .chock/a11y-waivers.json, in their own commit; an agent never writes it.
 
 ## What it solves
 
@@ -49,7 +49,7 @@ chock add no-a11y-regression
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJhYTU5N2U3MmQ3YzNkNmU3YTkwY2IyZGIzYmY1MWQ1NGQ3NTBlODExIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibm8tYTExeS1yZWdyZXNzaW9uIiwidmVyc2lvbiI6IjEuNC4wIiwic2hhMjU2IjoiMDdhYmNjYzMwMGRkZDBmNDYwMDFiMDIyZGQxYmJjYTRjYmZkMmU4MWU1YTY2MjFmY2VjMWIyNWQxNzc4MTRhYSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJjZTc0NDk0ZWI1YjZmZmUzNjBiNWY5NGUxMWUyMjFjM2MyNzQyM2EyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibm8tYTExeS1yZWdyZXNzaW9uIiwidmVyc2lvbiI6IjEuNS4wIiwic2hhMjU2IjoiNTE2NWEyNmU0ZDYwYjliOTUzOGRhNTAzYTgxOGIzYjY1NzUwZjQwYTcxM2ZiY2JhOWEyYmE5NDNmMTIzYjdiNyJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
