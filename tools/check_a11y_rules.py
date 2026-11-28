@@ -253,6 +253,12 @@ def check_icon_only_controls(p: Probe) -> None:
     )
     lent = f'<Field label="{REAL_NAME}"><Input name="n" /></Field>'
     p.allows("<Input> moving its label to a wrapping <Field>", f'<Input name="n" label="{REAL_NAME}" />', lent)
+    wrapper = f'<Field label="{REAL_NAME}"><Input name="n" aria-label="Other" /></Field>'
+    p.refuses(
+        "<Input> losing its label under a wrapper that already carried another name",
+        wrapper,
+        wrapper.replace(' aria-label="Other"', ""),
+    )
     p.refuses("<Input> losing its label", f'<Input name="n" label="{REAL_NAME}" />', '<Input name="n" />')
 
 

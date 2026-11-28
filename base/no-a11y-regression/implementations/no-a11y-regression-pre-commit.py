@@ -108,6 +108,11 @@ _MASK_GT, _MASK_SP = "\ue000", "\ue001"
 _UNMASK = str.maketrans({_MASK_GT: ">", _MASK_SP: " "})
 
 
+def _norm(name: str) -> str:
+    """A name compared across revisions: whitespace folded, case ignored."""
+    return " ".join(name.lower().split())
+
+
 def is_component(raw: str | None) -> bool:
     """True when the source names a component or custom element, not an HTML element."""
     match = _SOURCE_TAG_RE.match(raw or "")
@@ -233,7 +238,7 @@ class Node:
     spread: bool = False  # `{...props}`: the attributes are not knowable from the markup
     component: bool = False  # this table has no requirements for it; only a lost name counts
     wrap: Wrap | None = None  # the <label> without `for` this control sits inside
-    lent: str = ""  # the name an enclosing component carries, which names this component inside it
+    enclosing: frozenset[str] = frozenset()  # the names the components around this one carry, normalised
 
     @property
     def ref(self) -> str:
@@ -287,7 +292,7 @@ class Scanner(HTMLParser):
             self._inner_depth += 1
             return
         component = is_component(raw)
-        lent = next((name for _, name in reversed(self._comps) if name), "") if component else ""
+        enclosing = frozenset(_norm(name) for _, name in self._comps if name) if component else frozenset()
         if component and not closed:
             self._comps.append((tag, next((a[p] for p in COMPONENT_NAME_PROPS if a.get(p)), "")))
         # A component is compared only when the markup gives it a stable identity. Ordinal
@@ -306,7 +311,7 @@ class Scanner(HTMLParser):
                 ordinal=self._counts[tag],
                 spread=spread,
                 component=component,
-                lent=lent,
+                enclosing=enclosing,
                 hidden=inherited,
                 wrap=self._wraps[-1] if self._wraps and not component else None,
             )
@@ -413,10 +418,6 @@ def component_state(node: Node) -> tuple[str, str, str]:
             return SUPPRESSED, f'{prop}="" asserts this carries no name', ""
     if text := node.text or node.inner:
         return SATISFIED, f"text {text[:40]!r}", text
-    if node.lent:
-        return SATISFIED, f"named by an enclosing component: {node.lent[:40]!r}", node.lent
-    if node.child_elements:
-        return UNEVALUATED, f"<{node.tag}> may be named by a child this parser cannot resolve", ""
     return NAMELESS, f"<{node.tag}> carries no name prop, and may not need one", ""
 
 
@@ -514,6 +515,15 @@ def swapped_in(b_states: dict, a_states: dict, b_tags: dict, a_tags: dict) -> se
     return found
 
 
+def _name_moved(before: Node | None, after: Node | None, bs: str, as_: str, name: str) -> str | None:
+    """Why a component's lost name is not lost: an enclosing component now carries the same name."""
+    if not (before and after and before.component and (bs, as_) == (SATISFIED, NAMELESS)):
+        return None
+    if (key := _norm(name)) in after.enclosing and key not in before.enclosing:
+        return "the name moved to an enclosing component"
+    return None
+
+
 # ── The decision: one table lookup per element, plus one promotion rule. ──────────────────────
 def evaluate(before_html: str, after_html: str) -> list[dict]:
     """Compare two revisions; every row carries the lookup key that produced its action."""
@@ -535,6 +545,8 @@ def evaluate(before_html: str, after_html: str) -> list[dict]:
         labelled = labelled_by_its_own_text(node) if node else False
         if supplied and (bad := uninformative(a_name, src, tag, labelled=labelled)) is not None:
             action, why = WARN, f"the value supplied conveys nothing: {bad}"
+        if key_moved := _name_moved(b_nodes.get(ref), a_nodes.get(ref), bs, as_, b_name):
+            action, why = SILENT, key_moved
         if ref in swaps:
             action, why = DENY, "a named element of this tag was replaced by one without its name"
         rows.append({"ref": ref, "key": (bs, as_), "action": action, "why": why, "was": bw, "now": aw})
