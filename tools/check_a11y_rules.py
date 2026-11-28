@@ -33,6 +33,7 @@ COVERED_SPEC = {
     "markup_suffixes",
     "bound_attributes",
     "glyph_text",
+    "component_text_props",
 }
 COVERED_NOISE = {"words", "min_length", "file_extensions", "by_tag"}
 #: Data files the guard must not read: their entries are records, not verdicts.
@@ -250,6 +251,18 @@ def check_icon_only_controls(p: Probe) -> None:
     named = f'<Widget data-testid="w" aria-label="{REAL_NAME}">{REAL_NAME}</Widget>'
     p.allows(
         "<Widget> with text children losing its aria-label", named, f'<Widget data-testid="w">{REAL_NAME}</Widget>'
+    )
+    for prop in p.spec["component_text_props"]:
+        child = f'<Message {prop}="x" />'
+        p.allows(
+            f"<Button> keeping a <Message {prop}> child",
+            f'<Button id="b" aria-label="Go">{child}</Button>',
+            f'<Button id="b">{child}</Button>',
+        )
+    p.refuses(
+        "<Button> keeping a child with no text prop",
+        '<Button id="b" aria-label="Go"><Icon name="x" /></Button>',
+        '<Button id="b"><Icon name="x" /></Button>',
     )
     lent = f'<Field label="{REAL_NAME}"><Input name="n" /></Field>'
     p.allows("<Input> moving its label to a wrapping <Field>", f'<Input name="n" label="{REAL_NAME}" />', lent)

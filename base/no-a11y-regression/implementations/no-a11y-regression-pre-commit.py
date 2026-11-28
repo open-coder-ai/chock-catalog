@@ -22,6 +22,7 @@ COMPONENT_NAME_PROPS = tuple(SPEC["component_name_props"])
 MARKUP_SUFFIXES = tuple(SPEC["markup_suffixes"])
 BOUND = SPEC["bound_attributes"]
 GLYPH = SPEC["glyph_text"]
+TEXT_PROPS = tuple(SPEC["component_text_props"])
 # Names that are present but convey nothing, so their presence is not a fix.
 NOISE = json.loads((_DATA / "uninformative_names.json").read_text(encoding="utf-8"))
 
@@ -281,7 +282,7 @@ class Scanner(HTMLParser):
         for i in self._stack:
             self.nodes[i].child_elements += 1
         if not (inherited or a.get("aria-hidden") == SPEC["suppressing"]["aria-hidden"]):
-            self._lend_name(a)  # an aria-hidden element lends nothing
+            self._lend_name(a, is_component(raw))  # an aria-hidden element lends nothing
         if tag == "label":
             if not closed:
                 self._wraps.append(None if a.get("for") else Wrap())
@@ -319,15 +320,21 @@ class Scanner(HTMLParser):
         if not closed and tag not in VOID:
             self._stack.append(len(self.nodes) - 1)
 
-    def _lend_name(self, attrs: dict[str, str]) -> None:
+    def _lend(self, value: str) -> None:
+        """Give every enclosing element and wrapping label this name."""
+        for i in self._stack:
+            self.nodes[i].text = f"{self.nodes[i].text} {value}".strip()
+        for wrap in filter(None, self._wraps):
+            wrap.add(value)
+
+    def _lend_name(self, attrs: dict[str, str], component: bool) -> None:
         """Give every enclosing element the name this one carries, as accname's 2F does."""
         for attr in _LENT_NAME_ATTRS:
             if value := attrs.get(attr, "").strip():
-                for i in self._stack:
-                    self.nodes[i].text = f"{self.nodes[i].text} {value}".strip()
-                for wrap in filter(None, self._wraps):
-                    wrap.add(value)
+                self._lend(value)
                 return
+        if component and any(attrs.get(p) for p in TEXT_PROPS):
+            self._lend("{text}")  # a component that renders its own text
 
     def handle_starttag(self, tag, attrs):
         self._open(tag, attrs, closed=False, raw=self.get_starttag_text())
