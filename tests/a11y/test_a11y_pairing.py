@@ -161,3 +161,10 @@ def test_a_stretch_too_long_to_align_is_paired_by_tag_order(monkeypatch: pytest.
     before = "".join(f'<img src="/{n}.png" alt="Picture {n}">\n' for n in range(6))
     after = "".join(f'<img src="/{n}.webp" alt="Picture {n}">\n' for n in range(6)).replace(' alt="Picture 3"', "")
     assert _actions(before, after) == [("img[src=/3.webp]", "deny")]
+
+
+def test_a_long_file_is_trimmed_at_both_ends_and_the_middle_edit_is_judged(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(GUARD, "ALIGN_LIMIT", 4)
+    before = "".join(f'<img src="/{n}.png" alt="Picture {n}">\n' for n in range(6))
+    after = before.replace('src="/3.png" alt="Picture 3"', 'src="/3.webp"')
+    assert _actions(before, after) == [("img[src=/3.webp]", "deny")]
