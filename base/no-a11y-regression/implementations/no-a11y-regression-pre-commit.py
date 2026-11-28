@@ -175,17 +175,36 @@ def read_attribute(key: str) -> tuple[str, bool]:
     return key, False
 
 
+def attribute_value(text: str, *, is_bound: bool) -> str | None:
+    """What an attribute's value reads as: None for no value at all, "" for an empty literal.
+
+    A bound value is `{text}`, present and unknown, unless it is empty (no value) or an empty literal.
+    A brace value that is an empty literal, `undefined` or `null` is the empty string too.
+    """
+    inner = text.strip()
+    if not is_bound and not (inner.startswith("{") and inner.endswith("}")):
+        return text
+    if is_bound:
+        if not inner:
+            return None
+    else:
+        inner = inner[1:-1].strip()
+    return "" if inner in BOUND["empty"] else ("{" + text + "}" if is_bound else text)
+
+
 def read_attributes(attrs: list[tuple[str, str | None]]) -> dict[str, str]:
     """Attributes by the name they bind. A bound value reads `{value}`, so it is present and never judged."""
     plain: dict[str, str] = {}
     bound: dict[str, str] = {}
     for key, value in attrs:
         name, is_bound = read_attribute(key.lower().translate(_UNMASK))
-        text = (value or "").translate(_UNMASK)
+        read = attribute_value((value or "").translate(_UNMASK), is_bound=is_bound)
+        if read is None:
+            continue
         if is_bound:
-            bound.setdefault(name, "{" + text + "}")
+            bound.setdefault(name, read)
         else:
-            plain[name] = text
+            plain[name] = read
     return {**bound, **plain}
 
 
