@@ -1,0 +1,1317 @@
+{
+ "policy": "dockerfile-compose-security",
+ "cases": [
+  {
+   "id": "C01",
+   "kind": "catch",
+   "title": "FROM image:latest",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C01v",
+   "kind": "catch",
+   "title": "variant: latest via ARG default",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "ARG BASE=ubuntu:latest\nFROM ${BASE}\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C02",
+   "kind": "catch",
+   "title": "FROM untagged",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM ubuntu\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C02v",
+   "kind": "catch",
+   "title": "variant: untagged with --platform and AS",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM --platform=linux/amd64 ubuntu AS base\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C03",
+   "kind": "catch",
+   "title": "USER root in final stage",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\nUSER root\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C03v",
+   "kind": "catch",
+   "title": "variant: no USER at all",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN true\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C04",
+   "kind": "catch",
+   "title": "secret literal in ENV",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nENV DB_PASSWORD=hunter2\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C04v",
+   "kind": "catch",
+   "title": "variant: secret literal in ARG default",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nARG GITHUB_TOKEN=abc123\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C05",
+   "kind": "catch",
+   "title": "curl / sh in RUN",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -fsSL https://example.com/i.sh | sh\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C05v",
+   "kind": "catch",
+   "title": "variant: bash -c \"$(curl ...)\" split by continuation",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN bash -c \"$(curl -fsSL \\\n  https://example.com/i.sh)\"\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C06",
+   "kind": "catch",
+   "title": "ADD from a URL",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nADD https://example.com/app.tar.gz /opt/\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C06v",
+   "kind": "catch",
+   "title": "variant: ADD URL held in an ARG",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nARG URL=https://example.com/app.tar.gz\nADD ${URL} /opt/\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "C07",
+   "kind": "catch",
+   "title": "chmod 777",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN chmod 777 /app\nUSER 1000\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "C07v",
+   "kind": "catch",
+   "title": "variant: chmod -R a+rwx",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN chmod -R a+rwx /app\nUSER 1000\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "C08",
+   "kind": "catch",
+   "title": "compose privileged: true",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    privileged: true\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C08v",
+   "kind": "catch",
+   "title": "variant: privileged via YAML anchor + merge key",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "x-priv: &priv\n  privileged: true\nservices:\n  app:\n    <<: *priv\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C09",
+   "kind": "catch",
+   "title": "compose network_mode: host",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    network_mode: host\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C09v",
+   "kind": "catch",
+   "title": "variant: pid host, quoted",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    pid: \"host\"\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C10",
+   "kind": "catch",
+   "title": "compose docker.sock mount",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    volumes:\n      - /var/run/docker.sock:/var/run/docker.sock\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C10v",
+   "kind": "catch",
+   "title": "variant: long-form bind of docker.sock",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    volumes:\n      - type: bind\n        source: /var/run/docker.sock\n        target: /var/run/docker.sock\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C11",
+   "kind": "catch",
+   "title": "compose DB port on every interface",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    ports:\n      - \"5432:5432\"\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "C11v",
+   "kind": "catch",
+   "title": "variant: explicit 0.0.0.0 with a variable host port",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    ports:\n      - \"0.0.0.0:${DB_PORT}:5432\"\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "C12",
+   "kind": "catch",
+   "title": "compose cap_add: [ALL]",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    cap_add:\n      - ALL\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C12v",
+   "kind": "catch",
+   "title": "variant: cap_add block list SYS_ADMIN",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    cap_add:\n      - SYS_ADMIN\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C13",
+   "kind": "catch",
+   "title": "compose secret literal in environment",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    environment:\n      DB_PASSWORD: hunter2\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C13v",
+   "kind": "catch",
+   "title": "variant: list form KEY=value",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    environment:\n      - API_TOKEN=abc123\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "C14",
+   "kind": "catch",
+   "title": "compose image: latest",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: nginx:latest\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "C14v",
+   "kind": "catch",
+   "title": "variant: compose written as JSON",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "{\n  \"services\": {\n    \"app\": {\n      \"image\": \"nginx:latest\"\n    }\n  }\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "ask"
+  },
+  {
+   "id": "X01",
+   "kind": "probe",
+   "title": "privileged in a file reached by extends (common.yml)",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    extends:\n      file: common.yml\n      service: base\n"
+    },
+    "common.yml": {
+     "before": "",
+     "after": "services:\n  base:\n    privileged: true\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X02",
+   "kind": "probe",
+   "title": "privileged in an included file (compose include:)",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "include:\n  - common.yml\n"
+    },
+    "common.yml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    privileged: true\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X03",
+   "kind": "probe",
+   "title": "compose file not named compose (deploy/stack.yml)",
+   "surface": "commit",
+   "files": {
+    "deploy/stack.yml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    privileged: true\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X04",
+   "kind": "probe",
+   "title": "Dockerfile template Dockerfile.j2",
+   "surface": "commit",
+   "files": {
+    "Dockerfile.j2": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nUSER root\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X05",
+   "kind": "probe",
+   "title": "Dockerfile in subdir named build/Dockerfile.prod",
+   "surface": "commit",
+   "files": {
+    "build/Dockerfile.prod": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "X06",
+   "kind": "probe",
+   "title": "kubernetes pod privileged (declared miss)",
+   "surface": "commit",
+   "files": {
+    "k8s/pod.yaml": {
+     "before": "",
+     "after": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: app\nspec:\n  containers:\n    - name: app\n      image: example/app:1.0\n      securityContext:\n        privileged: true\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X07",
+   "kind": "probe",
+   "title": "docker run --privileged in a shell script",
+   "surface": "commit",
+   "files": {
+    "run.sh": {
+     "before": "",
+     "after": "#!/bin/sh\ndocker run --privileged example/app:1.0\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X08",
+   "kind": "probe",
+   "title": "build arg overriding USER at build (ARG RUNAS=1000 default; declared miss)",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nARG RUNAS=1000\nUSER ${RUNAS}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X09",
+   "kind": "probe",
+   "title": "curl -k (TLS off)",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -k https://example.com/a.tgz -o /tmp/a.tgz\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "X10",
+   "kind": "probe",
+   "title": "sudo installed",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN apt-get install -y sudo\nUSER 1000\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "X11",
+   "kind": "probe",
+   "title": "compose host root mount /:/host",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    volumes:\n      - /:/host\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "X12",
+   "kind": "probe",
+   "title": "compose security_opt seccomp:unconfined",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    security_opt:\n      - seccomp:unconfined\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "X13",
+   "kind": "probe",
+   "title": "compose user: root (root at run time)",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    user: root\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "X14",
+   "kind": "probe",
+   "title": "Dockerfile USER 0:0 numeric group form",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 0:0\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "X15",
+   "kind": "probe",
+   "title": "COPY .env into image",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY .env /app/.env\nUSER 1000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "X16",
+   "kind": "probe",
+   "title": "devcontainer runArgs --privileged",
+   "surface": "commit",
+   "files": {
+    ".devcontainer/devcontainer.json": {
+     "before": "",
+     "after": "{\n  \"image\": \"example/app:1.0\",\n  \"runArgs\": [\"--privileged\"]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S01",
+   "kind": "correct",
+   "title": "digest-pinned base, non-root USER",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S02",
+   "kind": "correct",
+   "title": "multi-stage, builder root, final non-root, all digests",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM golang:1.23@sha256:0000000000000000000000000000000000000000000000000000000000000000 AS build\nUSER root\nRUN go build -o /app .\nFROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY --from=build /app /app\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S03",
+   "kind": "correct",
+   "title": "FROM scratch final stage with numeric USER",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM scratch\nCOPY app /app\nUSER 10001\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S04",
+   "kind": "correct",
+   "title": "tag-pinned base without digest (python:3.12.4-slim), non-root",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM python:3.12.4-slim\nUSER 1000\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "allow"
+  },
+  {
+   "id": "S05",
+   "kind": "correct",
+   "title": "comment that mentions the bad patterns",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\n# never write USER root, FROM x:latest or curl | sh\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S06",
+   "kind": "correct",
+   "title": "docs example in Markdown",
+   "surface": "commit",
+   "files": {
+    "docs/containers.md": {
+     "before": "",
+     "after": "Never write `privileged: true` or `USER root` in a final stage.\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S07",
+   "kind": "correct",
+   "title": "test fixture: tests/fixtures/bad/Dockerfile",
+   "surface": "commit",
+   "files": {
+    "tests/fixtures/bad/Dockerfile": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nRUN curl -fsSL https://example.com/i.sh | sh\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "S08",
+   "kind": "correct",
+   "title": "distroless :nonroot without USER",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM gcr.io/distroless/static:nonroot@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY app /app\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S09",
+   "kind": "correct",
+   "title": "chmod 755 and chmod +x",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN chmod 755 /app && chmod +x /entry.sh\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S10",
+   "kind": "correct",
+   "title": "download to file, verify sha256, then run",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN curl -fsSLo /tmp/i.sh https://example.com/i.sh && echo \"0000000000000000000000000000000000000000000000000000000000000000  /tmp/i.sh\" | sha256sum -c - && sh /tmp/i.sh\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S11",
+   "kind": "correct",
+   "title": "ADD URL with --checksum",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nADD --checksum=sha256:0000000000000000000000000000000000000000000000000000000000000000 https://example.com/a.tgz /opt/\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S12",
+   "kind": "correct",
+   "title": "secret-ish names that are not secrets + build secret mount",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nARG TOKEN_TTL=3600\nRUN --mount=type=secret,id=npm_token NPM_TOKEN=$(cat /run/secrets/npm_token) npm ci\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S13",
+   "kind": "correct",
+   "title": "ARG with digest-pinned default used in FROM",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "ARG BASE=alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nFROM ${BASE}\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S14",
+   "kind": "correct",
+   "title": "COPY . . with a .dockerignore",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nCOPY . .\nUSER 1000\n"
+    },
+    ".dockerignore": {
+     "before": "",
+     "after": ".git\n.env\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S15",
+   "kind": "correct",
+   "title": "compose: web port, narrow cap, named volume, relative bind, localtime ro",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    ports:\n      - \"8080:80\"\n    cap_add:\n      - NET_BIND_SERVICE\n    volumes:\n      - data:/var/lib/data\n      - ./conf:/etc/app/conf:ro\n      - /etc/localtime:/etc/localtime:ro\nvolumes:\n  data:\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S16",
+   "kind": "correct",
+   "title": "compose: db on loopback, password from env var",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    ports:\n      - \"127.0.0.1:5432:5432\"\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S17",
+   "kind": "correct",
+   "title": "dev-only override: tag-pinned postgres, loopback port",
+   "surface": "commit",
+   "files": {
+    "compose.override.yaml": {
+     "before": "",
+     "after": "services:\n  db:\n    image: postgres:16.4\n    ports:\n      - \"127.0.0.1:5432:5432\"\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "allow"
+  },
+  {
+   "id": "S18",
+   "kind": "correct",
+   "title": "dev-only override: tag-pinned postgres published on 5432, dev password literal",
+   "surface": "commit",
+   "files": {
+    "compose.override.yaml": {
+     "before": "",
+     "after": "services:\n  db:\n    image: postgres:16.4\n    ports:\n      - \"5432:5432\"\n    environment:\n      POSTGRES_PASSWORD: hunter2\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "S19",
+   "kind": "correct",
+   "title": "compose service built locally (build: .) with no image",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    build: .\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S20",
+   "kind": "correct",
+   "title": "compose as JSON, correct",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "{\n  \"services\": {\n    \"app\": {\n      \"image\": \"example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\"\n    }\n  }\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S21",
+   "kind": "correct",
+   "title": "compose healthcheck that curls localhost",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    healthcheck:\n      test: [\"CMD\", \"curl\", \"-f\", \"http://localhost/health\"]\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S22",
+   "kind": "correct",
+   "title": "legacy Dockerfile (latest, curl/sh, root in HEAD): add an unrelated LABEL",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "FROM ubuntu:latest\nRUN curl -fsSL https://example.com/i.sh | sh\n",
+     "after": "FROM ubuntu:latest\nRUN curl -fsSL https://example.com/i.sh | sh\nLABEL team=infra\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S23",
+   "kind": "correct",
+   "title": "legacy Dockerfile reformatted only (blank lines, trailing comment line)",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "FROM ubuntu:latest\nRUN curl -fsSL https://example.com/i.sh | sh\n",
+     "after": "\nFROM ubuntu:latest\n\nRUN curl -fsSL https://example.com/i.sh | sh\n\n# end\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S24",
+   "kind": "correct",
+   "title": "legacy Dockerfile renamed to docker/Dockerfile, unchanged",
+   "surface": "commit",
+   "files": {
+    "docker/Dockerfile": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nRUN curl -fsSL https://example.com/i.sh | sh\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "S25",
+   "kind": "correct",
+   "title": "legacy compose (latest, privileged, 6379 in HEAD): add a healthcheck",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "services:\n  cache:\n    image: redis:latest\n    privileged: true\n    ports:\n      - \"6379:6379\"\n",
+     "after": "services:\n  cache:\n    image: redis:latest\n    privileged: true\n    ports:\n      - \"6379:6379\"\n    healthcheck:\n      test: [\"CMD\", \"true\"]\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S26",
+   "kind": "correct",
+   "title": "legacy compose: one finding fixed, others untouched",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "services:\n  cache:\n    image: redis:latest\n    privileged: true\n    ports:\n      - \"6379:6379\"\n",
+     "after": "services:\n  cache:\n    image: redis:7.2@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    privileged: true\n    ports:\n      - \"6379:6379\"\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S27",
+   "kind": "correct",
+   "title": "legacy compose: service renamed app -> api, nothing else",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "services:\n  cache:\n    image: redis:latest\n    privileged: true\n    ports:\n      - \"6379:6379\"\n",
+     "after": "services:\n  store:\n    image: redis:latest\n    privileged: true\n    ports:\n      - \"6379:6379\"\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "S28",
+   "kind": "correct",
+   "title": "Python file that builds a Dockerfile string (not a Dockerfile)",
+   "surface": "commit",
+   "files": {
+    "build.py": {
+     "before": "",
+     "after": "DOCKERFILE = \"FROM ubuntu:latest\\nUSER root\\n\"\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S29",
+   "kind": "correct",
+   "title": "compose profile for debugging with SYS_PTRACE (dev tooling)",
+   "surface": "commit",
+   "files": {
+    "compose.debug.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    profiles: [debug]\n    cap_add:\n      - SYS_PTRACE\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "S30",
+   "kind": "correct",
+   "title": "pinned git clone",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN git clone https://github.com/example/r.git /r && git -C /r checkout 0000000000000000000000000000000000000000\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "S31",
+   "kind": "correct",
+   "title": "legacy tag-only base in HEAD: routine bump ubuntu:22.04 -> ubuntu:24.04",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "FROM ubuntu:22.04\nUSER 1000\n",
+     "after": "FROM ubuntu:24.04\nUSER 1000\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "allow"
+  },
+  {
+   "id": "S32",
+   "kind": "correct",
+   "title": "legacy compose image bump postgres:16.3 -> 16.4 (tag-only in HEAD)",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "services:\n  db:\n    image: postgres:16.3\n",
+     "after": "services:\n  db:\n    image: postgres:16.4\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "allow"
+  },
+  {
+   "id": "S33",
+   "kind": "correct",
+   "title": "legacy root Dockerfile: fix one finding (pin FROM by digest), root stays",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "FROM ubuntu:latest\nRUN true\n",
+     "after": "FROM ubuntu:22.04@sha256:0000000000000000000000000000000000000000000000000000000000000000\nRUN true\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "W1",
+   "kind": "probe",
+   "title": "waiver on a deny finding (USER root # chock: allow dk-last-user-root), new file",
+   "surface": "agent-commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER root  # chock: allow dk-last-user-root\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "W2",
+   "kind": "probe",
+   "title": "waiver on compose privileged, new file",
+   "surface": "agent-commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    privileged: true  # chock: allow cm-privileged-caps\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "W3",
+   "kind": "probe",
+   "title": "waiver comment line above an ask finding (no digest)",
+   "surface": "agent-commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "# chock: allow dk-from-no-digest\nFROM ubuntu:22.04\nUSER 1000\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "allow"
+  },
+  {
+   "id": "W4",
+   "kind": "probe",
+   "title": "waived line already in HEAD, agent edits another line",
+   "surface": "agent-commit",
+   "files": {
+    "Dockerfile": {
+     "before": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER root  # chock: allow dk-last-user-root\n",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER root  # chock: allow dk-last-user-root\nLABEL team=infra\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "W5",
+   "kind": "probe",
+   "title": "waiver naming the wrong rule id",
+   "surface": "agent-commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER root  # chock: allow dk-fetch-exec\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "O1",
+   "kind": "probe",
+   "title": "rollout: observe committed in HEAD, new FROM latest + root",
+   "surface": "commit",
+   "files": {
+    ".chock/config.yaml": {
+     "before": "rollout: observe\n",
+     "after": "rollout: observe\n"
+    },
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nUSER root\n"
+    }
+   },
+   "reviewed": "warn",
+   "expect": "warn"
+  },
+  {
+   "id": "O2",
+   "kind": "probe",
+   "title": "rollout: ask committed in HEAD, new FROM latest + root",
+   "surface": "commit",
+   "files": {
+    ".chock/config.yaml": {
+     "before": "rollout: ask\n",
+     "after": "rollout: ask\n"
+    },
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nUSER root\n"
+    }
+   },
+   "reviewed": "ask",
+   "expect": "ask"
+  },
+  {
+   "id": "O3",
+   "kind": "probe",
+   "title": "rollout: observe only in the working tree (uncommitted), new violation",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM ubuntu:latest\nUSER root\n"
+    }
+   },
+   "repo_files": {
+    ".chock/config.yaml": "rollout: observe\n"
+   },
+   "reviewed": "warn",
+   "expect": "warn"
+  },
+  {
+   "id": "R1",
+   "kind": "probe",
+   "title": "compose with a tab-indented line (unparsable)",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n\tapp:\n\t\timage: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "R2",
+   "kind": "probe",
+   "title": "compose that is not YAML at all (garbage)",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "this is not yaml at all {{{ ]]\n: : :\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "R3",
+   "kind": "probe",
+   "title": "compose with duplicate key",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "",
+     "after": "services:\n  app:\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n    image: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "R4",
+   "kind": "probe",
+   "title": "empty Dockerfile",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": ""
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "R5",
+   "kind": "probe",
+   "title": "Dockerfile with CRLF line endings, correct",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\r\nUSER 1000\r\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "R6",
+   "kind": "probe",
+   "title": "Dockerfile with BOM, correct",
+   "surface": "commit",
+   "files": {
+    "Dockerfile": {
+     "before": "",
+     "after": "﻿FROM alpine:3.20@sha256:0000000000000000000000000000000000000000000000000000000000000000\nUSER 1000\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "R7",
+   "kind": "probe",
+   "title": "legacy unparsable compose in HEAD, add a comment",
+   "surface": "commit",
+   "files": {
+    "compose.yaml": {
+     "before": "services:\n\tapp:\n\t\timage: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n",
+     "after": "services:\n\tapp:\n\t\timage: example/app:1.0@sha256:0000000000000000000000000000000000000000000000000000000000000000\n# note\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "block"
+  }
+ ],
+ "unrebuilt": []
+}
