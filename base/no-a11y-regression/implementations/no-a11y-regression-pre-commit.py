@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from html.parser import HTMLParser
@@ -260,6 +261,11 @@ class Node:
         """What the aligner matches on: the element's identity and styling, never the name it carries."""
         ids = tuple(self.attrs.get(a, "") for a in _ID_ATTRS)
         return (self.tag, ids, self.attrs.get("class", ""), self.attrs.get("type", ""))
+
+    @property
+    def key(self) -> tuple | None:
+        """The identity the markup states: the first non-empty of `_ID_ATTRS`, on this tag."""
+        return next(((self.tag, a, self.attrs[a]) for a in _ID_ATTRS if self.attrs.get(a)), None)
 
     @property
     def coarse(self) -> tuple:
@@ -570,6 +576,20 @@ def _trim(before: list[Node], after: list[Node], sig: str):
     return head, before[i : len(before) - j], after[i : len(after) - j], tail
 
 
+def pair_by_key(before: list[Node], after: list[Node]) -> list[tuple[Node | None, Node | None]]:
+    """Pair elements by their identity key where it names one element in each revision, wherever it sits.
+
+    A key that is missing, changed or repeated is left to `pair_elements`, so a moved element keeps its
+    identity and an inserted one still shifts nothing.
+    """
+    counts = Counter(n.key for n in before if n.key), Counter(n.key for n in after if n.key)
+    once = {k for k, c in counts[0].items() if c == 1 and counts[1][k] == 1}
+    moved = {n.key: n for n in after if n.key in once}
+    pairs: list[tuple[Node | None, Node | None]] = [(n, moved[n.key]) for n in before if n.key in once]
+    left = pair_elements([n for n in before if n.key not in once], [n for n in after if n.key not in once])
+    return pairs + left
+
+
 def pair_elements(before: list[Node], after: list[Node], level: int = 0) -> list[tuple[Node | None, Node | None]]:
     """Align two revisions' tracked elements: an unpaired `before` was deleted, an unpaired `after` is new.
 
@@ -614,7 +634,7 @@ def _name_moved(before: Node | None, after: Node | None, bs: str, as_: str, name
 def evaluate(before_html: str, after_html: str) -> list[dict]:
     """Compare two revisions; every row carries the lookup key that produced its action."""
     rows = []
-    for old, new in pair_elements(scan(before_html), scan(after_html)):
+    for old, new in pair_by_key(scan(before_html), scan(after_html)):
         bs, bw, b_name = old.state if old else (GONE, "not in this revision", "")
         as_, aw, a_name = new.state if new else (GONE, "not in this revision", "")
         action, why = TABLE[(bs, as_)]

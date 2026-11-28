@@ -49,7 +49,9 @@ def test_a_changed_src_is_the_same_element() -> None:
 
 def test_a_changed_href_is_the_same_element() -> None:
     assert _actions('<a href="/a" aria-label="Home">x</a>', '<a href="/b" aria-label="Home">x</a>') == []
-    assert _actions('<a href="/a"><img src="/i.png" alt="Home"></a>', '<a href="/b"><img src="/i.png"></a>') == [
+    assert sorted(
+        _actions('<a href="/a"><img src="/i.png" alt="Home"></a>', '<a href="/b"><img src="/i.png"></a>')
+    ) == [
         ("a[href=/b]", "deny"),
         ("img[src=/i.png]", "deny"),
     ]
@@ -156,15 +158,36 @@ def test_a_lost_name_in_a_large_file_is_still_found() -> None:
     assert [r["ref"] for r in found if r["action"] == GUARD.DENY] == ["img[src=/img/5000.png]"]
 
 
+def _buttons(classes: list[str], unlabelled: str = "") -> str:
+    return "".join(
+        f'<button class="{c}"{"" if c == unlabelled else f" aria-label={chr(34)}{c}{chr(34)}"}></button>\n'
+        for c in classes
+    )
+
+
 def test_a_stretch_too_long_to_align_is_paired_by_tag_order(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(GUARD, "ALIGN_LIMIT", 4)
-    before = "".join(f'<img src="/{n}.png" alt="Picture {n}">\n' for n in range(6))
-    after = "".join(f'<img src="/{n}.webp" alt="Picture {n}">\n' for n in range(6)).replace(' alt="Picture 3"', "")
-    assert _actions(before, after) == [("img[src=/3.webp]", "deny")]
+    before = _buttons([f"b{n}" for n in range(6)])
+    after = _buttons([f"x{n}" for n in range(6)], unlabelled="x3")
+    assert _actions(before, after) == [("button:4", "deny")]
 
 
 def test_a_long_file_is_trimmed_at_both_ends_and_the_middle_edit_is_judged(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(GUARD, "ALIGN_LIMIT", 4)
-    before = "".join(f'<img src="/{n}.png" alt="Picture {n}">\n' for n in range(6))
-    after = before.replace('src="/3.png" alt="Picture 3"', 'src="/3.webp"')
-    assert _actions(before, after) == [("img[src=/3.webp]", "deny")]
+    before = _buttons([f"b{n}" for n in range(6)])
+    after = _buttons(["b0", "b1", "b2", "x3", "b4", "b5"], unlabelled="x3")
+    assert _actions(before, after) == [("button:4", "deny")]
+
+
+def test_an_element_keeps_its_identity_when_it_moves() -> None:
+    others = "".join(f'<img src="/i{n}.png" alt="Image {n}">\n' for n in range(3))
+    named = '<img src="/a.png" alt="Alpha">\n'
+    assert _actions(named + others, others + '<img src="/a.png">\n') == [("img[src=/a.png]", "deny")]
+    assert _actions(named + others, others + named) == []
+    save = '<button id="a" aria-label="Save"></button>\n'
+    assert _actions(save + others, others + '<button id="a"></button>\n') == [("button[id=a]", "deny")]
+
+
+def test_a_repeated_key_is_left_to_alignment() -> None:
+    image = '<img src="/a.png" alt="Alpha">\n'
+    assert _actions(image + image, image + '<img src="/a.png">\n') == [("img[src=/a.png]", "deny")]
