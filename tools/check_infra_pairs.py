@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from chock.eval import execute
-from chock.eval.fixture import git, init_repo, prepare, write_files
+from chock.eval.fixture import git, prepare
 from chock.eval.model import Case
 from chock.eval.suites import Policy
 from chock.gate import runner as gate_runner
