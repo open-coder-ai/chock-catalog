@@ -1978,5 +1978,44 @@
     "after": "<img src=\"/img/new-banner.png\">\n"
    }
   }
+ },
+ {
+  "id": "X24",
+  "kind": "regression",
+  "title": "a keyed image moved after three others and loses its alt",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "gallery.html": {
+    "before": "<img src=\"/a.png\" alt=\"Alpha\">\n<img src=\"/i0.png\" alt=\"Image 0\">\n<img src=\"/i1.png\" alt=\"Image 1\">\n<img src=\"/i2.png\" alt=\"Image 2\">\n",
+    "after": "<img src=\"/i0.png\" alt=\"Image 0\">\n<img src=\"/i1.png\" alt=\"Image 1\">\n<img src=\"/i2.png\" alt=\"Image 2\">\n<img src=\"/a.png\">\n"
+   }
+  }
+ },
+ {
+  "id": "X25",
+  "kind": "correct",
+  "title": "a keyed image moved after three others, alt kept",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "gallery.html": {
+    "before": "<img src=\"/a.png\" alt=\"Alpha\">\n<img src=\"/i0.png\" alt=\"Image 0\">\n<img src=\"/i1.png\" alt=\"Image 1\">\n<img src=\"/i2.png\" alt=\"Image 2\">\n",
+    "after": "<img src=\"/i0.png\" alt=\"Image 0\">\n<img src=\"/i1.png\" alt=\"Image 1\">\n<img src=\"/i2.png\" alt=\"Image 2\">\n<img src=\"/a.png\" alt=\"Alpha\">\n"
+   }
+  }
+ },
+ {
+  "id": "X26",
+  "kind": "regression",
+  "title": "a keyed button moved to the end without its label",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "toolbar.html": {
+    "before": "<button id=\"a\" aria-label=\"Save\"></button>\n<button id=\"b0\" aria-label=\"Button 0\"></button>\n<button id=\"b1\" aria-label=\"Button 1\"></button>\n<button id=\"b2\" aria-label=\"Button 2\"></button>\n",
+    "after": "<button id=\"b0\" aria-label=\"Button 0\"></button>\n<button id=\"b1\" aria-label=\"Button 1\"></button>\n<button id=\"b2\" aria-label=\"Button 2\"></button>\n<button id=\"a\"></button>\n"
+   }
+  }
  }
 ]
