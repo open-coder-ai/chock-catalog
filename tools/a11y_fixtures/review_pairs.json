@@ -524,7 +524,7 @@
   "kind": "regression",
   "title": "image migrated .png -> .webp and alt emptied in the same change",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "report.html": {
     "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
@@ -617,7 +617,7 @@
   "kind": "regression",
   "title": "legacy unnamed button removed and the next button's aria-label dropped in the same edit",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "carousel.html": {
     "before": "<button type=\"button\" class=\"legacy-dot\"></button>\n<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n",
@@ -1098,7 +1098,7 @@
   "kind": "correct",
   "title": "build output regenerated: hashed asset names changed, a pre-existing unnamed image is untouched in source",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "dist/index.html": {
     "before": "<!doctype html><html lang=en><head><link rel=stylesheet href=/assets/app.3fa9c1.css></head><body><img src=/assets/logo.81bd22.svg alt=Acme><img src=/assets/banner.77aa01.png><script src=/assets/app.5c2e90.js></script></body></html>\n",
@@ -1111,7 +1111,7 @@
   "kind": "correct",
   "title": "src of a legacy unnamed image changed (new banner file); the missing alt was already missing",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "legacy.html": {
     "before": "<div class=\"row\"><img src=\"/img/logo.png\" alt=\"Acme\"><img src=\"/img/old-banner.png\"><button type=\"button\" aria-label=\"Menu\"></button></div>\n",
@@ -1345,7 +1345,7 @@
   "kind": "correct",
   "title": "new, correctly named button inserted before a legacy unnamed button nobody touched",
   "reviewed": "refused",
-  "expect": "warn",
+  "expect": "silent",
   "files": {
    "carousel.html": {
     "before": "<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n<button type=\"button\" class=\"legacy\"></button>\n",
@@ -1359,7 +1359,7 @@
   "kind": "correct",
   "title": "named button deleted with its feature; a legacy unnamed button after it is untouched",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "carousel.html": {
     "before": "<button type=\"button\" class=\"next\" aria-label=\"Next slide\"></button>\n<button type=\"button\" class=\"legacy\"></button>\n",
@@ -1495,6 +1495,32 @@
    "src/Gallery.jsx": {
     "before": "  return (\n    <div className=\"gallery\">\n      <img onClick={() => onZoom(photo)} src={photo.url} alt={photo.caption} />\n    </div>\n  );\n",
     "after": "  return (\n    <div className=\"gallery\">\n      <img onClick={() => onZoom(photo)} src={photo.url} />\n    </div>\n  );\n"
+   }
+  }
+ },
+ {
+  "id": "P17",
+  "kind": "regression",
+  "title": "query string added to src and alt emptied",
+  "reviewed": "missed",
+  "expect": "block",
+  "files": {
+   "report.html": {
+    "before": "<img src=\"/img/revenue-q3.png\" alt=\"Bar chart: revenue grew 12% in Q3\">\n",
+    "after": "<img src=\"/img/revenue-q3.png?v=2\" alt=\"\">\n"
+   }
+  }
+ },
+ {
+  "id": "P20",
+  "kind": "regression",
+  "title": "two images share a src; the first loses its alt",
+  "reviewed": "missed",
+  "expect": "block",
+  "files": {
+   "gallery.html": {
+    "before": "<img src=\"/img/photo.png\" alt=\"Team at the summit\">\n<img src=\"/img/photo.png\" alt=\"Team at the summit, second view\">\n",
+    "after": "<img src=\"/img/photo.png\">\n<img src=\"/img/photo.png\" alt=\"Team at the summit, second view\">\n"
    }
   }
  },
@@ -1937,6 +1963,19 @@
    "src/Close.tsx": {
     "before": "    <Button id=\"c\" aria-label=\"Close\"><Icon name=\"close\" /></Button>\n",
     "after": "    <Button id=\"c\"><Icon name=\"close\" /></Button>\n"
+   }
+  }
+ },
+ {
+  "id": "X23",
+  "kind": "correct",
+  "title": "a named image deleted with its feature while the legacy unnamed image after it gets a new src",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "gallery.html": {
+    "before": "<img src=\"/img/feature.png\" alt=\"Feature launch\">\n<img src=\"/img/old-banner.png\">\n",
+    "after": "<img src=\"/img/new-banner.png\">\n"
    }
   }
  }
