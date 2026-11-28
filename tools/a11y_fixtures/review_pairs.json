@@ -213,7 +213,7 @@
   "kind": "regression",
   "title": "<label htmlFor> removed, placeholder left in its place",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "src/Signup.tsx": {
     "before": "      <label htmlFor=\"email\">Email address</label>\n      <input type=\"email\" id=\"email\" name=\"email\" />\n",
@@ -226,7 +226,7 @@
   "kind": "regression",
   "title": "bound :alt removed in a Vue SFC",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "src/ProductCard.vue": {
     "before": "  <div class=\"card\"><img :src=\"product.image\" :alt=\"product.name\"><h3>{{ product.name }}</h3></div>\n",
@@ -239,7 +239,7 @@
   "kind": "regression",
   "title": "v-bind:aria-label removed from an icon-only button in a Vue SFC",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "src/Drawer.vue": {
     "before": "  <aside><button class=\"icon close\" v-bind:aria-label=\"$t('close')\" @click=\"close\"></button><slot /></aside>\n",
@@ -265,7 +265,7 @@
   "kind": "regression",
   "title": "[attr.aria-label] removed from a search input in an Angular template",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "src/app/search/search.component.html": {
     "before": "  <input type=\"search\" [attr.aria-label]=\"searchLabel\" [(ngModel)]=\"query\">\n",
@@ -369,7 +369,7 @@
   "kind": "regression",
   "title": "th:alt removed in a Thymeleaf template",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "src/main/resources/templates/home.html": {
     "before": "<img th:src=\"@{/img/logo.png}\" th:alt=\"#{home.logo.alt}\">\n",
@@ -577,7 +577,7 @@
   "kind": "regression",
   "title": "wrapping (implicit) <label> removed from an input",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "signup.html": {
     "before": "<label>Email address <input type=\"email\" name=\"email\"></label>\n",
@@ -774,7 +774,7 @@
   "kind": "correct",
   "title": "aria-label replaced by a visible <label htmlFor> in TSX",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Search.tsx": {
     "before": "    <input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search\" />\n",
@@ -895,7 +895,7 @@
   "kind": "correct",
   "title": "alt moved into a translation call in Vue (:alt)",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Header.vue": {
     "before": "  <header><img src=\"/img/logo.svg\" alt=\"Acme home\"></header>\n",
@@ -908,7 +908,7 @@
   "kind": "correct",
   "title": "alt moved into a translate pipe in Angular ([alt])",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/app/header/header.component.html": {
     "before": "<header><img src=\"/img/logo.svg\" alt=\"Acme home\"></header>\n",
@@ -921,7 +921,7 @@
   "kind": "correct",
   "title": "aria-label moved into a binding in Angular ([attr.aria-label])",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/app/drawer/drawer.component.html": {
     "before": "<aside><button type=\"button\" class=\"close\" aria-label=\"Close\" (click)=\"close()\"></button></aside>\n",
@@ -947,7 +947,7 @@
   "kind": "correct",
   "title": "hard-coded aria-label replaced by a prop in Vue (:aria-label)",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Drawer.vue": {
     "before": "  <aside><button type=\"button\" class=\"close\" aria-label=\"Close\" @click=\"close\"></button></aside>\n",
@@ -960,7 +960,7 @@
   "kind": "correct",
   "title": "lang=\"en\" replaced by th:lang in a Thymeleaf layout",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/main/resources/templates/layout.html": {
     "before": "<html lang=\"en\" xmlns:th=\"http://www.thymeleaf.org\">\n",
@@ -1486,6 +1486,19 @@
   }
  },
  {
+  "id": "P21",
+  "kind": "regression",
+  "title": "JSX: alt removed from an image whose arrow-function handler precedes it",
+  "reviewed": "missed",
+  "expect": "block",
+  "files": {
+   "src/Gallery.jsx": {
+    "before": "  return (\n    <div className=\"gallery\">\n      <img onClick={() => onZoom(photo)} src={photo.url} alt={photo.caption} />\n    </div>\n  );\n",
+    "after": "  return (\n    <div className=\"gallery\">\n      <img onClick={() => onZoom(photo)} src={photo.url} />\n    </div>\n  );\n"
+   }
+  }
+ },
+ {
   "id": "S01",
   "kind": "swap_regression",
   "title": "image swapped, alt dropped",
@@ -1586,6 +1599,58 @@
    "index.html": {
     "before": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n</body>\n</html>\n",
     "after": "<!doctype html>\n<html lang=\"en\">\n<head><title>Acme</title></head>\n<body>\n<img src=\"a.png\" alt=\"Team photo at the summit\">\n<img src=\"b.png\">\n</body>\n</html>\n"
+   }
+  }
+ },
+ {
+  "id": "B01",
+  "kind": "bound_html",
+  "title": "plain .html: alt=\"Logo\" replaced by a bound :alt",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/img/logo.svg\" alt=\"Logo\">\n",
+    "after": "<img src=\"/img/logo.svg\" :alt=\"logoText\">\n"
+   }
+  }
+ },
+ {
+  "id": "B02",
+  "kind": "bound_html",
+  "title": "plain .html: a bound :alt removed",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/img/logo.svg\" :alt=\"logoText\">\n",
+    "after": "<img src=\"/img/logo.svg\">\n"
+   }
+  }
+ },
+ {
+  "id": "B03",
+  "kind": "bound_html",
+  "title": "plain .html: a bound [alt] removed",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "page.html": {
+    "before": "<img src=\"/img/logo.svg\" [alt]=\"logoText\">\n",
+    "after": "<img src=\"/img/logo.svg\">\n"
+   }
+  }
+ },
+ {
+  "id": "B04",
+  "kind": "bound_html",
+  "title": "plain .html: a new image with a bound :alt",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "page.html": {
+    "before": "<p>Home</p>\n",
+    "after": "<p>Home</p>\n<img src=\"/img/logo.svg\" :alt=\"logoText\">\n"
    }
   }
  }
