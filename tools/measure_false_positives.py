@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Replay each observe pack's gate over the catalog's first-parent history and report how often it fires (D15).
+"""Replay a pack's gate over first-parent history and report how often it fires (D15); `--record` writes a promotion record.
 
 `judged` counts commits with a file in the gate's scope (`applies_to.paths`); a gate with no paths judges every
-commit, so its rate is fires per commit. `--root` runs the pack scripts of that repo (the gate engine is this
-repo's): point it only at a trusted repo. A shallow clone is refused unless `--allow-shallow`.
+commit, so its rate is fires per commit. Packs named on the command line are measured whatever their action
+(warn, ask or block); with none named, every pack whose gate declares `warn`. `--root` runs the pack scripts of that
+repo (the gate engine is this repo's): point it only at a trusted repo. A shallow clone is refused unless
+`--allow-shallow`. `--record <id> --corpus REPO=PATH ...` replays one pack over each repo and writes
+`measurements/promotion/<id>.json` with every verdict left empty, for a person to judge (check_promotion.py).
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime
 import importlib.util
 import json
 import re
@@ -19,6 +23,8 @@ from pathlib import Path
 from types import ModuleType
 
 import yaml
+from check_promotion import FOLDER, settle
+from promotion_record import eval_counts, misses_listed
 
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ".chock/bin/gate.py"
@@ -177,6 +183,45 @@ def measure(root: Path, packs: list[str], limit: int) -> dict:
     return {"head": git(root, "rev-parse", "HEAD").strip(), "commits": len(history), "packs": report}
 
 
+def build_record(root: Path, pack: str, corpora: dict[str, Path], limit: int, date: str) -> dict:
+    """The promotion record for `pack` as of `root`'s HEAD: replay over each corpus, eval counts, every verdict empty."""
+    engine = load_engine()
+    spec = load_pack(root, engine, pack)
+    if "reason" in spec:
+        msg = f"{pack} cannot be measured: {spec['reason']}"
+        raise ValueError(msg)
+    folder = pack_dir(root, pack)
+    manifest = yaml.safe_load((folder / "manifest.yaml").read_text(encoding="utf-8"))
+    rows, triage = [], []
+    for repo, path in corpora.items():
+        history = commits(path, limit)
+        done = measure_pack(path, engine, spec, history)
+        if done["errors"]:
+            msg = f"the gate could not decide {done['errors']} commit(s) in {repo}"
+            raise ValueError(msg)
+        rows.append({"repo": repo, "commits": len(history), "judged": done["judged"], "fires": done["fires"]})
+        triage += [
+            {"repo": repo, "commit": f["commit"], "path": f["items"][0]["path"], "rule": f["items"][0]["rule"]}
+            | {"verdict": "", "reason": ""}
+            for f in done["details"]
+        ]
+    return settle(
+        {
+            "policy": pack,
+            "version": str(manifest["version"]),
+            "engine": (root / ".framework-ref").read_text(encoding="utf-8").strip(),
+            "catalog": git(root, "rev-parse", "HEAD").strip(),
+            "date": date,
+            "corpora": rows,
+            "triage": triage,
+            "eval": eval_counts(root, folder),
+            "misses": {"read": False, "listed": misses_listed(str(manifest.get("description", "")))},
+            "correct_work_rate": None,
+            "bar_met": False,
+        }
+    )
+
+
 def render(report: dict) -> str:
     lines = [f"head {report['head']}, {report['commits']} first-parent commits replayed", ""]
     lines.append(f"{'pack':<34}{'judged':>7}{'fires':>7}{'errors':>7}{'rate':>8}")
@@ -203,13 +248,34 @@ def main(argv: list[str] | None = None) -> int:
         "--allow-shallow", action="store_true", help="measure a shallow clone (its boundary is skipped)"
     )
     parser.add_argument("--root", type=Path, default=ROOT, help="the catalog repo to measure")
+    parser.add_argument("--record", metavar="ID", help="write measurements/promotion/<id>.json (needs --corpus)")
+    parser.add_argument(
+        "--corpus", action="append", default=[], metavar="REPO=PATH", help="a repo to replay for --record"
+    )
+    parser.add_argument("--date", default=datetime.date.today().isoformat(), help="the record's date (default: today)")
     args = parser.parse_args(argv)
-    if is_shallow(args.root) and not args.allow_shallow:
-        print(
-            "refusing a shallow clone: its history is cut off; run `git fetch --unshallow` or pass --allow-shallow",
-            file=sys.stderr,
-        )
-        return REFUSED
+    if args.record and (args.packs or not args.corpus):
+        parser.error("--record takes no pack ids and needs at least one --corpus REPO=PATH")
+    corpora = {name: Path(path) for name, _, path in (item.partition("=") for item in args.corpus)}
+    if args.record:
+        args.allow_shallow = False
+    for path in [args.root, *corpora.values()]:
+        if is_shallow(path) and not args.allow_shallow:
+            print(
+                "refusing a shallow clone: its history is cut off; run `git fetch --unshallow` or pass --allow-shallow",
+                file=sys.stderr,
+            )
+            return REFUSED
+    if args.record:
+        try:
+            record = build_record(args.root, args.record, corpora, args.limit, args.date)
+        except ValueError as refusal:
+            print(refusal, file=sys.stderr)
+            return REFUSED
+        target = args.root / FOLDER / f"{args.record}.json"
+        target.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+        print(f"wrote {target.relative_to(args.root)}: {len(record['triage'])} fire(s) to judge")
+        return 0
     started = time.monotonic()
     report = measure(args.root, args.packs or observe_packs(args.root), args.limit)
     print(json.dumps(report, indent=2, sort_keys=True) if args.json else render(report))
