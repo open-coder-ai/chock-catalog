@@ -1887,5 +1887,57 @@
     "after": "    <Card label=\"Profile\"><IconButton id=\"close\"><CloseIcon /></IconButton></Card>\n"
    }
   }
+ },
+ {
+  "id": "X19",
+  "kind": "correct",
+  "title": "aria-label removed from a Button whose child is a Trans",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "src/Save.tsx": {
+    "before": "    <Button id=\"s\" aria-label=\"Save\"><Trans i18nKey=\"save\" /></Button>\n",
+    "after": "    <Button id=\"s\"><Trans i18nKey=\"save\" /></Button>\n"
+   }
+  }
+ },
+ {
+  "id": "X20",
+  "kind": "correct",
+  "title": "aria-label removed from a Button whose only child is a FormattedMessage",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "src/Save.tsx": {
+    "before": "    <Button id=\"s\" aria-label=\"Save\"><FormattedMessage id=\"x\" defaultMessage=\"Save\" /></Button>\n",
+    "after": "    <Button id=\"s\"><FormattedMessage id=\"x\" defaultMessage=\"Save\" /></Button>\n"
+   }
+  }
+ },
+ {
+  "id": "X21",
+  "kind": "regression",
+  "title": "aria-label removed from a Button whose only child is a CloseIcon",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Close.tsx": {
+    "before": "    <Button id=\"c\" aria-label=\"Close\"><CloseIcon /></Button>\n",
+    "after": "    <Button id=\"c\"><CloseIcon /></Button>\n"
+   }
+  }
+ },
+ {
+  "id": "X22",
+  "kind": "regression",
+  "title": "aria-label removed from a Button whose only child is an Icon with a name prop",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "src/Close.tsx": {
+    "before": "    <Button id=\"c\" aria-label=\"Close\"><Icon name=\"close\" /></Button>\n",
+    "after": "    <Button id=\"c\"><Icon name=\"close\" /></Button>\n"
+   }
+  }
  }
 ]
