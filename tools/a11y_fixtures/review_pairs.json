@@ -30,7 +30,7 @@
   "kind": "regression",
   "title": "aria-label removed from an icon-only button (inline svg child)",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "dialog.html": {
     "before": "<div class=\"modal\"><button type=\"button\" class=\"icon-btn\" aria-label=\"Close dialog\"><svg class=\"icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6l12 12M6 18L18 6\"/></svg></button><p>Saved.</p></div>\n",
@@ -56,7 +56,7 @@
   "kind": "regression",
   "title": "aria-label removed from an icon-only button (font-icon <i> child)",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "search.html": {
     "before": "<form action=\"/search\"><input type=\"search\" id=\"q\" name=\"q\" aria-label=\"Search the site\"><button type=\"submit\" aria-label=\"Search\"><i class=\"fa fa-search\"></i></button></form>\n",
@@ -200,7 +200,7 @@
   "kind": "regression",
   "title": "aria-label removed from an icon-only button (<CloseIcon /> child)",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "src/Modal.jsx": {
     "before": "      <button type=\"button\" aria-label=\"Close dialog\" onClick={onClose}><CloseIcon /></button>\n",
@@ -278,7 +278,7 @@
   "kind": "regression",
   "title": "static aria-label removed from an Angular icon button (<mat-icon> child)",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "src/app/list/list.component.html": {
     "before": "  <button mat-icon-button aria-label=\"Delete item\" (click)=\"remove(item)\"><mat-icon>delete</mat-icon></button>\n",
@@ -604,7 +604,7 @@
   "kind": "regression",
   "title": "link text replaced by an icon only",
   "reviewed": "missed",
-  "expect": "silent",
+  "expect": "block",
   "files": {
    "nav.html": {
     "before": "<nav><a href=\"/cart\">Cart</a></nav>\n",
@@ -813,7 +813,7 @@
   "kind": "correct",
   "title": "redundant aria-label removed from a component that has visible text",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Form.tsx": {
     "before": "    <Button data-testid=\"save\" aria-label=\"Save\">Save</Button>\n",
@@ -826,7 +826,7 @@
   "kind": "correct",
   "title": "title tooltip removed from a link component that has visible text",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Nav.jsx": {
     "before": "    <Link href=\"/pricing\" title=\"Go to pricing\">Pricing</Link>\n",
@@ -1386,7 +1386,7 @@
   "kind": "correct",
   "title": "label moved from the input component to a wrapping field component",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Signup.tsx": {
     "before": "    <Input name=\"email\" label=\"Email address\" />\n",
@@ -1399,7 +1399,7 @@
   "kind": "correct",
   "title": "non-a11y prop renamed on a component (Card title -> heading)",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Plans.tsx": {
     "before": "    <Card id=\"pro\" title=\"Pro plan\" price={29} />\n",
@@ -1412,7 +1412,7 @@
   "kind": "correct",
   "title": "label prop replaced by children text on a component",
   "reviewed": "refused",
-  "expect": "block",
+  "expect": "silent",
   "files": {
    "src/Form.tsx": {
     "before": "    <Button data-testid=\"save\" label=\"Save\" />\n",
@@ -1794,6 +1794,71 @@
    "src/Chart.jsx": {
     "before": "  return <img src=\"/c.png\" alt=\"Revenue chart\" />;\n",
     "after": "  return <img src=\"/c.png\" alt={null} />;\n"
+   }
+  }
+ },
+ {
+  "id": "X12",
+  "kind": "regression",
+  "title": "aria-label of a wrapped input replaced by label text that is aria-hidden",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "form.html": {
+    "before": "<label>Email <input type=\"text\" name=\"email\"></label>\n",
+    "after": "<label><span aria-hidden=\"true\">Email</span> <input type=\"text\" name=\"email\"></label>\n"
+   }
+  }
+ },
+ {
+  "id": "X13",
+  "kind": "regression",
+  "title": "aria-label removed from a button whose only child is an aria-hidden img with alt",
+  "reviewed": "orchestrator",
+  "expect": "block",
+  "files": {
+   "dialog.html": {
+    "before": "<button type=\"button\" aria-label=\"Close\"><img src=\"/x.svg\" alt=\"Close\" aria-hidden=\"true\"></button>\n",
+    "after": "<button type=\"button\"><img src=\"/x.svg\" alt=\"Close\" aria-hidden=\"true\"></button>\n"
+   }
+  }
+ },
+ {
+  "id": "X14",
+  "kind": "correct",
+  "title": "aria-label removed from a button named by a child img alt",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "dialog.html": {
+    "before": "<button type=\"button\" aria-label=\"Close\"><img src=\"/x.svg\" alt=\"Close\"></button>\n",
+    "after": "<button type=\"button\"><img src=\"/x.svg\" alt=\"Close\"></button>\n"
+   }
+  }
+ },
+ {
+  "id": "X15",
+  "kind": "correct",
+  "title": "aria-label removed from a link named by a child svg title",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "nav.html": {
+    "before": "<a href=\"/home\" aria-label=\"Home\"><svg viewBox=\"0 0 24 24\"><title>Home</title><path d=\"M0 0\"/></svg></a>\n",
+    "after": "<a href=\"/home\"><svg viewBox=\"0 0 24 24\"><title>Home</title><path d=\"M0 0\"/></svg></a>\n"
+   }
+  }
+ },
+ {
+  "id": "X16",
+  "kind": "correct",
+  "title": "aria-label removed from a button with an aria-hidden icon and visible text",
+  "reviewed": "orchestrator",
+  "expect": "silent",
+  "files": {
+   "form.html": {
+    "before": "<button type=\"submit\" aria-label=\"Save\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M0 0\"/></svg>Save</button>\n",
+    "after": "<button type=\"submit\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M0 0\"/></svg>Save</button>\n"
    }
   }
  }
