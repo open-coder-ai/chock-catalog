@@ -19,7 +19,7 @@
 
 ## What it is about
 
-trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label, label or lang that an element already had, deleting a flagged element. avoid: breaking a requirement the previous revision met; interrupting a correct fix. Misses: a name lost while an element moves to another file, a new element or a supplied name that is weak (these warn and do not block), and Thymeleaf th:attr, which sets several attributes at once. Not production-grade: caught 29 of 51 regressions and refused 11 of 58 correct changes on the 2026-11-15 hardening review's pairs, measured 2026-11-28; known gaps are JSP, ERB, Pug and Lit syntax, icon-only controls that lose an aria-label, and an alt removed in some forms.
+trigger: remediating accessibility, editing markup, emptying or removing an alt, aria-label, label or lang that an element already had, deleting a flagged element. avoid: breaking a requirement the previous revision met; interrupting a correct fix. Misses: a name lost while an element moves to another file, a new element or a supplied name that is weak (these warn and do not block), and Thymeleaf th:attr, which sets several attributes at once. Not production-grade: caught 34 of 51 regressions and refused 6 of 58 correct changes on the 2026-11-15 hardening review's pairs, measured 2026-11-28; known gaps are JSP, ERB, Pug and Lit syntax, an icon component whose own children hide its name, and an alt removed in some forms.
 
 ## What it solves
 
@@ -49,7 +49,7 @@ chock add no-a11y-regression
 chock sync .
 ```
 
-Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiJjMDNhODQ2MjFkMmY2Y2Y0M2M3NDUwNDk0N2QxOTJkZTI4NGExYjQ1In0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibm8tYTExeS1yZWdyZXNzaW9uIiwidmVyc2lvbiI6IjEuMi4wIiwic2hhMjU2IjoiMjFjNWQ0OWUwNDVhMTIyNTcyOWE2ZDA2NmIzYTQ3YjFmMzA2MmZlYjcwYTNlOTY1NjYyMDBkYjhiYzA0MjA5ZSJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
+Or [Open in the chock.sh builder](https://chock.sh/coding/builder/#s=eyJzY2hlbWEiOjIsImNsaWVudCI6ImNsYXVkZS1jb2RlIiwiYnVuZGxlIjp7InZlcnNpb24iOiIxLjAuMCJ9LCJjYXRhbG9nIjp7InNvdXJjZSI6Imh0dHBzOi8vZ2l0aHViLmNvbS9vcGVuLWNvZGVyLWFpL2Nob2NrLWNhdGFsb2ciLCJyZWYiOiIxZGNiMzNlMzBmZjVlZGMyODM3OGYxMThmYjMwMDFlMjRlOWMxZTEyIn0sInBvbGljaWVzIjpbeyJmcm9tIjoiY2F0YWxvZyIsImlkIjoibm8tYTExeS1yZWdyZXNzaW9uIiwidmVyc2lvbiI6IjEuMy4wIiwic2hhMjU2IjoiOTkzYzYzMGFlNTY1OTk1ZWM5ZDY2ZmZmYTM5ZWI5ZGYzYjIwNTYxNDQ5NzQ5MDFiYzVkYjVlMzQ1OGE2OWFhNyJ9XX0): this policy preselected for Claude Code, one merged plugin, installed with `chock install --selection <code> --apply`.
 
 Or copy the folder — it does the same thing, byte for byte:
 
