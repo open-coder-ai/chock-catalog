@@ -1,0 +1,706 @@
+{
+ "policy": "block-wildcard-iam",
+ "cases": [
+  {
+   "id": "I01",
+   "kind": "catch",
+   "title": "JSON \"Action\": \"*\" on \"*\"",
+   "surface": "commit",
+   "files": {
+    "iam/admin.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I01v",
+   "kind": "catch",
+   "title": "variant: CloudFormation YAML, Action as block list",
+   "surface": "commit",
+   "files": {
+    "cfn/admin.yaml": {
+     "before": "",
+     "after": "Statement:\n  - Effect: Allow\n    Action:\n      - '*'\n    Resource: arn:aws:s3:::b\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I02",
+   "kind": "catch",
+   "title": "\"Resource\": \"*\" with write actions (s3:PutObject, s3:DeleteObject)",
+   "surface": "commit",
+   "files": {
+    "iam/s3.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:PutObject\",\n        \"s3:DeleteObject\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "I02v",
+   "kind": "catch",
+   "title": "variant: Terraform HCL resources = [\"*\"] with write actions",
+   "surface": "commit",
+   "files": {
+    "iam/s3.tf": {
+     "before": "",
+     "after": "statement {\n  actions   = [\"s3:PutObject\", \"s3:DeleteObject\"]\n  resources = [\"*\"]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "I03",
+   "kind": "catch",
+   "title": "\"Principal\": \"*\" bucket policy",
+   "surface": "commit",
+   "files": {
+    "iam/bucket.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": \"*\",\n      \"Action\": \"s3:GetObject\",\n      \"Resource\": \"arn:aws:s3:::b/*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I03v",
+   "kind": "catch",
+   "title": "variant: Terraform principals block with identifiers [\"*\"]",
+   "surface": "commit",
+   "files": {
+    "iam/bucket.tf": {
+     "before": "",
+     "after": "principals {\n  type        = \"AWS\"\n  identifiers = [\"*\"]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I04",
+   "kind": "catch",
+   "title": "iam:PassRole on *",
+   "surface": "commit",
+   "files": {
+    "iam/pass.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"iam:PassRole\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "I04v",
+   "kind": "catch",
+   "title": "variant: Terraform jsonencode, iam:PassRole on *",
+   "surface": "commit",
+   "files": {
+    "iam/pass.tf": {
+     "before": "",
+     "after": "policy = jsonencode({\n  Statement = [{\n    Effect   = \"Allow\"\n    Action   = \"iam:PassRole\"\n    Resource = \"*\"\n  }]\n})\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "I05",
+   "kind": "catch",
+   "title": "Allow with NotAction (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/notaction.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"NotAction\": \"iam:*\",\n      \"Resource\": \"arn:aws:s3:::b\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I05v",
+   "kind": "catch",
+   "title": "variant: NotAction in YAML",
+   "surface": "commit",
+   "files": {
+    "cfn/notaction.yaml": {
+     "before": "",
+     "after": "Statement:\n  - Effect: Allow\n    NotAction: iam:*\n    Resource: arn:aws:s3:::b\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I06",
+   "kind": "catch",
+   "title": "k8s Role verbs: [\"*\"]",
+   "surface": "commit",
+   "files": {
+    "k8s/role.yaml": {
+     "before": "",
+     "after": "rules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"*\"]\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I06v",
+   "kind": "catch",
+   "title": "variant: verbs as a block list in a ClusterRole",
+   "surface": "commit",
+   "files": {
+    "k8s/clusterrole.yaml": {
+     "before": "",
+     "after": "rules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs:\n      - \"*\"\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I07",
+   "kind": "catch",
+   "title": "ClusterRoleBinding to cluster-admin",
+   "surface": "commit",
+   "files": {
+    "k8s/binding.yaml": {
+     "before": "",
+     "after": "roleRef:\n  kind: ClusterRole\n  name: cluster-admin\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I07v",
+   "kind": "catch",
+   "title": "variant: Terraform kubernetes_cluster_role_binding to cluster-admin",
+   "surface": "commit",
+   "files": {
+    "k8s/binding.tf": {
+     "before": "",
+     "after": "role_ref {\n  kind = \"ClusterRole\"\n  name = \"cluster-admin\"\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I08",
+   "kind": "catch",
+   "title": "GCP roles/owner in Terraform",
+   "surface": "commit",
+   "files": {
+    "gcp/iam.tf": {
+     "before": "",
+     "after": "role   = \"roles/owner\"\nmember = \"user:a@example.com\"\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I08v",
+   "kind": "catch",
+   "title": "variant: GCP policy YAML bindings role: roles/owner",
+   "surface": "commit",
+   "files": {
+    "gcp/policy.yaml": {
+     "before": "",
+     "after": "bindings:\n  - role: roles/owner\n    members:\n      - user:a@example.com\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I09",
+   "kind": "catch",
+   "title": "Azure custom role actions [\"*\"] (JSON)",
+   "surface": "commit",
+   "files": {
+    "azure/role.json": {
+     "before": "",
+     "after": "{\n  \"Name\": \"x\",\n  \"Actions\": [\n    \"*\"\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I09v",
+   "kind": "catch",
+   "title": "variant: Bicep Owner role assignment at subscription scope",
+   "surface": "commit",
+   "files": {
+    "azure/owner.bicep": {
+     "before": "",
+     "after": "resource ra 'Microsoft.Authorization/roleAssignments@2022-04-01' = {\n  properties: {\n    roleDefinitionName: 'Owner'\n  }\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I10",
+   "kind": "catch",
+   "title": "AdministratorAccess managed policy attached (Terraform)",
+   "surface": "commit",
+   "files": {
+    "iam/admin.tf": {
+     "before": "",
+     "after": "policy_arn = \"arn:aws:iam::aws:policy/AdministratorAccess\"\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I10v",
+   "kind": "catch",
+   "title": "variant: CloudFormation ManagedPolicyArns list",
+   "surface": "commit",
+   "files": {
+    "cfn/admin.yaml": {
+     "before": "",
+     "after": "ManagedPolicyArns:\n  - arn:aws:iam::aws:policy/AdministratorAccess\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I11",
+   "kind": "catch",
+   "title": "service wildcard s3:* on *",
+   "surface": "commit",
+   "files": {
+    "iam/svc.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"s3:*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "I11v",
+   "kind": "catch",
+   "title": "variant: unlisted service wildcard (lambda:*, secretsmanager:*) on *",
+   "surface": "commit",
+   "files": {
+    "iam/svc2.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"lambda:*\",\n        \"secretsmanager:*\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "I12",
+   "kind": "catch",
+   "title": "wildcard hidden behind a Terraform variable default",
+   "surface": "commit",
+   "files": {
+    "iam/var.tf": {
+     "before": "",
+     "after": "variable \"actions\" {\n  default = \"*\"\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "I12v",
+   "kind": "catch",
+   "title": "variant: YAML anchor reused as the Action value",
+   "surface": "commit",
+   "files": {
+    "cfn/alias.yaml": {
+     "before": "",
+     "after": "base: &all '*'\nStatement:\n  - Effect: Allow\n    Action: *all\n    Resource: arn:aws:s3:::b\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N01",
+   "kind": "correct",
+   "title": "\"Resource\": \"*\" on describe/list actions AWS only supports on * (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/describe.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"ec2:DescribeInstances\",\n        \"ec2:DescribeVolumes\"\n      ],\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "N02",
+   "kind": "correct",
+   "title": "same in Terraform: resources = [\"*\"] with describe/list actions",
+   "surface": "commit",
+   "files": {
+    "iam/describe.tf": {
+     "before": "",
+     "after": "statement {\n  actions   = [\"s3:ListAllMyBuckets\", \"ec2:DescribeInstances\"]\n  resources = [\"*\"]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "N03",
+   "kind": "correct",
+   "title": "scoped role: named actions on named ARNs (JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/role.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": [\n        \"s3:GetObject\"\n      ],\n      \"Resource\": \"arn:aws:s3:::reports/*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N04",
+   "kind": "correct",
+   "title": "scoped Terraform policy document with interpolated ARN and /* object suffix",
+   "surface": "commit",
+   "files": {
+    "iam/scoped.tf": {
+     "before": "",
+     "after": "statement {\n  actions   = [\"s3:GetObject\"]\n  resources = [\"${aws_s3_bucket.b.arn}/*\"]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N05",
+   "kind": "correct",
+   "title": "enforce-TLS bucket policy: Deny, Principal *, s3:*, SecureTransport false (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/tls.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Deny\",\n      \"Principal\": \"*\",\n      \"Action\": \"s3:*\",\n      \"Resource\": \"arn:aws:s3:::b/*\",\n      \"Condition\": {\n        \"Bool\": {\n          \"aws:SecureTransport\": \"false\"\n        }\n      }\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N06",
+   "kind": "correct",
+   "title": "deny-all guardrail (SCP): Deny Action * Resource * outside approved regions (pretty JSON)",
+   "surface": "commit",
+   "files": {
+    "iam/scp.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Deny\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\",\n      \"Condition\": {\n        \"StringNotEquals\": {\n          \"aws:RequestedRegion\": [\n            \"eu-west-1\"\n          ]\n        }\n      }\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N07",
+   "kind": "correct",
+   "title": "KMS default key policy: account root, kms:*, Resource * (AWS's documented default)",
+   "surface": "commit",
+   "files": {
+    "kms/key.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"AWS\": \"arn:aws:iam::123456789012:root\"\n      },\n      \"Action\": \"kms:*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N08",
+   "kind": "correct",
+   "title": "Principal * narrowed by aws:PrincipalOrgID condition (bucket policy)",
+   "surface": "commit",
+   "files": {
+    "iam/org.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": \"*\",\n      \"Action\": \"s3:GetObject\",\n      \"Resource\": \"arn:aws:s3:::b/*\",\n      \"Condition\": {\n        \"StringEquals\": {\n          \"aws:PrincipalOrgID\": \"o-example\"\n        }\n      }\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N09",
+   "kind": "correct",
+   "title": "service trust policy: lambda.amazonaws.com may assume the role",
+   "surface": "commit",
+   "files": {
+    "iam/trust.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Principal\": {\n        \"Service\": \"lambda.amazonaws.com\"\n      },\n      \"Action\": \"sts:AssumeRole\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N10",
+   "kind": "correct",
+   "title": "comment that mentions the bad pattern in Terraform",
+   "surface": "commit",
+   "files": {
+    "iam/main.tf": {
+     "before": "",
+     "after": "# never write actions = [\"*\"] here\nstatement {\n  actions = [\"s3:GetObject\"]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "N11",
+   "kind": "correct",
+   "title": "docs example in Markdown showing what not to write",
+   "surface": "commit",
+   "files": {
+    "docs/iam.md": {
+     "before": "",
+     "after": "Do not write this:\n\n    \"Action\": \"*\",\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "N12",
+   "kind": "correct",
+   "title": "test fixture: tests/fixtures/overbroad_policy.json",
+   "surface": "commit",
+   "files": {
+    "tests/fixtures/overbroad_policy.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N13",
+   "kind": "correct",
+   "title": "k8s Role with named verbs and resources",
+   "surface": "commit",
+   "files": {
+    "k8s/role.yaml": {
+     "before": "",
+     "after": "rules:\n  - apiGroups: [\"\"]\n    resources: [\"pods\"]\n    verbs: [\"get\", \"list\"]\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N14",
+   "kind": "correct",
+   "title": "ClusterRoleBinding to the built-in view role",
+   "surface": "commit",
+   "files": {
+    "k8s/view.yaml": {
+     "before": "",
+     "after": "roleRef:\n  kind: ClusterRole\n  name: view\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N15",
+   "kind": "correct",
+   "title": "GCP narrow role to a service account",
+   "surface": "commit",
+   "files": {
+    "gcp/iam.tf": {
+     "before": "",
+     "after": "role   = \"roles/storage.objectViewer\"\nmember = \"serviceAccount:a@p.iam.gserviceaccount.com\"\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N16",
+   "kind": "correct",
+   "title": "Azure Reader at resource-group scope (Terraform)",
+   "surface": "commit",
+   "files": {
+    "azure/reader.tf": {
+     "before": "",
+     "after": "role_definition_name = \"Reader\"\nscope = azurerm_resource_group.rg.id\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N17",
+   "kind": "correct",
+   "title": "legacy admin policy in HEAD: add a scoped statement after it",
+   "surface": "commit",
+   "files": {
+    "iam/legacy.json": {
+     "before": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    },\n    {\"Effect\": \"Allow\", \"Action\": \"s3:GetObject\", \"Resource\": \"arn:aws:s3:::b/*\"}\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N18",
+   "kind": "correct",
+   "title": "legacy admin policy in HEAD: re-indent the file 2 -> 4 spaces only",
+   "surface": "commit",
+   "files": {
+    "iam/legacy.json": {
+     "before": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n",
+     "after": "{\n    \"Version\": \"2012-10-17\",\n    \"Statement\": [\n        {\n            \"Effect\": \"Allow\",\n            \"Action\": \"*\",\n            \"Resource\": \"*\"\n        }\n    ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N19",
+   "kind": "correct",
+   "title": "legacy admin policy in HEAD: add a Sid to the old statement",
+   "surface": "commit",
+   "files": {
+    "iam/legacy.json": {
+     "before": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Sid\": \"Old\",\n      \"Effect\": \"Allow\",\n      \"Action\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N20",
+   "kind": "correct",
+   "title": "CDK Python with scoped grant",
+   "surface": "commit",
+   "files": {
+    "cdk/stack.ts": {
+     "before": "",
+     "after": "new iam.PolicyStatement({ actions: ['s3:GetObject'], resources: [bucket.arnForObjects('*')] });\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N21",
+   "kind": "correct",
+   "title": "S3 CORS config with AllowedHeaders * (not IAM)",
+   "surface": "commit",
+   "files": {
+    "s3/cors.json": {
+     "before": "",
+     "after": "[\n  {\n    \"AllowedHeaders\": [\n      \"*\"\n    ],\n    \"AllowedMethods\": [\n      \"GET\"\n    ],\n    \"AllowedOrigins\": [\n      \"https://example.com\"\n    ]\n  }\n]\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N22",
+   "kind": "correct",
+   "title": "ValidatingWebhookConfiguration rules with wildcards (not RBAC)",
+   "surface": "commit",
+   "files": {
+    "k8s/webhook.yaml": {
+     "before": "",
+     "after": "webhooks:\n  - rules:\n      - apiGroups: ['*']\n        resources: ['*']\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "block"
+  },
+  {
+   "id": "N23",
+   "kind": "correct",
+   "title": "Lambda basic logging: logs:CreateLogGroup on * (AWS managed-policy shape)",
+   "surface": "commit",
+   "files": {
+    "iam/logs.json": {
+     "before": "",
+     "after": "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\n      \"Effect\": \"Allow\",\n      \"Action\": \"logs:CreateLogGroup\",\n      \"Resource\": \"*\"\n    }\n  ]\n}\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "N24",
+   "kind": "correct",
+   "title": "Python unit test asserting the scanner rejects a wildcard",
+   "surface": "commit",
+   "files": {
+    "tests/test_scanner.py": {
+     "before": "",
+     "after": "def test_rejects():\n    assert scan({\"Action\": \"*\", \"Resource\": \"*\"}).blocked\n"
+    }
+   },
+   "reviewed": "block",
+   "expect": "allow"
+  },
+  {
+   "id": "N25",
+   "kind": "correct",
+   "title": "Azure Contributor at resource-group scope (Bicep)",
+   "surface": "commit",
+   "files": {
+    "azure/contrib.bicep": {
+     "before": "",
+     "after": "properties: {\n  roleDefinitionName: 'Contributor'\n}\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  },
+  {
+   "id": "N26",
+   "kind": "correct",
+   "title": "Helm values listing a Kubernetes user named cluster-admin-readonly group mapping (name: key)",
+   "surface": "commit",
+   "files": {
+    "helm/values.yaml": {
+     "before": "",
+     "after": "users:\n  - name: cluster-admin-readonly\n    group: viewers\n"
+    }
+   },
+   "reviewed": "allow",
+   "expect": "allow"
+  }
+ ],
+ "unrebuilt": []
+}
